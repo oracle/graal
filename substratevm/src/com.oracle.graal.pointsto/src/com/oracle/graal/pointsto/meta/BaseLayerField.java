@@ -97,19 +97,4 @@ public class BaseLayerField extends AnnotationsContainer implements ResolvedJava
     public ResolvedJavaType getDeclaringClass() {
         return declaringClass;
     }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw GraalError.unimplemented("This field is incomplete and should not be used.");
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        throw GraalError.unimplemented("This field is incomplete and should not be used.");
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        throw GraalError.unimplemented("This field is incomplete and should not be used.");
-    }
 }

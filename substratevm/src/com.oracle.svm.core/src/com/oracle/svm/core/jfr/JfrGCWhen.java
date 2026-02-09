@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 public enum JfrGCWhen {
     BEFORE_GC("Before GC"),

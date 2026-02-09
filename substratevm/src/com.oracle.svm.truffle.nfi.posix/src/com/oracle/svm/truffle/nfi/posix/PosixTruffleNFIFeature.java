@@ -26,7 +26,6 @@ package com.oracle.svm.truffle.nfi.posix;
 
 import static com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.LM_ID_NEWLM;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -51,6 +50,7 @@ import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import org.graalvm.word.impl.Word;
 
 public final class PosixTruffleNFIFeature implements InternalFeature {
 

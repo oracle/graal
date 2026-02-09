@@ -36,6 +36,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.hotspot.replaycomp.HardwarePerformanceCounters;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.junit.AfterClass;
@@ -168,7 +169,7 @@ public class ReplayCompilationTest extends GraalCompilerTest {
                             new String[]{"--compare-graphs=false", temp.path.toString(), "--benchmark", "--iterations=1"}
             };
             for (String[] arguments : argumentLists) {
-                ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(arguments, TTY.out().out());
+                ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(arguments, TTY.out().out(), new HardwarePerformanceCounters.JargraalPAPIBridge());
                 assertTrue(status == ReplayCompilationRunner.ExitStatus.Success);
             }
         });
@@ -182,7 +183,7 @@ public class ReplayCompilationTest extends GraalCompilerTest {
              * this is not an error.
              */
             assertTrue(Path.of(temp.path.toString(), "empty.json").toFile().createNewFile());
-            ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(new String[]{temp.path.toString()}, TTY.out().out());
+            ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(new String[]{temp.path.toString()}, TTY.out().out(), new HardwarePerformanceCounters.JargraalPAPIBridge());
             assertTrue(status == ReplayCompilationRunner.ExitStatus.Success);
         });
     }
@@ -190,7 +191,7 @@ public class ReplayCompilationTest extends GraalCompilerTest {
     @Test
     public void emptyLauncherInputFails() throws Throwable {
         runTest((temp) -> {
-            ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(new String[]{temp.path.toString()}, TTY.out().out());
+            ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(new String[]{temp.path.toString()}, TTY.out().out(), new HardwarePerformanceCounters.JargraalPAPIBridge());
             assertTrue(status == ReplayCompilationRunner.ExitStatus.Failure);
         });
     }

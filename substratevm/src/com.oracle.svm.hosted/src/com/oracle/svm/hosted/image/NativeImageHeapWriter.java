@@ -97,12 +97,14 @@ public final class NativeImageHeapWriter {
     private final LayeredImageHooks layerHooks = imageLayer ? LayeredImageHooks.singleton() : null;
     private final LayeredFieldValueTransformerSupport layeredFieldSupport = imageLayer ? LayeredFieldValueTransformerSupport.singleton() : null;
     private final CrossLayerConstantRegistryFeature layerConstantRegistry = imageLayer ? CrossLayerConstantRegistryFeature.singleton() : null;
+    private final ImageHeapReasonSupport reasonSupport;
     private final JavaKind wordKind = ConfigurationValues.getWordKind();
     private long sectionOffsetOfARelocatablePointer = -1;
 
     public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayoutInfo heapLayout) {
         this.heap = heap;
         this.heapLayout = heapLayout;
+        this.reasonSupport = heap.reasonSupport;
     }
 
     /**
@@ -165,22 +167,23 @@ public final class NativeImageHeapWriter {
         assert (index % heap.objectLayout.getReferenceSize() == 0) : "index " + index + " must be reference-aligned.";
     }
 
-    private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
+    private void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw NativeImageHeap.reportIllegalType(target, reason, "Inconsistent image heap.");
+            throw heap.reportIllegalType(target, reason, "Inconsistent image heap.");
         }
     }
 
     private void writeField(RelocatableBuffer buffer, ObjectInfo fields, HostedField field, JavaConstant receiver, ObjectInfo info) {
         int index = getIndexInBuffer(fields, field.getLocation());
+        Object infoReason = (info != null) ? reasonSupport.reasonForInfo(info) : null;
         JavaConstant value;
         try {
             value = heap.hConstantReflection.readConstantField(field, receiver);
         } catch (AnalysisError.TypeNotFoundError ex) {
-            throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+            throw heap.reportIllegalType(ex.getType(), infoReason);
         }
 
-        Object reason = (info != null) ? info : field;
+        Object reason = (infoReason == null) ? field : infoReason;
         writeConstant(buffer, index, value.getJavaKind(), value, info, reason);
     }
 
@@ -231,7 +234,7 @@ public final class NativeImageHeapWriter {
         try {
             return (WordBase) heap.aUniverse.replaceObject(word);
         } catch (AnalysisError.TypeNotFoundError ex) {
-            throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+            throw heap.reportIllegalType(ex.getType(), reasonSupport.reasonForInfo(info));
         }
     }
 

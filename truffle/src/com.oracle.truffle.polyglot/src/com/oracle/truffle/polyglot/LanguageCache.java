@@ -64,6 +64,8 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 
 import org.graalvm.home.HomeFinder;
+import org.graalvm.home.Version;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -84,6 +86,21 @@ import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
  * runtimeCache with languages found in application classloader.
  */
 final class LanguageCache implements Comparable<LanguageCache> {
+    private static final boolean FORCE_USE_NATIVE_IMAGE_CACHE;
+    static {
+        /*
+         * On native-image < 25.1 class initialization can happen on threads where the context class
+         * loader will not see languages configured on the image module path. We must always use the
+         * native image caches there. This is OK since those versions of native image do not use
+         * truffle at build-time except for context pre-initialization.
+         */
+        if (ImageInfo.inImageCode()) {
+            Version graalVMVersion = Version.getCurrent();
+            FORCE_USE_NATIVE_IMAGE_CACHE = graalVMVersion.compareTo(Version.parse("dev")) != 0 && graalVMVersion.compareTo(25, 1) < 0;
+        } else {
+            FORCE_USE_NATIVE_IMAGE_CACHE = false;
+        }
+    }
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Map<String, LanguageCache> nativeImageMimes = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Set<String> languagesOverridingPatchContext = TruffleOptions.AOT ? new HashSet<>() : null;
@@ -175,7 +192,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     static Map<String, LanguageCache> languageMimes() {
-        if (TruffleOptions.AOT) {
+        if (FORCE_USE_NATIVE_IMAGE_CACHE || ImageInfo.inImageRuntimeCode()) {
             return nativeImageMimes;
         }
         Map<String, LanguageCache> cache = runtimeMimes;
@@ -250,7 +267,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
-        if (TruffleOptions.AOT) {
+        if (FORCE_USE_NATIVE_IMAGE_CACHE || ImageInfo.inImageRuntimeCode()) {
             return nativeImageCache;
         }
         synchronized (LanguageCache.class) {
@@ -425,7 +442,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return path;
     }
 
-    static boolean overridesPathContext(String languageId) {
+    static boolean overridesPatchContext(String languageId) {
         assert TruffleOptions.AOT : "Only supported in native image";
         return languagesOverridingPatchContext.contains(languageId);
     }

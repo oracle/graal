@@ -117,7 +117,7 @@ public final class Target_java_lang_reflect_Method {
      */
     @Inject //
     @RecomputeFieldValue(kind = Kind.Reset) //
-    Target_jdk_internal_reflect_MethodAccessor methodAccessorFromMetadata;
+    public Target_jdk_internal_reflect_MethodAccessor methodAccessorFromMetadata;
 
     @Inject //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = LayerIdComputer.class) //

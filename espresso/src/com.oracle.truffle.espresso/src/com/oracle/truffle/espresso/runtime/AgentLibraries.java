@@ -41,10 +41,12 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.jvmti.JvmtiPhase;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 
 final class AgentLibraries extends ContextAccessImpl {
 
@@ -82,7 +84,7 @@ final class AgentLibraries extends ContextAccessImpl {
             if (onLoad == null) {
                 throw getContext().abort("Unable to locate " + AGENT_ONLOAD + " in agent " + agent.name);
             }
-            try (RawBuffer optionBuffer = RawBuffer.getNativeString(agent.options)) {
+            try (RawBuffer optionBuffer = RawBuffer.getNativeString(agent.options, getContext().getNativeAccess().nativeMemory())) {
                 ret = interop.execute(onLoad, getContext().getVM().getJavaVM(), optionBuffer.pointer(), RawPointer.nullInstance());
                 assert interop.fitsInInt(ret);
                 if (interop.asInt(ret) != JNI_OK) {
@@ -91,6 +93,9 @@ final class AgentLibraries extends ContextAccessImpl {
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
+            } catch (MemoryAllocationException e) {
+                Meta meta = getContext().getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage(), getContext());
             }
         }
 

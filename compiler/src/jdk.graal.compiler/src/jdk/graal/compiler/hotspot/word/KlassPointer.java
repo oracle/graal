@@ -29,10 +29,10 @@ import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.POI
 import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.READ_KLASS_POINTER;
 import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.TO_KLASS_POINTER;
 
-import jdk.graal.compiler.word.Word.Opcode;
-import jdk.graal.compiler.word.Word.Operation;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word.Opcode;
+import org.graalvm.word.impl.Word.Operation;
 
 /**
  * Marker type for a metaspace pointer to a type.

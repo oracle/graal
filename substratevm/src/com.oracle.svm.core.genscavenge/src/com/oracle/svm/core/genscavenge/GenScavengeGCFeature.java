@@ -59,6 +59,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
@@ -97,7 +98,9 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
 
         if (RuntimeClassLoading.isSupported()) {
-            ImageSingletons.add(Metaspace.class, new MetaspaceImpl());
+            MetaspaceImpl metaspace = new MetaspaceImpl();
+            ImageSingletons.add(Metaspace.class, metaspace);
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(new MetaspaceImpl.ShutdownHook(metaspace));
         }
     }
 
@@ -107,22 +110,21 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
-        TlabOptionCache tlabOptionCache = new TlabOptionCache();
-        ImageSingletons.add(TlabOptionCache.class, tlabOptionCache);
-        tlabOptionCache.validateHostedOptionValues();
-
-        if (ImageLayerBuildingSupport.firstImageBuild()) {
-            ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
-        }
-
-        if (ImageSingletons.contains(PerfManager.class)) {
-            ImageSingletons.lookup(PerfManager.class).register(createPerfData());
-        }
-
         if (SubstrateGCOptions.VerifyHeap.getValue()) {
             ImageSingletons.add(HeapVerifier.class, new HeapVerifier());
         }
 
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            TlabOptionCache tlabOptionCache = new TlabOptionCache();
+            ImageSingletons.add(TlabOptionCache.class, tlabOptionCache);
+
+            ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
+            if (ImageSingletons.contains(PerfManager.class)) {
+                ImageSingletons.lookup(PerfManager.class).register(createPerfData());
+            }
+        }
+
+        TlabOptionCache.validateHostedOptionValues();
         HeapParameters.initialize();
     }
 
@@ -156,7 +158,9 @@ class GenScavengeGCFeature implements InternalFeature {
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);
 
-        TlabOptionCache.registerOptionValidations();
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            TlabOptionCache.registerOptionValidations();
+        }
     }
 
     private static ImageHeapInfo getCurrentLayerImageHeapInfo() {

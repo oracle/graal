@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jvmti;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
 import static com.oracle.truffle.espresso.jvmti.JvmtiErrorCodes.JVMTI_ERROR_ILLEGAL_ARGUMENT;
 import static com.oracle.truffle.espresso.jvmti.JvmtiErrorCodes.JVMTI_OK;
 
@@ -106,23 +108,33 @@ public final class JVMTIEnv extends NativeEnv {
             return JVMTI_ERROR_ILLEGAL_ARGUMENT;
         }
         TruffleObject alloc;
-        if (byteCount == 0) {
-            alloc = RawPointer.nullInstance();
-        } else {
-            alloc = getNativeAccess().allocateMemory(byteCount);
-            if (getUncached().isNull(alloc)) {
-                return JvmtiErrorCodes.JVMTI_ERROR_OUT_OF_MEMORY;
+        try {
+            if (byteCount == 0) {
+                alloc = RawPointer.nullInstance();
+            } else {
+                alloc = RawPointer.create(getNativeAccess().nativeMemory().allocateMemory(byteCount));
             }
+            NativeUtils.writeToPointerPointer(getUncached(), memPtr, alloc, getNativeAccess().nativeMemory());
+        } catch (MemoryAllocationException e) {
+            return JvmtiErrorCodes.JVMTI_ERROR_OUT_OF_MEMORY;
+        } catch (IllegalMemoryAccessException e) {
+            getLogger().warning("memPtr does not point to a valid memory region");
+            return JVMTI_ERROR_ILLEGAL_ARGUMENT;
         }
-        NativeUtils.writeToPointerPointer(getUncached(), memPtr, alloc);
         return JVMTI_OK;
     }
 
     @JvmtiImpl
+    @SuppressWarnings("unchecked")
     public int Deallocate(@Pointer TruffleObject memPtr) {
         // Null is valid. Do nothing if that is the case
         if (!getUncached().isNull(memPtr)) {
-            getNativeAccess().freeMemory(memPtr);
+            try {
+                getNativeAccess().nativeMemory().freeMemory(NativeUtils.interopAsPointer(memPtr));
+            } catch (IllegalMemoryAccessException e) {
+                getLogger().warning("memPtr does not point to a valid memory region");
+                return JVMTI_ERROR_ILLEGAL_ARGUMENT;
+            }
         }
         return JVMTI_OK;
     }
@@ -145,7 +157,12 @@ public final class JVMTIEnv extends NativeEnv {
             // Pointer should have been pre-null-checked
             return JVMTI_ERROR_ILLEGAL_ARGUMENT;
         }
-        NativeUtils.writeToPointerPointer(getUncached(), dataPtr, envLocalStorage);
+        try {
+            NativeUtils.writeToPointerPointer(getUncached(), dataPtr, envLocalStorage, getNativeAccess().nativeMemory());
+        } catch (IllegalMemoryAccessException e) {
+            getLogger().warning("dataPtr does not point to a valid memory region");
+            return JVMTI_ERROR_ILLEGAL_ARGUMENT;
+        }
         return JVMTI_OK;
     }
 
@@ -155,7 +172,12 @@ public final class JVMTIEnv extends NativeEnv {
             // Pointer should have been pre-null-checked
             return JVMTI_ERROR_ILLEGAL_ARGUMENT;
         }
-        NativeUtils.writeToIntPointer(getUncached(), phasePtr, getVM().getJvmti().getPhase());
+        try {
+            NativeUtils.writeToIntPointer(getUncached(), phasePtr, getVM().getJvmti().getPhase(), getNativeAccess().nativeMemory());
+        } catch (IllegalMemoryAccessException e) {
+            getLogger().warning("phasePtr does not point to a valid memory region");
+            return JVMTI_ERROR_ILLEGAL_ARGUMENT;
+        }
         return JVMTI_OK;
     }
 
@@ -172,7 +194,12 @@ public final class JVMTIEnv extends NativeEnv {
             // Pointer should have been pre-null-checked
             return JVMTI_ERROR_ILLEGAL_ARGUMENT;
         }
-        NativeUtils.writeToIntPointer(getUncached(), versionPtr, jvmtiVersion);
+        try {
+            NativeUtils.writeToIntPointer(getUncached(), versionPtr, jvmtiVersion, getNativeAccess().nativeMemory());
+        } catch (IllegalMemoryAccessException e) {
+            getLogger().warning("versionPtr does not point to a valid memory region");
+            return JVMTI_ERROR_ILLEGAL_ARGUMENT;
+        }
         return JVMTI_OK;
     }
 

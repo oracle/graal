@@ -132,7 +132,7 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
-            Set<AnalysisType> result = baseType.getAllSubtypes();
+            Set<AnalysisType> result = baseType.getAllSubtypes().toHashSet();
             result.removeIf(t -> !isReachable(t));
             return result;
         }

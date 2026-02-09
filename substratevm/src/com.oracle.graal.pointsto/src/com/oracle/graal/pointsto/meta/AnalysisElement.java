@@ -24,11 +24,8 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.util.ArrayDeque;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +35,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -48,9 +46,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
-import com.oracle.svm.util.AnnotationUtil;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -60,7 +56,7 @@ import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public abstract class AnalysisElement extends AbstractAnnotated implements AnnotatedElement {
+public abstract class AnalysisElement extends AbstractAnnotated {
 
     protected static final AtomicReferenceFieldUpdater<AnalysisElement, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisElement.class, Object.class, "trackAcrossLayers");
@@ -74,38 +70,13 @@ public abstract class AnalysisElement extends AbstractAnnotated implements Annot
         this.enableTrackAcrossLayers = enableTrackAcrossLayers;
     }
 
-    public abstract AnnotatedElement getWrapped();
+    public abstract Annotated getWrapped();
 
     protected abstract AnalysisUniverse getUniverse();
 
     @Override
     public AnnotationsInfo getRawDeclaredAnnotationInfo() {
-        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo(null);
-    }
-
-    @Override
-    public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-        return AnnotationUtil.isAnnotationPresent((Annotated) getWrapped(), annotationClass);
-    }
-
-    @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return AnnotationUtil.getAnnotation((Annotated) getWrapped(), annotationClass);
-    }
-
-    @Override
-    public final <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        throw GraalError.shouldNotReachHere("The getDeclaredAnnotation method is not supported");
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        throw GraalError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
-        throw GraalError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
+        return getWrapped().getDeclaredAnnotationInfo(null);
     }
 
     /**
@@ -285,7 +256,7 @@ public abstract class AnalysisElement extends AbstractAnnotated implements Annot
         private final BigBang bb;
         private final StringBuilder reasonTrace;
         private final ArrayDeque<Object> reasonStack;
-        private final HashSet<Object> seen;
+        private final EconomicSet<Object> seen;
 
         ReachabilityTraceBuilder(String traceHeader, Object reason, BigBang bigBang) {
             header = traceHeader;
@@ -293,7 +264,7 @@ public abstract class AnalysisElement extends AbstractAnnotated implements Annot
             bb = bigBang;
             reasonTrace = new StringBuilder();
             reasonStack = new ArrayDeque<>();
-            seen = new HashSet<>();
+            seen = EconomicSet.create();
         }
 
         public static String buildReachabilityTrace(BigBang bb, Object reason, String header) {
@@ -403,7 +374,7 @@ public abstract class AnalysisElement extends AbstractAnnotated implements Annot
 
             } else if (current instanceof ResolvedJavaField field) {
                 /*
-                 * In {@code AnalysisUniverse#lookupAllowUnresolved(JavaField)} we may register a
+                 * In AnalysisUniverse.lookupAllowUnresolved(JavaField) we may register a
                  * ResolvedJavaField as reason.
                  *
                  * We convert it to AnalysisField to print more information about why the field is

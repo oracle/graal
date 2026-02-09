@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
@@ -39,7 +39,6 @@ import com.oracle.svm.core.meta.SharedMethod;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.VirtualObject;
@@ -47,6 +46,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.word.impl.Word;
 
 /**
  * During a stack walk, this class holds information about a virtual Java frame. It is usually
@@ -110,8 +110,13 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         protected JavaKind kind;
         protected boolean isCompressedReference; // for JavaKind.Object
         protected boolean isEliminatedMonitor;
+        protected boolean isAutoBoxedPrimitive;
         protected long data;
         protected JavaConstant value;
+
+        public ValueInfo() {
+            clear();
+        }
 
         /**
          * Returns the type of the value, describing how to access the value.
@@ -145,6 +150,14 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         }
 
         /**
+         * Returns true if this is an automatically boxed primitive (i.e., a method like
+         * {@link Integer#valueOf} should be used to produce the value).
+         */
+        public boolean isAutoBoxedPrimitive() {
+            return isAutoBoxedPrimitive;
+        }
+
+        /**
          * Returns additional data for the value, according to the specification in
          * {@link ValueType}.
          */
@@ -172,9 +185,21 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
             copy.kind = javaKind;
             copy.isCompressedReference = isCompressedReference;
             copy.isEliminatedMonitor = isEliminatedMonitor;
+            copy.isAutoBoxedPrimitive = isAutoBoxedPrimitive;
             copy.data = data + offset;
             copy.value = value;
             return copy;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void clear() {
+            type = null;
+            kind = null;
+            isCompressedReference = false;
+            isEliminatedMonitor = false;
+            isAutoBoxedPrimitive = false;
+            data = 0;
+            value = null;
         }
     }
 

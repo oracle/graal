@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -42,7 +41,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.foreign.AbiUtils;
@@ -63,6 +62,7 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -155,10 +155,10 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     private LowLevelUpcallStub(AnalysisMethod highLevelStubMethod, JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, MetaAccessProvider metaAccess, boolean direct) {
         super(jep, adapted.callType(), metaAccess, false, direct);
         this.highLevelStub = highLevelStubMethod;
-        this.savedRegisters = ImageSingletons.lookup(SubstrateRegisterConfigFactory.class)
+        this.savedRegisters = SubstrateRegisterConfigFactory.singleton()
                         .newRegisterFactory(SubstrateRegisterConfig.ConfigKind.NATIVE_TO_JAVA, null, ConfigurationValues.getTarget(), SubstrateOptions.PreserveFramePointer.getValue())
                         .getCalleeSaveRegisters();
-        this.parametersAssignment = adapted.parametersAssignment().toArray(new AssignedLocation[0]);
+        this.parametersAssignment = adapted.parametersAssignment().toArray(AssignedLocation.EMPTY_ARRAY);
     }
 
     /**
@@ -172,7 +172,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         assert ExplicitCallingConvention.Util.getCallingConventionKind(method, false) == SubstrateCallingConventionKind.Custom;
-        assert Uninterruptible.Utils.isUninterruptible(method);
+        assert UninterruptibleAnnotationUtils.isUninterruptible(method);
         ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method);
 
         /*

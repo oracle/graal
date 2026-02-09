@@ -26,14 +26,15 @@
 
 package com.oracle.svm.core.jfr.oldobject;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrBuffer;
@@ -48,8 +49,6 @@ import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
-
-import jdk.graal.compiler.word.Word;
 
 public final class JfrOldObjectRepository implements JfrRepository {
     private static final int OBJECT_DESCRIPTION_MAX_LENGTH = 100;
@@ -80,7 +79,7 @@ public final class JfrOldObjectRepository implements JfrRepository {
             }
 
             long id = JfrOldObjectEpochData.nextId;
-            Word pointer = Word.objectToUntrackedPointer(obj);
+            Word pointer = Word.objectToUntrackedWord(obj);
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
             JfrNativeEventWriter.putLong(data, id);

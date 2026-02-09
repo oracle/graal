@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.hotspot.replaycomp.proxy;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.util.function.Function;
 
 import jdk.vm.ci.meta.annotation.Annotated;
@@ -78,37 +76,11 @@ public class CompilationProxyBase implements CompilationProxy {
     }
 
     /**
-     * Base class to share method implementations for proxies that implement
-     * {@link AnnotatedElement} and {@link Annotated}.
+     * Base class to share method implementations for proxies that implement {@link Annotated}.
      */
-    public abstract static class CompilationProxyAnnotatedBase extends CompilationProxyBase implements AnnotatedElement, Annotated {
+    public abstract static class CompilationProxyAnnotatedBase extends CompilationProxyBase implements Annotated {
         CompilationProxyAnnotatedBase(InvocationHandler handler) {
             super(handler);
-        }
-
-        public static final SymbolicMethod getAnnotationMethod = new SymbolicMethod(AnnotatedElement.class, "getAnnotation", Class.class);
-        @SuppressWarnings("unchecked") public static final InvokableMethod getAnnotationInvokable = (receiver, args) -> ((AnnotatedElement) receiver).getAnnotation((Class<Annotation>) args[0]);
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-            return (T) handle(getAnnotationMethod, getAnnotationInvokable, annotationClass);
-        }
-
-        public static final SymbolicMethod getAnnotationsMethod = new SymbolicMethod(AnnotatedElement.class, "getAnnotations");
-        public static final InvokableMethod getAnnotationsInvokable = (receiver, args) -> ((AnnotatedElement) receiver).getAnnotations();
-
-        @Override
-        public final Annotation[] getAnnotations() {
-            return (Annotation[]) handle(getAnnotationsMethod, getAnnotationsInvokable);
-        }
-
-        public static final SymbolicMethod getDeclaredAnnotationsMethod = new SymbolicMethod(AnnotatedElement.class, "getDeclaredAnnotations");
-        public static final InvokableMethod getDeclaredAnnotationsInvokable = (receiver, args) -> ((AnnotatedElement) receiver).getDeclaredAnnotations();
-
-        @Override
-        public final Annotation[] getDeclaredAnnotations() {
-            return (Annotation[]) handle(getDeclaredAnnotationsMethod, getDeclaredAnnotationsInvokable);
         }
 
         public static final SymbolicMethod getDeclaredAnnotationInfoMethod = new SymbolicMethod(Annotated.class, "getDeclaredAnnotationInfo", Function.class);

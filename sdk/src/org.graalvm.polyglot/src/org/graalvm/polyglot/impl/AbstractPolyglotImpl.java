@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,6 +82,7 @@ import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -176,7 +177,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getSourceSectionSource(Object sourceSection);
 
-        public abstract RuntimeException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor);
+        public abstract PolyglotException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor);
 
         public abstract boolean isInstrument(Object instrument);
 
@@ -193,6 +194,58 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isSource(Object value);
 
         public abstract boolean isSourceSection(Object value);
+
+        public abstract Object callProxyExecutableExecute(Object proxy, Object[] objects);
+
+        public abstract Object callProxyNativeObjectAsPointer(Object proxy);
+
+        public abstract Object callProxyInstantiableNewInstance(Object proxy, Object[] objects);
+
+        public abstract Object callProxyArrayGet(Object proxy, long index);
+
+        public abstract void callProxyArraySet(Object proxy, long index, Object value);
+
+        public abstract boolean callProxyArrayRemove(Object proxy, long index);
+
+        public abstract Object callProxyArraySize(Object proxy);
+
+        public abstract Object callProxyObjectMemberKeys(Object proxy);
+
+        public abstract Object callProxyObjectGetMember(Object proxy, String member);
+
+        public abstract void callProxyObjectPutMember(Object proxy, String member, Object value);
+
+        public abstract boolean callProxyObjectRemoveMember(Object proxy, String member);
+
+        public abstract Object callProxyObjectHasMember(Object proxy, String string);
+
+        public abstract ZoneId callProxyTimeZoneAsTimeZone(Object proxy);
+
+        public abstract LocalDate callProxyDateAsDate(Object proxy);
+
+        public abstract LocalTime callProxyTimeAsTime(Object proxy);
+
+        public abstract Instant callProxyInstantAsInstant(Object proxy);
+
+        public abstract Duration callProxyDurationAsDuration(Object proxy);
+
+        public abstract Object callProxyIterableGetIterator(Object proxy);
+
+        public abstract Object callProxyIteratorHasNext(Object proxy);
+
+        public abstract Object callProxyIteratorGetNext(Object proxy);
+
+        public abstract Object callProxyHashMapHasHashEntry(Object proxy, Object object);
+
+        public abstract Object callProxyHashMapGetHashSize(Object proxy);
+
+        public abstract Object callProxyHashMapGetHashValue(Object proxy, Object object);
+
+        public abstract void callProxyHashMapPutHashEntry(Object proxy, Object object, Object object2);
+
+        public abstract Object callProxyHashMapRemoveHashEntry(Object proxy, Object object);
+
+        public abstract Object callProxyHashMapGetEntriesIterator(Object proxy);
 
         public abstract Class<?> getValueClass();
 
@@ -303,114 +356,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object byteSequenceSubSequence(Object origin, int index, int length);
 
         public abstract byte[] byteSequenceToByteArray(Object origin);
-
-        public abstract boolean isProxyArray(Object proxy);
-
-        public abstract boolean isProxyDate(Object proxy);
-
-        public abstract boolean isProxyDuration(Object proxy);
-
-        public abstract boolean isProxyExecutable(Object proxy);
-
-        public abstract boolean isProxyHashMap(Object proxy);
-
-        public abstract boolean isProxyInstant(Object proxy);
-
-        public abstract boolean isProxyInstantiable(Object proxy);
-
-        public abstract boolean isProxyIterable(Object proxy);
-
-        public abstract boolean isProxyIterator(Object proxy);
-
-        public abstract boolean isProxyNativeObject(Object proxy);
-
-        public abstract boolean isProxyObject(Object proxy);
-
-        public abstract boolean isProxyTime(Object proxy);
-
-        public abstract boolean isProxyTimeZone(Object proxy);
-
-        public abstract boolean isProxy(Object proxy);
-
-        public abstract Class<?> getProxyArrayClass();
-
-        public abstract Class<?> getProxyDateClass();
-
-        public abstract Class<?> getProxyDurationClass();
-
-        public abstract Class<?> getProxyExecutableClass();
-
-        public abstract Class<?> getProxyHashMapClass();
-
-        public abstract Class<?> getProxyInstantClass();
-
-        public abstract Class<?> getProxyInstantiableClass();
-
-        public abstract Class<?> getProxyIterableClass();
-
-        public abstract Class<?> getProxyIteratorClass();
-
-        public abstract Class<?> getProxyNativeObjectClass();
-
-        public abstract Class<?> getProxyObjectClass();
-
-        public abstract Class<?> getProxyTimeClass();
-
-        public abstract Class<?> getProxyTimeZoneClass();
-
-        public abstract Class<?> getProxyClass();
-
-        public abstract Object callProxyExecutableExecute(Object proxy, Object[] objects);
-
-        public abstract Object callProxyNativeObjectAsPointer(Object proxy);
-
-        public abstract Object callProxyInstantiableNewInstance(Object proxy, Object[] objects);
-
-        public abstract Object callProxyArrayGet(Object proxy, long index);
-
-        public abstract void callProxyArraySet(Object proxy, long index, Object value);
-
-        public abstract boolean callProxyArrayRemove(Object proxy, long index);
-
-        public abstract Object callProxyArraySize(Object proxy);
-
-        public abstract Object callProxyObjectMemberKeys(Object proxy);
-
-        public abstract Object callProxyObjectGetMember(Object proxy, String member);
-
-        public abstract void callProxyObjectPutMember(Object proxy, String member, Object value);
-
-        public abstract boolean callProxyObjectRemoveMember(Object proxy, String member);
-
-        public abstract Object callProxyObjectHasMember(Object proxy, String string);
-
-        public abstract ZoneId callProxyTimeZoneAsTimeZone(Object proxy);
-
-        public abstract LocalDate callProxyDateAsDate(Object proxy);
-
-        public abstract LocalTime callProxyTimeAsTime(Object proxy);
-
-        public abstract Instant callProxyInstantAsInstant(Object proxy);
-
-        public abstract Duration callProxyDurationAsDuration(Object proxy);
-
-        public abstract Object callProxyIterableGetIterator(Object proxy);
-
-        public abstract Object callProxyIteratorHasNext(Object proxy);
-
-        public abstract Object callProxyIteratorGetNext(Object proxy);
-
-        public abstract Object callProxyHashMapHasHashEntry(Object proxy, Object object);
-
-        public abstract Object callProxyHashMapGetHashSize(Object proxy);
-
-        public abstract Object callProxyHashMapGetHashValue(Object proxy, Object object);
-
-        public abstract void callProxyHashMapPutHashEntry(Object proxy, Object object, Object object2);
-
-        public abstract Object callProxyHashMapRemoveHashEntry(Object proxy, Object object);
-
-        public abstract Object callProxyHashMapGetEntriesIterator(Object proxy);
 
         public abstract Object getIOAccessNone();
 
@@ -535,9 +480,9 @@ public abstract class AbstractPolyglotImpl {
 
     public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
-                    boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
+                    boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
         return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
-                        hostLanguageOnly, registerInActiveEngines, polyglotHostService);
+                        hostLanguageOnly, registerInActiveEngines, polyglotHostService, exceptionHandler);
     }
 
     public void onEngineCreated(Object polyglotEngine) {
@@ -828,8 +773,8 @@ public abstract class AbstractPolyglotImpl {
                         Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, Object ioAccess, Object logHandler, boolean allowCreateProcess, ProcessHandler processHandler,
-                        Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, String tmpDir,
-                        ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts);
+                        Consumer<PolyglotException> exceptionHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
+                        String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts);
 
         public abstract String getImplementationName(Object receiver);
 
@@ -903,6 +848,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isInterrupted(Object receiver);
 
+        public abstract Object getCauseImpl(Object receiver);
     }
 
     public abstract static class AbstractStackFrameImpl extends AbstractDispatchClass {
@@ -998,7 +944,7 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Object toGuestValue(Object internalContext, Object hostValue);
+        public abstract Object toGuestValue(Object node, APIAccess apiAccess, Object hostValue);
 
         public abstract <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType);
 
@@ -1021,7 +967,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract RuntimeException toPolyglotException(Object internalContext, Throwable e);
 
-        public abstract Object toValue(Object internalContext, Object receiver);
+        public abstract Value toValue(Object internalContext, Object receiver);
 
         public abstract String getValueInfo(Object internalContext, Object value);
 
@@ -1065,6 +1011,17 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract static class AbstractHostLanguageService extends AbstractDispatchClass {
 
+        private static final String POLYGLOT_PACKAGE = "org.graalvm.polyglot.";
+        private static final String HOST_INTEROP_PACKAGE = "com.oracle.truffle.polyglot.";
+        private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
+                        HOST_INTEROP_PACKAGE + "PolyglotMap",
+                        HOST_INTEROP_PACKAGE + "PolyglotList",
+                        HOST_INTEROP_PACKAGE + "PolyglotFunction",
+                        HOST_INTEROP_PACKAGE + "PolyglotMapAndFunction",
+                        HOST_INTEROP_PACKAGE + "PolyglotFunctionProxyHandler",
+                        HOST_INTEROP_PACKAGE + "PolyglotObjectProxyHandler"
+        };
+
         protected AbstractHostLanguageService(AbstractPolyglotImpl polyglot) {
             Objects.requireNonNull(polyglot);
         }
@@ -1078,7 +1035,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void addToHostClassPath(Object context, Object truffleFile);
 
-        public abstract Object toGuestValue(Object context, Object hostValue, boolean asValue);
+        public abstract Object toGuestValue(Object node, Object hostValue, boolean asValue);
 
         public abstract Object asHostDynamicClass(Object context, Class<?> value);
 
@@ -1090,33 +1047,15 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
 
-        public abstract boolean isHostValue(Object value);
-
-        public abstract Object unboxHostObject(Object hostValue);
-
         public abstract Object unboxProxyObject(Object hostValue);
-
-        public abstract Throwable unboxHostException(Throwable hostValue);
 
         public abstract Object toHostObject(Object context, Object value);
 
         public abstract RuntimeException toHostException(Object hostContext, Throwable exception);
 
-        public abstract boolean isHostException(Object exception);
-
-        public abstract boolean isHostFunction(Object obj);
-
-        public abstract boolean isHostObject(Object obj);
-
-        public abstract boolean isHostSymbol(Object obj);
-
         public abstract Object createHostAdapter(Object hostContextObject, Object[] types, Object classOverrides);
 
         public abstract boolean isHostProxy(Object value);
-
-        public abstract Error toHostResourceError(Throwable hostException);
-
-        public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
 
         public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
 
@@ -1130,6 +1069,71 @@ public abstract class AbstractPolyglotImpl {
             return allowsPublicAccess();
         }
 
+        // Overridden by polyglot isolate
+        public int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+            StackTraceElement element = firstElement;
+            int index = nextElementIndex;
+            while (isGuestToHostReflectiveCall(element) && index < hostStack.length) {
+                element = hostStack[index++];
+            }
+            if (isGuestToHostCallFromHostInterop(element)) {
+                return index - nextElementIndex;
+            } else {
+                return -1;
+            }
+        }
+
+        private static boolean isGuestToHostReflectiveCall(StackTraceElement element) {
+            return switch (element.getClassName()) {
+                case "sun.reflect.NativeMethodAccessorImpl", "sun.reflect.DelegatingMethodAccessorImpl",
+                                "jdk.internal.reflect.NativeMethodAccessorImpl", "jdk.internal.reflect.DelegatingMethodAccessorImpl",
+                                "java.lang.reflect.Method" ->
+                    element.getMethodName().startsWith("invoke");
+                default -> false;
+            };
+        }
+
+        private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
+            return switch (element.getClassName()) {
+                case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MHBase" ->
+                    element.getMethodName().equals("invokeHandle");
+                case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MethodReflectImpl" ->
+                    element.getMethodName().equals("reflectInvoke");
+                case "com.oracle.truffle.host.HostObject$GuestToHostCalls" -> true;
+                case "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeReflect",
+                                "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeHandle" ->
+                    element.getMethodName().equals("executeImpl");
+                case "org.graalvm.polyglot.Engine$APIAccessImpl" -> element.getMethodName().startsWith("callProxy");
+                default -> false;
+            };
+        }
+
+        // Overridden by polyglot isolate
+        public int findNextHostToGuestStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+            StackTraceElement element = firstElement;
+            int index = nextElementIndex;
+            if (!isHostToGuest(element)) {
+                return -1;
+            }
+            while (isHostToGuest(element) && index < hostStack.length) {
+                element = hostStack[index++];
+            }
+            return index - nextElementIndex - 1;
+        }
+
+        // Used by polyglot isolate findNextHostToGuestStackTraceElement implementation
+        protected static boolean isHostToGuest(StackTraceElement element) {
+            if (element.getClassName().startsWith(POLYGLOT_PACKAGE) && element.getClassName().indexOf('.', POLYGLOT_PACKAGE.length()) < 0) {
+                return !element.getClassName().equals("org.graalvm.polyglot.Engine$APIAccessImpl");
+            } else if (element.getClassName().startsWith(HOST_INTEROP_PACKAGE)) {
+                for (String hostToGuestClassName : JAVA_INTEROP_HOST_TO_GUEST) {
+                    if (element.getClassName().equals(hostToGuestClassName)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
     }
 
     public abstract static class AbstractValueDispatch extends AbstractDispatchClass {
@@ -1208,6 +1212,12 @@ public abstract class AbstractPolyglotImpl {
         public abstract void putMember(Object context, Object receiver, String key, Object member);
 
         public abstract boolean removeMember(Object context, Object receiver, String key);
+
+        public boolean hasStaticScope(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract Object getStaticScope(Object context, Object receiver);
 
         public boolean canExecute(Object context, Object receiver) {
             return false;
@@ -1511,6 +1521,14 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public void validateVirtualThreadCreation(OptionValues engineOptions) {
+    }
+
+    public <T extends Throwable> T mergeHostStackTrace(Throwable forException, T hostException) {
+        return getNext().mergeHostStackTrace(forException, hostException);
+    }
+
+    public Object getEmbedderExceptionStackTrace(Object engine, Throwable exception, boolean inHost) {
+        return getNext().getEmbedderExceptionStackTrace(engine, exception, inHost);
     }
 
     /**

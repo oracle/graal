@@ -25,10 +25,9 @@
 package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.hub.Hybrid;
-
-import jdk.graal.compiler.word.Word;
 
 /**
  * Persisted execution state of a yielded continuation, use via {@link StoredContinuationAccess}.

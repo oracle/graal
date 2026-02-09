@@ -32,7 +32,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 
@@ -58,11 +58,11 @@ public interface SVMParsingSupport {
 
     boolean recordInlinedMethods(AnalysisMethod method);
 
-    HostedProviders getHostedProviders(MultiMethod.MultiMethodKey key);
+    HostedProviders getHostedProviders(MethodVariant.MethodVariantKey key);
 
     void initializeInlineBeforeAnalysisPolicy(SVMHost svmHost, InlineBeforeAnalysisPolicyUtils inliningUtils);
 
-    InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey, InlineBeforeAnalysisPolicy defaultPolicy);
+    InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MethodVariant.MethodVariantKey methodVariantKey, InlineBeforeAnalysisPolicy defaultPolicy);
 
-    Predicate<AnalysisType> getStrengthenGraphsTypePredicate(MultiMethod.MultiMethodKey key);
+    Predicate<AnalysisType> getStrengthenGraphsTypePredicate(MethodVariant.MethodVariantKey key);
 }

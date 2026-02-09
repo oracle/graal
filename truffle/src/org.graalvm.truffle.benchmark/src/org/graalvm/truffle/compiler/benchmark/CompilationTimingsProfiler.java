@@ -79,6 +79,20 @@ public class CompilationTimingsProfiler implements InternalProfiler, OptimizedTr
     private Datapoint current = null;
     private final List<Datapoint> datapoints = new ArrayList<>();
 
+    public Error error(String message, Object... args) {
+        throw new AssertionError(message.formatted(args));
+    }
+
+    /**
+     * Logs an error without throwing an exception. Compilation callbacks should not throw errors,
+     * so we instead log them and configure mx benchmark to check for error logs.
+     */
+    private void logError(String message, Object... args) {
+        // Checkstyle: stop
+        System.err.println(CompilationTimingsProfiler.class.getSimpleName() + " error: " + message.formatted(args));
+        // Checkstyle: start
+    }
+
     @Override
     public void beforeIteration(BenchmarkParams benchmarkParams, IterationParams iterationParams) {
         if (iterationParams.getType() == IterationType.WARMUP) {
@@ -86,8 +100,8 @@ public class CompilationTimingsProfiler implements InternalProfiler, OptimizedTr
         }
 
         if (!datapoints.isEmpty()) {
-            throw new IllegalStateException(String.format("Some datapoints (probably from a previous benchmark) were not cleared before a new iteration started. This is a bug in the %s.",
-                            CompilationTimingsProfiler.class.getName()));
+            throw error("Some datapoints (probably from a previous benchmark) were not cleared before a new iteration started. This is a bug in the %s.",
+                            CompilationTimingsProfiler.class.getName());
         }
 
         // Start listening to compilation events.
@@ -104,7 +118,10 @@ public class CompilationTimingsProfiler implements InternalProfiler, OptimizedTr
         OptimizedTruffleRuntime.getRuntime().removeListener(this);
 
         if (current != null) {
-            throw new IllegalStateException("Incomplete compilation datapoint found. Was there a compilation issue?");
+            throw error("Incomplete compilation datapoint found. Was there a compilation issue?");
+        }
+        if (datapoints.isEmpty()) {
+            throw error("No compilation data points were collected.");
         }
 
         SampleBuffer truffleTierBuffer = new SampleBuffer();
@@ -131,7 +148,7 @@ public class CompilationTimingsProfiler implements InternalProfiler, OptimizedTr
     @Override
     public void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
         if (current != null) {
-            throw new AssertionError("Compilation started before previous compilation completed. Data will be lost.");
+            logError("Compilation started before previous compilation completed. Data will be lost.");
         }
         current = new Datapoint(System.nanoTime());
     }
@@ -139,9 +156,10 @@ public class CompilationTimingsProfiler implements InternalProfiler, OptimizedTr
     @Override
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, AbstractCompilationTask task, TruffleCompilerListener.GraphInfo graph) {
         if (current == null) {
-            throw new AssertionError("No compilation started");
+            logError("Truffle tier was reported finished, but no compilation was started in the profiler.");
+            return;
         } else if (current.truffleTierCompleteNs != 0) {
-            throw new AssertionError("Truffle tier timing already recorded");
+            logError("Truffle tier timing already recorded.");
         }
         current.truffleTierCompleteNs = System.nanoTime();
     }
@@ -149,9 +167,10 @@ public class CompilationTimingsProfiler implements InternalProfiler, OptimizedTr
     @Override
     public void onCompilationGraalTierFinished(OptimizedCallTarget target, TruffleCompilerListener.GraphInfo graph) {
         if (current == null) {
-            throw new AssertionError("No compilation started");
+            logError("Graal tier was reported finished, but no compilation was started in the profiler.");
+            return;
         } else if (current.graalTierCompleteNs != 0) {
-            throw new AssertionError("Graal tier timing already recorded");
+            logError("Graal tier timing already recorded.");
         }
         current.graalTierCompleteNs = System.nanoTime();
     }
@@ -159,13 +178,14 @@ public class CompilationTimingsProfiler implements InternalProfiler, OptimizedTr
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, TruffleCompilerListener.GraphInfo graph, TruffleCompilerListener.CompilationResultInfo result) {
         if (current == null) {
-            throw new AssertionError("No compilation started");
+            logError("Compilation was reported successful, but no compilation was started in the profiler.");
+            return;
         } else if (current.compilationCompleteNs != 0) {
-            throw new AssertionError("Compilation timing already recorded");
+            logError("Compilation timing already recorded.");
         }
         current.compilationCompleteNs = System.nanoTime();
         if (!current.hasAllTimings()) {
-            throw new AssertionError("Incomplete data point; some timings were missing: " + current);
+            logError("Incomplete data point; some timings were missing: %s", current);
         }
         datapoints.add(current);
         current = null;
@@ -173,14 +193,14 @@ public class CompilationTimingsProfiler implements InternalProfiler, OptimizedTr
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
+        logError("Compilation failed unexpectedly: %s", reason);
         current = null;
-        throw new AssertionError("Compilation failed unexpectedly: " + reason);
     }
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
+        logError("Compilation dequeued unexpectedly: %s", reason);
         current = null;
-        throw new AssertionError("Compilation dequeued unexpectedly: " + reason);
     }
 
     /**

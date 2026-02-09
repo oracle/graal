@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm.exception;
 
+import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmTag;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -55,9 +57,11 @@ import com.oracle.truffle.api.nodes.Node;
  */
 @SuppressWarnings({"serial", "static-method"})
 @ExportLibrary(InteropLibrary.class)
-public final class WasmRuntimeException extends AbstractTruffleException {
+public final class WasmRuntimeException extends AbstractTruffleException implements EmbedderDataHolder {
     private final WasmTag tag;
     private final Object[] fields;
+
+    private Object embedderData = WasmConstant.VOID;
 
     public WasmRuntimeException(Node location, WasmTag tag, Object[] fields) {
         super(location);
@@ -109,5 +113,15 @@ public final class WasmRuntimeException extends AbstractTruffleException {
             throw InvalidArrayIndexException.create(index);
         }
         return fields[(int) index];
+    }
+
+    @Override
+    public Object getEmbedderData() {
+        return embedderData;
+    }
+
+    @Override
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 }

@@ -26,6 +26,7 @@ package com.oracle.svm.core.collections;
 
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -33,7 +34,6 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 
 public class GrowableWordArrayAccess {
     private static final int INITIAL_CAPACITY = 10;

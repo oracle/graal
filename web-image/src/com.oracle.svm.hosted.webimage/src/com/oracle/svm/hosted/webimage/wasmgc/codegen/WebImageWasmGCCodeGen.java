@@ -32,6 +32,8 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -66,9 +68,9 @@ import jdk.vm.ci.meta.VMConstant;
 
 public class WebImageWasmGCCodeGen extends WebImageWasmCodeGen {
 
-    public WebImageWasmGCCodeGen(WebImageCodeCache codeCache, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint, WebImageProviders providers, DebugContext debug,
-                    WebImageHostedConfiguration config) {
-        super(codeCache, hostedEntryPoints, mainEntryPoint, providers, debug, config);
+    public WebImageWasmGCCodeGen(WebImageCodeCache codeCache, ImageHeapLayoutInfo heapLayout, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint, WebImageProviders providers,
+                    DebugContext debug, WebImageHostedConfiguration config) {
+        super(codeCache, heapLayout, hostedEntryPoints, mainEntryPoint, providers, debug, config);
     }
 
     @Override
@@ -78,11 +80,9 @@ public class WebImageWasmGCCodeGen extends WebImageWasmCodeGen {
 
     @Override
     protected void writeImageHeap() {
+        assert BuildPhaseProvider.isHeapLayoutFinished();
         WasmGCHeapWriter heapWriter = new WasmGCHeapWriter(codeCache, getProviders());
-        WasmGCImageHeapLayoutInfo layout = heapWriter.layout();
-        setLayout(layout);
-        afterHeapLayout();
-        heapWriter.write(layout, module);
+        heapWriter.write((WasmGCImageHeapLayoutInfo) heapLayout, module);
         processRelocations(heapWriter);
     }
 
@@ -99,7 +99,7 @@ public class WebImageWasmGCCodeGen extends WebImageWasmCodeGen {
         for (Map.Entry<HostedMethod, String> entry : ((WebImageWasmGCCodeCache) codeCache).getExportedSingleAbstractMethods().entrySet()) {
             HostedMethod m = entry.getKey();
             String exportedName = entry.getValue();
-            module.addFunctionExport(getProviders().idFactory().forMethod(m), exportedName, "Single abstract method for " + m.getDeclaringClass().getName());
+            module.addFunctionExport(getProviders().idFactory().forMethod(m), exportedName, "Single abstract method for " + m.getDeclaringClass().toClassName());
         }
     }
 

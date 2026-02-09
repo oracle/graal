@@ -89,6 +89,7 @@ local devkits = graal_common.devkits;
 
   vm_linux_aarch64: self.common_vm_linux + graal_common.linux_aarch64,
 
+  vm_linux_aarch64_ol8: self.common_vm_linux + graal_common.linux_aarch64_ol8,
   vm_linux_aarch64_ol9: self.common_vm_linux + graal_common.linux_aarch64_ol9,
   vm_ol9_aarch64: self.vm_linux_aarch64_ol9,
 
@@ -145,7 +146,7 @@ local devkits = graal_common.devkits;
     $.mx_vm_complete + self.artifact_deploy_standalones_dry_run(os)
   ],
 
-  full_vm_build: graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.truffleruby + graal_common.deps.graalpy + graal_common.deps.fastr + vm.custom_vm + graal_common.deps.espresso,
+  full_vm_build: graal_common.deps.svm + graal_common.deps.sulong + graal_common.deps.graalpy + graal_common.deps.fastr + vm.custom_vm + graal_common.deps.espresso,
 
   graalvm_complete_build_deps(edition, os, arch, java_version, espresso_java_version=25, espresso_extra_java_version=[21]):
       local java_deps(edition) =
@@ -456,6 +457,7 @@ local devkits = graal_common.devkits;
     environment+: {
       PATH: '$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH:/usr/local/bin',
     },
+    capabilities: ['darwin_sonoma'],
   },
 
   record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json', '--', '--jvm', 'server'],
@@ -463,7 +465,7 @@ local devkits = graal_common.devkits;
 
   build_base_graalvm_image: [
     $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
-    $.mx_vm_common + vm.vm_profiles + ['build'],
+    $.mx_vm_common + vm.vm_profiles + ['build', '--targets=GRAALVM'],
     ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
   ],
 
@@ -508,7 +510,7 @@ local devkits = graal_common.devkits;
     timelimit: "1:00:00"
   },
 
-  deploy_graalvm_standalones(java_version, record_file_sizes=false): vm.check_structure + {
+  deploy_graalvm_standalones(java_version, record_file_sizes=false): vm.check_structure + graal_common.deps.graalnodejs + {
     build_deps:: '{MAVEN_TAG_DISTRIBUTIONS:standalone}',
 
     tags:: 'standalone',
@@ -537,9 +539,9 @@ local devkits = graal_common.devkits;
   # Linux/AMD64
   deploy_vm_standalones_javaLatest_linux_amd64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'amd64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest', record_file_sizes=true) + {name: 'daily-deploy-vm-standalones-java-latest-linux-amd64', notify_groups:: ["deploy"]},
   # Linux/AARCH64
-  deploy_vm_standalones_javaLatest_linux_aarch64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
+  deploy_vm_standalones_javaLatest_linux_aarch64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'daily', deploy=true, os_distro='ol8') + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
   # Darwin/AARCH64
-  deploy_vm_standalones_javaLatest_darwin_aarch64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-darwin-aarch64', capabilities+: ["darwin_bigsur"], notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
+  deploy_vm_standalones_javaLatest_darwin_aarch64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'daily', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'daily-deploy-vm-standalones-java-latest-darwin-aarch64', notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
   # Windows/AMD64
   deploy_vm_standalones_javaLatest_windows_amd64: vm.vm_java_Latest + self.svm_common_windows_amd64('Latest') + self.js_windows_common + graal_common.deps.sulong + self.vm_base('windows', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_standalones('latest') + self.deploy_build + {name: 'daily-deploy-vm-standalones-java-latest-windows-amd64', timelimit: '2:30:00', notify_groups:: ["deploy"]},
 

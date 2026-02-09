@@ -1233,16 +1233,6 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     public abstract Klass getElementalType();
 
     /**
-     * Returns {@code true} if the type is a local type.
-     */
-    public abstract boolean isLocal();
-
-    /**
-     * Returns {@code true} if the type is a member type.
-     */
-    public abstract boolean isMember();
-
-    /**
      * Returns the enclosing type of this type, if it exists, or {@code null}.
      */
     public abstract Klass getEnclosingType();

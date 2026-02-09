@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
@@ -137,5 +137,15 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
 
     public GOTEntryAllocator getGOTEntryAllocator() {
         return gotEntryAllocator;
+    }
+
+    @Override
+    public boolean shouldCallViaPLTGOT(SharedMethod caller, SharedMethod callee) {
+        return methodAddressResolutionSupport.shouldCallViaPLTGOT(caller, callee);
+    }
+
+    @Override
+    public int getMethodGotEntry(SharedMethod method) {
+        return gotEntryAllocator.getMethodGotEntry(method);
     }
 }

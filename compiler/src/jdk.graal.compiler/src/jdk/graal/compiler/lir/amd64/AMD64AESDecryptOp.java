@@ -24,11 +24,12 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.LIRKind;
@@ -37,7 +38,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
@@ -86,6 +86,8 @@ public final class AMD64AESDecryptOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        AMD64Assembler.AMD64SIMDInstructionEncoding oldEncoding = masm.setTemporaryAvxEncoding(AMD64Assembler.AMD64SIMDInstructionEncoding.VEX);
+
         GraalError.guarantee(fromValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid fromValue kind: %s", fromValue);
         GraalError.guarantee(toValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid toValue kind: %s", toValue);
         GraalError.guarantee(keyValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid keyValue kind: %s", keyValue);
@@ -161,5 +163,7 @@ public final class AMD64AESDecryptOp extends AMD64LIRInstruction {
         // for decryption the aesdeclast operation is always on key+0x00
         masm.aesdeclast(xmmResult, xmmTemp3);
         masm.movdqu(new AMD64Address(to), xmmResult);  // store the result
+
+        masm.resetAvxEncoding(oldEncoding);
     }
 }

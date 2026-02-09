@@ -1,0 +1,183 @@
+/*
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.interpreter.ristretto.meta;
+
+import java.util.List;
+import java.util.function.Function;
+
+import com.oracle.svm.interpreter.Interpreter;
+import com.oracle.svm.interpreter.metadata.Bytecodes;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.UnresolvedJavaMethod;
+
+/**
+ * JVMCI representation of a {@link ConstantPool} used by Ristretto for compilation. Exists once per
+ * {@link InterpreterConstantPool}. Allocated during runtime compilation by a
+ * {@link RistrettoMethod} if the parser accesses the constant pool over JVMCI.
+ * <p>
+ * Life cycle: lives until the referencing {@link InterpreterConstantPool} is gc-ed.
+ */
+public final class RistrettoConstantPool implements ConstantPool {
+    private final InterpreterConstantPool interpreterConstantPool;
+
+    private RistrettoConstantPool(InterpreterConstantPool interpreterConstantPool) {
+        this.interpreterConstantPool = interpreterConstantPool;
+    }
+
+    private static final Function<InterpreterConstantPool, ConstantPool> RISTRETTO_CONSTANTPOOL_FUNCTION = RistrettoConstantPool::new;
+
+    public static RistrettoConstantPool create(InterpreterConstantPool interpreterConstantPool) {
+        return (RistrettoConstantPool) interpreterConstantPool.getRistrettoConstantPool(RISTRETTO_CONSTANTPOOL_FUNCTION);
+    }
+
+    @Override
+    public int length() {
+        return interpreterConstantPool.length();
+    }
+
+    @Override
+    public void loadReferencedType(int rawIndex, int opcode) {
+        interpreterConstantPool.loadReferencedType(rawIndex, opcode);
+    }
+
+    @Override
+    public JavaType lookupReferencedType(int rawIndex, int opcode) {
+        JavaType lookupType = interpreterConstantPool.lookupReferencedType(rawIndex, opcode);
+        if (lookupType instanceof InterpreterResolvedJavaType iType) {
+            return RistrettoType.getOrCreate(iType);
+        }
+        return lookupType;
+    }
+
+    @Override
+    public JavaField lookupField(int rawIndex, ResolvedJavaMethod method, int opcode) {
+        JavaField javaField = interpreterConstantPool.lookupField(rawIndex, method, opcode);
+        /*
+         * A note on wrapping AOT fields into ristretto JVMCI API: When compiling dynamically loaded
+         * types with ristretto every such interpreter type is a crema resolved type. All these
+         * cream resolved types are wrapped to ristretto types. However, when interfacing with AOT
+         * types (in stamp intersection, optimizations etc) we need ristretto types that are
+         * compatible (== have the same class) with each other. Thus, we wrap here all interpreter
+         * fields (also those that are not crema resolved, i.e., AOT fields).
+         */
+        if (javaField instanceof InterpreterResolvedJavaField iField) {
+            return RistrettoField.getOrCreate(iField);
+        }
+        return javaField;
+    }
+
+    @Override
+    public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
+        assert caller instanceof RistrettoMethod;
+        InterpreterResolvedJavaMethod iMethod = ((RistrettoMethod) caller).getInterpreterMethod();
+        // unresolved still
+        if (iMethod.getConstantPool().peekCachedEntry(cpi) instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
+            return unresolvedJavaMethod;
+        }
+        return RistrettoMethod.getOrCreate(Interpreter.resolveMethod(iMethod, opcode, (char) cpi));
+    }
+
+    @Override
+    public List<BootstrapMethodInvocation> lookupBootstrapMethodInvocations(boolean invokeDynamic) {
+        return interpreterConstantPool.lookupBootstrapMethodInvocations(invokeDynamic);
+    }
+
+    @Override
+    public JavaType lookupType(int cpi, int opcode) {
+        JavaType lookupType = interpreterConstantPool.lookupType(cpi, opcode);
+        if (lookupType instanceof InterpreterResolvedJavaType iType) {
+            return RistrettoType.getOrCreate(iType);
+        }
+        return lookupType;
+    }
+
+    @Override
+    public String lookupUtf8(int cpi) {
+        return interpreterConstantPool.lookupUtf8(cpi);
+    }
+
+    @Override
+    public Signature lookupSignature(int cpi) {
+        return interpreterConstantPool.lookupSignature(cpi);
+    }
+
+    @Override
+    public Object lookupConstant(int cpi) {
+        return interpreterConstantPool.lookupConstant(cpi);
+    }
+
+    @Override
+    public Object lookupConstant(int cpi, boolean resolve) {
+        Object retVal = interpreterConstantPool.lookupConstant(cpi, resolve);
+        if (retVal == null) {
+            /*
+             * Return null if the interpreter has not yet resolved this constant. The compiler will
+             * create an unresolved deopt in that case.
+             */
+            return null;
+        } else if (retVal instanceof JavaConstant) {
+            return retVal;
+        } else if (retVal instanceof JavaType) {
+            if (retVal instanceof ResolvedJavaType) {
+                GraalError.guarantee(retVal instanceof InterpreterResolvedJavaType, "Must be an interpreter resolved java type but is %s", retVal);
+                return RistrettoType.getOrCreate((InterpreterResolvedJavaType) retVal);
+            } else {
+                // unresolved entry, just return it
+                return retVal;
+            }
+        }
+        throw GraalError.shouldNotReachHere(String.format("Unknown value for constant lookup, cpi=%s resolve=%s this=%s", cpi, resolve, this));
+    }
+
+    @Override
+    public JavaConstant lookupAppendix(int rawIndex, int opcode) {
+        if (opcode == Bytecodes.INVOKEDYNAMIC) {
+            return interpreterConstantPool.lookupAppendix(rawIndex, opcode);
+        }
+        /*
+         * TODO GR-71270 - The parser has support for special runtimes that rewrite invokes of
+         * methods handles to static adapters. Crema does not do that.
+         */
+        return null;
+    }
+
+    @Override
+    public String toString() {
+        return "RistrettoConstantPool{interpreterConstantPool=" + interpreterConstantPool + '}';
+    }
+}

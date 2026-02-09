@@ -24,13 +24,11 @@
  */
 package com.oracle.svm.hosted.webimage.codegen;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -51,7 +49,9 @@ import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
  */
 @AutomaticallyRegisteredFeature
 public final class WebImageImplicitExceptionsFeature implements InternalFeature {
-    private final HashMap<String, Method> methodsMap = createMethodsMap(ImplicitExceptions.class);
+    /// Maps method names to methods for all methods in [ImplicitExceptions].
+    /// Is set in [#beforeAnalysis(BeforeAnalysisAccess)]
+    private HashMap<String, AnalysisMethod> methodsMap;
 
     /**
      * Used to stop the feature early when all methods of the class `ImplicitExceptions` are
@@ -59,7 +59,7 @@ public final class WebImageImplicitExceptionsFeature implements InternalFeature 
      * <p>
      * The set is shared across all iterations of an analysis session and reset in `beforeAnalysis`.
      */
-    private final HashSet<Method> foundMethods = new HashSet<>();
+    private final HashSet<AnalysisMethod> foundMethods = new HashSet<>();
 
     /**
      * Used to avoid visiting a method twice across analysis iterations of the same session.
@@ -67,22 +67,6 @@ public final class WebImageImplicitExceptionsFeature implements InternalFeature 
      * The set is shared across all iterations of an analysis session and reset in `beforeAnalysis`.
      */
     private final HashSet<AnalysisMethod> visitedMethods = new HashSet<>();
-
-    /**
-     * Return a map from method names to methods defined in `clazz`.
-     *
-     * <ul>
-     * <li>It assumes there are no overloaded methods.</li>
-     * <li>It does not look into methods defined in superclasses.</li>
-     * </ul>
-     */
-    private static HashMap<String, Method> createMethodsMap(Class<?> clazz) {
-        HashMap<String, Method> map = new HashMap<>();
-        for (Method m : clazz.getDeclaredMethods()) {
-            map.put(m.getName(), m);
-        }
-        return map;
-    }
 
     private boolean isAllSupportMethodsReachable() {
         return foundMethods.size() == methodsMap.size();
@@ -112,27 +96,30 @@ public final class WebImageImplicitExceptionsFeature implements InternalFeature 
         };
     }
 
-    private Method resolveSupportMethod(BytecodeExceptionNode.BytecodeExceptionKind exceptionKind) {
+    private AnalysisMethod resolveSupportMethod(BytecodeExceptionNode.BytecodeExceptionKind exceptionKind) {
         return methodsMap.get(getSupportMethodName(exceptionKind));
 
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        FeatureImpl.BeforeAnalysisAccessImpl a = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        methodsMap = new HashMap<>();
+
+        for (AnalysisMethod method : a.getMetaAccess().lookupJavaType(ImplicitExceptions.class).getDeclaredMethods(false)) {
+            String name = method.getName();
+            GraalError.guarantee(!methodsMap.containsKey(name), "The ImplicitExceptions contains duplicate method names: %s", name);
+            methodsMap.put(name, method);
+        }
+
         foundMethods.clear();
         visitedMethods.clear();
 
-        Method[] methods = new Method[]{
+        for (AnalysisMethod meth : new AnalysisMethod[]{
                         methodsMap.get("checkNullPointer"),
                         methodsMap.get("checkArrayBound")
-        };
-
-        FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        AnalysisMetaAccess meta = accessImpl.getMetaAccess();
-
-        for (Method meth : methods) {
-            AnalysisMethod aMethod = meta.lookupJavaMethod(meth);
-            accessImpl.registerAsRoot(aMethod, true, "Web image runtime check outlining support, registered in " + WebImageImplicitExceptionsFeature.class);
+        }) {
+            a.registerAsRoot(meth, true, "Web image runtime check outlining support, registered in " + WebImageImplicitExceptionsFeature.class);
         }
     }
 
@@ -171,17 +158,16 @@ public final class WebImageImplicitExceptionsFeature implements InternalFeature 
     }
 
     private void registerBytecodeException(FeatureImpl.DuringAnalysisAccessImpl access, BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, List<ValueNode> arguments) {
-        Method supportMethod = resolveSupportMethod(exceptionKind);
+        AnalysisMethod supportMethod = resolveSupportMethod(exceptionKind);
 
-        if (arguments.size() != supportMethod.getParameterCount()) {
-            throw new GraalError("Unexpected number of arguments for %s. Expected %d, got %d", exceptionKind, supportMethod.getParameterCount(), arguments.size());
+        int parameterCount = supportMethod.getSignature().getParameterCount(false);
+        if (arguments.size() != parameterCount) {
+            throw new GraalError("Unexpected number of arguments for %s. Expected %d, got %d", exceptionKind, parameterCount, arguments.size());
         }
 
-        AnalysisMethod aMethod = access.getMetaAccess().lookupJavaMethod(supportMethod);
-
         boolean newMethod = foundMethods.add(supportMethod);
-        if (newMethod && !aMethod.isInvoked()) {
-            access.registerAsRoot(aMethod, false, "Web image implicit exception support, registered in " + WebImageImplicitExceptionsFeature.class);
+        if (newMethod && !supportMethod.isInvoked()) {
+            access.registerAsRoot(supportMethod, false, "Web image implicit exception support, registered in " + WebImageImplicitExceptionsFeature.class);
             access.requireAnalysisIteration();
         }
     }

@@ -176,7 +176,7 @@ public abstract class NativeEnv extends ContextAccessImpl {
             @TruffleBoundary
             public Object call(Object... args) {
                 try {
-                    String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
+                    String name = NativeUtils.interopPointerToString((TruffleObject) args[0], getNativeAccess().nativeMemory());
                     CallableFromNative.Factory factory = lookupFactory(name);
                     processCallBackResult(name, factory, args);
                     return createNativeClosureForFactory(factory, name);

@@ -32,7 +32,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
@@ -45,9 +45,14 @@ import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
 import com.oracle.svm.core.posix.headers.Signal.siginfo_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton({SubstrateSegfaultHandler.class, PosixSubstrateSegfaultHandler.class})
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     static final CEntryPointLiteral<AdvancedSignalDispatcher> SIGNAL_HANDLER = CEntryPointLiteral.create(PosixSubstrateSegfaultHandler.class,
                     "dispatch", int.class, siginfo_t.class, ucontext_t.class);
@@ -90,7 +95,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
 
     @Override
     public void install() {
-        boolean isSignalHandlingAllowed = SubstrateOptions.EnableSignalHandling.getValue();
+        boolean isSignalHandlingAllowed = SubstrateOptions.isSignalHandlingAllowed();
         PosixSignalHandlerSupport.installNativeSignalHandler(Signal.SignalEnum.SIGSEGV, SIGNAL_HANDLER.getFunctionPointer(), Signal.SA_NODEFER(), isSignalHandlingAllowed);
         PosixSignalHandlerSupport.installNativeSignalHandler(Signal.SignalEnum.SIGBUS, SIGNAL_HANDLER.getFunctionPointer(), Signal.SA_NODEFER(), isSignalHandlingAllowed);
     }

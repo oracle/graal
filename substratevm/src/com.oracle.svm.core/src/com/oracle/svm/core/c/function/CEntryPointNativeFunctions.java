@@ -35,12 +35,11 @@ import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.thread.VMThreads;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 @CHeader(value = GraalIsolateHeader.class)
 public final class CEntryPointNativeFunctions {

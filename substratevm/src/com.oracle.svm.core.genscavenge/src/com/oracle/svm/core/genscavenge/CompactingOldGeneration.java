@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import org.graalvm.nativeimage.IsolateThread;
@@ -35,7 +35,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.compacting.CompactingVisitor;
@@ -63,7 +63,7 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Timer;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Core of the mark-compact implementation for the old generation, which collects using (almost)
@@ -133,8 +133,8 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void beginPromotion(boolean incrementalGc) {
-        if (!incrementalGc) {
+    void beginPromotion(boolean completeCollection) {
+        if (completeCollection) {
             absorb(HeapImpl.getHeapImpl().getYoungGeneration());
         }
         toGreyObjectsWalker.setScanStart(space);
@@ -157,28 +157,29 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean scanGreyObjects(boolean incrementalGc) {
-        if (incrementalGc) {
+    boolean scanGreyObjects(boolean completeCollection) {
+        if (!completeCollection) {
             if (!toGreyObjectsWalker.haveGreyObjects()) {
                 return false;
             }
             toGreyObjectsWalker.walkGreyObjects();
-        } else {
-            if (markStack.isEmpty() && arrayMarkStack.isEmpty()) {
-                return false;
-            }
-            GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
-            do {
-                while (!markStack.isEmpty()) {
-                    visitor.visitObject(markStack.popObject());
-                }
-
-                // Process array ranges one at a time to avoid bloating the marking stack
-                if (!arrayMarkStack.isEmpty()) {
-                    scanArrayRange(visitor);
-                }
-            } while (!markStack.isEmpty() || !arrayMarkStack.isEmpty());
+            return true;
         }
+
+        if (markStack.isEmpty() && arrayMarkStack.isEmpty()) {
+            return false;
+        }
+        GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
+        do {
+            while (!markStack.isEmpty()) {
+                visitor.visitObject(markStack.popObject());
+            }
+
+            // Process array ranges one at a time to avoid bloating the marking stack
+            if (!arrayMarkStack.isEmpty()) {
+                scanArrayRange(visitor);
+            }
+        } while (!markStack.isEmpty() || !arrayMarkStack.isEmpty());
         return true;
     }
 
@@ -288,6 +289,7 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser) {
         /*
          * Update or clear reference object referent fields now because planning below overwrites
@@ -318,12 +320,13 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void planCompaction() {
         planningVisitor.init(space);
         space.walkAlignedHeapChunks(planningVisitor);
     }
 
-    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void fixupReferencesBeforeCompaction(ChunkReleaser chunkReleaser, Timers timers) {
         Timer oldFixupAlignedChunksTimer = timers.oldFixupAlignedChunks.start();
         try {
@@ -395,7 +398,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void fixupImageHeapRoots(ImageHeapInfo info) {
         if (HeapImpl.usesImageHeapCardMarking()) {
             // Note that cards have already been cleaned and roots re-marked during the initial scan
@@ -405,7 +408,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void fixupMetaspace() {
         if (!Metaspace.isSupported()) {
             return;
@@ -419,7 +422,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void fixupUnalignedChunkReferences(ChunkReleaser chunkReleaser) {
         UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
@@ -447,6 +450,7 @@ final class CompactingOldGeneration extends OldGeneration {
         GCImpl.walkStackRoots(refFixupVisitor, sp, false);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void compact(Timers timers) {
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {

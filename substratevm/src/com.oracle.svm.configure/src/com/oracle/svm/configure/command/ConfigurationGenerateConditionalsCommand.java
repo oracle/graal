@@ -31,6 +31,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 
+import org.graalvm.collections.EconomicSet;
+
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationUsageException;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationComputer;
@@ -41,8 +44,6 @@ import com.oracle.svm.configure.config.conditional.PartialConfigurationWithOrigi
 import com.oracle.svm.configure.filters.ComplexFilter;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
-import com.oracle.svm.configure.ConfigurationFile;
-import org.graalvm.collections.EconomicSet;
 
 public final class ConfigurationGenerateConditionalsCommand extends ConfigurationCommand {
     @Override
@@ -145,6 +146,6 @@ public final class ConfigurationGenerateConditionalsCommand extends Configuratio
                                                   the computed configuration. Both the configuration
                                                   and the conditions in the configuration will be
                                                   tested against this filter.
-                        """.replaceAll("\n", System.lineSeparator());
+                        """.replace("\n", System.lineSeparator());
     }
 }

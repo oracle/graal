@@ -26,9 +26,7 @@ package com.oracle.svm.hosted.phases;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -54,6 +52,7 @@ import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Code that must be allocation free cannot throw new {@link AssertionError}. Therefore we convert
@@ -109,7 +108,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
          * Ensure that there is a simple control flow path from the constructor to the allocation of
          * the exception.
          */
-        Set<FrameState> usagesToDelete = new HashSet<>();
+        EconomicSet<FrameState> usagesToDelete = EconomicSet.create();
         if (!hasSimpleControlFlow(constructorInvoke.predecessor(), exceptionAllocation, usagesToDelete)) {
             /*
              * No simple control flow path found. This can happen for example when a ...?...:...
@@ -128,7 +127,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
         for (Node exceptionUsage : exceptionAllocation.usages()) {
             if (exceptionUsage == callTargetNode || exceptionUsage == constructorInvoke.stateAfter()) {
                 /* The constructor invocation that is going to be replaced. */
-            } else if (usagesToDelete.contains(exceptionUsage)) {
+            } else if (exceptionUsage instanceof FrameState && usagesToDelete.contains((FrameState) exceptionUsage)) {
                 /* Frame state between constructor and allocation. */
             } else if (exceptionUsage instanceof UnwindNode) {
                 if (!hasSimpleControlFlow(exceptionUsage, constructorInvoke.asFixedNode(), null)) {
@@ -189,7 +188,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
         graph.replaceFixedWithFloating(exceptionAllocation, replacement);
     }
 
-    private static boolean hasSimpleControlFlow(Node sink, FixedNode source, Set<FrameState> collectedFrameStates) {
+    private static boolean hasSimpleControlFlow(Node sink, FixedNode source, EconomicSet<FrameState> collectedFrameStates) {
         Node cur = sink;
         while (true) {
             if (cur == null) {

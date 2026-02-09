@@ -62,14 +62,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class PointstoAnalyzerTester {
-    private Set<Executable> expectedReachableMethods = new HashSet<>();
-    private Set<Class<?>> expectedReachableTypes = new HashSet<>();
-    private Set<Field> expectedReachableFields = new HashSet<>();
-    private Set<Executable> expectedUnreachableMethods = new HashSet<>();
-    private Set<Class<?>> expectedUnreachableTypes = new HashSet<>();
-    private Set<Field> expectedUnreachableFields = new HashSet<>();
-    private Set<Class<?>> expectedReachableClinits = new HashSet<>();
-    private Set<Class<?>> expectedUnreachableClinits = new HashSet<>();
+    private Set<Executable> expectedReachableMethods = new HashSet<>(); // noEconomicSet(test)
+    private Set<Class<?>> expectedReachableTypes = new HashSet<>(); // noEconomicSet(test)
+    private Set<Field> expectedReachableFields = new HashSet<>(); // noEconomicSet(test)
+    private Set<Executable> expectedUnreachableMethods = new HashSet<>(); // noEconomicSet(test)
+    private Set<Class<?>> expectedUnreachableTypes = new HashSet<>(); // noEconomicSet(test)
+    private Set<Field> expectedUnreachableFields = new HashSet<>(); // noEconomicSet(test)
+    private Set<Class<?>> expectedReachableClinits = new HashSet<>(); // noEconomicSet(test)
+    private Set<Class<?>> expectedUnreachableClinits = new HashSet<>(); // noEconomicSet(test)
     private String[] arguments;
     private Path tmpDir;
     private String testClassName;
@@ -151,12 +151,7 @@ public class PointstoAnalyzerTester {
      *            analysis is supposed to fail.
      */
     public void runAnalysisAndAssert(boolean expectPass) {
-        /*
-         * Use the same class loader that has loaded the test classes to prevent from loading the
-         * same classes twice and having to convert between them.
-         */
-        PointsToAnalyzer.HostClassLoaderAccess classLoaderAccess = new PointsToAnalyzer.HostClassLoaderAccess(testClass.getClassLoader());
-        PointsToAnalyzer pointstoAnalyzer = PointsToAnalyzer.createAnalyzer(arguments, classLoaderAccess);
+        PointsToAnalyzer pointstoAnalyzer = PointsToAnalyzer.createAnalyzer(arguments);
         UnsupportedFeatureException unsupportedFeatureException = null;
         try {
             try {

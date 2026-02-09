@@ -88,14 +88,7 @@ final class Target_java_lang_invoke_MethodHandle {
     @Substitute(polymorphicSignature = true)
     Object invokeBasic(Object... args) throws Throwable {
         if (RuntimeClassLoading.isSupported()) {
-            Target_java_lang_invoke_LambdaForm form = internalForm();
-            Target_java_lang_invoke_MemberName vmentry = form.vmentry;
-            if (vmentry == null) {
-                // if the form comes from the image, its entry might have been reset
-                form.prepare();
-                vmentry = form.vmentry;
-                assert vmentry != null;
-            }
+            Target_java_lang_invoke_MemberName vmentry = MethodHandleInterpreterUtils.extractVMEntry(this);
             return CremaSupport.singleton().invokeBasic(vmentry, this, args);
         }
         Target_java_lang_invoke_MemberName memberName = internalMemberName();

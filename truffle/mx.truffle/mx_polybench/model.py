@@ -39,12 +39,14 @@
 # SOFTWARE.
 #
 import contextlib
+import dataclasses
 import hashlib
 import json
 import os
 import re
 import shutil
 from argparse import ArgumentParser, Namespace
+from enum import Enum
 from pathlib import Path
 from typing import Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Set, Tuple, Union, Any, Generator
 
@@ -260,6 +262,112 @@ def _check_dist(dist_name: str, require_built: bool = True) -> Optional[str]:
         mx.abort(f"Unsupported distribution kind {type(dist)}")
 
 
+@dataclasses.dataclass(frozen=True)
+class OutlierExclusionConfig:
+    """Record class that contains the outlier exclusion lower and upper percentiles."""
+
+    lower_percentile: float
+    upper_percentile: float
+
+    @staticmethod
+    def from_string(s: str) -> "OutlierExclusionConfig":
+        """Constructs an `OutlierExclusionConfig` object from a "<lower_percentile>-<upper_percentile>" string."""
+        parts = s.strip().split("-")
+        if len(parts) != 2:
+            raise ValueError(f"Invalid outlier exclusion value: '{s}'")
+        return OutlierExclusionConfig(float(parts[0]), float(parts[1]))
+
+
+class SuiteStableRunConfig:
+    """Interface for a PolyBench Stable-Run Configuration file."""
+
+    def __init__(self, file_path: Path):
+        with open(file_path) as f:
+            self._dict: dict = json.load(f)
+
+    def get_benchmark(self, bench_name: str) -> "BenchmarkStableRunConfig":
+        """Returns an interface for the benchmark entry of the configuration file."""
+        return BenchmarkStableRunConfig(self._dict[bench_name])
+
+    def contains(self, bench_name: str) -> bool:
+        """Returns whether an entry in the configuration file exists for a benchmark."""
+        return bench_name in self._dict
+
+    def benchmarks(self) -> List[str]:
+        """Returns all the benchmarks for which an entry is defined in the configuration file."""
+        return self._dict.keys()
+
+
+class StableRunPolicy(Enum):
+    INDIVIDUAL_BUILDS = "outlier-elimination-individual-builds"
+    ALL_BUILDS = "outlier-elimination-all-builds"
+
+
+class BenchmarkStableRunConfig:
+    """Interface for a benchmark entry of a PolyBench Stable-Run Configuration file."""
+
+    def __init__(self, d: dict):
+        self._dict: dict = d
+
+    @property
+    def policy(self) -> StableRunPolicy:
+        """
+        The policy of the benchmark configuration entry.
+
+        Different policies warrant specific handling in the computation of the stabilized metric.
+        Different policies may also require different entry formats.
+        """
+        # We should move towards deprecating the INDIVIDUAL_BUILDS policy (GR-71845)
+        return StableRunPolicy(self._dict.get("policy", StableRunPolicy.INDIVIDUAL_BUILDS))
+
+    @property
+    def builds(self):
+        """The number of image builds to execute (in the case of Native Image benchmarks)."""
+        if self.policy == StableRunPolicy.INDIVIDUAL_BUILDS:
+            return self._dict["builds"]["count"]
+        return self._parse_builds_x_forks()[0]
+
+    @property
+    def forks(self):
+        """The number of forks to execute (per image build, in the case of Native Image benchmarks)."""
+        if self.policy == StableRunPolicy.INDIVIDUAL_BUILDS:
+            return self._dict["run-forks"]["count"]
+        return self._parse_builds_x_forks()[1]
+
+    @property
+    def outlier_exclusion(self) -> OutlierExclusionConfig:
+        """The outlier exclusion configuration to be used on fork data."""
+        if self.policy != StableRunPolicy.ALL_BUILDS:
+            raise ValueError(f"This property is not available for the {self.policy} policy!")
+        return OutlierExclusionConfig.from_string(self._dict.get("focus"))
+
+    @property
+    def build_outlier_exclusion(self) -> OutlierExclusionConfig:
+        """The outlier exclusion configuration to be used on image build data."""
+        if self.policy == StableRunPolicy.ALL_BUILDS:
+            return self.outlier_exclusion
+        config = self._dict["builds"]
+        return OutlierExclusionConfig(config["lower-percentile"], config["upper-percentile"])
+
+    @property
+    def fork_outlier_exclusion(self) -> OutlierExclusionConfig:
+        """The outlier exclusion configuration to be used on data belonging to forks of one image build."""
+        if self.policy == StableRunPolicy.ALL_BUILDS:
+            return self.outlier_exclusion
+        config = self._dict["run-forks"]
+        return OutlierExclusionConfig(config["lower-percentile"], config["upper-percentile"])
+
+    def _parse_builds_x_forks(self) -> (int, int):
+        """Parses a "<builds>x<forks>" string into a tuple containing the build and fork numbers."""
+        if self.policy != StableRunPolicy.ALL_BUILDS:
+            raise ValueError(f"This method is not available for the {self.policy} policy!")
+        forks = self._dict["forks"]
+        parts = forks.strip().split("x")
+        if len(parts) != 2:
+            raise ValueError(f"Invalid forks value: '{forks}'")
+        return int(parts[0]), int(parts[1])
+
+
 class StabilizingPolybenchBenchmarkDispatcher(mx_benchmark.DefaultBenchmarkDispatcher):
     """
     Custom dispatching class for non-native-image PolybenchBenchmarkSuite stable runs that facilitates scheduling based
@@ -320,8 +428,7 @@ class StabilizingPolybenchBenchmarkDispatcher(mx_benchmark.DefaultBenchmarkDispa
         if not self._stable_run_config_path.exists():
             msg = f"Cannot initialize {self.__class__.__name__} instance with non-existing configuration file '{self._stable_run_config_path}'!"
             raise ValueError(msg)
-        with open(self._stable_run_config_path) as f:
-            self._stable_run_config: dict = json.load(f)
+        self._stable_run_config: SuiteStableRunConfig = SuiteStableRunConfig(self._stable_run_config_path)
 
     def validated_env_dispatch(self) -> Generator[BenchmarkExecutionConfiguration, Any, None]:
         """
@@ -368,7 +475,7 @@ class StabilizingPolybenchBenchmarkDispatcher(mx_benchmark.DefaultBenchmarkDispa
         * Second, it iterates over each benchmark which requires to be run in the current benchmark batch.
         """
         dispatch_counter = 0
-        number_of_batches = max([self._stable_run_config[bench]["run-forks"]["count"] for bench in benchmarks])
+        number_of_batches = max([self._stable_run_config.get_benchmark(bench).forks for bench in benchmarks])
         for batch_index in range(number_of_batches):
             if dry_run:
                 mx.log(f" * Bench batch #{batch_index + 1}")
@@ -383,14 +490,14 @@ class StabilizingPolybenchBenchmarkDispatcher(mx_benchmark.DefaultBenchmarkDispa
                 last_dispatch = dispatch_counter + 1 == total_dispatch_count
                 with ConstantContextValueManager("last_dispatch", last_dispatch):
                     fork_info = ForkInfo(
-                        fork_number_dict[benchmark], self._stable_run_config[benchmark]["run-forks"]["count"]
+                        fork_number_dict[benchmark], self._stable_run_config.get_benchmark(benchmark).forks
                     )
                     yield BenchmarkExecutionConfiguration([benchmark], mx_benchmark_args, bm_suite_args, fork_info)
                 dispatch_counter += 1
                 fork_number_dict[benchmark] += 1
 
     def _get_benchmarks_for_batch(self, benchmarks: List[str], batch_index: int):
-        return [bench for bench in benchmarks if self._stable_run_config[bench]["run-forks"]["count"] > batch_index]
+        return [bench for bench in benchmarks if self._stable_run_config.get_benchmark(bench).forks > batch_index]
 
     def _verify_no_conflicting_args_are_set(self):
         mx_benchmark_args_dict = vars(self.state.mx_benchmark_args)
@@ -412,16 +519,24 @@ class StabilizingPolybenchBenchmarkDispatcher(mx_benchmark.DefaultBenchmarkDispa
     def _verify_stable_run_config(self, benchmarks: List[str]):
         levels = self._get_required_config_levels()
         fields = ["count"]
+        v2_fields = ["forks", "focus"]
         for bench in benchmarks:
-            if bench not in self._stable_run_config:
+            if not self._stable_run_config.contains(bench):
                 msg = f"PolyBench stable run configuration file at '{self._stable_run_config_path}' is missing an entry for the '{bench}' benchmark!"
                 raise ValueError(msg)
-            bench_config = self._stable_run_config[bench]
+            bench_config = self._stable_run_config.get_benchmark(bench)
+            if bench_config.policy == StableRunPolicy.ALL_BUILDS:
+                for field in v2_fields:
+                    if field not in bench_config._dict:
+                        msg = f"PolyBench stable run configuration file at '{self._stable_run_config_path}' is missing the '{field}' key in the '{bench}' object!"
+                        raise ValueError(msg)
+                continue
+            # To be removed once all INDIVIDUAL_BUILDS policy benchmarks are updated
             for level in levels:
-                if level not in bench_config:
+                if level not in bench_config._dict:
                     msg = f"PolyBench stable run configuration file at '{self._stable_run_config_path}' is missing the '{level}' key in the '{bench}' object!"
                     raise ValueError(msg)
-                level_config = bench_config[level]
+                level_config = bench_config._dict[level]
                 for field in fields:
                     if field not in level_config:
                         msg = f"PolyBench stable run configuration file at '{self._stable_run_config_path}' is missing the '{field}' key in the '{bench}.{level}' object!"
@@ -563,7 +678,7 @@ class StabilizingPolybenchNativeImageBenchmarkDispatcher(StabilizingPolybenchBen
         * Third, it iterates over each benchmark which requires to be run in the current benchmark batch.
           This loop is implemented in the `dispatch_batch` method.
         """
-        build_count = max([self._stable_run_config[bench]["builds"]["count"] for bench in benchmarks])
+        build_count = max([self._stable_run_config.get_benchmark(bench).builds for bench in benchmarks])
         self._dispatch_counter = 0
         with ConstantContextValueManager(PolybenchBenchmarkSuite.PGO_PROFILES, []):
             for build_index in range(build_count):
@@ -582,10 +697,10 @@ class StabilizingPolybenchNativeImageBenchmarkDispatcher(StabilizingPolybenchBen
             mx.log(f" * Build #{build_index + 1}")
         build_stages = ["agent", "instrument-image", "instrument-run", "image"] if build_index == 0 else ["image"]
         current_build_benchmarks = [
-            bench for bench in benchmarks if self._stable_run_config[bench]["builds"]["count"] > build_index
+            bench for bench in benchmarks if self._stable_run_config.get_benchmark(bench).builds > build_index
         ]
         number_of_preparation_batches = len(build_stages)
-        bench_batches = [self._stable_run_config[bench]["run-forks"]["count"] for bench in current_build_benchmarks]
+        bench_batches = [self._stable_run_config.get_benchmark(bench).forks for bench in current_build_benchmarks]
         number_of_batches = number_of_preparation_batches + max(bench_batches)
         with ConstantContextValueManager(PolybenchBenchmarkSuite.BUILD_BENCHMARKS, current_build_benchmarks):
             for batch_index in range(number_of_batches):
@@ -639,8 +754,8 @@ class StabilizingPolybenchNativeImageBenchmarkDispatcher(StabilizingPolybenchBen
                 last_dispatch = self._dispatch_counter + 1 == total_dispatch_count
                 with ConstantContextValueManager("last_dispatch", last_dispatch):
                     total_fork_count = (
-                        self._stable_run_config[benchmark]["builds"]["count"]
-                        * self._stable_run_config[benchmark]["run-forks"]["count"]
+                        self._stable_run_config.get_benchmark(benchmark).builds
+                        * self._stable_run_config.get_benchmark(benchmark).forks
                     )
                     fork_info = ForkInfo(fork_number_dict[benchmark], total_fork_count)
                     yield BenchmarkExecutionConfiguration([benchmark], mx_bench_args, extended_bm_suite_args, fork_info)
@@ -747,14 +862,12 @@ class FinalDispatchFinalStageAverageWithOutlierRemovalPostProcessor(
         key_fn: Optional[Callable[[DataPoint], Any]],
         field: str,
         update_fn: Optional[Callable[[DataPoint], DataPoint]],
-        aggregation_level: str,
         final_consumer: bool,
     ):
         # The lower and upper percentiles will be set on a per-group basis in `calculate_aggregate_value` - as they
         # can have different values for different benchmarks.
         super().__init__(selector_fn, key_fn, field, update_fn, 0, 1)
         self._suite = suite
-        self._aggregation_level = aggregation_level
         self._final_consumer = final_consumer
 
     def select_datapoints(self, datapoints: DataPoints) -> DataPoints:
@@ -772,15 +885,24 @@ class FinalDispatchFinalStageAverageWithOutlierRemovalPostProcessor(
         return super().process_datapoints(datapoints)
 
     def calculate_aggregate_value(self, datapoints: DataPoints) -> Any:
-        config = bm_exec_context().get(PolybenchBenchmarkSuite.STABLE_CONFIG)
-        benchmark = self.get_and_verify_unique_benchmark_dimension(datapoints)
-        self._lower_percentile = self._suite.resolve_config_field_or_default(
-            config, [benchmark, self._aggregation_level, "lower-percentile"], 0
-        )
-        self._upper_percentile = self._suite.resolve_config_field_or_default(
-            config, [benchmark, self._aggregation_level, "upper-percentile"], 1
-        )
+        self.determine_outlier_exclusion_percentiles(datapoints)
         return super().calculate_aggregate_value(datapoints)
+
+    def determine_outlier_exclusion_percentiles(self, datapoints: DataPoints):
+        config: Optional[SuiteStableRunConfig] = bm_exec_context().get(PolybenchBenchmarkSuite.STABLE_CONFIG)
+        benchmark: str = self.get_and_verify_unique_benchmark_dimension(datapoints)
+        if config is None:
+            # Handle non-stable-run benchmarks
+            self._lower_percentile = 0
+            self._upper_percentile = 1
+            return
+        # Handle stable-run benchmarks
+        bench_config = config.get_benchmark(benchmark)
+        self.determine_stable_run_outlier_exclusion_percentiles(bench_config)
+
+    def determine_stable_run_outlier_exclusion_percentiles(self, bench_config: BenchmarkStableRunConfig):
+        self._lower_percentile = bench_config.outlier_exclusion.lower_percentile
+        self._upper_percentile = bench_config.outlier_exclusion.upper_percentile
 
     def get_and_verify_unique_benchmark_dimension(self, datapoints: DataPoints) -> str:
         benchmark = datapoints[0]["benchmark"]
@@ -819,7 +941,11 @@ class NonNativeImageBenchmarkSummaryPostProcessor(FinalDispatchFinalStageAverage
             self.verify_and_process_id_score_function(dp)
             return dp
 
-        super().__init__(suite, selector_fn, key_fn, field, update_fn, "run-forks", True)
+        super().__init__(suite, selector_fn, key_fn, field, update_fn, True)
+
+    def determine_stable_run_outlier_exclusion_percentiles(self, bench_config: BenchmarkStableRunConfig):
+        self._lower_percentile = bench_config.fork_outlier_exclusion.lower_percentile
+        self._upper_percentile = bench_config.fork_outlier_exclusion.upper_percentile
 
 
 class NativeModeBuildSummaryPostProcessor(FinalDispatchFinalStageAverageWithOutlierRemovalPostProcessor):
@@ -843,7 +969,11 @@ class NativeModeBuildSummaryPostProcessor(FinalDispatchFinalStageAverageWithOutl
             self.verify_and_process_id_score_function(dp)
             return dp
 
-        super().__init__(suite, selector_fn, key_fn, field, update_fn, "run-forks", False)
+        super().__init__(suite, selector_fn, key_fn, field, update_fn, False)
+
+    def determine_stable_run_outlier_exclusion_percentiles(self, bench_config: BenchmarkStableRunConfig):
+        self._lower_percentile = bench_config.fork_outlier_exclusion.lower_percentile
+        self._upper_percentile = bench_config.fork_outlier_exclusion.upper_percentile
 
 
 class NativeModeBenchmarkSummaryPostProcessor(FinalDispatchFinalStageAverageWithOutlierRemovalPostProcessor):
@@ -860,6 +990,10 @@ class NativeModeBenchmarkSummaryPostProcessor(FinalDispatchFinalStageAverageWith
 
         def update_fn(dp):
             dp["metric.name"] = "time"
+            if "metric.fork-number" in dp:
+                del dp["metric.fork-number"]
+            if "native-image.image-fork-number" in dp:
+                del dp["native-image.image-fork-number"]
             if "metric.object" in dp:
                 del dp["metric.object"]
             if "native-image.rebuild-number" in dp:
@@ -867,7 +1001,37 @@ class NativeModeBenchmarkSummaryPostProcessor(FinalDispatchFinalStageAverageWith
             self.verify_and_process_id_score_function(dp)
             return dp
 
-        super().__init__(suite, selector_fn, key_fn, field, update_fn, "builds", True)
+        config: Optional[SuiteStableRunConfig] = bm_exec_context().get(PolybenchBenchmarkSuite.STABLE_CONFIG)
+        if config is not None:
+            self._stable_run: bool = True
+            self._v1_benchmarks: List[str] = [
+                b for b in config.benchmarks() if config.get_benchmark(b).policy == StableRunPolicy.INDIVIDUAL_BUILDS
+            ]
+        else:
+            self._stable_run: bool = False
+            self._v1_benchmarks: List[str] = []
+
+        super().__init__(suite, selector_fn, key_fn, field, update_fn, True)
+
+    def select_datapoints(self, datapoints: DataPoints) -> DataPoints:
+        if self._stable_run:
+            self._selector_fn = lambda dp: (
+                (
+                    dp["benchmark"] in self._v1_benchmarks
+                    and dp["metric.name"] == "avg-time"
+                    and dp["metric.object"] == "build"
+                )
+                or (
+                    dp["benchmark"] not in self._v1_benchmarks
+                    and dp["metric.name"] == "avg-time"
+                    and dp["metric.object"] == "fork"
+                )
+            )
+        return super().select_datapoints(datapoints)
+
+    def determine_stable_run_outlier_exclusion_percentiles(self, bench_config: BenchmarkStableRunConfig):
+        self._lower_percentile = bench_config.build_outlier_exclusion.lower_percentile
+        self._upper_percentile = bench_config.build_outlier_exclusion.upper_percentile
 
 
 class GraalSpecificFieldsRemoverPostProcessor(DataPointsPostProcessor):
@@ -1011,7 +1175,7 @@ class PolybenchBenchmarkSuite(
         return "polybench"
 
     def version(self):
-        return "0.3.0"
+        return "0.4.0"
 
     def _resolve_benchmarks(self) -> Dict[str, ResolvedPolybenchBenchmark]:
         if not hasattr(self, "_benchmarks"):
@@ -1152,12 +1316,11 @@ class PolybenchBenchmarkSuite(
             mx.abort(f"Must specify one benchmark at a time (given: {benchmarks})")
         return self._resolve_benchmarks()[benchmarks[0]]
 
-    def _resolve_stable_run_config(self):
+    def _resolve_stable_run_config(self) -> Optional[SuiteStableRunConfig]:
         config_path = self.polybench_bench_suite_args(bm_exec_context().get("bm_suite_args")).stable_run_config
         if config_path is None:
-            return {}
-        with open(config_path) as f:
-            return json.load(f)
+            return None
+        return SuiteStableRunConfig(config_path)
 
     @staticmethod
     def _prepare_distributions(

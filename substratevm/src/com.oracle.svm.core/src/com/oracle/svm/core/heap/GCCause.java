@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -44,7 +44,6 @@ import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
@@ -130,7 +129,7 @@ class GCCauseSupport {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = GCCauseFeature.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = GCCauseFeature.LayeredCallbacks.class)
 class GCCauseFeature implements InternalFeature {
     /**
      * In layered builds all {@link GCCause}s are registered and installed in the initial layer.

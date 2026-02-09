@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.pltgot;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -40,6 +39,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.image.NativeImage;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -124,7 +124,7 @@ public class PLTGOTFeature implements InternalFeature {
     private RelocatableBuffer gotBuffer;
     private ObjectFile.ProgbitsSectionImpl gotBufferImpl;
 
-    private Set<SharedMethod> methodsForDirectGOTRelocation = new HashSet<>();
+    private EconomicSet<SharedMethod> methodsForDirectGOTRelocation = EconomicSet.create();
 
     public static PLTGOTFeature singleton() {
         return ImageSingletons.lookup(PLTGOTFeature.class);

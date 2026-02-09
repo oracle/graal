@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
@@ -56,7 +57,6 @@ import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
-import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
@@ -367,7 +367,7 @@ public class SimulateClassInitializerSupport {
         if (!enabled) {
             return SimulateClassInitializerResult.NOT_SIMULATED_INITIALIZED;
         }
-        if (type.isInBaseLayer()) {
+        if (type.isInSharedLayer()) {
             if (type.getWrapped() instanceof BaseLayerType) {
                 return SimulateClassInitializerResult.NOT_SIMULATED_INITIALIZED;
             }
@@ -492,7 +492,7 @@ public class SimulateClassInitializerSupport {
         if (classInitializer == null) {
             return;
         }
-        VMError.guarantee(!classInitializer.isInBaseLayer(), "Trying to simulate a class initializer already simulated in a previous layer.");
+        VMError.guarantee(!classInitializer.isInSharedLayer(), "Trying to simulate a class initializer already simulated in a previous layer.");
 
         StructuredGraph graph;
         try {

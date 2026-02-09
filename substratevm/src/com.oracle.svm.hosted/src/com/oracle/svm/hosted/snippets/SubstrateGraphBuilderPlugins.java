@@ -93,7 +93,6 @@ import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
-import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
 import com.oracle.svm.hosted.SharedArenaSupport;
@@ -254,7 +253,7 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
 
-            if (ModuleLayer.boot().findModule("jdk.unsupported").isPresent()) {
+            if (JVMCIReflectionUtil.bootModuleLayer().findModule("jdk.unsupported").isPresent()) {
                 Registration customConstructor = new Registration(plugins, loader.findClassOrFail("sun.reflect.ReflectionFactory"));
                 customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class) {
                     @Override
@@ -508,15 +507,10 @@ public class SubstrateGraphBuilderPlugins {
         Class<?>[] interfaces = extractClassArray(b, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
             var caller = b.getGraph().method();
-            var method = b.getMethod();
-            var bci = b.bci();
 
             return () -> {
                 /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
                 RuntimeProxyCreation.register(interfaces);
-                if (ImageSingletons.contains(FallbackFeature.class)) {
-                    ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(method, bci);
-                }
                 if (Options.DynamicProxyTracing.getValue()) {
                     System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
                                     " reached from " + caller.format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
@@ -751,7 +745,7 @@ public class SubstrateGraphBuilderPlugins {
         String fieldName = asConstantObject(b, String.class, fieldNameNode);
         if (type != null && fieldName != null) {
             try {
-                ResolvedJavaField field = JVMCIReflectionUtil.getDeclaredField(type, fieldName);
+                ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(type, fieldName);
                 /*
                  * Register the holder class and the field for reflection. This also registers the
                  * field for unsafe access.
@@ -802,7 +796,7 @@ public class SubstrateGraphBuilderPlugins {
                 ResolvedJavaType type = asConstantType(b, classNode);
                 String fieldName = asConstantObject(b, String.class, nameNode);
                 if (type != null && fieldName != null) {
-                    ResolvedJavaField targetField = JVMCIReflectionUtil.getDeclaredField(false, type, fieldName);
+                    ResolvedJavaField targetField = JVMCIReflectionUtil.getUniqueDeclaredField(false, type, fieldName);
                     if (targetField != null) {
                         return processFieldOffset(b, receiver, false, targetField);
                     }

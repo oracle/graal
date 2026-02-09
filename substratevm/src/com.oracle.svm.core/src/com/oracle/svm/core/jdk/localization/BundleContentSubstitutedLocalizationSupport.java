@@ -39,6 +39,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -85,7 +86,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Set<String> existingBundles = ConcurrentHashMap.newKeySet();
 
-    public BundleContentSubstitutedLocalizationSupport(Set<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
+    public BundleContentSubstitutedLocalizationSupport(EconomicSet<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
         super(locales, defaultCharset);
         this.pool = pool;
         this.compressBundlesPatterns = parseCompressBundlePatterns(requestedPatterns);

@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -77,7 +77,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
 
     private volatile boolean isSampling;
     private long curIntervalMillis;
-    protected long newIntervalMillis;
+    protected volatile long newIntervalMillis;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public AbstractJfrExecutionSampler() {

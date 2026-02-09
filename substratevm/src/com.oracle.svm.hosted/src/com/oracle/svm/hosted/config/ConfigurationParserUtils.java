@@ -78,36 +78,34 @@ public final class ConfigurationParserUtils {
      *
      * @param featureName name of the feature using the configuration (e.g., "JNI")
      * @param directoryFileName file name for searches via {@link ConfigurationFiles}.
-     * @return the total number of successfully parsed configuration files and resources.
      */
-    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
+    public static void parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
                     HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> configResourcesOption,
                     String directoryFileName) {
 
         List<Path> paths = configFilesOption.getValue().values();
         List<String> resourceValues = configResourcesOption.getValue().values();
-        return parseAndRegisterConfigurations(parser, classLoader, featureName, directoryFileName, paths, resourceValues);
+        parseAndRegisterConfigurations(parser, classLoader, featureName, directoryFileName, paths, resourceValues);
     }
 
-    public static int parseAndRegisterConfigurationsFromCombinedFile(ConfigurationParser parser, ImageClassLoader classLoader, String featureName) {
-        return parseAndRegisterConfigurations(parser, classLoader, featureName, ConfigurationFile.REACHABILITY_METADATA.getFileName(), Collections.emptyList(),
+    public static void parseAndRegisterConfigurationsFromCombinedFile(ConfigurationParser parser, ImageClassLoader classLoader, String featureName) {
+        parseAndRegisterConfigurations(parser, classLoader, featureName, ConfigurationFile.REACHABILITY_METADATA.getFileName(), Collections.emptyList(),
                         ReachabilityMetadataResources.getValue().values());
     }
 
-    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
+    public static void parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
                     String featureName,
                     String directoryFileName, List<Path> paths,
                     List<String> resourceValues) {
-        int parsedCount = 0;
+
         Stream<Path> files = Stream.concat(paths.stream(),
                         ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
-        parsedCount += files.map(Path::toAbsolutePath).mapToInt(path -> {
+        files.map(Path::toAbsolutePath).forEach(path -> {
             if (!Files.exists(path)) {
                 throw UserError.abort("The %s configuration file \"%s\" does not exist.", featureName, path);
             }
             doParseAndRegister(parser, featureName, path);
-            return 1;
-        }).sum();
+        });
 
         Stream<URL> configResourcesFromOption = resourceValues.stream().flatMap(s -> {
             Enumeration<URL> urls;
@@ -131,11 +129,9 @@ public final class ConfigurationParserUtils {
             }, false);
         });
         Stream<URL> resources = Stream.concat(configResourcesFromOption, ConfigurationFiles.findConfigurationResources(directoryFileName, classLoader.getClassLoader()).stream());
-        parsedCount += resources.mapToInt(url -> {
+        resources.forEach(url -> {
             doParseAndRegister(parser, featureName, url);
-            return 1;
-        }).sum();
-        return parsedCount;
+        });
     }
 
     private static void doParseAndRegister(ConfigurationParser parser, String featureName, Object location) {

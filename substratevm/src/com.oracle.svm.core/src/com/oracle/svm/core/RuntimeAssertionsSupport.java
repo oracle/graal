@@ -45,7 +45,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -90,7 +89,7 @@ class RuntimeAssertionsOptionTransformer implements Function<Object, Object> {
 }
 
 @AutomaticallyRegisteredImageSingleton
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = RuntimeAssertionsSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = RuntimeAssertionsSupport.LayeredCallbacks.class)
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeAssertionsSupport {
 

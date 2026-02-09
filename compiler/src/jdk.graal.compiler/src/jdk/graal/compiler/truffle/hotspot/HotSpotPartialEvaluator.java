@@ -33,24 +33,39 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
+
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.core.common.util.FieldKey;
 import jdk.graal.compiler.core.common.util.MethodKey;
+import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderInstance;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.InlineDuringParsingPlugin;
+import jdk.graal.compiler.replacements.PEGraphDecoder;
+import jdk.graal.compiler.replacements.ReplacementsImpl;
+import jdk.graal.compiler.truffle.CachingPEGraphDecoder;
 import jdk.graal.compiler.truffle.ConstantFieldInfo;
 import jdk.graal.compiler.truffle.PartialEvaluationMethodInfo;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
+import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleElementCache;
+import jdk.graal.compiler.truffle.TruffleTierContext;
+import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -69,11 +84,13 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     private final ConstantFieldInfoCache constantInfoCache = new ConstantFieldInfoCache();
 
     private final ConcurrentMap<PartialEvaluationMethodInfo, PartialEvaluationMethodInfo> canonicalMethodInfos = new ConcurrentHashMap<>();
+    private final TruffleCachingConstantFieldProvider graphCacheConstantFieldProvider;
 
     public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         super(config, configForRoot);
         this.graphCacheRef = new AtomicReference<>();
         this.disableEncodedGraphCachePurges = false;
+        this.graphCacheConstantFieldProvider = new TruffleCachingConstantFieldProvider(this, getProviders().getConstantFieldProvider());
     }
 
     void setJvmciReservedReference0Offset(int jvmciReservedReference0Offset) {
@@ -114,6 +131,35 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
         super.registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
         HotSpotTruffleGraphBuilderPlugins.registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification,
                         (HotSpotKnownTruffleTypes) getTypes());
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
+                    NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
+                    Supplier<AutoCloseable> createCachedGraphScope) {
+        final GraphBuilderConfiguration newConfig = getGraphBuilderConfigurationCopy(context.forceNodeSourcePositions);
+        InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
+
+        Plugins plugins = newConfig.getPlugins();
+        ReplacementsImpl replacements = (ReplacementsImpl) config.lastTier().providers().getReplacements();
+        plugins.clearInlineInvokePlugins();
+        plugins.appendInlineInvokePlugin(replacements);
+        plugins.appendInlineInvokePlugin(new ParsingInlineInvokePlugin(this, replacements, parsingInvocationPlugins, loopExplosionPlugin));
+        plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
+        InvocationPlugins decodingPlugins = context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins;
+        DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
+                        method -> getMethodInfo(method).inlineForPartialEvaluation() == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
+
+        Providers graphCacheProviders = config.lastTier().providers().copyWith(graphCacheConstantFieldProvider);
+        Providers decoderProviders = config.lastTier().providers().copyWith(constantFieldProvider);
+
+        assert !allowAssumptionsDuringParsing || !persistentEncodedGraphCache;
+        return new CachingPEGraphDecoder(config.architecture(), context.graph, graphCacheProviders, decoderProviders, context.types(), newConfig,
+                        loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, types.OptimizedCallTarget_callInlined,
+                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope,
+                        createGraphBuilderPhaseInstance(graphCacheProviders, newConfig, TruffleCompilerImpl.Optimizations),
+                        allowAssumptionsDuringParsing, false, true);
     }
 
     @Override

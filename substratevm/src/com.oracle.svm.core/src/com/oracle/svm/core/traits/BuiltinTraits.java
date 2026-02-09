@@ -111,20 +111,6 @@ public class BuiltinTraits {
     }
 
     /**
-     * Trait indicating this singleton can be made more layer-aware in the future. See
-     * {@link SingletonTraitKind#DUPLICABLE} for more information.
-     */
-    public static final SingletonTrait DUPLICABLE_TRAIT = new SingletonTrait(SingletonTraitKind.DUPLICABLE, EmptyMetadata.EMPTY);
-
-    @SuppressWarnings("unused")
-    public static class Duplicable extends SingletonTraitsSupplier {
-        @Override
-        public SingletonTrait getTrait() {
-            return DUPLICABLE_TRAIT;
-        }
-    }
-
-    /**
      * Trait indicating this singleton is not yet fully compatible with layered images. See
      * {@link SingletonTraitKind#PARTIALLY_LAYER_AWARE} for more information.
      */
@@ -134,6 +120,15 @@ public class BuiltinTraits {
         @Override
         public SingletonTrait getTrait() {
             return PARTIALLY_LAYER_AWARE;
+        }
+    }
+
+    public static final SingletonTrait DISALLOWED_TRAIT = new SingletonTrait(SingletonTraitKind.DISALLOWED, EmptyMetadata.EMPTY);
+
+    public static final class Disallowed extends SingletonTraitsSupplier {
+        @Override
+        public SingletonTrait getTrait() {
+            return DISALLOWED_TRAIT;
         }
     }
 }

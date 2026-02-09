@@ -51,8 +51,8 @@ import java.lang.reflect.Field;
 
 import org.graalvm.wasm.MemoryContext;
 import org.graalvm.wasm.WasmMath;
-import org.graalvm.wasm.api.Vector128;
-import org.graalvm.wasm.api.Vector128Ops;
+import org.graalvm.wasm.vector.Vector128;
+import org.graalvm.wasm.vector.Vector128Ops;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;

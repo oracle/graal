@@ -159,8 +159,8 @@ public final class NativeImageClassLoader extends SecureClassLoader {
         localNameToModule = Collections.unmodifiableMap(nameToModule);
         localPackageToModule = Collections.unmodifiableMap(packageToModule);
         /*
-         * Other than in {@code jdk.internal.loader.Loader} we initialize remotePackageToLoader here
-         * which allows us to use an unmodifiable map instead of a ConcurrentHashMap.
+         * Unlike {@code jdk.internal.loader.Loader}, we initialize remotePackageToLoader here which
+         * allows us to use an unmodifiable map instead of a ConcurrentHashMap.
          */
         remotePackageToLoader = initRemotePackageMap(configuration, List.of(ModuleLayer.boot()));
 
@@ -185,7 +185,7 @@ public final class NativeImageClassLoader extends SecureClassLoader {
     }
 
     /**
-     * See {@code jdk.internal.loader.Loader#initRemotePackageMap}.
+     * See {@link jdk.internal.loader.Loader#initRemotePackageMap}.
      */
     private Map<String, ClassLoader> initRemotePackageMap(Configuration cf, List<ModuleLayer> parentModuleLayers) {
         Map<String, ClassLoader> remotePackageMap = new HashMap<>();
@@ -220,16 +220,8 @@ public final class NativeImageClassLoader extends SecureClassLoader {
                     ClassLoader l = loader;
                     descriptor.packages().forEach(pn -> remotePackage(remotePackageMap, pn, l));
                 } else {
-                    String target = resolvedModule.name();
                     for (ModuleDescriptor.Exports e : descriptor.exports()) {
-                        boolean delegate;
-                        if (e.isQualified()) {
-                            delegate = (other.configuration() == cf) && e.targets().contains(target);
-                        } else {
-                            delegate = true;
-                        }
-
-                        if (delegate) {
+                        if (!e.isQualified()) {
                             remotePackage(remotePackageMap, e.source(), loader);
                         }
                     }

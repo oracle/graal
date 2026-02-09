@@ -66,6 +66,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.collections.EconomicSet;
 
 public final class CallTreePrinter {
 
@@ -110,7 +111,8 @@ public final class CallTreePrinter {
 
         @Override
         public String format() {
-            return ReportUtils.loaderName(methodNode.method.getDeclaringClass()) + ':' + methodNode.method.format(METHOD_FORMAT) + " id-ref=" + methodNode.id;
+            var hostVM = methodNode.method.getUniverse().hostVM();
+            return hostVM.loaderName(methodNode.method.getDeclaringClass()) + ':' + methodNode.method.format(METHOD_FORMAT) + " id-ref=" + methodNode.id;
         }
 
     }
@@ -140,7 +142,7 @@ public final class CallTreePrinter {
 
         @Override
         public String format() {
-            return ReportUtils.loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT) + " id=" + id;
+            return method.getUniverse().hostVM().loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT) + " id=" + id;
         }
     }
 
@@ -307,7 +309,7 @@ public final class CallTreePrinter {
     private void printUsedMethods(PrintWriter out) {
         List<String> methodsList = new ArrayList<>();
         for (AnalysisMethod method : methodToNode.keySet()) {
-            methodsList.add(ReportUtils.loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT));
+            methodsList.add(method.getUniverse().hostVM().loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT));
         }
         methodsList.sort(null);
         for (String name : methodsList) {
@@ -324,7 +326,7 @@ public final class CallTreePrinter {
     }
 
     public Set<String> classesSet(boolean packageNameOnly) {
-        Set<String> classSet = new HashSet<>();
+        Set<String> classSet = new HashSet<>(); // noEconomicSet(temp)
         for (AnalysisType type : usedAnalysisTypes()) {
             String name = type.toJavaName(true);
             if (packageNameOnly) {
@@ -334,13 +336,14 @@ public final class CallTreePrinter {
                     name = packagePrefix(name);
                 }
             }
-            classSet.add(ReportUtils.loaderName(type) + ':' + name);
+
+            classSet.add(type.getUniverse().hostVM().loaderName(type) + ':' + name);
         }
         return classSet;
     }
 
-    public Set<AnalysisType> usedAnalysisTypes() {
-        Set<AnalysisType> classSet = new HashSet<>();
+    public Iterable<AnalysisType> usedAnalysisTypes() {
+        EconomicSet<AnalysisType> classSet = EconomicSet.create();
         for (AnalysisMethod method : methodToNode.keySet()) {
             classSet.add(method.getDeclaringClass());
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -94,7 +94,7 @@ public final class DarwinLinker extends Driver {
                 } catch (Exception e) {
                     // something went wrong -- let the normal driver run fail
                     if (verb) {
-                        System.err.println("Running clang with `-save-temps` failed: " + e);
+                        driver.log("Running clang with `-save-temps` failed: " + e);
                     }
                 }
             }
@@ -102,7 +102,7 @@ public final class DarwinLinker extends Driver {
         } catch (IOException e) {
             returnCode = 1;
         } catch (Exception e) {
-            System.err.println("Exception: " + e);
+            driver.log("Exception: " + e);
             returnCode = 1;
         } finally {
             if (tempDir != null) {
@@ -110,7 +110,7 @@ public final class DarwinLinker extends Driver {
                     Files.walk(tempDir).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
                 } catch (IOException e) {
                     if (verb) {
-                        System.err.println("Deleting the temporary directory (" + tempDir + ") failed: " + e);
+                        driver.log("Deleting the temporary directory (" + tempDir + ") failed: " + e);
                     }
                 }
             }

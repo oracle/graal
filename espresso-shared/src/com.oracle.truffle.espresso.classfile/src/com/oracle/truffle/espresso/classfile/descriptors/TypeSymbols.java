@@ -454,7 +454,11 @@ public final class TypeSymbols {
         return symbolify.apply(className);
     }
 
-    public static ByteSequence getRuntimePackage(ByteSequence symbol) {
+    public static ByteSequence getRuntimePackage(Symbol<Type> symbol) {
+        return TypeSymbols.getRuntimePackage((ByteSequence) symbol);
+    }
+
+    private static ByteSequence getRuntimePackage(ByteSequence symbol) {
         if (symbol.byteAt(0) == '[') {
             int arrayDimensions = getArrayDimensions(symbol);
             return getRuntimePackage(symbol.subSequence(arrayDimensions));

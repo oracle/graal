@@ -57,4 +57,7 @@ public final class IsolateDeathException extends RuntimeException {
     IsolateDeathException(IOException cause) {
         super(cause);
     }
+
+    IsolateDeathException() {
+    }
 }

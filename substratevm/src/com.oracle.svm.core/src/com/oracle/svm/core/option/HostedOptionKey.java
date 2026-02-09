@@ -24,14 +24,17 @@
  */
 package com.oracle.svm.core.option;
 
+import java.util.function.Consumer;
+
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
-import org.graalvm.collections.EconomicMap;
+import com.oracle.svm.core.collections.EnumBitmask;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-
-import java.util.function.Consumer;
 
 /**
  * Defines a hosted {@link Option} that is used during native image generation, in contrast to a
@@ -41,15 +44,21 @@ import java.util.function.Consumer;
  */
 public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
     private final Consumer<HostedOptionKey<T>> buildTimeValidation;
+    private final int flags;
     private OptionOrigin lastOrigin;
 
-    public HostedOptionKey(T defaultValue) {
-        this(defaultValue, null);
+    public HostedOptionKey(T defaultValue, HostedOptionKeyFlag... flags) {
+        this(defaultValue, null, flags);
     }
 
-    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> buildTimeValidation) {
+    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> buildTimeValidation, HostedOptionKeyFlag... flags) {
         super(defaultValue);
         this.buildTimeValidation = buildTimeValidation;
+        this.flags = EnumBitmask.computeBitmask(flags);
+    }
+
+    public boolean shouldPassToNativeGC() {
+        return !EnumBitmask.hasBit(flags, HostedOptionKeyFlag.DoNotPassToNativeGC);
     }
 
     /**
@@ -86,7 +95,6 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
 
     @Override
     public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
-        Object defaultValue = getDefaultValue();
         if (defaultValue instanceof MultiOptionValue) {
             MultiOptionValue<?> value = (MultiOptionValue<?>) values.get(this);
             if (value == null) {
@@ -110,5 +118,10 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
 
     public OptionOrigin getLastOrigin() {
         return lastOrigin;
+    }
+
+    public enum HostedOptionKeyFlag {
+        /** If this flag is set, then the option value is not passed to native GCs like G1. */
+        DoNotPassToNativeGC,
     }
 }

@@ -26,11 +26,10 @@ package com.oracle.svm.hosted.reflect.proxy;
 
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.util.OriginalClassProvider;
@@ -56,7 +55,7 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
     private static final String STABLE_NAME_TEMPLATE = "$Proxy.s";
 
     private final ConcurrentMap<ResolvedJavaType, ProxySubstitutionType> typeSubstitutions = new ConcurrentHashMap<>();
-    private final Set<String> uniqueTypeNames = new HashSet<>();
+    private final EconomicSet<String> uniqueTypeNames = EconomicSet.create();
 
     public static boolean isProxyType(ResolvedJavaType type) {
         Class<?> clazz = OriginalClassProvider.getJavaClass(type);

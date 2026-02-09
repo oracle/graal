@@ -29,7 +29,6 @@ import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -103,7 +102,7 @@ public class SubstrateMethodPointerStamp extends AbstractPointerStamp {
 
     @Override
     public boolean isCompatible(Constant constant) {
-        return constant instanceof SubstrateMethodPointerConstant;
+        return JavaConstant.NULL_POINTER.equals(constant) || constant instanceof SubstrateMethodPointerConstant;
     }
 
     @Override

@@ -26,15 +26,13 @@ package com.oracle.svm.core.graal.snippets;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -71,7 +69,7 @@ public class DeoptTester {
 
     public static final SubstrateForeignCallDescriptor DEOPTTEST = SnippetRuntime.findForeignCall(DeoptTester.class, "deoptTest", HAS_SIDE_EFFECT, LocationIdentity.any());
 
-    private static final Set<Long> handledPCs = new HashSet<>();
+    private static final EconomicSet<Long> handledPCs = EconomicSet.create();
 
     private static final FastThreadLocalInt inDeoptTest = FastThreadLocalFactory.createInt("DeoptTester.inDeoptTest");
 

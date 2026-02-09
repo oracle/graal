@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -529,5 +530,12 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
                     @Cached(value = "getCtxExtKey()", allowUncached = true) ContextExtension.Key<NativeContextExtension> ctxExtKey) {
         boolean hasCreateNativeClosure = ctxExtKey != null && ctxExtKey.get(LLVMContext.get(node)) != null;
         return new MembersList(hasCreateNativeClosure);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean isInternal() {
+        CallTarget callTarget = functionCode.getLLVMIRFunctionSlowPath();
+        return callTarget instanceof RootCallTarget rootCallTarget && rootCallTarget.getRootNode().isInternal();
     }
 }

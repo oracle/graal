@@ -85,7 +85,7 @@ class ReachabilitySimplifier implements CustomSimplification {
     ReachabilitySimplifier(StrengthenGraphs strengthenGraphs, AnalysisMethod method, StructuredGraph graph) {
         this.strengthenGraphs = strengthenGraphs;
         this.graph = graph;
-        this.typePredicate = strengthenGraphs.bb.getHostVM().getStrengthenGraphsTypePredicate(method.getMultiMethodKey());
+        this.typePredicate = strengthenGraphs.bb.getHostVM().getStrengthenGraphsTypePredicate(method.getMethodVariantKey());
     }
 
     @Override
@@ -94,7 +94,7 @@ class ReachabilitySimplifier implements CustomSimplification {
             tryImproveStamp(node, tool);
         }
 
-        if (strengthenGraphs.simplifyDelegate(n, tool)) {
+        if (strengthenGraphs.simplifyDelegate(n, tool, node -> false)) {
             // Handled in the delegate simplification.
             return;
         }

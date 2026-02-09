@@ -29,6 +29,7 @@ package com.oracle.svm.core;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 
+import com.oracle.svm.core.dcmd.ThreadPrintDCmd;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -38,6 +39,10 @@ import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
 
+/**
+ * Infrastructure for dumping the stack of all attached Java threads. This logic can for example be
+ * called via {@link ThreadPrintDCmd jcmd} or via a {@link SigQuitHandler signal handler}.
+ */
 public class DumpThreadStacksSupport {
     public static void dump() {
         DumpAllStacksOperation vmOp = new DumpAllStacksOperation();

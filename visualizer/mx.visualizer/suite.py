@@ -42,13 +42,27 @@ suite = {
       "class": "NetBeansProject",
       "dist" : "true",
     },
+    "C1Visualizer" : {
+      "subDir" : "C1Visualizer",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "Data",
+      "class": "NetBeansProject",
+      "dist" : "true",
+    },
   },
   "distributions": {
-    "IGV": {
+    "IDEALGRAPHVISUALIZER": {
       "native" : True,
       "relpath" : True,
       "dependencies" : [
         "IdealGraphVisualizer",
+      ],
+    },
+    "C1VISUALIZER": {
+      "native" : True,
+      "relpath" : True,
+      "dependencies" : [
+        "C1Visualizer",
       ],
     },
   },

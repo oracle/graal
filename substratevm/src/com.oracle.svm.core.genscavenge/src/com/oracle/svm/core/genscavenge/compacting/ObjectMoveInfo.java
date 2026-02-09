@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
@@ -41,7 +41,7 @@ import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.hub.LayoutEncoding;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * {@link PlanningVisitor} decides where objects will be moved and uses the methods of this class to
@@ -67,7 +67,7 @@ import jdk.graal.compiler.word.Word;
  * </ul>
  * The binary layout is as follows, with sizes given for both 8-byte/4-byte object references. The
  * fields are arranged so that accesses to them are aligned.
- * 
+ *
  * <pre>
  * ------------------------+======================+==============+=========================+-------------------
  *  ... gap (unused bytes) | new location (8B/4B) | size (4B/2B) | next seq offset (4B/2B) | live objects ...
@@ -83,6 +83,7 @@ public final class ObjectMoveInfo {
      */
     public static final int MAX_CHUNK_SIZE = ~(~0xffff * 8) + 1;
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setNewAddress(Pointer objSeqStart, Pointer newAddress) {
         if (useCompressedLayout()) {
             long offset = newAddress.subtract(objSeqStart).rawValue();
@@ -105,6 +106,7 @@ public final class ObjectMoveInfo {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setObjectSeqSize(Pointer objSeqStart, UnsignedWord nbytes) {
         if (useCompressedLayout()) {
             UnsignedWord value = nbytes.unsignedDivide(ConfigurationValues.getObjectLayout().getAlignment());
@@ -125,6 +127,7 @@ public final class ObjectMoveInfo {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setNextObjectSeqOffset(Pointer objSeqStart, UnsignedWord offset) {
         if (useCompressedLayout()) {
             UnsignedWord value = offset.unsignedDivide(ConfigurationValues.getObjectLayout().getAlignment());
@@ -241,6 +244,7 @@ public final class ObjectMoveInfo {
     }
 
     @AlwaysInline("GC performance: enables non-virtual visitor call")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void visit(AlignedHeapChunk.AlignedHeader chunk, Visitor visitor) {
         Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
         UnsignedWord size = getObjectSeqSize(p);
@@ -271,6 +275,7 @@ public final class ObjectMoveInfo {
          *
          * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
          */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq);
     }
 

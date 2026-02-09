@@ -30,7 +30,7 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -39,11 +39,11 @@ import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.impl.Word;
 
 /**
  * Represents the installed code of a runtime compiled method. Note that Truffle uses its own

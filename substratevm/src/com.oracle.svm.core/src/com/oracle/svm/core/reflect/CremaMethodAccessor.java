@@ -41,13 +41,14 @@ public final class CremaMethodAccessor extends AbstractCremaAccessor implements 
     }
 
     @Override
-    public Object invoke(Object obj, Object[] args) throws IllegalArgumentException, InvocationTargetException {
-        if (!targetMethod.isStatic()) {
-            verifyReceiver(obj);
-            verifyArguments(args);
-        } else {
+    public Object invoke(Object obj, Object[] initialArguments) throws IllegalArgumentException, InvocationTargetException {
+        Object[] args = initialArguments == null ? NO_ARGS : initialArguments;
+        if (targetMethod.isStatic()) {
             verifyArguments(args);
             ensureDeclaringClassInitialized();
+        } else {
+            verifyReceiver(obj);
+            verifyArguments(args);
         }
 
         Object[] finalArgs;
@@ -59,7 +60,7 @@ public final class CremaMethodAccessor extends AbstractCremaAccessor implements 
             System.arraycopy(args, 0, finalArgs, 1, args.length);
         }
         try {
-            return CremaSupport.singleton().execute(targetMethod, finalArgs);
+            return CremaSupport.singleton().execute(targetMethod, finalArgs, !targetMethod.isStatic());
         } catch (Throwable t) {
             throw new InvocationTargetException(t);
         }

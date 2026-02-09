@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -52,7 +53,7 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmBackend;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmCompilationResult;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmProviders;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmVariableAllocation;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -85,12 +86,12 @@ import jdk.graal.compiler.nodes.UnreachableControlSinkNode;
 public class WasmGCFunctionTemplateFeature implements InternalFeature {
     @Override
     public void afterAnalysis(Feature.AfterAnalysisAccess a) {
-        FeatureImpl.AfterAnalysisAccessImpl access = (FeatureImpl.AfterAnalysisAccessImpl) a;
+        AnalysisMetaAccess metaAccess = ((FeatureImpl.AfterAnalysisAccessImpl) a).getMetaAccess();
         /*
          * Store the AnalysisMethod for quick access. This also ensures a HostedMethod is created
          * from it.
          */
-        FunctionTemplateHolder.singleton().functionTemplatesPlaceholder = access.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupMethod(FunctionTemplateHolder.class, "placeHolderMethod"));
+        FunctionTemplateHolder.singleton().functionTemplatesPlaceholder = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, FunctionTemplateHolder.class, "placeHolderMethod");
     }
 
     @Override

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
@@ -32,8 +31,16 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
+import org.graalvm.word.impl.Word;
 
 public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSupport {
+
+    @Override
+    protected String jvmLibName() {
+        return "libjvm" + jvmLibSuffix();
+    }
+
+    protected abstract String jvmLibSuffix();
 
     /*
      * Initialization code is adapted from the JDK native code that initializes the system

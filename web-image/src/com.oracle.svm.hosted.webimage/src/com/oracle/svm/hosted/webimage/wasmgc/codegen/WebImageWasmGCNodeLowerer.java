@@ -30,7 +30,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
@@ -70,7 +69,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
 import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
@@ -142,6 +141,8 @@ import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -284,9 +285,11 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
             case ConstantNode constant -> lowerConstant(constant);
             case ParameterNode param -> lowerParam(param);
             case BinaryNode binary -> lowerBinary(binary);
+            case BinaryMathIntrinsicGenerationNode binaryMathIntrinsic -> lowerBinaryMathIntrinsicGeneration(binaryMathIntrinsic);
             case CompressionNode compression -> lowerCompression(compression, reqs);
             case UnwindNode unwind -> lowerUnwind(unwind);
             case UnaryNode unary -> lowerUnary(unary);
+            case UnaryMathIntrinsicGenerationNode unaryMathIntrinsic -> lowerUnaryMathIntrinsicGeneration(unaryMathIntrinsic);
             case ReadExceptionObjectNode readExceptionObject -> lowerReadException(readExceptionObject);
             case BoxNode box -> lowerBox(box, reqs);
             case UnboxNode unbox -> lowerUnbox(unbox);
@@ -390,7 +393,7 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
         if (toIsSubtype && !wasmFromType.equals(wasmToType)) {
             original.setComment(masm.getNodeComment(node));
             Instruction cast = new Instruction.RefCast(original, (WasmRefType) util.typeForJavaType(wasmToType));
-            cast.setComment("Explicit downcast due to type mismatch, expected " + wasmToType.getName() + ", got " + wasmFromType.getName());
+            cast.setComment("Explicit downcast due to type mismatch, expected " + wasmToType.toClassName() + ", got " + wasmFromType.toClassName());
             return cast;
         }
 
@@ -398,7 +401,7 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
     }
 
     private Instruction lowerNewInstance(NewInstanceNode newInstance) {
-        return new Instruction.Call(masm().getKnownIds().instanceCreateTemplate.requestFunctionId(OriginalClassProvider.getJavaClass(newInstance.instanceClass())));
+        return new Instruction.Call(masm().getKnownIds().instanceCreateTemplate.requestFunctionId((HostedType) newInstance.instanceClass()));
     }
 
     private Instruction lowerDynamicNewInstance(DynamicNewInstanceNode newInstance) {
@@ -428,11 +431,12 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
         assert newArray.getKnownElementKind() == JavaKind.Object : newArray.getKnownElementKind();
 
         WasmId.StructType hubTypeId = masm().getWasmProviders().util().getHubObjectId();
-        ResolvedJavaField hubCompanionField = masm.getProviders().getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "companion"));
+        MetaAccessProvider metaAccess = masm.getProviders().getMetaAccess();
+        ResolvedJavaField hubCompanionField = JVMCIReflectionUtil.getUniqueDeclaredField(metaAccess, DynamicHub.class, "companion");
         WasmId.Field companionFieldId = masm.idFactory.newJavaField(hubCompanionField);
 
         WasmId.StructType companionTypeId = masm.idFactory.newJavaStruct(masm.getWasmProviders().getMetaAccess().lookupJavaType(DynamicHubCompanion.class));
-        ResolvedJavaField companionArrayHubField = masm.getProviders().getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(DynamicHubCompanion.class, "arrayHub"));
+        ResolvedJavaField companionArrayHubField = JVMCIReflectionUtil.getUniqueDeclaredField(metaAccess, DynamicHubCompanion.class, "arrayHub");
         WasmId.Field arrayHubFieldId = masm.idFactory.newJavaField(companionArrayHubField);
 
         Instruction.StructGet companion = new Instruction.StructGet(hubTypeId, companionFieldId, Extension.None, lowerExpression(newArray.getElementType()));
@@ -480,9 +484,10 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
     }
 
     private Instruction lowerLoadArrayComponentHub(LoadArrayComponentHubNode loadArrayComponentHub) {
-        ResolvedJavaField componentTypeField = masm.getProviders().getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "componentType"));
+        WebImageWasmGCProviders providers = masm().getWasmProviders();
+        ResolvedJavaField componentTypeField = JVMCIReflectionUtil.getUniqueDeclaredField(providers.getMetaAccess(), DynamicHub.class, "componentType");
 
-        WasmId.StructType hubTypeId = masm().getWasmProviders().util().getHubObjectId();
+        WasmId.StructType hubTypeId = providers.util().getHubObjectId();
         WasmId.Field componentTypeFieldId = masm.idFactory.newJavaField(componentTypeField);
 
         return new Instruction.StructGet(hubTypeId, componentTypeFieldId, Extension.None, lowerExpression(loadArrayComponentHub.getValue()));

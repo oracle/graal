@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -454,7 +454,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                      * Some if conditions may have already been converted to guards at this point.
                      * For guards that are protected inInterpreter blocks we need to mark all
                      * following blocks as inInterpreter blocks. We also mark all following fixed
-                     * nodes as inInterpeter by setting a local variable guardedByInInterpreter to
+                     * nodes as inInterpreter by setting a local variable guardedByInInterpreter to
                      * true.
                      */
                     FixedGuardNode guard = (FixedGuardNode) node;
@@ -1061,8 +1061,9 @@ public class HostInliningPhase extends AbstractInliningPhase {
         }
 
         // seems to be quite expensive so do this last
-        ProfilingInfo info = context.graph.getProfilingInfo(targetMethod);
-        if (info != null && new OptimisticOptimizations(context.graph.getProfilingInfo(targetMethod), context.options).lessOptimisticThan(context.highTierContext.getOptimisticOptimizations())) {
+        ProfilingInfo info = context.graph.getProfilingInfo(context.graph.getCallerContext(), targetMethod);
+        if (info != null && new OptimisticOptimizations(context.graph.getProfilingInfo(context.graph.getCallerContext(), targetMethod), context.options).lessOptimisticThan(
+                        context.highTierContext.getOptimisticOptimizations())) {
             call.reason = "the callee uses less optimistic optimizations than caller";
             return false;
         }
@@ -1329,6 +1330,13 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return;
         }
         HostInliningPhase phase = new HostInliningPhase(CanonicalizerPhase.create());
+        insertBeforeInlining(highTier, phase);
+    }
+
+    /**
+     * Insert {@code phase} before any {@code AbstractInliningPhase} in {@code highTier}.
+     */
+    public static void insertBeforeInlining(HighTier highTier, BasePhase<HighTierContext> phase) {
         ListIterator<BasePhase<? super HighTierContext>> insertionPoint = highTier.findPhase(AbstractInliningPhase.class);
         if (insertionPoint == null) {
             highTier.prependPhase(phase);

@@ -292,7 +292,7 @@ public class SymbolicSnippetEncoder {
                 for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     ResolvedJavaMethod callee = callTarget.targetMethod();
                     if (!delayedInvocationPluginMethods.contains(callee) && !Objects.equals(callee, original) && !Objects.equals(callee, method)) {
-                        throw GraalError.shouldNotReachHere("method " + callee.format("%H.%n") + " not inlined in snippet " + method.getName() + " (maybe not final?)"); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHere("method " + callee.format("%H.%n") + " not inlined in snippet " + method.format("%h.%n") + " (maybe not final?)"); // ExcludeFromJacocoGeneratedReport
                     }
                 }
                 debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After buildGraph");
@@ -362,7 +362,7 @@ public class SymbolicSnippetEncoder {
                         originalProvider.getConstantFieldProvider(), originalProvider.getForeignCalls(), originalProvider.getLowerer(), null, originalProvider.getSuites(),
                         originalProvider.getRegisters(), originalProvider.getSnippetReflection(), originalProvider.getWordTypes(), originalProvider.getStampProvider(),
                         originalProvider.getPlatformConfigurationProvider(), originalProvider.getMetaAccessExtensionProvider(), originalProvider.getLoopsDataProvider(), originalProvider.getConfig(),
-                        originalProvider.getIdentityHashCodeProvider(), originalProvider.getReplayCompilationSupport());
+                        originalProvider.getReplayCompilationSupport());
         HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders,
                         originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(), originalProvider.getCodeCache().getTarget());
         filteringReplacements.setGraphBuilderPlugins(originalProvider.getReplacements().getGraphBuilderPlugins());
@@ -452,17 +452,13 @@ public class SymbolicSnippetEncoder {
             }
             for (; i < info.getParameterCount(); i++) {
                 if (info.isConstantParameter(i) || info.isVarargsParameter(i)) {
-                    JavaType type = method.getSignature().getParameterType(i - offset, method.getDeclaringClass());
-                    if (type instanceof ResolvedJavaType resolvedJavaType) {
-                        if (info.isVarargsParameter(i)) {
-                            resolvedJavaType = resolvedJavaType.getElementalType();
-                        }
-                        assert resolvedJavaType.isPrimitive() || isGraalClass(resolvedJavaType) : method +
-                                        ": only Graal classes can be @ConstantParameter or @VarargsParameter: " + type;
-                        ensureSnippetTypeAvailable(resolvedJavaType);
-                    } else {
-                        throw new InternalError(type.toString());
+                    ResolvedJavaType type = method.getSignature().getParameterType(i - offset, null).resolve(method.getDeclaringClass());
+                    if (info.isVarargsParameter(i)) {
+                        type = type.getElementalType();
                     }
+                    assert type.isPrimitive() || isGraalClass(type) : method +
+                                    ": only Graal classes can be @ConstantParameter or @VarargsParameter: " + type;
+                    ensureSnippetTypeAvailable(type);
                 }
             }
             pendingSnippetGraphs.put(key, (compileOptions, snippetReplacements) -> buildGraph(method, original, receiver,
@@ -650,6 +646,16 @@ public class SymbolicSnippetEncoder {
         @Override
         public Constant asObjectHub(ResolvedJavaType type) {
             return constantReflection.asObjectHub(type);
+        }
+
+        @Override
+        public int identityHashCode(JavaConstant constant) {
+            return constantReflection.identityHashCode(constant);
+        }
+
+        @Override
+        public int makeIdentityHashCode(JavaConstant constant, int requestedValue) {
+            return constantReflection.makeIdentityHashCode(constant, requestedValue);
         }
     }
 

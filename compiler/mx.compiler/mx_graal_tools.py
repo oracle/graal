@@ -26,11 +26,11 @@
 from __future__ import print_function
 
 import os
-import shutil
 import re
+import shutil
 import sys
-from os.path import join, exists
 from argparse import ArgumentParser, REMAINDER
+from os.path import join, exists
 
 import mx
 
@@ -41,7 +41,7 @@ else:
 
 _suite = mx.suite('compiler')
 
-def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
+def run_netbeans_app(app_name, jdkhome, args=None, dist=None, launch_message=None):
     args = [] if args is None else args
     if dist is None:
         dist = app_name.upper() + '_DIST'
@@ -75,12 +75,13 @@ def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
     if mx.get_os() == 'linux':
         # Mitigates X server crashes on Linux
         launch.append('-J-Dsun.java2d.xrender=false')
-    print('Consider flag -J-Dsun.java2d.uiScale=2 if on a high resolution display')
-    print('Consider flag -J-Xms4g -J-Xmx8g if dealing with large graphs')
+    if launch_message:
+        launch_message()
     mx.run(launch+args)
 
-def igv(args):
-    """run the Ideal Graph Visualizer
+
+def netbeans_docstring(fullname, mxname):
+    return f"""run the {fullname}
 
     The current version is based on NetBeans 26 which officially supports JDK 17 through JDK 24.  A
     supported JDK will be chosen from the JDKs known to mx but it will fall back to whatever is
@@ -90,19 +91,21 @@ def igv(args):
 
     You can directly control which JDK is used to launch IGV using
 
-       mx igv --jdkhome /path/to/java/home
+       mx {mxname} --jdkhome /path/to/java/home
 
     This will completely ignore any JAVA_HOME settings in mx.
 
-    Extra NetBeans specific options can be passed as well.  mx igv --help will show the
+    Extra NetBeans specific options can be passed as well.  mx {mxname} --help will show the
     help for the NetBeans launcher.
 
     """
+
+def launch_netbeans_app(fullname, distname, mxname, args, launch_message=None):
     min_version = 17
     max_version = 24
     min_version_spec = mx.VersionSpec(str(min_version))
     next_version_spec = mx.VersionSpec(str(max_version + 1))
-    def _igvJdkVersionCheck(version):
+    def _netbeansJdkVersionCheck(version):
         return min_version_spec <= version < next_version_spec
 
     jdkhome = None
@@ -111,43 +114,37 @@ def igv(args):
             pass
 
         # try to find a fully supported version first
-        jdk = mx.get_tools_jdk(versionCheck=_igvJdkVersionCheck, versionDescription=f'IGV prefers JDK {min_version} through JDK {max_version}', abortCallback=_do_not_abort)
+        jdk = mx.get_tools_jdk(versionCheck=_netbeansJdkVersionCheck, versionDescription=f'{fullname} prefers JDK {min_version} through JDK {max_version}', abortCallback=_do_not_abort)
         if jdk is None:
             # try any JDK
             jdk = mx.get_jdk()
 
         if jdk:
             jdkhome = jdk.home
-            mx.log(f'Launching IGV with {jdkhome}')
-            if not _igvJdkVersionCheck(jdk.version):
-                mx.warn(f'{jdk.home} is not an officially supported JDK for IGV.')
+            mx.log(f'Launching {fullname} with {jdkhome}')
+            if not _netbeansJdkVersionCheck(jdk.version):
+                mx.warn(f'{jdk.home} is not an officially supported JDK.')
                 mx.warn(f'If you experience any problems try to use an LTS release between JDK {min_version} and JDK {max_version} instead.')
-                mx.warn(f'mx help igv provides more details.')
+                mx.warn(f'mx help {mxname} provides more details.')
 
-    run_netbeans_app('IdealGraphVisualizer', jdkhome, args=args, dist='IDEALGRAPHVISUALIZER_DIST')
+    run_netbeans_app(distname, jdkhome, args=args, dist=f'{distname.upper()}_DIST', launch_message=launch_message)
+
+def igv(args):
+    def help_message():
+        print('Consider flag -J-Dsun.java2d.uiScale=2 if on a high resolution display')
+        print('Consider flag -J-Xms4g -J-Xmx8g if dealing with large graphs')
+
+    launch_netbeans_app('Ideal Graph Visualizer', 'IdealGraphVisualizer', 'igv', args, launch_message=help_message)
+
+igv.__doc__ = netbeans_docstring('Ideal Graph Visualizer', 'igv')
 
 def c1visualizer(args):
-    """run the C1 Compiler Visualizer"""
-    v8u40 = mx.VersionSpec("1.8.0_40")
-    v12 = mx.VersionSpec("12")
-    def _c1vJdkVersionCheck(version):
-        return v8u40 <= version < v12
-    jdkhome = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(JDK that is >= 1.8.0u40 and <= 11 which can be specified via EXTRA_JAVA_HOMES or --extra-java-homes)', purpose="running C1 Visualizer").home
-    run_netbeans_app('C1Visualizer', jdkhome, args() if callable(args) else args)
+    launch_netbeans_app('C1 Visualizer', 'C1Visualizer', 'c1visualizer', args)
 
-def hsdis(args, copyToDir=None):
-    """download the hsdis library and copy it to a specific dir or to the current JDK
+c1visualizer.__doc__ = netbeans_docstring('C1 Visualizer', 'c1visualizer')
 
-    This is needed to support HotSpot's assembly dumping features.
-    On amd64 platforms, it downloads the Intel syntax version"""
 
-    parser = ArgumentParser(prog='hsdis')
-    args = parser.parse_args(args)
-
-    hsdis_syntax = mx.get_env('HSDIS_SYNTAX')
-    if hsdis_syntax:
-        mx.warn("The 'hsdis' function ignores the value of the 'HSDIS_SYNTAX' environment variable: " + hsdis_syntax)
-
+def get_hsdis_lib() -> str:
     hsdis_lib_name = 'HSDIS'
     hsdis_lib = mx.library(hsdis_lib_name)
 
@@ -159,8 +156,31 @@ def hsdis(args, copyToDir=None):
     if len(hsdis_lib_files) != 1:
         mx.abort("hsdis library '{}' does not contain a single file: {}".format(hsdis_lib_name, hsdis_lib_files))
     hsdis_lib_file = join(hsdis_lib_path, hsdis_lib_files[0])
+    return hsdis_lib_file
+
+def hsdis(args):
+    """download the hsdis library and copy it to a specific dir or to the current JDK
+
+    This is needed to support HotSpot's assembly dumping features.
+    On amd64 platforms, it downloads the Intel syntax version"""
+
+    parser = ArgumentParser(prog='hsdis')
+    parser.add_argument('-d', '--directory', action='store', help='Directory to copy hsdis to.')
+    parser.add_argument('-l', '--lib-prefix', action='store_true', help='Add lib prefix to filename if necessary.')
+    args = parser.parse_args(args)
+
+    hsdis_syntax = mx.get_env('HSDIS_SYNTAX')
+    if hsdis_syntax:
+        mx.warn("The 'hsdis' function ignores the value of the 'HSDIS_SYNTAX' environment variable: " + hsdis_syntax)
+
+    hsdis_lib_file = get_hsdis_lib()
+
+    libname = mx.add_lib_suffix('hsdis-' + mx.get_arch())
+    if args.lib_prefix and args.directory:
+        libname = mx.add_lib_prefix(libname)
 
     overwrite = True
+    copyToDir = args.directory
     if copyToDir is None:
         # Try install hsdis into JAVA_HOME
         overwrite = False
@@ -179,7 +199,7 @@ def hsdis(args, copyToDir=None):
                 copyToDir = join(base, 'lib', mx.get_arch())
 
     if exists(copyToDir):
-        dest = join(copyToDir, mx.add_lib_suffix('hsdis-' + mx.get_arch()))
+        dest = join(copyToDir, libname)
         if exists(dest) and not overwrite:
             import filecmp
             # Only issue warning if existing lib is different
@@ -191,6 +211,22 @@ def hsdis(args, copyToDir=None):
                 mx.log('Copied {} to {}'.format(hsdis_lib_file, dest))
             except IOError as e:
                 mx.warn('Could not copy {} to {}: {}'.format(hsdis_lib_file, dest, str(e)))
+
+def distool(args):
+    """disassemble annotated machine code embedded in text files
+
+    Run a tool over the input files to convert in place HexCodeFiles
+    embedded in cfg files and MachCode sections in hs_err_pid files to a
+    disassembled format.
+    """
+
+    # Explicitly resolve GRAAL_TEST to get a clearer
+    # error message if it has not been built.
+    mx.distribution('GRAAL_TEST').classpath_repr(True)
+
+    path = mx.classpath('GRAAL_TEST')
+    mx.run_java(['-ea', '-cp', path, f"-Dtest.jdk.graal.compiler.disassembler.path={get_hsdis_lib()}",
+                 "--enable-native-access=ALL-UNNAMED", 'jdk.graal.compiler.disassembler.DisassemblerTool'] + args)
 
 def hcfdis(args, cp=None):
     """disassemble HexCodeFiles embedded in text files
@@ -262,6 +298,7 @@ def jol(args):
 
 mx.update_commands(_suite, {
     'c1visualizer' : [c1visualizer, ''],
+    'distool' : [distool, '[options]'],
     'hsdis': [hsdis, ''],
     'hcfdis': [hcfdis, ''],
     'igv' : [igv, ''],

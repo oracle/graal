@@ -32,7 +32,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -42,9 +41,9 @@ import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -79,7 +78,7 @@ public class LocalizationSupport {
 
     public final Locale[] allLocales;
 
-    public final Set<String> supportedLanguageTags;
+    public final EconomicSet<String> supportedLanguageTags;
 
     public final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
@@ -89,10 +88,10 @@ public class LocalizationSupport {
 
     private final EconomicMap<String, RuntimeDynamicAccessMetadata> registeredBundles = ImageHeapMap.create("registeredBundles");
 
-    public LocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
-        this.allLocales = locales.toArray(new Locale[0]);
+    public LocalizationSupport(EconomicSet<Locale> locales, Charset defaultCharset) {
+        this.allLocales = locales.toArray(new Locale[locales.size()]);
         this.defaultCharset = defaultCharset;
-        this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
+        this.supportedLanguageTags = getLanguageTags(locales);
     }
 
     public boolean optimizedMode() {
@@ -145,8 +144,8 @@ public class LocalizationSupport {
             if (bundleNameWithModule.length < 2) {
                 resourceName = toSlashSeparated(control.toBundleName(bundleName, locale)).concat(".properties");
 
-                Map<String, Set<Module>> packageToModules = ImageSingletons.lookup(ClassLoaderSupport.class).getPackageToModules();
-                Set<Module> modules = packageToModules.getOrDefault(packageName(bundleName), Collections.emptySet());
+                Map<String, EconomicSet<Module>> packageToModules = ImageSingletons.lookup(ClassLoaderSupport.class).getPackageToModules();
+                EconomicSet<Module> modules = packageToModules.getOrDefault(packageName(bundleName), EconomicSet.emptySet());
 
                 for (Module m : modules) {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName, origin);
@@ -302,4 +301,13 @@ public class LocalizationSupport {
         }
         return false;
     }
+
+    private static EconomicSet<String> getLanguageTags(EconomicSet<Locale> locales) {
+        EconomicSet<String> names = EconomicSet.create();
+        for (Locale locale : locales) {
+            names.add(locale.toString());
+        }
+        return names;
+    }
+
 }

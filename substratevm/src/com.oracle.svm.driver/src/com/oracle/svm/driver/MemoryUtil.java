@@ -129,7 +129,7 @@ public final class MemoryUtil {
             reason = "85% of system memory because in container";
             maxMemory = dedicatedMemorySize;
         } else {
-            long availableMemorySize = getAvailableMemorySize.get();
+            long availableMemorySize = Math.min(getAvailableMemorySize.get(), totalMemorySize);
             if (availableMemorySize >= MIN_AVAILABLE_MEMORY_THRESHOLD_GB * GiB_TO_BYTES) {
                 reason = percentageOfSystemMemoryText(availableMemorySize, totalMemorySize) + ", using all available memory";
                 maxMemory = availableMemorySize;

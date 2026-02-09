@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
@@ -36,7 +39,7 @@ import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.genscavenge.RuntimeCodeCacheReachabilityAnalyzer.UnreachableObjectsException;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * References from the runtime compiled code to the Java heap must be considered either strong or
@@ -59,6 +62,7 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
 
     @Override
     @DuplicatedInNativeCode
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     public void visitCode(CodeInfo codeInfo) {
         if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
             return;
@@ -114,10 +118,12 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
         RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjectVisitor);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isReachable(Object possiblyForwardedObject) {
         return RuntimeCodeCacheReachabilityAnalyzer.isReachable(Word.objectToUntrackedPointer(possiblyForwardedObject));
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private boolean hasWeakReferenceToUnreachableObject(CodeInfo codeInfo) {
         try {
             RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, checkForUnreachableObjectsVisitor);

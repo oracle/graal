@@ -26,18 +26,18 @@
 
 package com.oracle.svm.core.jfr.oldobject;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.ref.WeakReference;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.collections.UninterruptibleComparable;
 import com.oracle.svm.core.collections.UninterruptibleLinkedList;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.jfr.JfrTicks;
+import org.graalvm.word.impl.Word;
 
 /**
  * Holds information about a sampled object. This data may only be accessed while holding the

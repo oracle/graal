@@ -79,6 +79,13 @@ JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
     return JVM_INTERFACE_VERSION;
 }
 
+/* Declare JVM_FindClassFromBootLoader as weak symbol and provide fallback implementation */
+JNIEXPORT void JNICALL JVM_FindClassFromBootLoader(JNIEnv *env, char *fqn) __attribute__((weak));
+
+void JVM_FindClassFromBootLoader(JNIEnv *env, char *fqn) {
+    (*env)->FatalError(env, "JVM_FindClassFromBootLoader called: Unimplemented");
+}
+
 #ifdef __linux__
 /*
   Support for cpusets on Linux (JDK-6515172).

@@ -29,6 +29,8 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PRO
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import org.graalvm.word.impl.Word;
+
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
@@ -44,8 +46,7 @@ import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.ObjectAccess;
 
 final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
 

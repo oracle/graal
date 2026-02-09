@@ -32,16 +32,9 @@ import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.t
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.toStringMethod;
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.unproxifyInvokable;
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.unproxifyMethod;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationInvokable;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationMethod;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationsInvokable;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationsMethod;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getDeclaredAnnotationsInvokable;
-import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getDeclaredAnnotationsMethod;
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getTypeAnnotationInfoInvokable;
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getTypeAnnotationInfoMethod;
 
-import java.lang.annotation.Annotation;
 import java.util.List;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -489,22 +482,6 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     public final ResolvedJavaField resolveField(UnresolvedJavaField unresolvedJavaField, ResolvedJavaType accessingClass) {
         return (ResolvedJavaField) handle(resolveFieldMethod, resolveFieldInvokable, unresolvedJavaField, accessingClass);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return (T) handle(getAnnotationMethod, getAnnotationInvokable, annotationClass);
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        return (Annotation[]) handle(getAnnotationsMethod, getAnnotationsInvokable);
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
-        return (Annotation[]) handle(getDeclaredAnnotationsMethod, getDeclaredAnnotationsInvokable);
     }
 
     @Override

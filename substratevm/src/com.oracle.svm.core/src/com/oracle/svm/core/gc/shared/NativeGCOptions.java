@@ -163,15 +163,6 @@ public class NativeGCOptions {
     @Option(help = "How far ahead to prefetch scan area (<= 0 means off).", type = OptionType.Expert)//
     protected static final RuntimeOptionKey<Long> PrefetchScanIntervalInBytes = new NativeGCRuntimeOptionKey<>(-1L, IsolateCreationOnly);
 
-    @Option(help = "Verify memory system before GC.", type = OptionType.Debug)//
-    protected static final RuntimeOptionKey<Boolean> VerifyBeforeGC = new NativeGCRuntimeOptionKey<>(false, IsolateCreationOnly);
-
-    @Option(help = "Verify memory system after GC.", type = OptionType.Debug)//
-    protected static final RuntimeOptionKey<Boolean> VerifyAfterGC = new NativeGCRuntimeOptionKey<>(false, IsolateCreationOnly);
-
-    @Option(help = "Verify memory system during GC (between phases).", type = OptionType.Debug)//
-    protected static final RuntimeOptionKey<Boolean> VerifyDuringGC = new NativeGCRuntimeOptionKey<>(false, IsolateCreationOnly);
-
     @Option(help = "Initial heap size (in bytes); zero means use ergonomics.", type = OptionType.Expert)//
     protected static final RuntimeOptionKey<Long> InitialHeapSize = new NativeGCRuntimeOptionKey<>(0L, IsolateCreationOnly);
 
@@ -229,9 +220,6 @@ public class NativeGCOptions {
     @Option(help = "The minimum percentage of heap free after GC to avoid expansion.", type = OptionType.Expert)//
     protected static final RuntimeOptionKey<Long> MinHeapFreeRatio = new NativeGCRuntimeOptionKey<>(40L, IsolateCreationOnly);
 
-    @Option(help = "Number of milliseconds per MB of free space in the heap.", type = OptionType.Expert)//
-    protected static final RuntimeOptionKey<Long> SoftRefLRUPolicyMSPerMB = new NativeGCRuntimeOptionKey<>(1000L, IsolateCreationOnly);
-
     @Option(help = "The minimum change in heap space due to GC (in bytes).", type = OptionType.Expert)//
     protected static final RuntimeOptionKey<Long> MinHeapDeltaBytes = new NativeGCRuntimeOptionKey<>(168L * K, IsolateCreationOnly);
 
@@ -275,19 +263,8 @@ public class NativeGCOptions {
     }
 
     public static class NativeGCHostedOptionKey<T> extends HostedOptionKey<T> {
-        private final boolean passToCpp;
-
-        public NativeGCHostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> validation) {
-            this(defaultValue, true, validation);
-        }
-
-        public NativeGCHostedOptionKey(T defaultValue, boolean passToCpp, Consumer<HostedOptionKey<T>> validation) {
-            super(defaultValue, validation);
-            this.passToCpp = passToCpp;
-        }
-
-        public boolean shouldPassToCpp() {
-            return passToCpp;
+        public NativeGCHostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> validation, HostedOptionKeyFlag... flags) {
+            super(defaultValue, validation, flags);
         }
 
         @Override
@@ -327,9 +304,10 @@ public class NativeGCOptions {
                     Class<?> type = field.getType();
                     if (HostedOptionKey.class.isAssignableFrom(type)) {
                         HostedOptionKey<?> key = (HostedOptionKey<?>) field.get(null);
-                        if (shouldPassToCpp(key)) {
+                        Object value = key.getValueOrDefault(map);
+                        if (key.shouldPassToNativeGC() && value != null) {
                             buffer.putString(key.getName());
-                            buffer.putPrimitive(key.getValueOrDefault(map));
+                            buffer.putPrimitive(value);
                         }
                     }
                 } catch (IllegalArgumentException | IllegalAccessException e) {
@@ -338,13 +316,6 @@ public class NativeGCOptions {
             }
             buffer.putEnd();
             return buffer.toArray();
-        }
-
-        private static boolean shouldPassToCpp(HostedOptionKey<?> key) {
-            if (key instanceof NativeGCHostedOptionKey<?>) {
-                return ((NativeGCHostedOptionKey<?>) key).shouldPassToCpp();
-            }
-            return true;
         }
     }
 
@@ -402,8 +373,6 @@ public class NativeGCOptions {
         }
 
         public void putPrimitive(Object value) {
-            ensureCapacity(8);
-
             long rawLong = switch (value) {
                 case Boolean _ -> ((boolean) value) ? 1L : 0L;
                 case Byte _ -> ((byte) value) & 0xFFL;
@@ -415,6 +384,7 @@ public class NativeGCOptions {
                 default -> throw VMError.shouldNotReachHere("Unexpected type: " + value.getClass());
             };
 
+            ensureCapacity(Long.BYTES);
             buffer.putLong(rawLong);
         }
 

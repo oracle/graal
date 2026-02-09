@@ -92,11 +92,15 @@ public class ConfigurationTool {
             }
             commands.getOrDefault(command, unknownCommand).apply(argumentsIterator);
         } catch (ConfigurationUsageException e) {
+            // Checkstyle: allow System.err (agent class)
             System.err.println(e.getMessage() + System.lineSeparator() +
                             "Use 'native-image-utils help' for usage.");
+            // Checkstyle: disallow System.err
             System.exit(USAGE_ERROR_CODE);
         } catch (Throwable e) {
-            e.printStackTrace();
+            // Checkstyle: allow System.err (agent class)
+            e.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
             System.exit(INTERNAL_ERROR_CODE);
         }
     }

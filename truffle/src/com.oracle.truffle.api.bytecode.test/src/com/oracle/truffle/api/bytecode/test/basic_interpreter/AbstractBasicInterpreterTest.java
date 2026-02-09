@@ -135,6 +135,10 @@ public abstract class AbstractBasicInterpreterTest {
             return !hasRootScoping();
         }
 
+        public boolean hasInstructionRewriting() {
+            return interpreterClass() != BasicInterpreterBase.class;
+        }
+
         public boolean storesBciInFrame() {
             return interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class;
         }
@@ -563,7 +567,7 @@ public abstract class AbstractBasicInterpreterTest {
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }
-        Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+        Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
         try {
             return run.bytecode().deserialize(language, config, input, DESERIALIZER);
         } catch (IOException e) {

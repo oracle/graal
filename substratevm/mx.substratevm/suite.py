@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "7.67.0",
+    "mxversion": "7.68.4",
     "name": "substratevm",
     "version" : "25.1.0",
     "release" : False,
@@ -125,8 +125,8 @@ suite = {
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.macosx.x86_64"
                     },
                     "aarch64": {
-                        # GR-34811
-                        "optional": True,
+                        "digest": "sha512:c16b112ad4418e02336840fd3b87983a30dd1ddf24a45a6bac40d4ba5c471c2837c7556b014c06564aa389c094aba1030daea44181fb340eea1f352ffb111c2a",
+                        "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7-macosx-arm64.jar"],
                     },
                 },
                 "<others>": {
@@ -166,8 +166,8 @@ suite = {
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.macosx.x86_64"
                     },
                     "aarch64": {
-                        # GR-34811
-                        "optional": True,
+                        "digest": "sha512:7c8631137616f4a29d4a692a99673c551137b0ff2f251909a2ab6468484accbc8f1ccfa6ead2c30b0c425f824b37d68e0a350ac23882f9fcc75d9ed7dd4b08a6",
+                        "urls": ["{urlbase}/javacpp-shadowed-1.5.7-macosx-arm64.jar"],
                     },
                 },
                 "<others>": {
@@ -226,9 +226,11 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "sdk:NATIVEIMAGE_LIBGRAAL",
                 "compiler:GRAAL",
+                "compiler:VMACCESS",
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "jdk.internal.loader",
                     "jdk.internal.module",
                     "sun.reflect.annotation"
                 ],
@@ -246,10 +248,29 @@ suite = {
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             "jacoco" : "include",
+        },
 
-            # Direct reference to jdk.vm.ci.meta.annotation.Annotated
-            # causes spotbugs analysis to fail with "missing class" error.
-            "spotbugs": "false",
+        "com.oracle.svm.sdk": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "sdk:NATIVEIMAGE",
+                "sdk:NATIVEIMAGE_LIBGRAAL",
+                "compiler:GRAAL",
+                "compiler:VMACCESS",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                ]
+            },
+            "javaCompliance" : "21+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "jacoco" : "include",
         },
 
         "com.oracle.svm.common": {
@@ -271,7 +292,6 @@ suite = {
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             "jacoco" : "include",
-            "spotbugs": "false",
         },
 
         # Shade Cap'n Proto Runtime
@@ -279,7 +299,6 @@ suite = {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
-            "spotbugsIgnoresGenerated" : True,
             "shadedDependencies" : [
                 "CAPNPROTO_RUNTIME",
             ],
@@ -326,6 +345,7 @@ suite = {
                 "com.oracle.svm.common",
                 "com.oracle.objectfile",
                 "SVM_CONFIGURE",
+                "SVM_GUEST_STAGING",
                 "espresso-shared:ESPRESSO_SVM",
             ],
             "requires" : [
@@ -403,7 +423,6 @@ suite = {
                 ],
             },
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "checkstyleVersion" : "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -440,7 +459,6 @@ suite = {
             },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -466,7 +484,6 @@ suite = {
             },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -491,7 +508,6 @@ suite = {
             },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -516,7 +532,6 @@ suite = {
             },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -545,7 +560,6 @@ suite = {
             },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -582,7 +596,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -607,7 +620,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -616,6 +628,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.common",
+                "com.oracle.svm.sdk",
             ],
             "requires" : [
                 "jdk.internal.vm.ci"
@@ -639,10 +652,6 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "include",
-
-            # Direct reference to jdk.vm.ci.meta.annotation.Annotated
-            # causes spotbugs analysis to fail with "missing class" error.
-            "spotbugs": "false",
         },
 
         "com.oracle.graal.pointsto.standalone": {
@@ -670,7 +679,6 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
-            "spotbugs": "false"
         },
 
         "com.oracle.graal.pointsto.standalone.test": {
@@ -697,7 +705,6 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "javaCompliance" : "21+",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -720,7 +727,6 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "spotbugs": "false",
             "jacoco" : "exclude", # experimental code not used in production
         },
 
@@ -790,7 +796,6 @@ suite = {
                 ],
             },
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "checkstyleVersion": "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -840,12 +845,10 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             # disable coverage as long it cannot run on JDK latest [GR-59586]
             "jacoco" : "exclude",
-            # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
-            "spotbugs" : "false",
         },
 
         "com.oracle.svm.hosted.foreign": {
@@ -889,8 +892,6 @@ suite = {
             "workingSets": "SVM",
             # disable coverage as long it cannot run on JDK latest [GR-59586]
             "jacoco" : "exclude",
-            # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
-            "spotbugs" : "false",
         },
 
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
@@ -1085,7 +1086,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "24+",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1102,7 +1102,31 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "21+",
-            "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.libjvm": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "com.oracle.svm.core",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                ],
+            },
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "24+",
             "jacoco" : "exclude",
         },
 
@@ -1123,7 +1147,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "24+",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1148,6 +1171,9 @@ suite = {
                     "jdk.internal.misc",
                     "sun.security.jca",
                 ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta"
+                ]
             },
             "checkstyle": "com.oracle.svm.test",
             "checkstyleVersion" : "10.21.0",
@@ -1157,7 +1183,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "22+",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1182,7 +1207,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance": "21+",
-            "spotbugs": "false",
             "jacoco": "exclude",
             "testProject": True,
         },
@@ -1199,7 +1223,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance": "21+",
-            "spotbugs": "false",
             "jacoco": "exclude",
             "testProject": True,
         },
@@ -1218,7 +1241,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "21+",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1234,7 +1256,7 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
-],
+                ],
             },
             "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
@@ -1243,7 +1265,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "21+",
-            "spotbugs": "false",
             "testProject": True,
             "jacoco" : "exclude",
         },
@@ -1255,7 +1276,6 @@ suite = {
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance" : "21+",
             "workingSets" : "SVM",
-            "spotbugs" : "false",
             "jacoco" : "exclude",
         },
 
@@ -1287,7 +1307,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets" : "SVM",
-            "spotbugs" : "false",
             "jacoco" : "exclude",
         },
 
@@ -1315,7 +1334,6 @@ suite = {
             },
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1348,8 +1366,36 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "24+",
-            "spotbugs": "false",
             "testProject": True,
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.guest.staging": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "sdk:NATIVEIMAGE",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance" : "21+",
+            "workingSets": "SVM",
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.guest": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "sdk:NATIVEIMAGE",
+            ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc"
+                ],
+            },
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance" : "21+",
+            "workingSets": "SVM",
             "jacoco" : "exclude",
         },
 
@@ -1366,7 +1412,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1408,7 +1453,6 @@ suite = {
             },
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1433,7 +1477,6 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1452,7 +1495,6 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1471,7 +1513,6 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1500,7 +1541,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1527,7 +1567,6 @@ suite = {
             "annotationProcessors": [
             ],
             "javaCompliance" : "21+",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1546,7 +1585,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "24+",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1574,7 +1612,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "24+",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1599,7 +1636,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "24+",
-            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1627,7 +1663,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "jacoco" : "exclude",
             "graalCompilerSourceEdition": "ignore",
         },
@@ -1640,14 +1675,21 @@ suite = {
                 "com.oracle.graal.pointsto",
             ],
             "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc", # Unsafe
+                ],
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.interpreter",
             "javaCompliance": "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "substratevm:SVM_PROCESSOR",
+            ],
             "workingSets": "SVM",
             "jacoco": "exclude",
         },
@@ -1668,14 +1710,14 @@ suite = {
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.site",
                 ],
                 "java.base" : [
                     "jdk.internal.misc", # Unsafe
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyleVersion" : "10.21.0",
             "javaCompliance": "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "substratevm:SVM_PROCESSOR",
@@ -1697,9 +1739,8 @@ suite = {
                     "jdk.vm.ci.meta.annotation",
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.interpreter",
             "javaCompliance": "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "substratevm:SVM_PROCESSOR",
@@ -1725,9 +1766,8 @@ suite = {
                     "jdk.internal.misc", # Signal
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.interpreter",
             "javaCompliance": "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "substratevm:SVM_PROCESSOR",
             ],
@@ -1753,9 +1793,8 @@ suite = {
                     "jdk.internal.misc", # Signal
                 ],
             },
-            "checkstyle": "com.oracle.svm.hosted",
+            "checkstyle": "com.oracle.svm.interpreter",
             "javaCompliance": "24+",
-            "spotbugs": "false",  # SpotBugs does not support Java 24
             "annotationProcessors": [
                 "substratevm:SVM_PROCESSOR",
             ],
@@ -1802,6 +1841,8 @@ suite = {
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
                 "SVM_CONFIGURE",
+                "SVM_GUEST_STAGING",
+                "compiler:HOSTVMACCESS",
                 "espresso-shared:ESPRESSO_SVM",
             ],
             "moduleInfo" : {
@@ -1811,6 +1852,7 @@ suite = {
                     """* to org.graalvm.nativeimage.base,
                             jdk.graal.compiler,
                             org.graalvm.nativeimage.driver,
+                            org.graalvm.nativeimage.libjvm,
                             org.graalvm.nativeimage.librarysupport,
                             org.graalvm.nativeimage.junitsupport,
                             org.graalvm.nativeimage.llvm,
@@ -1851,11 +1893,13 @@ suite = {
                     "transitive org.graalvm.nativeimage.base",
                     "transitive org.graalvm.nativeimage.objectfile",
                     "transitive org.graalvm.nativeimage.pointsto",
+                    "transitive org.graalvm.nativeimage.guest.staging",
                     "org.graalvm.collections",
                     "org.graalvm.truffle.compiler",
                     "org.graalvm.nativeimage.configure",
                     "org.graalvm.nativeimage.libgraal",
                     "org.graalvm.espresso.shared.svm",
+                    "jdk.graal.compiler.vmaccess",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
@@ -1901,6 +1945,65 @@ suite = {
                         "sun.management",
                     ],
                 },
+            },
+            "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
+        },
+
+        "SVM_GUEST_STAGING": {
+            "subDir": "src",
+            "description" : "Transitional module that is loaded in the builder and the guest context",
+            "dependencies": [
+                "com.oracle.svm.guest.staging",
+            ],
+            "distDependencies": [
+                "sdk:NATIVEIMAGE",
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.guest.staging",
+                "exports" : [
+                    """* to org.graalvm.nativeimage.builder,
+                            org.graalvm.nativeimage.guest,
+                            org.graalvm.nativeimage.foreign,
+                            org.graalvm.truffle.runtime.svm""",
+                ],
+                "opens" : [],
+                "requires": [
+                    "transitive org.graalvm.nativeimage",
+                ],
+                "uses" : [
+                    "org.graalvm.nativeimage.Platform",
+                ],
+            },
+            "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
+        },
+
+        "SVM_GUEST": {
+            "subDir": "src",
+            "description" : "SubstrateVM image guest context components",
+            "dependencies": [
+                "com.oracle.svm.guest",
+            ],
+            "distDependencies": [
+                "sdk:NATIVEIMAGE",
+                "SVM_GUEST_STAGING",
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.guest",
+                "exports" : [],
+                "opens" : [],
+                "requires": [
+                    "transitive org.graalvm.nativeimage",
+                    "transitive org.graalvm.nativeimage.guest.staging",
+                ],
+                "uses" : [
+                    "org.graalvm.nativeimage.Platform",
+                ],
             },
             "noMavenJavadoc": True,
             "maven": {
@@ -1954,7 +2057,7 @@ suite = {
 
         "LIBRARY_SUPPORT": {
             "subDir": "src",
-            "description" : "SubstrateVM basic library-support components",
+            "description" : "Native Image feature-based support for important non-JDK libraries and languages (e.g. gson, Scala, Groovy)",
             "dependencies": [
                 "com.oracle.svm.polyglot",
                 "com.oracle.svm.thirdparty",
@@ -1999,6 +2102,7 @@ suite = {
                     "static com.oracle.mxtool.junit",
                     "static junit",
                     "static hamcrest",
+                    "org.graalvm.collections",
                 ]
             },
             "noMavenJavadoc": True,
@@ -2275,6 +2379,7 @@ suite = {
                     "com.oracle.svm.diagnosticsagent",
                 ],
                 "requires": [
+                  "org.graalvm.collections",
                   "org.graalvm.nativeimage.builder",
                 ],
             },
@@ -2310,15 +2415,39 @@ suite = {
             },
         },
 
+        "SVM_LIBJVM" : {
+            "subDir": "src",
+            "description" : "SubstrateVM based libjvm",
+            "dependencies": [
+                "com.oracle.svm.libjvm",
+            ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.libjvm",
+                "exports" : [
+                    "com.oracle.svm.libjvm.buildtime",
+                ],
+                "requires" : [
+                    "org.graalvm.nativeimage.builder",
+                ],
+            },
+            "maven": False,
+        },
+
         "NATIVE_IMAGE_BASE": {
             "subDir": "src",
             "description" : "Native Image base that can be shared by native image building and pointsto.",
             "dependencies": [
                 "com.oracle.svm.common",
                 "com.oracle.svm.util",
+                "com.oracle.svm.sdk",
             ],
             "distDependencies": [
                 "compiler:GRAAL",
+                "compiler:VMACCESS",
+                "compiler:HOSTVMACCESS",
                 "sdk:NATIVEIMAGE",
                 "sdk:NATIVEIMAGE_LIBGRAAL",
             ],
@@ -2338,6 +2467,7 @@ suite = {
                            org.graalvm.nativeimage.configure,
                            org.graalvm.nativeimage.librarysupport,
                            org.graalvm.nativeimage.driver,
+                           org.graalvm.nativeimage.libjvm,
                            org.graalvm.nativeimage.llvm,
                            org.graalvm.nativeimage.agent.jvmtibase,
                            org.graalvm.nativeimage.agent.tracing,
@@ -2364,11 +2494,14 @@ suite = {
                            org.graalvm.nativeimage.foreign,
                            org.graalvm.truffle.runtime.svm,
                            com.oracle.truffle.enterprise.svm""",
-                    """com.oracle.svm.common.hosted.layeredimage to org.graalvm.nativeimage.pointsto,
+                    """com.oracle.svm.sdk.staging.hosted.layeredimage to org.graalvm.nativeimage.pointsto,
                            org.graalvm.nativeimage.builder""",
-                    """com.oracle.svm.common.layeredimage to org.graalvm.nativeimage.pointsto,
+                    """com.oracle.svm.sdk.staging.layeredimage to org.graalvm.nativeimage.pointsto,
                            org.graalvm.nativeimage.builder""",
                 ],
+                "uses" : [
+                    "jdk.graal.compiler.vmaccess.VMAccess.Builder"
+                ]
             },
             "noMavenJavadoc": True,
             "maven": {
@@ -2378,7 +2511,7 @@ suite = {
 
         "POINTSTO": {
             "subDir": "src",
-            "description" : "SubstrateVM static analysis to find ahead-of-time the code",
+            "description" : "SubstrateVM static analysis to find reachable code for ahead-of-time compilation",
             "dependencies": [
                 "com.oracle.svm.util",
                 "com.oracle.graal.pointsto",
@@ -2415,6 +2548,7 @@ suite = {
                 "jdk.management",
                 "org.graalvm.collections",
                 "org.graalvm.nativeimage",
+                "jdk.graal.compiler.vmaccess",
               ],
               "requiresConcealed" : {
                 "java.management": [
@@ -2444,7 +2578,8 @@ suite = {
             "distDependencies": [
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
-                "POINTSTO"
+                "POINTSTO",
+                "compiler:HOSTVMACCESS"
             ],
             "exclude": [
             ],
@@ -2457,6 +2592,8 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
+                    "org.graalvm.collections",
+                    "jdk.graal.compiler.vmaccess",
                     "org.graalvm.nativeimage",
                 ],
                 "requiresConcealed" : {
@@ -2712,6 +2849,7 @@ suite = {
                 "com.oracle.svm.jdwp.server",
             ],
             "distDependencies": [
+                "sdk:COLLECTIONS",
                 "substratevm:SVM",
             ],
             "moduleInfo" : {

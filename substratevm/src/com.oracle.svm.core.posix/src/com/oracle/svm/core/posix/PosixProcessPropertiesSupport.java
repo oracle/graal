@@ -46,8 +46,7 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Unistd;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertiesSupport {
 

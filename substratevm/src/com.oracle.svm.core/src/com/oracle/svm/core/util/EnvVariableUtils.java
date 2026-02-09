@@ -25,8 +25,8 @@
 package com.oracle.svm.core.util;
 
 import com.oracle.svm.core.OS;
+import org.graalvm.collections.EconomicSet;
 
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -44,10 +44,10 @@ public class EnvVariableUtils {
                     "INCLUDE",
                     "LIB");
 
-    private static final Set<String> REQUIRED_ENV_VARIABLE_KEYS = getRequiredEnvVariableKeys();
+    private static final EconomicSet<String> REQUIRED_ENV_VARIABLE_KEYS = getRequiredEnvVariableKeys();
 
-    private static Set<String> getRequiredEnvVariableKeys() {
-        Set<String> requiredEnvVariableKeys = new HashSet<>(REQUIRED_ENV_VARIABLE_KEYS_COMMON);
+    private static EconomicSet<String> getRequiredEnvVariableKeys() {
+        EconomicSet<String> requiredEnvVariableKeys = EconomicSet.create(REQUIRED_ENV_VARIABLE_KEYS_COMMON);
         if (OS.WINDOWS.isCurrent()) {
             requiredEnvVariableKeys.addAll(REQUIRED_ENV_VARIABLE_KEYS_WINDOWS);
         }

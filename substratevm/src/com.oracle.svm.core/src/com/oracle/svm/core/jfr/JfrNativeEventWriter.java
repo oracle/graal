@@ -27,14 +27,13 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * A JFR event writer that does not allocate any objects in the Java heap. Can only be used from
@@ -95,7 +94,7 @@ public final class JfrNativeEventWriter {
 
     /**
      * See {@link #beginSmallEvent}.
-     * 
+     *
      * @return {@link JfrEventWriteStatus#Success} or {@link JfrEventWriteStatus#Failure}.
      */
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)

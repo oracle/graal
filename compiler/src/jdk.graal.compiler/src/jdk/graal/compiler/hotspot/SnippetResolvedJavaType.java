@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -173,12 +172,6 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
         // UnresolvedJavaTypes can't be resolved relative to SnippetResolvedJavatypes
         throw new NoClassDefFoundError();
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -365,21 +358,6 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
 
     @Override
     public boolean isCloneableWithAllocation() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
         throw new UnsupportedOperationException();
     }
 

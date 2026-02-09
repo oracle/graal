@@ -28,8 +28,6 @@ import java.io.IOException;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +39,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
@@ -54,6 +51,8 @@ import org.graalvm.webimage.api.JSString;
 import org.graalvm.webimage.api.JSSymbol;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
@@ -78,8 +77,8 @@ import com.oracle.svm.core.log.Loggers;
 import com.oracle.svm.core.log.NoopLog;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -97,7 +96,9 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.WebImageNonSnippetLowerings;
 import com.oracle.svm.hosted.webimage.wasm.WasmLogHandler;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 import com.oracle.svm.webimage.WebImageSystemPropertiesSupport;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.fs.FileSystemInitializer;
@@ -120,7 +121,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 @AutomaticallyRegisteredFeature
 @Platforms(WebImagePlatform.class)
 public class WebImageFeature implements InternalFeature {
@@ -150,8 +151,9 @@ public class WebImageFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        BigBang bigbang = accessImpl.getBigBang();
+        FeatureImpl.BeforeAnalysisAccessImpl a = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        AnalysisMetaAccess metaAccess = a.getMetaAccess();
+        BigBang bigbang = a.getBigBang();
 
         // For DynamicNewArrayLowerer
         bigbang.addRootField(DynamicHub.class, "companion");
@@ -165,30 +167,26 @@ public class WebImageFeature implements InternalFeature {
          * reachable through {@link com.oracle.svm.core.graal.snippets.CEntryPointSnippets}. We have
          * to make it reachable explicitly.
          */
-        Field codeStart = ReflectionUtil.lookupField(ImageCodeInfo.class, "codeStart");
-        access.registerAsAccessed(codeStart);
+        AnalysisField codeStart = (AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(metaAccess.lookupJavaType(ImageCodeInfo.class), "codeStart");
+        a.registerAsAccessed(codeStart, "Required for KnownOffsetFeature, registered in" + WebImageFeature.class);
 
         if (WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.JS) {
-
             // Ensure that the long emulation gets lowered.
-            for (Method m : Long64.class.getDeclaredMethods()) {
-                assert Modifier.isStatic(m.getModifiers()) : m;
-                accessImpl.registerAsRoot(m, true, "Long64 support, registered in " + WebImageFeature.class);
+            for (var m : metaAccess.lookupJavaType(Long64.class).getDeclaredMethods(false)) {
+                assert m.isStatic() : m;
+                a.registerAsRoot(m, true, "Long64 support, registered in " + WebImageFeature.class);
             }
         }
-
-        // SystemJimfsFileSystemProvider uses reflection to look up and call this method
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass("org.graalvm.shadowed.com.google.common.jimfs.JimfsFileSystem"), "toPath", URI.class));
 
         /*
          * The constructors of these classes are package-private to prevent user code from creating
          * objects. However, internal code needs to be able to create instances.
          */
         for (Class<?> clazz : new Class<?>[]{JSNumber.class, JSBigInt.class, JSSymbol.class, JSBoolean.class, JSObject.class, JSString.class}) {
-            RuntimeReflection.register(ReflectionUtil.lookupConstructor(clazz));
+            JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getDeclaredConstructor(metaAccess, clazz));
         }
 
-        LowerableResources.processResources(access, WebImageHostedConfiguration.get());
+        LowerableResources.processResources(a, WebImageHostedConfiguration.get());
 
         /*
          * Clear caches for Locale and BaseLocale.
@@ -200,10 +198,10 @@ public class WebImageFeature implements InternalFeature {
          * On JDK21, ReferencedKeySet and ReferencedKeyMap don't exist. We have to go through
          * reflection to access them because analysis tools like spotbugs still run on JDK21
          */
-        Field baseLocaleCacheField = accessImpl.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
-        Field localeCacheField = accessImpl.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
+        Field baseLocaleCacheField = a.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
+        Field localeCacheField = a.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
 
-        access.registerFieldValueTransformer(baseLocaleCacheField, (receiver, originalValue) -> {
+        a.registerFieldValueTransformer(baseLocaleCacheField, (receiver, originalValue) -> {
             /*
              * Executes `ReferencedKeySet.create(true,
              * ReferencedKeySet.concurrentHashMapSupplier())` with reflection.
@@ -214,7 +212,7 @@ public class WebImageFeature implements InternalFeature {
             return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
         });
 
-        access.registerFieldValueTransformer(localeCacheField, (receiver, originalValue) -> {
+        a.registerFieldValueTransformer(localeCacheField, (receiver, originalValue) -> {
             /*
              * Executes `ReferencedKeyMap.create(true,
              * ReferencedKeyMap.concurrentHashMapSupplier())` with reflection.

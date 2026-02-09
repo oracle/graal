@@ -32,6 +32,8 @@ import java.lang.annotation.Target;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.UnavailableAtRuntime;
+
 /**
  * Denotes behaviors associated with a singleton. Each singleton can have multiple
  * {@link SingletonTrait}s installed to describe different facets of its behavior. A given
@@ -76,7 +78,7 @@ public @interface SingletonTraits {
      * Special layered-specific behavior associated with this singleton.
      * {@link SingletonTraitKind#LAYERED_INSTALLATION_KIND} for more details.
      */
-    Class<? extends SingletonLayeredInstallationKindSupplier> layeredInstallationKind();
+    Class<? extends SingletonLayeredInstallationKindSupplier> layeredInstallationKind() default UnavailableAtRuntime.class;
 
     /**
      * Other {@link SingletonTraitsSupplier} classes used to create {@link SingletonTrait}s

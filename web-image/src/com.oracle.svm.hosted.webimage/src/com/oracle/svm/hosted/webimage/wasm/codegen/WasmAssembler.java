@@ -140,7 +140,7 @@ public abstract class WasmAssembler {
             printer.accept("Output for " + result.commandLine + ":");
             outLines.forEach(printer);
         }
-        UserError.guarantee(exitCode == 0, "%s failed with exit code: %s", result.executable.toString(), exitCode);
+        UserError.guarantee(exitCode == 0, "%s failed with exit code: %s", result.executable, exitCode);
 
     }
 

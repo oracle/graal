@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.core.meta;
 
-import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
@@ -40,6 +42,18 @@ public interface SharedMethod extends ResolvedJavaMethod {
     boolean isUninterruptible();
 
     boolean needSafepointCheck();
+
+    /**
+     * @return true if the stack overflow check in the method's prologue cannot be omitted.
+     */
+    default boolean needStackOverflowCheck() {
+        /*
+         * Uninterruptible methods are allowed to use the yellow and red zones of the stack. Also,
+         * the thread register and stack boundary might not be set up. We cannot do a stack overflow
+         * check.
+         */
+        return !isUninterruptible();
+    }
 
     /**
      * Returns true if this method is a native entry point, i.e., called from C code. The method
@@ -99,7 +113,9 @@ public interface SharedMethod extends ResolvedJavaMethod {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getImageCodeDeoptOffset();
 
-    /** Always call this method indirectly, even if it is normally called directly. */
+    /**
+     * Always call this method indirectly, even if it is normally called directly.
+     */
     boolean forceIndirectCall();
 
     /**
@@ -108,4 +124,24 @@ public interface SharedMethod extends ResolvedJavaMethod {
      */
     @Override
     boolean isDeclared();
+
+    /**
+     * Returns a function pointer to the method if it can be called directly without any dispatch.
+     * <p>
+     * This method should be overridden in implementations to provide raw access to the direct
+     * address of this method. This is solely reserved for types present during image building and
+     * should only be used at runtime for just-in-time compiled code calling into the image built
+     * method.
+     *
+     * @return an AOT compiled entry point of this method or {@code Word.nullPointer()} if no
+     *         compiled entry point is available.
+     */
+    CFunctionPointer getAOTEntrypoint();
+
+    /**
+     * Returns the interpreter method representation for this method at runtime.
+     *
+     * @return interpreter method for target method, or {@code null} if not applicable
+     */
+    ResolvedJavaMethod getInterpreterMethod();
 }

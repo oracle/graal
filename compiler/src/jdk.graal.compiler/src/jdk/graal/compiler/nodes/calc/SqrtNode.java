@@ -42,9 +42,9 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
- * Square root.
+ * Square root node.
  */
-@NodeInfo(cycles = CYCLES_16, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_16, size = SIZE_1, cyclesRationale = "The node cycle estimate is taken from Agner Fog's instruction tables (https://www.agner.org/optimize/instruction_tables.pdf).")
 public final class SqrtNode extends UnaryArithmeticNode<Sqrt> implements ArithmeticLIRLowerable {
 
     public static final NodeClass<SqrtNode> TYPE = NodeClass.create(SqrtNode.class);

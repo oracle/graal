@@ -45,6 +45,7 @@ import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -68,7 +69,7 @@ public class TStringBuilderAppendCharUTF16Test extends TStringTestBase {
     @Test
     public void testAll() throws Exception {
         forAllStrings(new TruffleString.Encoding[]{TruffleString.Encoding.UTF_16}, true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            TruffleStringBuilder sb = TruffleStringBuilder.create(encoding);
+            TruffleStringBuilderUTF16 sb = TruffleStringBuilder.createUTF16();
             for (int i = 0; i < array.length / 2; i++) {
                 node.execute(sb, (char) TStringTestUtil.readValue(array, 1, i));
             }

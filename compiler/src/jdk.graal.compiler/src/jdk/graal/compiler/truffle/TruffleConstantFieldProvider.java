@@ -32,8 +32,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Constant field provider used for Truffle partial evaluation.
- *
- * @see TruffleCachingConstantFieldProvider
  */
 final class TruffleConstantFieldProvider implements ConstantFieldProvider {
 

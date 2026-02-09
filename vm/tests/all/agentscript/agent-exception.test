@@ -59,8 +59,6 @@ good you are?
 .*at <js> log.log.js:1-6:.*
 .*at <js> areYouBad.log.js:26:.*
 .*at <js> :program.<eval_script>:1:0-10.
->[1] js --jvm --polyglot --insight=agent-error2.rb log.js
-insight: Unknown attribute misnamedAttribute
 >[1] js --jvm --insight=agent-error3.js log.js
 insight: Unknown event type 'enterOrLeave'.*
 >[7] js --jvm --insight=agent-error.js log.js

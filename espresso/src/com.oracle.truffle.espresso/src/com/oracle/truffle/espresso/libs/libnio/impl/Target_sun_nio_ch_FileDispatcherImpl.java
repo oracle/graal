@@ -22,23 +22,19 @@
  */
 package com.oracle.truffle.espresso.libs.libnio.impl;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
+
 import java.io.FileDescriptor;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso.ffi.Buffer;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
-import com.oracle.truffle.espresso.ffi.RawPointer;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.io.FDAccess;
 import com.oracle.truffle.espresso.io.Throw;
 import com.oracle.truffle.espresso.io.TruffleIO;
 import com.oracle.truffle.espresso.libs.libnio.LibNio;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -64,36 +60,40 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     @Substitution
     @Throws(IOException.class)
     @SuppressWarnings("unused")
+    @TruffleBoundary
     public static long map0(@JavaType(FileDescriptor.class) StaticObject fd, int prot, long position, long length, boolean isSync,
                     @Inject TruffleIO io,
                     @Inject EspressoContext ctx) {
-
+        // mmap syscall expects length to be > 0
+        if (length <= 0) {
+            throw Throw.throwIllegalArgumentException("length must be greater 0", ctx);
+        }
         if (prot == io.fileChannelImplSync.MAP_RW) {
             // We don't allow public writes since we don't actually map the file.
             throw Throw.throwUnsupported("mmap for public writes is not supported at the moment", ctx);
         }
-        @Buffer
-        TruffleObject buffer = ctx.getNativeAccess().allocateMemory(length);
-        long addr;
+        NativeMemory nativeMemory = ctx.getNativeAccess().nativeMemory();
+        long addr = 0;
         try {
-            addr = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
+            addr = nativeMemory.allocateMemory(length);
+        } catch (MemoryAllocationException e) {
+            throw Throw.throwIOException("An exception occurred while allocating memory:" + e, ctx);
         }
         long oldPosition = io.position(fd, FDAccess.forFileDescriptor());
         assert oldPosition >= 0;
         try {
-            // creates a byteBuffer that can hold up to length
-            ByteBuffer byteBuffer = NativeUtils.directByteBuffer(addr, length);
-            // adjust the position of the underlying Channel and read
             io.seek(fd, FDAccess.forFileDescriptor(), position);
-            // read until byteBuffer is full or we reach EOF.
+
             long read = 0;
             int nextRead;
             do {
-                nextRead = io.readBytes(fd, FDAccess.forFileDescriptor(), byteBuffer);
-                read += nextRead;
+                // Calculate how much we can read in this iteration (max Integer.MAX_VALUE)
+                int chunkSize = (int) Math.min(length - read, Integer.MAX_VALUE);
+                nextRead = io.readAddress(fd, FDAccess.forFileDescriptor(), addr + read, chunkSize);
+
+                if (nextRead > 0) {
+                    read += nextRead;
+                }
             } while (nextRead != io.ioStatusSync.EOF && read < length);
         } finally {
             // always reset the position
@@ -104,8 +104,12 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
 
     @Substitution
     @SuppressWarnings("unused")
-    public static int unmap0(long address, long length, @Inject NativeAccess nativeAccess) {
-        nativeAccess.freeMemory(RawPointer.create(address));
+    public static int unmap0(long address, long length, @Inject NativeAccess nativeAccess, @Inject Meta meta) {
+        try {
+            nativeAccess.nativeMemory().freeMemory(address);
+        } catch (IllegalMemoryAccessException e) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid memory access: address should refer to a value returned by allocate!");
+        }
         return 0;
     }
 
@@ -176,11 +180,15 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     public static int pread0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, long position,
                     @Inject TruffleIO io) {
         // Currently, this is not thread safe as we temporarily update the position of the file.
-        ByteBuffer dst = NativeUtils.directByteBuffer(address, len);
         long oldPos = io.position(fd, FDAccess.forFileDescriptor());
         try {
             io.seek(fd, FDAccess.forFileDescriptor(), position);
-            return io.readBytes(fd, FDAccess.forFileDescriptor(), dst);
+            /*
+             * This might not read the full requested length which is acceptable according to the
+             * documentation of the syscall pread. Additionally native method reads the memory in
+             * plain mode.
+             */
+            return io.readAddress(fd, FDAccess.forFileDescriptor(), address, len);
         } finally {
             io.seek(fd, FDAccess.forFileDescriptor(), oldPos);
         }

@@ -93,12 +93,12 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          */
         @SuppressWarnings("unused") private volatile Object isReachable;
         /**
-         * A boolean allowing to distinguish a constant that was persisted from a base layer and a
+         * A boolean allowing to distinguish a constant that was persisted from a shared layer and a
          * constant created in the current layer.
          */
-        private boolean isInBaseLayer;
+        private boolean isInSharedLayer;
         /**
-         * A boolean telling if the constant was written in the image heap of the base layer.
+         * A boolean telling if the constant was written in the image heap of the shared layer.
          */
         private boolean writtenInPreviousLayer;
         /**
@@ -149,6 +149,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return constantData;
     }
 
+    /** Only relevant for object data, as snapshotting doesn't happen eagerly there. */
     public void ensureReaderInstalled() {
         if (constantData.hostedValuesReader != null) {
             constantData.hostedValuesReader.ensureDone();
@@ -208,16 +209,16 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return constantData.identityHashCode;
     }
 
-    public void markInBaseLayer() {
-        constantData.isInBaseLayer = true;
+    public void markInSharedLayer() {
+        constantData.isInSharedLayer = true;
     }
 
-    public boolean isInBaseLayer() {
-        return constantData.isInBaseLayer;
+    public boolean isInSharedLayer() {
+        return constantData.isInSharedLayer;
     }
 
     public void markWrittenInPreviousLayer() {
-        AnalysisError.guarantee(isInBaseLayer(), "Constant must be in base layer to be marked as written in the base layer.");
+        AnalysisError.guarantee(isInSharedLayer(), "Constant must be in base layer to be marked as written in the base layer.");
         constantData.writtenInPreviousLayer = true;
     }
 

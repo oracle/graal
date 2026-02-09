@@ -28,18 +28,24 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
 import com.oracle.truffle.espresso.jni.RawBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public final class NativeMemberOffsetGetter implements MemberOffsetGetter {
     private final InteropLibrary library;
     private final TruffleObject memberInfoPtr;
     private final TruffleObject lookupMemberOffset;
+    private final NativeMemory nativeMemory;
 
-    public NativeMemberOffsetGetter(InteropLibrary library, TruffleObject memberInfoPtr, TruffleObject lookupMemberOffset) {
+    public NativeMemberOffsetGetter(InteropLibrary library, TruffleObject memberInfoPtr, TruffleObject lookupMemberOffset, NativeMemory nativeMemory) {
         this.library = library;
         this.memberInfoPtr = memberInfoPtr;
         this.lookupMemberOffset = lookupMemberOffset;
+        this.nativeMemory = nativeMemory;
     }
 
     @Override
@@ -53,10 +59,19 @@ public final class NativeMemberOffsetGetter implements MemberOffsetGetter {
     }
 
     private long lookupInfo(String str) {
-        try (RawBuffer memberBuffer = RawBuffer.getNativeString(str)) {
+        try (RawBuffer memberBuffer = RawBuffer.getNativeString(str, nativeMemory)) {
             return (long) library.execute(lookupMemberOffset, memberInfoPtr, memberBuffer.pointer());
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
+        } catch (MemoryAllocationException e) {
+            /*
+             * This should be very rare as the maximum allocation size would need to be exceeded by
+             * "str" or we would run out of memory. Thus, the expensive EspressoContext.get
+             * operation is reasonable.
+             */
+            EspressoContext context = EspressoContext.get(library);
+            Meta meta = context.getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage(), context);
         }
     }
 }

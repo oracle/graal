@@ -224,7 +224,7 @@ The schema includes the following keys:
 * `metadataProvider`: The absolute path to the JAR or directory that provides reachability metadata
 * `providesFor`: An array of classpath entries that receive metadata from this provider
 
-For the complete JSON schema specification, see the [_dynamic-access-metadata-v1.0.0.json_ file](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/dynamic-access-metadata-v1.0.0.json){:target="_blank"}.
+For the complete JSON schema specification, see the [_dynamic-access-metadata-schema-v1.0.0.json_ file](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/dynamic-access-metadata-schema-v1.0.0.json){:target="_blank"}.
 
 The Build Report uses this information to create a comprehensive view of metadata relationships and highlight potential coverage gaps.
 

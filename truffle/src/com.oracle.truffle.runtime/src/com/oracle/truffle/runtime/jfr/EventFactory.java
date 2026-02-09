@@ -54,6 +54,8 @@ public interface EventFactory {
 
     DeoptimizationEvent createDeoptimizationEvent();
 
+    ProfileResetEvent createProfileResetEvent();
+
     InvalidationEvent createInvalidationEvent();
 
     CompilationStatisticsEvent createCompilationStatisticsEvent();

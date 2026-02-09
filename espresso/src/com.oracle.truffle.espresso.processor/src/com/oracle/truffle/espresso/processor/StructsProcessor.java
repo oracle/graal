@@ -80,11 +80,13 @@ public class StructsProcessor extends AbstractProcessor {
     private static final String IMPORT_BYTEBUFFER = "java.nio.ByteBuffer";
     private static final String IMPORT_JNI_HANDLES = "com.oracle.truffle.espresso.jni.JNIHandles";
     private static final String IMPORT_RAW_POINTER = "com.oracle.truffle.espresso.ffi.RawPointer";
+    private static final String IMPORT_NATIVE_MEMORY = "com.oracle.truffle.espresso.ffi.memory.NativeMemory";
 
     // Classes
     private static final String TRUFFLE_OBJECT = "TruffleObject";
     private static final String INTEROP_LIBRARY = "InteropLibrary";
     private static final String JNI_HANDLES_CLASS = "JNIHandles";
+    private static final String NATIVE_MEMORY_CLASS = "NativeMemory";
     private static final String MEMBER_OFFSET_GETTER_CLASS = "MemberOffsetGetter";
     private static final String NATIVE_MEMBER_OFFSET_GETTER_CLASS = "NativeMemberOffsetGetter";
     private static final String JAVA_MEMBER_OFFSET_GETTER_CLASS = "JavaMemberOffsetGetter";
@@ -107,6 +109,7 @@ public class StructsProcessor extends AbstractProcessor {
     // Arguments
     private static final String VALUE = "valueToPut";
     private static final String JNI_HANDLES_ARG = "handles";
+    private static final String NATIVE_MEMORY_ARG = "nativeMemory";
     private static final String PTR = "pointer";
     private static final String MEMBER_OFFSET_GETTER_ARG = "offsetGetter";
     private static final String MEMBER_INFO_PTR = "memberInfoPtr";
@@ -257,7 +260,7 @@ public class StructsProcessor extends AbstractProcessor {
                         .inPackage(STRUCTS_PACKAGE) //
                         .withImportGroup(Collections.singletonList(IMPORT_BYTEBUFFER)) //
                         .withImportGroup(Collections.singletonList(IMPORT_TRUFFLE_OBJECT)) //
-                        .withImportGroup(Arrays.asList(IMPORT_STATIC_OBJECT, IMPORT_JNI_HANDLES, IMPORT_RAW_POINTER));
+                        .withImportGroup(Arrays.asList(IMPORT_STATIC_OBJECT, IMPORT_JNI_HANDLES, IMPORT_NATIVE_MEMORY, IMPORT_RAW_POINTER));
 
         String wrapperName = className + WRAPPER;
 
@@ -324,8 +327,8 @@ public class StructsProcessor extends AbstractProcessor {
 
         MethodBuilder wrapperConstructor = new MethodBuilder(wrapperName) //
                         .asConstructor() //
-                        .withParams(argument(JNI_HANDLES_CLASS, JNI_HANDLES_ARG), argument(TRUFFLE_OBJECT, PTR)) //
-                        .addBodyLine(call(null, "super", new String[]{JNI_HANDLES_ARG, PTR, STRUCT_SIZE}), ';');
+                        .withParams(argument(JNI_HANDLES_CLASS, JNI_HANDLES_ARG), argument(NATIVE_MEMORY_CLASS, NATIVE_MEMORY_ARG), argument(TRUFFLE_OBJECT, PTR)) //
+                        .addBodyLine(call(null, "super", new String[]{JNI_HANDLES_ARG, NATIVE_MEMORY_ARG, PTR, STRUCT_SIZE}), ';');
         wrapper.withMethod(wrapperConstructor);
 
         for (int i = 0; i < length; i++) {
@@ -361,8 +364,8 @@ public class StructsProcessor extends AbstractProcessor {
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic()) //
                         .withReturnType(wrapperClass) //
-                        .withParams(argument(JNI_HANDLES_CLASS, JNI_HANDLES_ARG), argument(TRUFFLE_OBJECT, PTR)) //
-                        .addBodyLine("return new ", call(null, wrapperClass, new String[]{JNI_HANDLES_ARG, PTR}), ';');
+                        .withParams(argument(JNI_HANDLES_CLASS, JNI_HANDLES_ARG), argument(NATIVE_MEMORY_CLASS, NATIVE_MEMORY_ARG), argument(TRUFFLE_OBJECT, PTR)) //
+                        .addBodyLine("return new ", call(null, wrapperClass, new String[]{JNI_HANDLES_ARG, NATIVE_MEMORY_ARG, PTR}), ';');
         struct.withMethod(wrapMethod);
     }
 
@@ -371,7 +374,7 @@ public class StructsProcessor extends AbstractProcessor {
                         .withCopyright() //
                         .inPackage(STRUCTS_PACKAGE) //
                         .withImportGroup(Arrays.asList(IMPORT_INTEROP_LIBRARY, IMPORT_TRUFFLE_OBJECT)) //
-                        .withImportGroup(Collections.singletonList(IMPORT_JNI_HANDLES));
+                        .withImportGroup(Arrays.asList(IMPORT_JNI_HANDLES, IMPORT_NATIVE_MEMORY));
 
         ClassBuilder structCollector = new ClassBuilder(STRUCTS_CLASS) //
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal());
@@ -393,10 +396,11 @@ public class StructsProcessor extends AbstractProcessor {
         MethodBuilder constructor = new MethodBuilder(STRUCTS_CLASS) //
                         .asConstructor() //
                         .withModifiers(new ModifierBuilder().asPublic()) //
-                        .withParams(argument(JNI_HANDLES_CLASS, JNI_HANDLES_ARG), argument(TRUFFLE_OBJECT, MEMBER_INFO_PTR), argument(TRUFFLE_OBJECT, LOOKUP_MEMBER_OFFSET)) //
+                        .withParams(argument(JNI_HANDLES_CLASS, JNI_HANDLES_ARG), argument(NATIVE_MEMORY_CLASS, NATIVE_MEMORY_ARG), argument(TRUFFLE_OBJECT, MEMBER_INFO_PTR),
+                                        argument(TRUFFLE_OBJECT, LOOKUP_MEMBER_OFFSET)) //
                         .addBodyLine(INTEROP_LIBRARY, ' ', assignment(LIBRARY, call(INTEROP_LIBRARY, GET_UNCACHED, EMPTY_ARGS))) //
                         .addBodyLine(MEMBER_OFFSET_GETTER_CLASS, ' ', assignment(MEMBER_OFFSET_GETTER_ARG,
-                                        "new " + call(null, NATIVE_MEMBER_OFFSET_GETTER_CLASS, new String[]{LIBRARY, MEMBER_INFO_PTR, LOOKUP_MEMBER_OFFSET})));
+                                        "new " + call(null, NATIVE_MEMBER_OFFSET_GETTER_CLASS, new String[]{LIBRARY, MEMBER_INFO_PTR, LOOKUP_MEMBER_OFFSET, NATIVE_MEMORY_ARG})));
 
         generateOptionalMemberInfo(constructor, structs);
 
@@ -412,7 +416,7 @@ public class StructsProcessor extends AbstractProcessor {
             constructor.addBodyLine(assignment(decapitalize(MEMBER_INFO), "new " + call(null, MEMBER_INFO, new String[]{MEMBER_OFFSET_GETTER_ARG})));
             structs.remove(MEMBER_INFO);
             constructor.addBodyLine(assignment(MEMBER_OFFSET_GETTER_ARG, "new " + call(null, JAVA_MEMBER_OFFSET_GETTER_CLASS,
-                            new String[]{JNI_HANDLES_ARG, MEMBER_INFO_PTR, "this"})));
+                            new String[]{JNI_HANDLES_ARG, NATIVE_MEMORY_ARG, MEMBER_INFO_PTR, "this"})));
         }
     }
 

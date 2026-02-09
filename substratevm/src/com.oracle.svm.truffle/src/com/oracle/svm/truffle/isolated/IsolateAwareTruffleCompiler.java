@@ -35,7 +35,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -64,10 +66,9 @@ import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.TruffleCompilation;
 import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
 import jdk.graal.compiler.truffle.phases.TruffleTier;
-import jdk.graal.compiler.word.Word;
 
 public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
-    private static final Word ISOLATE_INITIALIZING = Word.signed(-1);
+    private static final ComparableWord ISOLATE_INITIALIZING = Word.signed(-1);
 
     private final UninterruptibleUtils.AtomicWord<Isolate> sharedIsolate = new UninterruptibleUtils.AtomicWord<>();
 

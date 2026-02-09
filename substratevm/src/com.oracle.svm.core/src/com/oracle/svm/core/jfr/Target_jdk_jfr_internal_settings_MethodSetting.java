@@ -39,6 +39,9 @@ import jdk.jfr.internal.settings.MethodSetting;
 public final class Target_jdk_jfr_internal_settings_MethodSetting {
     @Substitute
     private void apply(PlatformEventType eventType, List<String> filters) {
+        if (!HasJfrSupport.get()) {
+            return;
+        }
         SubstrateJVM.getLogging().logJfrSettingWarning("Method timing and tracing is not supported yet.");
     }
 }

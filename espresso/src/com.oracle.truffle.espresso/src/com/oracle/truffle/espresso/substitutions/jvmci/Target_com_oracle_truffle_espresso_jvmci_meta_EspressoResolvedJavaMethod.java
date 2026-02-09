@@ -52,7 +52,8 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jvmci.JVMCIIndyData;
+import com.oracle.truffle.espresso.impl.jvmci.JVMCIIndyData;
+import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -373,17 +374,13 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
     }
 
     @Substitution(hasReceiver = true)
-    public static int getVtableIndexForInterfaceMethod(StaticObject self, @JavaType(internalName = "Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedInstanceType;") StaticObject resolved,
+    public static int getVtableIndexForInterfaceMethod0(StaticObject self, @JavaType(internalName = "Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedInstanceType;") StaticObject resolved,
                     @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
         ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(resolved);
-        Method found = klass.itableLookupOrNull(method.getDeclaringKlass(), method.getITableIndex());
-        if (found != null && !found.getDeclaringKlass().isInterface()) {
-            return found.getVTableIndex();
-        }
-        return -1;
+        return JVMCIUtils.getVtableIndexForInterfaceMethod(method, klass);
     }
 
     @Substitution(hasReceiver = true)
@@ -400,22 +397,6 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
         Meta meta = context.getMeta();
         Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
         return method.getAttribute(Names.RuntimeVisibleAnnotations) != null;
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean hasParameterAnnotations(StaticObject self, @Inject EspressoContext context) {
-        assert context.getLanguage().isInternalJVMCIEnabled();
-        Meta meta = context.getMeta();
-        Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
-        return method.getAttribute(Names.RuntimeVisibleParameterAnnotations) != null;
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean hasDefaultAnnotations(StaticObject self, @Inject EspressoContext context) {
-        assert context.getLanguage().isInternalJVMCIEnabled();
-        Meta meta = context.getMeta();
-        Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
-        return method.getAttribute(Names.AnnotationDefault) != null;
     }
 
     @Substitution(hasReceiver = true)

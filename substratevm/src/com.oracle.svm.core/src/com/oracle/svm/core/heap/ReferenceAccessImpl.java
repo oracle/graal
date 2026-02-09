@@ -29,18 +29,23 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.BarrieredAccess;
+import org.graalvm.word.impl.ObjectAccess;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 public class ReferenceAccessImpl implements ReferenceAccess {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -52,7 +57,7 @@ public class ReferenceAccessImpl implements ReferenceAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Word readObjectAsUntrackedPointer(Pointer p, boolean compressed) {
         Object obj = readObjectAt(p, compressed);
-        return Word.objectToUntrackedPointer(obj);
+        return Word.objectToUntrackedWord(obj);
     }
 
     @Override

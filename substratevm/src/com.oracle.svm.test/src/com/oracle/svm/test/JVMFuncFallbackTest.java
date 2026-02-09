@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.test;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 import org.junit.Test;
 
 // Checkstyle: stop

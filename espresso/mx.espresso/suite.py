@@ -143,6 +143,19 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
+        "com.oracle.truffle.espresso.memory.panama": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso",
+                "truffle:TRUFFLE_API",
+            ],
+            "javaCompliance": "22+",
+            # GR-47124 spotbugs does not support jdk22
+            "spotbugs": "false",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         "com.oracle.truffle.espresso.hotswap": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -181,6 +194,7 @@ suite = {
             ],
             "uses": [
                 "com.oracle.truffle.espresso.ffi.NativeAccess.Provider",
+                "com.oracle.truffle.espresso.ffi.memory.NativeMemory.Provider",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "jacoco" : "include",
@@ -267,6 +281,7 @@ suite = {
                     "jdk.vm.ci.common",
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
+                    "jdk.vm.ci.riscv64",
                     "jdk.vm.ci.runtime",
                 ],
             },
@@ -553,6 +568,7 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso",
+                "com.oracle.truffle.espresso.memory.panama",
             ],
             "distDependencies": [
                 "truffle:TRUFFLE_API",
@@ -1012,13 +1028,14 @@ suite = {
             "moduleInfo": {
                 "name": "jdk.internal.vm.ci.espresso",
                 "exports": [
-                    "com.oracle.truffle.espresso.jvmci,com.oracle.truffle.espresso.jvmci.meta to jdk.graal.compiler.espresso",
-                ]
+                    "com.oracle.truffle.espresso.jvmci,com.oracle.truffle.espresso.jvmci.meta to jdk.graal.compiler.espresso,jdk.graal.compiler.espresso.vmaccess",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.espresso.jvmci",
             ],
             "description": "JVMCI implementation for Espresso",
+            "useModulePath": True,
             "maven": False,
         },
 

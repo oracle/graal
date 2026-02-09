@@ -28,6 +28,9 @@ import java.lang.reflect.Member;
 import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -39,6 +42,7 @@ import jdk.vm.ci.meta.Signature;
  * to the Java name before generating the digest.
  */
 @AutomaticallyRegisteredImageSingleton(value = UniqueShortNameProvider.class, onlyWith = UniqueShortNameProviderDefaultImpl.UseDefault.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvider {
     @Override
     public String uniqueShortName(ClassLoader loader, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {

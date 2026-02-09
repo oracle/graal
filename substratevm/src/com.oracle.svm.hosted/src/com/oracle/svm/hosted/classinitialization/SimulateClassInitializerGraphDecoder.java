@@ -103,7 +103,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * The graph decoder that performs the partial evaluation of a single class initializer and all
  * methods invoked by that class initializer.
- * 
+ *
  * See {@link SimulateClassInitializerSupport} for an overview of class initializer simulation.
  */
 public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGraphDecoder {
@@ -361,7 +361,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         }
 
         /* All checks passed, we can now copy array elements. */
-        if (source == dest && sourcePos < destPos) {
+        if (source.equals(dest) && sourcePos < destPos) {
             /* Must copy backwards to avoid losing elements. */
             for (int i = length - 1; i >= 0; i--) {
                 dest.setElement(destPos + i, (JavaConstant) source.getElement(sourcePos + i));
@@ -421,7 +421,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             /*
              * Objects allocated within the class initializer are similar to escape analyzed
              * objects, so we can eliminate such synchronization.
-             * 
+             *
              * Note that we cannot eliminate all synchronization in general: an object that was
              * present before class initialization started could be permanently locked by another
              * thread, in which case the class initializer must never complete. We cannot detect

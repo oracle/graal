@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+OpenIDE-Module: at.ssw.visualizer.dataflow.graph
+OpenIDE-Module-Localizing-Bundle: at/ssw/visualizer/dataflow/graph/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.0
+

@@ -41,6 +41,7 @@ import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
@@ -48,6 +49,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -174,8 +176,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         assert type != null;
 
         try (var _ = ClassLoading.allowArbitraryClassLoading(allowArbitraryClassLoading)) {
-            InterpreterResolvedObjectType result = resolveObjectType(type, accessingKlass);
-            return result;
+            return resolveObjectType(type, accessingKlass);
         } catch (LinkageError e) {
             // Comment from Hotspot:
             // Just throw the exception and don't prevent these classes from being loaded for
@@ -339,5 +340,35 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             // GR-62339 check access
             return clazz;
         }
+    }
+
+    @Override
+    public JavaType lookupReferencedType(int cpi, int opcode) {
+        int declaringClassCPI = -1;
+        switch (opcode) {
+            case Bytecodes.CHECKCAST:
+            case Bytecodes.INSTANCEOF:
+            case Bytecodes.NEW:
+            case Bytecodes.ANEWARRAY:
+            case Bytecodes.MULTIANEWARRAY:
+            case Bytecodes.LDC:
+            case Bytecodes.LDC_W:
+            case Bytecodes.LDC2_W:
+                declaringClassCPI = cpi;
+                break;
+            case Bytecodes.GETSTATIC:
+            case Bytecodes.PUTSTATIC:
+            case Bytecodes.GETFIELD:
+            case Bytecodes.PUTFIELD:
+            case Bytecodes.INVOKEVIRTUAL:
+            case Bytecodes.INVOKESPECIAL:
+            case Bytecodes.INVOKESTATIC:
+            case Bytecodes.INVOKEINTERFACE:
+                declaringClassCPI = memberClassIndex(cpi);
+                break;
+            default:
+                throw VMError.shouldNotReachHere("Unexpected opcode: " + opcode); // ExcludeFromJacocoGeneratedReport
+        }
+        return findClassAt(declaringClassCPI);
     }
 }

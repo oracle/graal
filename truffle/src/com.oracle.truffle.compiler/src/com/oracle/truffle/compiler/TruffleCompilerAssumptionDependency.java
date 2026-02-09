@@ -68,6 +68,8 @@ public final class TruffleCompilerAssumptionDependency implements OptimizedAssum
         boolean wasActive = false;
         InstalledCode code = getInstalledCode();
         if (code != null && code.isAlive()) {
+            // No need to set deoptimize or invalidation reason here because the defaults, 'true'
+            // and 'JVMCI_INVALIDATE' are the appropriate.
             code.invalidate();
             wasActive = true;
         } else {

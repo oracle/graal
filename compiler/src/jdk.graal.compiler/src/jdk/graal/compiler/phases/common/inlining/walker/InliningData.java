@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.MegamorphicInliningMin
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 
@@ -69,6 +70,7 @@ import jdk.graal.compiler.phases.common.inlining.info.TypeGuardInlineInfo;
 import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import jdk.graal.compiler.phases.common.inlining.info.elem.InlineableGraph;
 import jdk.graal.compiler.phases.common.inlining.policy.InliningPolicy;
+import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -161,7 +163,7 @@ public class InliningData {
         } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue(options)) {
             return "it exceeds the maximum recursive inlining depth";
         } else {
-            if (new OptimisticOptimizations(rootGraph.getProfilingInfo(method), options).lessOptimisticThan(context.getOptimisticOptimizations())) {
+            if (new OptimisticOptimizations(rootGraph.getProfilingInfo(invoke.asNode().graph().getCallerContext(), method), options).lessOptimisticThan(context.getOptimisticOptimizations())) {
                 return "the callee uses less optimistic optimizations than caller";
             } else {
                 return null;
@@ -437,12 +439,24 @@ public class InliningData {
 
                 Graph.Mark markBeforeCanonicalization = callerGraph.getMark();
 
-                canonicalizer.applyIncremental(callerGraph, context, canonicalizedNodes);
+                EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED));
+                try (Graph.NodeEventScope events = callerGraph.trackNodeEvents(listener)) {
+                    canonicalizer.applyIncremental(callerGraph, context, canonicalizedNodes);
+                }
 
                 // process invokes that are possibly created during canonicalization
                 for (Node newNode : callerGraph.getNewNodes(markBeforeCanonicalization)) {
                     if (newNode instanceof Invoke) {
                         callerCallsiteHolder.pushInvoke((Invoke) newNode);
+                    }
+                }
+                /*
+                 * Also process invokes whose call target was specialized during canonicalization
+                 * (see MethodCallTargetNode.trySimplifyToSpecial).
+                 */
+                for (Node changedNode : listener.getNodes()) {
+                    if (changedNode instanceof Invoke changedInvoke) {
+                        callerCallsiteHolder.pushInvoke(changedInvoke);
                     }
                 }
 

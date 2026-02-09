@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,9 @@
 package org.graalvm.word;
 
 /**
- * The root of the interface hierarchy for machine-word-sized values.
+ * The root of the interface hierarchy for machine-word-sized values. Word values must only be
+ * compared with {@code ==} in code guaranteed not to be using boxed word values. In all other code,
+ * use {@code w1.rawValue() == w2.rawValue()} or {@link ComparableWord#equal(ComparableWord)}.
  *
  * @since 19.0
  */
@@ -55,9 +57,8 @@ public interface WordBase {
     long rawValue();
 
     /**
-     * This is deprecated because of the easy to mistype name collision between {@link #equals} and
-     * the other word based equality routines. In general you should never be statically calling
-     * this method anyway.
+     * This is deprecated because of the easy to mistype name collision between {@code equals} and
+     * the other word based equality routines. In general, never statically call this method.
      *
      * @since 19.0
      */

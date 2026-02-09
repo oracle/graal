@@ -26,6 +26,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EDETACHED;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_ERR;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_EVERSION;
@@ -97,8 +98,6 @@ import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
-import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
@@ -561,7 +560,7 @@ public final class VM extends NativeEnv {
                 }
             }
         }
-        if (meta.getLanguage().isContinuumEnabled()) {
+        if (language.canSetCustomIdentityHashCode()) {
             return Target_org_graalvm_continuations_IdentityHashCodes.getIHashCode(object, meta, language);
         }
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(object));
@@ -1116,38 +1115,10 @@ public final class VM extends NativeEnv {
             return meta.java_lang_Class.allocateReferenceArray(0);
         }
         ObjectKlass instanceKlass = (ObjectKlass) klass;
-        InnerClassesAttribute innerClasses = instanceKlass.getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
-
-        if (innerClasses == null || innerClasses.entryCount() == 0) {
+        List<Klass> innerKlasses = instanceKlass.getDeclaredClasses();
+        if (innerKlasses.isEmpty()) {
             return meta.java_lang_Class.allocateReferenceArray(0);
         }
-
-        RuntimeConstantPool pool = instanceKlass.getConstantPool();
-        List<Klass> innerKlasses = new ArrayList<>();
-
-        for (int i = 0; i < innerClasses.entryCount(); i++) {
-            InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
-            if (entry.innerClassIndex != 0 && entry.outerClassIndex != 0) {
-                // Check to see if the name matches the class we're looking for
-                // before attempting to find the class.
-                Symbol<Name> outerDescriptor = pool.className(entry.outerClassIndex);
-
-                // Check descriptors/names before resolving.
-                if (outerDescriptor.equals(instanceKlass.getName())) {
-                    Klass outerKlass = pool.resolvedKlassAt(instanceKlass, entry.outerClassIndex);
-                    if (outerKlass == instanceKlass) {
-                        Klass innerKlass = pool.resolvedKlassAt(instanceKlass, entry.innerClassIndex);
-                        // HotSpot:
-                        // Throws an exception if outer klass has not declared k as
-                        // an inner klass
-                        // Reflection::check_for_inner_class(k, inner_klass, true, CHECK_NULL);
-                        // TODO(peterssen): The check in HotSpot is redundant.
-                        innerKlasses.add(innerKlass);
-                    }
-                }
-            }
-        }
-
         return meta.java_lang_Class.allocateReferenceArray(innerKlasses.size(), new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int index) {
@@ -1156,55 +1127,19 @@ public final class VM extends NativeEnv {
         });
     }
 
-    /**
-     * Return the enclosing class; or null for: primitives, arrays, anonymous classes (declared
-     * inside methods).
-     */
-    private static Klass computeEnclosingClass(ObjectKlass klass) {
-        InnerClassesAttribute innerClasses = klass.getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
-        if (innerClasses == null) {
-            return null;
-        }
-        RuntimeConstantPool pool = klass.getConstantPool();
-
-        // TODO(peterssen): Follow HotSpot implementation described below.
-        // Throws an exception if outer klass has not declared k as an inner klass
-        // We need evidence that each klass knows about the other, or else
-        // the system could allow a spoof of an inner class to gain access rights.
-        for (int i = 0; i < innerClasses.entryCount(); i++) {
-            InnerClassesAttribute.Entry entry = innerClasses.entryAt(i);
-            if (entry.innerClassIndex != 0) {
-                Symbol<Name> innerDescriptor = pool.className(entry.innerClassIndex);
-                // Check decriptors/names before resolving.
-                if (innerDescriptor.equals(klass.getName())) {
-                    Klass innerKlass = pool.resolvedKlassAt(klass, entry.innerClassIndex);
-                    if (innerKlass == klass) {
-                        if (entry.outerClassIndex != 0) {
-                            return pool.resolvedKlassAt(klass, entry.outerClassIndex);
-                        } else {
-                            return null;
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
     @VmImpl(isJni = true)
     public @JavaType(Class.class) StaticObject JVM_GetDeclaringClass(@JavaType(Class.class) StaticObject self) {
         // Primitives and arrays are not "enclosed".
         if (!(self.getMirrorKlass(getMeta()) instanceof ObjectKlass k)) {
             return StaticObject.NULL;
         }
-        Klass outerKlass = computeEnclosingClass(k);
+        Klass outerKlass = k.getDeclaringClass();
         if (outerKlass == null) {
             return StaticObject.NULL;
         }
         return outerKlass.mirror();
     }
 
-    @SuppressWarnings("unchecked")
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_GetSimpleBinaryName(@JavaType(Class.class) StaticObject self) {
         Klass k = self.getMirrorKlass(getMeta());
@@ -1212,27 +1147,7 @@ public final class VM extends NativeEnv {
             return StaticObject.NULL;
         }
         ObjectKlass klass = (ObjectKlass) k;
-        RuntimeConstantPool pool = klass.getConstantPool();
-        InnerClassesAttribute inner = klass.getInnerClasses();
-        if (inner == null) {
-            return StaticObject.NULL;
-        }
-        for (int i = 0; i < inner.entryCount(); i++) {
-            InnerClassesAttribute.Entry entry = inner.entryAt(i);
-            int innerClassIndex = entry.innerClassIndex;
-            if (innerClassIndex != 0) {
-                if (pool.className(innerClassIndex) == klass.getName() && pool.resolvedKlassAt(klass, innerClassIndex) == k) {
-                    if (entry.innerNameIndex == 0) {
-                        break;
-                    } else {
-                        // Cast is safe-ish
-                        Symbol<Name> innerName = (Symbol<Name>) pool.utf8At(entry.innerNameIndex, "inner class name");
-                        return getMeta().toGuestString(innerName);
-                    }
-                }
-            }
-        }
-        return StaticObject.NULL;
+        return getMeta().toGuestString(klass.getSimpleBinaryName());
     }
 
     @VmImpl(isJni = true)
@@ -1240,7 +1155,7 @@ public final class VM extends NativeEnv {
         if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass klass) {
             SignatureAttribute signature = klass.getAttribute(Names.Signature, SignatureAttribute.class);
             if (signature != null) {
-                String sig = klass.getConstantPool().utf8At(signature.getSignatureIndex()).toString();
+                String sig = getUtf8At(signature.getSignatureIndex(), klass.getConstantPool()).toString();
                 return getMeta().toGuestString(sig);
             }
         }
@@ -1297,30 +1212,19 @@ public final class VM extends NativeEnv {
         Meta meta = getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass klass) {
-            EnclosingMethodAttribute enclosingMethodAttr = klass.getEnclosingMethod();
-            if (enclosingMethodAttr == null) {
-                return StaticObject.NULL;
-            }
-            int classIndex = enclosingMethodAttr.getClassIndex();
-            if (classIndex == 0) {
+            ObjectKlass.EnclosingMethodInfo enclosingMethodInfo = klass.getEnclosingMethodInfo();
+            if (enclosingMethodInfo == null) {
                 return StaticObject.NULL;
             }
             StaticObject arr = meta.java_lang_Object.allocateReferenceArray(3);
-            RuntimeConstantPool pool = klass.getConstantPool();
-            Klass enclosingKlass = pool.resolvedKlassAt(klass, classIndex);
-
-            vm.setArrayObject(language, enclosingKlass.mirror(), 0, arr);
-
-            // Not a method, but a NameAndType entry.
-            int nameAndTypeIndex = enclosingMethodAttr.getNameAndTypeIndex();
-            if (nameAndTypeIndex != 0) {
-                StaticObject name = meta.toGuestString(pool.nameAndTypeName(nameAndTypeIndex));
-                StaticObject desc = meta.toGuestString(pool.nameAndTypeDescriptor(nameAndTypeIndex));
+            vm.setArrayObject(language, enclosingMethodInfo.enclosingClass().mirror(), 0, arr);
+            if (!enclosingMethodInfo.isPartial()) {
+                StaticObject name = meta.toGuestString(enclosingMethodInfo.name());
+                StaticObject desc = meta.toGuestString(enclosingMethodInfo.descriptor());
 
                 vm.setArrayObject(language, name, 1, arr);
                 vm.setArrayObject(language, desc, 2, arr);
             }
-
             return arr;
         }
         return StaticObject.NULL;
@@ -1435,7 +1339,7 @@ public final class VM extends NativeEnv {
         }
         /*
          * From HotSpot:
-         * 
+         *
          * Return the current class's class file version. The low order 16 bits of the returned jint
          * contain the class's major version. The high order 16 bits contain the class's minor
          * version.
@@ -1540,10 +1444,15 @@ public final class VM extends NativeEnv {
         if (InteropLibrary.getUncached().isNull(argsPtr)) {
             getLogger().fine("AttachCurrentThread with null args");
         } else {
-            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(getHandles(), argsPtr);
+            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(getHandles(), getNativeAccess().nativeMemory(), argsPtr);
             if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
                 group = attachArgs.group();
-                name = NativeUtils.fromUTF8Ptr(attachArgs.name());
+                try {
+                    name = NativeUtils.interopPointerToString(attachArgs.name(), getNativeAccess().nativeMemory());
+                } catch (IllegalMemoryAccessException e) {
+                    getLogger().warning("attachArgs does not point to a valid memory region: " + e);
+                    return JNI_ERR;
+                }
             } else {
                 getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", attachArgs.version()));
             }
@@ -1552,7 +1461,12 @@ public final class VM extends NativeEnv {
         if (daemon) {
             getContext().getThreadAccess().setDaemon(thread, true);
         }
-        NativeUtils.writeToPointerPointer(getUncached(), penvPtr, jniEnv.getNativePointer());
+        try {
+            NativeUtils.writeToPointerPointer(getUncached(), penvPtr, jniEnv.getNativePointer(), getNativeAccess().nativeMemory());
+        } catch (IllegalMemoryAccessException e) {
+            getLogger().warning("penvPtr does not point to a valid memory region: " + e);
+            return JNI_ERR;
+        }
         return JNI_OK;
     }
 
@@ -1672,7 +1586,12 @@ public final class VM extends NativeEnv {
             interopPtr = jniEnv.getNativePointer();
         }
         if (interopPtr != null) {
-            NativeUtils.writeToPointerPointer(getUncached(), envPtr, interopPtr);
+            try {
+                NativeUtils.writeToPointerPointer(getUncached(), envPtr, interopPtr, getNativeAccess().nativeMemory());
+            } catch (IllegalMemoryAccessException e) {
+                getLogger().warning("envPtr does not point to a valid memory region: " + e);
+                return JNI_ERR;
+            }
             return JNI_OK;
         }
         return JNI_EVERSION;
@@ -1935,60 +1854,107 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
-    public int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool) {
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().length();
+    public static int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, @Inject Meta meta) {
+        return jcpool.getMirrorKlass(meta).getConstantPool().length();
     }
 
     @VmImpl(isJni = true)
-    public @JavaType(Class.class) StaticObject JVM_ConstantPoolGetClassAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
+    public static @JavaType(Class.class) StaticObject JVM_ConstantPoolGetClassAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.CLASS, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().resolvedKlassAt(null, index).mirror();
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(meta).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.CLASS, meta, profiler);
+        return getResolvedKlassAt(index, constantPool).mirror();
+    }
+
+    @TruffleBoundary
+    private static Klass getResolvedKlassAt(int index, RuntimeConstantPool constantPool) {
+        return constantPool.resolvedKlassAt(null, index);
     }
 
     @VmImpl(isJni = true)
-    public double JVM_ConstantPoolGetDoubleAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
+    public static double JVM_ConstantPoolGetDoubleAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.DOUBLE, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().doubleAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(meta).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.DOUBLE, meta, profiler);
+        return getDoubleAt(index, constantPool);
+    }
+
+    @TruffleBoundary
+    private static double getDoubleAt(int index, RuntimeConstantPool constantPool) {
+        return constantPool.doubleAt(index);
     }
 
     @VmImpl(isJni = true)
-    public float JVM_ConstantPoolGetFloatAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
+    public static float JVM_ConstantPoolGetFloatAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.FLOAT, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().floatAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(meta).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.FLOAT, meta, profiler);
+        return getFloatAt(index, constantPool);
+    }
+
+    @TruffleBoundary
+    private static float getFloatAt(int index, RuntimeConstantPool constantPool) {
+        return constantPool.floatAt(index);
     }
 
     @VmImpl(isJni = true)
-    public @JavaType(String.class) StaticObject JVM_ConstantPoolGetStringAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
+    public static @JavaType(String.class) StaticObject JVM_ConstantPoolGetStringAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.STRING, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().resolvedStringAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(meta).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.STRING, meta, profiler);
+        return getResolvedStringAt(index, constantPool);
+    }
+
+    @TruffleBoundary
+    private static StaticObject getResolvedStringAt(int index, RuntimeConstantPool constantPool) {
+        return constantPool.resolvedStringAt(index);
     }
 
     @VmImpl(isJni = true)
-    public @JavaType(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
+    public static @JavaType(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.UTF8, meta, profiler);
-        return getMeta().toGuestString(jcpool.getMirrorKlass(getMeta()).getConstantPool().utf8At(index).toString());
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(meta).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.UTF8, meta, profiler);
+        return meta.toGuestString(getUtf8At(index, constantPool));
+    }
+
+    @TruffleBoundary
+    private static Symbol<?> getUtf8At(int index, RuntimeConstantPool constantPool) {
+        return constantPool.utf8At(index);
     }
 
     @VmImpl(isJni = true)
-    public int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
+    public static int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.INTEGER, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().intAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(meta).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.INTEGER, meta, profiler);
+        return getIntAt(index, constantPool);
+    }
+
+    @TruffleBoundary
+    private static int getIntAt(int index, RuntimeConstantPool constantPool) {
+        return constantPool.intAt(index);
     }
 
     @VmImpl(isJni = true)
-    public long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
+    public static long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.LONG, meta, profiler);
-        return jcpool.getMirrorKlass(getMeta()).getConstantPool().longAt(index);
+        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(meta).getConstantPool();
+        checkTag(constantPool, index, ConstantPool.Tag.LONG, meta, profiler);
+        return getLongAt(index, constantPool);
+    }
+
+    @TruffleBoundary
+    private static long getLongAt(int index, RuntimeConstantPool constantPool) {
+        return constantPool.longAt(index);
+    }
+
+    @VmImpl(isJni = true)
+    public int JVM_ConstantPoolGetTagAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index) {
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().tagAt(index).getValue();
     }
 
     // endregion ConstantPool
@@ -1996,7 +1962,7 @@ public final class VM extends NativeEnv {
     // region class loading
 
     private Symbol<Type> namePtrToInternal(TruffleObject namePtr) {
-        String name = NativeUtils.interopPointerToString(namePtr);
+        String name = NativeUtils.interopPointerToStringOrThrow(namePtr, getNativeAccess().nativeMemory(), getMeta());
         return nameToInternal(name);
     }
 
@@ -2032,10 +1998,9 @@ public final class VM extends NativeEnv {
             throw getMeta().throwExceptionWithMessage(getMeta().java_lang_InternalError, "Lookup class is null");
         }
         assert !getUncached().isNull(bufPtr);
-        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
+        ByteBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Byte, getNativeAccess().nativeMemory(), getMeta());
         buf.get(bytes);
-
         return lookupDefineClass(lookup, type, bytes, pd, initialize, flags, classData);
     }
 
@@ -2101,10 +2066,9 @@ public final class VM extends NativeEnv {
                     @JavaType(ClassLoader.class) StaticObject loader,
                     @Pointer TruffleObject bufPtr, int len,
                     @JavaType(internalName = "Ljava/security/ProtectionDomain;") StaticObject pd) {
-        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
+        ByteBuffer buf = NativeUtils.wrapNativeMemoryOrThrow(bufPtr, len, JavaKind.Byte, getNativeAccess().nativeMemory(), getMeta());
         buf.get(bytes);
-
         Symbol<Type> type = namePtrToInternal(namePtr); // can be null
         return defineClass(type, loader, pd, bytes);
     }
@@ -2156,8 +2120,12 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @TruffleBoundary
     public @JavaType(Class.class) StaticObject JVM_FindClassFromBootLoader(@Pointer TruffleObject namePtr) {
-        String name = NativeUtils.interopPointerToString(namePtr);
-        return findClassFromBootLoader(name);
+        try {
+            String name = NativeUtils.interopPointerToString(namePtr, getNativeAccess().nativeMemory());
+            return findClassFromBootLoader(name);
+        } catch (IllegalMemoryAccessException e) {
+            return StaticObject.NULL;
+        }
     }
 
     public StaticObject findClassFromBootLoader(String name) {
@@ -2227,7 +2195,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     public @JavaType(Class.class) StaticObject JVM_FindPrimitiveClass(@Pointer TruffleObject namePtr) {
         Meta meta = getMeta();
-        String hostName = NativeUtils.interopPointerToString(namePtr);
+        String hostName = NativeUtils.interopPointerToStringOrThrow(namePtr, getNativeAccess().nativeMemory(), meta);
         return findPrimitiveClass(meta, hostName);
     }
 
@@ -2299,12 +2267,22 @@ public final class VM extends NativeEnv {
     @VmImpl
     @TruffleBoundary
     public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
-        String name = NativeUtils.interopPointerToString(namePtr);
         // We don't pass `throwException` down due to GR-37925, but even if Sulong would
         // be fixed, it might be garbage if the used base lib has a mismatching signature,
         // so we recompute its value instead on our side.
         boolean throwException = !hasDynamicLoaderCache();
-        return JVM_LoadLibrary(name, throwException);
+
+        try {
+            String name = NativeUtils.interopPointerToString(namePtr, getNativeAccess().nativeMemory());
+            return JVM_LoadLibrary(name, throwException);
+        } catch (IllegalMemoryAccessException e) {
+            if (throwException) {
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary(e.toString());
+            } else {
+                getLogger().warning("namePtr does not point to a valid memory region: " + e);
+                return RawPointer.create(0);
+            }
+        }
     }
 
     @TruffleBoundary
@@ -2374,9 +2352,14 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "benign race")
     public @Pointer TruffleObject JVM_FindLibraryEntry(@Pointer TruffleObject libraryPtr, @Pointer TruffleObject namePtr) {
-        String name = NativeUtils.interopPointerToString(namePtr);
-        long nativePtr = NativeUtils.interopAsPointer(libraryPtr);
-        return RawPointer.create(findLibraryEntry(nativePtr, name));
+        try {
+            String name = NativeUtils.interopPointerToString(namePtr, getNativeAccess().nativeMemory());
+            long nativePtr = NativeUtils.interopAsPointer(libraryPtr);
+            return RawPointer.create(findLibraryEntry(nativePtr, name));
+        } catch (IllegalMemoryAccessException e) {
+            getLogger().warning("namePtr does not point to a valid memory region: " + e);
+            return RawPointer.create(0);
+        }
     }
 
     @TruffleBoundary
@@ -3548,10 +3531,16 @@ public final class VM extends NativeEnv {
             if (getUncached().isNull(vmBufPtr)) {
                 // Pointer should have been pre-null-checked.
                 return JNI_ERR;
+
             }
-            NativeUtils.writeToPointerPointer(getUncached(), vmBufPtr, getVM().getJavaVM());
-            if (!getUncached().isNull(numVMsPtr)) {
-                NativeUtils.writeToIntPointer(getUncached(), numVMsPtr, 1);
+            try {
+                NativeUtils.writeToPointerPointer(getUncached(), vmBufPtr, getVM().getJavaVM(), getNativeAccess().nativeMemory());
+                if (!getUncached().isNull(numVMsPtr)) {
+                    NativeUtils.writeToIntPointer(getUncached(), numVMsPtr, 1, getNativeAccess().nativeMemory());
+                }
+            } catch (IllegalMemoryAccessException e) {
+                getLogger().warning("vmBufPtr or numVMsPtr does not point to a valid memory region: " + e);
+                return JNI_ERR;
             }
         }
         return JNI_OK;
@@ -3654,7 +3643,8 @@ public final class VM extends NativeEnv {
             profiler.profile(0);
             throw getMeta().throwNullPointerException();
         }
-        ModulesHelperVM.addModuleExports(from_module, NativeUtils.interopPointerToString(pkgName), to_module, getMeta(), profiler);
+        String pkgNameString = NativeUtils.interopPointerToStringOrThrow(pkgName, getNativeAccess().nativeMemory(), getMeta());
+        ModulesHelperVM.addModuleExports(from_module, pkgNameString, to_module, getMeta(), profiler);
     }
 
     @VmImpl(isJni = true)
@@ -3665,7 +3655,8 @@ public final class VM extends NativeEnv {
             profiler.profile(0);
             throw getMeta().throwNullPointerException();
         }
-        ModulesHelperVM.addModuleExportsToAllUnnamed(from_module, NativeUtils.interopPointerToString(pkgName), profiler, getMeta());
+        String pkgNameString = NativeUtils.interopPointerToStringOrThrow(pkgName, getNativeAccess().nativeMemory(), getMeta());
+        ModulesHelperVM.addModuleExportsToAllUnnamed(from_module, pkgNameString, profiler, getMeta());
     }
 
     @VmImpl(isJni = true)
@@ -3676,7 +3667,8 @@ public final class VM extends NativeEnv {
             profiler.profile(0);
             throw getMeta().throwNullPointerException();
         }
-        ModulesHelperVM.addModuleExports(from_module, NativeUtils.interopPointerToString(pkgName), StaticObject.NULL, getMeta(), profiler);
+        String pkgNameString = NativeUtils.interopPointerToStringOrThrow(pkgName, getNativeAccess().nativeMemory(), getMeta());
+        ModulesHelperVM.addModuleExports(from_module, pkgNameString, StaticObject.NULL, getMeta(), profiler);
     }
 
     @VmImpl(isJni = true)
@@ -3837,10 +3829,10 @@ public final class VM extends NativeEnv {
         String[] packages = new String[numPackages];
         try {
             for (int i = 0; i < numPackages; i++) {
-                String pkg = NativeUtils.interopPointerToString((TruffleObject) getUncached().execute(getPackageAt, pkgs, i));
+                Meta meta = getMeta();
+                String pkg = NativeUtils.interopPointerToStringOrThrow((TruffleObject) getUncached().execute(getPackageAt, pkgs, i), getNativeAccess().nativeMemory(), meta);
                 if (!Validation.validBinaryName(pkg)) {
                     profiler.profile(7);
-                    Meta meta = getMeta();
                     throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                                     cat("Invalid package name: ", pkg));
                 }

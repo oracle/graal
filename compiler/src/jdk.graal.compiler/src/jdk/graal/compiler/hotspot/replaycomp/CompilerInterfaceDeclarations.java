@@ -694,9 +694,6 @@ public final class CompilerInterfaceDeclarations {
                 .setLocalMirrorLocator(CompilerInterfaceDeclarations::findObjectTypeMirror)
                 // getComponentType() is used by the default implementation of isArray().
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getComponentTypeMethod, HotSpotResolvedObjectTypeProxy.getComponentTypeInvokable)
-                .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationMethod, MethodStrategy.Passthrough)
-                .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationsMethod, MethodStrategy.Passthrough)
-                .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getDeclaredAnnotationsMethod, MethodStrategy.Passthrough)
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getInstanceFieldsMethod,
                         HotSpotResolvedObjectTypeProxy.getInstanceFieldsInvokable, new Object[]{true}) // For snippet decoding
                 .ensureRecorded(HotSpotResolvedObjectTypeProxy.getStaticFieldsMethod, HotSpotResolvedObjectTypeProxy.getStaticFieldsInvokable) // For snippet decoding
@@ -789,14 +786,6 @@ public final class CompilerInterfaceDeclarations {
                     return null;
                 })
                 .setStrategy(HotSpotResolvedJavaMethodProxy.getParametersMethod, MethodStrategy.Passthrough)
-                .setStrategy(HotSpotResolvedJavaMethodProxy.getParameterAnnotationsMethod, MethodStrategy.Passthrough)
-                .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationsMethod, MethodStrategy.Passthrough)
-                .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getDeclaredAnnotationsMethod, MethodStrategy.Passthrough)
-                .setStrategy(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationMethod, MethodStrategy.Passthrough)
-                .setFallbackInvocationHandler(CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationMethod, (proxy, method, args, metaAccess) -> {
-                    // The HostInliningPhase can query Truffle-related annotations during replay on jargraal. It is safe to return null.
-                    return null;
-                })
                 .setStrategy(HotSpotResolvedJavaMethodProxy.getGenericParameterTypesMethod, MethodStrategy.Passthrough)
                 .setStrategy(HotSpotResolvedJavaMethodProxy.getDeclaredAnnotationInfoMethod, MethodStrategy.Passthrough)
                 .setFallbackInvocationHandler(HotSpotResolvedJavaMethodProxy.getDeclaredAnnotationInfoMethod, (proxy, method, args, metaAccess) -> {

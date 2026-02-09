@@ -35,7 +35,7 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -143,13 +143,15 @@ public class WasmDebug {
             }
         }
 
+        // Checkstyle: allow System.err (run time code)
         System.err.println(header);
         for (String s : extraInfo) {
             System.err.println("\t" + s);
         }
 
         if (o instanceof Throwable throwable) {
-            throwable.printStackTrace();
+            throwable.printStackTrace(System.err);
         }
+        // Checkstyle: disallow System.err
     }
 }

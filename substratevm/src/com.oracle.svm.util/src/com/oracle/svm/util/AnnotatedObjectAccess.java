@@ -47,9 +47,7 @@ import jdk.graal.compiler.annotation.MissingType;
 import jdk.graal.compiler.annotation.TypeAnnotationValue;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.util.EconomicHashMap;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
@@ -66,6 +64,22 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 public class AnnotatedObjectAccess {
 
     /**
+     * Gets the annotation of type {@code annotationType} from {@code element} as an
+     * {@link AnnotationValue} object.
+     *
+     * @param element the annotated element to retrieve the annotation value from
+     * @param annotationType the type of annotation to retrieve
+     * @return the annotation value of the specified type, or null if no such annotation exists
+     */
+    public <T extends Annotation> AnnotationValue getAnnotationValue(Annotated element, Class<T> annotationType) {
+        // Checkstyle: allow direct annotation access
+        Inherited inherited = annotationType.getAnnotation(Inherited.class);
+        // Checkstyle: disallow direct annotation access
+        Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
+        return annotationValues.get(GraalAccess.lookupType(annotationType));
+    }
+
+    /**
      * Gets the annotation of type {@code annotationType} from {@code element}.
      *
      * @param element the annotated element to retrieve the annotation value from
@@ -73,20 +87,13 @@ public class AnnotatedObjectAccess {
      * @return the annotation value of the specified type, or null if no such annotation exists
      */
     public <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
-        // Checkstyle: allow direct annotation access
-        Inherited inherited = annotationType.getAnnotation(Inherited.class);
-        // Checkstyle: disallow direct annotation access
-        Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
-        AnnotationValue annotationValue = annotationValues.get(GraalAccess.lookupType(annotationType));
+        AnnotationValue annotationValue = getAnnotationValue(element, annotationType);
         if (annotationValue != null) {
             return asAnnotation(annotationValue, annotationType);
         }
         return null;
     }
 
-    /**
-     * Gets the annotation of type {@code annotationType} from {@code annotated}.
-     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static AnnotationValue toAnnotationValue(Annotation annotation) {
         ResolvedJavaType type = GraalAccess.lookupType(annotation.annotationType());
@@ -339,7 +346,7 @@ public class AnnotatedObjectAccess {
             if (!annotationValues.isEmpty()) {
                 result = new EconomicHashMap<>(annotationValues.size());
                 for (AnnotationValue a : annotationValues) {
-                    ResolvedJavaType annotationType = a.isError() ? ANNOTATION_FORMAT_ERROR_TYPE : a.getAnnotationType();
+                    ResolvedJavaType annotationType = a.isError() ? getAnnotationFormatErrorType() : a.getAnnotationType();
                     result.put(annotationType, a);
                 }
             }
@@ -398,9 +405,12 @@ public class AnnotatedObjectAccess {
     }
 
     /**
-     * Annotation type for a {@link AnnotationValue#isError() value representing a parse error}.
+     * Gets the annotation type for a {@link AnnotationValue#isError() value representing a parse
+     * error}.
      */
-    public static final ResolvedJavaType ANNOTATION_FORMAT_ERROR_TYPE = GraalAccess.lookupType(Void.TYPE);
+    private static ResolvedJavaType getAnnotationFormatErrorType() {
+        return GraalAccess.lookupType(Void.TYPE);
+    }
 
     /**
      * Annotation parser function stored as a singleton as recommended by
@@ -414,29 +424,28 @@ public class AnnotatedObjectAccess {
         try {
             return AnnotationValueParser.parseAnnotations(info.bytes(), info.constPool(), container);
         } catch (AnnotationFormatError e) {
-            return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(e));
+            return Map.of(getAnnotationFormatErrorType(), new AnnotationValue(e));
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
-            return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(new AnnotationFormatError(e)));
+            return Map.of(getAnnotationFormatErrorType(), new AnnotationValue(new AnnotationFormatError(e)));
         }
     };
 
     /**
-     * Gets the annotation values associated with the parameters of {@code element}.
+     * Gets the annotation values associated with the parameters of {@code method}.
      *
-     * @param element the annotated element to retrieve parameter annotation values from
+     * @param method the annotated method to retrieve parameter annotation values from
      * @return a list of lists, where each inner list contains the annotation values for a single
-     *         parameter of the annotated element, or an empty list if the element has no parameters
-     *         or no annotations
+     *         parameter of the annotated method, or null if the method has no annotated parameters
      */
-    public List<List<AnnotationValue>> getParameterAnnotationValues(Annotated element) {
-        Annotated root = unwrap(element, null);
-        return root != null ? getParameterAnnotationValuesFromRoot((ResolvedJavaMethod) root) : List.of();
+    public List<List<AnnotationValue>> getParameterAnnotationValues(ResolvedJavaMethod method) {
+        Annotated root = unwrap(method, null);
+        return root != null ? getParameterAnnotationValuesFromRoot((ResolvedJavaMethod) root) : null;
     }
 
     private static List<List<AnnotationValue>> getParameterAnnotationValuesFromRoot(ResolvedJavaMethod rootElement) {
         try {
-            List<List<AnnotationValue>> parameterAnnotationValues = AnnotationValueSupport.getParameterAnnotationValues(rootElement);
-            return parameterAnnotationValues == null ? List.of() : parameterAnnotationValues;
+            var parsed = AnnotationValueSupport.getParameterAnnotationValues(rootElement);
+            return parsed == null ? null : parsed.values();
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
             return List.of(List.of(new AnnotationValue(new AnnotationFormatError(e))));
         } catch (AnnotationFormatError e) {
@@ -457,15 +466,7 @@ public class AnnotatedObjectAccess {
 
     private static List<TypeAnnotationValue> getTypeAnnotationValuesFromRoot(Annotated rootElement) {
         try {
-            return switch (rootElement) {
-                case ResolvedJavaType type -> AnnotationValueSupport.getTypeAnnotationValues(type);
-                case ResolvedJavaMethod method -> AnnotationValueSupport.getTypeAnnotationValues(method);
-                case ResolvedJavaField field -> AnnotationValueSupport.getTypeAnnotationValues(field);
-                case ResolvedJavaRecordComponent recordComponent ->
-                    AnnotationValueSupport.getTypeAnnotationValues(recordComponent);
-                default ->
-                    throw new AnnotatedObjectAccessError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
-            };
+            return AnnotationValueSupport.getTypeAnnotationValues(rootElement);
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
             return List.of(new TypeAnnotationValue(new AnnotationFormatError(e)));
         } catch (AnnotationFormatError e) {

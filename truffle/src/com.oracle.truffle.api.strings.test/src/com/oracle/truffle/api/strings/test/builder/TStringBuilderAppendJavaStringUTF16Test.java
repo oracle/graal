@@ -45,6 +45,7 @@ import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -68,13 +69,13 @@ public class TStringBuilderAppendJavaStringUTF16Test extends TStringTestBase {
     @Test
     public void testAll() throws Exception {
         forAllStrings(new TruffleString.Encoding[]{TruffleString.Encoding.UTF_16}, true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            TruffleStringBuilder sb = TruffleStringBuilder.create(encoding);
+            TruffleStringBuilderUTF16 sb = TruffleStringBuilder.createUTF16();
             for (int i = 0; i < array.length / 2; i++) {
                 node.execute(sb, String.valueOf((char) TStringTestUtil.readValue(array, 1, i)), 0, 1);
             }
             checkStringBuilderResult(array, codeRange, isValid, encoding, codepoints, sb);
             String javaString = a.toJavaStringUncached();
-            sb = TruffleStringBuilder.create(encoding);
+            sb = TruffleStringBuilder.createUTF16();
             for (int i = 0; i < array.length / 2; i++) {
                 node.execute(sb, javaString, i, 1);
             }
@@ -85,13 +86,13 @@ public class TStringBuilderAppendJavaStringUTF16Test extends TStringTestBase {
     @Test
     public void testNull() throws Exception {
         expectNullPointerException(() -> node.execute(null, "0", 0, 1));
-        expectNullPointerException(() -> node.execute(TruffleStringBuilder.create(TruffleString.Encoding.UTF_16), null, 0, 1));
+        expectNullPointerException(() -> node.execute(TruffleStringBuilder.createUTF16(), null, 0, 1));
     }
 
     @Test
     public void testOutOfBounds() throws Exception {
         checkOutOfBoundsRegion(true, 1, new TruffleString.Encoding[]{TruffleString.Encoding.UTF_16}, (a, fromIndex, length, encoding) -> {
-            node.execute(TruffleStringBuilder.create(encoding), a.toJavaStringUncached(), fromIndex, length);
+            node.execute(TruffleStringBuilder.createUTF16(), a.toJavaStringUncached(), fromIndex, length);
         });
     }
 }

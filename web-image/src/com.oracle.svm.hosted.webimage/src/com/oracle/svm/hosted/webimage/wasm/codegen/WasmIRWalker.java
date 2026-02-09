@@ -35,8 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
-import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds;
 import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
@@ -53,10 +51,12 @@ import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.Scope;
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.SwitchScopeContainer;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
+import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction.Binary;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
+import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds;
 import com.oracle.svm.hosted.webimage.wasm.phases.WasmSwitchPhase;
 import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
@@ -340,6 +340,7 @@ public class WasmIRWalker extends StackifierIRWalker {
         boolean didJump = generateForwardJump(currentBlock, normSucc);
         GraalError.guarantee(didJump, "No jump was inserted after a WithExceptionNode");
         masm.parentScope(tryBlock);
+        masm.genInst(new Unreachable(), "End of try_table block is unreachable");
 
         masm.parentScope(exceptionTargetBlock);
 

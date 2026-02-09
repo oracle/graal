@@ -55,6 +55,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
 import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
@@ -63,7 +64,6 @@ import com.oracle.svm.webimage.wasmgc.WasmExtern;
 import jdk.graal.compiler.nodes.extended.AbstractBoxingNode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -361,31 +361,28 @@ public class WasmGCFunctionTemplates {
      *
      * The {@code relocation} is later replaced with load of the {@link DynamicHub} instance.
      */
-    public static class InstanceCreate extends WasmFunctionTemplate<Class<?>> {
+    public static class InstanceCreate extends WasmFunctionTemplate<HostedType> {
 
         public InstanceCreate(WasmIdFactory idFactory) {
             super(idFactory);
         }
 
         @Override
-        protected boolean isValidParameter(Class<?> parameter) {
-            // Only non-array types are valid
-            return !parameter.isArray();
+        protected boolean isValidParameter(HostedType parameter) {
+            return parameter instanceof HostedInstanceClass;
         }
 
         @Override
-        protected String getFunctionName(Class<?> type) {
+        protected String getFunctionName(HostedType type) {
             // TODO GR-41720 Ensure this is a valid Wasm name
-            return "struct." + type.getName() + ".create";
+            return "struct." + JVMCIReflectionUtil.getTypeName(type) + ".create";
         }
 
         @Override
         protected Function createFunction(Context ctxt) {
-            Class<?> key = ctxt.getParameter();
+            HostedInstanceClass type = (HostedInstanceClass) ctxt.getParameter();
             WebImageWasmGCProviders providers = (WebImageWasmGCProviders) ctxt.getProviders();
-            MetaAccessProvider metaAccess = providers.getMetaAccess();
 
-            ResolvedJavaType type = metaAccess.lookupJavaType(key);
             WasmId.StructType structType = idFactory.newJavaStruct(type);
             WasmValType structValType = structType.asNonNull();
 
@@ -395,7 +392,7 @@ public class WasmGCFunctionTemplates {
              * field of the base type
              */
             WebImageWasmIds.DescriptorFuncType funcType = idFactory.newFuncType(new FunctionTypeDescriptor(providers.knownIds().newInstanceFieldType, true, TypeUse.withResult(structValType)));
-            Function f = ctxt.createFunction(funcType, "Creates an instance of type " + key);
+            Function f = ctxt.createFunction(funcType, "Creates an instance of type " + type.toClassName());
 
             WasmId.Local structVar = idFactory.newTemporaryVariable(structValType);
 
@@ -457,9 +454,7 @@ public class WasmGCFunctionTemplates {
         protected Function createFunction(Context ctxt) {
             JavaKind boxedKind = ctxt.getParameter();
             WebImageWasmGCProviders providers = (WebImageWasmGCProviders) ctxt.getProviders();
-            MetaAccessProvider metaAccess = providers.getMetaAccess();
-            Class<?> boxedJavaClass = boxedKind.toBoxedJavaClass();
-            ResolvedJavaType boxing = metaAccess.lookupJavaType(boxedJavaClass);
+            HostedType boxing = providers.getMetaAccess().lookupJavaType(boxedKind.toBoxedJavaClass());
             WebImageWasmGCIds.JavaStruct boxedStruct = idFactory.newJavaStruct(boxing);
             WasmRefType returnValue = boxedStruct.asNonNull();
 
@@ -471,7 +466,7 @@ public class WasmGCFunctionTemplates {
             WasmId.Local valueParam = f.getParam(0);
             WasmId.Local boxed = idFactory.newTemporaryVariable(returnValue);
 
-            instructions.add(boxed.setter(new Instruction.Call(providers.knownIds().instanceCreateTemplate.requestFunctionId(boxedJavaClass))));
+            instructions.add(boxed.setter(new Instruction.Call(providers.knownIds().instanceCreateTemplate.requestFunctionId(boxing))));
             instructions.add(new Instruction.StructSet(boxedStruct, idFactory.newJavaField(valueField), boxed.getter(), valueParam.getter()));
             instructions.add(new Instruction.Return(boxed.getter()));
 

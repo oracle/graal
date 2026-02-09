@@ -81,6 +81,7 @@ public class OperationModel implements PrettyPrintable {
         LOAD_LOCAL_MATERIALIZED,
         STORE_LOCAL,
         STORE_LOCAL_MATERIALIZED,
+        CLEAR_LOCAL,
 
         CUSTOM,
         CUSTOM_SHORT_CIRCUIT,

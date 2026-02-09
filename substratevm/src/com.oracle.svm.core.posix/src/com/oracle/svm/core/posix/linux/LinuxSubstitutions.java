@@ -26,7 +26,7 @@ package com.oracle.svm.core.posix.linux;
 
 import org.graalvm.nativeimage.StackValue;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.posix.PosixUtils;

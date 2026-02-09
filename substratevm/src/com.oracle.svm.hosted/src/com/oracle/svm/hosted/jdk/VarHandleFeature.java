@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.jdk;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,7 +40,6 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -50,8 +50,10 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -100,7 +102,11 @@ public class VarHandleFeature implements InternalFeature {
 
     class VarHandleSupportImpl extends VarHandleSupport {
         @Override
-        protected ResolvedJavaField findVarHandleField(Object varHandle, boolean guaranteeUnsafeAccessed) {
+        protected ResolvedJavaField findVarHandleField(CoreProviders providers, JavaConstant varHandleConstant, boolean guaranteeUnsafeAccessed) {
+            // Convert to JVMCI
+            // GR-72590: Migrate MethodHandleFeature and VarHandleFeature to terminus
+            Object varHandle = providers.getSnippetReflection().asObject(Object.class, varHandleConstant);
+            VMError.guarantee(varHandle != null);
             ResolvedJavaField result;
             if (hUniverse != null) {
                 result = findVarHandleHostedField(varHandle);
@@ -186,7 +192,8 @@ public class VarHandleFeature implements InternalFeature {
 
     private static final Field varHandleVFormField = ReflectionUtil.lookupField(VarHandle.class, "vform");
     private static final Class<?> varFormClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm");
-    private static final Method varFormInitMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
+    private static final Method varFormGetMethodTypeMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
+    private static final Method varFormGetMemberNameOrNullMethod = ReflectionUtil.lookupMethod(varFormClass, "getMemberNameOrNull", int.class);
     private static final Method varHandleGetMethodHandleMethod = ReflectionUtil.lookupMethod(VarHandle.class, "getMethodHandle", int.class);
 
     public static void eagerlyInitializeVarHandle(VarHandle varHandle) {
@@ -228,7 +235,18 @@ public class VarHandleFeature implements InternalFeature {
              * initialization has happened. We force initialization by invoking the method
              * VarHandle.vform.getMethodType_V(0).
              */
-            varFormInitMethod.invoke(varForm, 0);
+            varFormGetMethodTypeMethod.invoke(varForm, 0);
+            try {
+                for (VarHandle.AccessMode accessMode : VarHandle.AccessMode.values()) {
+                    /* Make sure VarForm.memberName_table is initialized. */
+                    varFormGetMemberNameOrNullMethod.invoke(varForm, accessMode.ordinal());
+                }
+            } catch (IllegalArgumentException | InvocationTargetException _) {
+                /*
+                 * VarForm.memberName_table can be null for VarForms used by IndirectVarHandles,
+                 * which leads to IllegalArgumentException or InvocationTargetException.
+                 */
+            }
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

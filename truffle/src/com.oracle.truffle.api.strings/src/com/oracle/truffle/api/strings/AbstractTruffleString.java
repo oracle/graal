@@ -56,6 +56,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF32FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidMultiByte;
+import static com.oracle.truffle.api.strings.TStringInternalNodes.getCodePointLength;
 import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import java.lang.ref.Reference;
@@ -63,6 +64,7 @@ import java.lang.ref.Reference;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 /**
@@ -483,16 +485,16 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         return rawIndex << expectedEncoding.naturalStride;
     }
 
-    final void boundsCheck(Node node, byte[] arrayA, long offsetA, int index, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
-        boundsCheckI(index, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
+    final void boundsCheck(Node node, byte[] arrayA, long offsetA, int index, Encoding expectedEncoding, InlinedConditionProfile calcCodePointLengthProfile) {
+        boundsCheckI(index, getCodePointLength(node, this, arrayA, offsetA, expectedEncoding, calcCodePointLengthProfile));
     }
 
-    final void boundsCheck(Node node, byte[] arrayA, long offsetA, int fromIndex, int toIndex, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
-        boundsCheckI(fromIndex, toIndex, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
+    final void boundsCheck(Node node, byte[] arrayA, long offsetA, int fromIndex, int toIndex, Encoding expectedEncoding, InlinedConditionProfile calcCodePointLengthProfile) {
+        boundsCheckI(fromIndex, toIndex, getCodePointLength(node, this, arrayA, offsetA, expectedEncoding, calcCodePointLengthProfile));
     }
 
-    final void boundsCheckRegion(Node node, byte[] arrayA, long offsetA, int fromIndex, int regionLength, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
-        boundsCheckRegionI(fromIndex, regionLength, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
+    final void boundsCheckRegion(Node node, byte[] arrayA, long offsetA, int fromIndex, int regionLength, Encoding expectedEncoding, InlinedConditionProfile calcCodePointLengthProfile) {
+        boundsCheckRegionI(fromIndex, regionLength, getCodePointLength(node, this, arrayA, offsetA, expectedEncoding, calcCodePointLengthProfile));
     }
 
     static void boundsCheckByteIndex(int lengthA, int strideA, int byteIndex) {

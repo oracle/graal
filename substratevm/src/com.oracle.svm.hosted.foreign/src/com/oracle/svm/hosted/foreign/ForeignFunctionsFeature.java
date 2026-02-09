@@ -65,7 +65,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.JavaMemoryUtil;
@@ -258,7 +258,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
                 DirectUpcallDesc directUpcallDesc = new DirectUpcallDesc(target, directMethodHandleDesc, desc, linkerOptions);
                 runConditionalTask(condition, _ -> {
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, false, method);
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, method);
                     createStub(UpcallStubFactory.INSTANCE, directUpcallDesc.toSharedDesc());
                     createStub(DirectUpcallStubFactory.INSTANCE, directUpcallDesc);
                 });
@@ -405,12 +405,14 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        FeatureImpl.BeforeCompilationAccessImpl a = (FeatureImpl.BeforeCompilationAccessImpl) access;
-        SubstrateBackend b = a.getRuntimeConfiguration().getBackendForNormalMethod();
-        if (b instanceof SubstrateBackendWithAssembler<?> bAsm) {
-            foreignFunctionsRuntime.generateTrampolineTemplate(bAsm);
-        } else {
-            throw VMError.shouldNotReachHere("Support for the Foreign Function and Memory API needs a backend with an assembler, it is not available with backend %s", b.getClass());
+        if (ForeignFunctionsRuntime.areFunctionCallsSupported()) {
+            FeatureImpl.BeforeCompilationAccessImpl a = (FeatureImpl.BeforeCompilationAccessImpl) access;
+            SubstrateBackend b = a.getRuntimeConfiguration().getBackendForNormalMethod();
+            if (b instanceof SubstrateBackendWithAssembler<?> bAsm) {
+                foreignFunctionsRuntime.generateTrampolineTemplate(bAsm);
+            } else {
+                throw VMError.shouldNotReachHere("Support for the Foreign Function and Memory API needs a backend with an assembler, it is not available with backend %s", b.getClass());
+            }
         }
     }
 
@@ -670,8 +672,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
 
-        AbiUtils.singleton().checkLibrarySupport();
-
         accessSupport.setAnalysisAccess(a);
 
         for (String simpleName : VAR_HANDLE_SEGMENT_ACCESSORS) {
@@ -697,8 +697,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         RuntimeClassInitialization.initializeAtRunTime(RuntimeSystemLookup.class);
 
-        access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
-                        "Runtime support, registered in " + ForeignFunctionsFeature.class);
+        if (ForeignFunctionsRuntime.isLibcSupported()) {
+            access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
+                            "Runtime support, registered in " + ForeignFunctionsFeature.class);
+        }
 
         /*
          * Even if there is no instance of MemorySessionImpl, we will kill the field location of
@@ -715,7 +717,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        accessSupport.sealed();
+        accessSupport.seal();
         if (!ForeignFunctionsRuntime.areFunctionCallsSupported() && stubsRegistered) {
             assert getCreatedDowncallStubsCount() == 0;
             assert getCreatedUpcallStubsCount() == 0;
@@ -834,7 +836,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 if (!checkValidState.equals(method)) {
                     return false;
                 }
-                if (MultiMethod.isOriginalMethod(b.getMethod())) { // not for hosted compilation
+                if (MethodVariant.isOriginalMethod(b.getMethod())) { // not for hosted compilation
                     return false;
                 }
                 if (!AnnotationUtil.isAnnotationPresent(b.getMethod(), SharedArenaSupport.SCOPED_ANNOTATION)) {

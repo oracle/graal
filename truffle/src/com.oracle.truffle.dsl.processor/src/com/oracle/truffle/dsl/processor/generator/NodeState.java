@@ -161,7 +161,7 @@ public final class NodeState {
 
                 boolean useSpecializationClass = FlatNodeGenFactory.useSpecializationClass(specialization);
                 for (CacheExpression cache : specialization.getCaches()) {
-                    if (useSpecializationClass && FlatNodeGenFactory.canCacheBeStoredInSpecialializationClass(cache)) {
+                    if (useSpecializationClass && FlatNodeGenFactory.canCacheBeStoredInSpecializationClass(specialization, cache)) {
                         continue;
                     }
                     if (!cache.isEncodedEnum()) {
@@ -211,7 +211,7 @@ public final class NodeState {
                         handledCaches.add(cacheGroup);
                     }
 
-                    if (cacheGroup == null && useSpecializationClass) {
+                    if (useSpecializationClass && FlatNodeGenFactory.canCacheBeStoredInSpecializationClass(specialization, cache)) {
                         // state is handled in computeSpecializationState
                         for (InlineFieldData fieldData : cache.getInlinedNode().getFields()) {
                             if (fieldData.isState()) {
@@ -224,7 +224,7 @@ public final class NodeState {
                     }
 
                     SpecializationData excludeSpecialization = null;
-                    if (cache.isUsedInGuard()) {
+                    if (cache.isUsedInGuard() || cache.isUsedInCache()) {
                         /*
                          * Inlined caches that are bound in guards must not be in the same state
                          * bitset as the dependent specialization bits. At the end of slow-path
@@ -264,11 +264,7 @@ public final class NodeState {
             }
 
             for (CacheExpression cache : specialization.getCaches()) {
-                if (!FlatNodeGenFactory.canCacheBeStoredInSpecialializationClass(cache)) {
-                    continue;
-                }
-
-                if (cache.getInlinedNode() != null) {
+                if (cache.getInlinedNode() != null && FlatNodeGenFactory.canCacheBeStoredInSpecializationClass(specialization, cache)) {
                     for (InlineFieldData field : cache.getInlinedNode().getFields()) {
                         if (field.isState()) {
                             stateObjects.add(new InlinedNodeState(specialization.getNode(), cache, field, null));

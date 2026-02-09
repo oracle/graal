@@ -110,6 +110,17 @@ For other installation options, visit the [GraalVM Downloads page](https://www.g
 
 Native Image requires the Xcode command line tools.
 
+### Minimum Version Requirements
+
+The following minimum versions are required for Native Image compilation:
+
+- **macOS**: Version 13.0 (Ventura) or later
+- **Xcode**: Version 14.0 or later
+
+> **Note**: Earlier versions of macOS (Big Sur, Monterey) and Xcode may encounter compatibility issues with Native Image compilation. If you experience build failures, ensure your macOS and Xcode versions meet the minimum requirements.
+
+### Installing Xcode Command Line Tools
+
 To install them, run:
 
 ```shell

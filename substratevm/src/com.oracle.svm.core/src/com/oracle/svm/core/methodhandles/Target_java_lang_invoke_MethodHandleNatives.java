@@ -253,8 +253,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
 /**
  * The method handles API looks up methods and fields in a different way than the reflection API.
- * The specified member is searched in the given declaring class and its superclasses (like
- * {@link Class#getMethod(String, Class[])}) but including private members (like
+ * The specified member is searched in the given declaring class and its superclasses and interfaces
+ * (like {@link Class#getMethod(String, Class[])}) but including private members (like
  * {@link Class#getDeclaredMethod(String, Class[])}). We solve this by recursively looking up the
  * declared methods of the declaring class and its superclasses.
  * <p>
@@ -278,11 +278,21 @@ final class Util_java_lang_invoke_MethodHandleNatives {
         } catch (NoSuchMethodException | MissingReflectionRegistrationError e) {
             /*
              * Getting a MissingReflectionRegistration error during lookup is not a problem if we
-             * find a matching method in a superclass, since if an overriding method existed a
-             * hiding method would have been registered.
+             * find a matching method in a superclass or an interface, since if an overriding method
+             * existed a hiding method would have been registered.
              */
-            Class<?> superClass = declaringClazz.getSuperclass();
             Throwable newOriginalException = originalException == null ? e : originalException;
+            for (Class<?> intf : declaringClazz.getInterfaces()) {
+                try {
+                    return lookupMethod(intf, name, parameterTypes, newOriginalException);
+                } catch (NoSuchMethodException | MissingReflectionRegistrationError t) {
+                    /*
+                     * Ignore exception, the original exception will be thrown if no method is found
+                     * at the end of the lookup
+                     */
+                }
+            }
+            Class<?> superClass = declaringClazz.getSuperclass();
             if (superClass == null) {
                 if (newOriginalException instanceof NoSuchMethodException noSuchMethodException) {
                     throw noSuchMethodException;

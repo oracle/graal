@@ -74,6 +74,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
+import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -107,7 +108,11 @@ public final class Meta extends ContextAccessImpl
         // Object and Class (+ Class fields) must be initialized before all other classes in order
         // to eagerly create the guest Class instances.
         java_lang_Object = knownKlass(Types.java_lang_Object);
-        HIDDEN_SYSTEM_IHASHCODE = context.getLanguage().isContinuumEnabled() ? java_lang_Object.requireHiddenField(Names.HIDDEN_SYSTEM_IHASHCODE) : null;
+        if (context.getLanguage().canSetCustomIdentityHashCode()) {
+            HIDDEN_SYSTEM_IHASHCODE = java_lang_Object.requireHiddenField(Names.HIDDEN_SYSTEM_IHASHCODE);
+        } else {
+            HIDDEN_SYSTEM_IHASHCODE = null;
+        }
         // Cloneable must be loaded before Serializable.
         java_lang_Cloneable = knownKlass(Types.java_lang_Cloneable);
         java_lang_Class = knownKlass(Types.java_lang_Class);
@@ -260,6 +265,9 @@ public final class Meta extends ContextAccessImpl
         if (getJavaVersion().java9OrLater()) {
             java_lang_String_coder = java_lang_String.requireDeclaredField(Names.coder, Types._byte);
             java_lang_String_COMPACT_STRINGS = java_lang_String.requireDeclaredField(Names.COMPACT_STRINGS, Types._boolean);
+            int guestUTF16 = getIntConstant(java_lang_String, Names.UTF16, false, Types._byte);
+            int guestLATIN1 = getIntConstant(java_lang_String, Names.LATIN1, false, Types._byte);
+            StringConversion.checkConstants(guestUTF16, guestLATIN1);
         } else {
             java_lang_String_coder = null;
             java_lang_String_COMPACT_STRINGS = null;
@@ -1339,8 +1347,7 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_lang_Object;
     public final ArrayKlass java_lang_Object_array;
     /*
-     * Though only used when Continuum is enabled, the hashcode is used during VM initialization, so
-     * it cannot be put in the ContinuumSupport object.
+     * This is used by Continuum and JVMCI. This is used during VM initialization.
      */
     public final Field HIDDEN_SYSTEM_IHASHCODE;
 
@@ -2283,10 +2290,14 @@ public final class Meta extends ContextAccessImpl
             EspressoResolvedInstanceType = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
             EspressoResolvedInstanceType_init = EspressoResolvedInstanceType.requireDeclaredMethod(Names._init_, Signatures._void);
             HIDDEN_OBJECTKLASS_MIRROR = EspressoResolvedInstanceType.requireHiddenField(Names.HIDDEN_OBJECTKLASS_MIRROR);
-            EspressoResolvedInstanceType_DECLARED_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType, Names.DECLARED_ANNOTATIONS);
-            EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType, Names.PARAMETER_ANNOTATIONS);
-            EspressoResolvedInstanceType_TYPE_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType, Names.TYPE_ANNOTATIONS);
-            EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE = getIntConstant(EspressoResolvedInstanceType, Names.ANNOTATION_DEFAULT_VALUE);
+            EspressoResolvedInstanceType_DECLARED_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.DECLARED_ANNOTATIONS);
+            EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.PARAMETER_ANNOTATIONS);
+            EspressoResolvedInstanceType_TYPE_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.TYPE_ANNOTATIONS);
+            EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.ANNOTATION_DEFAULT_VALUE);
+            assert EspressoResolvedInstanceType_DECLARED_ANNOTATIONS == JVMCIUtils.DECLARED_ANNOTATIONS;
+            assert EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS == JVMCIUtils.PARAMETER_ANNOTATIONS;
+            assert EspressoResolvedInstanceType_TYPE_ANNOTATIONS == JVMCIUtils.TYPE_ANNOTATIONS;
+            assert EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE == JVMCIUtils.ANNOTATION_DEFAULT_VALUE;
 
             EspressoResolvedJavaField = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaField);
             EspressoResolvedJavaField_init = EspressoResolvedJavaField.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType);
@@ -2295,7 +2306,8 @@ public final class Meta extends ContextAccessImpl
             EspressoResolvedJavaMethod = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod);
             EspressoResolvedJavaMethod_init = EspressoResolvedJavaMethod.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType_boolean);
             HIDDEN_METHOD_MIRROR = EspressoResolvedJavaMethod.requireHiddenField(Names.HIDDEN_METHOD_MIRROR);
-            EspressoResolvedJavaMethod_holder = EspressoResolvedJavaMethod.requireDeclaredField(Names.holder, Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
+            EspressoResolvedJavaMethod_holder = EspressoResolvedJavaMethod.getSuperKlass().requireDeclaredField(Names.holder,
+                            Types.com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoResolvedInstanceType);
 
             EspressoResolvedJavaRecordComponent = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaRecordComponent);
             EspressoResolvedJavaRecordComponent_init = EspressoResolvedJavaRecordComponent.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType_int_int_int);
@@ -2315,7 +2327,7 @@ public final class Meta extends ContextAccessImpl
 
             EspressoBootstrapMethodInvocation = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoBootstrapMethodInvocation);
             EspressoBootstrapMethodInvocation_init = EspressoBootstrapMethodInvocation.requireDeclaredMethod(Names._init_,
-                            Signatures._void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_EspressoConstantPool);
+                            Signatures._void_boolean_AbstractEspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_AbstractEspressoConstantPool);
 
             Services = knownKlass(Types.jdk_vm_ci_services_Services);
             Services_openJVMCITo = Services.requireDeclaredMethod(Names.openJVMCITo, Signatures._void_Module);
@@ -2764,6 +2776,16 @@ public final class Meta extends ContextAccessImpl
     }
 
     @TruffleBoundary
+    public EspressoException throwInternalErrorBoundary(String message) {
+        throw throwExceptionWithMessage(java_lang_InternalError, message);
+    }
+
+    @TruffleBoundary
+    public EspressoException createInternalError(String message) {
+        return EspressoException.wrap(initExceptionWithMessage(java_lang_InternalError, message), this);
+    }
+
+    @TruffleBoundary
     public EspressoException throwIllegalArgumentExceptionBoundary(String message) {
         throw throwExceptionWithMessage(java_lang_IllegalArgumentException, message);
     }
@@ -2784,6 +2806,10 @@ public final class Meta extends ContextAccessImpl
      */
     public EspressoException throwArrayIndexOutOfBounds(int index) {
         throw throwExceptionWithMessage(java_lang_ArrayIndexOutOfBoundsException, "Array index out of range: " + index);
+    }
+
+    public EspressoException throwArrayIndexOutOfBounds(String msg) {
+        throw throwExceptionWithMessage(java_lang_ArrayIndexOutOfBoundsException, msg);
     }
 
     public EspressoException throwArrayIndexOutOfBounds(int index, int length) {
@@ -2993,10 +3019,18 @@ public final class Meta extends ContextAccessImpl
 
     /**
      * Works as specified by {@link Meta#getIntConstant(ObjectKlass, Symbol, boolean)} with
-     * allowClassInit set to true.
+     * {@code allowClassInit} set to true.
      */
     public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant) {
         return getIntConstant(klass, constant, true);
+    }
+
+    /**
+     * Works as specified by {@link Meta#getIntConstant(ObjectKlass, Symbol, boolean, Symbol)} with
+     * {@code fieldType} set to int.
+     */
+    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant, boolean allowClassInit) {
+        return getIntConstant(klass, constant, allowClassInit, Types._int);
     }
 
     /**
@@ -3010,10 +3044,12 @@ public final class Meta extends ContextAccessImpl
      * @param klass the guest class which has the constant as a field.
      * @param constant the symbol of the int constant to retrieve.
      * @param allowClassInit whether to allow class initialization
+     * @param fieldType the expected field type. It should have int as a stack kind.
      * @return the int constant
      */
-    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant, boolean allowClassInit) {
-        Field f = klass.lookupDeclaredField(constant, Types._int);
+    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant, boolean allowClassInit, Symbol<Type> fieldType) {
+        assert TypeSymbols.getJavaKind(fieldType).getStackKind() == JavaKind.Int;
+        Field f = klass.lookupDeclaredField(constant, fieldType);
         if (f == null || !f.isStatic() || !f.isFinalFlagSet()) {
             throw EspressoError.fatal("Cannot find " + constant + " int constant in class " + klass.getName());
         }

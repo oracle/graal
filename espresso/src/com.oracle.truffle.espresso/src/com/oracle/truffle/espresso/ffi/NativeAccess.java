@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -36,8 +37,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 
@@ -200,7 +201,7 @@ public interface NativeAccess {
                             "A likely explanation is that a core espresso library was expected to contain bitcode but it doesn't.\n" +
                             "Core JDK libraries with LLVM bitcode are currently only available on linux-amd64 and darwin-amd64.\n" +
                             "On linux-aarch64 you could instead try to set `java.NativeBackend` to `nfi-dlmopen`.";
-            if (EspressoOptions.RUNNING_ON_SVM) {
+            if (ImageInfo.inImageRuntimeCode()) {
                 message += "\nIn a native-image, if a single espresso context is used, it's recommended to use the `nfi-native` backend.";
             } else {
                 message += "\nOn other platforms, you can try to run your embedding of espresso as a native-image if a single espresso context is used.";
@@ -209,33 +210,6 @@ public interface NativeAccess {
         }
         return bindSymbol(symbol, nativeSignature);
     }
-
-    /**
-     * Similar to malloc. The result of allocating a 0-sized buffer is an implementation detail.
-     *
-     * <h3>Lifetime
-     *
-     * @return <code>null</code> if the memory cannot be allocated. Otherwise, a
-     *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
-     * @throws IllegalArgumentException if the size is negative
-     */
-    @Buffer
-    TruffleObject allocateMemory(long size);
-
-    /**
-     * Similar to realloc. The result of allocating a 0-sized buffer is an implementation detail.
-     *
-     * @return <code>null</code> if the memory cannot be re-allocated. Otherwise, a
-     *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
-     * @throws IllegalArgumentException if the size is negative
-     */
-    @Buffer
-    TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize);
-
-    /**
-     * Similar to free. Accessing the buffer after free may cause explosive undefined behavior.
-     */
-    void freeMemory(@Pointer TruffleObject buffer);
 
     /**
      * Sinking, make a Java method accessible to the native world. Returns an
@@ -292,4 +266,18 @@ public interface NativeAccess {
 
         NativeAccess create(TruffleLanguage.Env env);
     }
+
+    /**
+     * Retrieves the {@link NativeMemory} associated with NativeAccess.
+     * <p>
+     * <h2>Implementation notes</h2> One should be extremely careful when determining which
+     * NativeMemory implementation to use for a new NativeAccess implementation. Some NativeMemory
+     * implementations virtualize guest memory such that addresses returned by
+     * {@link NativeMemory#allocateMemory(long)} do not directly map to host addresses, which can be
+     * problematic if the accessed "native world" works directly with those addresses as if they
+     * were host addresses. Thus, there needs to be synergy between Java and Native reads and writes
+     * to native memory. If unsure, use
+     * {@link com.oracle.truffle.espresso.ffi.memory.UnsafeNativeMemory}.
+     */
+    NativeMemory nativeMemory();
 }

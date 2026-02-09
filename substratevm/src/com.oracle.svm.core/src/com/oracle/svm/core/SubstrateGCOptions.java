@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.option.HostedOptionKey.HostedOptionKeyFlag.DoNotPassToNativeGC;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
@@ -34,12 +35,14 @@ import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Garbage collection-specific options that are supported by all garbage collectors. Some of these
@@ -53,7 +56,12 @@ public class SubstrateGCOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+
+                /* Update the isolate argument parser value. */
+                int optionIndex = IsolateArgumentParser.getOptionIndex(MinHeapSize);
+                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
             }
+
             super.onValueUpdate(values, oldValue, newValue);
         }
     };
@@ -64,7 +72,12 @@ public class SubstrateGCOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+
+                /* Update the isolate argument parser value. */
+                int optionIndex = IsolateArgumentParser.getOptionIndex(MaxHeapSize);
+                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
             }
+
             super.onValueUpdate(values, oldValue, newValue);
         }
     };
@@ -75,7 +88,12 @@ public class SubstrateGCOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+
+                /* Update the isolate argument parser value. */
+                int optionIndex = IsolateArgumentParser.getOptionIndex(MaxNewSize);
+                IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
             }
+
             super.onValueUpdate(values, oldValue, newValue);
         }
     };
@@ -107,8 +125,21 @@ public class SubstrateGCOptions {
     @Option(help = "Use thread-local object allocation.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> UseTLAB = new HostedOptionKey<>(true);
 
+    @Option(help = "Determines when to use thread-local object allocation.")//
+    public static final HostedOptionKey<TLABPolicy> TLABUsagePolicy = new HostedOptionKey<>(TLABPolicy.Auto, SubstrateGCOptions::verifyTLABUsagePolicy, DoNotPassToNativeGC);
+
     @Option(help = "Dynamically resize TLAB size for threads.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ResizeTLAB = new RuntimeOptionKey<>(true, IsolateCreationOnly);
+
+    @Option(help = "This number of milliseconds multiplied by the free heap memory in MByte is the time span " +
+                    "for which a soft reference will keep its referent alive after its last access.", type = OptionType.Expert) //
+    public static final RuntimeOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new NotifyGCRuntimeOptionKey<>(1000);
+
+    private static void verifyTLABUsagePolicy(@SuppressWarnings("unused") HostedOptionKey<?> key) {
+        if (!UseTLAB.getValue() && TLABUsagePolicy.getValue() == TLABPolicy.Always) {
+            throw UserError.invalidOptionValue(TLABUsagePolicy, TLABPolicy.Always.name(), "This option value can only be used if option '" + UseTLAB.getName() + "' is enabled");
+        }
+    }
 
     @DuplicatedInNativeCode
     public static class ConcealedOptions {
@@ -119,5 +150,30 @@ public class SubstrateGCOptions {
         /** Use GC-specific accessors instead. */
         @Option(help = "Starting TLAB size (in bytes); zero means set ergonomically.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> TLABSize = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
+
+        @Option(help = "Verify the heap before doing a garbage collection.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> VerifyBeforeGC = new NotifyGCRuntimeOptionKey<>(null, ConcealedOptions::validateVerifyGCOption);
+
+        @Option(help = "Verify the heap during a garbage collection.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> VerifyDuringGC = new NotifyGCRuntimeOptionKey<>(null, ConcealedOptions::validateVerifyGCOption);
+
+        @Option(help = "Verify the heap after doing a garbage collection.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> VerifyAfterGC = new NotifyGCRuntimeOptionKey<>(null, ConcealedOptions::validateVerifyGCOption);
+
+        public static void validateVerifyGCOption(RuntimeOptionKey<Boolean> key) {
+            Boolean value = key.getValue();
+            if (value != null && value) {
+                if (SubstrateOptions.useEpsilonGC()) {
+                    throw UserError.invalidOptionValue(key, true, "This option cannot be enabled if epsilon GC is used");
+                } else if (SubstrateOptions.useSerialGC() && !VerifyHeap.getValue()) {
+                    throw UserError.invalidOptionValue(key, true, "This option can only be used together with " + SubstrateOptionsParser.commandArgument(VerifyHeap, "+"));
+                }
+            }
+        }
+    }
+
+    public enum TLABPolicy {
+        Auto,
+        Always;
     }
 }

@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionMap;
@@ -46,9 +45,6 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
-
-    public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
-
     private static final Path EMPTY = Paths.get("");
     private static final String PATH_SEPARATOR_INSERT = "\" + java.io.File.pathSeparator + \"";
     private static final String SEMI_COLON = ";";
@@ -634,6 +630,12 @@ public final class EspressoOptions {
                     usageSyntax = "<nativeBackend>") //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
 
+    @Option(help = "NativeMemory used by Espresso. Can only be specified with no-native backend where memory can be fully virtualized.", //
+                    category = OptionCategory.EXPERT,  //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "<nativeMemory>") //
+    public static final OptionKey<String> NativeMemory = new OptionKey<>("");
+
     @Option(help = "Enable use of a custom Espresso implementation of boot libraries, which allows for not entering native code.\\n" +
                     "Will be automatically enabled if there is NO native access.\\n" +
                     "For example, this will replace the usual 'libjava'. Missing implementations will thus fail with 'UnsatifiedLinkError'.", //
@@ -641,6 +643,12 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "true|false") //
     public static final OptionKey<Boolean> UseEspressoLibs = new OptionKey<>(false);
+
+    @Option(help = "Whether to perform bounds checks on array accesses via Unsafe!", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> CheckUnsafeArrayBounds = new OptionKey<>(false);
 
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
                     category = OptionCategory.EXPERT, //
@@ -703,6 +711,12 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnableJVMCI = new OptionKey<>(false);
+
+    @Option(help = "Expose the <JVMCI_HELPER> binding to support external/host JVMCI.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> ExposeJVMCIHelper = new OptionKey<>(false);
 
     public enum GuestFieldOffsetStrategyEnum {
         safety,

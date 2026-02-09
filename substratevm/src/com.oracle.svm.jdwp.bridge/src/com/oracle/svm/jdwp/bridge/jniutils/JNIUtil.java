@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.VoidPointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JArray;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JBooleanArray;
@@ -66,8 +67,6 @@ import com.oracle.svm.jdwp.bridge.jniutils.JNI.JWeak;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JavaVM;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JavaVMAttachArgs;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JavaVMPointer;
-
-import jdk.graal.compiler.word.Word;
 
 /**
  * Helpers for calling JNI functions.

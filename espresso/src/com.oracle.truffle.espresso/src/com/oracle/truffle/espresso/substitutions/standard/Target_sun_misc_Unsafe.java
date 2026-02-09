@@ -22,10 +22,13 @@
  */
 package com.oracle.truffle.espresso.substitutions.standard;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
 import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
 import static com.oracle.truffle.espresso.threads.ThreadState.PARKED;
 import static com.oracle.truffle.espresso.threads.ThreadState.TIMED_PARKED;
 
+import java.io.Serial;
 import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.security.ProtectionDomain;
@@ -37,12 +40,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -52,18 +53,21 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.ffi.Buffer;
-import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAccessMode;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.libs.InformationLeak;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.EspressoInlineNode;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
@@ -87,8 +91,10 @@ import sun.misc.Unsafe;
 @EspressoSubstitutions(nameProvider = Target_sun_misc_Unsafe.SharedUnsafe.class)
 public final class Target_sun_misc_Unsafe {
 
-    /** The value of {@code addressSize()}. */
-    public static final int ADDRESS_SIZE;
+    /**
+     * The size of object references of the host in bytes. Used for bounds checks on array accesses
+     */
+    private static final int REFERENCE_SIZE;
 
     private static final int SAFETY_FIELD_OFFSET = 123456789;
     private static final int SAFETY_STATIC_FIELD_OFFSET = 3456789;
@@ -99,7 +105,7 @@ public final class Target_sun_misc_Unsafe {
 
     static {
         Unsafe unsafe = UnsafeAccess.get();
-        ADDRESS_SIZE = unsafe.addressSize();
+        REFERENCE_SIZE = unsafe.arrayIndexScale(Object[].class);
     }
 
     private Target_sun_misc_Unsafe() {
@@ -154,9 +160,12 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static int arrayBaseOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Klass klass = clazz.getMirrorKlass(meta);
+        return arrayBaseOffset(clazz.getMirrorKlass(meta));
+    }
+
+    private static int arrayBaseOffset(Klass klass) {
         assert klass.isArray();
+        Unsafe unsafe = UnsafeAccess.get();
         if (((ArrayKlass) klass).getComponentType().isPrimitive()) {
             Class<?> hostPrimitive = ((ArrayKlass) klass).getComponentType().getJavaKind().toJavaClass();
             return unsafe.arrayBaseOffset(Array.newInstance(hostPrimitive, 0).getClass());
@@ -177,8 +186,11 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static int arrayIndexScale(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Klass klass = clazz.getMirrorKlass(meta);
+        return arrayIndexScale(clazz.getMirrorKlass(meta));
+    }
+
+    private static int arrayIndexScale(Klass klass) {
+        Unsafe unsafe = UnsafeAccess.get();
         assert klass.isArray();
         if (((ArrayKlass) klass).getComponentType().isPrimitive()) {
             Class<?> hostPrimitive = ((ArrayKlass) klass).getComponentType().getJavaKind().toJavaClass();
@@ -195,8 +207,8 @@ public final class Target_sun_misc_Unsafe {
      * memory blocks) is determined fully by their information content.
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class, flags = {IsTrivial})
-    public static int addressSize(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self) {
-        return ADDRESS_SIZE;
+    public static int addressSize(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @Inject EspressoContext ctx) {
+        return ctx.getNativeAccess().nativeMemory().addressSize();
     }
 
     /**
@@ -441,9 +453,7 @@ public final class Target_sun_misc_Unsafe {
      *
      * @throws IllegalArgumentException if the size is negative or too large for the native size_t
      *             type
-     *
      * @throws OutOfMemoryError if the allocation is refused by the system
-     *
      * @see GetByte
      * @see PutByte
      */
@@ -453,20 +463,11 @@ public final class Target_sun_misc_Unsafe {
         if (length < 0) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size is negative");
         }
-        @Buffer
-        TruffleObject buffer = meta.getNativeAccess().allocateMemory(length);
-        if (buffer == null && length > 0) {
-            // malloc may return anything for 0-sized allocations.
-            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
-        }
-        long ptr;
         try {
-            ptr = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
+            return meta.getNativeAccess().nativeMemory().allocateMemory(length);
+        } catch (MemoryAllocationException e) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage());
         }
-        return ptr;
     }
 
     /**
@@ -479,9 +480,7 @@ public final class Target_sun_misc_Unsafe {
      *
      * @throws IllegalArgumentException if the size is negative or too large for the native size_t
      *             type
-     *
      * @throws OutOfMemoryError if the allocation is refused by the system
-     *
      * @see #allocateMemory
      */
     @TruffleBoundary
@@ -490,19 +489,13 @@ public final class Target_sun_misc_Unsafe {
         if (newSize < 0) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size is negative");
         }
-        @Buffer
-        TruffleObject result = meta.getNativeAccess().reallocateMemory(RawPointer.create(address), newSize);
-        if (result == null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc couldn't reallocate " + newSize + " bytes");
-        }
-        long newAddress;
         try {
-            newAddress = InteropLibrary.getUncached().asPointer(result);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
+            return meta.getNativeAccess().nativeMemory().reallocateMemory(address, newSize);
+        } catch (MemoryAllocationException e) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage());
+        } catch (IllegalMemoryAccessException e) {
+            throw meta.throwIllegalArgumentExceptionBoundary("address should refer to a value returned by allocate!");
         }
-        return newAddress;
     }
 
     /**
@@ -515,7 +508,11 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void freeMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, @Inject Meta meta) {
-        meta.getNativeAccess().freeMemory(RawPointer.create(address));
+        try {
+            meta.getNativeAccess().nativeMemory().freeMemory(address);
+        } catch (IllegalMemoryAccessException e) {
+            throw meta.throwIllegalArgumentExceptionBoundary("address should refer to a value returned by allocate!");
+        }
     }
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
@@ -539,23 +536,88 @@ public final class Target_sun_misc_Unsafe {
         clazz.getMirrorKlass(meta).safeInitialize();
     }
 
-    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static void copyMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
-                    @JavaType(Object.class) StaticObject destBase, long destOffset, long bytes, @Inject EspressoLanguage language, @Inject Meta meta) {
-        if (bytes == 0) {
-            return;
+    /**
+     * Helper for array access bounds checks. Calls {@link #boundsCheck}, and if an
+     * {@link IllegalArrayAccessException} is thrown, enters the error branch with the provided
+     * node. Reduces code duplication in handling {@link IllegalArrayAccessException}.
+     */
+    private static void boundsCheckAndEnterErrorBranch(
+                    @JavaType(Object.class) StaticObject o, long offset, long accessSize, Meta meta,
+                    EspressoNode node, InlinedBranchProfile errorBranch) {
+        try {
+            boundsCheck(o, offset, accessSize, meta.getLanguage());
+        } catch (IllegalArrayAccessException e) {
+            errorBranch.enter(node);
+            throw meta.throwArrayIndexOutOfBounds(e.getMessage());
         }
-        UnsafeAccess.getIfAllowed(meta).copyMemory(MetaUtil.unwrapArrayOrNull(language, srcBase), srcOffset, MetaUtil.unwrapArrayOrNull(language, destBase), destOffset, bytes);
+    }
+
+    /**
+     * Checks if a memory access in a guest array is within bounds.
+     *
+     * @param o guest array object
+     * @param offset raw byte offset into array
+     * @param accessSize number of bytes to be accessed
+     * @param language the EspressoLanguage instance
+     * @throws IllegalArrayAccessException if the access is out of bounds
+     */
+    private static void boundsCheck(
+                    @JavaType(Object.class) StaticObject o, long offset, long accessSize, EspressoLanguage language) throws IllegalArrayAccessException {
+        // offset = baseOffset + index * indexScale
+        assert o.getKlass().isArray();
+        Klass klass = o.getKlass();
+        int baseOffset = arrayBaseOffset(klass);
+        int indexScale = arrayIndexScale(klass);
+        if (offset < baseOffset) {
+            throw new IllegalArrayAccessException("arrayOffset is less than baseOffset");
+        }
+        /*
+         * Ensure memory is aligned for operations like sub-word CAS that may temporarily access
+         * memory just beyond array bounds.
+         */
+        int maxIndex = alignUpToIntBytes(baseOffset + o.length(language) * indexScale);
+        if (offset > maxIndex - accessSize) {
+            throw new IllegalArrayAccessException("arrayOffset is beyond array length");
+        }
+    }
+
+    /**
+     * Thrown when {@link #boundsCheck} fails due to an out-of-bounds access.
+     */
+    private static class IllegalArrayAccessException extends Exception {
+        @Serial private static final long serialVersionUID = 1L;
+
+        IllegalArrayAccessException(String msg) {
+            super(msg);
+        }
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public final Throwable fillInStackTrace() {
+            return this;
+        }
+    }
+
+    private static int alignUpToIntBytes(int bytes) {
+        return (bytes + (Integer.BYTES - 1)) & -(Integer.BYTES);
     }
 
     @Substitution(hasReceiver = true)
     public static void copySwapMemory0(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
-                    @JavaType(Object.class) StaticObject destBase, long destOffset, long bytes, long elemSize, @Inject EspressoLanguage language, @Inject Meta meta) {
+                    @JavaType(Object.class) StaticObject dstBase, long dstOffset, long bytes, long elemSize, @Inject EspressoLanguage language,
+                    @Inject EspressoContext context, @Inject Meta meta) {
         if (bytes == 0) {
             return;
         }
-        UnsafeAccess.checkAllowed(meta);
-        UnsafeSupport.copySwapMemory(MetaUtil.unwrapArrayOrNull(language, srcBase), srcOffset, MetaUtil.unwrapArrayOrNull(language, destBase), destOffset, bytes, elemSize);
+        // If we are doing off-heap accesses use nativeMemory
+        Object src = MetaUtil.unwrapArrayOrNull(language, srcBase);
+        Object dst = MetaUtil.unwrapArrayOrNull(language, dstBase);
+        try {
+            UnsafeSupport.copySwapMemory(src, srcOffset, dst, dstOffset, bytes, elemSize, context.getNativeAccess().nativeMemory());
+        } catch (IllegalMemoryAccessException e) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid memory access: srcOffset or dstOffset and size refer to memory outside the allocated region");
+        }
+
     }
 
     /**
@@ -573,43 +635,12 @@ public final class Target_sun_misc_Unsafe {
     }
 
     /**
-     * Sets all bytes in a given block of memory to a fixed value (usually zero).
-     *
-     * <p>
-     * This method determines a block's base address by means of two parameters, and so it provides
-     * (in effect) a <em>double-register</em> addressing mode, as discussed in {@link GetInt}. When
-     * the object reference is null, the offset supplies an absolute base address.
-     *
-     * <p>
-     * The stores are in coherent (atomic) units of a size determined by the address and length
-     * parameters. If the effective address and length are all even modulo 8, the stores take place
-     * in 'long' units. If the effective address and length are (resp.) even modulo 4 or 2, the
-     * stores take place in units of 'int' or 'short'.
-     *
-     * @since 1.7
-     */
-    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static void setMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject o, long offset, long bytes, byte value,
-                    @Inject Meta meta, @Inject EspressoLanguage language) {
-        Object hostObject;
-        if (StaticObject.isNull(o)) {
-            hostObject = null;
-        } else if (o.getKlass().isArray()) {
-            hostObject = o.unwrap(language);
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere();
-        }
-        UnsafeAccess.getIfAllowed(meta).setMemory(hostObject, offset, bytes, value);
-    }
-
-    /**
      * Report the size in bytes of a native memory page (whatever that is). This value will always
      * be a power of two.
      */
     @Substitution(hasReceiver = true)
-    public static int pageSize(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @Inject Meta meta) {
-        return UnsafeAccess.getIfAllowed(meta).pageSize();
+    public static int pageSize(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self) {
+        return InformationLeak.pageSize();
     }
 
     /**
@@ -768,7 +799,6 @@ public final class Target_sun_misc_Unsafe {
      * calling from native code.
      *
      * @param thread the thread to unpark.
-     *
      */
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
@@ -797,8 +827,12 @@ public final class Target_sun_misc_Unsafe {
      * @see #allocateMemory
      */
     @Substitution(hasReceiver = true)
-    public static long getAddress(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, @Inject Meta meta) {
-        return UnsafeAccess.getIfAllowed(meta).getAddress(address);
+    public static long getAddress(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, @Inject NativeAccess nativeAccess, @Inject Meta meta) {
+        try {
+            return nativeAccess.nativeMemory().getAddress(address);
+        } catch (IllegalMemoryAccessException e) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid memory access: address refer to memory outside the allocated region");
+        }
     }
 
     /**
@@ -812,8 +846,12 @@ public final class Target_sun_misc_Unsafe {
      * @see #getAddress
      */
     @Substitution(hasReceiver = true)
-    public static void putAddress(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long x, @Inject Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).putAddress(address, x);
+    public static void putAddress(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long x, @Inject NativeAccess nativeAccess, @Inject Meta meta) {
+        try {
+            nativeAccess.nativeMemory().putAddress(address, x);
+        } catch (IllegalMemoryAccessException e) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid memory access: address refer to memory outside the allocated region");
+        }
     }
 
     /**
@@ -822,8 +860,8 @@ public final class Target_sun_misc_Unsafe {
      * @since 1.8
      */
     @Substitution(hasReceiver = true)
-    public static void loadFence(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @Inject Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).loadFence();
+    public static void loadFence(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self) {
+        InformationLeak.loadFence();
     }
 
     /**
@@ -832,8 +870,8 @@ public final class Target_sun_misc_Unsafe {
      * @since 1.8
      */
     @Substitution(hasReceiver = true)
-    public static void storeFence(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @Inject Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).storeFence();
+    public static void storeFence(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self) {
+        InformationLeak.storeFence();
     }
 
     /**
@@ -843,8 +881,8 @@ public final class Target_sun_misc_Unsafe {
      * @since 1.8
      */
     @Substitution(hasReceiver = true)
-    public static void fullFence(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @Inject Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).fullFence();
+    public static void fullFence(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self) {
+        InformationLeak.fullFence();
     }
 
     @SuppressWarnings("deprecation")
@@ -865,7 +903,6 @@ public final class Target_sun_misc_Unsafe {
      *
      * @param loadavg an array of double of size nelems
      * @param nelems the number of samples to be retrieved and must be 1 to 3.
-     *
      * @return the number of samples actually retrieved; or -1 if the load average is unobtainable.
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
@@ -945,11 +982,24 @@ public final class Target_sun_misc_Unsafe {
             return StaticObject.isNull(object) || object.isArray(); // order matters
         }
 
+        protected static boolean isNull(StaticObject object) {
+            return StaticObject.isNull(object);
+        }
+
+        protected static boolean isArray(StaticObject object) {
+            return !StaticObject.isNull(object) && object.isArray(); // order matters
+        }
+
         protected static Object unwrapNullOrArray(EspressoLanguage language, StaticObject object) {
             assert isNullOrArray(object);
             if (StaticObject.isNull(object)) {
                 return null;
             }
+            return object.unwrap(language);
+        }
+
+        protected static Object unwrapArray(EspressoLanguage language, StaticObject object) {
+            assert isArray(object);
             return object.unwrap(language);
         }
     }
@@ -969,8 +1019,14 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, long address, byte value);
 
         @Specialization
-        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, byte value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putByte(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, byte value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putByte(address, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -981,8 +1037,14 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, long address, char value);
 
         @Specialization
-        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, char value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putChar(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, char value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putChar(address, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -993,12 +1055,20 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, long address, short value);
 
         @Specialization
-        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, short value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putShort(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, short value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putShort(address, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
-    /** @see GetByteWithBase */
+    /**
+     * @see GetByteWithBase
+     */
     @GenerateInline(false) // not available in substitutions
     @Substitution(hasReceiver = true)
     abstract static class PutInt extends UnsafeAccessNode {
@@ -1006,8 +1076,14 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, long address, int value);
 
         @Specialization
-        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, int value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putInt(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, int value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putInt(address, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -1018,8 +1094,14 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, long address, float value);
 
         @Specialization
-        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, float value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putFloat(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, float value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putFloat(address, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -1030,8 +1112,14 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, long address, double value);
 
         @Specialization
-        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, double value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putDouble(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, double value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putDouble(address, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -1042,8 +1130,14 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, long address, long value);
 
         @Specialization
-        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putLong(address, value);
+        void doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putLong(address, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -1063,9 +1157,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutByteWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putByte(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, byte value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putByte(offset, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Byte.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putByte(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putByte(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1103,10 +1217,28 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        @Specialization(guards = "isNull(holder)")
+        @SuppressWarnings("unused")
+        void doOffHeap(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offs,
                         @JavaType(Object.class) StaticObject value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("putObject* to native memory");
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, REFERENCE_SIZE, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1143,9 +1275,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutBooleanWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putBoolean(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putBoolean(offset, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, 1, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putBoolean(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putBoolean(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1182,9 +1334,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutCharWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putChar(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, char value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putChar(offset, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Character.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putChar(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putChar(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1221,9 +1393,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutShortWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putShort(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, short value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putShort(offset, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Short.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putShort(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putShort(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1260,9 +1452,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutIntWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, int value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putInt(offset, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Integer.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1299,9 +1511,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutFloatWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putFloat(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, float value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putFloat(offset, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Float.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putFloat(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putFloat(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1338,9 +1570,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutDoubleWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putDouble(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, double value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putDouble(offset, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Double.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putDouble(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putDouble(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1377,9 +1629,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutLongWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, long value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putLong(offset, value, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Long.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1422,9 +1694,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutOrderedInt extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putOrderedInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, int value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putInt(offset, value, MemoryAccessMode.RELEASE_ACQUIRE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Integer.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putOrderedInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putOrderedInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1461,9 +1753,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutOrderedLong extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putOrderedLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, long value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putLong(offset, value, MemoryAccessMode.RELEASE_ACQUIRE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Long.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putOrderedLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putOrderedLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1501,10 +1813,28 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        @Specialization(guards = "isNull(holder)")
+        @SuppressWarnings("unused")
+        void doOffHeap(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putOrderedObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("put*Object to native memory");
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, REFERENCE_SIZE, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putOrderedObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putOrderedObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1552,9 +1882,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetByteWithBase extends UnsafeAccessNode {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        byte doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getByte(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        byte doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getByte(offset, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        byte doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Byte.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getByte(unwrapNullOrArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        byte doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getByte(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1594,11 +1944,31 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetObjectWithBase extends UnsafeAccessNode {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
+        @Specialization(guards = "isNull(holder)")
         @JavaType(Object.class)
-        StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        @SuppressWarnings("unused")
+        StaticObject doOffHeap(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset) {
-            return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getObject(unwrapNullOrArray(getLanguage(), holder), offset);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("get*Object from native memory");
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        @JavaType(Object.class)
+        StaticObject doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                        long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, REFERENCE_SIZE, getMeta(), this, errorBranch);
+            return (StaticObject) UnsafeAccess.get().getObject(unwrapNullOrArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        @JavaType(Object.class)
+        StaticObject doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                        long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return (StaticObject) UnsafeAccess.get().getObject(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1638,9 +2008,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetBooleanWithBase extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getBoolean(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        boolean doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getBoolean(offset, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        boolean doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, 1, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getBoolean(unwrapNullOrArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        boolean doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getBoolean(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1680,9 +2070,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetCharWithBase extends UnsafeAccessNode {
         abstract char execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        char doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getChar(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        char doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getChar(offset, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        char doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Character.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getChar(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        char doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getChar(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1722,9 +2132,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetShortWithBase extends UnsafeAccessNode {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        short doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getShort(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        short doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getShort(offset, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        short doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Short.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getShort(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        short doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getShort(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1764,9 +2194,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetIntWithBase extends UnsafeAccessNode {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getInt(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        int doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getInt(offset, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        int doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Integer.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getInt(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        int doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getInt(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1806,9 +2256,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetFloatWithBase extends UnsafeAccessNode {
         abstract float execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        float doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getFloat(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        float doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getFloat(offset, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        float doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Float.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getFloat(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        float doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getFloat(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1848,9 +2318,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetDoubleWithBase extends UnsafeAccessNode {
         abstract double execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        double doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getDouble(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        double doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getDouble(offset, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        double doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Double.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getDouble(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        double doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getDouble(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1890,9 +2380,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetLongWithBase extends UnsafeAccessNode {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        long doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getLong(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        long doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getLong(offset, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        long doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Long.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getLong(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        long doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getLong(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1936,9 +2446,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetByteVolatileWithBase extends UnsafeAccessNode {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        byte doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getByteVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        byte doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getByte(offset, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        byte doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Byte.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getByteVolatile(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        byte doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getByteVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -1978,11 +2508,30 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetObjectVolatileWithBase extends UnsafeAccessNode {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
+        @Specialization(guards = "isNull(holder)")
         @JavaType(Object.class)
-        StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        @SuppressWarnings("unused")
+        StaticObject doOffHeap(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset) {
-            return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getObjectVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("get*Object from native memory");
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        @JavaType(Object.class)
+        StaticObject doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, REFERENCE_SIZE, getMeta(), this, errorBranch);
+            return (StaticObject) UnsafeAccess.get().getObjectVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        @JavaType(Object.class)
+        StaticObject doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                        long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return (StaticObject) UnsafeAccess.get().getObjectVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2023,9 +2572,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetBooleanVolatileWithBase extends UnsafeAccessNode {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getBooleanVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        boolean doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getBoolean(offset, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        boolean doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, 1, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getBooleanVolatile(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        boolean doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getBooleanVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2065,9 +2634,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetCharVolatileWithBase extends UnsafeAccessNode {
         abstract char execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        char doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getCharVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        char doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getChar(offset, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        char doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Character.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getCharVolatile(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        char doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getCharVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2107,9 +2696,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetShortVolatileWithBase extends UnsafeAccessNode {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        short doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getShortVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        short doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getShort(offset, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        short doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Short.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getShortVolatile(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        short doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getShortVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2149,9 +2758,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetIntVolatileWithBase extends UnsafeAccessNode {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getIntVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        int doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getInt(offset, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        int doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Integer.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getIntVolatile(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        int doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getIntVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2191,9 +2820,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetFloatVolatileWithBase extends UnsafeAccessNode {
         abstract float execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        float doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getFloatVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        float doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getFloat(offset, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        float doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Float.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getFloatVolatile(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        float doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getFloatVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2233,9 +2882,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetDoubleVolatileWithBase extends UnsafeAccessNode {
         abstract double execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        double doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getDoubleVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        double doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getDouble(offset, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        double doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Double.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getDoubleVolatile(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        double doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getDoubleVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2275,9 +2944,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class GetLongVolatileWithBase extends UnsafeAccessNode {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        long doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getLongVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
+        @Specialization(guards = "isNull(holder)")
+        long doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getLong(offset, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        long doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Long.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().getLongVolatile(unwrapArray(getLanguage(), holder), offset);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        long doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().getLongVolatile(unwrapArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2322,8 +3011,14 @@ public final class Target_sun_misc_Unsafe {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        byte doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getByte(address);
+        byte doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getByte(address, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -2334,8 +3029,14 @@ public final class Target_sun_misc_Unsafe {
         abstract char execute(@JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        char doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getChar(address);
+        char doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getChar(address, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -2346,12 +3047,20 @@ public final class Target_sun_misc_Unsafe {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        short doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getShort(address);
+        short doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getShort(address, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
-    /** @see GetByteWithBase */
+    /**
+     * @see GetByteWithBase
+     */
     @GenerateInline(false) // not available in substitutions
     @Substitution(hasReceiver = true)
     abstract static class GetInt extends UnsafeAccessNode {
@@ -2359,8 +3068,14 @@ public final class Target_sun_misc_Unsafe {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        int doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getInt(address);
+        int doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getInt(address, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -2371,8 +3086,14 @@ public final class Target_sun_misc_Unsafe {
         abstract float execute(@JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        float doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getFloat(address);
+        float doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getFloat(address, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -2383,8 +3104,14 @@ public final class Target_sun_misc_Unsafe {
         abstract double execute(@JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        double doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getDouble(address);
+        double doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getDouble(address, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -2395,8 +3122,14 @@ public final class Target_sun_misc_Unsafe {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
-        long doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address) {
-            return UnsafeAccess.getIfAllowed(getMeta()).getLong(address);
+        long doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().getLong(address, MemoryAccessMode.PLAIN);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
         }
     }
 
@@ -2410,9 +3143,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutByteVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putByteVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, byte value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putByte(offset, value, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Byte.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putByteVolatile(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putByteVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2450,10 +3203,29 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        @Specialization(guards = "isNull(holder)")
+        @SuppressWarnings("unused")
+        void doOffHeap(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putObjectVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("putObject* to native memory");
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, REFERENCE_SIZE, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putObjectVolatile(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putObjectVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2491,9 +3263,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutBooleanVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putBooleanVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putBoolean(offset, value, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, 1, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putBooleanVolatile(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putBooleanVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2530,9 +3322,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutCharVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putCharVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, char value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putChar(offset, value, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Character.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putCharVolatile(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putCharVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2569,9 +3381,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutShortVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putShortVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, short value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putShort(offset, value, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Short.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putShortVolatile(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putShortVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2608,9 +3440,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutIntVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putIntVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, int value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putInt(offset, value, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Integer.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putIntVolatile(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putIntVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2647,9 +3499,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutFloatVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putFloatVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, float value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putFloat(offset, value, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Float.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putFloatVolatile(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putFloatVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2686,9 +3558,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutDoubleVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putDoubleVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, double value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putDouble(offset, value, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Double.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putDoubleVolatile(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putDoubleVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2725,9 +3617,29 @@ public final class Target_sun_misc_Unsafe {
     public abstract static class PutLongVolatileWithBase extends UnsafeAccessNode {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
-            UnsafeAccess.getIfAllowed(getMeta()).putLongVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, long value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().putLong(offset, value, MemoryAccessMode.VOLATILE);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Long.BYTES, getMeta(), this, errorBranch);
+            UnsafeAccess.get().putLongVolatile(unwrapArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            UnsafeAccess.get().putLongVolatile(unwrapArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2769,10 +3681,28 @@ public final class Target_sun_misc_Unsafe {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        @Specialization(guards = "isNull(holder)")
+        @SuppressWarnings("unused")
+        boolean doOffHeap(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
-            return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapObject(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("CAS reference to native memory");
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        boolean doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, REFERENCE_SIZE, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().compareAndSwapObject(unwrapArray(getLanguage(), holder), offset, before, after);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        boolean doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().compareAndSwapObject(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2811,10 +3741,32 @@ public final class Target_sun_misc_Unsafe {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        int before, int after) {
-            return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapInt(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+        @Specialization(guards = "isNull(holder)")
+        boolean doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        int before, int after,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().compareAndSetInt(offset, before, after);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        boolean doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        int before, int after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Integer.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().compareAndSwapInt(unwrapArray(getLanguage(), holder), offset, before, after);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        boolean doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        int before, int after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().compareAndSwapInt(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2849,7 +3801,7 @@ public final class Target_sun_misc_Unsafe {
                     return f.compareAndSwapFloat(resolveUnsafeAccessHolder(f, holder, meta), Float.intBitsToFloat(before), Float.intBitsToFloat(after));
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere();
+                    throw EspressoError.shouldNotReachHere(f.getKind().toString());
             }
         }
     }
@@ -2861,10 +3813,32 @@ public final class Target_sun_misc_Unsafe {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        long before, long after) {
-            return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapLong(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+        @Specialization(guards = "isNull(holder)")
+        boolean doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        long before, long after,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().compareAndSetLong(offset, before, after);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        boolean doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        long before, long after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Long.BYTES, getMeta(), this, errorBranch);
+            return UnsafeAccess.get().compareAndSwapLong(unwrapArray(getLanguage(), holder), offset, before, after);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        boolean doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        long before, long after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeAccess.get().compareAndSwapLong(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2926,13 +3900,32 @@ public final class Target_sun_misc_Unsafe {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
+        @Specialization(guards = "isNull(holder)")
         @JavaType(Object.class)
-        StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        @SuppressWarnings("unused")
+        StaticObject doOffHeap(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
-            UnsafeAccess.checkAllowed(getMeta());
-            return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("CAS reference on native memory");
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        @JavaType(Object.class)
+        StaticObject doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, REFERENCE_SIZE, getMeta(), this, errorBranch);
+            return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapArray(getLanguage(), holder), offset, before, after);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        @JavaType(Object.class)
+        StaticObject doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -2976,11 +3969,32 @@ public final class Target_sun_misc_Unsafe {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        int before, int after) {
-            UnsafeAccess.checkAllowed(getMeta());
-            return UnsafeSupport.compareAndExchangeInt(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+        @Specialization(guards = "isNull(holder)")
+        int doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        int before, int after,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().compareAndExchangeInt(offset, before, after);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        int doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        int before, int after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Integer.BYTES, getMeta(), this, errorBranch);
+            return UnsafeSupport.compareAndExchangeInt(unwrapArray(getLanguage(), holder), offset, before, after);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        int doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        int before, int after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeSupport.compareAndExchangeInt(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -3026,11 +4040,44 @@ public final class Target_sun_misc_Unsafe {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         byte before, byte after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        byte doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        byte before, byte after) {
-            UnsafeAccess.checkAllowed(getMeta());
-            return UnsafeSupport.compareAndExchangeByte(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+        @Specialization(guards = "isNull(holder)")
+        byte doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        byte before, byte after,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return UnsafeSupport.compareAndExchangeByte(holder, offset, before, after, getNativeAccess().nativeMemory());
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        byte doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        byte before, byte after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Byte.BYTES, getMeta(), this, errorBranch);
+            try {
+                return UnsafeSupport.compareAndExchangeByte(unwrapArray(getLanguage(), holder), offset, before, after, null);
+            } catch (IllegalMemoryAccessException e) {
+                // we should not reach here as we are not accessing native memory but arrays
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        byte doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        byte before, byte after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            try {
+                return UnsafeSupport.compareAndExchangeByte(unwrapArray(getLanguage(), holder), offset, before, after, null);
+            } catch (IllegalMemoryAccessException e) {
+                // we should not reach here as we are not accessing native memory but arrays
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere(e);
+            }
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -3076,11 +4123,44 @@ public final class Target_sun_misc_Unsafe {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         short before, short after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        short doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        short before, short after) {
-            UnsafeAccess.checkAllowed(getMeta());
-            return UnsafeSupport.compareAndExchangeShort(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+        @Specialization(guards = "isNull(holder)")
+        short doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        short before, short after,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return UnsafeSupport.compareAndExchangeShort(holder, offset, before, after, getNativeAccess().nativeMemory());
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        short doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        short before, short after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Short.BYTES, getMeta(), this, errorBranch);
+            try {
+                return UnsafeSupport.compareAndExchangeShort(unwrapArray(getLanguage(), holder), offset, before, after, null);
+            } catch (IllegalMemoryAccessException e) {
+                // we should not reach here as we are not accessing native memory but arrays
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        short doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        short before, short after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            try {
+                return UnsafeSupport.compareAndExchangeShort(unwrapArray(getLanguage(), holder), offset, before, after, null);
+            } catch (IllegalMemoryAccessException e) {
+                // we should not reach here as we are not accessing native memory but arrays
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere(e);
+            }
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -3126,11 +4206,32 @@ public final class Target_sun_misc_Unsafe {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after);
 
-        @Specialization(guards = "isNullOrArray(holder)")
-        long doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        long before, long after) {
-            UnsafeAccess.checkAllowed(getMeta());
-            return UnsafeSupport.compareAndExchangeLong(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
+        @Specialization(guards = "isNull(holder)")
+        long doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset,
+                        long before, long after,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                return getNativeAccess().nativeMemory().compareAndExchangeLong(offset, before, after);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getContext().getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        long doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        long before, long after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, Long.BYTES, getMeta(), this, errorBranch);
+            return UnsafeSupport.compareAndExchangeLong(unwrapArray(getLanguage(), holder), offset, before, after);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        long doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                        long before, long after,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return UnsafeSupport.compareAndExchangeLong(unwrapArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -3181,12 +4282,34 @@ public final class Target_sun_misc_Unsafe {
         abstract @JavaType(Unsafe.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value);
 
-        @Specialization(guards = "isNullOrArray(holder)")
+        @Specialization(guards = "isNull(holder)")
         @JavaType(Unsafe.class)
-        StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        @SuppressWarnings("unused")
+        StaticObject doOffHeap(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset,
                         @JavaType(Object.class) StaticObject value) {
-            return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getAndSetObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Object* to native memory");
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        @JavaType(Unsafe.class)
+        StaticObject doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                        long offset,
+                        @JavaType(Object.class) StaticObject value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, REFERENCE_SIZE, getMeta(), this, errorBranch);
+            return (StaticObject) UnsafeAccess.get().getAndSetObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        @JavaType(Unsafe.class)
+        StaticObject doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                        long offset,
+                        @JavaType(Object.class) StaticObject value,
+                        @SuppressWarnings("unused") @Bind("getLanguage()") EspressoLanguage language) {
+            return (StaticObject) UnsafeAccess.get().getAndSetObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
@@ -3262,8 +4385,204 @@ public final class Target_sun_misc_Unsafe {
             return cas.execute(self, holder, offset, before, after);
         }
     }
-
     // endregion CompareAndSet*
+
+    /**
+     * Sets all bytes in a given block of memory to a copy of another block. This method determines
+     * each block's base address by means of two parameters, and so it provides (in effect) a
+     * double-register addressing mode. When the object reference is null, the offset supplies an
+     * absolute base address. If the object reference is a Java array, copying occurs within (or
+     * from/to) the array at the given offset.
+     * 
+     * @see NativeMemory#copyMemory(long, long, long)
+     */
+    @GenerateInline(false) // not available in substitutions
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
+    public abstract static class CopyMemory extends UnsafeAccessNode {
+        abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                        @JavaType(Object.class) StaticObject dstBase, long dstOffset, long bytes);
+
+        @InlineInBytecode
+        @Specialization(guards = "bothNull(srcBase,dstBase)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                        @SuppressWarnings("unused") @JavaType(Object.class) StaticObject dstBase, long dstOffset, long bytes, @Cached InlinedBranchProfile errorBranch) {
+            /*
+             * given by jdk.internal.misc.Unsafe.copyMemory(java.lang.Object, long,
+             * java.lang.Object, long, long)
+             */
+            assert bytes > 0;
+            try {
+                getNativeAccess().nativeMemory().copyMemory(srcOffset, dstOffset, bytes);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: address refers to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"!bothNull(srcBase, dstBase)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                        @JavaType(Object.class) StaticObject dstBase, long dstOffset, long bytes,
+                        @Shared @Cached InlinedBranchProfile errorBranch,
+                        @Shared @Cached InlinedBranchProfile srcNonNull,
+                        @Shared @Cached InlinedBranchProfile dstNonNull,
+                        @Shared @Cached InlinedBranchProfile bothNonNullBranch,
+                        @Bind("getLanguage()") EspressoLanguage language) {
+            try {
+                if (!StaticObject.isNull(srcBase) && !StaticObject.isNull(dstBase)) {
+                    bothNonNullBranch.enter(this);
+                    boundsCheck(srcBase, srcOffset, bytes, language);
+                    boundsCheck(dstBase, dstOffset, bytes, language);
+                    doBothNonNull(srcBase, srcOffset, dstBase, dstOffset, bytes, language);
+                    return;
+                }
+                if (!StaticObject.isNull(srcBase)) {
+                    srcNonNull.enter(this);
+                    boundsCheck(srcBase, srcOffset, bytes, language);
+                    doSrcNonNull(srcBase, srcOffset, dstBase, dstOffset, bytes, language, errorBranch);
+                }
+                if (!StaticObject.isNull(dstBase)) {
+                    dstNonNull.enter(this);
+                    boundsCheck(dstBase, dstOffset, bytes, language);
+                    doDstNonNull(srcBase, srcOffset, dstBase, dstOffset, bytes, language, errorBranch);
+                }
+            } catch (IllegalArrayAccessException e) {
+                errorBranch.enter(this);
+                throw getMeta().throwArrayIndexOutOfBounds(e.getMessage());
+            }
+        }
+
+        @Specialization(guards = {"!bothNull(srcBase, dstBase)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                        @JavaType(Object.class) StaticObject dstBase, long dstOffset, long bytes,
+                        @Shared @Cached InlinedBranchProfile errorBranch,
+                        @Shared @Cached InlinedBranchProfile srcNonNull,
+                        @Shared @Cached InlinedBranchProfile dstNonNull,
+                        @Shared @Cached InlinedBranchProfile bothNonNullBranch,
+                        @Bind("getLanguage()") EspressoLanguage language) {
+            if (!StaticObject.isNull(srcBase) && !StaticObject.isNull(dstBase)) {
+                bothNonNullBranch.enter(this);
+                doBothNonNull(srcBase, srcOffset, dstBase, dstOffset, bytes, language);
+                return;
+            }
+            if (!StaticObject.isNull(srcBase)) {
+                srcNonNull.enter(this);
+                doSrcNonNull(srcBase, srcOffset, dstBase, dstOffset, bytes, language, errorBranch);
+            }
+            if (!StaticObject.isNull(dstBase)) {
+                dstNonNull.enter(this);
+                doDstNonNull(srcBase, srcOffset, dstBase, dstOffset, bytes, language, errorBranch);
+            }
+        }
+
+        private void doSrcNonNull(@JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                        @JavaType(Object.class) StaticObject dstBase, long dstOffset, long bytes, EspressoLanguage language, InlinedBranchProfile errorBranch) {
+            assert bytes > 0;
+            assert !StaticObject.isNull(srcBase);
+            assert StaticObject.isNull(dstBase);
+            Object src = MetaUtil.unwrapArrayOrNull(language, srcBase);
+            NativeMemory nativeMemory = getNativeAccess().nativeMemory();
+            Unsafe unsafe = UnsafeAccess.get();
+            int byteArrayBaseOffset = unsafe.arrayBaseOffset(byte[].class);
+            byte[] buff = new byte[Math.toIntExact(bytes)];
+            unsafe.copyMemory(src, srcOffset, buff, byteArrayBaseOffset, bytes);
+            try {
+                nativeMemory.writeMemory(dstOffset, buff);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: srcOffset or dstOffset and size refer to memory outside the allocated region");
+            }
+        }
+
+        private void doDstNonNull(@JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                        @JavaType(Object.class) StaticObject dstBase, long dstOffset, long bytes, EspressoLanguage language, InlinedBranchProfile errorBranch) {
+            assert bytes > 0;
+            assert StaticObject.isNull(srcBase);
+            assert !StaticObject.isNull(dstBase);
+            Object dst = MetaUtil.unwrapArrayOrNull(language, dstBase);
+            NativeMemory nativeMemory = getNativeAccess().nativeMemory();
+            Unsafe unsafe = UnsafeAccess.get();
+            int byteArrayBaseOffset = unsafe.arrayBaseOffset(byte[].class);
+            byte[] srcArray = new byte[Math.toIntExact(bytes)];
+            try {
+                nativeMemory.readMemory(srcOffset, srcArray);
+                // todo(GR-71081)
+                unsafe.copyMemory(srcArray, byteArrayBaseOffset, dst, dstOffset, bytes);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: srcOffset or dstOffset and size refer to memory outside the allocated region");
+            }
+        }
+
+        private static void doBothNonNull(@JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                        @JavaType(Object.class) StaticObject dstBase, long dstOffset, long bytes, EspressoLanguage language) {
+            assert bytes > 0;
+            assert !StaticObject.isNull(srcBase);
+            assert !StaticObject.isNull(dstBase);
+            Object src = MetaUtil.unwrapArrayOrNull(language, srcBase);
+            Object dst = MetaUtil.unwrapArrayOrNull(language, dstBase);
+            UnsafeAccess.get().copyMemory(src, srcOffset, dst, dstOffset, bytes);
+        }
+
+        protected static boolean bothNull(StaticObject src, StaticObject dst) {
+            return StaticObject.isNull(src) && StaticObject.isNull(dst);
+        }
+    }
+
+    /**
+     * Sets all bytes in a given block of memory to a fixed value (usually zero).
+     *
+     * <p>
+     * This method determines a block's base address by means of two parameters, and so it provides
+     * (in effect) a <em>double-register</em> addressing mode, as discussed in {@link GetInt}. When
+     * the object reference is null, the offset supplies an absolute base address.
+     *
+     * <p>
+     * The stores are in coherent (atomic) units of a size determined by the address and length
+     * parameters. If the effective address and length are all even modulo 8, the stores take place
+     * in 'long' units. If the effective address and length are (resp.) even modulo 4 or 2, the
+     * stores take place in units of 'int' or 'short'.
+     *
+     * @since 1.7
+     */
+    @GenerateInline(false) // not available in substitutions
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
+    @InlineInBytecode
+    public abstract static class SetMemory extends UnsafeAccessNode {
+        abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject o, long offset, long bytes, byte value);
+
+        @Specialization(guards = "isNull(holder)")
+        void doOffHeap(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject holder, long offset, long bytes,
+                        byte value,
+                        @Cached InlinedBranchProfile errorBranch) {
+            try {
+                getNativeAccess().nativeMemory().setMemory(offset, bytes, value);
+            } catch (IllegalMemoryAccessException e) {
+                errorBranch.enter(this);
+                throw getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: offset and size refer to memory outside the allocated region");
+            }
+        }
+
+        @Specialization(guards = {"isArray(holder)", "language.checkUnsafeArrayBounds()"})
+        void doArrayWithBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long bytes, byte value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @Cached InlinedBranchProfile errorBranch) {
+            boundsCheckAndEnterErrorBranch(holder, offset, bytes, getMeta(), this, errorBranch);
+            doSetMemory(holder, offset, bytes, value, language);
+        }
+
+        @Specialization(guards = {"isArray(holder)", "!language.checkUnsafeArrayBounds()"})
+        void doArrayNoBoundsCheck(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long bytes, byte value,
+                        @Bind("getLanguage()") EspressoLanguage language) {
+            doSetMemory(holder, offset, bytes, value, language);
+        }
+
+        private static void doSetMemory(@JavaType(Object.class) StaticObject o, long offset, long bytes, byte value,
+                        EspressoLanguage language) {
+            assert o.isArray();
+            // todo(GR-71081)
+            UnsafeAccess.get().setMemory(o.unwrap(language), offset, bytes, value);
+        }
+    }
 
     // endregion UnsafeAccessors
 

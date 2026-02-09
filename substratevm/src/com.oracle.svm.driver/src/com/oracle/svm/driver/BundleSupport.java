@@ -39,20 +39,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
+
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.option.BundleMember;
@@ -173,7 +173,7 @@ final class BundleSupport {
                     for (int i = buildArgs.size() - 1; i >= 0; i--) {
                         args.push(buildArgs.get(i));
                     }
-                    nativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Inject args: '" + String.join(" ", buildArgs) + "'");
+                    NativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Inject args: '" + String.join(" ", buildArgs) + "'");
                     /* Snapshot args after in-place expansion (includes also args after this one) */
                     bundleSupport.updatedNativeImageArgs = args.snapshot();
                     break;
@@ -202,16 +202,16 @@ final class BundleSupport {
                     LogUtils.warning(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle was built in a container, but container builds are only supported for Linux.");
                 } else {
                     bundleSupport.useContainer = true;
-                    bundleSupport.containerSupport = new ContainerSupport(bundleSupport.stageDir, NativeImage::showError, LogUtils::warning, nativeImage::showMessage);
+                    bundleSupport.containerSupport = new ContainerSupport(bundleSupport.stageDir, NativeImage::showError, LogUtils::warning, NativeImage::showMessage);
                 }
             }
 
             if (bundleSupport.useContainer) {
                 if (!OS.LINUX.isCurrent()) {
-                    nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping containerized build, only supported for Linux.");
+                    NativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping containerized build, only supported for Linux.");
                     bundleSupport.useContainer = false;
                 } else if (nativeImage.isDryRun()) {
-                    nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping container creation for native-image bundle with dry-run option.");
+                    NativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping container creation for native-image bundle with dry-run option.");
                     bundleSupport.useContainer = false;
                 }
             }
@@ -225,7 +225,7 @@ final class BundleSupport {
     }
 
     void createDockerfile(Path dockerfile) {
-        nativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Creating default Dockerfile for native-image bundle.");
+        NativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Creating default Dockerfile for native-image bundle.");
         String dockerfileText = DEFAULT_DOCKERFILE;
         try {
             Files.writeString(dockerfile, dockerfileText);
@@ -242,7 +242,7 @@ final class BundleSupport {
                 if (containerSupport != null) {
                     throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", option.key()));
                 }
-                containerSupport = new ContainerSupport(stageDir, NativeImage::showError, LogUtils::warning, nativeImage::showMessage);
+                containerSupport = new ContainerSupport(stageDir, NativeImage::showError, LogUtils::warning, NativeImage::showMessage);
                 useContainer = true;
                 if (option.value() != null) {
                     if (!ContainerSupport.SUPPORTED_TOOLS.contains(option.value())) {
@@ -413,20 +413,20 @@ final class BundleSupport {
 
     Path recordCanonicalization(Path before, Path after) {
         if (before.startsWith(rootDir)) {
-            nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordCanonicalization Skip: " + before);
+            NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordCanonicalization Skip: " + before);
             return before;
         }
         if (after.startsWith(nativeImage.config.getJavaHome())) {
             return after;
         }
-        nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordCanonicalization src: " + before + ", dst: " + after);
+        NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordCanonicalization src: " + before + ", dst: " + after);
         pathCanonicalizations.put(before, after);
         return after;
     }
 
     Path restoreCanonicalization(Path before) {
         Path after = pathCanonicalizations.get(before);
-        nativeImage.showVerboseMessage(after != null && nativeImage.isVVerbose(), "RestoreCanonicalization src: " + before + ", dst: " + after);
+        NativeImage.showVerboseMessage(after != null && nativeImage.isVVerbose(), "RestoreCanonicalization src: " + before + ", dst: " + after);
         return after;
     }
 
@@ -477,13 +477,13 @@ final class BundleSupport {
         assert destinationDir.startsWith(rootDir);
 
         if (origPath.startsWith(rootDir)) {
-            nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution/RestoreSubstitution Skip: " + origPath);
+            NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution/RestoreSubstitution Skip: " + origPath);
             return origPath;
         }
 
         Path previousRelativeSubstitutedPath = pathSubstitutions.get(origPath);
         if (previousRelativeSubstitutedPath != null) {
-            nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RestoreSubstitution src: " + origPath + ", dst: " + previousRelativeSubstitutedPath);
+            NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RestoreSubstitution src: " + origPath + ", dst: " + previousRelativeSubstitutedPath);
             return rootDir.resolve(previousRelativeSubstitutedPath);
         }
 
@@ -502,7 +502,7 @@ final class BundleSupport {
             Path tmpPath = ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.resolve("tmp");
             boolean subdirInTmp = origPath.startsWith(tmpPath) && !origPath.equals(tmpPath);
             if (!subdirInTmp) {
-                Set<Path> forbiddenPaths = new HashSet<>(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
+                EconomicSet<Path> forbiddenPaths = EconomicSet.create(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
                 forbiddenPaths.add(rootDir);
                 for (Path path : forbiddenPaths) {
                     if (origPath.startsWith(path)) {
@@ -557,7 +557,7 @@ final class BundleSupport {
         }
 
         Path relativeSubstitutedPath = rootDir.relativize(substitutedPath);
-        nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
+        NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
         pathSubstitutions.put(origPath, relativeSubstitutedPath);
         return substitutedPath;
     }
@@ -573,7 +573,7 @@ final class BundleSupport {
     }
 
     private void copyFiles(Path source, Path target, boolean overwrite) {
-        nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "> Copy files from " + source + " to " + target);
+        NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "> Copy files from " + source + " to " + target);
         if (Files.isDirectory(source)) {
             try (Stream<Path> walk = Files.walk(source)) {
                 walk.forEach(sourcePath -> copyFile(sourcePath, target.resolve(source.relativize(sourcePath)), overwrite));
@@ -587,7 +587,7 @@ final class BundleSupport {
 
     private void copyFile(Path sourceFile, Path target, boolean overwrite) {
         try {
-            nativeImage.showVerboseMessage(nativeImage.isVVVerbose(), "> Copy " + sourceFile + " to " + target);
+            NativeImage.showVerboseMessage(nativeImage.isVVVerbose(), "> Copy " + sourceFile + " to " + target);
             if (overwrite && Files.isDirectory(sourceFile) && Files.isDirectory(target)) {
                 return;
             }
@@ -654,22 +654,22 @@ final class BundleSupport {
         }
 
         if (!nativeImage.isDryRun() && (writeOutput || writeBundle)) {
-            nativeImage.showNewline();
+            NativeImage.showNewline();
         }
 
         if (writeOutput) {
             Path externalOutputDir = getExternalOutputDir();
             copyFiles(outputDir, externalOutputDir, true);
-            nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle build output written to " + externalOutputDir);
+            NativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle build output written to " + externalOutputDir);
         }
 
         try {
             if (writeBundle) {
                 Path bundleFilePath = writeBundle();
-                nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle written to " + bundleFilePath);
+                NativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle written to " + bundleFilePath);
             }
         } finally {
-            nativeImage.showNewline();
+            NativeImage.showNewline();
         }
     }
 
@@ -960,10 +960,10 @@ final class BundleSupport {
             String bundlePlatform = properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_PLATFORM, "unknown");
             String currentPlatform = bundlePlatform.equals(NativeImage.platform) ? "" : " != '" + NativeImage.platform + "'";
             String bundleCreationTimestamp = properties.getOrDefault(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, "");
-            nativeImage.showNewline();
-            nativeImage.showMessage("%sLoaded Bundle from %s referred to as %s from here on.", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName, BUNDLE_ALIAS);
-            nativeImage.showMessage("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, ArchiveSupport.parseTimestamp(bundleCreationTimestamp));
-            nativeImage.showMessage("%sUsing version: '%s'%s (vendor '%s'%s) on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX,
+            NativeImage.showNewline();
+            NativeImage.showMessage("%sLoaded Bundle from %s referred to as %s from here on.", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName, BUNDLE_ALIAS);
+            NativeImage.showMessage("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, ArchiveSupport.parseTimestamp(bundleCreationTimestamp));
+            NativeImage.showMessage("%sUsing version: '%s'%s (vendor '%s'%s) on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX,
                             bundleVersion, currentVersion,
                             bundleVendor, currentVendor,
                             bundlePlatform, currentPlatform);

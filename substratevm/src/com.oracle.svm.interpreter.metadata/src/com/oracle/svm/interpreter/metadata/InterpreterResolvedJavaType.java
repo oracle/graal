@@ -24,14 +24,16 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
@@ -52,7 +54,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * Represents a primitive or reference resolved Java type, including additional capabilities of the
  * closed world e.g. instantiable, instantiated, effectively final ...
  */
-public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated implements ResolvedJavaType, CremaTypeAccess {
+public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated implements ResolvedJavaType, CremaTypeAccess, SubstrateMetadata {
     public static final InterpreterResolvedJavaType[] EMPTY_ARRAY = new InterpreterResolvedJavaType[0];
 
     private final Symbol<Type> type;
@@ -61,6 +63,11 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
     private final boolean isWordType;
     private volatile boolean methodEnterEventEnabled;
     private volatile boolean methodExitEventEnabled;
+
+    // TODO move to crema once GR-71517 is resolved
+    private volatile ResolvedJavaType ristrettoType;
+    private static final AtomicReferenceFieldUpdater<InterpreterResolvedJavaType, ResolvedJavaType> RISTRETTO_TYPE_UPDATER = AtomicReferenceFieldUpdater
+                    .newUpdater(InterpreterResolvedJavaType.class, ResolvedJavaType.class, "ristrettoType");
 
     // Only called at build time universe creation.
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -84,6 +91,27 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
         this.clazzConstant = MetadataUtil.requireNonNull(clazzConstant);
         this.clazz = null;
         this.isWordType = isWordType;
+    }
+
+    public ResolvedJavaType getRistrettoType(Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier) {
+        if (this.ristrettoType != null) {
+            return this.ristrettoType;
+        }
+        /*
+         * We allow concurrent allocation of a ristretto type per interpreter type. Eventually
+         * however we CAS on the pointer in the interpreter representation, if another thread was
+         * faster return its type.
+         */
+        return getOrSetRistrettoType(ristrettoTypeSupplier.apply(this));
+    }
+
+    private ResolvedJavaType getOrSetRistrettoType(ResolvedJavaType newRistrettoType) {
+        if (RISTRETTO_TYPE_UPDATER.compareAndSet(this, null, newRistrettoType)) {
+            return newRistrettoType;
+        }
+        var rType = this.ristrettoType;
+        assert rType != null : "If CAS for null fails must have written a type already";
+        return rType;
     }
 
     @Override
@@ -229,7 +257,7 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final boolean isInitialized() {
-        throw VMError.intentionallyUnimplemented();
+        return DynamicHub.fromClass(clazz).isInitialized();
     }
 
     @Override
@@ -239,7 +267,7 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final boolean isLinked() {
-        throw VMError.intentionallyUnimplemented();
+        return DynamicHub.fromClass(clazz).isLinked();
     }
 
     @Override
@@ -264,7 +292,31 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final Assumptions.AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype() {
-        throw VMError.intentionallyUnimplemented();
+        if (isLeaf()) {
+            // No assumptions are required.
+            return new Assumptions.AssumptionResult<>(this);
+        }
+
+        if (isArray()) {
+            ResolvedJavaType elementalType = getElementalType();
+            Assumptions.AssumptionResult<ResolvedJavaType> elementType = elementalType.findLeafConcreteSubtype();
+            if (elementType != null && elementType.getResult().equals(elementalType)) {
+                /*
+                 * If the elementType is leaf then the array is leaf under the same assumptions but
+                 * only if the element type is exactly the leaf type. The element type can be
+                 * abstract even if there is only one implementor of the abstract type.
+                 */
+                Assumptions.AssumptionResult<ResolvedJavaType> result = new Assumptions.AssumptionResult<>(this);
+                result.add(elementType);
+                return result;
+            }
+            return null;
+        } else {
+            /*
+             * TODO GR-72446 - add single implementor class hierarchy analysis to ristretto
+             */
+            return null;
+        }
     }
 
     @Override
@@ -289,7 +341,8 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final InterpreterResolvedObjectType getArrayClass() {
-        throw VMError.intentionallyUnimplemented();
+        DynamicHub arrayHub = DynamicHub.fromClass(clazz).getOrCreateArrayHub();
+        return (InterpreterResolvedObjectType) arrayHub.getInterpreterType();
     }
 
     @Override
@@ -336,21 +389,6 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final boolean isCloneableWithAllocation() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
         throw VMError.intentionallyUnimplemented();
     }
 

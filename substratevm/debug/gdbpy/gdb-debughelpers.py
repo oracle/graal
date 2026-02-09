@@ -832,6 +832,21 @@ def HLRep(original_class):
 
 
 @HLRep
+class EspressoSymbol:
+    target_type = 'com.oracle.svm.espresso.classfile.descriptors.Symbol'
+
+    def __init__(self, svm_util: SVMUtil, obj: gdb.Value):
+        trace(f'<EspressoSymbol> - __init__({obj.type} @ {hex(svm_util.get_adr(obj))})')
+        value = svm_util.get_obj_field(obj, 'value')
+        self.__length = svm_util.get_int_field(value, 'len')
+        self.__array = svm_util.get_obj_field(value, 'data', None)
+
+    def to_string(self) -> str:
+        trace('<EspressoSymbol> - to_string')
+        byte_list = [self.__array[i] for i in range(self.__length)]
+        return f'EspressoSymbol({str(bytes(byte_list))})'
+
+@HLRep
 class ArrayList:
     target_type = 'java.util.ArrayList'
 

@@ -59,7 +59,7 @@ public class JmxClientFeature extends JNIRegistrationUtil implements InternalFea
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
         AnalysisType type = metaAccess.lookupJavaType(Boolean.class);
         JVMCIRuntimeJNIAccess.register(type);
-        JVMCIRuntimeJNIAccess.register(JVMCIReflectionUtil.getDeclaredMethod(metaAccess, type, "getBoolean", String.class));
+        JVMCIRuntimeJNIAccess.register(JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, type, "getBoolean", String.class));
     }
 
     /**

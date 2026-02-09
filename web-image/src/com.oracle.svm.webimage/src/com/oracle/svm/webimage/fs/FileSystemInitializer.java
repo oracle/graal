@@ -37,7 +37,6 @@ import org.graalvm.webimage.api.JSNumber;
 import org.graalvm.webimage.api.JSObject;
 import org.graalvm.webimage.api.JSString;
 
-import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -91,12 +90,10 @@ public final class FileSystemInitializer {
             Files.createFile(fileSystem.getPath("/dev", "urandom"));
 
             /*
-             * In the WasmLM and WasmGC backend, the @JS annotation is not supported and thus,
-             * prefetched libraries neither because they can't be loaded from the JavaScript code.
-             *
-             * TODO GR-60603 Support @JS annotation in WasmGC backend
+             * In the WasmLM backend, the @JS annotation is not supported and thus, prefetched
+             * libraries neither because they can't be loaded from the JavaScript code.
              */
-            if (!Platform.includedIn(WebImageWasmLMPlatform.class) && !Platform.includedIn(WebImageWasmGCPlatform.class)) {
+            if (!Platform.includedIn(WebImageWasmLMPlatform.class)) {
                 // Store the prefetched libraries into the file system.
                 JSObject prefetchedLibraryNames = prefetchedLibraryNames();
 

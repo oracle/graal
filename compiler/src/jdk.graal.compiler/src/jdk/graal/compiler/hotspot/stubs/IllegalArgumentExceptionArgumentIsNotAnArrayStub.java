@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.debug.GraalError;
@@ -32,8 +34,6 @@ import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
-import jdk.graal.compiler.word.Word;
-
 import jdk.vm.ci.code.Register;
 
 /**

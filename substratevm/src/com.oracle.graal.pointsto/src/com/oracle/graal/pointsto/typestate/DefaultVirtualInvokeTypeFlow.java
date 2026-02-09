@@ -39,7 +39,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
+import com.oracle.svm.common.meta.MethodVariant.MethodVariantKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -51,8 +51,8 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
     private TypeState seenReceiverTypes = TypeState.forEmpty();
 
     DefaultVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariantKey callerMethodVariantKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMethodVariantKey);
     }
 
     @Override
@@ -110,7 +110,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
 
             assert !Modifier.isAbstract(method.getModifiers()) : method;
 
-            var calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(method), targetMethod, callerMultiMethodKey,
+            var calleeList = bb.getHostVM().getMethodVariantsAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(method), targetMethod, callerMethodVariantKey,
                             this);
             for (PointsToAnalysisMethod callee : calleeList) {
                 if (!callee.isOriginalMethod() && allOriginalCallees) {
@@ -145,7 +145,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
         }
 
         /* Eagerly ensure context insensitive invoke is created before the saturated flag is set. */
-        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
+        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMethodVariantKey);
         contextInsensitiveInvoke.addInvokeLocation(getSource());
 
         /*
@@ -208,7 +208,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
     @Override
     public Collection<AnalysisMethod> getOriginalCallees() {
         if (isSaturated()) {
-            return targetMethod.getContextInsensitiveVirtualInvoke(callerMultiMethodKey).getOriginalCallees();
+            return targetMethod.getContextInsensitiveVirtualInvoke(callerMethodVariantKey).getOriginalCallees();
         } else {
             return super.getOriginalCallees();
         }
@@ -217,7 +217,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
     @Override
     public Collection<AnalysisMethod> getAllCallees() {
         if (isSaturated()) {
-            return targetMethod.getContextInsensitiveVirtualInvoke(callerMultiMethodKey).getAllCallees();
+            return targetMethod.getContextInsensitiveVirtualInvoke(callerMethodVariantKey).getAllCallees();
         } else {
             return super.getAllCallees();
         }

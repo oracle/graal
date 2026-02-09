@@ -29,22 +29,22 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.MainEntryPoint;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
-import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.option.HostedOptionParser;
@@ -55,12 +55,14 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions.CompilerBackend;
 import com.oracle.svm.hosted.webimage.util.BenchmarkLogger;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmLMJavaMainSupport;
 import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCJavaMainSupport;
+import com.oracle.svm.util.AnnotatedObjectAccess;
 import com.oracle.svm.webimage.WebImageJSJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJavaMainSupport;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Main entry point called from the driver for Web Image (despite the name) and the Native Image
@@ -82,7 +84,7 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
      * {@code svm-wasm} tool macro contains all option names.
      */
     private static void dumpProvidedHostedOptions(HostedOptionParser optionParser) {
-        EconomicMap<String, OptionDescriptor> allHostedOptions = optionParser.getAllHostedOptions();
+        UnmodifiableEconomicMap<String, OptionDescriptor> allHostedOptions = optionParser.getAllHostedOptions();
 
         List<String> names = new ArrayList<>();
 
@@ -125,11 +127,9 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
             return ExitStatus.OK.getValue();
         }
 
-        // Turn off fallback images, Web Image cannot be built as a fallback image.
-        optionProvider.getHostedValues().put(SubstrateOptions.FallbackThreshold, SubstrateOptions.NoFallback);
-
         // We do not need to compile a GC because the JavaScript environment provides one.
         optionProvider.getHostedValues().put(SubstrateOptions.SupportedGCs, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
+        optionProvider.getHostedValues().put(SubstrateGCOptions.UseTLAB, false);
 
         // Forcibly turn off CAnnotation processor cache
         optionProvider.getHostedValues().put(CAnnotationProcessorCache.Options.UseCAPCache, false);
@@ -192,13 +192,14 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
     }
 
     @Override
-    protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {
-        return new WebImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
+    protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, MainEntryPoint mainEntryPoint,
+                    ProgressReporter reporter) {
+        return new WebImageGenerator(classLoader, optionParser, mainEntryPoint, reporter);
     }
 
     @Override
-    protected Pair<Method, CEntryPointData> createMainEntryPointData(AbstractImage.NativeImageKind imageKind, Method mainEntryPoint) {
-        return Pair.createLeft(mainEntryPoint);
+    protected MainEntryPoint createMainEntryPoint(AbstractImage.NativeImageKind imageKind, ResolvedJavaMethod mainEntryMethod) {
+        return new MainEntryPoint(mainEntryMethod, null);
     }
 
     @Override
@@ -232,6 +233,6 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
     }
 
     @Override
-    protected void verifyMainEntryPoint(Method mainEntryPoint) {
+    protected void verifyMainEntryPoint(ResolvedJavaMethod mainEntryPoint, AnnotatedObjectAccess annotationAccess) {
     }
 }

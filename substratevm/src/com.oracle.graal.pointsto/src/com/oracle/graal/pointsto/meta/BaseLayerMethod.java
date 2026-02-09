@@ -42,6 +42,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
  * This type is used in the context of Layered Image, when loading a base layer in another layer.
@@ -195,11 +196,6 @@ public class BaseLayerMethod extends AnnotationsContainer implements ResolvedJav
     }
 
     @Override
-    public Annotation[][] getParameterAnnotations() {
-        throw unimplemented();
-    }
-
-    @Override
     public Type[] getGenericParameterTypes() {
         throw unimplemented();
     }
@@ -245,17 +241,12 @@ public class BaseLayerMethod extends AnnotationsContainer implements ResolvedJav
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+    public AnnotationsInfo getParameterAnnotationInfo() {
         throw unimplemented();
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        throw unimplemented();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
+    public AnnotationsInfo getAnnotationDefaultInfo() {
         throw unimplemented();
     }
 

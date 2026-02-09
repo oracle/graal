@@ -36,13 +36,17 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.heap.dump.HeapDumpWriter.HeapDumpError;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
@@ -52,11 +56,14 @@ import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
-
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class HeapDumpSupportImpl extends HeapDumping {
     private final HeapDumpWriter writer;
     private final HeapDumpOperation heapDumpOperation;
@@ -107,25 +114,28 @@ public class HeapDumpSupportImpl extends HeapDumping {
     private void dumpHeapOnOutOfMemoryError0() {
         CCharPointer path = outOfMemoryHeapDumpPath;
         if (path.isNull()) {
-            Log.log().string("OutOfMemoryError heap dumping failed because the heap dump file path could not be allocated.").newline();
+            Log.log().string("Out-of-memory heap dumping failed because the heap dump file path could not be allocated.").newline();
             return;
         }
 
         RawFileDescriptor fd = getFileSupport().create(path, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(fd)) {
-            Log.log().string("OutOfMemoryError heap dumping failed because the heap dump file could not be created: ").string(path).newline();
+            Log.log().string("Out-of-memory heap dumping failed because the heap dump file could not be created: ").string(path).newline();
             return;
         }
 
         try {
             Log.log().string("Dumping heap to ").string(path).string(" ...").newline();
             long start = System.nanoTime();
-            if (dumpHeap(fd, false)) {
+            HeapDumpError error = dumpHeap(fd, false);
+            if (error == null) {
                 long fileSize = getFileSupport().size(fd);
                 long elapsedMs = TimeUtils.millisSinceNanos(start);
                 long seconds = elapsedMs / TimeUtils.millisPerSecond;
                 long ms = elapsedMs % TimeUtils.millisPerSecond;
                 Log.log().string("Heap dump file created [").signed(fileSize).string(" bytes in ").signed(seconds).character('.').signed(ms).string(" secs]").newline();
+            } else {
+                Log.log().string("Out-of-memory heap dumping failed: ").string(error.getMessage()).newline();
             }
         } finally {
             getFileSupport().close(fd);
@@ -134,7 +144,7 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
     @Override
     public void dumpHeap(String filename, boolean gcBefore, boolean overwrite) throws IOException {
-        if (!RawFileOperationSupport.isPresent()) {
+        if (!RawFileOperationSupport.isPresent() || (ImageLayerBuildingSupport.buildingImageLayer() && !HeapDumpMetadata.isLayeredMetadataAvailable())) {
             throw new UnsupportedOperationException(VMInspectionOptions.getHeapDumpNotSupportedMessage());
         }
 
@@ -151,24 +161,23 @@ public class HeapDumpSupportImpl extends HeapDumping {
         }
     }
 
-    private boolean dumpHeap(RawFileDescriptor fd, boolean gcBefore) {
+    private HeapDumpError dumpHeap(RawFileDescriptor fd, boolean gcBefore) {
         int size = SizeOf.get(HeapDumpVMOperationData.class);
         HeapDumpVMOperationData data = StackValue.get(size);
         UnmanagedMemoryUtil.fill((Pointer) data, Word.unsigned(size), (byte) 0);
         data.setGCBefore(gcBefore);
         data.setRawFileDescriptor(fd);
         heapDumpOperation.enqueue(data);
-        return data.getSuccess();
+        return data.getError();
     }
 
     public void writeHeapTo(RawFileDescriptor fd, boolean gcBefore) throws IOException {
-        boolean success = dumpHeap(fd, gcBefore);
-        if (!success) {
-            throw new IOException("An error occurred while writing the heap dump.");
+        HeapDumpError error = dumpHeap(fd, gcBefore);
+        if (error != null) {
+            throw new IOException("Heap dumping failed: " + error.getMessage() + ".");
         }
     }
 
-    @Fold
     static RawFileOperationSupport getFileSupport() {
         return RawFileOperationSupport.bigEndian();
     }
@@ -188,10 +197,12 @@ public class HeapDumpSupportImpl extends HeapDumping {
         void setRawFileDescriptor(RawFileDescriptor fd);
 
         @RawField
-        boolean getSuccess();
+        @PinnedObjectField
+        HeapDumpError getError();
 
         @RawField
-        void setSuccess(boolean value);
+        @PinnedObjectField
+        void setError(HeapDumpError value);
     }
 
     private class HeapDumpOperation extends NativeVMOperation {
@@ -212,11 +223,10 @@ public class HeapDumpSupportImpl extends HeapDumping {
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         private void dumpHeap(HeapDumpVMOperationData data) {
             try {
-                boolean success = writer.dumpHeap(data.getRawFileDescriptor());
-                data.setSuccess(success);
+                HeapDumpError error = writer.dumpHeap(data.getRawFileDescriptor());
+                data.setError(error);
             } catch (Throwable e) {
-                Log.log().string("An exception occurred during heap dumping. The data in the heap dump file may be corrupt: ").string(e.getClass().getName()).newline();
-                data.setSuccess(false);
+                throw VMError.shouldNotReachHere(e);
             }
         }
     }

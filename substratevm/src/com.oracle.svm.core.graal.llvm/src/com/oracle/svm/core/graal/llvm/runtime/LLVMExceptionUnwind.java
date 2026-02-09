@@ -39,10 +39,11 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.llvm.util.LLVMDirectives;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
@@ -50,7 +51,6 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

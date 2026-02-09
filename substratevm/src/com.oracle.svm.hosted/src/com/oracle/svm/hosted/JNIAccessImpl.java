@@ -30,8 +30,8 @@ import java.util.Arrays;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
 public final class JNIAccessImpl implements JNIAccess {
 
@@ -58,7 +58,7 @@ public final class JNIAccessImpl implements JNIAccess {
     @Override
     public void register(AccessCondition condition, Executable... methods) {
         DynamicAccessSupport.printErrorIfSealedOrInvalidCondition(condition, "following methods for JNI access: " + Arrays.toString(methods));
-        jniInstance.register(condition, false, false, methods);
+        jniInstance.register(condition, false, methods);
     }
 
     @Override

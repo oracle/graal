@@ -68,6 +68,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.api.test.ModuleSupport;
@@ -87,6 +89,7 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeMap;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderPhase;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
@@ -1568,12 +1571,12 @@ public abstract class GraalCompilerTest extends GraalTest {
     public static final ProfileProvider NO_PROFILE_PROVIDER = new ProfileProvider() {
 
         @Override
-        public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method) {
-            return getProfilingInfo(method, true, true);
+        public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method) {
+            return getProfilingInfo(callingContext, method, true, true);
         }
 
         @Override
-        public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+        public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
             return DefaultProfilingInfo.get(TriState.FALSE);
         }
 
@@ -1593,7 +1596,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         if (id != null) {
             builder.compilationId(id);
         }
-        assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
+        assert AnnotationValueSupport.getAnnotationValue(javaMethod, Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         StructuredGraph graph = builder.build();
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope _ = debug.scope("Parsing", javaMethod, graph)) {
@@ -1782,11 +1785,11 @@ public abstract class GraalCompilerTest extends GraalTest {
 
             @Override
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                BytecodeParserNeverInline neverInline = method.getAnnotation(BytecodeParserNeverInline.class);
+                AnnotationValue neverInline = AnnotationValueSupport.getAnnotationValue(method, BytecodeParserNeverInline.class);
                 if (neverInline != null) {
-                    return neverInline.invokeWithException() ? DO_NOT_INLINE_WITH_EXCEPTION : DO_NOT_INLINE_NO_EXCEPTION;
+                    return neverInline.getBoolean("invokeWithException") ? DO_NOT_INLINE_WITH_EXCEPTION : DO_NOT_INLINE_NO_EXCEPTION;
                 }
-                if (method.getAnnotation(BytecodeParserForceInline.class) != null) {
+                if (AnnotationValueSupport.getAnnotationValue(method, BytecodeParserForceInline.class) != null) {
                     return InlineInfo.createStandardInlineInfo(method);
                 }
                 return bytecodeParserShouldInlineInvoke(b, method, args);

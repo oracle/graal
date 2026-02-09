@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Objects;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,8 +36,15 @@ import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperation.SystemEffect;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * This class is used to ensure that all VM operation names live in the image heap. It also keeps
@@ -47,6 +53,7 @@ import com.oracle.svm.core.thread.VMOperation.SystemEffect;
  * The VM operation names are user facing as they are for example used in JFR events.
  */
 @AutomaticallyRegisteredImageSingleton
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class VMOperationInfos {
     @Platforms(Platform.HOSTED_ONLY.class) private static final HashMap<VMOperationKey, VMOperationInfo> hostedMap = new HashMap<>();
     @UnknownObjectField(availability = ReadyForCompilation.class) static String[] names = new String[0];
@@ -121,6 +128,11 @@ public final class VMOperationInfos {
 
 @AutomaticallyRegisteredFeature
 class VMOperationNamesFeatures implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         VMOperationInfos.cacheNames();

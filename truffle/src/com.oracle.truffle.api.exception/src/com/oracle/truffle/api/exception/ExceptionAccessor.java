@@ -40,18 +40,10 @@
  */
 package com.oracle.truffle.api.exception;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
 import java.util.function.Function;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleStackTrace;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -63,6 +55,10 @@ import com.oracle.truffle.api.source.SourceSection;
 final class ExceptionAccessor extends Accessor {
 
     static final ExceptionAccessor ACCESSOR = new ExceptionAccessor();
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
+    static final HostSupport HOST = ACCESSOR.hostSupport();
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+    static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
 
     private ExceptionAccessor() {
     }
@@ -80,8 +76,8 @@ final class ExceptionAccessor extends Accessor {
         }
 
         @Override
-        public Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
-            return new DefaultStackTraceElementObject(rootNode, sourceSection);
+        public Object createDefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection, int byteCodeIndex) {
+            return new DefaultStackTraceElementObject(rootNode, sourceSection, byteCodeIndex);
         }
 
         @Override
@@ -147,114 +143,13 @@ final class ExceptionAccessor extends Accessor {
         }
 
         @Override
-        @TruffleBoundary
-        public Object getExceptionStackTrace(Object receiver, Object polyglotContext) {
-            Throwable throwable = (Throwable) receiver;
-            List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace(throwable);
-            if (stack == null) {
-                stack = Collections.emptyList();
-            }
-            boolean hasGuestToHostCalls = false;
-            boolean inHost = true;
-            for (TruffleStackTraceElement element : stack) {
-                if (ACCESSOR.hostSupport().isGuestToHostRootNode(element.getTarget().getRootNode())) {
-                    hasGuestToHostCalls = true;
-                    break;
-                } else {
-                    inHost = false;
-                }
-            }
-            Object[] items;
-            if (hasGuestToHostCalls) {
-                // If we have guest to host calls, we need to merge in (or filter) the host frames.
-                Object polyglotEngine = polyglotContext == null
-                                ? ACCESSOR.engineSupport().getCurrentPolyglotEngine()
-                                : ACCESSOR.engineSupport().getEngineFromPolyglotObject(polyglotContext);
-                items = mergeHostGuestFrames(throwable, stack, inHost, polyglotEngine);
-            } else {
-                // If there are no guest to host calls, there is no need for any extra processing.
-                items = new Object[stack.size()];
-                for (int i = 0; i < items.length; i++) {
-                    items[i] = stack.get(i).getGuestObject();
-                }
-            }
-            return new InteropList(items);
+        public Object getExceptionStackTrace(Throwable throwable, Object polyglotContext) {
+            return MergedHostGuestIterator.getExceptionStackTrace(throwable, polyglotContext, false, false);
         }
 
-        private static Object[] mergeHostGuestFrames(Throwable throwable, List<TruffleStackTraceElement> guestStack, boolean inHost, Object polyglotEngine) {
-            StackTraceElement[] hostStack = null;
-            AbstractHostLanguageService hostService = ACCESSOR.engineSupport().getHostService(polyglotEngine);
-            if (hostService.isHostException(throwable)) {
-                Throwable original = hostService.unboxHostException(throwable);
-                hostStack = original.getStackTrace();
-            } else if (throwable instanceof AbstractTruffleException) {
-                Throwable lazyStackTrace = ((AbstractTruffleException) throwable).getLazyStackTrace();
-                if (lazyStackTrace != null) {
-                    hostStack = ACCESSOR.languageSupport().getInternalStackTraceElements(lazyStackTrace);
-                }
-            } else {
-                // Internal error.
-                hostStack = throwable.getStackTrace();
-            }
-            if (hostStack == null) {
-                // protect against getStackTrace() returning null
-                hostStack = new StackTraceElement[0];
-            }
-
-            ListIterator<TruffleStackTraceElement> guestStackIterator = guestStack.listIterator();
-            boolean includeHostFrames = ACCESSOR.engineSupport().getHostService(polyglotEngine).isHostStackTraceVisibleToGuest();
-            int lastGuestToHostIndex = includeHostFrames ? indexOfLastGuestToHostFrame(guestStack) : -1;
-            Iterator<Object> mergedElements = ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine,
-                            hostStack, guestStackIterator, inHost, includeHostFrames,
-                            new Function<StackTraceElement, Object>() {
-                                @Override
-                                public Object apply(StackTraceElement element) {
-                                    assert includeHostFrames;
-                                    if (!guestStackIterator.hasNext()) {
-                                        // omit trailing host frames
-                                        return null;
-                                    } else if (guestStackIterator.nextIndex() > lastGuestToHostIndex) {
-                                        /*
-                                         * omit host frames not followed by a guest-to-host frame;
-                                         * just in case we have extra guest frames due to the guest
-                                         * trace getting out of sync with the host trace.
-                                         */
-                                        return null;
-                                    }
-                                    return new HostStackTraceElementObject(element);
-                                }
-                            },
-                            new Function<TruffleStackTraceElement, Object>() {
-                                @Override
-                                public Object apply(TruffleStackTraceElement element) {
-                                    RootNode rootNode = element.getTarget().getRootNode();
-                                    if (ACCESSOR.hostSupport().isGuestToHostRootNode(rootNode)) {
-                                        // omit guest to host frame (e.g. HostObject.doInvoke)
-                                        return null;
-                                    } else if (ACCESSOR.engineSupport().isHostToGuestRootNode(rootNode)) {
-                                        // omit host to guest frame (e.g. Value.execute)
-                                        return null;
-                                    }
-                                    return element.getGuestObject();
-                                }
-                            });
-
-            List<Object> elementsList = new ArrayList<>();
-            while (mergedElements.hasNext()) {
-                elementsList.add(mergedElements.next());
-            }
-            return elementsList.toArray();
-        }
-
-        private static int indexOfLastGuestToHostFrame(List<TruffleStackTraceElement> guestStack) {
-            for (var iterator = guestStack.listIterator(guestStack.size()); iterator.hasPrevious();) {
-                int index = iterator.previousIndex();
-                TruffleStackTraceElement element = iterator.previous();
-                if (ACCESSOR.hostSupport().isGuestToHostRootNode(element.getTarget().getRootNode())) {
-                    return index;
-                }
-            }
-            return -1;
+        @Override
+        public Object getEmbedderStackTrace(Throwable throwable, Object vmObject, boolean inHost) {
+            return MergedHostGuestIterator.getExceptionStackTrace(throwable, vmObject, inHost, true);
         }
 
         @Override
@@ -310,6 +205,12 @@ final class ExceptionAccessor extends Accessor {
                 }
             }
             return true;
+        }
+
+        @Override
+        public <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor) {
+            return new MergedHostGuestIterator<>(polyglotEngine, hostStack, guestFrames, inHostLanguage, includeHostFrames, hostFrameConvertor, guestFrameConvertor);
         }
 
         private static RuntimeException throwUnsupportedMessageException() {

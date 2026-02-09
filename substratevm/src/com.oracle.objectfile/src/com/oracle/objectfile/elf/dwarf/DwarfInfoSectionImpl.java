@@ -27,9 +27,7 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import java.lang.reflect.Modifier;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
@@ -59,6 +57,7 @@ import com.oracle.objectfile.elf.dwarf.constants.DwarfUnitHeader;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 
 import jdk.graal.compiler.debug.DebugContext;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Section generator for debug_info section.
@@ -2048,7 +2047,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeAbstractInlineMethods(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
-        Set<MethodEntry> inlinedMethods = collectInlinedMethods(context, classEntry, p);
+        Iterable<MethodEntry> inlinedMethods = collectInlinedMethods(context, classEntry, p);
         int pos = p;
         for (MethodEntry methodEntry : inlinedMethods) {
             // n.b. class entry used to index the method belongs to the inlining method
@@ -2063,13 +2062,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private Set<MethodEntry> collectInlinedMethods(DebugContext context, ClassEntry classEntry, int p) {
-        final HashSet<MethodEntry> methods = new HashSet<>();
+    private Iterable<MethodEntry> collectInlinedMethods(DebugContext context, ClassEntry classEntry, int p) {
+        final EconomicSet<MethodEntry> methods = EconomicSet.create();
         classEntry.compiledMethods().forEach(compiledMethod -> addInlinedMethods(context, compiledMethod, compiledMethod.primary(), methods, p));
         return methods;
     }
 
-    private void addInlinedMethods(DebugContext context, CompiledMethodEntry compiledEntry, Range primary, HashSet<MethodEntry> hashSet, int p) {
+    private void addInlinedMethods(DebugContext context, CompiledMethodEntry compiledEntry, Range primary, EconomicSet<MethodEntry> set, int p) {
         if (primary.isLeaf()) {
             return;
         }
@@ -2082,7 +2081,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             // identify the inlined method by looking at the first callee
             Range callee = subrange.getCallees().getFirst();
             MethodEntry methodEntry = callee.getMethodEntry();
-            if (hashSet.add(methodEntry)) {
+            if (set.add(methodEntry)) {
                 verboseLog(context, "  [0x%08x]   add abstract inlined method %s", p, methodEntry.getSymbolName());
             }
         }

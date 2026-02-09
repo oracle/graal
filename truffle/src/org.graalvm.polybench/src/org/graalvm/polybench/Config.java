@@ -46,6 +46,7 @@ public class Config {
     Metric metric;
     boolean evalSourceOnlyDefault;
     Summary summary;
+    String[] dependencies;
     Language stagingLanguage;
     String stagingFilePath;
     boolean logStagedProgram;
@@ -103,6 +104,27 @@ public class Config {
             }
         }
         parseBenchSpecificSummary(benchmark);
+        parseBenchSpecificDependencies(benchmark);
+    }
+
+    private void parseBenchSpecificDependencies(Value benchmark) throws InvalidObjectException {
+        if (!benchmark.hasMember("dependencies")) {
+            // No 'dependencies' member provided in the benchmark
+            dependencies = new String[0];
+            return;
+        }
+        Value dependenciesMember = benchmark.getMember("dependencies");
+        if (dependenciesMember.canExecute()) {
+            dependenciesMember = dependenciesMember.execute();
+        }
+        if (!dependenciesMember.hasArrayElements()) {
+            throw new InvalidObjectException("Failed at parsing the 'dependencies' benchmark member due to it not being an array!");
+        }
+        int arraySize = (int) dependenciesMember.getArraySize();
+        dependencies = new String[arraySize];
+        for (int i = 0; i < arraySize; i++) {
+            dependencies[i] = dependenciesMember.getArrayElement(i).asString();
+        }
     }
 
     private void parseBenchSpecificSummary(Value benchmark) throws InvalidObjectException {

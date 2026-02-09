@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange;
 import com.oracle.truffle.espresso.classfile.ParserField;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
@@ -86,7 +87,7 @@ final class LinkedKlassFieldLayout {
 
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
             if (hiddenField.predicate.test(language)) {
-                ParserField hiddenParserField = new ParserField(ACC_HIDDEN | hiddenField.additionalFlags, hiddenField.name, hiddenField.type, null);
+                ParserField hiddenParserField = new ParserField(ACC_HIDDEN | hiddenField.additionalFlags, hiddenField.name, hiddenField.type, Attribute.EMPTY_ARRAY);
                 createAndRegisterLinkedField(parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
@@ -185,7 +186,7 @@ final class LinkedKlassFieldLayout {
         private static final HiddenField[] EMPTY = new HiddenField[0];
         private static final Map<Symbol<Type>, HiddenField[]> REGISTRY = Map.ofEntries(
                         entry(Types.java_lang_Object, new HiddenField[]{
-                                        new HiddenField(Names.HIDDEN_SYSTEM_IHASHCODE, Types._int, EspressoLanguage::isContinuumEnabled, ACC_VOLATILE),
+                                        new HiddenField(Names.HIDDEN_SYSTEM_IHASHCODE, Types._int, EspressoLanguage::canSetCustomIdentityHashCode, ACC_VOLATILE),
                         }),
                         entry(Types.java_lang_invoke_MemberName, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_VMTARGET),

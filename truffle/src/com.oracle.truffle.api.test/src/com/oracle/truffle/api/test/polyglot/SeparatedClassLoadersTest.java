@@ -49,13 +49,6 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.ProtectionDomain;
 
-import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.ReflectionUtils;
-import com.oracle.truffle.api.test.SubprocessTestUtils;
-import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
-import com.oracle.truffle.api.test.common.TestUtils;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Engine;
@@ -67,6 +60,13 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class SeparatedClassLoadersTest {
@@ -85,6 +85,9 @@ public class SeparatedClassLoadersTest {
 
     @Test
     public void sdkAndTruffleAPIInSeparateClassLoaders() {
+        /* This test is specific to HotSpot. */
+        Assume.assumeFalse(ImageInfo.inImageCode());
+
         ClassLoaders classLoaders = createContextClassLoaders();
         Object contextClassLoaderEngine = createEngineInContextClassLoader(classLoaders);
         try {

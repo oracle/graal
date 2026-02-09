@@ -63,6 +63,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 @AutomaticallyRegisteredFeature
 public class VectorAPIFeature implements InternalFeature {
+    // JVMCI migration blocked by GR-72591: Migrate VectorAPIFeature to terminus
 
     public static final String VECTOR_API_PACKAGE_NAME = "jdk.incubator.vector";
     public static final Class<?> PAYLOAD_CLASS = ReflectionUtil.lookupClass("jdk.internal.vm.vector.VectorSupport$VectorPayload");

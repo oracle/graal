@@ -39,12 +39,42 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-70086 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
 * GR-71299 Improved the responsiveness of the Truffle compilation queue by refining the computation of the execution rate of compilation units in the queue.
   * Added `engine.TraversingQueueRateHalfLife` to allow fine-tuning of the compilation queue responsiveness.
+* GR-71245: Exposed `ByteBufferDataInput` as public and added a `position` method that returns the underlying buffer's position. Added `SerializationUtils.createByteBufferDataInput` factory method and deprecated `SerializationUtils.createDataInput`.
 
+* GR-36894: Added `DynamicObject` nodes for dealing with `DynamicObject` properties and shapes, as a more lightweight replacement for `DynamicObjectLibrary`, including:
+    * `DynamicObject.GetNode`: gets the value of a property or a default value if absent
+    * `DynamicObject.PutNode`: adds a new property or sets the value of an existing property
+    * `DynamicObject.ContainsKeyNode`: checks if the object contains a specific property
+    * `DynamicObject.RemoveKeyNode`: removes a property
+    * `DynamicObject.GetKeyArrayNode`: gets an array of keys of all the object's properties
+    * `DynamicObject.CopyPropertiesNode`: copies all properties from one object to another
+    * `DynamicObject.GetShapeFlagsNode` and `SetShapeFlagsNode`: gets and sets flags in the object's shape, respectively
+    * `DynamicObject.GetDynamicTypeNode` and `SetDynamicTypeNode`: gets and sets the dynamic type id in the object's shape, respectively
+    * See [`DynamicObject` javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.html) for a complete list and more information. There's an equivalent for every `DynamicObjectLibrary` message.
+    * Note: Unlike `DynamicObjectLibrary`, cached property keys are always compared by identity (`==`) rather than equality (`equals`). If you rely on key equality, cache the key using an `equals` guard and pass the cached canonical key to the node.
+* GR-36894: Deprecated `DynamicObjectLibrary`. Use `DynamicObject` nodes instead. See the [migration guide](https://github.com/oracle/graal/blob/master/truffle/docs/DynamicObjectLibraryMigration.md) for an overview of the required changes.
 * GR-69861: Bytecode DSL: Added a `BytecodeFrame` abstraction for capturing frame state and accessing frame data. This abstraction should be preferred over `BytecodeNode` access methods because it captures the correct interpreter location data.
 * GR-69861: Bytecode DSL: Added a `captureFramesForTrace` parameter to `@GenerateBytecode` that enables capturing of frames in `TruffleStackTraceElement`s. Previously, frame data was unreliably available in stack traces; now, it is guaranteed to be available if requested. Languages must use the `BytecodeFrame` abstraction to access frame data from `TruffleStackTraceElement`s rather than access the frame directly.
 * GR-69614: The methods `InteropLibrary#hasLanguage` and `InteropLibrary#getLanguage` have been replaced with `InteropLibrary#hasLanguageId` and `InteropLibrary#getLanguageId`. Language implementers are encouraged to update their code to the new API.
 * GR-69614: Added `TruffleInstrument.Env.getHostLanguage()` returning the host language info. This allows instruments to lookup the top scope of the host language using `Env.getScope(LanguageInfo)`.
+* GR-71468: Significantly improve optimized performance of host proxy interfaces (`org.graalvm.polyglot.proxy.Proxy`).
+* GR-71088 Added `CompilerDirectives.EarlyInline` annotation that performs a conservative early inlining pass for methods before partial evaluation. This is intended to expose small branch/bytecode handlers and similar helpers to optimizations such as @ExplodeLoop, in particular for MERGE_EXPLODE bytecode interpreter loops.
+* GR-71088 Added `CompilerDirectives.EarlyEscapeAnalysis` annotation that runs partial escape analysis early before partial evaluation enabling partial-evaluation-constant scalar replacements. 
+* GR-71870 Truffle DSL no longer supports mixed exclusive and shared inlined caches. Sharing will now be disabled if mixing was used. To resolve the new warnings it is typically necessary to use either `@Exclusive` or `@Shared` for all caches.
+* GR-71887: Bytecode DSL: Added a `ClearLocal` operation for fast clearing of local values.
+* GR-71088 Added `CompilerDirectives.EarlyEscapeAnalysis` annotation that runs partial escape analysis early before partial evaluation enabling partial-evaluation-constant scalar replacements.
+* GR-71402: Added `InteropLibrary#isHostObject` and `InteropLibrary#asHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
+* GR-71402: Added `InteropLibrary#hasStaticScope` and `InteropLibrary#getStaticScope` returning the static scope representing static or class-level members associated with the given meta object.
+* GR-72022 `AtomicLongFieldUpdater`, `AtomicIntegerFieldUpdater` and `AtomicReferenceFieldUpdater` can now be used on partially evaluated code paths when the updater is a PE constant and the compiler can prove receiver and value correctness during partial evaluation, otherwise compilation permanently bails out.
+* GR-44829: Added `TruffleString.CodePointAtIndexUTF32Node` for better interpreter performance of UTF-32 strings.
+* GR-44829: `TruffleString` nodes no longer profile the `expectedEncoding` parameter for interpreter performance reasons. Languages with non-constant string encodings should profile the encoding before passing it to `TruffleString` nodes.
 
+* GR-61161: Bytecode DSL: Added support for basic instruction rewriting. At bytecode build time, the builder can perform peephole optimization to remove redundant loads. This new optimization can be configured using `@GenerateBytecode(enableInstructionRewriting=true|false)`.
+* GR-71765: Bytecode DSL: Added support for specifying an illegal local exception via `@GenerateBytecode(illegalLocalException=SomeException.class)`. This configures the interpreter to throw a custom exception when loading a cleared local, as an alternative to the default behaviour (throwing a `FrameSlotTypeException`). This option is mutually exclusive with the default local value option (`@GenerateBytecode(defaultLocalValue = "someValue")`).
+* GR-69499 Added `HostCompilerDirectives.BytecodeInterpreterHandler` annotation, enabling one compilation per bytecode handler in the Truffle bytecode interpreter while maintaining performance statistics. Introduced support for tail call threading among bytecode handlers in native image. See the [One Compilation per Bytecode Handler documentation](https://github.com/oracle/graal/blob/master/truffle/docs/OneCompilationPerBytecodeHandler.md) for more details.
+* GR-35913: Added `AbstractTruffleException#createGuestStackTrace(Throwable)`, which returns the default interop representation of a throwable’s stack trace.
+* GR-35913: Added `InteropLibrary#hasByteCodeIndex` and `InteropLibrary#getByteCodeIndex` to expose a bytecode index for interop objects representing stack trace elements.
+* GR-35913: Added `InteropLibrary#isInternal` to allow interop objects to be marked as internal. Stack trace element objects can be marked internal so they are omitted from stack trace printing.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

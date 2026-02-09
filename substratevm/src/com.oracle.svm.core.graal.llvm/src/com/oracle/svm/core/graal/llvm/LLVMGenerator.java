@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
@@ -91,6 +90,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.DataSection;
@@ -100,7 +100,6 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
@@ -150,6 +149,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
+import jdk.graal.compiler.core.common.memory.BarrierType;
 
 /*
  * Contains the tools needed to emit instructions from Graal nodes into LLVM bitcode,
@@ -461,7 +461,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     }
 
     private static boolean isCEnumType(ResolvedJavaType type) {
-        return type.isEnum() && AnnotationAccess.isAnnotationPresent(type, CEnum.class);
+        return type.isEnum() && AnnotationUtil.isAnnotationPresent(type, CEnum.class);
     }
 
     /* Constants */
@@ -987,7 +987,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     }
 
     @Override
-    public void emitReturn(JavaKind javaKind, Value input) {
+    public void emitReturn(JavaKind javaKind, Value input, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns) {
         if (javaKind == JavaKind.Void) {
             debugInfoPrinter.printRetVoid();
             builder.buildRetVoid();

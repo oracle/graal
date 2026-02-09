@@ -32,6 +32,10 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 /**
@@ -65,6 +69,7 @@ class PolyBenchStager {
             byte[] stagedProgram = stager.generate(programAst);
             dumpProgram(config.stagingFilePath, stagedProgram);
             conditionallyLogStagedProgram(config.logStagedProgram);
+            copyDependencies();
             log("Staged " + this.getClass().getSimpleName() + ".runHarness method in " + config.stagingLanguage + " to '" + config.stagingFilePath + "'.");
             conditionallyRunStagedProgram(config.stagedProgramLauncher);
         } catch (IOException | InterruptedException e) {
@@ -73,7 +78,7 @@ class PolyBenchStager {
     }
 
     private byte[] readOriginalBenchmarkSourceCode() throws IOException {
-        return java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(config.path));
+        return java.nio.file.Files.readAllBytes(Paths.get(config.path));
     }
 
     private void conditionallyLogStagedProgram(boolean logStagedProgram) throws IOException {
@@ -127,6 +132,20 @@ class PolyBenchStager {
     private static void dumpProgram(String filePath, byte[] program) throws IOException {
         try (FileOutputStream out = new FileOutputStream(filePath)) {
             out.write(program);
+        }
+    }
+
+    private void copyDependencies() throws IOException {
+        Path sourceDir = Paths.get(config.path).getParent();
+        Path targetDir = Paths.get(config.stagingFilePath).getParent();
+        for (String dep : config.dependencies) {
+            Path sourceFilePath = sourceDir.resolve(dep);
+            Path targetFilePath = targetDir.resolve(dep);
+            Path targetParent = targetFilePath.getParent();
+            if (targetParent != null) {
+                Files.createDirectories(targetParent);
+            }
+            Files.copy(sourceFilePath, targetFilePath, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

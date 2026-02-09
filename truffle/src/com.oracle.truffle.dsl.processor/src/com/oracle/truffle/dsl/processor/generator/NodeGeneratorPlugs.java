@@ -90,7 +90,7 @@ public interface NodeGeneratorPlugs {
         return flatNodeGenFactory.createNodeChildReferenceForException(frameState, execution, child);
     }
 
-    default boolean canBoxingEliminateType(NodeExecutionData currentExecution, TypeMirror type) {
+    default boolean canEliminateTypeGuard(NodeExecutionData currentExecution, TypeMirror type) {
         if (!isPrimitive(type)) {
             return false;
         }

@@ -27,10 +27,9 @@ package com.oracle.graal.pointsto;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy.SharedLayerImageInclusionPolicy;
@@ -48,8 +47,9 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -135,7 +135,9 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.snippetReflectionProvider = snippetReflectionProvider;
         this.constantReflectionProvider = constantReflectionProvider;
         this.wordTypes = wordTypes;
-        classInclusionPolicy.setBigBang(this);
+        if (classInclusionPolicy != null) {
+            classInclusionPolicy.setBigBang(this);
+        }
         this.classInclusionPolicy = classInclusionPolicy;
     }
 
@@ -313,7 +315,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public final HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+    public final HostedProviders getProviders(MethodVariant.MethodVariantKey key) {
         return getHostVM().getProviders(key);
     }
 
@@ -421,7 +423,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
          * Some modules contain native methods that should not be included in the image because they
          * are hosted only, or because they are currently unsupported.
          */
-        Set<Module> forbiddenModules = hostVM.getForbiddenModules();
+        EconomicSet<Module> forbiddenModules = hostVM.getSharedLayerForbiddenModules();
         if (forbiddenModules.contains(OriginalClassProvider.getJavaClass(type).getModule())) {
             return;
         }
@@ -430,7 +432,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
          * injects an annotation, or provides an alias, without changing the implementation. Those
          * methods should not be included in the image.
          */
-        if (AnnotationAccess.isAnnotationPresent(type, TargetClass.class)) {
+        if (AnnotationUtil.isAnnotationPresent(type, TargetClass.class)) {
             return;
         }
         ResolvedJavaMethod[] methods = tryApply(type, t -> t.getDeclaredMethods(false), NO_METHODS);

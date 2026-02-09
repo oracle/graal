@@ -357,21 +357,6 @@ public class BaseLayerType extends AnnotationsContainer implements ResolvedJavaT
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
-    }
-
-    @Override
     public ResolvedJavaType unwrapTowardsOriginalType() {
         /*
          * This is a temporary workaround until the use of the OriginalClassProvider is minimized

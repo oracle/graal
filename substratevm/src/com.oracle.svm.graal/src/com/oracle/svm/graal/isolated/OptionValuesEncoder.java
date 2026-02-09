@@ -28,13 +28,13 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.util.TypedDataInputStream;
 import jdk.graal.compiler.util.TypedDataOutputStream;
+import org.graalvm.word.impl.Word;
 
 final class OptionValuesEncoder {
 

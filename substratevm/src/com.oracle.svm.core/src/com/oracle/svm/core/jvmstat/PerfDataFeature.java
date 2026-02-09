@@ -32,12 +32,16 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.thread.VMOperationListenerSupport;
 import com.oracle.svm.core.thread.VMOperationListenerSupportFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * The performance data feature (hsperfdata) provides monitoring data that can be access by external
@@ -75,7 +79,14 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
  * </ul>
  */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 public class PerfDataFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Arrays.asList(VMOperationListenerSupportFeature.class, RuntimeSupportFeature.class);

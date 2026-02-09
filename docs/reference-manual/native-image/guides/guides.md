@@ -1,5 +1,5 @@
 ---
-layout: docs
+layout: ni-docs-landing
 toc_group: how-to-guides
 link_title: Guides
 permalink: /guides/
@@ -10,7 +10,7 @@ redirect_from:
 
 # Guides
 
-These guides help developers get started with GraalVM Native Image, acquaint them with available features, and describe potential usage scenarios. 
+These guides help developers get started with GraalVM Native Image, acquaint them with available features, and describe potential usage scenarios.
 Here you will learn how to:
 
 - [Access Environment Variables](access-environment-variables.md)

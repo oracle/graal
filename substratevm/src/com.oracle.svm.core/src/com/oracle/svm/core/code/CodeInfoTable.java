@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -54,8 +54,8 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
+import org.graalvm.word.impl.Word;
 
 /**
  * Provides the main entry points to look up metadata for code, either
@@ -167,8 +167,12 @@ public class CodeInfoTable {
 
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fail.", calleeMustBe = false)
     public static RuntimeException fatalErrorNoReferenceMap(Pointer sp, CodePointer ip, CodeInfo info) {
-        Log.log().string("ip: ").zhex(ip).string(", sp: ").zhex(sp).string(", ");
-        CodeInfoAccess.log(info, Log.log()).newline();
+        Log.log().string("ip: ").zhex(ip).string(", sp: ").zhex(sp).string(", code info: ");
+        if (info.isNull()) {
+            Log.log().string("null");
+        } else {
+            CodeInfoAccess.printCodeInfo(Log.log(), info, true);
+        }
         throw VMError.shouldNotReachHere("No reference map information found");
     }
 

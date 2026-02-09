@@ -179,7 +179,7 @@ public class DynamicHubInitializer {
     private boolean shouldRescanHub(ImageHeapScanner heapScanner, DynamicHub hub, ScanReason reason) {
         if (hostVM.buildingExtensionLayer()) {
             ImageHeapConstant hubConstant = (ImageHeapConstant) heapScanner.createImageHeapConstant(hub, reason);
-            return hubConstant == null || !hubConstant.isInBaseLayer();
+            return hubConstant == null || !hubConstant.isInSharedLayer();
         }
         return true;
     }
@@ -263,7 +263,7 @@ public class DynamicHubInitializer {
             } else {
                 info = buildRuntimeInitializationInfo(type, hasInitializer, typeReachedTracked);
             }
-            VMError.guarantee(!type.isInBaseLayer() || layerLoader.isInitializationInfoStable(type, info));
+            VMError.guarantee(!type.isInSharedLayer() || layerLoader.isInitializationInfoStable(type, info));
         }
         hub.setClassInitializationInfo(info);
         if (rescan) {

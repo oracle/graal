@@ -103,11 +103,11 @@ public class NativeImageResourceFileSystem extends FileSystem {
     private static final int DEFAULT_BUFFER_SIZE = 8192;
 
     private static final Set<String> supportedFileAttributeViews = Collections.unmodifiableSet(
-                    new HashSet<>(Arrays.asList("basic", "resource")));
+                    new HashSet<>(Arrays.asList("basic", "resource"))); // noEconomicSet(api)
 
-    private final Set<InputStream> inputStreams = Collections.synchronizedSet(new HashSet<>());
-    private final Set<OutputStream> outputStreams = Collections.synchronizedSet(new HashSet<>());
-    private final Set<Path> tmpPaths = Collections.synchronizedSet(new HashSet<>());
+    private final Set<InputStream> inputStreams = Collections.synchronizedSet(new HashSet<>()); // noEconomicSet(synchronization)
+    private final Set<OutputStream> outputStreams = Collections.synchronizedSet(new HashSet<>()); // noEconomicSet(synchronization)
+    private final Set<Path> tmpPaths = Collections.synchronizedSet(new HashSet<>()); // noEconomicSet(synchronization)
 
     private final long defaultTimestamp = TimeUtils.currentTimeMillis();
 
@@ -185,14 +185,14 @@ public class NativeImageResourceFileSystem extends FileSystem {
         }
 
         if (!inputStreams.isEmpty()) {    // Unlock and close all remaining input streams.
-            Set<InputStream> copy = new HashSet<>(inputStreams);
+            Set<InputStream> copy = new HashSet<>(inputStreams); // noEconomicSet(temp)
             for (InputStream is : copy) {
                 is.close();
             }
         }
 
         if (!outputStreams.isEmpty()) {    // Unlock and close all remaining output streams.
-            Set<OutputStream> copy = new HashSet<>(outputStreams);
+            Set<OutputStream> copy = new HashSet<>(outputStreams); // noEconomicSet(temp)
             for (OutputStream os : copy) {
                 os.close();
             }

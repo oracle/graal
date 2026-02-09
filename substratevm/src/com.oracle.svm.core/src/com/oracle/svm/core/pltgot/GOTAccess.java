@@ -27,10 +27,9 @@ package com.oracle.svm.core.pltgot;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class GOTAccess {
 

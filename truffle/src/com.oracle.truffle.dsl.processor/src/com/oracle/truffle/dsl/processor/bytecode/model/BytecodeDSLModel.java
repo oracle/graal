@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
@@ -62,8 +63,10 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
@@ -105,6 +108,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     private final List<CustomOperationModel> instrumentations = new ArrayList<>();
     private final List<CustomOperationModel> customYieldOperations = new ArrayList<>();
     private LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
+    public InstructionRewriterModel instructionRewriterModel;
     // instructions indexed by # of short immediates (i.e., their lengths are [2, 4, 6, ...]).
     public InstructionModel[] invalidateInstructions;
 
@@ -129,12 +133,48 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableRootBodyTagging;
     public boolean enableBlockScoping;
     public boolean enableThreadedSwitch;
+    public boolean enableStackPointerBoxing = false;
+
+    public enum LoadIllegalLocalStrategy {
+        FRAME_SLOT_TYPE_EXCEPTION,
+        DEFAULT_VALUE,
+        CUSTOM_EXCEPTION
+    }
+
+    public LoadIllegalLocalStrategy loadIllegalLocalStrategy;
     public String defaultLocalValue;
     public DSLExpression defaultLocalValueExpression;
+    public DeclaredType illegalLocalException;
+    public String illegalLocalExceptionFactoryName;
+
+    /**
+     * Models a resolved illegal local exception factory method with parsed parameters.
+     */
+    public record IllegalLocalExceptionFactory(ExecutableElement method, List<ParameterKind> parameters) {
+        public enum ParameterKind {
+            NODE,
+            BYTECODE_NODE,
+            BYTECODE_LOCATION,
+            LOCAL_VARIABLE
+        }
+
+        public boolean binds(ParameterKind parameter) {
+            for (ParameterKind p : parameters) {
+                if (p == parameter) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    public IllegalLocalExceptionFactory illegalLocalExceptionFactory;
+
     public String variadicStackLimit;
     public DSLExpression variadicStackLimitExpression;
 
     public boolean enableInstructionTracing;
+    public boolean enableInstructionRewriting;
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
     public ExecutableElement interceptControlFlowException;
@@ -170,7 +210,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public CustomOperationModel epilogReturn = null;
     public CustomOperationModel epilogExceptional = null;
 
-    public InstructionModel nullInstruction;
     public InstructionModel popInstruction;
     public InstructionModel dupInstruction;
     public InstructionModel returnInstruction;
@@ -181,6 +220,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel throwInstruction;
     public InstructionModel loadConstantInstruction;
     public InstructionModel loadNullInstruction;
+    public InstructionModel loadArgumentInstruction;
     public InstructionModel yieldInstruction;
     public InstructionModel loadVariadicInstruction;
     public InstructionModel splatVariadicInstruction;
@@ -214,6 +254,11 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
      * {@link #hasCustomVariadic}.
      */
     public boolean hasVariadicReturn;
+
+    /**
+     * Describes the set of local accessors used by custom operations.
+     */
+    public final Set<TypeMirror> localAccessorsUsed = new HashSet<>();
 
     public String getName() {
         return modelName;
@@ -279,6 +324,27 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return enableYield || !customYieldOperations.isEmpty();
     }
 
+    /**
+     * If boxing elimination and the uncached interpreter are used, we need to update local tags
+     * when transitioning from uncached to cached.
+     */
+    public boolean needsCachedTagsTransition() {
+        return enableUncachedInterpreter && usesBoxingElimination();
+    }
+
+    public boolean needsTransition() {
+        if (isBytecodeUpdatable()) {
+            // When the bytecode updates we need to translate the current bci to the new bytecode.
+            return true;
+        }
+        if (hasYieldOperation()) {
+            // We need to update a ContinuationRootNode's bytecode node when it transitions from
+            // uninitialized/uncached to cached.
+            return true;
+        }
+        return needsCachedTagsTransition();
+    }
+
     public InstructionModel getInvalidateInstruction(int length) {
         if (invalidateInstructions == null) {
             return null;
@@ -297,8 +363,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName) {
+        return operation(kind, name, javadoc, builderName, false);
+    }
+
+    public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName, boolean optionalBuiltin) {
         if (operations.containsKey(name)) {
-            addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
+            if (optionalBuiltin) {
+                addSuppressableWarning(TruffleSuppressedWarnings.HIDE_BUILTIN, "Custom operation with name %s conflicts with a built-in operation with the same name. " +
+                                "The built-in operation will not be generated. ", name);
+            } else {
+                addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
+            }
             return null;
         }
         OperationModel op = new OperationModel(this, operationId++, kind, name, builderName, javadoc);
@@ -409,15 +484,29 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return instruction(new InstructionModel(kind, name, signature));
     }
 
-    public InstructionModel quickenInstruction(InstructionModel base, Signature signature, String specializationName) {
-        return instruction(new InstructionModel(base, specializationName, signature));
+    public InstructionModel quickenInstruction(InstructionModel base, Signature signature, String quickeningName, QuickeningKind quickeningKind, TypeMirror specializedType, boolean checked) {
+        return instruction(new InstructionModel(base, quickeningName, signature, quickeningKind, specializedType, checked));
     }
 
     public InstructionModel shortCircuitInstruction(String name, ShortCircuitInstructionModel shortCircuitModel) {
         if (instructions.containsKey(name)) {
             throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
         }
-        Signature signature = signature(shortCircuitModel.producesBoolean() ? boolean.class : Object.class, boolean.class, boolean.class);
+
+        /*
+         * NB: This signature reflects the stack effect when the short circuit instruction continues
+         * to the next operand (and not when it skips to the end). The code we generate carefully
+         * ensures that each path branching to the "end" leaves a single value on the stack.
+         */
+        Class<?>[] argumentTypes;
+        if (shortCircuitModel.producesBoolean()) {
+            // Consume the boolean value.
+            argumentTypes = new Class<?>[]{boolean.class};
+        } else {
+            // Consume the boolean value and pop the DUP'd original value.
+            argumentTypes = new Class<?>[]{Object.class, boolean.class};
+        }
+        Signature signature = signature(void.class, argumentTypes);
         InstructionModel instr = instruction(InstructionKind.CUSTOM_SHORT_CIRCUIT, name, signature);
         instr.shortCircuitModel = shortCircuitModel;
 
@@ -455,12 +544,12 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             if (instr.canInlineState()) {
                 NodeState state = NodeState.create(instr.nodeData, ImmediateKind.STATE_PROFILE.width.byteSize * 8);
                 for (BitSet s : state.activeState.getSets()) {
-                    instr.addImmediate(ImmediateKind.STATE_PROFILE, s.getName(), false);
+                    instr.addImmediate(ImmediateKind.STATE_PROFILE, s.getName(), true);
                 }
             }
         }
 
-        BytecodeDSLBuiltins.addBuiltinsOnFinalize(this);
+        BytecodeDSLBuiltins.addBuiltinsOnFinalize(this, types);
 
         LinkedHashMap<String, InstructionModel> newInstructions = new LinkedHashMap<>();
         for (var entry : instructions.entrySet()) {
@@ -475,9 +564,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             }
         }
 
-        short currentId = getInstructionStartIndex();
         for (InstructionModel m : newInstructions.values()) {
-            m.setId(currentId++);
             m.validateAlignment();
             /*
              * Make sure the instruction format for quickening is valid.
@@ -494,6 +581,45 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
 
         this.instructions = newInstructions;
+        if (enableInstructionRewriting) {
+            this.instructionRewriterModel = createRewriterModel();
+        }
+    }
+
+    private InstructionRewriterModel createRewriterModel() {
+        return InstructionRewriterModel.create("InstructionRewriter", instructions.sequencedValues(), computeRewriteRules());
+    }
+
+    private InstructionRewriteRuleModel[] computeRewriteRules() {
+        List<InstructionRewriteRuleModel> rules = new ArrayList<>();
+
+        // load.argument, pop -> _
+        rules.add(deletionRule(p(loadArgumentInstruction), p(popInstruction)));
+        // load.constant, pop -> _
+        rules.add(deletionRule(p(loadConstantInstruction), p(popInstruction)));
+        // load.null, pop -> _
+        rules.add(deletionRule(p(loadNullInstruction), p(popInstruction)));
+
+        // Throwing an exception on illegal load makes load.local side-effecting.
+        if (loadIllegalLocalStrategy != LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
+            // load.local x, pop -> _
+            rules.add(deletionRule(p(loadLocalOperation.instruction), p(popInstruction)));
+        }
+
+        return rules.toArray(InstructionRewriteRuleModel[]::new);
+    }
+
+    private static InstructionRewriteRuleModel deletionRule(InstructionPatternModel... lhs) {
+        return new InstructionRewriteRuleModel(lhs, new InstructionPatternModel[0]);
+    }
+
+    private static InstructionPatternModel p(InstructionModel instruction, String... immediates) {
+        String[] finalImmediates = immediates;
+        if (immediates.length == 0 && !instruction.immediates.isEmpty()) {
+            // Provide an empty array of immediates if immediates weren't provided.
+            finalImmediates = new String[instruction.immediates.size()];
+        }
+        return new InstructionPatternModel(instruction, finalImmediates);
     }
 
     public short getInstructionStartIndex() {
@@ -573,6 +699,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public boolean needsBciSlot() {
+        // Uncached does not use nodes, so the bci is necessary for identifying locations.
         return enableUncachedInterpreter || storeBciInFrame;
     }
 

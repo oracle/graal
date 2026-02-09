@@ -61,6 +61,7 @@ import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Represents an object file emitted using LLVM.
@@ -150,7 +151,7 @@ public class LLVMObjectFile extends ObjectFile {
 
     @Override
     public Set<Segment> getSegments() {
-        return new HashSet<>();
+        return new HashSet<>(); // noEconomicSet(streaming)
     }
 
     @Override
@@ -331,7 +332,7 @@ public class LLVMObjectFile extends ObjectFile {
             // (e.g. SHT, PHT) must be decided before content, and we need to give a size so that
             // that nextAvailableOffset remains defined.
             // So, our size comes first.
-            HashSet<BuildDependency> dependencies = new HashSet<>();
+            EconomicSet<BuildDependency> dependencies = EconomicSet.create(2);
 
             LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
             LayoutDecision ourOffset = decisions.get(this).getDecision(LayoutDecision.Kind.OFFSET);

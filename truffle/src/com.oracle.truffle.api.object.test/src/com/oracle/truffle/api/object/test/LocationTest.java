@@ -54,11 +54,6 @@ import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -67,11 +62,14 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
-public class LocationTest extends AbstractParametrizedLibraryTest {
+public class LocationTest extends ParametrizedDynamicObjectTest {
 
     @Parameter(1) public boolean useLookup;
 
@@ -103,7 +101,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     public void testOnlyObjectLocationForObject() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        var library = createLibrary(object);
 
         library.put(object, "obj", new Object());
         Location location = object.getShape().getProperty("obj").getLocation();
@@ -116,7 +114,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     public void testOnlyPrimLocationForPrimitive() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        var library = createLibrary(object);
 
         library.put(object, "prim", 42);
         Location location = object.getShape().getProperty("prim").getLocation();
@@ -129,7 +127,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     public void testPrim2Object() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        var library = createLibrary(object);
 
         library.put(object, "foo", 42);
         Location location1 = object.getShape().getProperty("foo").getLocation();
@@ -148,7 +146,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     public void testUnrelatedPrimitivesGoToObject() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        var library = createLibrary(object);
 
         library.put(object, "foo", 42L);
         Location location1 = object.getShape().getProperty("foo").getLocation();
@@ -167,7 +165,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     public void testChangeFlagsReuseLocation() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        var library = createLibrary(object);
 
         library.put(object, "foo", 42);
         Location location = object.getShape().getProperty("foo").getLocation();
@@ -184,7 +182,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     public void testChangeFlagsChangeLocation() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        var library = createLibrary(object);
 
         library.put(object, "foo", 42);
         Location location = object.getShape().getProperty("foo").getLocation();
@@ -201,7 +199,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     public void testDelete() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        var library = createLibrary(object);
 
         library.put(object, "a", 1);
         library.put(object, "b", 2);
@@ -227,7 +225,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
     public void testDeleteDeclaredProperty() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        var library = createLibrary(object);
 
         library.putConstant(object, "a", new Object(), 0);
         assertTrue(library.containsKey(object, "a"));

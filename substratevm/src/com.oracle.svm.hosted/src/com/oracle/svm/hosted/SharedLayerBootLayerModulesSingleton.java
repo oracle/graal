@@ -41,7 +41,6 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -49,9 +48,14 @@ import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 
+/**
+ * This singleton persists all the modules from the {@code bootLayer} of the shared layers and
+ * allows to loads them in the extension layers. This is needed for the {@code RuntimeModuleSupport}
+ * that contains the runtime bootLayer and is only installed in the application layer.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingInitialLayerPredicate.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SharedLayerBootLayerModulesSingleton.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SharedLayerBootLayerModulesSingleton.LayeredCallbacks.class)
 public class SharedLayerBootLayerModulesSingleton {
     private final Collection<String> sharedBootLayerModules;
     private ModuleLayer bootLayer;

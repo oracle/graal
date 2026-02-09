@@ -34,7 +34,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
@@ -50,7 +50,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * This is the core class of the low overhead asynchronous execution sampler. It registers a SIGPROF

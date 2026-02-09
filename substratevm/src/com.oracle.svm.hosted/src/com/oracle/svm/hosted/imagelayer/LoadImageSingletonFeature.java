@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InstallationKind.UNAVAILABLE_AT_RUNTIME;
 import static com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL;
 
 import java.util.ArrayList;
@@ -36,7 +37,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -44,6 +44,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -67,15 +68,17 @@ import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
+import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -106,7 +109,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * referenced as needed.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class LoadImageSingletonFeature implements InternalFeature {
     public static final String CROSS_LAYER_SINGLETON_TABLE_SYMBOL = "__svm_layer_singleton_table_start";
 
@@ -203,12 +206,6 @@ public class LoadImageSingletonFeature implements InternalFeature {
         layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
         layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER);
 
-        Consumer<Object[]> multiLayerEmbeddedRootsRegistration = (objArray) -> {
-            var method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(MultiLayeredImageSingleton.class, "getAllLayers", Class.class));
-            var javaConstant = universe.getSnippetReflection().forObject(objArray);
-            universe.registerEmbeddedRoot(javaConstant, new BytecodePosition(null, method, BytecodeFrame.UNKNOWN_BCI));
-        };
-
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             /*
              * We must register all multi layered image singletons within shared layers as embedded.
@@ -218,7 +215,7 @@ public class LoadImageSingletonFeature implements InternalFeature {
              */
             Object[] multiLayeredSingletons = layeredImageSingletonSupport.getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER).toArray();
             if (multiLayeredSingletons.length != 0) {
-                multiLayerEmbeddedRootsRegistration.accept(multiLayeredSingletons);
+                LayeredImageUtils.registerObjectAsEmbeddedRoot(universe, multiLayeredSingletons);
             }
 
             /*
@@ -292,7 +289,7 @@ public class LoadImageSingletonFeature implements InternalFeature {
             }
 
             if (!multiLayerEmbeddedRoots.isEmpty()) {
-                multiLayerEmbeddedRootsRegistration.accept(multiLayerEmbeddedRoots.toArray());
+                LayeredImageUtils.registerObjectAsEmbeddedRoot(universe, multiLayerEmbeddedRoots.toArray());
             }
         } else {
             // GR-58631
@@ -378,7 +375,7 @@ public class LoadImageSingletonFeature implements InternalFeature {
      * {@link SingletonLayeredInstallationKind#APP_LAYER_ONLY}s are installed in the heap.
      */
     private void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
-        String addReason = "Read via the layered image singleton support";
+        Object addReason = ImageHeapReasonSupport.singleton().description("Read via the layered image singleton support");
 
         /*
          * Record the id of all multilayered image singleton entries which may be referenced.
@@ -437,6 +434,20 @@ public class LoadImageSingletonFeature implements InternalFeature {
         }
 
     }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess a) {
+        BeforeImageWriteAccessImpl access = (BeforeImageWriteAccessImpl) a;
+        ImageHeapScanner heapScanner = access.getHostedUniverse().getBigBang().getUniverse().getHeapScanner();
+        NativeImageHeap heap = access.getImage().getHeap();
+        var notInstalledSingletons = LayeredImageSingletonSupport.singleton().getSingletonsWithTrait(UNAVAILABLE_AT_RUNTIME);
+        for (var notInstalledSingleton : notInstalledSingletons) {
+            if (heapScanner.hasImageHeapConstant(notInstalledSingleton)) {
+                ObjectInfo objectInfo = heap.getObjectInfo(notInstalledSingleton);
+                VMError.guarantee(objectInfo == null, "Singleton of %s annotated with %s cannot be installed in the image heap", notInstalledSingleton.getClass(), UNAVAILABLE_AT_RUNTIME);
+            }
+        }
+    }
 }
 
 enum SlotRecordKind {
@@ -468,7 +479,7 @@ record SlotInfo(Class<?> keyClass,
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = CrossLayerSingletonMappingInfo.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = CrossLayerSingletonMappingInfo.LayeredCallbacks.class)
 class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory {
     /**
      * Map of slot infos created in prior layers.

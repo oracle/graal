@@ -28,6 +28,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Objects;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
@@ -35,8 +37,6 @@ import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.word.Word;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**

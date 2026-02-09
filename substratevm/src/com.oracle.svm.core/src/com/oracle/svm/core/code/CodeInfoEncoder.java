@@ -43,7 +43,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -77,7 +77,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -94,7 +93,6 @@ import jdk.graal.compiler.core.common.util.TypeWriter;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.RegisterValue;
@@ -110,6 +108,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.word.impl.Word;
 
 public class CodeInfoEncoder {
 
@@ -914,7 +913,7 @@ class CodeInfoVerifier {
 }
 
 @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = MethodTableFirstIDTracker.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = MethodTableFirstIDTracker.LayeredCallbacks.class)
 class MethodTableFirstIDTracker {
     public final int startingID;
     public int nextStartingId = -1;

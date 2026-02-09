@@ -29,19 +29,18 @@ import static com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoState.NO_SUCCESS
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoEncoder.Counters;
@@ -68,6 +67,7 @@ import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.util.FrequencyEncoder;
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
@@ -245,7 +245,7 @@ public class FrameInfoEncoder {
         final EconomicMap<List<CompressedFrameData>, Integer> frameSliceIndexMap = EconomicMap.create(Equivalence.DEFAULT);
         final FrequencyEncoder<Integer> sliceFrequency = FrequencyEncoder.createEqualityEncoder();
         final Map<CompressedFrameData, Integer> frameSliceFrequency = new HashMap<>();
-        final Map<CompressedFrameData, Set<CompressedFrameData>> frameSuccessorMap = new HashMap<>();
+        final Map<CompressedFrameData, EconomicSet<CompressedFrameData>> frameSuccessorMap = new HashMap<>();
         final Map<CompressedFrameData, Integer> frameMaxHeight = new HashMap<>();
 
         boolean sealed = false;
@@ -277,9 +277,9 @@ public class FrameInfoEncoder {
                     frameSliceFrequency.merge(frame, 1, Integer::sum);
                     if (prevFrame != null) {
                         frameSuccessorMap.compute(prevFrame, (_, v) -> {
-                            Set<CompressedFrameData> callers;
+                            EconomicSet<CompressedFrameData> callers;
                             if (v == null) {
-                                callers = new HashSet<>();
+                                callers = EconomicSet.create();
                             } else {
                                 callers = v;
                             }
@@ -355,7 +355,7 @@ public class FrameInfoEncoder {
                  * frame can be directly pointed to.
                  */
                 boolean directlyPointToSharedFrame = slice.stream().allMatch(frame -> {
-                    Set<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
+                    EconomicSet<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
                     return sharedEncodedFrameIndexMap.containsKey(frame) && (frameSuccessors == null || frameSuccessors.size() == 1);
                 });
                 if (directlyPointToSharedFrame) {
@@ -397,7 +397,7 @@ public class FrameInfoEncoder {
          *         successor.
          */
         private CompressedFrameData getUniqueSuccessor(CompressedFrameData frame) {
-            Set<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
+            EconomicSet<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
             if (frameSuccessors != null && frameSuccessors.size() == 1) {
                 return frameSuccessors.iterator().next();
             }
@@ -700,6 +700,7 @@ public class FrameInfoEncoder {
         } else if (ValueUtil.isVirtualObject(value)) {
             VirtualObject virtualObject = (VirtualObject) value;
             result.type = ValueType.VirtualObject;
+            result.isAutoBoxedPrimitive = virtualObject.isAutoBox();
             result.data = virtualObject.getId();
             makeVirtualObject(data, virtualObject, isDeoptEntry);
         } else {
@@ -802,7 +803,7 @@ public class FrameInfoEncoder {
                 }
 
                 if (field.getLocation() >= 0) {
-                    assert curOffset <= field.getLocation() : field;
+                    assert curOffset <= field.getLocation() : Assertions.errorMessage(field, curOffset);
                     while (curOffset + 7 < field.getLocation()) {
                         valueList.add(makeValueInfo(data, JavaKind.Long, JavaConstant.LONG_0, isDeoptEntry));
                         curOffset += 8;
@@ -979,7 +980,7 @@ public class FrameInfoEncoder {
                 }
             }
 
-            encodingBuffer.putU1(encodeFlags(valueInfo.type, valueInfo.kind, valueInfo.isCompressedReference, valueInfo.isEliminatedMonitor));
+            encodingBuffer.putU1(encodeFlags(valueInfo));
             if (valueInfo.type.hasData) {
                 encodingBuffer.putSV(valueInfo.data);
             }
@@ -994,13 +995,24 @@ public class FrameInfoEncoder {
         };
     }
 
-    private static int encodeFlags(ValueType type, JavaKind kind, boolean isCompressedReference, boolean isEliminatedMonitor) {
-        int kindIndex = isEliminatedMonitor ? FrameInfoDecoder.IS_ELIMINATED_MONITOR_KIND_VALUE : kind.ordinal();
-        assert FrameInfoDecoder.KIND_VALUES[kindIndex] == kind : kind;
+    private static int encodeFlags(ValueInfo valueInfo) {
+        int encodedType = valueInfo.getType().ordinal() << FrameInfoDecoder.TYPE_SHIFT;
+        int encodedJavaKind = convertJavaKindToInt(valueInfo) << FrameInfoDecoder.KIND_SHIFT;
+        int isCompressedReference = (valueInfo.isCompressedReference() ? 1 : 0) << FrameInfoDecoder.IS_COMPRESSED_REFERENCE_SHIFT;
+        return encodedType | encodedJavaKind | isCompressedReference;
+    }
 
-        return (type.ordinal() << FrameInfoDecoder.TYPE_SHIFT) |
-                        (kindIndex << FrameInfoDecoder.KIND_SHIFT) |
-                        ((isCompressedReference ? 1 : 0) << FrameInfoDecoder.IS_COMPRESSED_REFERENCE_SHIFT);
+    private static int convertJavaKindToInt(ValueInfo valueInfo) {
+        if (valueInfo.isEliminatedMonitor()) {
+            assert valueInfo.getKind() == JavaKind.Object;
+            assert !valueInfo.isAutoBoxedPrimitive();
+            return FrameInfoDecoder.ELIMINATED_MONITOR_KIND_INDEX;
+        } else if (valueInfo.isAutoBoxedPrimitive()) {
+            assert valueInfo.getKind() == JavaKind.Object;
+            return FrameInfoDecoder.AUTOBOXED_PRIMITIVE_KIND_INDEX;
+        } else {
+            return valueInfo.getKind().ordinal();
+        }
     }
 
     /**
@@ -1110,6 +1122,7 @@ class FrameInfoVerifier {
             assert expectedValue.kind.equals(actualValue.kind) : actualValue;
             assert expectedValue.isCompressedReference == actualValue.isCompressedReference : actualValue;
             assert expectedValue.isEliminatedMonitor == actualValue.isEliminatedMonitor : actualValue;
+            assert expectedValue.isAutoBoxedPrimitive == actualValue.isAutoBoxedPrimitive : actualValue;
             assert expectedValue.data == actualValue.data : actualValue;
             verifyConstant(expectedValue.value, actualValue.value);
         }

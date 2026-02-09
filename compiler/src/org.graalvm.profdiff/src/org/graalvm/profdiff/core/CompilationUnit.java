@@ -31,7 +31,7 @@ import org.graalvm.profdiff.parser.ExperimentParserError;
 /**
  * Represents an executed Graal compilation of a method.
  *
- * A compilation unit contains holds only its identifiers (compilation ID, multi-method key, root
+ * A compilation unit contains holds only its identifiers (compilation ID, method variant key, root
  * method) and simple scalar metadata (execution period, hot flag). The most resource-heavy parts,
  * i.e. an {@link OptimizationTree} and {@link InliningTree}, can be loaded on demand. This design
  * is necessary, because a whole experiment might not fit in memory.
@@ -101,18 +101,18 @@ public class CompilationUnit {
     private final TreeLoader loader;
 
     /**
-     * The key of the compiled multi-method. {@code null} if this is not a compilation of a
-     * multi-method. If the key contains an additional suffix due to name collision prevention, the
-     * suffix is a part of the multi-method key.
+     * The key of the compiled method variant. {@code null} if this is not a compilation of a method
+     * variant. If the key contains an additional suffix due to name collision prevention, the
+     * suffix is a part of the method variant key.
      */
-    private final String multiMethodKey;
+    private final String methodVariantKey;
 
-    public CompilationUnit(Method method, String compilationId, long period, TreeLoader loader, String multiMethodKey) {
+    public CompilationUnit(Method method, String compilationId, long period, TreeLoader loader, String methodVariantKey) {
         this.method = method;
         this.compilationId = compilationId;
         this.period = period;
         this.loader = loader;
-        this.multiMethodKey = multiMethodKey;
+        this.methodVariantKey = methodVariantKey;
     }
 
     public CompilationUnit(Method method, String compilationId, long period, TreeLoader loader) {
@@ -176,11 +176,11 @@ public class CompilationUnit {
     }
 
     /**
-     * Gets the key of the compiled multi-method or {@code null} if this is not a compilation of a
-     * multi-method.
+     * Gets the key of the compiled method variant or {@code null} if this is not a compilation of a
+     * method variant.
      */
-    public String getMultiMethodKey() {
-        return multiMethodKey;
+    public String getMethodVariantKey() {
+        return methodVariantKey;
     }
 
     /**
@@ -193,7 +193,7 @@ public class CompilationUnit {
     /**
      * Formats a header identifying this compilation unit.
      *
-     * Includes the {@link #getCompilationKind() kind}, {@link #getMultiMethodKey() multi-method
+     * Includes the {@link #getCompilationKind() kind}, {@link #getMethodVariantKey() method variant
      * key}, {@link #createExecutionSummary() exeuction summary}, and {@link ExperimentId}. For
      * example:
      *
@@ -207,8 +207,8 @@ public class CompilationUnit {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("Compilation ").append(getCompilationKind()).append(' ').append(String.format("%5s", getCompilationId()));
-        if (multiMethodKey != null) {
-            sb.append(" of multi-method ").append(multiMethodKey);
+        if (methodVariantKey != null) {
+            sb.append(" of method variant ").append(methodVariantKey);
         }
         if (method.getExperiment().isProfileAvailable()) {
             sb.append(" consumed ").append(createExecutionSummary());

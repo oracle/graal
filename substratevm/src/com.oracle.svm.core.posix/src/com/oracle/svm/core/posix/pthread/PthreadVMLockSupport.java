@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -48,8 +48,7 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class PthreadVMLockSupport extends VMLockSupport {
 

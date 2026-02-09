@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jvmti;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -33,6 +32,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jvmti.headers.JvmtiEventCallbacks;
+import org.graalvm.word.impl.Word;
 
 /** Methods related to {@link JvmtiEventCallbacks}. */
 public final class JvmtiEventCallbacksUtil {

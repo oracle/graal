@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
@@ -38,8 +38,9 @@ import java.util.Map;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -76,7 +77,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.gc.WriteBarrierSnippets;
-import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -183,7 +184,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
-        Word addr = Word.fromAddress(address);
+        Word addr = WordCastNode.castToWord(address);
 
         if (shouldOutline && !eliminated) {
             callPostWriteBarrierStub(POST_WRITE_BARRIER, fixedObject, addr);
@@ -217,7 +218,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             return;
         }
 
-        Word addr = Word.fromAddress(address);
+        Word addr = WordCastNode.castToWord(address);
         Word startAddress = WriteBarrierSnippets.getPointerToFirstArrayElement(addr, length, elementStride);
         Word endAddress = WriteBarrierSnippets.getPointerToLastArrayElement(addr, length, elementStride);
 
@@ -287,14 +288,23 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     }
 
     private static boolean shouldOutline(WriteBarrierNode barrier) {
-        if (SerialGCOptions.OutlineWriteBarriers.getValue() != null) {
-            return SerialGCOptions.OutlineWriteBarriers.getValue();
+        SerialGCOptions.OutlineWriteBarriers outlining = SerialGCOptions.WriteBarrierOutlining.getValue();
+        if (outlining == SerialGCOptions.OutlineWriteBarriers.Always) {
+            return true;
+        } else if (outlining == SerialGCOptions.OutlineWriteBarriers.Never) {
+            return false;
         }
-        if (GraalOptions.ReduceCodeSize.getValue(barrier.getOptions())) {
+
+        OptionValues graphOptions = barrier.graph().getOptions();
+        if (GraalOptions.ReduceCodeSize.getValue(graphOptions) && outlining == SerialGCOptions.OutlineWriteBarriers.Auto) {
             return true;
         }
-        // Newly allocated objects are likely young, so we can outline the execution after
-        // checking hasRememberedSet
+
+        /*
+         * Newly allocated objects are likely in the young generation, so we can outline the write
+         * barrier with minimal performance impact.
+         */
+        assert outlining == SerialGCOptions.OutlineWriteBarriers.Auto || outlining == SerialGCOptions.OutlineWriteBarriers.YoungOnly;
         return barrier instanceof SerialWriteBarrierNode serialBarrier && serialBarrier.getBaseStatus().likelyYoung();
     }
 

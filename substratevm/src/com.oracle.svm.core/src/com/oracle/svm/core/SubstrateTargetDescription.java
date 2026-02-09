@@ -37,7 +37,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -46,7 +46,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SubstrateTargetDescription.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SubstrateTargetDescription.LayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 public class SubstrateTargetDescription extends TargetDescription {
     private static final String RUNTIME_CHECKED_CPU_FEATURES = "runtimeCheckedCPUFeatures";
 

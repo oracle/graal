@@ -62,6 +62,7 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 public class FieldsOffsetsFeature implements Feature {
 
     public static class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-72589: Migrate GraalCompilerFeature to terminus
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();

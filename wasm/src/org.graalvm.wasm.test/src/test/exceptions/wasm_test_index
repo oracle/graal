@@ -1,3 +1,5 @@
+empty_catch
+empty_catch_all
 exceptions_global_unwind
 exceptions_indirect_call
 exceptions_local_unwind

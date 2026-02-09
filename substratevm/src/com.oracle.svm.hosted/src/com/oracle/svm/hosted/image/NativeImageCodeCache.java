@@ -41,7 +41,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -50,11 +49,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.util.EconomicHashMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.BigBang;
@@ -65,7 +67,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfo;
@@ -89,7 +91,6 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.sampler.CallStackFrameMethodInfo;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
@@ -115,7 +116,6 @@ import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.site.Call;
@@ -125,13 +125,12 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
 public abstract class NativeImageCodeCache {
 
-    private final Map<Constant, Object> embeddedConstants = new HashMap<>();
+    private final Map<Constant, Object> embeddedConstants = new EconomicHashMap<>();
 
     public static class Options {
         @Option(help = "Verify that all possible deoptimization entry points have been properly compiled and registered in the metadata")//
@@ -151,7 +150,7 @@ public abstract class NativeImageCodeCache {
 
     private final DataSection dataSection;
 
-    private final Map<Constant, String> constantReasons = new HashMap<>();
+    private final Map<Constant, Object> constantReasons = new HashMap<>();
 
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap) {
         this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class));
@@ -239,13 +238,14 @@ public abstract class NativeImageCodeCache {
     public abstract void layoutMethods(DebugContext debug, BigBang bb);
 
     public void layoutConstants() {
+        ImageHeapReasonSupport reasonSupport = imageHeap.reasonSupport;
         DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             CompilationResult compilation = pair.getRight();
             for (DataSection.Data data : compilation.getDataSection()) {
                 if (data instanceof SubstrateDataBuilder.ObjectData) {
                     JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
-                    constantReasons.put(constant, compilation.getName());
+                    constantReasons.put(constant, reasonSupport.compilation(compilation));
                 }
             }
 
@@ -254,7 +254,7 @@ public abstract class NativeImageCodeCache {
             for (DataPatch patch : compilation.getDataPatches()) {
                 if (patch.reference instanceof ConstantReference) {
                     VMConstant constant = ((ConstantReference) patch.reference).getConstant();
-                    constantReasons.put(constant, compilation.getName());
+                    constantReasons.put(constant, reasonSupport.compilation(compilation));
                 }
             }
             watchdog.recordActivity();
@@ -266,10 +266,11 @@ public abstract class NativeImageCodeCache {
     public Map<Constant, Object> initAndGetEmbeddedConstants() {
         VMError.guarantee(BuildPhaseProvider.isCompilationFinished(), "Code cache embedded constants are available only after compilation.");
         VMError.guarantee(embeddedConstants.isEmpty(), "Embedded constants are already computed.");
+        ImageHeapReasonSupport reasonSupport = imageHeap.reasonSupport;
 
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData objectData) {
-                embeddedConstants.put(objectData.getConstant(), NativeImageHeap.HeapInclusionReason.DataSection);
+                embeddedConstants.put(objectData.getConstant(), reasonSupport.dataSection());
             }
         }
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
@@ -305,7 +306,13 @@ public abstract class NativeImageCodeCache {
     }
 
     public void addConstantsToHeap() {
-        getEmbeddedConstants().forEach((constant, reason) -> addConstantToHeap(constant, reason instanceof BytecodePosition position ? position.getMethod().getName() : reason));
+        ImageHeapReasonSupport reasonSupport = imageHeap.reasonSupport;
+        getEmbeddedConstants().forEach((constant, reason) -> {
+            Object addReason = reason instanceof BytecodePosition position
+                            ? reasonSupport.bytecodePosition(position)
+                            : reason;
+            addConstantToHeap(constant, addReason);
+        });
     }
 
     private void addConstantToHeap(Constant constant, Object reason) {
@@ -386,7 +393,7 @@ public abstract class NativeImageCodeCache {
 
         HostedUniverse hUniverse = imageHeap.hUniverse;
         HostedMetaAccess hMetaAccess = imageHeap.hMetaAccess;
-        RuntimeMetadataEncoder runtimeMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(hUniverse.getSnippetReflection(), encoders);
+        RuntimeMetadataEncoder runtimeMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(hUniverse.getSnippetReflection(), encoders, hMetaAccess);
         ReflectionHostedSupport reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
 
         Map<Class<?>, Set<Class<?>>> innerClasses = reflectionSupport.getReflectionInnerClasses();
@@ -394,7 +401,7 @@ public abstract class NativeImageCodeCache {
         for (HostedType type : hUniverse.getTypes()) {
             if (type.getWrapped().isReachable() && heapDynamicHubs.contains(type.getHub())) {
                 Class<?>[] typeInnerClasses = innerClasses.getOrDefault(type.getJavaClass(), Collections.emptySet()).toArray(new Class<?>[0]);
-                runtimeMetadataEncoder.addClassMetadata(hMetaAccess, type, typeInnerClasses);
+                runtimeMetadataEncoder.addClassMetadata(type, typeInnerClasses);
             }
         }
 
@@ -423,15 +430,15 @@ public abstract class NativeImageCodeCache {
             runtimeMetadataEncoder.addRecordComponentsLookupError(type, error);
         });
 
-        Set<AnalysisField> includedFields = new HashSet<>();
-        Set<AnalysisMethod> includedMethods = new HashSet<>();
+        EconomicSet<AnalysisField> includedFields = EconomicSet.create();
+        EconomicSet<AnalysisMethod> includedMethods = EconomicSet.create();
         Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> configurationFields = reflectionSupport.getReflectionFields();
         Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> configurationExecutables = reflectionSupport.getReflectionExecutables();
 
         reflectionSupport.getHeapReflectionFields().forEach(((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
                 HostedField hostedField = hUniverse.lookup(analysisField);
-                runtimeMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, reflectField,
+                runtimeMetadataEncoder.addHeapAccessibleObjectMetadata(hostedField, reflectField,
                                 configurationFields.getOrDefault(analysisField.getDeclaringClass(), Collections.emptyMap()).containsKey(analysisField));
             }
         }));
@@ -439,7 +446,7 @@ public abstract class NativeImageCodeCache {
         reflectionSupport.getHeapReflectionExecutables().forEach(((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod hostedMethod = hUniverse.lookup(analysisMethod);
-                runtimeMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, reflectMethod,
+                runtimeMetadataEncoder.addHeapAccessibleObjectMetadata(hostedMethod, reflectMethod,
                                 configurationExecutables.getOrDefault(analysisMethod.getDeclaringClass(), Collections.emptyMap()).containsKey(analysisMethod));
             }
         }));
@@ -447,7 +454,7 @@ public abstract class NativeImageCodeCache {
         configurationFields.forEach((_, classFields) -> classFields.forEach((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
                 HostedField hostedField = hUniverse.lookup(analysisField);
-                runtimeMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, hostedField, reflectField);
+                runtimeMetadataEncoder.addReflectionFieldMetadata(hostedField, reflectField);
             }
         }));
 
@@ -455,7 +462,7 @@ public abstract class NativeImageCodeCache {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod method = hUniverse.lookup(analysisMethod);
                 Object accessor = reflectionSupport.getAccessor(analysisMethod);
-                runtimeMetadataEncoder.addReflectionExecutableMetadata(hMetaAccess, method, reflectMethod, accessor);
+                runtimeMetadataEncoder.addReflectionExecutableMetadata(method, reflectMethod, accessor);
             }
         }));
 
@@ -597,7 +604,7 @@ public abstract class NativeImageCodeCache {
         deoptEntries.sort(Comparator.comparing(e -> e.getKey().format("%H.%n(%p)")));
 
         for (Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> entry : deoptEntries) {
-            HostedMethod method = imageHeap.hUniverse.lookup(entry.getKey().getMultiMethod(MultiMethod.ORIGINAL_METHOD));
+            HostedMethod method = imageHeap.hUniverse.lookup(entry.getKey().getMethodVariant(MethodVariant.ORIGINAL_METHOD));
 
             if (method.hasCalleeSavedRegisters()) {
                 System.out.println("DeoptEntry has callee saved registers: " + method.format("%H.%n(%p)"));
@@ -850,14 +857,14 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    public interface RuntimeMetadataEncoder extends EncodedRuntimeMetadataSupplier {
-        void addClassMetadata(MetaAccessProvider metaAccess, HostedType type, Class<?>[] reflectionClasses);
+    public interface RuntimeMetadataEncoder {
+        void addClassMetadata(HostedType type, Class<?>[] reflectionClasses);
 
-        void addReflectionFieldMetadata(MetaAccessProvider metaAccess, HostedField sharedField, ConditionalRuntimeValue<Field> reflectField);
+        void addReflectionFieldMetadata(HostedField sharedField, ConditionalRuntimeValue<Field> reflectField);
 
-        void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, ConditionalRuntimeValue<Executable> reflectMethod, Object accessor);
+        void addReflectionExecutableMetadata(HostedMethod sharedMethod, ConditionalRuntimeValue<Executable> reflectMethod, Object accessor);
 
-        void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, WrappedElement hostedElement, AccessibleObject object, boolean registered);
+        void addHeapAccessibleObjectMetadata(WrappedElement hostedElement, AccessibleObject object, boolean registered);
 
         void addHidingFieldMetadata(AnalysisField analysisField, HostedType declType, String name, HostedType type, int modifiers);
 
@@ -899,6 +906,6 @@ public abstract class NativeImageCodeCache {
     }
 
     public interface ReflectionMetadataEncoderFactory {
-        RuntimeMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders);
+        RuntimeMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders, HostedMetaAccess hMetaAccess);
     }
 }

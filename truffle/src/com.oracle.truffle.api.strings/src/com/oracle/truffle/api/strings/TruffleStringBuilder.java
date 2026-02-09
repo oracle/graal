@@ -56,9 +56,9 @@ import java.lang.ref.Reference;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -242,6 +242,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          */
         public abstract void execute(TruffleStringBuilder sb, byte value);
 
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, byte)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF8 sb, byte value);
+
         @Specialization
         final void append(TruffleStringBuilderUTF8 sb, byte value,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -314,7 +321,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 22.1
          */
-        public abstract void execute(TruffleStringBuilder sb, char value);
+        public abstract void execute(TruffleStringBuilderUTF16 sb, char value);
 
         @Specialization
         void append(TruffleStringBuilderUTF16 sb, char value,
@@ -377,7 +384,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      */
     @TruffleBoundary
     public final void appendCharUTF16Uncached(char value) {
-        AppendCharUTF16Node.getUncached().execute(this, value);
+        AppendCharUTF16Node.getUncached().execute((TruffleStringBuilderUTF16) this, value);
     }
 
     /**
@@ -396,7 +403,34 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          * @since 22.1
          */
         public final void execute(TruffleStringBuilder sb, int codepoint) {
-            execute(sb, codepoint, 1);
+            execute(sb, codepoint, 1, false);
+        }
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public final void execute(TruffleStringBuilderUTF8 sb, int codepoint) {
+            execute(sb, codepoint, 1, false);
+        }
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public final void execute(TruffleStringBuilderUTF16 sb, int codepoint) {
+            execute(sb, codepoint, 1, false);
+        }
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public final void execute(TruffleStringBuilderUTF32 sb, int codepoint) {
+            execute(sb, codepoint, 1, false);
         }
 
         /**
@@ -405,6 +439,33 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          * @since 22.2
          */
         public final void execute(TruffleStringBuilder sb, int codepoint, int repeat) {
+            execute(sb, codepoint, repeat, false);
+        }
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int, int)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public final void execute(TruffleStringBuilderUTF8 sb, int codepoint, int repeat) {
+            execute(sb, codepoint, repeat, false);
+        }
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int, int)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public final void execute(TruffleStringBuilderUTF16 sb, int codepoint, int repeat) {
+            execute(sb, codepoint, repeat, false);
+        }
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int, int)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public final void execute(TruffleStringBuilderUTF32 sb, int codepoint, int repeat) {
             execute(sb, codepoint, repeat, false);
         }
 
@@ -419,6 +480,30 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          * @since 22.2
          */
         public abstract void execute(TruffleStringBuilder sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int, int, boolean)} for performance
+         * reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF8 sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int, int, boolean)} for performance
+         * reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF16 sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int, int, boolean)} for performance
+         * reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF32 sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
 
         @Specialization
         void append(TruffleStringBuilder sb, int codepoint, int repeat, boolean allowUTF16Surrogates,
@@ -582,9 +667,9 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
 
         @Specialization
         static void generic(Node node, TruffleStringBuilderGeneric sb, int codepoint, int repeat, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
-                        @Cached @Exclusive InlinedConditionProfile supportedProfile,
-                        @Cached InlinedConditionProfile utf16FEProfile,
-                        @Cached InlinedConditionProfile utf32FEProfile,
+                        @Cached @Shared InlinedConditionProfile supportedProfile,
+                        @Cached @Shared InlinedConditionProfile utf16FEProfile,
+                        @Cached @Shared InlinedConditionProfile utf32FEProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
             if (supportedProfile.profile(node, isAsciiBytesOrLatin1(sb.encoding))) {
@@ -709,6 +794,27 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          */
         public abstract void execute(TruffleStringBuilder sb, int value);
 
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF8 sb, int value);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF16 sb, int value);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, int)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF32 sb, int value);
+
         @Specialization
         void doAppend(TruffleStringBuilderUTF8 sb, int value,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -747,7 +853,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         void doAppend(TruffleStringBuilderUTF32 sb, int value,
                         @Cached @Shared InlinedConditionProfile stride0Profile,
-                        @Cached @Exclusive InlinedConditionProfile stride1Profile,
+                        @Cached @Shared InlinedConditionProfile stride1Profile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
             int len = NumberConversion.stringLengthInt(value);
@@ -828,6 +934,27 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          */
         public abstract void execute(TruffleStringBuilder sb, long value);
 
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, long)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF8 sb, long value);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, long)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF16 sb, long value);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, long)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF32 sb, long value);
+
         @Specialization
         void doAppend(TruffleStringBuilderUTF8 sb, long value,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -837,7 +964,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             if (len == 1) {
                 sb.buf[sb.length] = (byte) ('0' + value);
             } else {
-                NumberConversion.writeLongToBytes(value, sb.buf, 0, sb.length, len);
+                NumberConversion.writeLongToBytesS0(value, sb.buf, sb.length, len);
             }
             sb.length += len;
             sb.codePointLength += len;
@@ -854,9 +981,9 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.buf[sb.length] = (byte) ('0' + value);
             } else {
                 if (stride0Profile.profile(this, sb.stride == 0)) {
-                    NumberConversion.writeLongToBytes(value, sb.buf, 0, sb.length, len);
+                    NumberConversion.writeLongToBytesS0(value, sb.buf, sb.length, len);
                 } else {
-                    NumberConversion.writeLongToBytes(value, sb.buf, 1, sb.length, len);
+                    NumberConversion.writeLongToBytesS1(value, sb.buf, sb.length, len);
                 }
             }
             sb.length += len;
@@ -866,7 +993,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         void doAppend(TruffleStringBuilderUTF32 sb, long value,
                         @Cached @Shared InlinedConditionProfile stride0Profile,
-                        @Cached @Exclusive InlinedConditionProfile stride1Profile,
+                        @Cached @Shared InlinedConditionProfile stride1Profile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
             int len = NumberConversion.stringLengthLong(value);
@@ -875,11 +1002,11 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.buf[sb.length] = (byte) ('0' + value);
             } else {
                 if (stride0Profile.profile(this, sb.stride == 0)) {
-                    NumberConversion.writeLongToBytes(value, sb.buf, 0, sb.length, len);
+                    NumberConversion.writeLongToBytesS0(value, sb.buf, sb.length, len);
                 } else if (stride1Profile.profile(this, sb.stride == 1)) {
-                    NumberConversion.writeLongToBytes(value, sb.buf, 1, sb.length, len);
+                    NumberConversion.writeLongToBytesS1(value, sb.buf, sb.length, len);
                 } else {
-                    NumberConversion.writeLongToBytes(value, sb.buf, 2, sb.length, len);
+                    NumberConversion.writeLongToBytesS2(value, sb.buf, sb.length, len);
                 }
             }
             sb.length += len;
@@ -894,7 +1021,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             }
             int len = NumberConversion.stringLengthLong(value);
             sb.ensureCapacityS0(this, len, bufferGrowProfile, errorProfile);
-            NumberConversion.writeLongToBytes(value, sb.buf, 0, sb.length, len);
+            NumberConversion.writeLongToBytesS0(value, sb.buf, sb.length, len);
             sb.appendLength(len);
         }
 
@@ -944,6 +1071,12 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          * @since 22.1
          */
         public abstract void execute(TruffleStringBuilder sb, AbstractTruffleString a);
+
+        public abstract void execute(TruffleStringBuilderUTF8 sb, AbstractTruffleString a);
+
+        public abstract void execute(TruffleStringBuilderUTF16 sb, AbstractTruffleString a);
+
+        public abstract void execute(TruffleStringBuilderUTF32 sb, AbstractTruffleString a);
 
         @Specialization
         void append(TruffleStringBuilder sb, AbstractTruffleString a,
@@ -1018,8 +1151,8 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         static void append(Node node, TruffleStringBuilderUTF16 sb, AbstractTruffleString a,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
-                        @Cached @Exclusive TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
+                        @Cached @Shared InlinedConditionProfile impreciseProfile,
+                        @Cached @Shared InlinedConditionProfile calcCodePointLengthProfile,
                         @Cached @Shared InlinedBranchProfile slowPathProfile,
                         @Cached @Shared InlinedBranchProfile inflateProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -1055,8 +1188,8 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     sb.codePointLength += lengthA;
                 } else {
                     slowPathProfile.enter(node);
-                    int codeRangeA = getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, Encoding.UTF_16);
-                    sb.codePointLength += getCodePointLengthNode.execute(node, a, arrayA, offsetA, Encoding.UTF_16);
+                    int codeRangeA = TStringInternalNodes.getPreciseCodeRange(node, a, arrayA, offsetA, Encoding.UTF_16, impreciseProfile);
+                    sb.codePointLength += TStringInternalNodes.getCodePointLength(node, a, arrayA, offsetA, Encoding.UTF_16, calcCodePointLengthProfile);
                     sb.updateCodeRange(codeRangeA);
                     sb.ensureCapacityAndInflate(node, lengthA, Stride.fromCodeRangeUTF16(codeRangeA), inflateProfile, bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(node,
@@ -1073,7 +1206,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         static void append(Node node, TruffleStringBuilderUTF32 sb, AbstractTruffleString a,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
+                        @Cached @Shared InlinedConditionProfile impreciseProfile,
                         @Cached @Shared InlinedBranchProfile slowPathProfile,
                         @Cached @Shared InlinedBranchProfile inflateProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -1108,7 +1241,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                                     sb.buf, byteArrayBaseOffset(), 0, sb.length, lengthA);
                 } else {
                     slowPathProfile.enter(node);
-                    int codeRangeA = getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, Encoding.UTF_32);
+                    int codeRangeA = TStringInternalNodes.getPreciseCodeRange(node, a, arrayA, offsetA, Encoding.UTF_32, impreciseProfile);
                     sb.updateCodeRange(codeRangeA);
                     sb.ensureCapacityAndInflate(node, lengthA, Stride.fromCodeRangeUTF32(codeRangeA), inflateProfile, bufferGrowProfile, errorProfile);
                     TStringOps.arraycopyWithStride(node,
@@ -1125,10 +1258,10 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         static void append(Node node, TruffleStringBuilderGeneric sb, AbstractTruffleString a,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
-                        @Cached @Exclusive TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
-                        @Cached @Exclusive InlinedBranchProfile bufferGrowProfile,
-                        @Cached @Exclusive InlinedBranchProfile errorProfile) {
+                        @Cached @Shared InlinedConditionProfile impreciseProfile,
+                        @Cached @Shared InlinedConditionProfile calcCodePointLengthProfile,
+                        @Cached @Shared InlinedBranchProfile bufferGrowProfile,
+                        @Cached @Shared InlinedBranchProfile errorProfile) {
             a.checkEncoding(sb.encoding);
             Object dataA = a.data();
             try {
@@ -1152,13 +1285,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 if (lengthA == 0) {
                     return;
                 }
-                int codeRangeA = getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, sb.encoding);
+                int codeRangeA = TStringInternalNodes.getPreciseCodeRange(node, a, arrayA, offsetA, sb.encoding, impreciseProfile);
                 sb.updateCodeRange(codeRangeA);
                 sb.ensureCapacityS0(node, byteLengthA, bufferGrowProfile, errorProfile);
                 TStringOps.arraycopyWithStride(node,
                                 arrayA, offsetA, 0, 0,
                                 sb.buf, byteArrayBaseOffset(), 0, sb.length, byteLengthA);
-                sb.appendLength(byteLengthA, getCodePointLengthNode.execute(node, a, arrayA, offsetA, sb.encoding));
+                sb.appendLength(byteLengthA, TStringInternalNodes.getCodePointLength(node, a, arrayA, offsetA, sb.encoding, calcCodePointLengthProfile));
             } finally {
                 Reference.reachabilityFence(dataA);
             }
@@ -1194,6 +1327,30 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          * @since 22.1
          */
         public abstract void execute(TruffleStringBuilder sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, AbstractTruffleString, int, int)} for
+         * performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF8 sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, AbstractTruffleString, int, int)} for
+         * performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF16 sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, AbstractTruffleString, int, int)} for
+         * performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract void execute(TruffleStringBuilderUTF32 sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
 
         @Specialization
         final void append(TruffleStringBuilderUTF8 sb, AbstractTruffleString a, int fromIndex, int length,
@@ -1241,7 +1398,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         final void append(TruffleStringBuilderUTF16 sb, AbstractTruffleString a, int fromByteIndex, int byteLength,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
+                        @Cached @Shared InlinedConditionProfile impreciseProfile,
                         @Cached @Shared InlinedBranchProfile slowPathProfile,
                         @Cached @Shared InlinedBranchProfile inflateProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -1286,7 +1443,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                         codeRange = TSCodeRange.markImprecise(a.codeRange());
                         codePointLength = length;
                     } else {
-                        final int codeRangeA = getPreciseCodeRangeNode.execute(this, a, arrayA, offsetA, Encoding.UTF_16);
+                        final int codeRangeA = TStringInternalNodes.getPreciseCodeRange(this, a, arrayA, offsetA, Encoding.UTF_16, impreciseProfile);
                         if (fromIndex == 0 && length == lengthA) {
                             codeRange = codeRangeA;
                             codePointLength = a.codePointLength();
@@ -1321,7 +1478,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         final void append(TruffleStringBuilderUTF32 sb, AbstractTruffleString a, int fromByteIndex, int byteLength,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
+                        @Cached @Shared InlinedConditionProfile impreciseProfile,
                         @Cached @Shared InlinedBranchProfile slowPathProfile,
                         @Cached @Shared InlinedBranchProfile inflateProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -1361,7 +1518,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     slowPathProfile.enter(this);
                     final int codeRange;
                     if (strideA == 0 || fromIndex == 0 && length == lengthA ||
-                                    !TSCodeRange.isMoreGeneralThan(getPreciseCodeRangeNode.execute(this, a, arrayA, offsetA, Encoding.UTF_32), sb.codeRange)) {
+                                    !TSCodeRange.isMoreGeneralThan(TStringInternalNodes.getPreciseCodeRange(this, a, arrayA, offsetA, Encoding.UTF_32, impreciseProfile), sb.codeRange)) {
                         codeRange = TSCodeRange.markImprecise(a.codeRange());
                     } else if (strideA == 1) {
                         codeRange = TStringOps.calcStringAttributesBMP(this, arrayA, offsetA + (fromIndex << 1), length);
@@ -1386,12 +1543,12 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                         @Bind Node node,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
-                        @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
-                        @Cached TStringInternalNodes.CalcStringAttributesNode calcAttributesNode,
-                        @Cached @Exclusive InlinedConditionProfile calcAttrsProfile,
-                        @Cached @Exclusive InlinedBranchProfile bufferGrowProfile,
-                        @Cached @Exclusive InlinedBranchProfile errorProfile) {
+                        @Cached @Shared InlinedConditionProfile calcCodePointLengthProfile,
+                        @Cached @Shared InlinedConditionProfile impreciseProfile,
+                        @Cached @Shared TStringInternalNodes.CalcStringAttributesNode calcAttributesNode,
+                        @Cached @Shared InlinedConditionProfile calcAttrsProfile,
+                        @Cached @Shared InlinedBranchProfile bufferGrowProfile,
+                        @Cached @Shared InlinedBranchProfile errorProfile) {
             if (byteLength == 0) {
                 return;
             }
@@ -1418,12 +1575,12 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 final int fromIndex = TruffleString.rawIndex(fromByteIndex, sb.encoding);
                 final int length = TruffleString.rawIndex(byteLength, sb.encoding);
                 boundsCheckRawRegion(byteLengthA, fromByteIndex, byteLength);
-                final int codeRangeA = getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, sb.encoding);
+                final int codeRangeA = TStringInternalNodes.getPreciseCodeRange(node, a, arrayA, offsetA, sb.encoding, impreciseProfile);
                 final int codeRange;
                 final int codePointLength;
                 if (fromIndex == 0 && length == lengthA) {
                     codeRange = codeRangeA;
-                    codePointLength = getCodePointLengthNode.execute(node, a, arrayA, offsetA, sb.encoding);
+                    codePointLength = TStringInternalNodes.getCodePointLength(node, a, arrayA, offsetA, sb.encoding, calcCodePointLengthProfile);
                 } else if (isFixedWidth(codeRangeA) && !TSCodeRange.isMoreGeneralThan(codeRangeA, sb.codeRange)) {
                     codeRange = codeRangeA;
                     codePointLength = length;
@@ -1479,7 +1636,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
 
     /**
      * Node to append a substring of a given {@link java.lang.String} to a string builder. See
-     * {@link #execute(TruffleStringBuilder, String, int, int)} for details.
+     * {@link #execute(TruffleStringBuilderUTF16, String, int, int)} for details.
      *
      * @since 22.1
      */
@@ -1494,7 +1651,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 22.1
          */
-        public final void execute(TruffleStringBuilder sb, String a) {
+        public final void execute(TruffleStringBuilderUTF16 sb, String a) {
             execute(sb, a, 0, a.length());
         }
 
@@ -1505,7 +1662,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 22.1
          */
-        public abstract void execute(TruffleStringBuilder sb, String a, int fromCharIndex, int charLength);
+        public abstract void execute(TruffleStringBuilderUTF16 sb, String a, int fromCharIndex, int charLength);
 
         @Specialization
         final void append(TruffleStringBuilderUTF16 sb, String javaString, int fromIndex, int lengthStr,
@@ -1577,7 +1734,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      */
     @TruffleBoundary
     public final void appendJavaStringUTF16Uncached(String a) {
-        AppendJavaStringUTF16Node.getUncached().execute(this, a);
+        AppendJavaStringUTF16Node.getUncached().execute((TruffleStringBuilderUTF16) this, a);
     }
 
     /**
@@ -1587,7 +1744,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      */
     @TruffleBoundary
     public final void appendJavaStringUTF16Uncached(String a, int fromCharIndex, int charLength) {
-        AppendJavaStringUTF16Node.getUncached().execute(this, a, fromCharIndex, charLength);
+        AppendJavaStringUTF16Node.getUncached().execute((TruffleStringBuilderUTF16) this, a, fromCharIndex, charLength);
     }
 
     /**
@@ -1610,6 +1767,33 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         }
 
         /**
+         * Overload of {@link #execute(TruffleStringBuilder)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public final TruffleString execute(TruffleStringBuilderUTF8 sb) {
+            return execute(sb, false);
+        }
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public final TruffleString execute(TruffleStringBuilderUTF16 sb) {
+            return execute(sb, false);
+        }
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public final TruffleString execute(TruffleStringBuilderUTF32 sb) {
+            return execute(sb, false);
+        }
+
+        /**
          * Materialize this string builder to a {@link TruffleString}.
          *
          * If {@code lazy} is {@code true}, {@code sb}'s internal storage will be re-used even if
@@ -1621,6 +1805,27 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          * @since 22.1
          */
         public abstract TruffleString execute(TruffleStringBuilder sb, boolean lazy);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, boolean)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract TruffleString execute(TruffleStringBuilderUTF8 sb, boolean lazy);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, boolean)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract TruffleString execute(TruffleStringBuilderUTF16 sb, boolean lazy);
+
+        /**
+         * Overload of {@link #execute(TruffleStringBuilder, boolean)} for performance reasons.
+         *
+         * @since 25.1
+         */
+        public abstract TruffleString execute(TruffleStringBuilderUTF32 sb, boolean lazy);
 
         @Specialization
         final TruffleString createString(TruffleStringBuilder sb, boolean lazy,
@@ -1655,7 +1860,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         static TruffleString createString(Node node, TruffleStringBuilderUTF8 sb, boolean lazy,
                         @Cached @Shared InlinedConditionProfile calcAttributesProfile,
-                        @Cached @Exclusive InlinedConditionProfile brokenProfile) {
+                        @Cached @Shared InlinedConditionProfile brokenProfile) {
             if (sb.length == 0) {
                 return TruffleString.Encoding.UTF_8.getEmpty();
             }
@@ -1708,7 +1913,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         static TruffleString createString(Node node, TruffleStringBuilderGeneric sb, boolean lazy,
                         @Cached @Shared InlinedConditionProfile calcAttributesProfile,
-                        @Cached TStringInternalNodes.CalcStringAttributesNode calcAttributesNode) {
+                        @Cached @Shared TStringInternalNodes.CalcStringAttributesNode calcAttributesNode) {
             if (sb.length == 0) {
                 return sb.encoding.getEmpty();
             }
@@ -1752,6 +1957,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         ensureCapacityWithStride(node, appendLength, bufferGrowProfile, errorProfile);
     }
 
+    @InliningCutoff
     private void inflate(Node node, int appendStride) {
         byte[] newBuf = new byte[(int) Math.min(((long) buf.length) << (appendStride - stride), TStringConstants.MAX_ARRAY_SIZE)];
         TStringOps.arraycopyWithStride(node, buf, byteArrayBaseOffset(), stride, 0, newBuf, byteArrayBaseOffset(), appendStride, 0, length);

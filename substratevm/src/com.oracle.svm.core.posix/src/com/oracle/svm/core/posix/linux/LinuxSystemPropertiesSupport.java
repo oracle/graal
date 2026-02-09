@@ -41,7 +41,6 @@ import com.oracle.svm.core.posix.headers.Utsname;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
 
@@ -94,12 +93,16 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
         }
         return "Unknown";
     }
+
+    @Override
+    protected String jvmLibSuffix() {
+        return ".so";
+    }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class LinuxSystemPropertiesFeature implements InternalFeature {
-
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return ImageLayerBuildingSupport.firstImageBuild();
@@ -107,8 +110,8 @@ class LinuxSystemPropertiesFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new LinuxSystemPropertiesSupport());
-        /* GR-42971 - Remove once SystemPropertiesSupport.class ImageSingletons use is gone. */
-        ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
+        LinuxSystemPropertiesSupport singleton = new LinuxSystemPropertiesSupport();
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, singleton);
+        ImageSingletons.add(SystemPropertiesSupport.class, singleton);
     }
 }

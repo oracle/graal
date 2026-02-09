@@ -455,12 +455,11 @@ class NativeImageBuildTask(mx.BuildTask):
             experimental_build_args += ['-H:NativeLinkerOption=' + e for e in self.args.alt_ldflags.split()]
         classpath_and_modulepath = mx.get_runtime_jvm_args(self.subject.deps, include_system_properties=False)
         build_args += classpath_and_modulepath + [
-            '--no-fallback',
             '-march=compatibility',  # Target maximum portability
             '--parallelism=' + str(self.parallelism),
             '--link-at-build-time',
             # we want "25.0.0-dev" and not "dev" (the default used in NativeImage#prepareImageBuildArgs)
-            '-Dorg.graalvm.version={}'.format(_suite.release_version()),
+            '-Dorg.graalvm.version={}'.format(get_bootstrap_graalvm_version()),
         ] + mx_sdk_vm_impl.svm_experimental_options(experimental_build_args)
         if os.environ.get('JVMCI_VERSION_CHECK'):
             # Propagate this env var when running native image from mx
@@ -619,7 +618,7 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
             '-O3', # Note: no -g to save 0.2MB on Linux
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
-            '-DGRAALVM_VERSION=' + _suite.release_version(),
+            f'-DGRAALVM_VERSION={get_bootstrap_graalvm_version()}',
             ]
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
@@ -1112,7 +1111,6 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         mapping = {
             'graal-js': 'js',
             'graal-nodejs': 'nodejs',
-            'truffleruby': 'ruby',
             'graalpython': 'python',
         }
         if not language_id and suite.name in mapping:
@@ -1159,7 +1157,7 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
             }
         }
         self.standalone_dir_dist = standalone_dir_dist
-        maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' } if suite.name != 'truffleruby' else {}
+        maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' }
 
         assert theLicense is None, "the 'license' attribute is ignored for DeliverableStandaloneArchive"
         theLicense = ['GFTC' if is_enterprise() else 'UPL']

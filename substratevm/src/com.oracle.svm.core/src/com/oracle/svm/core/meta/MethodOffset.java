@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,9 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Objects;
 
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -36,15 +39,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * The offset of the compiled code of a method from the {@linkplain KnownIntrinsics#codeBase() code
  * base}.
+ *
+ * Do not use this concrete class in image runtime code. Use one of its superinterfaces instead.
  */
 public final class MethodOffset implements MethodRef {
+    @Platforms(HOSTED_ONLY.class) //
     private final ResolvedJavaMethod method;
 
+    @Platforms(HOSTED_ONLY.class)
     public MethodOffset(ResolvedJavaMethod method) {
         this.method = Objects.requireNonNull(method);
     }
 
     @Override
+    @Platforms(HOSTED_ONLY.class)
     public ResolvedJavaMethod getMethod() {
         return method;
     }

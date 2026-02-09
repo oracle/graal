@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.core;
 
+import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.BarrieredAccess;
 
 /**
  * The methods in this class are mainly used to fill or copy Java heap memory. All methods guarantee
@@ -269,8 +270,8 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Memory is on the heap, copying must not be interrupted.")
     public static void copyOnHeap(Object srcBase, UnsignedWord srcOffset, Object destBase, UnsignedWord destOffset, UnsignedWord size) {
-        Word fromPtr = Word.objectToUntrackedPointer(srcBase).add(srcOffset);
-        Word toPtr = Word.objectToUntrackedPointer(destBase).add(destOffset);
+        Pointer fromPtr = Word.objectToUntrackedPointer(srcBase).add(srcOffset);
+        Pointer toPtr = Word.objectToUntrackedPointer(destBase).add(destOffset);
         UnmanagedMemoryUtil.copy(fromPtr, toPtr, size);
     }
 
@@ -348,7 +349,7 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Accessed memory is on the heap, code must not be interrupted.")
     static void fillOnHeap(Object destBase, long destOffset, long bytes, byte bvalue) {
-        Word fromPtr = Word.objectToUntrackedPointer(destBase).add(Word.unsigned(destOffset));
+        Pointer fromPtr = Word.objectToUntrackedPointer(destBase).add(Word.unsigned(destOffset));
         fill(fromPtr, Word.unsigned(bytes), bvalue);
     }
 
@@ -379,18 +380,18 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Accessed memory is on the heap, code must not be interrupted.")
     static void copySwapOnHeap(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        Word fromPtr = Word.objectToUntrackedPointer(srcBase).add(Word.unsigned(srcOffset));
-        Word toPtr = Word.objectToUntrackedPointer(destBase).add(Word.unsigned(destOffset));
+        Pointer fromPtr = Word.objectToUntrackedPointer(srcBase).add(Word.unsigned(srcOffset));
+        Pointer toPtr = Word.objectToUntrackedPointer(destBase).add(Word.unsigned(destOffset));
         copySwap(fromPtr, toPtr, Word.unsigned(bytes), Word.unsigned(elemSize));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copySwap2(Pointer from, Pointer to, UnsignedWord size) {
-        if (from.aboveThan(to)) {
+        if (from.aboveOrEqual(to)) {
             for (UnsignedWord offset = Word.zero(); offset.belowThan(size); offset = offset.add(2)) {
                 to.writeShort(offset, Short.reverseBytes(from.readShort(offset)));
             }
-        } else if (from.belowThan(to)) {
+        } else {
             for (UnsignedWord offset = size; offset.aboveThan(0); offset = offset.subtract(2)) {
                 to.writeShort(offset.subtract(2), Short.reverseBytes(from.readShort(offset.subtract(2))));
             }
@@ -399,11 +400,11 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copySwap4(Pointer from, Pointer to, UnsignedWord size) {
-        if (from.aboveThan(to)) {
+        if (from.aboveOrEqual(to)) {
             for (UnsignedWord offset = Word.zero(); offset.belowThan(size); offset = offset.add(4)) {
                 to.writeInt(offset, Integer.reverseBytes(from.readInt(offset)));
             }
-        } else if (from.belowThan(to)) {
+        } else {
             for (UnsignedWord offset = size; offset.aboveThan(0); offset = offset.subtract(4)) {
                 to.writeInt(offset.subtract(4), Integer.reverseBytes(from.readInt(offset.subtract(4))));
             }
@@ -412,11 +413,11 @@ public final class JavaMemoryUtil {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void copySwap8(Pointer from, Pointer to, UnsignedWord size) {
-        if (from.aboveThan(to)) {
+        if (from.aboveOrEqual(to)) {
             for (UnsignedWord offset = Word.zero(); offset.belowThan(size); offset = offset.add(8)) {
                 to.writeLong(offset, Long.reverseBytes(from.readLong(offset)));
             }
-        } else if (from.belowThan(to)) {
+        } else {
             for (UnsignedWord offset = size; offset.aboveThan(0); offset = offset.subtract(8)) {
                 to.writeLong(offset.subtract(8), Long.reverseBytes(from.readLong(offset.subtract(8))));
             }

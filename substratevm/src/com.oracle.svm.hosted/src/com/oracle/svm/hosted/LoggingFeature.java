@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.Optional;
 
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -34,29 +35,50 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.util.HostModuleUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class LoggingFeature implements InternalFeature {
 
-    private static Optional<Module> requiredModule() {
-        return ModuleLayer.boot().findModule("java.logging");
+    private static Optional<ResolvedJavaModule> requiredModule() {
+        return JVMCIReflectionUtil.bootModuleLayer().findModule("java.logging");
     }
 
-    public static class Options {
+    static class Options {
         @Option(help = "Enable the feature that provides support for logging.")//
-        public static final HostedOptionKey<Boolean> EnableLoggingFeature = new HostedOptionKey<>(requiredModule().isPresent());
+        public static final HostedOptionKey<Boolean> EnableLoggingFeature = new HostedOptionKey<>(false);
 
         @Option(help = "When enabled, logging feature details are printed.", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceLoggingFeature = new HostedOptionKey<>(false);
     }
+
+    /**
+     * Returns {@code true} if this feature is enabled. We need this helper as querying
+     * {@link #requiredModule()} when constructing a default value for {@code EnableLoggingFeature}
+     * causes recursive initialization of the {@link jdk.vm.ci.runtime.JVMCIRuntime}.
+     */
+    private static boolean isLoggingEnabled() {
+        if (!Options.EnableLoggingFeature.hasBeenSet()) {
+            return requiredModule().isPresent();
+        }
+        return Options.EnableLoggingFeature.getValue();
+    }
+
+    boolean loggingEnabled;
 
     private final boolean trace = LoggingFeature.Options.TraceLoggingFeature.getValue();
 
@@ -64,43 +86,53 @@ public class LoggingFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        Boolean loggingEnabled = Options.EnableLoggingFeature.getValue();
+        loggingEnabled = isLoggingEnabled();
         if (loggingEnabled && requiredModule().isEmpty()) {
             throw UserError.abort("Option %s requires JDK module java.logging to be available",
                             SubstrateOptionsParser.commandArgument(Options.EnableLoggingFeature, "+"));
         }
-        return loggingEnabled;
+        return requiredModule().isPresent();
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        LoggingFeature.class.getModule().addReads(requiredModule().get());
+        HostModuleUtil.addReads(LoggingFeature.class, requiredModule().get());
     }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        try {
-            /* Ensure that the log manager is initialized and the initial configuration is read. */
-            ReflectionUtil.lookupMethod(access.findClassByName("java.util.logging.LogManager"), "getLogManager").invoke(null);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere("Reflective LogManager initialization failed", e);
+        if (loggingEnabled) {
+            try {
+                /*
+                 * Ensure that the log manager is initialized and the initial configuration is read.
+                 */
+                ReflectionUtil.lookupMethod(access.findClassByName("java.util.logging.LogManager"), "getLogManager").invoke(null);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere("Reflective LogManager initialization failed", e);
+            }
         }
         loggersField = ((DuringSetupAccessImpl) access).findField("sun.util.logging.PlatformLogger", "loggers");
     }
 
+    @SuppressWarnings("unused")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler((a1) -> {
-            registerForReflection(a1.findClassByName("java.util.logging.ConsoleHandler"));
-            registerForReflection(a1.findClassByName("java.util.logging.SimpleFormatter"));
-        }, access.findClassByName("java.util.logging.Logger"));
+        if (loggingEnabled) {
+            access.registerReachabilityHandler((a1) -> {
+                registerForReflection(a1.findClassByName("java.util.logging.ConsoleHandler"));
+                registerForReflection(a1.findClassByName("java.util.logging.SimpleFormatter"));
+            }, access.findClassByName("java.util.logging.Logger"));
+        } else {
+            access.registerFieldValueTransformer(loggersField, (receiver, originalValue) -> new HashMap<>());
+        }
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
-        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-
-        access.rescanRoot(loggersField, new OtherReason("Manual rescan triggered during analysis from " + LoggingFeature.class));
+        if (loggingEnabled) {
+            DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+            access.rescanRoot(loggersField, new OtherReason("Manual rescan triggered during analysis from " + LoggingFeature.class));
+        }
     }
 
     private void registerForReflection(Class<?> clazz) {

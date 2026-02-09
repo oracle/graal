@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,31 +28,45 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Objects;
 
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.ComparableWord;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-/** The absolute address of the compiled code of a method. */
+/**
+ * The absolute address of the compiled code of a method.
+ *
+ * Do not use this concrete class in image runtime code. Use one of its superinterfaces instead.
+ */
 public final class MethodPointer implements CFunctionPointer, MethodRef {
+    public static final boolean DEFAULT_PERMIT_REWRITE_TO_PLT = true;
+
+    @Platforms(HOSTED_ONLY.class) //
     private final ResolvedJavaMethod method;
+
+    @Platforms(HOSTED_ONLY.class) //
     private final boolean permitsRewriteToPLT;
 
+    @Platforms(HOSTED_ONLY.class)
     public MethodPointer(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
-        Objects.requireNonNull(method);
-        this.method = method;
+        this.method = Objects.requireNonNull(method);
         this.permitsRewriteToPLT = permitsRewriteToPLT;
     }
 
+    @Platforms(HOSTED_ONLY.class)
     public MethodPointer(ResolvedJavaMethod method) {
-        this(method, true);
+        this(method, DEFAULT_PERMIT_REWRITE_TO_PLT);
     }
 
     @Override
+    @Platforms(HOSTED_ONLY.class)
     public ResolvedJavaMethod getMethod() {
         return method;
     }
 
+    @Platforms(HOSTED_ONLY.class)
     public boolean permitsRewriteToPLT() {
         return permitsRewriteToPLT;
     }

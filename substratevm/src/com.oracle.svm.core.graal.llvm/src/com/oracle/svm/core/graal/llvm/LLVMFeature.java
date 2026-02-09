@@ -54,8 +54,8 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -83,7 +83,7 @@ import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
  */
 @AutomaticallyRegisteredFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class LLVMFeature implements InternalFeature {
 
     @Override
@@ -169,7 +169,7 @@ public class LLVMFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
     private static final class LLVMSubstrateBackendFactory extends SubstrateBackendFactory {
         @Override
         public SubstrateBackend newBackend(Providers newProviders) {
@@ -177,7 +177,7 @@ public class LLVMFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
     private static final class LLVMCodeCacheFactory extends NativeImageCodeCacheFactory {
         @Override
         public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform, Path tempDir) {
@@ -185,7 +185,7 @@ public class LLVMFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
     private static final class LLVMObjectFileFactory implements ObjectFileFactory {
         @Override
         public ObjectFile newObjectFile(int pageSize, Path tempDir, BigBang bb) {

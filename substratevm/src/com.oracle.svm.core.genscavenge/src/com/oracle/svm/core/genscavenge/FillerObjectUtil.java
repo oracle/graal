@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.replacements.AllocationSnippets.FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
@@ -41,7 +41,6 @@ import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaKind;
 
 public class FillerObjectUtil {
@@ -50,8 +49,8 @@ public class FillerObjectUtil {
     private static final int ARRAY_ELEMENT_SIZE = ARRAY_ELEMENT_KIND.getByteCount();
 
     @Fold
-    public static UnsignedWord objectMinSize() {
-        return Word.unsigned(ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize());
+    static int instanceMinSize() {
+        return ConfigurationValues.getObjectLayout().getMinRuntimeHeapInstanceSize();
     }
 
     @Fold
@@ -66,7 +65,7 @@ public class FillerObjectUtil {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void writeFillerObjectAt(Pointer p, UnsignedWord size, boolean rememberedSet) {
-        assert size.aboveThan(0);
+        assert size.equal(instanceMinSize()) || size.aboveOrEqual(arrayMinSize());
         if (size.aboveOrEqual(arrayMinSize())) {
             int length = UnsignedUtils.safeToInt(size.subtract(arrayBaseOffset()).unsignedDivide(ARRAY_ELEMENT_SIZE));
             FormatArrayNode.formatArray(p, ARRAY_CLASS, length, rememberedSet, false, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);

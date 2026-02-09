@@ -27,14 +27,26 @@ package com.oracle.svm.core.methodhandles;
 import java.lang.invoke.MethodHandle;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.util.VMError;
 
 public final class MethodHandleInterpreterUtils {
     private MethodHandleInterpreterUtils() {
     }
 
     public static Target_java_lang_invoke_MemberName extractVMEntry(MethodHandle handle) {
-        Target_java_lang_invoke_LambdaForm lform = SubstrateUtil.cast(handle, Target_java_lang_invoke_MethodHandle.class).internalForm();
+        return extractVMEntry(SubstrateUtil.cast(handle, Target_java_lang_invoke_MethodHandle.class));
+    }
+
+    public static Target_java_lang_invoke_MemberName extractVMEntry(Target_java_lang_invoke_MethodHandle handle) {
+        Target_java_lang_invoke_LambdaForm lform = handle.internalForm();
+        if (lform.vmentry == null) {
+            // if the form comes from the image, its entry might have been reset
+            VMError.guarantee(Heap.getHeap().isInImageHeap(lform));
+            lform.prepare();
+            VMError.guarantee(lform.vmentry != null);
+        }
         return lform.vmentry;
     }
 }

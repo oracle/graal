@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,6 +71,7 @@ import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
@@ -81,6 +82,7 @@ import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.ExceptionHandler;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.hotspot.HotSpotCompiledCode;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.TriState;
@@ -132,6 +134,14 @@ public abstract class Stub {
     public EconomicSet<Register> getDestroyedCallerRegisters() {
         assert destroyedCallerRegisters != null : "not yet initialized";
         return destroyedCallerRegisters;
+    }
+
+    /**
+     * Gets additional values returned by this stub. The default implementation returns an empty
+     * array, indicating that there are no additional return values.
+     */
+    public AllocatableValue[] getAdditionalReturns(@SuppressWarnings("unused") CallingConvention callingConvention) {
+        return AllocatableValue.NONE;
     }
 
     protected final OptionValues options;

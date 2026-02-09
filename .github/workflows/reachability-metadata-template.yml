@@ -49,7 +49,7 @@ on:
 
 env:
   REACHABILITY_METADATA_PATH: ${{ github.workspace }}/graalvm-reachability-metadata
-  MINIMUM_METADATA_JAVA_VERSION: 17
+  MINIMUM_METADATA_JAVA_VERSION: 25
   NATIVE_IMAGE_OPTIONS: ${{ inputs.NATIVE_IMAGE_OPTIONS }}
 
 permissions:
@@ -123,15 +123,9 @@ jobs:
       - name: "Pull allowed docker images"
         run: |
           ./gradlew pullAllowedDockerImages --coordinates=${{ matrix.coordinates }}
-      - name: "Disable docker"
+      - name: "Disable docker networking"
         run: |
-          sudo apt-get install openbsd-inetd
-          sudo bash -c "cat ./.github/workflows/discard-port.conf >> /etc/inetd.conf"
-          sudo systemctl start inetd
-          sudo mkdir /etc/systemd/system/docker.service.d
-          sudo bash -c "cat ./.github/workflows/dockerd.service > /etc/systemd/system/docker.service.d/http-proxy.conf"
-          sudo systemctl daemon-reload
-          sudo systemctl restart docker
+          bash ./.github/workflows/scripts/disable-docker.sh
       - name: "Run '${{ matrix.coordinates }}' tests${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with ''{0}''', inputs.NATIVE_IMAGE_OPTIONS) || '' }}"
         run: |
           ./gradlew test -Pcoordinates=${{ matrix.coordinates }}

@@ -37,7 +37,9 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.ClassLoading;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -46,6 +48,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.meta.MethodRef;
@@ -62,7 +65,6 @@ import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -334,7 +336,7 @@ public final class InterpreterToVM {
     public static boolean getFieldBoolean(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
         if (field.isUnmaterializedConstant()) {
-            return field.getUnmaterializedConstant().asBoolean();
+            return getUnmaterializedConstant(field).asBoolean();
         }
         if (field.isVolatile()) {
             return U.getBooleanVolatile(obj, field.getOffset());
@@ -346,7 +348,7 @@ public final class InterpreterToVM {
     public static int getFieldInt(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
         if (field.isUnmaterializedConstant()) {
-            return field.getUnmaterializedConstant().asInt();
+            return getUnmaterializedConstant(field).asInt();
         }
         if (field.isVolatile()) {
             return U.getIntVolatile(obj, field.getOffset());
@@ -358,7 +360,7 @@ public final class InterpreterToVM {
     public static long getFieldLong(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
         if (field.isUnmaterializedConstant()) {
-            return field.getUnmaterializedConstant().asLong();
+            return getUnmaterializedConstant(field).asLong();
         }
         if (field.isVolatile()) {
             return U.getLongVolatile(obj, field.getOffset());
@@ -370,7 +372,7 @@ public final class InterpreterToVM {
     public static byte getFieldByte(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
         if (field.isUnmaterializedConstant()) {
-            return (byte) field.getUnmaterializedConstant().asInt();
+            return (byte) getUnmaterializedConstant(field).asInt();
         }
         if (field.isVolatile()) {
             return U.getByteVolatile(obj, field.getOffset());
@@ -382,7 +384,7 @@ public final class InterpreterToVM {
     public static short getFieldShort(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
         if (field.isUnmaterializedConstant()) {
-            return (short) field.getUnmaterializedConstant().asInt();
+            return (short) getUnmaterializedConstant(field).asInt();
         }
         if (field.isVolatile()) {
             return U.getShortVolatile(obj, field.getOffset());
@@ -394,7 +396,7 @@ public final class InterpreterToVM {
     public static float getFieldFloat(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
         if (field.isUnmaterializedConstant()) {
-            return field.getUnmaterializedConstant().asFloat();
+            return getUnmaterializedConstant(field).asFloat();
         }
         if (field.isVolatile()) {
             return U.getFloatVolatile(obj, field.getOffset());
@@ -406,7 +408,7 @@ public final class InterpreterToVM {
     public static double getFieldDouble(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
         if (field.isUnmaterializedConstant()) {
-            return field.getUnmaterializedConstant().asDouble();
+            return getUnmaterializedConstant(field).asDouble();
         }
         if (field.isVolatile()) {
             return U.getDoubleVolatile(obj, field.getOffset());
@@ -418,7 +420,7 @@ public final class InterpreterToVM {
     public static Object getFieldObject(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
         if (field.isUnmaterializedConstant()) {
-            JavaConstant constant = field.getUnmaterializedConstant();
+            JavaConstant constant = getUnmaterializedConstant(field);
             if (JavaConstant.NULL_POINTER.equals(constant)) {
                 return null;
             }
@@ -436,7 +438,7 @@ public final class InterpreterToVM {
     public static char getFieldChar(Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
         if (field.isUnmaterializedConstant()) {
-            return (char) field.getUnmaterializedConstant().asInt();
+            return (char) getUnmaterializedConstant(field).asInt();
         }
         if (field.isVolatile()) {
             return U.getCharVolatile(obj, field.getOffset());
@@ -445,7 +447,17 @@ public final class InterpreterToVM {
         }
     }
 
+    private static JavaConstant getUnmaterializedConstant(InterpreterResolvedJavaField field) {
+        JavaConstant constant = field.getUnmaterializedConstant();
+        if (constant == null) {
+            throw VMError.shouldNotReachHere("Cannot load unmaterialized field " + field);
+        }
+        return constant;
+    }
+
     public static void setFieldBoolean(boolean value, Object obj, InterpreterResolvedJavaField field) {
+        assert obj != null;
+        ensureMaterialized(field);
         if (field.isVolatile()) {
             U.putBooleanVolatile(obj, field.getOffset(), value);
         } else {
@@ -455,6 +467,7 @@ public final class InterpreterToVM {
 
     public static void setFieldByte(byte value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        ensureMaterialized(field);
         if (field.isVolatile()) {
             U.putByteVolatile(obj, field.getOffset(), value);
         } else {
@@ -464,6 +477,7 @@ public final class InterpreterToVM {
 
     public static void setFieldChar(char value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        ensureMaterialized(field);
         if (field.isVolatile()) {
             U.putCharVolatile(obj, field.getOffset(), value);
         } else {
@@ -473,6 +487,7 @@ public final class InterpreterToVM {
 
     public static void setFieldShort(short value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        ensureMaterialized(field);
         if (field.isVolatile()) {
             U.putShortVolatile(obj, field.getOffset(), value);
         } else {
@@ -482,6 +497,7 @@ public final class InterpreterToVM {
 
     public static void setFieldInt(int value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        ensureMaterialized(field);
         assert field.getJavaKind() == JavaKind.Int || field.isWordStorage();
         if (field.isVolatile()) {
             U.putIntVolatile(obj, field.getOffset(), value);
@@ -492,6 +508,7 @@ public final class InterpreterToVM {
 
     public static void setFieldLong(long value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        ensureMaterialized(field);
         assert field.getJavaKind() == JavaKind.Long || field.isWordStorage();
         if (field.isVolatile()) {
             U.putLongVolatile(obj, field.getOffset(), value);
@@ -502,6 +519,7 @@ public final class InterpreterToVM {
 
     public static void setFieldWord(WordBase value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        ensureMaterialized(field);
         switch (wordJavaKind()) {
             case Int -> setFieldInt((int) value.rawValue(), obj, field);
             case Long -> setFieldLong(value.rawValue(), obj, field);
@@ -511,6 +529,7 @@ public final class InterpreterToVM {
 
     public static void setFieldFloat(float value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        ensureMaterialized(field);
         if (field.isVolatile()) {
             U.putFloatVolatile(obj, field.getOffset(), value);
         } else {
@@ -520,6 +539,7 @@ public final class InterpreterToVM {
 
     public static void setFieldDouble(double value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        ensureMaterialized(field);
         if (field.isVolatile()) {
             U.putDoubleVolatile(obj, field.getOffset(), value);
         } else {
@@ -529,10 +549,19 @@ public final class InterpreterToVM {
 
     public static void setFieldObject(Object value, Object obj, InterpreterResolvedJavaField field) {
         assert obj != null;
+        ensureMaterialized(field);
         if (field.isVolatile()) {
             U.putReferenceVolatile(obj, field.getOffset(), value);
         } else {
             U.putReference(obj, field.getOffset(), value);
+        }
+    }
+
+    private static void ensureMaterialized(InterpreterResolvedJavaField field) {
+        if (RuntimeClassLoading.isSupported() && field.isUnmaterializedConstant()) {
+            throw VMError.shouldNotReachHere("Cannot set unmaterialized field " + field);
+        } else {
+            InterpreterUtil.assertion(field.getOffset() >= 0, "Bad field offset");
         }
     }
 
@@ -628,7 +657,9 @@ public final class InterpreterToVM {
         // StackOverflowError which are handled specially by the interpreter.
         // GR-55050: Hide/remove the Array.newInstance (and other intermediate) frames
         // e.g. use a DynamicNewArrayInstanceNode intrinsic.
-        return Array.newInstance(componentType.getJavaClass(), length);
+        try (var _ = ClassLoading.allowArbitraryClassLoading(RuntimeClassLoading.isSupported())) {
+            return Array.newInstance(componentType.getJavaClass(), length);
+        }
     }
 
     private static int getDimensions(ResolvedJavaType object) {
@@ -677,23 +708,17 @@ public final class InterpreterToVM {
         }
     }
 
-    static CFunctionPointer peekAtSVMVTable(Class<?> seedClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {
-        DynamicHub seedHub = DynamicHub.fromClass(seedClass);
+    static CFunctionPointer peekAtSVMVTable(Class<?> callTargetClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {
+        DynamicHub callTargetHub = DynamicHub.fromClass(callTargetClass);
         DynamicHub thisHub = DynamicHub.fromClass(thisClass);
 
-        int vtableOffset = KnownOffsets.singleton().getVTableOffset(vTableIndex, false);
+        /*
+         * invokeinterface can be on a j.l.Object method, otherwise the seedClass must be an
+         * interface.
+         */
+        VMError.guarantee(callTargetHub.isInterface() == isInvokeInterface || callTargetClass == Object.class);
 
-        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            vtableOffset += KnownOffsets.singleton().getVTableBaseOffset();
-        } else {
-            VMError.guarantee(seedHub.isInterface() == isInvokeInterface);
-
-            if (!seedHub.isInterface()) {
-                vtableOffset += KnownOffsets.singleton().getVTableBaseOffset();
-            } else {
-                vtableOffset += (int) OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(thisHub, seedHub.getInterfaceID());
-            }
-        }
+        int vtableOffset = DynamicHubUtils.determineDispatchTableOffset(thisHub, callTargetHub, vTableIndex);
         MethodRef vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
         return getSVMVTableCodePointer(vtableEntry);
     }
@@ -723,19 +748,20 @@ public final class InterpreterToVM {
 
         DynamicHub seedHub = DynamicHub.fromClass(seedClass);
 
-        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            VMError.guarantee(vTableIndex > 0 && vTableIndex < vTable.length);
-            return vTable[vTableIndex];
-        } else {
-            VMError.guarantee(seedHub.isInterface() == isInvokeInterface);
+        /*
+         * invokeinterface can be on a j.l.Object method, otherwise the seedClass must be an
+         * interface.
+         */
+        VMError.guarantee(seedHub.isInterface() == isInvokeInterface || seedClass == Object.class);
 
-            if (!seedHub.isInterface()) {
-                return vTable[vTableIndex];
-            } else {
-                int iTableStartingIndex = determineITableStartingIndex(DynamicHub.fromClass(thisClass), seedHub.getInterfaceID());
-                return vTable[iTableStartingIndex + vTableIndex];
-            }
+        int idx;
+        if (SubstrateOptions.useClosedTypeWorldHubLayout() || !seedHub.isInterface()) {
+            idx = vTableIndex;
+        } else {
+            idx = vTableIndex + determineITableStartingIndex(DynamicHub.fromClass(thisClass), seedHub.getInterfaceID());
         }
+        VMError.guarantee(idx >= 0 && idx < vTable.length);
+        return vTable[idx];
     }
 
     private static int determineITableStartingIndex(DynamicHub thisHub, int interfaceID) {
@@ -796,18 +822,20 @@ public final class InterpreterToVM {
 
                 /* arguments to Log methods might have side-effects */
                 if (InterpreterTraceSupport.getValue() && !quiet) {
-                    traceInterpreter("fall back to interp for compile entry ").string(seedMethod.toString()).string(" because it has not been compiled.").newline();
+                    traceInterpreter("fall back to interp for ").string(seedMethod.toString()).string(" because it has no entry point and has no vtable index.").newline();
                 }
             } else if (seedMethod.getVTableIndex() == VTBL_ONE_IMPL) {
                 callCompiledTarget = seedMethod.getOneImplementation().hasNativeEntryPoint();
-            } else if (!isVirtual && seedMethod.hasVTableIndex()) {
+            } else if (isVirtual) {
+                if (!seedMethod.hasVTableIndex()) {
+                    throw VMError.shouldNotReachHere("cannot do virtual dispatch without vtable index");
+                }
+            } else {
                 callCompiledTarget = false;
                 /* arguments to Log methods might have side-effects */
                 if (InterpreterTraceSupport.getValue() && !quiet) {
-                    traceInterpreter("invokespecial: ").string(seedMethod.toString()).newline();
+                    traceInterpreter("fall back to interp for ").string(seedMethod.toString()).string(" because it has no entry point.").newline();
                 }
-            } else if (isVirtual && !seedMethod.hasVTableIndex()) {
-                VMError.shouldNotReachHere("cannot do virtual dispatch without vtable index");
             }
         }
 
@@ -817,6 +845,16 @@ public final class InterpreterToVM {
             /* arguments to Log methods might have side-effects */
             if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("reverting virtual call to invokespecial: ").string(seedMethod.toString()).newline();
+            }
+            if (callCompiledTarget && calleeFtnPtr.isNull()) {
+                /*
+                 * have not found compiled variant for it so far, and we won't look in vtables for
+                 * it anymore
+                 */
+                if (InterpreterTraceSupport.getValue() && !quiet) {
+                    traceInterpreter("fall back to interp for direct call of ").string(seedMethod.toString()).string(" because it has no entry point.").newline();
+                }
+                callCompiledTarget = false;
             }
         }
 
@@ -853,10 +891,14 @@ public final class InterpreterToVM {
             /* arguments to Log methods might have side-effects */
             if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("found oneImpl: ").string(targetMethod.toString());
-                if (callCompiledTarget) {
-                    calleeFtnPtr = targetMethod.getNativeEntryPoint();
+            }
+            if (callCompiledTarget) {
+                calleeFtnPtr = targetMethod.getNativeEntryPoint();
+                if (InterpreterTraceSupport.getValue() && !quiet) {
                     traceInterpreter(" ... with compiled entry=").hex(calleeFtnPtr);
                 }
+            }
+            if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("").newline();
             }
             VMError.guarantee(targetMethod != null, "VTBL_ONE_IMPL implies that oneImplementation is available in seedMethod");
@@ -893,29 +935,27 @@ public final class InterpreterToVM {
                             .newline();
         }
 
-        Object retObj = null;
         if (callCompiledTarget) {
             VMError.guarantee(!forceStayInInterpreter);
-            VMError.guarantee(calleeFtnPtr.isNonNull());
+            if (calleeFtnPtr.isNull()) {
+                throw VMError.shouldNotReachHere("Trying to dispatch to compiled code for method " + seedMethod + " but it has no available entry point");
+            }
 
             // Note: This won't work when PLTGOT is involved, because each method will have its
             // unique PLT stub address.
             if (calleeFtnPtr.equal(InterpreterMethodPointerHolder.getMethodNotCompiledHandler())) {
-                VMError.shouldNotReachHere("Trying to dispatch to compiled code for AOT method " + seedMethod + " but it was not compiled because it was not seen as reachable by analysis");
-            }
-
-            // wrapping of exceptions is done in leaveInterpreter
-            retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, targetMethod.getDeclaringClass(), calleeArgs);
-        } else {
-            try {
-                retObj = Interpreter.execute(targetMethod, calleeArgs, forceStayInInterpreter);
-            } catch (Throwable e) {
-                // Exceptions coming from calls are valid, semantic Java exceptions.
-                throw SemanticJavaException.raise(e);
+                throw VMError.shouldNotReachHere("Trying to dispatch to compiled code for AOT method " + seedMethod + " but it was not compiled because it was not seen as reachable by analysis");
             }
         }
-
-        return retObj;
+        try {
+            if (callCompiledTarget) {
+                return InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
+            } else {
+                return InterpreterStubSection.call(targetMethod, calleeArgs);
+            }
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
+        }
     }
 
     public static Object nullCheck(Object value) throws SemanticJavaException {

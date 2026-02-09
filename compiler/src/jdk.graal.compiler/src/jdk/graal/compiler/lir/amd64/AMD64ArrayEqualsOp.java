@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
 import static jdk.vm.ci.amd64.AMD64.r8;
 import static jdk.vm.ci.amd64.AMD64.r9;
 import static jdk.vm.ci.amd64.AMD64.rax;
@@ -33,8 +35,6 @@ import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -43,7 +43,7 @@ import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEOp;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
@@ -57,7 +57,6 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -113,6 +112,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value tempXMM;
 
     @Temp({OperandFlag.REG}) private Value[] vectorTemp;
+    @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value tempMask;
 
     private AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind elementKind, Stride strideA, Stride strideB, Stride strideMask,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
@@ -160,6 +160,12 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
             }
         } else {
             this.vectorTemp = new Value[0];
+        }
+
+        if (supports(tool.target(), runtimeCheckedCPUFeatures, AMD64BaseAssembler.FULL_AVX512_FEATURES)) {
+            this.tempMask = tool.newVariable(LIRKind.value(AMD64Kind.MASK64));
+        } else {
+            this.tempMask = Value.ILLEGAL;
         }
     }
 
@@ -479,9 +485,9 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         return vSize.getBytes() >> maxStride.log2;
     }
 
-    private static void emitVectorCmp(AMD64MacroAssembler masm, Register vector1, Register vector2, AVXSize size) {
+    private void emitVectorCmp(AMD64MacroAssembler masm, Register vector1, Register vector2, AVXSize size) {
         masm.pxor(size, vector1, vector2);
-        masm.ptest(size, vector1, vector1);
+        emitPtest(masm, size, tempMask, vector1, vector1);
     }
 
     /**
@@ -709,7 +715,11 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         } else {
             masm.movdbl(tempXMMReg, src);
         }
-        SSEOp.UCOMIS.emit(masm, elementKind == JavaKind.Float ? OperandSize.PS : OperandSize.PD, tempXMMReg, tempXMMReg);
+        if (elementKind == JavaKind.Float) {
+            masm.ucomiss(tempXMMReg, tempXMMReg);
+        } else {
+            masm.ucomisd(tempXMMReg, tempXMMReg);
+        }
         masm.jcc(ConditionFlag.NoParity, branchIfNonNaN);
     }
 
@@ -833,7 +843,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
                 asm.por(vSize, vector1, vector3);
             }
             asm.xorq(arrayA, arrayA);
-            asm.ptest(vSize, vector1, vector1);
+            emitPtest(asm, vSize, tempMask, vector1, vector1);
             asm.cmovl(AMD64Assembler.ConditionFlag.NotZero, result, arrayA);
         }
     }

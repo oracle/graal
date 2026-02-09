@@ -151,7 +151,7 @@ or on the context builder:
 builder.allowExperimentalOptions(true).option("java.NativeBackend", "no-native") 
 ```
 
-Disabling native access enhances security guarantees and sandboxing capabilities. In this mode, substitutions are used for Java's standard libraries, and virtualized memory will be provided (GR-70643). However, some functionality might be limited (e.g. you will have no access to LibAWT).
+Disabling native access enhances security guarantees and sandboxing capabilities. In this mode, substitutions are used for Java's standard libraries, and virtualized memory is provided. However, some functionality might be limited (e.g. you will have no access to LibAWT).
 
 ## Limitations
 
@@ -182,8 +182,15 @@ Use `mx espresso-meta` to run programs on Espresso². Ensure to prepend `LD_DEBU
 To run HelloWorld on Espresso² execute the following:
 
 ```bash
-$ mx build
+$ mx --dy / compiler build # enable JIT for the base layer
 $ LD_DEBUG=unused mx --dy /compiler espresso-meta -cp my.jar HelloWorld
+```
+
+You can pass flags to both the base Espresso VM (which runs another Espresso) and the inner VM (which runs your guest
+program).
+
+```bash
+$ mx espresso-meta [base VM flags] -- [inner VM flags and program args]
 ```
 
 It takes some time for both (nested) VMs to boot, only the base layer is blessed with JIT compilation. Enjoy!

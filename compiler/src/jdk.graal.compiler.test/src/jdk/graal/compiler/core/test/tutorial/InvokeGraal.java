@@ -48,7 +48,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -121,7 +120,7 @@ public class InvokeGraal {
              * speculation.
              */
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.ALL;
-            ProfilingInfo profilingInfo = graph.getProfilingInfo(method);
+            ProfilingInfo profilingInfo = graph.getProfilingInfo(null, method);
 
             /* The default class and configuration for compilation results. */
             CompilationResult compilationResult = new CompilationResult(graph.compilationId());

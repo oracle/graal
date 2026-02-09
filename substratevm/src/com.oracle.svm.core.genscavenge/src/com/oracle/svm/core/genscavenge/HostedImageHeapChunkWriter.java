@@ -39,7 +39,7 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {

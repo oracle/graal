@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -10564,6 +10564,655 @@ public class UnicodePropertyData {
         emoji.put("RGI_Emoji_Flag_Sequence", ClassSetContents.createUnicodePropertyOfStrings(
                         CodePointSet.getEmpty(), stringSet(
                                         "\ud83c\udde8\ud83c\uddf6")));
+        return new UnicodePropertyDataDiff(parent, properties, emoji, propAliases, gcAliases, scAliases, blkAliases);
+    }
+
+    static UnicodePropertyDataDiff populateUNICODE_17_0_0(UnicodePropertyData parent) {
+        EconomicMap<String, CodePointSetDiff> properties = EconomicMap.create(175);
+        EconomicMap<String, ClassSetContents> emoji = EconomicMap.create(4);
+        properties.put("Alpha",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x000363, 0x00036f, 0x00088f, 0x00088f, 0x000897, 0x000897, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001c89, 0x001c8a,
+                                        0x001dd3, 0x001de6, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x0105c0, 0x0105f3, 0x010940, 0x010959,
+                                        0x010d4a, 0x010d65, 0x010d69, 0x010d69, 0x010d6f, 0x010d85, 0x010ec2, 0x010ec7, 0x010efa, 0x010efc, 0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e,
+                                        0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2, 0x0113c2, 0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113cd, 0x0113d1, 0x0113d1, 0x0113d3, 0x0113d3,
+                                        0x011b60, 0x011b67, 0x011bc0, 0x011be0, 0x011db0, 0x011ddb, 0x013460, 0x0143fa, 0x016100, 0x01612e, 0x016d40, 0x016d6c, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3,
+                                        0x016ff2, 0x016ff6, 0x0187f8, 0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01e5d0, 0x01e5ed, 0x01e5f0, 0x01e5f0, 0x01e6c0, 0x01e6de,
+                                        0x01e6e0, 0x01e6f5, 0x01e6fe, 0x01e6ff, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479), CodePointSet.getEmpty()));
+        properties.put("Assigned",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000897, 0x000897, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001acf, 0x001add, 0x001ae0, 0x001aeb,
+                                        0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x001c89, 0x001c8a, 0x0020c1, 0x0020c1, 0x002427, 0x002429, 0x002b96, 0x002b96, 0x002ffc, 0x002fff, 0x0031e4, 0x0031e5,
+                                        0x0031ef, 0x0031ef, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x00fbc3, 0x00fbd2, 0x00fd90, 0x00fd91,
+                                        0x00fdc8, 0x00fdce, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d40, 0x010d65, 0x010d69, 0x010d85, 0x010d8e, 0x010d8f, 0x010ec2, 0x010ec7, 0x010ed0, 0x010ed8,
+                                        0x010efa, 0x010efc, 0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2, 0x0113c2, 0x0113c5, 0x0113c5,
+                                        0x0113c7, 0x0113ca, 0x0113cc, 0x0113d5, 0x0113d7, 0x0113d8, 0x0113e1, 0x0113e2, 0x0116d0, 0x0116e3, 0x011b60, 0x011b67, 0x011bc0, 0x011be1, 0x011bf0, 0x011bf9,
+                                        0x011db0, 0x011ddb, 0x011de0, 0x011de9, 0x011f5a, 0x011f5a, 0x013460, 0x0143fa, 0x016100, 0x016139, 0x016d40, 0x016d79, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3,
+                                        0x016ff2, 0x016ff6, 0x0187f8, 0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01cc00, 0x01ccfc, 0x01cd00, 0x01ceb3, 0x01ceba, 0x01ced0,
+                                        0x01cee0, 0x01cef0, 0x01e5d0, 0x01e5fa, 0x01e5ff, 0x01e5ff, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6f5, 0x01e6fe, 0x01e6ff, 0x01f6d8, 0x01f6d8, 0x01f777, 0x01f77a,
+                                        0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01f8d0, 0x01f8d8, 0x01fa54, 0x01fa57, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe, 0x01fac6, 0x01fac6,
+                                        0x01fac8, 0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef, 0x01fbcb, 0x01fbef, 0x01fbfa, 0x01fbfa,
+                                        0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479), CodePointSet.getEmpty()));
+        properties.put("Bidi_M", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00226d, 0x00226d), CodePointSet.getEmpty()));
+        properties.put("CI",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x000897, 0x000897, 0x001acf, 0x001add, 0x001ae0, 0x001aeb, 0x00a7f1, 0x00a7f1, 0x010d4e, 0x010d4e, 0x010d69, 0x010d6d,
+                                        0x010d6f, 0x010d6f, 0x010ec5, 0x010ec5, 0x010efa, 0x010efc, 0x0113bb, 0x0113c0, 0x0113ce, 0x0113ce, 0x0113d0, 0x0113d0, 0x0113d2, 0x0113d2, 0x0113e1, 0x0113e2,
+                                        0x011b60, 0x011b60, 0x011b62, 0x011b64, 0x011b66, 0x011b66, 0x011dd9, 0x011dd9, 0x011f5a, 0x011f5a, 0x01611e, 0x016129, 0x01612d, 0x01612f, 0x016d40, 0x016d42,
+                                        0x016d6b, 0x016d6c, 0x016ff2, 0x016ff3, 0x01e5ee, 0x01e5ef, 0x01e6e3, 0x01e6e3, 0x01e6e6, 0x01e6e6, 0x01e6ee, 0x01e6ef, 0x01e6f5, 0x01e6f5, 0x01e6ff, 0x01e6ff),
+                                        CodePointSet.createNoDedup(0x01171e, 0x01171e)));
+        properties.put("CWCF", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001c89, 0x001c89, 0x00a7cb, 0x00a7cc, 0x00a7ce, 0x00a7ce, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da,
+                        0x00a7da, 0x00a7dc, 0x00a7dc, 0x010d50, 0x010d65, 0x016ea0, 0x016eb8), CodePointSet.getEmpty()));
+        properties.put("CWCM", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00019b, 0x00019b, 0x000264, 0x000264, 0x001c89, 0x001c8a, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d5, 0x00a7da,
+                        0x00a7dc, 0x010d50, 0x010d65, 0x010d70, 0x010d85, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3), CodePointSet.getEmpty()));
+        properties.put("CWKCF", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001c89, 0x001c89, 0x00a7cb, 0x00a7cc, 0x00a7ce, 0x00a7ce, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da,
+                        0x00a7da, 0x00a7dc, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x010d50, 0x010d65, 0x016ea0, 0x016eb8, 0x01ccd6, 0x01ccf9), CodePointSet.getEmpty()));
+        properties.put("CWL", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001c89, 0x001c89, 0x00a7cb, 0x00a7cc, 0x00a7ce, 0x00a7ce, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7da,
+                        0x00a7dc, 0x00a7dc, 0x010d50, 0x010d65, 0x016ea0, 0x016eb8), CodePointSet.getEmpty()));
+        properties.put("CWT", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00019b, 0x00019b, 0x000264, 0x000264, 0x001c8a, 0x001c8a, 0x00a7cd, 0x00a7cd, 0x00a7cf, 0x00a7cf, 0x00a7d3, 0x00a7d3,
+                        0x00a7d5, 0x00a7d5, 0x00a7db, 0x00a7db, 0x010d70, 0x010d85, 0x016ebb, 0x016ed3), CodePointSet.getEmpty()));
+        properties.put("CWU", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00019b, 0x00019b, 0x000264, 0x000264, 0x001c8a, 0x001c8a, 0x00a7cd, 0x00a7cd, 0x00a7cf, 0x00a7cf, 0x00a7d3, 0x00a7d3,
+                        0x00a7d5, 0x00a7d5, 0x00a7db, 0x00a7db, 0x010d70, 0x010d85, 0x016ebb, 0x016ed3), CodePointSet.getEmpty()));
+        properties.put("Cased", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001c89, 0x001c8a, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1,
+                        0x00a7f1, 0x010d50, 0x010d65, 0x010d70, 0x010d85, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3), CodePointSet.createNoDedup(0x000295, 0x000295)));
+        properties.put("Dash", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010d6e, 0x010d6e), CodePointSet.getEmpty()));
+        properties.put("Dia",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x0005a2, 0x0005a2, 0x0005c5, 0x0005c5, 0x0005c7, 0x0005c7, 0x000e3a, 0x000e3a, 0x001734, 0x001734, 0x001a60, 0x001a60,
+                                        0x001acf, 0x001add, 0x001ae0, 0x001aeb, 0x001be6, 0x001be6, 0x001bf2, 0x001bf3, 0x001d9b, 0x001dbe, 0x00a7f1, 0x00a7f1, 0x00a806, 0x00a806, 0x00a82c, 0x00a82c,
+                                        0x010a38, 0x010a3a, 0x010a3f, 0x010a3f, 0x010d4e, 0x010d4e, 0x010d69, 0x010d6d, 0x010efa, 0x010efa, 0x01133b, 0x01133b, 0x0113ce, 0x0113d0, 0x0113d2, 0x0113d3,
+                                        0x0113e1, 0x0113e2, 0x011dd9, 0x011dd9, 0x011f41, 0x011f42, 0x011f5a, 0x011f5a, 0x01612f, 0x01612f, 0x016d6b, 0x016d6c, 0x01e5ee, 0x01e5ef),
+                                        CodePointSet.getEmpty()));
+        properties.put("EPres", CodePointSetDiff.create(CodePointSet.createNoDedup(0x01f6d8, 0x01f6d8, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe, 0x01fac6, 0x01fac6, 0x01fac8,
+                        0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef), CodePointSet.getEmpty()));
+        properties.put("Emoji", CodePointSetDiff.create(CodePointSet.createNoDedup(0x01f6d8, 0x01f6d8, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe, 0x01fac6, 0x01fac6, 0x01fac8,
+                        0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef), CodePointSet.getEmpty()));
+        properties.put("Ext", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000a71, 0x000a71, 0x000afb, 0x000afb, 0x010d4e, 0x010d4e, 0x010d6a, 0x010d6a, 0x010d6f, 0x010d6f, 0x011237, 0x011237,
+                        0x0113d2, 0x0113d3, 0x011dd9, 0x011dd9, 0x016ff2, 0x016ff3, 0x01e5ef, 0x01e5ef), CodePointSet.getEmpty()));
+        properties.put("ExtPict", CodePointSetDiff.create(CodePointSet.getEmpty(), CodePointSet.createNoDedup(0x002388, 0x002388, 0x002605, 0x002605, 0x002607, 0x00260d, 0x00260f, 0x002610, 0x002612,
+                        0x002612, 0x002616, 0x002617, 0x002619, 0x00261c, 0x00261e, 0x00261f, 0x002621, 0x002621, 0x002624, 0x002625, 0x002627, 0x002629, 0x00262b, 0x00262d, 0x002630, 0x002637,
+                        0x00263b, 0x00263f, 0x002641, 0x002641, 0x002643, 0x002647, 0x002654, 0x00265e, 0x002661, 0x002662, 0x002664, 0x002664, 0x002667, 0x002667, 0x002669, 0x00267a, 0x00267c,
+                        0x00267d, 0x002680, 0x002685, 0x002690, 0x002691, 0x002698, 0x002698, 0x00269a, 0x00269a, 0x00269d, 0x00269f, 0x0026a2, 0x0026a6, 0x0026a8, 0x0026a9, 0x0026ac, 0x0026af,
+                        0x0026b2, 0x0026bc, 0x0026bf, 0x0026c3, 0x0026c6, 0x0026c7, 0x0026c9, 0x0026cd, 0x0026d0, 0x0026d0, 0x0026d2, 0x0026d2, 0x0026d5, 0x0026e8, 0x0026eb, 0x0026ef, 0x0026f6,
+                        0x0026f6, 0x0026fb, 0x0026fc, 0x0026fe, 0x002701, 0x002703, 0x002704, 0x00270e, 0x00270e, 0x002710, 0x002711, 0x002765, 0x002767, 0x01f000, 0x01f003, 0x01f005, 0x01f02b,
+                        0x01f030, 0x01f093, 0x01f0a0, 0x01f0ae, 0x01f0b1, 0x01f0bf, 0x01f0c1, 0x01f0ce, 0x01f0d1, 0x01f0f5, 0x01f10d, 0x01f10f, 0x01f12f, 0x01f12f, 0x01f16c, 0x01f16f, 0x01f1ad,
+                        0x01f1ad, 0x01f260, 0x01f265, 0x01f322, 0x01f323, 0x01f394, 0x01f395, 0x01f398, 0x01f398, 0x01f39c, 0x01f39d, 0x01f3f1, 0x01f3f2, 0x01f3f6, 0x01f3f6, 0x01f4fe, 0x01f4fe,
+                        0x01f546, 0x01f548, 0x01f54f, 0x01f54f, 0x01f568, 0x01f56e, 0x01f571, 0x01f572, 0x01f57b, 0x01f586, 0x01f588, 0x01f589, 0x01f58e, 0x01f58f, 0x01f591, 0x01f594, 0x01f597,
+                        0x01f5a3, 0x01f5a6, 0x01f5a7, 0x01f5a9, 0x01f5b0, 0x01f5b3, 0x01f5bb, 0x01f5bd, 0x01f5c1, 0x01f5c5, 0x01f5d0, 0x01f5d4, 0x01f5db, 0x01f5df, 0x01f5e0, 0x01f5e2, 0x01f5e2,
+                        0x01f5e4, 0x01f5e7, 0x01f5e9, 0x01f5ee, 0x01f5f0, 0x01f5f2, 0x01f5f4, 0x01f5f9, 0x01f6c6, 0x01f6ca, 0x01f6d3, 0x01f6d4, 0x01f6e6, 0x01f6e8, 0x01f6ea, 0x01f6ea, 0x01f6f1,
+                        0x01f6f2, 0x01f774, 0x01f77f, 0x01f7d5, 0x01f7d9, 0x01f8b0, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01f8d0, 0x01f8d8, 0x01fa00, 0x01fa57, 0x01fa60, 0x01fa6d)));
+        properties.put("Gr_Base", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x001c89, 0x001c8a, 0x0020c1, 0x0020c1, 0x002427,
+                                        0x002429, 0x002b96, 0x002b96, 0x002ffc, 0x002fff, 0x0031e4, 0x0031e5, 0x0031ef, 0x0031ef, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da,
+                                        0x00a7dc, 0x00a7f1, 0x00a7f1, 0x00fbc3, 0x00fbd2, 0x00fd90, 0x00fd91, 0x00fdc8, 0x00fdce, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d40, 0x010d65, 0x010d6e,
+                                        0x010d85, 0x010d8e, 0x010d8f, 0x010ec2, 0x010ec7, 0x010ed0, 0x010ed8, 0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7,
+                                        0x0113b7, 0x0113b9, 0x0113ba, 0x0113ca, 0x0113ca, 0x0113cc, 0x0113cd, 0x0113d1, 0x0113d1, 0x0113d3, 0x0113d5, 0x0113d7, 0x0113d8, 0x0116d0, 0x0116e3, 0x01171e,
+                                        0x01171e, 0x011b61, 0x011b61, 0x011b65, 0x011b65, 0x011b67, 0x011b67, 0x011bc0, 0x011be1, 0x011bf0, 0x011bf9, 0x011db0, 0x011ddb, 0x011de0, 0x011de9, 0x013460,
+                                        0x0143fa, 0x016100, 0x01611d, 0x01612a, 0x01612c, 0x016130, 0x016139, 0x016d40, 0x016d79, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3, 0x016ff2, 0x016ff6, 0x0187f8,
+                                        0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01cc00, 0x01ccfc, 0x01cd00, 0x01ceb3, 0x01ceba, 0x01ced0, 0x01cee0, 0x01cef0, 0x01e5d0,
+                                        0x01e5ed, 0x01e5f0, 0x01e5fa, 0x01e5ff, 0x01e5ff, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6e2, 0x01e6e4, 0x01e6e5, 0x01e6e7, 0x01e6ed, 0x01e6f0, 0x01e6f4, 0x01e6fe,
+                                        0x01e6ff, 0x01f6d8, 0x01f6d8, 0x01f777, 0x01f77a, 0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01f8d0, 0x01f8d8, 0x01fa54, 0x01fa57, 0x01fa89, 0x01fa8a, 0x01fa8e,
+                                        0x01fa8f, 0x01fabe, 0x01fabe, 0x01fac6, 0x01fac6, 0x01fac8, 0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef,
+                                        0x01faef, 0x01fbcb, 0x01fbef, 0x01fbfa, 0x01fbfa, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479),
+                        CodePointSet.createNoDedup(0x000cc0, 0x000cc0, 0x000cc7, 0x000cc8, 0x000cca, 0x000ccb, 0x001715, 0x001715, 0x001734, 0x001734, 0x001b3b, 0x001b3b, 0x001b3d, 0x001b3d, 0x001b43,
+                                        0x001b44, 0x001baa, 0x001baa, 0x001bf2, 0x001bf3, 0x00a953, 0x00a953, 0x00a9c0, 0x00a9c0, 0x0111c0, 0x0111c0, 0x011235, 0x011235, 0x01134d, 0x01134d, 0x0116b6,
+                                        0x0116b6, 0x01193d, 0x01193d, 0x011f41, 0x011f41, 0x016ff0, 0x016ff1, 0x01d166, 0x01d166, 0x01d16d, 0x01d16d)));
+        properties.put("Gr_Ext",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x000897, 0x000897, 0x000cc0, 0x000cc0, 0x000cc7, 0x000cc8, 0x000cca, 0x000ccb, 0x001715, 0x001715, 0x001734, 0x001734,
+                                        0x001acf, 0x001add, 0x001ae0, 0x001aeb, 0x001b3b, 0x001b3b, 0x001b3d, 0x001b3d, 0x001b43, 0x001b44, 0x001baa, 0x001baa, 0x001bf2, 0x001bf3, 0x00a953, 0x00a953,
+                                        0x00a9c0, 0x00a9c0, 0x010d69, 0x010d6d, 0x010efa, 0x010efc, 0x0111c0, 0x0111c0, 0x011235, 0x011235, 0x01134d, 0x01134d, 0x0113b8, 0x0113b8, 0x0113bb, 0x0113c0,
+                                        0x0113c2, 0x0113c2, 0x0113c5, 0x0113c5, 0x0113c7, 0x0113c9, 0x0113ce, 0x0113d0, 0x0113d2, 0x0113d2, 0x0113e1, 0x0113e2, 0x0116b6, 0x0116b6, 0x01193d, 0x01193d,
+                                        0x011b60, 0x011b60, 0x011b62, 0x011b64, 0x011b66, 0x011b66, 0x011f41, 0x011f41, 0x011f5a, 0x011f5a, 0x01611e, 0x016129, 0x01612d, 0x01612f, 0x016ff0, 0x016ff1,
+                                        0x01d166, 0x01d166, 0x01d16d, 0x01d16d, 0x01e5ee, 0x01e5ef, 0x01e6e3, 0x01e6e3, 0x01e6e6, 0x01e6e6, 0x01e6ee, 0x01e6ef, 0x01e6f5, 0x01e6f5),
+                                        CodePointSet.createNoDedup(0x01171e, 0x01171e)));
+        properties.put("IDC",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000897, 0x000897, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001acf, 0x001add, 0x001ae0, 0x001aeb,
+                                        0x001c89, 0x001c8a, 0x00200c, 0x00200d, 0x0030fb, 0x0030fb, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1,
+                                        0x00ff65, 0x00ff65, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d40, 0x010d65, 0x010d69, 0x010d6d, 0x010d6f, 0x010d85, 0x010ec2, 0x010ec7, 0x010efa, 0x010efc,
+                                        0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2, 0x0113c2, 0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca,
+                                        0x0113cc, 0x0113d3, 0x0113e1, 0x0113e2, 0x0116d0, 0x0116e3, 0x011b60, 0x011b67, 0x011bc0, 0x011be0, 0x011bf0, 0x011bf9, 0x011db0, 0x011ddb, 0x011de0, 0x011de9,
+                                        0x011f5a, 0x011f5a, 0x013460, 0x0143fa, 0x016100, 0x016139, 0x016d40, 0x016d6c, 0x016d70, 0x016d79, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3, 0x016ff2, 0x016ff6,
+                                        0x0187f8, 0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01ccf0, 0x01ccf9, 0x01e5d0, 0x01e5fa, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6f5,
+                                        0x01e6fe, 0x01e6ff, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479), CodePointSet.getEmpty()));
+        properties.put("IDS",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001c89, 0x001c8a, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2,
+                                        0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d4a, 0x010d65, 0x010d6f, 0x010d85, 0x010ec2, 0x010ec7,
+                                        0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113b7, 0x0113d1, 0x0113d1, 0x0113d3, 0x0113d3, 0x011bc0, 0x011be0,
+                                        0x011db0, 0x011ddb, 0x013460, 0x0143fa, 0x016100, 0x01611d, 0x016d40, 0x016d6c, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3, 0x016ff2, 0x016ff6, 0x0187f8, 0x0187ff,
+                                        0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01e5d0, 0x01e5ed, 0x01e5f0, 0x01e5f0, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6e2, 0x01e6e4, 0x01e6e5,
+                                        0x01e6e7, 0x01e6ed, 0x01e6f0, 0x01e6f4, 0x01e6fe, 0x01e6ff, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479),
+                                        CodePointSet.getEmpty()));
+        properties.put("IDSB", CodePointSetDiff.create(CodePointSet.createNoDedup(0x002ffc, 0x002ffd, 0x0031ef, 0x0031ef), CodePointSet.getEmpty()));
+        properties.put("Ideo", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016ff2, 0x016ff6, 0x0187f8, 0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x02b73a,
+                        0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479), CodePointSet.getEmpty()));
+        properties.put("Lower", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x001c8a, 0x001c8a, 0x00a7cd, 0x00a7cd, 0x00a7cf, 0x00a7cf, 0x00a7db, 0x00a7db, 0x00a7f1, 0x00a7f1, 0x010d70, 0x010d85, 0x016ebb, 0x016ed3),
+                        CodePointSet.createNoDedup(0x000295, 0x000295)));
+        properties.put("Math", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010d8e, 0x010d8f, 0x01cef0, 0x01cef0, 0x01f8d0, 0x01f8d8), CodePointSet.getEmpty()));
+        properties.put("OAlpha",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x000363, 0x00036f, 0x000897, 0x000897, 0x001dd3, 0x001de6, 0x010d69, 0x010d69, 0x010efa, 0x010efc, 0x0113b8, 0x0113c0,
+                                        0x0113c2, 0x0113c2, 0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113cd, 0x011b60, 0x011b67, 0x01611e, 0x01612e, 0x01e6e3, 0x01e6e3, 0x01e6e6, 0x01e6e6,
+                                        0x01e6ee, 0x01e6ef, 0x01e6f5, 0x01e6f5), CodePointSet.getEmpty()));
+        properties.put("OIDC", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00200c, 0x00200d, 0x0030fb, 0x0030fb, 0x00ff65, 0x00ff65), CodePointSet.getEmpty()));
+        properties.put("OLower", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00a7f1, 0x00a7f1), CodePointSet.getEmpty()));
+        properties.put("STerm", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0017d4, 0x0017d5, 0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x002024, 0x002024, 0x002cf9, 0x002cfb, 0x00fe12,
+                        0x00fe12, 0x00fe15, 0x00fe16, 0x0113d4, 0x0113d5, 0x016d6e, 0x016d6f), CodePointSet.getEmpty()));
+        properties.put("Term", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x002024, 0x002024, 0x002cf9, 0x002cfb, 0x00fe12, 0x00fe12, 0x00fe15,
+                        0x00fe16, 0x0113d4, 0x0113d5, 0x016d6e, 0x016d6f), CodePointSet.createNoDedup(0x000836, 0x000836)));
+        properties.put("UIdeo", CodePointSetDiff.create(CodePointSet.createNoDedup(0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479), CodePointSet.getEmpty()));
+        properties.put("Upper", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001c89, 0x001c89, 0x00a7cb, 0x00a7cc, 0x00a7ce, 0x00a7ce, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da,
+                        0x00a7da, 0x00a7dc, 0x00a7dc, 0x010d50, 0x010d65, 0x016ea0, 0x016eb8), CodePointSet.getEmpty()));
+        properties.put("XIDC",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000897, 0x000897, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001acf, 0x001add, 0x001ae0, 0x001aeb,
+                                        0x001c89, 0x001c8a, 0x00200c, 0x00200d, 0x0030fb, 0x0030fb, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1,
+                                        0x00ff65, 0x00ff65, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d40, 0x010d65, 0x010d69, 0x010d6d, 0x010d6f, 0x010d85, 0x010ec2, 0x010ec7, 0x010efa, 0x010efc,
+                                        0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2, 0x0113c2, 0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca,
+                                        0x0113cc, 0x0113d3, 0x0113e1, 0x0113e2, 0x0116d0, 0x0116e3, 0x011b60, 0x011b67, 0x011bc0, 0x011be0, 0x011bf0, 0x011bf9, 0x011db0, 0x011ddb, 0x011de0, 0x011de9,
+                                        0x011f5a, 0x011f5a, 0x013460, 0x0143fa, 0x016100, 0x016139, 0x016d40, 0x016d6c, 0x016d70, 0x016d79, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3, 0x016ff2, 0x016ff6,
+                                        0x0187f8, 0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01ccf0, 0x01ccf9, 0x01e5d0, 0x01e5fa, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6f5,
+                                        0x01e6fe, 0x01e6ff, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479), CodePointSet.getEmpty()));
+        properties.put("XIDS",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001c89, 0x001c8a, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2,
+                                        0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d4a, 0x010d65, 0x010d6f, 0x010d85, 0x010ec2, 0x010ec7,
+                                        0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113b7, 0x0113d1, 0x0113d1, 0x0113d3, 0x0113d3, 0x011bc0, 0x011be0,
+                                        0x011db0, 0x011ddb, 0x013460, 0x0143fa, 0x016100, 0x01611d, 0x016d40, 0x016d6c, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3, 0x016ff2, 0x016ff6, 0x0187f8, 0x0187ff,
+                                        0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01e5d0, 0x01e5ed, 0x01e5f0, 0x01e5f0, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6e2, 0x01e6e4, 0x01e6e5,
+                                        0x01e6e7, 0x01e6ed, 0x01e6f0, 0x01e6f4, 0x01e6fe, 0x01e6ff, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479),
+                                        CodePointSet.getEmpty()));
+        properties.put("blk=Beria_Erfe", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016ea0, 0x016edf), CodePointSet.getEmpty()));
+        properties.put("blk=CJK_Ext_I", CodePointSetDiff.create(CodePointSet.createNoDedup(0x02ebf0, 0x02ee5f), CodePointSet.getEmpty()));
+        properties.put("blk=CJK_Ext_J", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0323b0, 0x03347f), CodePointSet.getEmpty()));
+        properties.put("blk=Egyptian_Hieroglyphs_Ext_A", CodePointSetDiff.create(CodePointSet.createNoDedup(0x013460, 0x0143ff), CodePointSet.getEmpty()));
+        properties.put("blk=Garay", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010d40, 0x010d8f), CodePointSet.getEmpty()));
+        properties.put("blk=Gurung_Khema", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016100, 0x01613f), CodePointSet.getEmpty()));
+        properties.put("blk=Kirat_Rai", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016d40, 0x016d7f), CodePointSet.getEmpty()));
+        properties.put("blk=Misc_Symbols_Sup", CodePointSetDiff.create(CodePointSet.createNoDedup(0x01cec0, 0x01ceff), CodePointSet.getEmpty()));
+        properties.put("blk=Myanmar_Ext_C", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0116d0, 0x0116ff), CodePointSet.getEmpty()));
+        properties.put("blk=NB",
+                        CodePointSetDiff.create(CodePointSet.getEmpty(),
+                                        CodePointSet.createNoDedup(0x0105c0, 0x0105ff, 0x010940, 0x01095f, 0x010d40, 0x010d8f, 0x011380, 0x0113ff, 0x0116d0, 0x0116ff, 0x011b60, 0x011b7f, 0x011bc0,
+                                                        0x011bff, 0x011db0, 0x011def, 0x013460, 0x0143ff, 0x016100, 0x01613f, 0x016d40, 0x016d7f, 0x016ea0, 0x016edf, 0x018d80, 0x018dff, 0x01cc00,
+                                                        0x01ceff, 0x01e5d0, 0x01e5ff, 0x01e6c0, 0x01e6ff, 0x02ebf0, 0x02ee5f, 0x0323b0, 0x03347f)));
+        properties.put("blk=Ol_Onal", CodePointSetDiff.create(CodePointSet.createNoDedup(0x01e5d0, 0x01e5ff), CodePointSet.getEmpty()));
+        properties.put("blk=Sharada_Sup", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011b60, 0x011b7f), CodePointSet.getEmpty()));
+        properties.put("blk=Sidetic", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010940, 0x01095f), CodePointSet.getEmpty()));
+        properties.put("blk=Sunuwar", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011bc0, 0x011bff), CodePointSet.getEmpty()));
+        properties.put("blk=Symbols_For_Legacy_Computing_Sup", CodePointSetDiff.create(CodePointSet.createNoDedup(0x01cc00, 0x01cebf), CodePointSet.getEmpty()));
+        properties.put("blk=Tai_Yo", CodePointSetDiff.create(CodePointSet.createNoDedup(0x01e6c0, 0x01e6ff), CodePointSet.getEmpty()));
+        properties.put("blk=Tangut_Components_Sup", CodePointSetDiff.create(CodePointSet.createNoDedup(0x018d80, 0x018dff), CodePointSet.getEmpty()));
+        properties.put("blk=Todhri", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0105c0, 0x0105ff), CodePointSet.getEmpty()));
+        properties.put("blk=Tolong_Siki", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011db0, 0x011def), CodePointSet.getEmpty()));
+        properties.put("blk=Tulu_Tigalari", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011380, 0x0113ff), CodePointSet.getEmpty()));
+        properties.put("gc=C",
+                        CodePointSetDiff.create(CodePointSet.getEmpty(), CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000897, 0x000897, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001acf, 0x001add,
+                                        0x001ae0, 0x001aeb, 0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x001c89, 0x001c8a, 0x0020c1, 0x0020c1, 0x002427, 0x002429, 0x002b96, 0x002b96, 0x002ffc, 0x002fff,
+                                        0x0031e4, 0x0031e5, 0x0031ef, 0x0031ef, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x00fbc3, 0x00fbd2,
+                                        0x00fd90, 0x00fd91, 0x00fdc8, 0x00fdce, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d40, 0x010d65, 0x010d69, 0x010d85, 0x010d8e, 0x010d8f, 0x010ec2, 0x010ec7,
+                                        0x010ed0, 0x010ed8, 0x010efa, 0x010efc, 0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2, 0x0113c2,
+                                        0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113d5, 0x0113d7, 0x0113d8, 0x0113e1, 0x0113e2, 0x0116d0, 0x0116e3, 0x011b60, 0x011b67, 0x011bc0, 0x011be1,
+                                        0x011bf0, 0x011bf9, 0x011db0, 0x011ddb, 0x011de0, 0x011de9, 0x011f5a, 0x011f5a, 0x013460, 0x0143fa, 0x016100, 0x016139, 0x016d40, 0x016d79, 0x016ea0, 0x016eb8,
+                                        0x016ebb, 0x016ed3, 0x016ff2, 0x016ff6, 0x0187f8, 0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01cc00, 0x01ccfc, 0x01cd00, 0x01ceb3,
+                                        0x01ceba, 0x01ced0, 0x01cee0, 0x01cef0, 0x01e5d0, 0x01e5fa, 0x01e5ff, 0x01e5ff, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6f5, 0x01e6fe, 0x01e6ff, 0x01f6d8, 0x01f6d8,
+                                        0x01f777, 0x01f77a, 0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01f8d0, 0x01f8d8, 0x01fa54, 0x01fa57, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe,
+                                        0x01fac6, 0x01fac6, 0x01fac8, 0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef, 0x01fbcb, 0x01fbef,
+                                        0x01fbfa, 0x01fbfa, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479)));
+        properties.put("gc=Cn",
+                        CodePointSetDiff.create(CodePointSet.getEmpty(), CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000897, 0x000897, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001acf, 0x001add,
+                                        0x001ae0, 0x001aeb, 0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x001c89, 0x001c8a, 0x0020c1, 0x0020c1, 0x002427, 0x002429, 0x002b96, 0x002b96, 0x002ffc, 0x002fff,
+                                        0x0031e4, 0x0031e5, 0x0031ef, 0x0031ef, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x00fbc3, 0x00fbd2,
+                                        0x00fd90, 0x00fd91, 0x00fdc8, 0x00fdce, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d40, 0x010d65, 0x010d69, 0x010d85, 0x010d8e, 0x010d8f, 0x010ec2, 0x010ec7,
+                                        0x010ed0, 0x010ed8, 0x010efa, 0x010efc, 0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2, 0x0113c2,
+                                        0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113d5, 0x0113d7, 0x0113d8, 0x0113e1, 0x0113e2, 0x0116d0, 0x0116e3, 0x011b60, 0x011b67, 0x011bc0, 0x011be1,
+                                        0x011bf0, 0x011bf9, 0x011db0, 0x011ddb, 0x011de0, 0x011de9, 0x011f5a, 0x011f5a, 0x013460, 0x0143fa, 0x016100, 0x016139, 0x016d40, 0x016d79, 0x016ea0, 0x016eb8,
+                                        0x016ebb, 0x016ed3, 0x016ff2, 0x016ff6, 0x0187f8, 0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01cc00, 0x01ccfc, 0x01cd00, 0x01ceb3,
+                                        0x01ceba, 0x01ced0, 0x01cee0, 0x01cef0, 0x01e5d0, 0x01e5fa, 0x01e5ff, 0x01e5ff, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6f5, 0x01e6fe, 0x01e6ff, 0x01f6d8, 0x01f6d8,
+                                        0x01f777, 0x01f77a, 0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01f8d0, 0x01f8d8, 0x01fa54, 0x01fa57, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe,
+                                        0x01fac6, 0x01fac6, 0x01fac8, 0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef, 0x01fbcb, 0x01fbef,
+                                        0x01fbfa, 0x01fbfa, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479)));
+        properties.put("gc=L",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001c89, 0x001c8a, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2,
+                                        0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d4a, 0x010d65, 0x010d6f, 0x010d85, 0x010ec2, 0x010ec7,
+                                        0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113b7, 0x0113d1, 0x0113d1, 0x0113d3, 0x0113d3, 0x011bc0, 0x011be0,
+                                        0x011db0, 0x011ddb, 0x013460, 0x0143fa, 0x016100, 0x01611d, 0x016d40, 0x016d6c, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3, 0x016ff2, 0x016ff3, 0x0187f8, 0x0187ff,
+                                        0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01e5d0, 0x01e5ed, 0x01e5f0, 0x01e5f0, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6e2, 0x01e6e4, 0x01e6e5,
+                                        0x01e6e7, 0x01e6ed, 0x01e6f0, 0x01e6f4, 0x01e6fe, 0x01e6ff, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479),
+                                        CodePointSet.getEmpty()));
+        properties.put("gc=LC", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001c89, 0x001c8a, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x010d50,
+                        0x010d65, 0x010d70, 0x010d85, 0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3), CodePointSet.createNoDedup(0x000295, 0x000295)));
+        properties.put("gc=Ll",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x001c8a, 0x001c8a, 0x00a7cd, 0x00a7cd, 0x00a7cf, 0x00a7cf, 0x00a7db, 0x00a7db, 0x010d70, 0x010d85, 0x016ebb, 0x016ed3),
+                                        CodePointSet.createNoDedup(0x000295, 0x000295)));
+        properties.put("gc=Lm", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00a7f1, 0x00a7f1, 0x010d4e, 0x010d4e, 0x010d6f, 0x010d6f, 0x010ec5, 0x010ec5, 0x011dd9, 0x011dd9, 0x016d40,
+                        0x016d42, 0x016d6b, 0x016d6c, 0x016ff2, 0x016ff3, 0x01e6ff, 0x01e6ff), CodePointSet.getEmpty()));
+        properties.put("gc=Lo", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x000295, 0x000295, 0x00088f, 0x00088f, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d4a, 0x010d4d, 0x010d4f,
+                                        0x010d4f, 0x010ec2, 0x010ec4, 0x010ec6, 0x010ec7, 0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113b7, 0x0113d1,
+                                        0x0113d1, 0x0113d3, 0x0113d3, 0x011bc0, 0x011be0, 0x011db0, 0x011dd8, 0x011dda, 0x011ddb, 0x013460, 0x0143fa, 0x016100, 0x01611d, 0x016d43, 0x016d6a, 0x0187f8,
+                                        0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01e5d0, 0x01e5ed, 0x01e5f0, 0x01e5f0, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6e2, 0x01e6e4,
+                                        0x01e6e5, 0x01e6e7, 0x01e6ed, 0x01e6f0, 0x01e6f4, 0x01e6fe, 0x01e6fe, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479),
+                        CodePointSet.getEmpty()));
+        properties.put("gc=Lu", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001c89, 0x001c89, 0x00a7cb, 0x00a7cc, 0x00a7ce, 0x00a7ce, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da,
+                        0x00a7da, 0x00a7dc, 0x00a7dc, 0x010d50, 0x010d65, 0x016ea0, 0x016eb8), CodePointSet.getEmpty()));
+        properties.put("gc=M",
+                        CodePointSetDiff.create(
+                                        CodePointSet.createNoDedup(0x000897, 0x000897, 0x001acf, 0x001add, 0x001ae0, 0x001aeb, 0x010d69, 0x010d6d, 0x010efa, 0x010efc, 0x0113b8, 0x0113c0, 0x0113c2,
+                                                        0x0113c2, 0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113d0, 0x0113d2, 0x0113d2, 0x0113e1, 0x0113e2, 0x011b60, 0x011b67, 0x011f5a,
+                                                        0x011f5a, 0x01611e, 0x01612f, 0x01e5ee, 0x01e5ef, 0x01e6e3, 0x01e6e3, 0x01e6e6, 0x01e6e6, 0x01e6ee, 0x01e6ef, 0x01e6f5, 0x01e6f5),
+                                        CodePointSet.getEmpty()));
+        properties.put("gc=Mc", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0113b8, 0x0113ba, 0x0113c2, 0x0113c2, 0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113cd, 0x0113cf,
+                        0x0113cf, 0x01171e, 0x01171e, 0x011b61, 0x011b61, 0x011b65, 0x011b65, 0x011b67, 0x011b67, 0x01612a, 0x01612c), CodePointSet.getEmpty()));
+        properties.put("gc=Mn",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x000897, 0x000897, 0x001acf, 0x001add, 0x001ae0, 0x001aeb, 0x010d69, 0x010d6d, 0x010efa, 0x010efc, 0x0113bb, 0x0113c0,
+                                        0x0113ce, 0x0113ce, 0x0113d0, 0x0113d0, 0x0113d2, 0x0113d2, 0x0113e1, 0x0113e2, 0x011b60, 0x011b60, 0x011b62, 0x011b64, 0x011b66, 0x011b66, 0x011f5a, 0x011f5a,
+                                        0x01611e, 0x016129, 0x01612d, 0x01612f, 0x01e5ee, 0x01e5ef, 0x01e6e3, 0x01e6e3, 0x01e6e6, 0x01e6e6, 0x01e6ee, 0x01e6ef, 0x01e6f5, 0x01e6f5),
+                                        CodePointSet.createNoDedup(0x01171e, 0x01171e)));
+        properties.put("gc=N", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010d40, 0x010d49, 0x0116d0, 0x0116e3, 0x011bf0, 0x011bf9, 0x011de0, 0x011de9, 0x016130, 0x016139, 0x016d70,
+                        0x016d79, 0x016ff4, 0x016ff6, 0x01ccf0, 0x01ccf9, 0x01e5f1, 0x01e5fa), CodePointSet.getEmpty()));
+        properties.put("gc=Nd", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010d40, 0x010d49, 0x0116d0, 0x0116e3, 0x011bf0, 0x011bf9, 0x011de0, 0x011de9, 0x016130, 0x016139, 0x016d70,
+                        0x016d79, 0x01ccf0, 0x01ccf9, 0x01e5f1, 0x01e5fa), CodePointSet.getEmpty()));
+        properties.put("gc=Nl", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016ff4, 0x016ff6), CodePointSet.getEmpty()));
+        properties.put("gc=P", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x010d6e, 0x010d6e, 0x010ed0, 0x010ed0, 0x0113d4, 0x0113d5, 0x0113d7,
+                        0x0113d8, 0x011be1, 0x011be1, 0x016d6d, 0x016d6f, 0x01e5ff, 0x01e5ff), CodePointSet.getEmpty()));
+        properties.put("gc=Pd", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010d6e, 0x010d6e), CodePointSet.getEmpty()));
+        properties.put("gc=Po", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x010ed0, 0x010ed0, 0x0113d4, 0x0113d5, 0x0113d7, 0x0113d8, 0x011be1,
+                        0x011be1, 0x016d6d, 0x016d6f, 0x01e5ff, 0x01e5ff), CodePointSet.getEmpty()));
+        properties.put("gc=S",
+                        CodePointSetDiff.create(
+                                        CodePointSet.createNoDedup(0x0020c1, 0x0020c1, 0x002427, 0x002429, 0x002b96, 0x002b96, 0x002ffc, 0x002fff, 0x0031e4, 0x0031e5, 0x0031ef, 0x0031ef, 0x00fbc3,
+                                                        0x00fbd2, 0x00fd90, 0x00fd91, 0x00fdc8, 0x00fdce, 0x010d8e, 0x010d8f, 0x010ed1, 0x010ed8, 0x01cc00, 0x01ccef, 0x01ccfa, 0x01ccfc, 0x01cd00,
+                                                        0x01ceb3, 0x01ceba, 0x01ced0, 0x01cee0, 0x01cef0, 0x01f6d8, 0x01f6d8, 0x01f777, 0x01f77a, 0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01f8d0,
+                                                        0x01f8d8, 0x01fa54, 0x01fa57, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe, 0x01fac6, 0x01fac6, 0x01fac8, 0x01fac8, 0x01facd,
+                                                        0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef, 0x01fbcb, 0x01fbef, 0x01fbfa, 0x01fbfa),
+                                        CodePointSet.getEmpty()));
+        properties.put("gc=Sc", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0020c1, 0x0020c1), CodePointSet.getEmpty()));
+        properties.put("gc=Sm", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010d8e, 0x010d8f, 0x01cef0, 0x01cef0, 0x01f8d0, 0x01f8d8), CodePointSet.getEmpty()));
+        properties.put("gc=So", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x002427, 0x002429, 0x002b96, 0x002b96, 0x002ffc, 0x002fff, 0x0031e4, 0x0031e5, 0x0031ef, 0x0031ef, 0x00fbc3, 0x00fbd2, 0x00fd90, 0x00fd91, 0x00fdc8,
+                                        0x00fdce, 0x010ed1, 0x010ed8, 0x01cc00, 0x01ccef, 0x01ccfa, 0x01ccfc, 0x01cd00, 0x01ceb3, 0x01ceba, 0x01ced0, 0x01cee0, 0x01ceef, 0x01f6d8, 0x01f6d8, 0x01f777,
+                                        0x01f77a, 0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01fa54, 0x01fa57, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe, 0x01fac6, 0x01fac6, 0x01fac8,
+                                        0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef, 0x01fbcb, 0x01fbef, 0x01fbfa, 0x01fbfa),
+                        CodePointSet.getEmpty()));
+        properties.put("sc=Arab", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000897, 0x000897, 0x00fbc3, 0x00fbd2, 0x00fd90, 0x00fd91, 0x00fdc8, 0x00fdce, 0x010ec2,
+                        0x010ec7, 0x010ed0, 0x010ed8, 0x010efa, 0x010efc), CodePointSet.getEmpty()));
+        properties.put("sc=Bali", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f), CodePointSet.getEmpty()));
+        properties.put("sc=Berf", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3), CodePointSet.getEmpty()));
+        properties.put("sc=Cyrl", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001c89, 0x001c8a), CodePointSet.getEmpty()));
+        properties.put("sc=Egyp", CodePointSetDiff.create(CodePointSet.createNoDedup(0x013460, 0x0143fa), CodePointSet.getEmpty()));
+        properties.put("sc=Gara", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010d40, 0x010d65, 0x010d69, 0x010d85, 0x010d8e, 0x010d8f), CodePointSet.getEmpty()));
+        properties.put("sc=Gukh", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016100, 0x016139), CodePointSet.getEmpty()));
+        properties.put("sc=Hani", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016ff2, 0x016ff6, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479),
+                        CodePointSet.getEmpty()));
+        properties.put("sc=Kawi", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011f5a, 0x011f5a), CodePointSet.getEmpty()));
+        properties.put("sc=Kits", CodePointSetDiff.create(CodePointSet.createNoDedup(0x018cff, 0x018cff), CodePointSet.getEmpty()));
+        properties.put("sc=Knda", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000cdc, 0x000cdc), CodePointSet.getEmpty()));
+        properties.put("sc=Krai", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016d40, 0x016d79), CodePointSet.getEmpty()));
+        properties.put("sc=Latn", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1),
+                        CodePointSet.getEmpty()));
+        properties.put("sc=Mymr", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0116d0, 0x0116e3), CodePointSet.getEmpty()));
+        properties.put("sc=Onao", CodePointSetDiff.create(CodePointSet.createNoDedup(0x01e5d0, 0x01e5fa, 0x01e5ff, 0x01e5ff), CodePointSet.getEmpty()));
+        properties.put("sc=Shrd", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011b60, 0x011b67), CodePointSet.getEmpty()));
+        properties.put("sc=Sidt", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010940, 0x010959), CodePointSet.getEmpty()));
+        properties.put("sc=Sunu", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011bc0, 0x011be1, 0x011bf0, 0x011bf9), CodePointSet.getEmpty()));
+        properties.put("sc=Tang", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0187f8, 0x0187ff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2), CodePointSet.getEmpty()));
+        properties.put("sc=Tayo", CodePointSetDiff.create(CodePointSet.createNoDedup(0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6f5, 0x01e6fe, 0x01e6ff), CodePointSet.getEmpty()));
+        properties.put("sc=Telu", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000c5c, 0x000c5c), CodePointSet.getEmpty()));
+        properties.put("sc=Todr", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0105c0, 0x0105f3), CodePointSet.getEmpty()));
+        properties.put("sc=Tols", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011db0, 0x011ddb, 0x011de0, 0x011de9), CodePointSet.getEmpty()));
+        properties.put("sc=Tutg", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2,
+                        0x0113c2, 0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113d5, 0x0113d7, 0x0113d8, 0x0113e1, 0x0113e2), CodePointSet.getEmpty()));
+        properties.put("sc=Zinh", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001acf, 0x001add, 0x001ae0, 0x001aeb), CodePointSet.getEmpty()));
+        properties.put("sc=Zyyy",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x0020c1, 0x0020c1, 0x002427, 0x002429, 0x002b96, 0x002b96, 0x002ffc, 0x002fff, 0x0031e4, 0x0031e5, 0x0031ef, 0x0031ef,
+                                        0x01cc00, 0x01ccfc, 0x01cd00, 0x01ceb3, 0x01ceba, 0x01ced0, 0x01cee0, 0x01cef0, 0x01f6d8, 0x01f6d8, 0x01f777, 0x01f77a, 0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1,
+                                        0x01f8d0, 0x01f8d8, 0x01fa54, 0x01fa57, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe, 0x01fac6, 0x01fac6, 0x01fac8, 0x01fac8, 0x01facd, 0x01facd,
+                                        0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef, 0x01fbcb, 0x01fbef, 0x01fbfa, 0x01fbfa), CodePointSet.getEmpty()));
+        properties.put("sc=Zzzz",
+                        CodePointSetDiff.create(CodePointSet.getEmpty(), CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000897, 0x000897, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001acf, 0x001add,
+                                        0x001ae0, 0x001aeb, 0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x001c89, 0x001c8a, 0x0020c1, 0x0020c1, 0x002427, 0x002429, 0x002b96, 0x002b96, 0x002ffc, 0x002fff,
+                                        0x0031e4, 0x0031e5, 0x0031ef, 0x0031ef, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x00fbc3, 0x00fbd2,
+                                        0x00fd90, 0x00fd91, 0x00fdc8, 0x00fdce, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d40, 0x010d65, 0x010d69, 0x010d85, 0x010d8e, 0x010d8f, 0x010ec2, 0x010ec7,
+                                        0x010ed0, 0x010ed8, 0x010efa, 0x010efc, 0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2, 0x0113c2,
+                                        0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113d5, 0x0113d7, 0x0113d8, 0x0113e1, 0x0113e2, 0x0116d0, 0x0116e3, 0x011b60, 0x011b67, 0x011bc0, 0x011be1,
+                                        0x011bf0, 0x011bf9, 0x011db0, 0x011ddb, 0x011de0, 0x011de9, 0x011f5a, 0x011f5a, 0x013460, 0x0143fa, 0x016100, 0x016139, 0x016d40, 0x016d79, 0x016ea0, 0x016eb8,
+                                        0x016ebb, 0x016ed3, 0x016ff2, 0x016ff6, 0x0187f8, 0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01cc00, 0x01ccfc, 0x01cd00, 0x01ceb3,
+                                        0x01ceba, 0x01ced0, 0x01cee0, 0x01cef0, 0x01e5d0, 0x01e5fa, 0x01e5ff, 0x01e5ff, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6f5, 0x01e6fe, 0x01e6ff, 0x01f6d8, 0x01f6d8,
+                                        0x01f777, 0x01f77a, 0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01f8d0, 0x01f8d8, 0x01fa54, 0x01fa57, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe,
+                                        0x01fac6, 0x01fac6, 0x01fac8, 0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef, 0x01fbcb, 0x01fbef,
+                                        0x01fbfa, 0x01fbfa, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479)));
+        properties.put("scx=Adlm", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00204f, 0x00204f, 0x002e41, 0x002e41), CodePointSet.getEmpty()));
+        properties.put("scx=Aghb", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000304, 0x000304, 0x000331, 0x000331, 0x00035e, 0x00035e), CodePointSet.getEmpty()));
+        properties.put("scx=Arab", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000897, 0x000897, 0x00204f, 0x00204f, 0x002e41, 0x002e41, 0x00fbc3, 0x00fbd2, 0x00fd90,
+                        0x00fd91, 0x00fdc8, 0x00fdce, 0x010ec2, 0x010ec7, 0x010ed0, 0x010ed8, 0x010efa, 0x010efc), CodePointSet.getEmpty()));
+        properties.put("scx=Armn", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000308, 0x000308), CodePointSet.getEmpty()));
+        properties.put("scx=Avst", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x002e30, 0x002e31), CodePointSet.getEmpty()));
+        properties.put("scx=Bali", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f), CodePointSet.getEmpty()));
+        properties.put("scx=Beng", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0002bc, 0x0002bc), CodePointSet.getEmpty()));
+        properties.put("scx=Berf", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016ea0, 0x016eb8, 0x016ebb, 0x016ed3), CodePointSet.getEmpty()));
+        properties.put("scx=Bopo", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0002c7, 0x0002c7, 0x0002c9, 0x0002cb, 0x0002d9, 0x0002d9), CodePointSet.getEmpty()));
+        properties.put("scx=Cari", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x00205a, 0x00205a, 0x00205d, 0x00205d, 0x002e31, 0x002e31), CodePointSet.getEmpty()));
+        properties.put("scx=Cher", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000300, 0x000302, 0x000304, 0x000304, 0x00030b, 0x00030c, 0x000323, 0x000324, 0x000330, 0x000331),
+                        CodePointSet.getEmpty()));
+        properties.put("scx=Copt", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x000300, 0x000300, 0x000304, 0x000305, 0x000307, 0x000307, 0x000374, 0x000375, 0x002e17, 0x002e17), CodePointSet.getEmpty()));
+        properties.put("scx=Cyrl", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0002bc, 0x0002bc, 0x000300, 0x000302, 0x000304, 0x000304, 0x000306, 0x000306, 0x000308, 0x000308, 0x00030b,
+                        0x00030b, 0x000311, 0x000311, 0x001c89, 0x001c8a), CodePointSet.getEmpty()));
+        properties.put("scx=Deva", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0002bc, 0x0002bc), CodePointSet.getEmpty()));
+        properties.put("scx=Dupl", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x000307, 0x000308, 0x00030a, 0x00030a, 0x000323, 0x000324, 0x002e3c, 0x002e3c),
+                        CodePointSet.getEmpty()));
+        properties.put("scx=Egyp", CodePointSetDiff.create(CodePointSet.createNoDedup(0x013460, 0x0143fa), CodePointSet.getEmpty()));
+        properties.put("scx=Elba", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x000305, 0x000305), CodePointSet.getEmpty()));
+        properties.put("scx=Ethi", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00030e, 0x00030e), CodePointSet.getEmpty()));
+        properties.put("scx=Gara", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x00060c, 0x00060c, 0x00061b, 0x00061b, 0x00061f, 0x00061f, 0x010d40, 0x010d65, 0x010d69, 0x010d85, 0x010d8e, 0x010d8f), CodePointSet.getEmpty()));
+        properties.put("scx=Geor", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x000589, 0x000589, 0x00205a, 0x00205a, 0x002e31, 0x002e31), CodePointSet.getEmpty()));
+        properties.put("scx=Glag", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x000303, 0x000303, 0x000305, 0x000305, 0x000589, 0x000589, 0x0010fb, 0x0010fb, 0x00205a, 0x00205a), CodePointSet.getEmpty()));
+        properties.put("scx=Gong", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7), CodePointSet.getEmpty()));
+        properties.put("scx=Goth", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x000304, 0x000305, 0x000308, 0x000308, 0x000331, 0x000331), CodePointSet.getEmpty()));
+        properties.put("scx=Grek", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x000300, 0x000301, 0x000304, 0x000304, 0x000306, 0x000306, 0x000308, 0x000308, 0x000313,
+                        0x000313, 0x000374, 0x000374, 0x00205d, 0x00205d), CodePointSet.getEmpty()));
+        properties.put("scx=Gukh", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000965, 0x000965, 0x016100, 0x016139), CodePointSet.getEmpty()));
+        properties.put("scx=Hani", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x002ff0, 0x002fff, 0x0031e4, 0x0031e5, 0x0031ef, 0x0031ef, 0x016ff2, 0x016ff6, 0x02b73a,
+                        0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479), CodePointSet.getEmpty()));
+        properties.put("scx=Hebr", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000307, 0x000308), CodePointSet.getEmpty()));
+        properties.put("scx=Hung", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00205a, 0x00205a, 0x00205d, 0x00205d, 0x002e31, 0x002e31, 0x002e41, 0x002e41), CodePointSet.getEmpty()));
+        properties.put("scx=Kana", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000305, 0x000305, 0x000323, 0x000323), CodePointSet.getEmpty()));
+        properties.put("scx=Kawi", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011f5a, 0x011f5a), CodePointSet.getEmpty()));
+        properties.put("scx=Kits", CodePointSetDiff.create(CodePointSet.createNoDedup(0x018cff, 0x018cff), CodePointSet.getEmpty()));
+        properties.put("scx=Knda", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000cdc, 0x000cdc, 0x001cd3, 0x001cd3), CodePointSet.getEmpty()));
+        properties.put("scx=Krai", CodePointSetDiff.create(CodePointSet.createNoDedup(0x016d40, 0x016d79), CodePointSet.getEmpty()));
+        properties.put("scx=Kthi", CodePointSetDiff.create(CodePointSet.createNoDedup(0x002e31, 0x002e31), CodePointSet.getEmpty()));
+        properties.put("scx=Latn",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x0002bc, 0x0002bc, 0x0002c7, 0x0002c7, 0x0002c9, 0x0002cb, 0x0002cd, 0x0002cd, 0x0002d7, 0x0002d7,
+                                        0x0002d9, 0x0002d9, 0x000300, 0x00030e, 0x000310, 0x000311, 0x000313, 0x000313, 0x000323, 0x000325, 0x00032d, 0x00032e, 0x000330, 0x000331, 0x000358, 0x000358,
+                                        0x00035e, 0x00035e, 0x001df8, 0x001df8, 0x002e17, 0x002e17, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1),
+                                        CodePointSet.getEmpty()));
+        properties.put("scx=Lisu", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0002bc, 0x0002bc, 0x0002cd, 0x0002cd, 0x00300a, 0x00300b), CodePointSet.getEmpty()));
+        properties.put("scx=Lyci", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00205a, 0x00205a), CodePointSet.getEmpty()));
+        properties.put("scx=Lydi", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x002e31, 0x002e31), CodePointSet.getEmpty()));
+        properties.put("scx=Mahj", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7), CodePointSet.getEmpty()));
+        properties.put("scx=Mero", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00205d, 0x00205d), CodePointSet.getEmpty()));
+        properties.put("scx=Mlym", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001cf2, 0x001cf2), CodePointSet.getEmpty()));
+        properties.put("scx=Mong", CodePointSetDiff.create(CodePointSet.createNoDedup(0x003001, 0x003002, 0x003008, 0x00300b), CodePointSet.getEmpty()));
+        properties.put("scx=Mymr", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0116d0, 0x0116e3), CodePointSet.getEmpty()));
+        properties.put("scx=Nand", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000951, 0x000951), CodePointSet.getEmpty()));
+        properties.put("scx=Newa", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x000951, 0x000952, 0x001cd5, 0x001cd5, 0x001cd7, 0x001cd8, 0x001ce2, 0x001ce2, 0x001ce9, 0x001ce9, 0x001ceb, 0x001ceb, 0x001ced, 0x001ced),
+                        CodePointSet.getEmpty()));
+        properties.put("scx=Onao", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000964, 0x000965, 0x01e5d0, 0x01e5fa, 0x01e5ff, 0x01e5ff), CodePointSet.getEmpty()));
+        properties.put("scx=Orkh", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00205a, 0x00205a, 0x002e30, 0x002e30), CodePointSet.getEmpty()));
+        properties.put("scx=Osge", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000301, 0x000301, 0x000304, 0x000304, 0x00030b, 0x00030b, 0x000358, 0x000358), CodePointSet.getEmpty()));
+        properties.put("scx=Perm", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x000300, 0x000300, 0x000306, 0x000308, 0x000313, 0x000313), CodePointSet.getEmpty()));
+        properties.put("scx=Phag", CodePointSetDiff.create(CodePointSet.createNoDedup(0x00202f, 0x00202f, 0x003002, 0x003002), CodePointSet.getEmpty()));
+        properties.put("scx=Runr", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0016eb, 0x0016ed), CodePointSet.getEmpty()));
+        properties.put("scx=Samr", CodePointSetDiff.create(CodePointSet.createNoDedup(0x002e31, 0x002e31), CodePointSet.getEmpty()));
+        properties.put("scx=Shaw", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0000b7, 0x0000b7), CodePointSet.getEmpty()));
+        properties.put("scx=Shrd", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001cea, 0x001cea, 0x001ced, 0x001ced, 0x00a830, 0x00a835, 0x00a838, 0x00a838, 0x011b60, 0x011b67),
+                        CodePointSet.getEmpty()));
+        properties.put("scx=Sidt", CodePointSetDiff.create(CodePointSet.createNoDedup(0x010940, 0x010959), CodePointSet.getEmpty()));
+        properties.put("scx=Sinh", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001cf2, 0x001cf2), CodePointSet.getEmpty()));
+        properties.put("scx=Sunu", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000300, 0x000301, 0x000303, 0x000303, 0x00030d, 0x00030d, 0x000310, 0x000310, 0x00032d, 0x00032d, 0x000331,
+                        0x000331, 0x011bc0, 0x011be1, 0x011bf0, 0x011bf9), CodePointSet.getEmpty()));
+        properties.put("scx=Syrc", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x000303, 0x000304, 0x000307, 0x000308, 0x00030a, 0x00030a, 0x000323, 0x000325, 0x00032d, 0x00032e, 0x000330, 0x000331), CodePointSet.getEmpty()));
+        properties.put("scx=Tale", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000300, 0x000301, 0x000307, 0x000308, 0x00030c, 0x00030c), CodePointSet.getEmpty()));
+        properties.put("scx=Tang", CodePointSetDiff.create(CodePointSet.createNoDedup(0x002ff0, 0x002fff, 0x0031ef, 0x0031ef, 0x0187f8, 0x0187ff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2),
+                        CodePointSet.getEmpty()));
+        properties.put("scx=Tayo", CodePointSetDiff.create(CodePointSet.createNoDedup(0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6f5, 0x01e6fe, 0x01e6ff), CodePointSet.getEmpty()));
+        properties.put("scx=Telu", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000c5c, 0x000c5c, 0x001cd5, 0x001cd6, 0x001cd8, 0x001cd8), CodePointSet.getEmpty()));
+        properties.put("scx=Tfng", CodePointSetDiff.create(CodePointSet.createNoDedup(0x000302, 0x000302, 0x000304, 0x000304, 0x000306, 0x000309, 0x000323, 0x000323), CodePointSet.getEmpty()));
+        properties.put("scx=Thai", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0002bc, 0x0002bc, 0x0002d7, 0x0002d7, 0x000303, 0x000303, 0x000331, 0x000331), CodePointSet.getEmpty()));
+        properties.put("scx=Tibt", CodePointSetDiff.create(CodePointSet.createNoDedup(0x003008, 0x00300b), CodePointSet.getEmpty()));
+        properties.put("scx=Tirh", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001cd5, 0x001cd5, 0x001ce2, 0x001ce2), CodePointSet.getEmpty()));
+        properties.put("scx=Todr", CodePointSetDiff.create(
+                        CodePointSet.createNoDedup(0x000301, 0x000301, 0x000304, 0x000304, 0x000307, 0x000307, 0x000311, 0x000311, 0x000313, 0x000313, 0x00035e, 0x00035e, 0x0105c0, 0x0105f3),
+                        CodePointSet.getEmpty()));
+        properties.put("scx=Tols", CodePointSetDiff.create(CodePointSet.createNoDedup(0x011db0, 0x011ddb, 0x011de0, 0x011de9), CodePointSet.getEmpty()));
+        properties.put("scx=Toto", CodePointSetDiff.create(CodePointSet.createNoDedup(0x0002bc, 0x0002bc), CodePointSet.getEmpty()));
+        properties.put("scx=Tutg",
+                        CodePointSetDiff.create(CodePointSet.createNoDedup(0x000ce6, 0x000cef, 0x001cf2, 0x001cf2, 0x001cf4, 0x001cf4, 0x00a830, 0x00a835, 0x00a8f1, 0x00a8f1, 0x011380, 0x011389,
+                                        0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2, 0x0113c2, 0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113d5,
+                                        0x0113d7, 0x0113d8, 0x0113e1, 0x0113e2), CodePointSet.getEmpty()));
+        properties.put("scx=Zinh", CodePointSetDiff.create(CodePointSet.createNoDedup(0x001acf, 0x001add, 0x001ae0, 0x001aeb), CodePointSet.createNoDedup(0x000300, 0x00030e, 0x000310, 0x000311,
+                        0x000313, 0x000313, 0x000323, 0x000325, 0x00032d, 0x00032e, 0x000330, 0x000331, 0x000358, 0x000358, 0x00035e, 0x00035e)));
+        properties.put("scx=Zyyy",
+                        CodePointSetDiff.create(
+                                        CodePointSet.createNoDedup(0x0020c1, 0x0020c1, 0x002427, 0x002429, 0x002b96, 0x002b96, 0x01cc00, 0x01ccfc, 0x01cd00, 0x01ceb3, 0x01ceba, 0x01ced0, 0x01cee0,
+                                                        0x01cef0, 0x01f6d8, 0x01f6d8, 0x01f777, 0x01f77a, 0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01f8d0, 0x01f8d8, 0x01fa54, 0x01fa57, 0x01fa89,
+                                                        0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe, 0x01fac6, 0x01fac6, 0x01fac8, 0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf,
+                                                        0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef, 0x01fbcb, 0x01fbef, 0x01fbfa, 0x01fbfa),
+                                        CodePointSet.createNoDedup(0x0000b7, 0x0000b7, 0x0002bc, 0x0002bc, 0x0002c7, 0x0002c7, 0x0002c9, 0x0002cb, 0x0002cd, 0x0002cd, 0x0002d7, 0x0002d7, 0x0002d9,
+                                                        0x0002d9, 0x000374, 0x000374, 0x0016eb, 0x0016ed, 0x00204f, 0x00204f, 0x00205a, 0x00205a, 0x00205d, 0x00205d, 0x002e17, 0x002e17, 0x002e30,
+                                                        0x002e31, 0x002e3c, 0x002e3c, 0x002e41, 0x002e41, 0x002ff0, 0x002ffb)));
+        properties.put("scx=Zzzz",
+                        CodePointSetDiff.create(CodePointSet.getEmpty(), CodePointSet.createNoDedup(0x00088f, 0x00088f, 0x000897, 0x000897, 0x000c5c, 0x000c5c, 0x000cdc, 0x000cdc, 0x001acf, 0x001add,
+                                        0x001ae0, 0x001aeb, 0x001b4e, 0x001b4f, 0x001b7f, 0x001b7f, 0x001c89, 0x001c8a, 0x0020c1, 0x0020c1, 0x002427, 0x002429, 0x002b96, 0x002b96, 0x002ffc, 0x002fff,
+                                        0x0031e4, 0x0031e5, 0x0031ef, 0x0031ef, 0x00a7cb, 0x00a7cf, 0x00a7d2, 0x00a7d2, 0x00a7d4, 0x00a7d4, 0x00a7da, 0x00a7dc, 0x00a7f1, 0x00a7f1, 0x00fbc3, 0x00fbd2,
+                                        0x00fd90, 0x00fd91, 0x00fdc8, 0x00fdce, 0x0105c0, 0x0105f3, 0x010940, 0x010959, 0x010d40, 0x010d65, 0x010d69, 0x010d85, 0x010d8e, 0x010d8f, 0x010ec2, 0x010ec7,
+                                        0x010ed0, 0x010ed8, 0x010efa, 0x010efc, 0x011380, 0x011389, 0x01138b, 0x01138b, 0x01138e, 0x01138e, 0x011390, 0x0113b5, 0x0113b7, 0x0113c0, 0x0113c2, 0x0113c2,
+                                        0x0113c5, 0x0113c5, 0x0113c7, 0x0113ca, 0x0113cc, 0x0113d5, 0x0113d7, 0x0113d8, 0x0113e1, 0x0113e2, 0x0116d0, 0x0116e3, 0x011b60, 0x011b67, 0x011bc0, 0x011be1,
+                                        0x011bf0, 0x011bf9, 0x011db0, 0x011ddb, 0x011de0, 0x011de9, 0x011f5a, 0x011f5a, 0x013460, 0x0143fa, 0x016100, 0x016139, 0x016d40, 0x016d79, 0x016ea0, 0x016eb8,
+                                        0x016ebb, 0x016ed3, 0x016ff2, 0x016ff6, 0x0187f8, 0x0187ff, 0x018cff, 0x018cff, 0x018d09, 0x018d1e, 0x018d80, 0x018df2, 0x01cc00, 0x01ccfc, 0x01cd00, 0x01ceb3,
+                                        0x01ceba, 0x01ced0, 0x01cee0, 0x01cef0, 0x01e5d0, 0x01e5fa, 0x01e5ff, 0x01e5ff, 0x01e6c0, 0x01e6de, 0x01e6e0, 0x01e6f5, 0x01e6fe, 0x01e6ff, 0x01f6d8, 0x01f6d8,
+                                        0x01f777, 0x01f77a, 0x01f8b2, 0x01f8bb, 0x01f8c0, 0x01f8c1, 0x01f8d0, 0x01f8d8, 0x01fa54, 0x01fa57, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe,
+                                        0x01fac6, 0x01fac6, 0x01fac8, 0x01fac8, 0x01facd, 0x01facd, 0x01fadc, 0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef, 0x01fbcb, 0x01fbef,
+                                        0x01fbfa, 0x01fbfa, 0x02b73a, 0x02b73f, 0x02cea2, 0x02cead, 0x02ebf0, 0x02ee5d, 0x0323b0, 0x033479)));
+        EconomicMap<String, String> propAliases = EconomicMap.create(0);
+        EconomicMap<String, String> gcAliases = EconomicMap.create(0);
+        EconomicMap<String, String> scAliases = EconomicMap.create(22);
+        scAliases.put("Berf", "Berf");
+        scAliases.put("Beria_Erfe", "Berf");
+        scAliases.put("Gara", "Gara");
+        scAliases.put("Garay", "Gara");
+        scAliases.put("Gukh", "Gukh");
+        scAliases.put("Gurung_Khema", "Gukh");
+        scAliases.put("Kirat_Rai", "Krai");
+        scAliases.put("Krai", "Krai");
+        scAliases.put("Ol_Onal", "Onao");
+        scAliases.put("Onao", "Onao");
+        scAliases.put("Sidetic", "Sidt");
+        scAliases.put("Sidt", "Sidt");
+        scAliases.put("Sunu", "Sunu");
+        scAliases.put("Sunuwar", "Sunu");
+        scAliases.put("Tai_Yo", "Tayo");
+        scAliases.put("Tayo", "Tayo");
+        scAliases.put("Todhri", "Todr");
+        scAliases.put("Todr", "Todr");
+        scAliases.put("Tolong_Siki", "Tols");
+        scAliases.put("Tols", "Tols");
+        scAliases.put("Tulu_Tigalari", "Tutg");
+        scAliases.put("Tutg", "Tutg");
+        EconomicMap<String, String> blkAliases = EconomicMap.create(27);
+        blkAliases.put("Beria_Erfe", "Beria_Erfe");
+        blkAliases.put("CJK_Ext_I", "CJK_Ext_I");
+        blkAliases.put("CJK_Ext_J", "CJK_Ext_J");
+        blkAliases.put("CJK_Unified_Ideographs_Extension_I", "CJK_Ext_I");
+        blkAliases.put("CJK_Unified_Ideographs_Extension_J", "CJK_Ext_J");
+        blkAliases.put("Egyptian_Hieroglyphs_Ext_A", "Egyptian_Hieroglyphs_Ext_A");
+        blkAliases.put("Egyptian_Hieroglyphs_Extended_A", "Egyptian_Hieroglyphs_Ext_A");
+        blkAliases.put("Garay", "Garay");
+        blkAliases.put("Gurung_Khema", "Gurung_Khema");
+        blkAliases.put("Kirat_Rai", "Kirat_Rai");
+        blkAliases.put("Misc_Symbols_Sup", "Misc_Symbols_Sup");
+        blkAliases.put("Miscellaneous_Symbols_Supplement", "Misc_Symbols_Sup");
+        blkAliases.put("Myanmar_Ext_C", "Myanmar_Ext_C");
+        blkAliases.put("Myanmar_Extended_C", "Myanmar_Ext_C");
+        blkAliases.put("Ol_Onal", "Ol_Onal");
+        blkAliases.put("Sharada_Sup", "Sharada_Sup");
+        blkAliases.put("Sharada_Supplement", "Sharada_Sup");
+        blkAliases.put("Sidetic", "Sidetic");
+        blkAliases.put("Sunuwar", "Sunuwar");
+        blkAliases.put("Symbols_For_Legacy_Computing_Sup", "Symbols_For_Legacy_Computing_Sup");
+        blkAliases.put("Symbols_For_Legacy_Computing_Supplement", "Symbols_For_Legacy_Computing_Sup");
+        blkAliases.put("Tai_Yo", "Tai_Yo");
+        blkAliases.put("Tangut_Components_Sup", "Tangut_Components_Sup");
+        blkAliases.put("Tangut_Components_Supplement", "Tangut_Components_Sup");
+        blkAliases.put("Todhri", "Todhri");
+        blkAliases.put("Tolong_Siki", "Tolong_Siki");
+        blkAliases.put("Tulu_Tigalari", "Tulu_Tigalari");
+        emoji.put("Basic_Emoji", ClassSetContents.createUnicodePropertyOfStrings(
+                        CodePointSet.createNoDedup(0x01f6d8, 0x01f6d8, 0x01fa89, 0x01fa8a, 0x01fa8e, 0x01fa8f, 0x01fabe, 0x01fabe, 0x01fac6, 0x01fac6, 0x01fac8, 0x01fac8, 0x01facd, 0x01facd, 0x01fadc,
+                                        0x01fadc, 0x01fadf, 0x01fadf, 0x01fae9, 0x01faea, 0x01faef, 0x01faef),
+                        stringSet()));
+        emoji.put("RGI_Emoji_Flag_Sequence", ClassSetContents.createUnicodePropertyOfStrings(
+                        CodePointSet.getEmpty(), stringSet(
+                                        "\ud83c\udde8\ud83c\uddf6")));
+        emoji.put("RGI_Emoji_Modifier_Sequence", ClassSetContents.createUnicodePropertyOfStrings(
+                        CodePointSet.getEmpty(), stringSet(
+                                        "\ud83d\udc6f\ud83c\udffb",
+                                        "\ud83d\udc6f\ud83c\udffc",
+                                        "\ud83d\udc6f\ud83c\udffd",
+                                        "\ud83d\udc6f\ud83c\udffe",
+                                        "\ud83d\udc6f\ud83c\udfff",
+                                        "\ud83e\udd3c\ud83c\udffb",
+                                        "\ud83e\udd3c\ud83c\udffc",
+                                        "\ud83e\udd3c\ud83c\udffd",
+                                        "\ud83e\udd3c\ud83c\udffe",
+                                        "\ud83e\udd3c\ud83c\udfff")));
+        emoji.put("RGI_Emoji_ZWJ_Sequence", ClassSetContents.createUnicodePropertyOfStrings(
+                        CodePointSet.getEmpty(), stringSet(
+                                        "\ud83d\udc68\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffc",
+                                        "\ud83d\udc68\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffd",
+                                        "\ud83d\udc68\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffe",
+                                        "\ud83d\udc68\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udfff",
+                                        "\ud83d\udc68\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffc",
+                                        "\ud83d\udc68\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffd",
+                                        "\ud83d\udc68\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffe",
+                                        "\ud83d\udc68\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udfff",
+                                        "\ud83d\udc68\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffb",
+                                        "\ud83d\udc68\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffd",
+                                        "\ud83d\udc68\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffe",
+                                        "\ud83d\udc68\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udfff",
+                                        "\ud83d\udc68\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffb",
+                                        "\ud83d\udc68\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffd",
+                                        "\ud83d\udc68\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffe",
+                                        "\ud83d\udc68\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udfff",
+                                        "\ud83d\udc68\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffb",
+                                        "\ud83d\udc68\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffc",
+                                        "\ud83d\udc68\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffe",
+                                        "\ud83d\udc68\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udfff",
+                                        "\ud83d\udc68\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffb",
+                                        "\ud83d\udc68\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffc",
+                                        "\ud83d\udc68\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffe",
+                                        "\ud83d\udc68\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udfff",
+                                        "\ud83d\udc68\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffb",
+                                        "\ud83d\udc68\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffc",
+                                        "\ud83d\udc68\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffd",
+                                        "\ud83d\udc68\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udfff",
+                                        "\ud83d\udc68\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffb",
+                                        "\ud83d\udc68\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffc",
+                                        "\ud83d\udc68\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffd",
+                                        "\ud83d\udc68\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udfff",
+                                        "\ud83d\udc68\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffb",
+                                        "\ud83d\udc68\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffc",
+                                        "\ud83d\udc68\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffd",
+                                        "\ud83d\udc68\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83d\udc68\ud83c\udffe",
+                                        "\ud83d\udc68\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffb",
+                                        "\ud83d\udc68\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffc",
+                                        "\ud83d\udc68\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffd",
+                                        "\ud83d\udc68\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83d\udc68\ud83c\udffe",
+                                        "\ud83d\udc69\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffc",
+                                        "\ud83d\udc69\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffd",
+                                        "\ud83d\udc69\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffe",
+                                        "\ud83d\udc69\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udfff",
+                                        "\ud83d\udc69\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffc",
+                                        "\ud83d\udc69\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffd",
+                                        "\ud83d\udc69\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffe",
+                                        "\ud83d\udc69\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udfff",
+                                        "\ud83d\udc69\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffb",
+                                        "\ud83d\udc69\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffd",
+                                        "\ud83d\udc69\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffe",
+                                        "\ud83d\udc69\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udfff",
+                                        "\ud83d\udc69\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffb",
+                                        "\ud83d\udc69\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffd",
+                                        "\ud83d\udc69\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffe",
+                                        "\ud83d\udc69\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udfff",
+                                        "\ud83d\udc69\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffb",
+                                        "\ud83d\udc69\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffc",
+                                        "\ud83d\udc69\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffe",
+                                        "\ud83d\udc69\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udfff",
+                                        "\ud83d\udc69\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffb",
+                                        "\ud83d\udc69\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffc",
+                                        "\ud83d\udc69\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffe",
+                                        "\ud83d\udc69\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udfff",
+                                        "\ud83d\udc69\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffb",
+                                        "\ud83d\udc69\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffc",
+                                        "\ud83d\udc69\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffd",
+                                        "\ud83d\udc69\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udfff",
+                                        "\ud83d\udc69\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffb",
+                                        "\ud83d\udc69\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffc",
+                                        "\ud83d\udc69\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffd",
+                                        "\ud83d\udc69\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udfff",
+                                        "\ud83d\udc69\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffb",
+                                        "\ud83d\udc69\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffc",
+                                        "\ud83d\udc69\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffd",
+                                        "\ud83d\udc69\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83d\udc69\ud83c\udffe",
+                                        "\ud83d\udc69\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffb",
+                                        "\ud83d\udc69\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffc",
+                                        "\ud83d\udc69\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffd",
+                                        "\ud83d\udc69\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83d\udc69\ud83c\udffe",
+                                        "\ud83d\udc6f\ud83c\udffb\u200d\u2640\ufe0f",
+                                        "\ud83d\udc6f\ud83c\udffb\u200d\u2642\ufe0f",
+                                        "\ud83d\udc6f\ud83c\udffc\u200d\u2640\ufe0f",
+                                        "\ud83d\udc6f\ud83c\udffc\u200d\u2642\ufe0f",
+                                        "\ud83d\udc6f\ud83c\udffd\u200d\u2640\ufe0f",
+                                        "\ud83d\udc6f\ud83c\udffd\u200d\u2642\ufe0f",
+                                        "\ud83d\udc6f\ud83c\udffe\u200d\u2640\ufe0f",
+                                        "\ud83d\udc6f\ud83c\udffe\u200d\u2642\ufe0f",
+                                        "\ud83d\udc6f\ud83c\udfff\u200d\u2640\ufe0f",
+                                        "\ud83d\udc6f\ud83c\udfff\u200d\u2642\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udffb\u200d\u2640\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udffb\u200d\u2642\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udffc\u200d\u2640\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udffc\u200d\u2642\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udffd\u200d\u2640\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udffd\u200d\u2642\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udffe\u200d\u2640\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udffe\u200d\u2642\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udfff\u200d\u2640\ufe0f",
+                                        "\ud83e\udd3c\ud83c\udfff\u200d\u2642\ufe0f",
+                                        "\ud83e\uddd1\u200d\ud83e\ude70",
+                                        "\ud83e\uddd1\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffc",
+                                        "\ud83e\uddd1\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffd",
+                                        "\ud83e\uddd1\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffe",
+                                        "\ud83e\uddd1\ud83c\udffb\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udfff",
+                                        "\ud83e\uddd1\ud83c\udffb\u200d\ud83e\ude70",
+                                        "\ud83e\uddd1\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffc",
+                                        "\ud83e\uddd1\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffd",
+                                        "\ud83e\uddd1\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffe",
+                                        "\ud83e\uddd1\ud83c\udffb\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udfff",
+                                        "\ud83e\uddd1\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffb",
+                                        "\ud83e\uddd1\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffd",
+                                        "\ud83e\uddd1\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffe",
+                                        "\ud83e\uddd1\ud83c\udffc\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udfff",
+                                        "\ud83e\uddd1\ud83c\udffc\u200d\ud83e\ude70",
+                                        "\ud83e\uddd1\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffb",
+                                        "\ud83e\uddd1\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffd",
+                                        "\ud83e\uddd1\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffe",
+                                        "\ud83e\uddd1\ud83c\udffc\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udfff",
+                                        "\ud83e\uddd1\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffb",
+                                        "\ud83e\uddd1\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffc",
+                                        "\ud83e\uddd1\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffe",
+                                        "\ud83e\uddd1\ud83c\udffd\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udfff",
+                                        "\ud83e\uddd1\ud83c\udffd\u200d\ud83e\ude70",
+                                        "\ud83e\uddd1\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffb",
+                                        "\ud83e\uddd1\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffc",
+                                        "\ud83e\uddd1\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffe",
+                                        "\ud83e\uddd1\ud83c\udffd\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udfff",
+                                        "\ud83e\uddd1\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffb",
+                                        "\ud83e\uddd1\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffc",
+                                        "\ud83e\uddd1\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffd",
+                                        "\ud83e\uddd1\ud83c\udffe\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udfff",
+                                        "\ud83e\uddd1\ud83c\udffe\u200d\ud83e\ude70",
+                                        "\ud83e\uddd1\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffb",
+                                        "\ud83e\uddd1\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffc",
+                                        "\ud83e\uddd1\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffd",
+                                        "\ud83e\uddd1\ud83c\udffe\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udfff",
+                                        "\ud83e\uddd1\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffb",
+                                        "\ud83e\uddd1\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffc",
+                                        "\ud83e\uddd1\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffd",
+                                        "\ud83e\uddd1\ud83c\udfff\u200d\ud83d\udc30\u200d\ud83e\uddd1\ud83c\udffe",
+                                        "\ud83e\uddd1\ud83c\udfff\u200d\ud83e\ude70",
+                                        "\ud83e\uddd1\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffb",
+                                        "\ud83e\uddd1\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffc",
+                                        "\ud83e\uddd1\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffd",
+                                        "\ud83e\uddd1\ud83c\udfff\u200d\ud83e\udeef\u200d\ud83e\uddd1\ud83c\udffe")));
         return new UnicodePropertyDataDiff(parent, properties, emoji, propAliases, gcAliases, scAliases, blkAliases);
     }
 

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -33,7 +34,7 @@ import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.TrackDynamicAccessEnabled;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
@@ -51,11 +52,13 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -132,7 +135,7 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
          * deopt for testing because it would require us to preserve additional graph state.
          */
         boolean insertMessage = SubstrateUtil.assertionsEnabled() &&
-                        !Uninterruptible.Utils.isUninterruptible(graph.method()) &&
+                        !UninterruptibleAnnotationUtils.isUninterruptible(graph.method()) &&
                         !SubstrateCompilationDirectives.isRuntimeCompiledMethod(graph.method()) &&
                         !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(graph.method());
         if (insertMessage) {
@@ -170,13 +173,22 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     }
 
     @Override
-    protected boolean simplifyDelegate(Node n, SimplifierTool tool) {
-        /*
-         * This node is only necessary for analysis and can be removed once StrengthenGraphs is
-         * reached.
-         */
-        if (n instanceof InlinedInvokeArgumentsNode nodeToRemove) {
-            nodeToRemove.graph().removeFixed(nodeToRemove);
+    protected boolean simplifyDelegate(Node n, SimplifierTool tool, Predicate<Node> isUnreachable) {
+        if (n instanceof InlinedInvokeArgumentsNode inlinedInvokeArgumentsNode) {
+            if (isUnreachable.test(inlinedInvokeArgumentsNode)) {
+                /* If node is unreachable, then the entire branch should be removed. */
+                StructuredGraph graph = (StructuredGraph) n.graph();
+                Supplier<String> message = () -> String.format("Method %s, Unreachable InlinedInvokeArgumentsNode: %s", StrengthenGraphs.getQualifiedName(graph), inlinedInvokeArgumentsNode);
+                FixedNode unreachableNode = createUnreachable(graph, tool, message);
+                ((FixedWithNextNode) inlinedInvokeArgumentsNode.predecessor()).setNext(unreachableNode);
+                GraphUtil.killCFG(inlinedInvokeArgumentsNode);
+            } else {
+                /*
+                 * Otherwise, InlinedInvokeArgumentsNode is only necessary for analysis and can be
+                 * removed once StrengthenGraphs is reached.
+                 */
+                inlinedInvokeArgumentsNode.graph().removeFixed(inlinedInvokeArgumentsNode);
+            }
             return true;
         }
         return false;

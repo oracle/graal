@@ -42,12 +42,18 @@ import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     /** A partition holding read-only objects. */
     private static final int ALIGNED_READ_ONLY_REGULAR = 0;
@@ -127,7 +133,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
                         throw reportObjectTooLargeForAlignedChunkError(info, "Class metadata (dynamic hubs) cannot be in unaligned heap chunks: the dynamic hub %s", info.getObject().toString());
                     }
                     throw reportObjectTooLargeForAlignedChunkError(info, "Objects in image heap with relocatable pointers cannot be in unaligned heap chunks. Detected an object of type %s",
-                                    info.getObject().getClass().getTypeName());
+                                    getTypeName(info));
                 }
                 return getUnalignedReadOnly();
             }
@@ -145,6 +151,18 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         }
     }
 
+    private static String getTypeName(ImageHeapObject info) {
+        if (SubstrateUtil.HOSTED) {
+            return JVMCIReflectionUtil.getTypeName(info.getObjectType());
+        }
+        return getTypeNameRuntime(info);
+    }
+
+    private static String getTypeNameRuntime(ImageHeapObject info) {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        return info.getObjectClass().getTypeName();
+    }
+
     private Error reportObjectTooLargeForAlignedChunkError(ImageHeapObject info, String objectTypeMsg, String objectText) {
         String msg = String.format(objectTypeMsg + " with size %d B and the limit is %d B. Use '%s' to increase GC chunk size to be larger than the object.",
                         objectText, info.getSize(), unalignedObjectSizeThreshold, ALIGNED_HEAP_CHUNK_OPTION);
@@ -156,12 +174,12 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     }
 
     @Override
-    public ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterCallback callback) {
+    public ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapObjectSorter objectSorter, ImageHeapLayouterCallback callback) {
         ImageHeapLayouterControl control = new ImageHeapLayouterControl(callback);
         int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
         assert pageSize % objectAlignment == 0 : "Page size does not match object alignment";
 
-        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap, pageSize, control);
+        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap, pageSize, objectSorter, control);
 
         /*
          * In case there is a need for more alignment between partitions or between objects in a
@@ -174,11 +192,11 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         return layoutInfo;
     }
 
-    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterControl control) {
+    private ImageHeapLayoutInfo doLayout(ImageHeap imageHeap, int pageSize, ImageHeapObjectSorter objectSorter, ImageHeapLayouterControl control) {
         allocator = new ChunkedImageHeapAllocator(startOffset);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             control.poll();
-            partition.layout(allocator, control);
+            partition.layout(allocator, objectSorter, control);
         }
         return populateInfoObjects(imageHeap.countPatchAndVerifyDynamicHubs(), pageSize, control);
     }
@@ -230,7 +248,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         long imageHeapEnd = NumUtil.roundUp(getUnalignedReadOnly().getStartOffset() + getUnalignedReadOnly().getSize(), pageSize);
         return new ImageHeapLayoutInfo(startOffset, imageHeapEnd, offsetOfFirstWritableAlignedChunk, writableSize,
                         getAlignedReadOnlyRelocatable().getStartOffset(), getAlignedReadOnlyRelocatable().getSize(),
-                        getAlignedWritablePatched().getStartOffset(), getAlignedWritablePatched().getSize());
+                        getAlignedWritablePatched().getStartOffset(), getAlignedWritablePatched().getSize(), pageSize);
     }
 
     private static Object firstNonNullValue(Object... objects) {

@@ -50,6 +50,21 @@ JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
     return JVM_INTERFACE_VERSION;
 }
 
+/* Declaration only. Implemented via JVM_FindClassFromBootLoader_default */
+JNIEXPORT void JNICALL JVM_FindClassFromBootLoader(JNIEnv *env, char *fqn);
+
+#if defined(_MSC_VER)
+  #if defined(_M_IX86)
+    #pragma comment(linker, "/alternatename:_JVM_FindClassFromBootLoader=_JVM_FindClassFromBootLoader_default")
+  #elif defined(_M_X64) || defined(_M_ARM64)
+    #pragma comment(linker, "/alternatename:JVM_FindClassFromBootLoader=JVM_FindClassFromBootLoader_default")
+  #endif
+#endif
+
+JNIEXPORT void JNICALL JVM_FindClassFromBootLoader_default(JNIEnv *env, char *fqn) {
+    (*env)->FatalError(env, "JVM_FindClassFromBootLoader called: Unimplemented");
+}
+
 jlong as_long(LARGE_INTEGER x) {
     return jlong_from(x.HighPart, x.LowPart);
 }

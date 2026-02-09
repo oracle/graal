@@ -50,7 +50,6 @@ import org.junit.Assert;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -89,9 +88,6 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
     protected void onCreate(Env instrumentEnv) {
         this.env = instrumentEnv;
         instrumentEnv.registerService(this);
-        instrumentEnv.getInstrumenter().attachExecutionEventListener(
-                        SourceSectionFilter.newBuilder().tagIs(RootTag.class).build(),
-                        new RootFrameChecker());
         instrumentEnv.getInstrumenter().attachExecutionEventListener(
                         SourceSectionFilter.newBuilder().tagIs(RootTag.class).build(),
                         new NodePropertyChecker());
@@ -250,50 +246,6 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
         }
 
-        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-        }
-    }
-
-    private static final class RootFrameChecker implements ExecutionEventListener {
-
-        @Override
-        public void onEnter(EventContext context, VirtualFrame frame) {
-            checkFrameIsEmpty(context, frame.materialize());
-        }
-
-        @TruffleBoundary
-        private static void checkFrameIsEmpty(EventContext context, MaterializedFrame frame) {
-            Node node = context.getInstrumentedNode();
-            if (!hasParentRootTag(node) &&
-                            node.getRootNode().getFrameDescriptor() == frame.getFrameDescriptor()) {
-                Object defaultValue = frame.getFrameDescriptor().getDefaultValue();
-                for (int slot = 0; slot < frame.getFrameDescriptor().getNumberOfSlots(); slot++) {
-                    if (frame.isStatic(slot)) {
-                        Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getObjectStatic(slot));
-                        Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", 0L, frame.getLongStatic(slot));
-                    } else {
-                        Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
-                    }
-                }
-            }
-        }
-
-        private static boolean hasParentRootTag(Node node) {
-            Node parent = node.getParent();
-            if (parent == null) {
-                return false;
-            }
-            if (parent instanceof InstrumentableNode && ((InstrumentableNode) parent).hasTag(RootTag.class)) {
-                return true;
-            }
-            return hasParentRootTag(parent);
-        }
-
-        @Override
-        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-        }
-
-        @Override
         public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
         }
     }

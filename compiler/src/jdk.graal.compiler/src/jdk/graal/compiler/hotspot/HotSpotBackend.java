@@ -42,6 +42,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -75,11 +76,8 @@ import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.SuitesProvider;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
@@ -101,13 +99,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  * HotSpot specific backend.
  */
 public abstract class HotSpotBackend extends Backend implements FrameMap.ReferenceMapBuilderFactory {
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Use Graal arithmetic stubs instead of HotSpot stubs where possible")
-        public static final OptionKey<Boolean> GraalArithmeticStubs = new OptionKey<>(true);
-        // @formatter:on
-    }
 
     /**
      * Descriptor for {@link ExceptionHandlerStub}. This stub is called by the

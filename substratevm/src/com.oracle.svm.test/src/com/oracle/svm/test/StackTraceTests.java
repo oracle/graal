@@ -27,7 +27,7 @@ package com.oracle.svm.test;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertSame;
 
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.junit.Test;
 
 import com.oracle.svm.core.NeverInline;

@@ -38,7 +38,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs;
+import com.oracle.svm.core.graal.aarch64.SubstrateAArch64Backend;
 import com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
@@ -89,7 +89,7 @@ public class AArch64InterpreterStubSection extends InterpreterStubSection {
             recordEnterTrampoline(method, masm.position());
 
             /* pass the method index, the reference is obtained in enterInterpreterStub */
-            masm.mov(AArch64InterpreterStubs.TRAMPOLINE_ARGUMENT, method.getEnterStubOffset());
+            masm.mov(SubstrateAArch64Backend.HIDDEN_ARGUMENT_REGISTER, method.getEnterStubOffset());
 
             masm.jmp(interpEnterStub);
         }
@@ -132,7 +132,7 @@ public class AArch64InterpreterStubSection extends InterpreterStubSection {
             int expectedStubEnd = masm.position() + getVTableStubSize();
 
             /* pass current vTable index as hidden argument */
-            masm.mov(AArch64InterpreterStubs.TRAMPOLINE_ARGUMENT, vTableIndex);
+            masm.mov(SubstrateAArch64Backend.HIDDEN_ARGUMENT_REGISTER, vTableIndex);
 
             masm.jmp(interpEnterStub);
 

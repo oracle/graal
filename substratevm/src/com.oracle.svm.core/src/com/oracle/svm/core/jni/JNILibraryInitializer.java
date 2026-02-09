@@ -45,8 +45,7 @@ import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.util.ImageHeapMap;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 interface JNIOnLoadFunctionPointer extends CFunctionPointer {
     @InvokeCFunctionPointer

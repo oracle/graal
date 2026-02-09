@@ -47,11 +47,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
 
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 
 final class PolyglotHostAccess extends AbstractHostAccess {
 
@@ -63,22 +65,24 @@ final class PolyglotHostAccess extends AbstractHostAccess {
     }
 
     @Override
-    public Object toGuestValue(Object polyglotContext, Object hostValue) {
-        PolyglotContextImpl internalContext = (PolyglotContextImpl) polyglotContext;
-        return toGuestValue(internalContext, hostValue);
+    public Object toGuestValue(Object originalNode, APIAccess apiAccess, Object hostValue) {
+        Node node = (Node) originalNode;
+        return toGuestValue(node, apiAccess, hostValue);
     }
 
-    static Object toGuestValue(PolyglotContextImpl context, Object hostValue) {
-        if (context.getAPIAccess().isValue(hostValue)) {
+    static Object toGuestValue(Node node, APIAccess access, Object hostValue) {
+        if (access.isValue(hostValue)) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(node);
             Object receiverValue = hostValue;
-            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context.getAPIAccess().getValueContext(receiverValue);
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) access.getValueContext(receiverValue);
             PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
-            Object valueReceiver = context.getAPIAccess().getValueReceiver(receiverValue);
+            Object valueReceiver = access.getValueReceiver(receiverValue);
             if (valueContext != context) {
                 valueReceiver = context.migrateValue(valueReceiver, valueContext);
             }
             return valueReceiver;
         } else if (PolyglotWrapper.isInstance(hostValue)) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(node);
             return context.migrateHostWrapper(PolyglotWrapper.asInstance(hostValue));
         }
         return hostValue;
@@ -145,7 +149,7 @@ final class PolyglotHostAccess extends AbstractHostAccess {
     }
 
     @Override
-    public Object toValue(Object internalContext, Object receiver) {
+    public Value toValue(Object internalContext, Object receiver) {
         PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
         return context.getHostContext().asValue(receiver);
     }

@@ -97,10 +97,10 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
                     foundBigByteArray = true;
                 }
                 checkTopStackFrame(event, "slowPathNewArrayLikeObjectWithoutAllocation0");
-            } else if (allocationSize >= K && tlabSize >= TlabOptionCache.singleton().getMinTlabSize() && tlabSize <= alignedHeapChunkSize && className.equals(byte[].class.getName())) {
+            } else if (allocationSize >= K && tlabSize >= TlabOptionCache.getMinTlabSize() && tlabSize <= alignedHeapChunkSize && className.equals(byte[].class.getName())) {
                 foundSmallByteArray = true;
                 checkTopStackFrame(event, "slowPathNewArrayLikeObjectWithoutAllocation0");
-            } else if (tlabSize >= TlabOptionCache.singleton().getMinTlabSize() && tlabSize <= alignedHeapChunkSize && className.equals(Helper.class.getName())) {
+            } else if (tlabSize >= TlabOptionCache.getMinTlabSize() && tlabSize <= alignedHeapChunkSize && className.equals(Helper.class.getName())) {
                 foundInstance = true;
                 checkTopStackFrame(event, "slowPathNewInstanceWithoutAllocation0");
             }

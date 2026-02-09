@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import static jdk.graal.compiler.core.common.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,13 +41,18 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
+import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -76,7 +82,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     "java.vm.specification.name",
                     "java.vm.specification.vendor",
                     "java.vm.specification.version",
-                    ImageInfo.PROPERTY_IMAGE_KIND_KEY,
                     /*
                      * We do not support cross-compilation for now. Separators might also be cached
                      * in other classes, so changing them would be tricky.
@@ -84,6 +89,8 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     "line.separator",
                     "path.separator",
                     "file.separator",
+                    /* Platform Unicode byte order. */
+                    "sun.io.unicode.encoding",
                     /* For our convenience for now. */
                     "file.encoding",
                     "sun.jnu.encoding",
@@ -144,11 +151,15 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
             initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
         }
+        for (String futureDefault : FutureDefaultsOptions.getRetiredFutureDefaults()) {
+            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+        }
 
         ArrayList<LazySystemProperty> lazyProperties = new ArrayList<>();
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.NAME, this::userNameValue));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.HOME, this::userHomeValue));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.DIR, this::userDirValue));
+        lazyProperties.add(new LazySystemProperty("java.home", this::javaHomeValue));
         lazyProperties.add(new LazySystemProperty("java.io.tmpdir", this::javaIoTmpdirValue));
         lazyProperties.add(new LazySystemProperty("java.library.path", this::javaLibraryPathValue));
         lazyProperties.add(new LazySystemProperty("os.version", this::osVersionValue));
@@ -164,6 +175,12 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT, () -> LocaleSupport.singleton().getLocale().variant()));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_DISPLAY, () -> LocaleSupport.singleton().getLocale().displayVariant()));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_FORMAT, () -> LocaleSupport.singleton().getLocale().formatVariant()));
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            lazyProperties.add(new LazySystemProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, () -> ImageKindInfoSingleton.singleton().getImageKindInfoProperty()));
+        } else {
+            initializeProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, System.getProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY));
+        }
 
         String targetName = System.getProperty("svm.targetName");
         if (targetName != null) {
@@ -347,6 +364,39 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     protected abstract String osNameValue();
 
     protected abstract String osVersionValue();
+
+    @NeverInline("Reads the return address.")
+    private String javaHomeValue() {
+
+        if (!ImageSingletons.contains(LibJVMMainMethodWrappers.class)) {
+            return null;
+        }
+
+        if (!SubstrateOptions.SharedLibrary.getValue()) {
+            throw VMError.shouldNotReachHere("Invalid " + jvmLibName() + " image. Not a shared library image.");
+        }
+        var objectFileStr = ImageSingletons.lookup(ProcessPropertiesSupport.class).getObjectFile(KnownIntrinsics.readReturnAddress());
+        if (objectFileStr == null) {
+            throw VMError.shouldNotReachHere("Unable to get path to " + jvmLibName() + " image.");
+        }
+        var pathToSharedLib = Path.of(objectFileStr);
+        if (!pathToSharedLib.endsWith(jvmLibName())) {
+            throw VMError.shouldNotReachHere("Invalid name for a " + jvmLibName() + " image: " + objectFileStr);
+        }
+        // At this point we know that this is a libjvm shared library image
+        try {
+            return pathToSharedLib // <java.home>/{lib|bin}/svm/<jvmLibName()>
+                            .getParent() // <java.home>/{lib|bin}/svm
+                            .getParent() // <java.home>/{lib|bin}
+                            .getParent().toString();
+        } catch (NullPointerException e) {
+            throw VMError.shouldNotReachHere("Unable to determine java.home for " + objectFileStr);
+        }
+    }
+
+    protected String jvmLibName() {
+        throw VMError.shouldNotReachHere("System property java.home is not supported in this configuration");
+    }
 
     protected abstract String javaIoTmpdirValue();
 

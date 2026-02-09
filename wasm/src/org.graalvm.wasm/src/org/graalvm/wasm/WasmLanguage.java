@@ -70,6 +70,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.wasm.types.DefinedType;
+import org.graalvm.wasm.types.FunctionType;
 
 @Registration(id = WasmLanguage.ID, //
                 name = WasmLanguage.NAME, //
@@ -95,11 +97,18 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     private final Map<BuiltinModule, WasmModule> builtinModules = new ConcurrentHashMap<>();
 
-    private final Map<SymbolTable.ClosedFunctionType, Integer> equivalenceClasses = new ConcurrentHashMap<>();
+    private final Map<DefinedType, Integer> equivalenceClasses = new ConcurrentHashMap<>();
     private int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
-    private final Map<SymbolTable.ClosedFunctionType, CallTarget> interopCallAdapters = new ConcurrentHashMap<>();
+    private final Map<FunctionType, CallTarget> interopCallAdapters = new ConcurrentHashMap<>();
 
-    public int equivalenceClassFor(SymbolTable.ClosedFunctionType type) {
+    /**
+     * Computes the equivalence class of a defined type. Every distinct defined type has a unique
+     * equivalence class and two defined types are equal iff their equivalence classes are equal.
+     * <p>
+     * These type equivalence classes are shared for all modules of all contexts in a given
+     * {@link WasmLanguage} instance.
+     */
+    public int equivalenceClassFor(DefinedType type) {
         CompilerAsserts.neverPartOfCompilation();
         Integer equivalenceClass = equivalenceClasses.get(type);
         if (equivalenceClass == null) {
@@ -119,7 +128,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
      * Gets or creates the interop call adapter for a function type. Always returns the same call
      * target for any particular type.
      */
-    public CallTarget interopCallAdapterFor(SymbolTable.ClosedFunctionType type) {
+    public CallTarget interopCallAdapterFor(FunctionType type) {
         CompilerAsserts.neverPartOfCompilation();
         CallTarget callAdapter = interopCallAdapters.get(type);
         if (callAdapter == null) {

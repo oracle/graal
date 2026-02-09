@@ -27,13 +27,13 @@ package com.oracle.graal.reachability;
 import java.lang.reflect.Modifier;
 import java.util.Optional;
 
+import com.oracle.svm.common.meta.MethodVariant;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -186,17 +186,17 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                     virtualInvokedMethods.add(targetMethod);
                 }
             } else if (n instanceof ForeignCall) {
-                MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
+                MethodVariant.MethodVariantKey key = method == null ? MethodVariant.ORIGINAL_METHOD : method.getMethodVariantKey();
                 ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
                 handleForeignCall(bb, foreignCallTargets, ((ForeignCall) n).getDescriptor(), foreignCallsProvider);
             } else if (n instanceof UnaryMathIntrinsicNode) {
                 ForeignCallSignature signature = ((UnaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
-                MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
+                MethodVariant.MethodVariantKey key = method == null ? MethodVariant.ORIGINAL_METHOD : method.getMethodVariantKey();
                 ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
                 handleForeignCall(bb, foreignCallTargets, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider);
             } else if (n instanceof BinaryMathIntrinsicNode) {
                 ForeignCallSignature signature = ((BinaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
-                MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
+                MethodVariant.MethodVariantKey key = method == null ? MethodVariant.ORIGINAL_METHOD : method.getMethodVariantKey();
                 ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
                 handleForeignCall(bb, foreignCallTargets, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider);
 

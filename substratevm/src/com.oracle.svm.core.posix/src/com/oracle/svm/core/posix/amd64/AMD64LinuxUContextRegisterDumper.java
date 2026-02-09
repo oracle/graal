@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.amd64.AMD64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
@@ -45,8 +45,8 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerO
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.amd64.AMD64;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
 @Platforms(Platform.LINUX_AMD64.class)

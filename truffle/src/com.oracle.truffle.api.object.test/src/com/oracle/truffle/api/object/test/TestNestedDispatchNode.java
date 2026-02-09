@@ -45,9 +45,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
-@SuppressWarnings("truffle")
+@SuppressWarnings({"deprecation", "truffle-sharing", "truffle-neverdefault"})
 public abstract class TestNestedDispatchNode extends Node {
 
     final Object key = "testKey";
@@ -57,8 +56,7 @@ public abstract class TestNestedDispatchNode extends Node {
     @Specialization(guards = {"obj == cachedObj"}, limit = "1")
     Object cached(DynamicObject obj,
                     @Cached("obj") @SuppressWarnings("unused") DynamicObject cachedObj,
-                    // @CachedLibrary({"obj", "key"}) DynamicObjectLibrary lib,
-                    @CachedLibrary("obj") DynamicObjectLibrary lib,
+                    @CachedLibrary("obj") com.oracle.truffle.api.object.DynamicObjectLibrary lib,
                     @Cached(value = "cachedObj.getShape().getProperty(key) != null") boolean hasProperty,
                     @Cached TestNestedDispatchNode nested) {
         Object value = lib.getOrDefault(obj, key, null);
@@ -73,7 +71,7 @@ public abstract class TestNestedDispatchNode extends Node {
 
     @Specialization(limit = "3")
     Object cached(DynamicObject obj,
-                    @CachedLibrary("obj") DynamicObjectLibrary lib,
+                    @CachedLibrary("obj") com.oracle.truffle.api.object.DynamicObjectLibrary lib,
                     @Cached(value = "obj.getShape().getProperty(key) != null", uncached = "obj.getShape().getProperty(key) != null") boolean hasProperty,
                     @Cached TestNestedDispatchNode nested) {
         Object value = lib.getOrDefault(obj, key, null);

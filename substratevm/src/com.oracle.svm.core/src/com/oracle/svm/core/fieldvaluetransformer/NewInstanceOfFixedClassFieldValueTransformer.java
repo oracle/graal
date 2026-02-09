@@ -24,22 +24,24 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Implements the field value transformation semantics of {@link Kind#NewInstance} and
  * {@link Kind#NewInstanceWhenNotNull}.
  */
-public record NewInstanceOfFixedClassFieldValueTransformer(Class<?> clazz, boolean onlyIfOriginalNotNull) implements FieldValueTransformer {
+public record NewInstanceOfFixedClassFieldValueTransformer(ResolvedJavaType type, boolean onlyIfOriginalNotNull) implements JVMCIFieldValueTransformer {
 
     @Override
-    public Object transform(Object receiver, Object originalValue) {
-        if (onlyIfOriginalNotNull && originalValue == null) {
-            return null;
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+        if (onlyIfOriginalNotNull && originalValue.isNull()) {
+            return JavaConstant.NULL_POINTER;
         }
-        return ReflectionUtil.newInstance(clazz);
+        return JVMCIReflectionUtil.newInstance(type);
     }
 }

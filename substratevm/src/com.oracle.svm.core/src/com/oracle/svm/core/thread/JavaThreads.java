@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -41,7 +41,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.imagelayer.LastImageBuildPredicate;
 import com.oracle.svm.core.jdk.StackTraceUtils;
@@ -60,7 +60,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
@@ -322,8 +322,10 @@ public final class JavaThreads {
                  * If no uncaught exception handler is present, then just report the Throwable in
                  * the same way as it is done by ThreadGroup.uncaughtException().
                  */
+                // Checkstyle: allow System.err (for compatibility with JDK)
                 System.err.print("Exception in thread \"" + thread.getName() + "\" ");
                 throwable.printStackTrace(System.err);
+                // Checkstyle: disallow System.err
             }
         } catch (Throwable e) {
             /* See JavaThread::exit() in HotSpot. */

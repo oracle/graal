@@ -29,15 +29,13 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 
 public class AbstractRuntimeCodeInstaller {
     protected Pointer allocateCodeMemory(long size) {
@@ -111,7 +109,6 @@ public class AbstractRuntimeCodeInstaller {
     /** Methods which are platform specific. */
     public interface RuntimeCodeInstallerPlatformHelper {
 
-        @Fold
         static RuntimeCodeInstallerPlatformHelper singleton() {
             return ImageSingletons.lookup(RuntimeCodeInstallerPlatformHelper.class);
         }

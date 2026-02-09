@@ -72,8 +72,7 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object toGuestValue(Object context, Object hostValue, boolean asValue) {
-
+    public Object toGuestValue(Object node, Object hostValue, boolean asValue) {
         return hostValue;
     }
 
@@ -105,22 +104,7 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public boolean isHostValue(Object value) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Object unboxHostObject(Object hostValue) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Object unboxProxyObject(Object hostValue) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Throwable unboxHostException(Throwable hostValue) {
         throw new UnsupportedOperationException();
     }
 
@@ -132,26 +116,6 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     @Override
     public RuntimeException toHostException(Object hostContext, Throwable exception) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isHostException(Object exception) {
-        return false;
-    }
-
-    @Override
-    public boolean isHostFunction(Object obj) {
-        return false;
-    }
-
-    @Override
-    public boolean isHostObject(Object obj) {
-        return false;
-    }
-
-    @Override
-    public boolean isHostSymbol(Object obj) {
-        return false;
     }
 
     @Override
@@ -170,12 +134,7 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Error toHostResourceError(Throwable hostException) {
-        return null;
-    }
-
-    @Override
-    public int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+    public int findNextHostToGuestStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
         return -1;
     }
 
@@ -193,5 +152,4 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     public boolean allowsPublicAccess() {
         return false;
     }
-
 }

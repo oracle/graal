@@ -53,9 +53,9 @@ import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.word.Word;
 import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.word.impl.Word;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
@@ -723,7 +723,7 @@ public final class ClassInitializationInfo {
     private void invokeClassInitializer0(DynamicHub hub) {
         if (RuntimeClassLoading.isSupported() && runtimeClassInitializer == INTERPRETER_INITIALIZATION_MARKER) {
             ResolvedJavaMethod classInitializer = hub.getInterpreterType().getClassInitializer();
-            CremaSupport.singleton().execute(classInitializer, new Object[0]);
+            CremaSupport.singleton().execute(classInitializer, new Object[0], false);
         } else {
             ClassInitializerFunctionPointer functionPointer = (ClassInitializerFunctionPointer) runtimeClassInitializer.functionPointer;
             VMError.guarantee(functionPointer.isNonNull());

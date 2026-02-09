@@ -30,8 +30,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;

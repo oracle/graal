@@ -45,13 +45,13 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
@@ -59,7 +59,6 @@ import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -82,7 +81,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * layer.
  */
 @AutomaticallyRegisteredImageSingleton(value = LayeredClassInitialization.class, onlyWith = BuildingImageLayerPredicate.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredStaticFieldSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredStaticFieldSupport.LayeredCallbacks.class)
 public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     /**
      * In the initial layer, this refers to fields which must wait until the app layer to be
@@ -109,7 +108,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
 
     /**
      * Keeps track of class filters (e.g.,
-     * {@link SubstrateOptions#ApplicationLayerInitializedClasses}) processing. All
+     * {@link LayeredImageOptions#ApplicationLayerInitializedClasses}) processing. All
      * {@link AnalysisType}s must be processed to ensure all needed app layer deferred fields are
      * registered.
      */
@@ -266,7 +265,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
             processAppLayerDeferredClassFilters(aField.getDeclaringClass());
         }
         return assignmentStatusMap.computeIfAbsent(aField, _ -> {
-            if (!(inAppLayer && aField.isInBaseLayer())) {
+            if (!(inAppLayer && aField.isInSharedLayer())) {
                 return LayerAssignmentStatus.UNSPECIFIED;
             }
             throw VMError.shouldNotReachHere(String.format("Base analysis field assignment status queried before it is initialized: %s", aField));
@@ -274,7 +273,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     }
 
     public int getPriorInstalledLayerNum(AnalysisField analysisField) {
-        if (!(inAppLayer && analysisField.isInBaseLayer())) {
+        if (!(inAppLayer && analysisField.isInSharedLayer())) {
             return MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
         }
 
@@ -298,7 +297,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
                 yield true;
             }
             case PRIOR_LAYER -> {
-                assert aField.isInBaseLayer();
+                assert aField.isInSharedLayer();
                 yield false;
             }
             case APP_LAYER_REQUESTED, APP_LAYER_DEFERRED -> inAppLayer;
@@ -390,7 +389,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     public FloatingNode getAppLayerStaticFieldsBaseReplacement(boolean primitive, LoweringTool tool, StructuredGraph graph) {
         ImageHeapRelocatableConstant constant = primitive ? appLayerPrimitiveStaticFieldsBase : appLayerObjectStaticFieldsBase;
         assert constant != null;
-        return ImageHeapRelocatableConstantSupport.singleton().emitLoadConstant(graph, tool.getMetaAccess(), constant);
+        return ImageHeapRelocatableConstantSupport.singleton().emitLoadConstant(graph, tool, constant);
     }
 
     public JavaConstant getAppLayerStaticFieldBaseConstant(boolean primitive) {
@@ -441,7 +440,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
 
         @Override
         public LayeredStaticFieldSupport createFromLoader(ImageSingletonLoader loader) {
-            Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>();
+            Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>(); // noEconomicSet(concurrency)
             for (int id : loader.readIntList("appLayerFieldsWithKnownLocations")) {
                 Supplier<AnalysisField> aFieldSupplier = () -> HostedImageLayerBuildingSupport.singleton().getLoader().getAnalysisFieldForBaseLayerId(id);
                 appLayerFieldsWithKnownLocations.add(aFieldSupplier);
@@ -470,7 +469,7 @@ class LayeredStaticFieldSupportBaseLayerFeature implements InternalFeature {
 
         staticFieldSupport.objectArrayType = metaAccess.lookupJavaType(Object[].class);
         staticFieldSupport.byteArrayType = metaAccess.lookupJavaType(byte[].class);
-        staticFieldSupport.appLayerDeferredClassFilters = SubstrateOptions.ApplicationLayerInitializedClasses.getValue().valuesAsSet();
+        staticFieldSupport.appLayerDeferredClassFilters = LayeredImageOptions.ApplicationLayerInitializedClasses.getValue().valuesAsSet();
 
         /*
          * Register callback which will run for all created types.

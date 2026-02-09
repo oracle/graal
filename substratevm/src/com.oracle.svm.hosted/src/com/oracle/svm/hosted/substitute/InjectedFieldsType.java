@@ -338,12 +338,6 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
         return original.lookupType(unresolvedJavaType, resolve);
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return original.getHostClass();
-    }
-
     @Override
     public String toString() {
         return "InjectedFieldsType<" + original.toString() + ">";

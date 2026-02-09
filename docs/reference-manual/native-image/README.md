@@ -68,19 +68,27 @@ xcode-select --install
 
 #### Windows
 
-To use Native Image on Windows, install [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) version 17.6.0 or later, and Microsoft Visual C++ (MSVC). There are two installation options:
-* Install the Visual Studio Build Tools with the Windows 11 SDK (or later version)
-* Install Visual Studio with the Windows 11 SDK (or later version)
+To use Native Image on Windows, you need Microsoft Visual C++ (MSVC) compiler version 14.x or later. The easiest way to install this is using the Windows Package Manager (`winget`), which comes pre-installed with Windows 10 (1709+) and Windows 11:
 
-Native Image runs in both a PowerShell or Command Prompt and will automatically set up build environments on Windows, given that it can find a suitable Visual Studio installation.
+```shell
+winget install --id Microsoft.VisualStudio.2022.BuildTools --source winget
+```
+
+You can also:
+
+* Install [Visual Studio 2022](https://visualstudio.microsoft.com/vs/older-downloads/) version 17.13.2 or any [compatible newer version](https://learn.microsoft.com/en-us/cpp/porting/binary-compat-2015-2017?view=msvc-170)
+* Install the Visual Studio Build Tools with the Windows 11 SDK (or a later version)
+* Install Visual Studio with the Windows 11 SDK (or a later version)
+
+All installation methods should include the Windows SDK. Native Image runs in both PowerShell and Command Prompt and will automatically detect your Visual Studio installation.
 
 For more information, see [Using GraalVM and Native Image on Windows](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311).
 
 ## Build a Native Executable Using Maven or Gradle
 
-We provide Maven and Gradle plugins for Native Image to automate building, testing, and configuring native executables. 
+We provide Maven and Gradle plugins for Native Image to automate building, testing, and configuring native executables.
 
-### Maven 
+### Maven
 
 The [Maven plugin for Native Image](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) adds support for compiling a Java application into a native executable using [Apache Maven](https://maven.apache.org/).
 

@@ -28,14 +28,12 @@ import java.io.File;
 import java.lang.module.ModuleFinder;
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.util.EconomicHashSet;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -56,8 +54,8 @@ public class OptionClassFilterBuilder {
     private final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> pathsOption;
     private final Map<URI, Module> uriModuleMap;
 
-    protected final Map<String, Set<OptionOrigin>> requireCompletePackageOrClass = new HashMap<>();
-    private final Set<Module> requireCompleteModules = new HashSet<>();
+    protected final Map<String, EconomicHashSet<OptionOrigin>> requireCompletePackageOrClass = new HashMap<>();
+    private final EconomicSet<Module> requireCompleteModules = EconomicSet.create();
     private boolean requireCompleteAll;
 
     public static OptionClassFilter createFilter(ImageClassLoader imageClassLoader, HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> baseOption,
@@ -102,7 +100,7 @@ public class OptionClassFilterBuilder {
                         throw UserError.abort("Option '%s' provided by %s contains '%s'. No such package or class name found in '%s'.",
                                         SubstrateOptionsParser.commandArgument(baseOption, value), origin, entry, container);
                     }
-                    requireCompletePackageOrClass.computeIfAbsent(entry, _ -> new HashSet<>()).add(origin);
+                    requireCompletePackageOrClass.computeIfAbsent(entry, _ -> new EconomicHashSet<>()).add(origin);
                 } else {
                     throw UserError.abort("Entry '%s' in option '%s' provided by %s is neither a package nor a fully qualified classname.",
                                     entry, SubstrateOptionsParser.commandArgument(baseOption, value), origin);
@@ -128,7 +126,9 @@ public class OptionClassFilterBuilder {
                                 SubstrateOptionsParser.commandArgument(pathsOption, value), origin, pathStr);
             }
             for (String pkg : packages) {
-                requireCompletePackageOrClass.put(pkg, Collections.singleton(origin));
+                EconomicHashSet<OptionOrigin> set = new EconomicHashSet<>();
+                set.add(origin);
+                requireCompletePackageOrClass.put(pkg, set);
             }
         }
     }

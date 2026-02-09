@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
@@ -36,7 +37,6 @@ import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 

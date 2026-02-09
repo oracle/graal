@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -42,8 +42,8 @@ import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.word.impl.Word;
 
 /**
  * Reference adjuster for {@linkplain ClientHandle handles} from an {@link IsolatedObjectConstant},

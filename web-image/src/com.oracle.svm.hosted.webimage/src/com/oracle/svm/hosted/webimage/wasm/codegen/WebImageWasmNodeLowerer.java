@@ -173,10 +173,12 @@ import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
 import jdk.graal.compiler.replacements.nodes.ArrayFillNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.ObjectClone;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.code.CodeUtil;
@@ -941,8 +943,16 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
 
     private Instruction lowerUnaryMathIntrinsic(UnaryMathIntrinsicNode node) {
         assert node.getStackKind() == JavaKind.Double : node.getStackKind();
+        return lowerUnaryMathIntrinsic(node.getOperation(), node.getValue());
+    }
 
-        ImportDescriptor.Function imported = switch (node.getOperation()) {
+    protected Instruction lowerUnaryMathIntrinsicGeneration(UnaryMathIntrinsicGenerationNode node) {
+        assert node.getStackKind() == JavaKind.Double : node.getStackKind();
+        return lowerUnaryMathIntrinsic(node.getOperation(), node.getValue());
+    }
+
+    private Instruction lowerUnaryMathIntrinsic(UnaryMathIntrinsicNode.UnaryOperation operation, ValueNode value) {
+        ImportDescriptor.Function imported = switch (operation) {
             case LOG -> WasmImports.F64Log;
             case LOG10 -> WasmImports.F64Log10;
             case SIN -> WasmImports.F64Sin;
@@ -953,7 +963,7 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
             case CBRT -> WasmImports.F64Cbrt;
         };
 
-        return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(node.getValue()));
+        return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(value));
     }
 
     protected Instruction lowerConditional(ConditionalNode n) {
@@ -1091,12 +1101,20 @@ public abstract class WebImageWasmNodeLowerer extends NodeLowerer {
 
     private Instruction lowerBinaryMathIntrinsic(BinaryMathIntrinsicNode node) {
         assert node.getStackKind() == JavaKind.Double : node.getStackKind();
+        return lowerBinaryMathIntrinsic(node.getOperation(), node.getX(), node.getY());
+    }
 
-        ImportDescriptor.Function imported = switch (node.getOperation()) {
+    protected Instruction lowerBinaryMathIntrinsicGeneration(BinaryMathIntrinsicGenerationNode node) {
+        assert node.getStackKind() == JavaKind.Double : node.getStackKind();
+        return lowerBinaryMathIntrinsic(node.getOperation(), node.getX(), node.getY());
+    }
+
+    private Instruction lowerBinaryMathIntrinsic(BinaryMathIntrinsicNode.BinaryOperation operation, ValueNode x, ValueNode y) {
+        ImportDescriptor.Function imported = switch (operation) {
             case POW -> WasmImports.F64Pow;
         };
 
-        return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(node.getX()), lowerExpression(node.getY()));
+        return new Call(masm.idFactory.forFunctionImport(imported), lowerExpression(x), lowerExpression(y));
     }
 
     /**

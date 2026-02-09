@@ -26,14 +26,19 @@ package com.oracle.svm.core.meta;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class SubstrateObjectConstantEquality implements ObjectConstantEquality {
+
     @Override
     public boolean test(SubstrateObjectConstant x, SubstrateObjectConstant y) {
-        if (x == y) {
+        if (x.identicalTo(y)) {
             return true;
         } else if (x instanceof DirectSubstrateObjectConstant && y instanceof DirectSubstrateObjectConstant) {
             return ((DirectSubstrateObjectConstant) x).getObject() == ((DirectSubstrateObjectConstant) y).getObject();
@@ -43,6 +48,7 @@ final class SubstrateObjectConstantEquality implements ObjectConstantEquality {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class SubstrateObjectConstantEqualityFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

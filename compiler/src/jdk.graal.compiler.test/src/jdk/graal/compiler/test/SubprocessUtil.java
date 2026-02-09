@@ -335,41 +335,53 @@ public final class SubprocessUtil {
         /**
          * Returns the process execution as a string with a header line followed by one or more body
          * lines followed by a trailer with a new line.
-         *
-         * The header is {@code "----------subprocess[<pid>]:(<lines>/<chars>)----------"} where
+         * <p>
+         * The header is
+         * {@code "----------subprocess[pid=<pid>]:(lines=<lines>, chars=<chars>)----------"} where
          * {@code pid} is the id of the process and {@code chars} and {@code lines} provide the
          * dimensions of the body.
-         *
+         * <p>
          * The sections in the body are the environment variables (key: "env"), the command line
          * (key: "cmd"), the lines of output produced (key: "output") and the exit code (key:
          * "exitCode").
-         *
-         * The trailer is {@code "==========subprocess[<pid>]=========="}
+         * <p>
+         * The trailer is {@code "==========subprocess[pid=<pid>]=========="}
          *
          * @param sections selects which sections are in the body. If null, all sections are
          *            included.
          */
         public String asString(Map<String, Boolean> sections) {
+            String subSectionSeparator = "--------------";
             Formatter msg = new Formatter();
             if (include(sections, "env")) {
                 if (env != null && !env.isEmpty()) {
-                    msg.format("env");
+                    Formatter envBuf = new Formatter();
+                    envBuf.format("env");
                     for (Map.Entry<String, String> e : env.entrySet()) {
-                        msg.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
+                        envBuf.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
                     }
-                    msg.format("\\%n");
+                    String envSection = envBuf.toString();
+                    msg.format("%sEnvironment[length=%d]%s%n", subSectionSeparator, envSection.length(), subSectionSeparator);
+                    msg.format("%s%n", envSection);
                 }
             }
             if (include(sections, "cmd")) {
-                msg.format("%s%n", CollectionsUtil.mapAndJoin(command, e -> quoteShellArg(String.valueOf(e)), " "));
+                String cmdSection = CollectionsUtil.mapAndJoin(command, e -> quoteShellArg(String.valueOf(e)), " ");
+                msg.format("%sCommand[length=%d]%s%n", subSectionSeparator, cmdSection.length(), subSectionSeparator);
+                msg.format("%s%n", cmdSection);
             }
             if (include(sections, "output")) {
+                Formatter outputBuf = new Formatter();
                 for (String line : output) {
-                    msg.format("%s%n", line);
+                    outputBuf.format("%s%n", line);
                 }
+                String outputSection = outputBuf.toString();
+                msg.format("%sOutput[length=%d]%s%n", subSectionSeparator, outputSection.length(), subSectionSeparator);
+                msg.format("%s", outputSection);
             }
             if (include(sections, "exitCode")) {
-                msg.format("exit code: %s%n", exitCode);
+                msg.format("%sExit code%s%n", subSectionSeparator, subSectionSeparator);
+                msg.format("%d%n", exitCode);
             }
             String body = msg.toString();
             if (!body.endsWith(System.lineSeparator())) {
@@ -377,8 +389,8 @@ public final class SubprocessUtil {
             }
             long lines = body.chars().filter(ch -> ch == '\n').count();
             int chars = body.length();
-            String head = String.format("----------subprocess[%d]:(%d/%d)----------", pid, lines, chars);
-            String tail = String.format("==========subprocess[%d]==========", pid);
+            String head = String.format("----------Subprocess[pid=%d]:(lines=%d, chars=%d)----------", pid, lines, chars);
+            String tail = String.format("==========Subprocess[pid=%d]==========", pid);
             return String.format("%s%n%s%s%n", head, body, tail);
         }
 

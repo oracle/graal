@@ -29,13 +29,17 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.jdk.StringInternSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
+
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
 /**
  * Performs de-duplication of String without using {@link String#intern}. Calling
@@ -43,6 +47,7 @@ import com.oracle.svm.core.jdk.StringInternSupport;
  * must be maintained in an array in the image heap, see {@link StringInternSupport}.
  */
 @AutomaticallyRegisteredImageSingleton
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @Platforms(Platform.HOSTED_ONLY.class)
 public class HostedStringDeduplication {
 

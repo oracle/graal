@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,9 @@ import static org.junit.Assert.assertEquals;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.test.AddExports;
 import org.junit.Test;
+
+import jdk.graal.compiler.test.AddExports;
 
 @AddExports("java.base/jdk.internal.module")
 public class CollectionSizeTest {
@@ -40,15 +41,15 @@ public class CollectionSizeTest {
     @Test
     public void testSize() {
         EconomicMap<Object, Object> map = EconomicMap.create(Equivalence.IDENTITY);
-        assertEquals(49, ObjectSizeEstimate.forObject(map).getTotalBytes());
+        assertEquals(48, ObjectSizeEstimate.forObject(map).getTotalBytes());
 
         Integer value = 1;
         map.put(value, value);
-        assertEquals(153, ObjectSizeEstimate.forObject(map).getTotalBytes());
+        assertEquals(152, ObjectSizeEstimate.forObject(map).getTotalBytes());
 
         Integer secondValue = 2;
         map.put(secondValue, secondValue);
-        assertEquals(153 + 20, ObjectSizeEstimate.forObject(map).getTotalBytes());
+        assertEquals(152 + 20, ObjectSizeEstimate.forObject(map).getTotalBytes());
     }
 
     /**

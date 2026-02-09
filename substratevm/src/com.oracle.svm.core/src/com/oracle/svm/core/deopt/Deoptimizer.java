@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.deopt;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.stack.JavaFrameAnchors.verifyTopFrameAnchor;
 
 import java.lang.annotation.ElementType;
@@ -40,13 +40,14 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -91,8 +92,7 @@ import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.lir.asm.FrameContext;
 import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.BarrieredAccess;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -894,7 +894,7 @@ public final class Deoptimizer {
 
     /**
      * The handler for lazy deoptimization.
-     * 
+     *
      * Despite being marked Uninterruptible, this contains interruptible sections when we look up
      * the code info, and construct the {@link DeoptimizedFrame}.
      */
@@ -1469,7 +1469,7 @@ public final class Deoptimizer {
                     case Constant:
                         /*
                          * The target value was constant propagated. Check that source and target
-                         * performed the same constant propagation
+                         * agree on the value.
                          */
                         verifyConstant(targetFrame, targetValue, con);
                         DeoptimizationCounters.counters().constantValueCount.inc();
@@ -1503,15 +1503,15 @@ public final class Deoptimizer {
     }
 
     private void verifyConstant(FrameInfoQueryResult targetFrame, ValueInfo targetValue, JavaConstant source) {
-        boolean equal;
         JavaConstant target = deoptState.readValue(targetValue, targetFrame);
         if (source.getJavaKind() == JavaKind.Object && target.getJavaKind() == JavaKind.Object) {
-            // Differences in compression are irrelevant, compare only object identities
-            equal = (SubstrateObjectConstant.asObject(target) == SubstrateObjectConstant.asObject(source));
-        } else {
-            equal = source.equals(target);
-        }
-        if (!equal) {
+            /* Differences in compression are irrelevant, compare only object identities. */
+            Object t = SubstrateObjectConstant.asObject(target);
+            Object s = SubstrateObjectConstant.asObject(source);
+            if (t != s) {
+                throw fatalDeoptimizationError(String.format("Constants do not match.%nSource: %s%nTarget: %s", s, t), targetFrame);
+            }
+        } else if (!source.equals(target)) {
             throw fatalDeoptimizationError(String.format("Constants do not match.%nSource: %s%nTarget: %s", source, target), targetFrame);
         }
     }
@@ -1523,7 +1523,7 @@ public final class Deoptimizer {
      * @param offsetInObj The offset of the instance field or array element
      * @param constant The value to write
      */
-    protected static void writeValueInMaterializedObj(Object materializedObj, UnsignedWord offsetInObj, JavaConstant constant, FrameInfoQueryResult frameInfo) {
+    static void writeValueInMaterializedObj(Object materializedObj, UnsignedWord offsetInObj, JavaConstant constant, FrameInfoQueryResult frameInfo) {
         if (offsetInObj.equal(0)) {
             throw fatalDeoptimizationError("offsetInObj is 0. Materialized value would overwrite hub.", frameInfo);
         }

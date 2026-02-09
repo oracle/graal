@@ -31,6 +31,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
@@ -91,6 +92,25 @@ final class Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsPath {
     @Substitute
     public File toFile() {
         return new File(toString());
+    }
+}
+
+@TargetClass(className = "org.graalvm.shadowed.com.google.common.jimfs.JimfsFileSystem")
+final class Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsFileSystem {
+    @SuppressWarnings({"static-method", "unused"})
+    @Alias
+    public native Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsPath toPath(URI uri);
+}
+
+@TargetClass(className = "org.graalvm.shadowed.com.google.common.jimfs.SystemJimfsFileSystemProvider")
+final class Target_org_graalvm_shadowed_com_google_common_jimfs_SystemJimfsFileSystemProvider {
+    /// In Jimfs this method uses reflection to call `toPath` due to potentially mismatching
+    /// classloaders, but in a Native Image context, that can't happen, so we replace it with a
+    /// direct call.
+    @Substitute
+    private static Path toPath(FileSystem fileSystem, URI uri) {
+        var jimfsFileSystem = SubstrateUtil.cast(fileSystem, Target_org_graalvm_shadowed_com_google_common_jimfs_JimfsFileSystem.class);
+        return SubstrateUtil.cast(jimfsFileSystem.toPath(uri), Path.class);
     }
 }
 

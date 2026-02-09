@@ -26,9 +26,11 @@ package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -43,6 +45,7 @@ public abstract class AbstractImage {
     protected final HostedUniverse universe;
     protected final NativeLibraries nativeLibs;
     protected final NativeImageHeap heap;
+    protected final ImageHeapLayoutInfo heapLayout;
     protected final ClassLoader imageClassLoader;
     protected final NativeImageCodeCache codeCache;
     protected final List<HostedMethod> entryPoints;
@@ -86,7 +89,8 @@ public abstract class AbstractImage {
         }
 
         public final String getOutputFilename(String imageName) {
-            return imageName + getFilenameSuffix();
+            // avoid adding suffix when it is already there.
+            return imageName.toLowerCase(Locale.ROOT).endsWith(getFilenameSuffix().toLowerCase(Locale.ROOT)) ? imageName : imageName + getFilenameSuffix();
         }
 
         protected String getFilenameSuffix() {
@@ -96,13 +100,14 @@ public abstract class AbstractImage {
 
     protected final NativeImageKind imageKind;
 
-    protected AbstractImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+    protected AbstractImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, ImageHeapLayoutInfo heapLayout,
+                    NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         this.imageKind = k;
         this.universe = universe;
         this.metaAccess = metaAccess;
         this.nativeLibs = nativeLibs;
         this.heap = heap;
+        this.heapLayout = heapLayout;
         this.codeCache = codeCache;
         this.entryPoints = entryPoints;
         this.imageClassLoader = imageClassLoader;
@@ -139,14 +144,14 @@ public abstract class AbstractImage {
 
     // factory method
     public static AbstractImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
-                    NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader classLoader) {
+                    ImageHeapLayoutInfo heapLayout, NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader classLoader) {
         return switch (k) {
             case SHARED_LIBRARY ->
-                new SharedLibraryImageViaCC(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
+                new SharedLibraryImageViaCC(universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, classLoader);
             case IMAGE_LAYER ->
-                new ImageLayerViaCC(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
+                new ImageLayerViaCC(universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, classLoader);
             case EXECUTABLE, STATIC_EXECUTABLE ->
-                new ExecutableImageViaCC(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
+                new ExecutableImageViaCC(k, universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, classLoader);
         };
     }
 

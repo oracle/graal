@@ -49,6 +49,7 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
@@ -171,14 +172,18 @@ public class SubstrateReplacements extends ReplacementsImpl {
      * as immutable.
      */
     private static boolean isImmutable(Object o) {
-        return !(o instanceof SubstrateForeignCallLinkage) && !(o instanceof SubstrateTargetDescription) && !(o instanceof ImageCodeInfo);
+        boolean mutableType = o instanceof SubstrateForeignCallLinkage ||
+                        o instanceof SubstrateTargetDescription ||
+                        o instanceof SharedType ||
+                        o instanceof ImageCodeInfo;
+        return !mutableType;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public Collection<StructuredGraph> getSnippetGraphs(boolean trackNodeSourcePosition, OptionValues options, Function<Object, Object> objectTransformer) {
         List<StructuredGraph> result = new ArrayList<>(snippetStartOffsets.size());
         for (ResolvedJavaMethod method : snippetStartOffsets.keySet()) {
-            result.add(getSnippet(method, null, trackNodeSourcePosition, options, objectTransformer));
+            result.add(getSnippet(method, null, trackNodeSourcePosition, options, objectTransformer, snippetInvocationPlugins));
         }
         return result;
     }
@@ -206,10 +211,11 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
                     NodeSourcePosition replaceePosition, OptionValues options) {
-        return getSnippet(method, args, trackNodeSourcePosition, options, Function.identity());
+        return getSnippet(method, args, trackNodeSourcePosition, options, Function.identity(), snippetInvocationPlugins);
     }
 
-    public StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args, boolean trackNodeSourcePosition, OptionValues options, Function<Object, Object> objectTransformer) {
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args, boolean trackNodeSourcePosition, OptionValues options, Function<Object, Object> objectTransformer,
+                    InvocationPlugins snippetPlugins) {
         Integer startOffset = snippetStartOffsets.get(method);
         if (startOffset == null) {
             throw VMError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)"));
@@ -231,7 +237,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
                             .build();
 
             EncodedGraph encodedGraph = new EncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, result);
-            PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
+            PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
                             null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
 
                 private final IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING, false);
@@ -413,5 +419,9 @@ public class SubstrateReplacements extends ReplacementsImpl {
         } else {
             return super.isSnippet(method);
         }
+    }
+
+    public InvocationPlugins getSnippetInvocationPlugins() {
+        return snippetInvocationPlugins;
     }
 }

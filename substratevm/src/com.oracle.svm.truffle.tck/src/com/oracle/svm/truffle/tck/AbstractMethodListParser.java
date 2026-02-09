@@ -65,7 +65,7 @@ abstract class AbstractMethodListParser extends ConfigurationParser {
         super(EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
         this.imageClassLoader = Objects.requireNonNull(imageClassLoader, "ImageClassLoader must be non null");
         this.bb = Objects.requireNonNull(bb, "BigBang must be non null");
-        this.collectedMethods = new HashSet<>();
+        this.collectedMethods = new HashSet<>(); // noEconomicSet(streaming)
     }
 
     static <T> T cast(Object obj, Class<T> type, String errorMessage) {

@@ -29,6 +29,8 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -38,6 +40,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
@@ -75,6 +78,11 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     // Assigned after analysis.
     @UnknownObjectField(availability = AfterAnalysis.class, types = Object[].class) protected Object[] cachedEntries;
 
+    // TODO move to crema once GR-71517 is resolved
+    private volatile jdk.vm.ci.meta.ConstantPool ristrettoConstantPool;
+    private static final AtomicReferenceFieldUpdater<InterpreterConstantPool, jdk.vm.ci.meta.ConstantPool> RISTRETTO_CONSTANT_POOL_UPDATER = AtomicReferenceFieldUpdater
+                    .newUpdater(InterpreterConstantPool.class, jdk.vm.ci.meta.ConstantPool.class, "ristrettoConstantPool");
+
     Object objAt(int cpi) {
         if (cpi == 0) {
             // 0 implies unknown (!= unresolved) e.g. unknown class, field, method ...
@@ -101,6 +109,27 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     @VisibleForSerialization
     public static InterpreterConstantPool create(InterpreterResolvedObjectType holder, ParserConstantPool parserConstantPool, Object[] cachedEntries) {
         return new InterpreterConstantPool(holder, parserConstantPool, cachedEntries);
+    }
+
+    public jdk.vm.ci.meta.ConstantPool getRistrettoConstantPool(Function<InterpreterConstantPool, jdk.vm.ci.meta.ConstantPool> ristrettoConstantPoolSupplier) {
+        if (this.ristrettoConstantPool != null) {
+            return this.ristrettoConstantPool;
+        }
+        /*
+         * We allow concurrent allocation of a ristretto constant pool per interpreter constant
+         * pool. Eventually however we CAS on the pointer in the interpreter representation, if
+         * another thread was faster return its constant pool.
+         */
+        return getOrSetRistrettoConstantPool(ristrettoConstantPoolSupplier.apply(this));
+    }
+
+    private jdk.vm.ci.meta.ConstantPool getOrSetRistrettoConstantPool(jdk.vm.ci.meta.ConstantPool newRistrettoConstantPool) {
+        if (RISTRETTO_CONSTANT_POOL_UPDATER.compareAndSet(this, null, newRistrettoConstantPool)) {
+            return newRistrettoConstantPool;
+        }
+        var cp = this.ristrettoConstantPool;
+        assert cp != null : "If CAS for null fails must have written a constant pool already";
+        return cp;
     }
 
     @Override
@@ -135,18 +164,47 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
 
     @Override
     public Object lookupConstant(int cpi) {
-        Object entry = objAt(cpi);
-        if (entry instanceof JavaConstant) {
-            return entry;
-        } else if (entry instanceof JavaType) {
-            return entry;
-        }
-        throw VMError.shouldNotReachHereAtRuntime();
+        return lookupConstant(cpi, true);
     }
 
     @Override
+    @SuppressWarnings("fallthrough")
     public Object lookupConstant(int cpi, boolean resolve) {
-        throw VMError.intentionallyUnimplemented();
+        final Tag tag = tagAt(cpi);
+        switch (tag) {
+            case INTEGER:
+                return JavaConstant.forInt(this.intAt(cpi));
+            case FLOAT:
+                return JavaConstant.forFloat(this.floatAt(cpi));
+            case LONG:
+                return JavaConstant.forLong(this.longAt(cpi));
+            case DOUBLE:
+                return JavaConstant.forDouble(this.doubleAt(cpi));
+            case STRING:
+                return SubstrateObjectConstant.forObject(resolvedAt(cpi, holder));
+            case CLASS:
+                return objAt(cpi);
+            case METHODHANDLE:
+            case METHODTYPE:
+            case DYNAMIC:
+                Object ret = queryConstantPool(cpi, resolve);
+                if (ret == null) {
+                    // TODO GR-70200: support DYNAMIC resolving to null ?
+                    return ret;
+                }
+                return SubstrateObjectConstant.forObject(ret);
+            default: {
+                throw VMError.shouldNotReachHere("Unknown tag " + tag);
+            }
+        }
+    }
+
+    private Object queryConstantPool(int cpi, boolean resolve) {
+        if (resolve) {
+            return resolvedAt(cpi, holder);
+        } else {
+            return objAt(cpi);
+        }
     }
 
     @Override

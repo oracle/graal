@@ -32,8 +32,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * A buffer used by the {@link BinaryMarshaller} to marshall parameters and results passed by value.

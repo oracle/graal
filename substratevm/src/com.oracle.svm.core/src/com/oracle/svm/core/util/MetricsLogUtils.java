@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.util;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.log.Log;
+import org.graalvm.word.impl.Word;
 
 /** Utility class for logging metrics. */
 public class MetricsLogUtils {

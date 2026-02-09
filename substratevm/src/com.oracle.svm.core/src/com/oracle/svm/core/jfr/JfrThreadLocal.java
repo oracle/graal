@@ -24,9 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -36,7 +35,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jfr.events.ThreadCPULoadEvent;
 import com.oracle.svm.core.jfr.events.ThreadEndEvent;
@@ -55,6 +54,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import org.graalvm.word.impl.Word;
 
 /**
  * This class holds various JFR-specific thread local values.

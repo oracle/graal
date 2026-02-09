@@ -27,7 +27,7 @@ package com.oracle.svm.core.os;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;

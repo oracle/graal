@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +45,7 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.driver.NativeImage.BuildConfiguration;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
+import org.graalvm.collections.EconomicSet;
 
 final class MacroOption {
 
@@ -246,7 +246,7 @@ final class MacroOption {
             return supported.get(kindPart).get(optionName);
         }
 
-        boolean enableOption(BuildConfiguration config, String optionString, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
+        boolean enableOption(BuildConfiguration config, String optionString, EconomicSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
             String specString;
             if (context == null) {
                 if (optionString.startsWith(OptionUtils.MacroOptionKind.macroOptionPrefix)) {
@@ -309,7 +309,7 @@ final class MacroOption {
             return true;
         }
 
-        private void enableResolved(BuildConfiguration config, MacroOption option, String optionArg, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
+        private void enableResolved(BuildConfiguration config, MacroOption option, String optionArg, EconomicSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
             if (addedCheck.contains(option)) {
                 return;
             }

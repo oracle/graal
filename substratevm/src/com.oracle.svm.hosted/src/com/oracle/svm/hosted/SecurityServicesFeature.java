@@ -83,8 +83,8 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
@@ -112,13 +112,18 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
 import jdk.internal.access.SharedSecrets;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
@@ -205,20 +210,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         KeyStore.class, Mac.class, MessageDigest.class, SSLContext.class,
                         SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));
 
-        if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
+        if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.security.sasl").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClientFactory"));
             classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslServerFactory"));
         }
-        if (ModuleLayer.boot().findModule("java.xml.crypto").isPresent()) {
+        if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml.crypto").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.TransformService"));
             classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.XMLSignatureFactory"));
             classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.keyinfo.KeyInfoFactory"));
         }
-        if (ModuleLayer.boot().findModule("java.smartcardio").isPresent()) {
+        if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.smartcardio").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.smartcardio.TerminalFactory"));
         }
 
-        isMscapiModulePresent = ModuleLayer.boot().findModule("jdk.crypto.mscapi").isPresent();
+        isMscapiModulePresent = JVMCIReflectionUtil.bootModuleLayer().findModule("jdk.crypto.mscapi").isPresent();
 
         knownServices = Collections.unmodifiableList(classList);
     }
@@ -229,13 +234,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     /** Access Security.getSpiClass. */
     private Method getSpiClassMethod;
     /** All available services, organized by service type. */
-    private Map<String, Set<Service>> availableServices;
+    private Map<String, EconomicSet<Service>> availableServices;
 
     /** All providers deemed to be used by this feature. */
     private final Set<Provider> usedProviders = ConcurrentHashMap.newKeySet();
 
     /** Providers marked as used by the user. */
-    private final Set<String> manuallyMarkedUsedProviderClassNames = new HashSet<>();
+    private final EconomicSet<String> manuallyMarkedUsedProviderClassNames = EconomicSet.create();
 
     private Field verificationResultsField;
     private Field providerListField;
@@ -268,7 +273,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
         oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
         oidMapField = access.findField(OIDMap.class, "oidMap");
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
@@ -280,8 +285,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         } else {
             SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
-            Constructor<?> sunECConstructor = constructor(a, "sun.security.ec.SunEC");
-            support.setSunECConstructor(sunECConstructor);
+            ResolvedJavaMethod sunECConstructor = constructor(a, "sun.security.ec.SunEC");
+            support.setSunECConstructor((Constructor<?>) OriginalMethodProvider.getJavaMethod(sunECConstructor));
 
             Properties securityProperties = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
             support.setSavedInitialSecurityProperties(securityProperties);
@@ -305,30 +310,30 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         rci.initializeAtRunTime(NativePRNG.Blocking.class, "for substitutions");
         rci.initializeAtRunTime(NativePRNG.NonBlocking.class, "for substitutions");
 
-        rci.initializeAtRunTime(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
-        rci.initializeAtRunTime(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
+        rci.initializeAtRunTime(type(access, "sun.security.provider.SeedGenerator"), "for substitutions");
+        rci.initializeAtRunTime(type(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
         /*
          * sun.security.provider.AbstractDrbg$SeederHolder has a static final EntropySource seeder
          * field that needs to be initialized at run time because it captures the result of
          * SeedGenerator.getSystemEntropy().
          */
-        rci.initializeAtRunTime(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
+        rci.initializeAtRunTime(type(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
         if (isMscapiModulePresent) {
             /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
-            rci.initializeAtRunTime(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
+            rci.initializeAtRunTime(type(access, "sun.security.mscapi.PRNG"), "for substitutions");
         }
-        rci.initializeAtRunTime(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
+        rci.initializeAtRunTime(type(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
         /* java.util.UUID$Holder has a static final SecureRandom field. */
-        rci.initializeAtRunTime(clazz(access, "java.util.UUID$Holder"), "for substitutions");
+        rci.initializeAtRunTime(type(access, "java.util.UUID$Holder"), "for substitutions");
 
         /* The classes below have a static final SecureRandom field. */
-        rci.initializeAtRunTime(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
-        rci.initializeAtRunTime(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
-        optionalClazz(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "for substitutions"));
-        optionalClazz(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
+        rci.initializeAtRunTime(type(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
+        rci.initializeAtRunTime(type(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
+        optionalType(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "for substitutions"));
+        optionalType(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
 
-        rci.initializeAtRunTime(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
+        rci.initializeAtRunTime(type(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
 
         /*
          * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
@@ -336,13 +341,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * properties from the build machine. Running its initialization at run time is required to
          * use the run time provided values.
          */
-        rci.initializeAtRunTime(clazz(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"), "for reading properties at run time");
+        rci.initializeAtRunTime(type(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"), "for reading properties at run time");
 
         /*
          * SSL debug logging enabled by javax.net.debug system property is set up during the class
          * initialization.
          */
-        rci.initializeAtRunTime(clazz(access, "sun.security.ssl.SSLLogger"), "for reading properties at run time");
+        rci.initializeAtRunTime(type(access, "sun.security.ssl.SSLLogger"), "for reading properties at run time");
     }
 
     @Override
@@ -380,7 +385,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
 
         if (isPosix()) {
-            Optional<Method> optMethodGetUnixInfo = optionalMethod(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo");
+            Optional<ResolvedJavaMethod> optMethodGetUnixInfo = optionalMethod(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo");
             optMethodGetUnixInfo.ifPresent(m -> {
                 access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, m);
                 /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
@@ -389,7 +394,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
 
         if (isMscapiModulePresent) {
-            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, clazz(access, "sun.security.mscapi.SunMSCAPI"));
+            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, type(access, "sun.security.mscapi.SunMSCAPI"));
             /* Resolve calls to sun_security_mscapi* as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
@@ -398,6 +403,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
 
             access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
+                // JVMCI migration blocked by GR-72131: Refactor security service code for project
+                // Terminus.
                 /*
                  * We must wait until all providers have been registered before filtering the list.
                  */
@@ -428,6 +435,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             });
 
             access.registerFieldValueTransformer(verificationResultsField, new FieldValueTransformerWithAvailability() {
+                // JVMCI migration blocked by GR-72131: Refactor security service code for project
+                // Terminus.
                 /*
                  * We must wait until all providers have been registered before filtering the list.
                  */
@@ -543,26 +552,26 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private static void registerLoadKeysOrCertificateChains(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(constructor(a, "java.util.ArrayList"));
-        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificate", byte[].class, Collection.class));
-        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificateChain", String.class, Collection.class));
-        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateKeyAndCertificateChain", boolean.class, String.class, long.class, long.class, int.class, Collection.class));
+        JVMCIRuntimeJNIAccess.register(constructor(a, "java.util.ArrayList"));
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificate", byte[].class, Collection.class));
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificateChain", String.class, Collection.class));
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateKeyAndCertificateChain", boolean.class, String.class, long.class, long.class, int.class, Collection.class));
     }
 
     private static void registerGenerateCKeyPair(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(constructor(a, "sun.security.mscapi.CKeyPair", String.class, long.class, long.class, int.class));
+        JVMCIRuntimeJNIAccess.register(constructor(a, "sun.security.mscapi.CKeyPair", String.class, long.class, long.class, int.class));
     }
 
     private static void registerCPrivateKeyOf(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPrivateKey", "of", String.class, long.class, long.class, int.class));
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPrivateKey", "of", String.class, long.class, long.class, int.class));
     }
 
     private static void registerCPublicKeyOf(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPublicKey", "of", String.class, long.class, long.class, int.class));
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPublicKey", "of", String.class, long.class, long.class, int.class));
     }
 
     private static void linkJaas(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
 
         NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
         /* We can statically link jaas, thus we classify it as builtIn library */
@@ -570,8 +579,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         nativeLibraries.addStaticJniLibrary("jaas");
     }
 
-    private static Set<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
-        Set<Class<?>> allKnownServices = new HashSet<>(knownServices);
+    private static Iterable<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
+        EconomicSet<Class<?>> allKnownServices = EconomicSet.create(knownServices);
         for (String value : Options.AdditionalSecurityServiceTypes.getValue().values()) {
             for (String serviceClazzName : value.split(",")) {
                 Class<?> serviceClazz = access.findClassByName(serviceClazzName);
@@ -656,8 +665,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * java.security.Provider.Service.newInstance() directly. On Open JDK
          * SecureRandom.getInstance() is used instead.
          */
-        Optional<Method> defaultSecureRandomService = optionalMethod(access, "java.security.Provider", "getDefaultSecureRandomService");
-        defaultSecureRandomService.ifPresent(m -> access.registerMethodOverrideReachabilityHandler((a, t) -> registerServices(a, t, SECURE_RANDOM_SERVICE), m));
+        Optional<ResolvedJavaMethod> defaultSecureRandomService = optionalMethod(access, "java.security.Provider", "getDefaultSecureRandomService");
+        defaultSecureRandomService.ifPresent(m -> access.registerMethodOverrideReachabilityHandler((a, t) -> registerServices(a, t, SECURE_RANDOM_SERVICE), OriginalMethodProvider.getJavaMethod(m)));
     }
 
     private void registerServices(DuringAnalysisAccess access, Object trigger, Class<?> serviceClass) {
@@ -702,7 +711,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
         try (TracingAutoCloseable _ = trace(access, trigger, serviceType)) {
-            Set<Service> services = availableServices.get(serviceType);
+            EconomicSet<Service> services = availableServices.get(serviceType);
             VMError.guarantee(services != null);
             for (Service service : services) {
                 registerService(access, service);
@@ -721,12 +730,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
      * Collect available services, organized by service type. JDK doesn't have a way to iterate
      * services by type so we need to build our own structure.
      */
-    private static Map<String, Set<Service>> computeAvailableServices() {
-        Map<String, Set<Service>> availableServices = new HashMap<>();
+    private static Map<String, EconomicSet<Service>> computeAvailableServices() {
+        Map<String, EconomicSet<Service>> availableServices = new HashMap<>();
         for (Provider provider : Security.getProviders()) {
             for (Service s : provider.getServices()) {
                 if (isValid(s)) {
-                    availableServices.computeIfAbsent(s.getType(), _ -> new HashSet<>()).add(s);
+                    availableServices.computeIfAbsent(s.getType(), _ -> EconomicSet.create()).add(s);
                 }
             }
         }
@@ -841,7 +850,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                      */
                     String providerFQName = provider.getClass().getName();
                     if (support.isSecurityProviderNotLoaded(providerFQName)) {
-                        Set<String> registeredProviders = new HashSet<>();
+                        Set<String> registeredProviders = new HashSet<>(); // noEconomicSet(unimplemented)
                         ServiceLoaderFeature.registerProviderForRuntimeReflectionAccess(access, providerFQName, registeredProviders);
                         ServiceLoaderFeature.registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), Provider.class.getName(), registeredProviders);
                     }

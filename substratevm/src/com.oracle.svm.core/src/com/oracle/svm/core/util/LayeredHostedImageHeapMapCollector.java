@@ -40,7 +40,6 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -55,7 +54,7 @@ import com.oracle.svm.core.util.ImageHeapMap.HostedImageHeapMap;
  * {@code ImageHeapCollectionFeature#allMaps} to ensure it is always rescanned and reachable.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredHostedImageHeapMapCollector.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredHostedImageHeapMapCollector.LayeredCallbacks.class)
 public class LayeredHostedImageHeapMapCollector {
     /**
      * Map keys of maps reachable in the current layer.
@@ -106,7 +105,7 @@ public class LayeredHostedImageHeapMapCollector {
 
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredHostedImageHeapMapCollector singleton) {
-                    Set<String> reachableMapKeys = new HashSet<>(singleton.currentLayerReachableMapsKeys);
+                    Set<String> reachableMapKeys = new HashSet<>(singleton.currentLayerReachableMapsKeys); // noEconomicSet(streaming)
                     if (singleton.previousLayerReachableMapKeys != null) {
                         reachableMapKeys.addAll(singleton.previousLayerReachableMapKeys);
                     }

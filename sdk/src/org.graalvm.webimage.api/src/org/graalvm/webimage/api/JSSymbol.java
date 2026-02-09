@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,10 +49,10 @@ public final class JSSymbol extends JSValue {
     JSSymbol() {
     }
 
-    @JS("return Symbol(conversion.extractJavaScriptString(s[runtime.symbol.javaNative]));")
+    @JS("return Symbol(conversion.extractJavaScriptString(conversion.unproxy(s)));")
     public static native JSSymbol of(String s);
 
-    @JS("return Symbol.for(conversion.extractJavaScriptString(s[runtime.symbol.javaNative]));")
+    @JS("return Symbol.for(conversion.extractJavaScriptString(conversion.unproxy(s)));")
     public static native JSSymbol forString(String s);
 
     @JS("return sym0 === sym1;")
@@ -61,14 +61,6 @@ public final class JSSymbol extends JSValue {
     @Override
     public String typeof() {
         return "symbol";
-    }
-
-    @JS("return conversion.toProxy(toJavaString(this.toString()));")
-    private native String javaString();
-
-    @Override
-    protected String stringValue() {
-        return javaString();
     }
 
     @Override
@@ -81,7 +73,7 @@ public final class JSSymbol extends JSValue {
 
     @Override
     public int hashCode() {
-        return javaString().hashCode();
+        return stringValue().hashCode();
     }
 
     @JS(value = "return Symbol.for(key);")

@@ -70,6 +70,7 @@ public enum Failure {
     MALFORMED_MEMOP_FLAGS(Type.MALFORMED, "malformed memop flags"),
     MALFORMED_CATCH(Type.MALFORMED, "malformed catch clause"),
     MALFORMED_TAG_ATTRIBUTE(Type.MALFORMED, "malformed tag attribute"),
+    MALFORMED_CASTOP_FLAGS(Type.MALFORMED, "malformed castop flags"),
     // GraalWasm-specific:
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
     DISABLED_MULTI_VALUE(Type.MALFORMED, "multi-value is not enabled"),
@@ -90,6 +91,8 @@ public enum Failure {
     UNKNOWN_LABEL(Type.INVALID, "unknown label"),
     UNKNOWN_FUNCTION(Type.INVALID, "unknown function"),
     UNKNOWN_TYPE(Type.INVALID, "unknown type"),
+    SUB_TYPE(Type.INVALID, "sub type"),
+    SUB_TYPE_DOES_NOT_MATCH_SUPER_TYPE(Type.INVALID, "sub type does not match super type"),
     START_FUNCTION_RESULT_VALUE(Type.INVALID, "start function"),
     START_FUNCTION_PARAMS(Type.INVALID, "start function"),
     LIMIT_MINIMUM_GREATER_THAN_MAXIMUM(Type.INVALID, "size minimum must not be greater than maximum"),
@@ -108,10 +111,19 @@ public enum Failure {
     UNKNOWN_REFERENCE(Type.INVALID, "unknown reference"),
     UNDECLARED_FUNCTION_REFERENCE(Type.INVALID, "undeclared function reference"),
     UNKNOWN_TAG(Type.INVALID, "unknown tag"),
+    INVALID_FIELD_INDEX(Type.INVALID, "invalid field index"),
+    INVALID_STRUCT_GETTER_SIGNEDNESS(Type.INVALID, "struct.get_s and struct.get_u must be used for fields of packed types"),
+    FIELD_IS_IMMUTABLE(Type.INVALID, "field is immutable"),
+    TOO_MANY_STRUCT_FIELDS(Type.INVALID, "too many struct fields"),
+    ARRAY_TYPE_IS_NOT_NUMERIC_OR_VECTOR(Type.INVALID, "array type is not numeric or vector"),
+    INVALID_ARRAY_GETTER_SIGNEDNESS(Type.INVALID, "array.get_s and array.get_u must be used for arrays of packed types"),
+    ARRAY_IS_IMMUTABLE(Type.INVALID, "array is immutable"),
+    ARRAY_TYPES_DO_NOT_MATCH(Type.INVALID, "array types do not match"),
 
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),
     TYPE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "type count exceeds limit"),
+    SUB_TYPE_DEPTH_LIMIT_EXCEEDED(Type.INVALID, "sub type depth exceeds limit"),
     FUNCTION_COUNT_LIMIT_EXCEEDED(Type.INVALID, "function count exceeds limit"),
     TABLE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "table count exceeds limit"),
     MEMORY_COUNT_LIMIT_EXCEEDED(Type.INVALID, "memory count exceeds limit"),
@@ -124,6 +136,7 @@ public enum Failure {
     PARAMETERS_COUNT_LIMIT_EXCEEDED(Type.INVALID, "parameters count exceeds limit"),
     RESULT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "result values count exceeds limit"),
     TAG_COUNT_LIMIT_EXCEEDED(Type.INVALID, "tag count exceeds limit"),
+    ARRAY_NEW_FIXED_LIMIT_EXCEEDED(Type.INVALID, "array.new_fixed length exceeds limit"),
 
     // TODO(mbovel): replace UNSPECIFIED_UNLINKABLE usages with appropriate errors.
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
@@ -146,10 +159,15 @@ public enum Failure {
     INDIRECT_CALL_TYPE_MISMATCH(Type.TRAP, "indirect call type mismatch"),
     INVALID_MULTI_VALUE_ARITY(Type.TRAP, "provided multi-value size does not match function type"),
     INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),
+    CAST_FAILURE(Type.TRAP, "cast failure"),
 
     NULL_REFERENCE(Type.TRAP, "null reference"),
     NULL_FUNCTION_REFERENCE(Type.TRAP, "null function reference"),
+    NULL_STRUCTURE_REFERENCE(Type.TRAP, "null structure reference"),
+    NULL_ARRAY_REFERENCE(Type.TRAP, "null array reference"),
+    NULL_I31_REFERENCE(Type.TRAP, "null i31 reference"),
     OUT_OF_BOUNDS_TABLE_ACCESS(Type.TRAP, "out of bounds table access"),
+    OUT_OF_BOUNDS_ARRAY_ACCESS(Type.TRAP, "out of bounds array access"),
     // GraalWasm-specific:
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),

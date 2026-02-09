@@ -48,9 +48,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
+import com.oracle.truffle.dsl.processor.java.model.CodeElement.StringBuilderCodeWriter;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.java.model.CodeElement.StringBuilderCodeWriter;
 
 /**
  * Utility to group values by their produced code. This allows e.g. to group switch statements

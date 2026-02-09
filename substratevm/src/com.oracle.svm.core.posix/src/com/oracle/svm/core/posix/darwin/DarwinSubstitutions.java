@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -43,6 +43,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
 
@@ -138,7 +139,7 @@ final class Target_java_util_prefs_FileSystemPreferences {
 final class IsJavaUtilPrefsPresent implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        var prefsMod = ModuleLayer.boot().findModule("java.prefs");
+        var prefsMod = JVMCIReflectionUtil.bootModuleLayer().findModule("java.prefs");
         return prefsMod.isPresent();
     }
 }

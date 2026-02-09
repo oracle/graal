@@ -891,7 +891,7 @@ public final class SuspendedEvent {
                 AtomicInteger frameDepth = new AtomicInteger(0);
                 Object polyglotInstrument = Debugger.ACCESSOR.instrumentSupport().getPolyglotInstrument(session.getDebugger().getEnv());
                 Object polyglotEngine = Debugger.ACCESSOR.engineSupport().getEngineFromPolyglotObject(polyglotInstrument);
-                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, hostStack, new GuestIterator(true) {
+                return Debugger.EXCEPTION.mergeHostGuestFrames(polyglotEngine, hostStack, new GuestIterator(true) {
                     @Override
                     public DebugStackFrame next() {
                         DebugStackFrame frame = super.next();

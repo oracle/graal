@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.webimage.wasm.gc;
 
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
-import static jdk.graal.compiler.word.Word.nullPointer;
+import static org.graalvm.word.impl.Word.nullPointer;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platforms;
@@ -37,11 +37,12 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.JavaMemoryUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
@@ -64,7 +65,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Simple allocator for the WASM backend using an implicit list of free and allocated blocks as well

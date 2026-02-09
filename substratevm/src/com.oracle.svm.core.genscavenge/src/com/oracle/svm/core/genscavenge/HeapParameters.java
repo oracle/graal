@@ -31,14 +31,14 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /** Constants and variables for the size and layout of the heap and behavior of the collector. */
 public final class HeapParameters {
@@ -124,6 +124,7 @@ public final class HeapParameters {
         return Word.unsigned(SerialGCOptions.MaxHeapFree.getValue());
     }
 
+    @Fold
     public static int getHeapChunkHeaderPadding() {
         return SerialAndEpsilonGCOptions.HeapChunkHeaderPadding.getValue();
     }
@@ -160,15 +161,12 @@ public final class HeapParameters {
         return Word.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
     }
 
-    /*
-     * Zapping
-     */
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Fold
     public static boolean getZapProducedHeapChunks() {
         return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapProducedHeapChunks.getValue();
     }
 
+    @Fold
     public static boolean getZapConsumedHeapChunks() {
         return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapConsumedHeapChunks.getValue();
     }

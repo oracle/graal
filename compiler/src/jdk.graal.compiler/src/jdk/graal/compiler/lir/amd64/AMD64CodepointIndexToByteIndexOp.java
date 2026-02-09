@@ -45,6 +45,7 @@ import java.util.EnumSet;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.code.DataSection;
@@ -138,6 +139,8 @@ public final class AMD64CodepointIndexToByteIndexOp extends AMD64ComplexVectorOp
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
+        AMD64Assembler.AMD64SIMDInstructionEncoding oldEncoding = asm.setTemporaryAvxEncoding(AMD64Assembler.AMD64SIMDInstructionEncoding.VEX);
+
         Register arr = asRegister(array);
         Register off = asRegister(offset);
         Register len = asRegister(length);
@@ -146,6 +149,8 @@ public final class AMD64CodepointIndexToByteIndexOp extends AMD64ComplexVectorOp
 
         asm.addq(arr, off);
         emitOp(crb, asm, arr, len, off, idx, ret);
+
+        asm.resetAvxEncoding(oldEncoding);
     }
 
     /**

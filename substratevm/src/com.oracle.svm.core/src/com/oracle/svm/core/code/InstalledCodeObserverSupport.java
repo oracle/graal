@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
@@ -41,7 +41,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton
 public final class InstalledCodeObserverSupport {

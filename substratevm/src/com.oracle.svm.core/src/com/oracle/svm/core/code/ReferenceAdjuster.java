@@ -29,7 +29,7 @@ import java.nio.ByteOrder;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.config.ConfigurationValues;

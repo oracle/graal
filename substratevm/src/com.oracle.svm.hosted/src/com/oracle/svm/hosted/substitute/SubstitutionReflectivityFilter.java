@@ -27,6 +27,10 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -35,15 +39,25 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -51,10 +65,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * java.lang.reflect or via JNI) due to substitutions.
  */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class SubstitutionReflectivityFilter implements InternalFeature {
 
     private HostVM hostVM;
     private AnalysisMetaAccess metaAccess;
+    private AnalysisUniverse universe;
+    private Map<ResolvedJavaType, Set<String>> forbiddenFields;
 
     public static SubstitutionReflectivityFilter singleton() {
         return ImageSingletons.lookup(SubstitutionReflectivityFilter.class);
@@ -65,6 +82,12 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         hostVM = access.getHostVM();
         metaAccess = access.getMetaAccess();
+        universe = access.getUniverse();
+        /*
+         * Those fields are used in allocation snippets, and registering them for reflection breaks
+         * the image build
+         */
+        forbiddenFields = Map.of(metaAccess.lookupJavaType(DynamicHub.class), Set.of("companion", "hubType", "NO_INTERFACE_ID"));
     }
 
     public boolean shouldExcludeElement(AnnotatedElement annotatedElement) {
@@ -139,9 +162,96 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             if (AnnotationUtil.isAnnotationPresent(aField, Delete.class) || AnnotationUtil.isAnnotationPresent(aField, InjectAccessors.class)) {
                 return true; // accesses would fail at runtime
             }
+            if (AnnotationUtil.isAnnotationPresent(aField, UnknownObjectField.class) || AnnotationUtil.isAnnotationPresent(aField, UnknownPrimitiveField.class)) {
+                return true; // reflective accesses to unknown fields break the image build
+            }
+            if (forbiddenFields.getOrDefault(metaAccess.lookupJavaType(field.getDeclaringClass()), Collections.emptySet()).contains(field.getName())) {
+                return true;
+            }
         } catch (UnsupportedFeatureException ignored) {
             return true; // unsupported platform or deleted: reachability breaks image build
         }
         return false;
+    }
+
+    public boolean shouldExclude(ResolvedJavaType type) {
+        return getFilteredAnalysisType(type) == null;
+    }
+
+    public AnalysisType getFilteredAnalysisType(ResolvedJavaType type) {
+        Objects.requireNonNull(type);
+        try {
+            AnalysisType analysisType = type instanceof AnalysisType aType ? aType : universe.lookup(type);
+            if (!hostVM.platformSupported(analysisType)) {
+                return null;
+            } else if (AnnotationUtil.isAnnotationPresent(analysisType, Delete.class)) {
+                return null; // accesses would fail at runtime
+            }
+            return analysisType;
+        } catch (UnsupportedFeatureException ignored) {
+            return null; // unsupported platform or deleted: reachability breaks image build
+        }
+    }
+
+    public boolean shouldExclude(ResolvedJavaMethod method) {
+        return getFilteredAnalysisMethod(method) == null;
+    }
+
+    public AnalysisMethod getFilteredAnalysisMethod(ResolvedJavaMethod method) {
+        Objects.requireNonNull(method);
+        if (shouldExclude(method.getDeclaringClass())) {
+            return null;
+        }
+        try {
+            AnalysisMethod analysisMethod = method instanceof AnalysisMethod aMethod ? aMethod : universe.lookup(method);
+            if (!hostVM.platformSupported(analysisMethod)) {
+                return null;
+            } else if (AnnotationUtil.isAnnotationPresent(analysisMethod, Delete.class)) {
+                return null; // accesses would fail at runtime
+            } else if (AnnotationUtil.isAnnotationPresent(analysisMethod, Fold.class)) {
+                return null; // accesses can contain hosted elements
+            } else if (analysisMethod.isSynthetic() && AnnotationUtil.isAnnotationPresent(analysisMethod.getDeclaringClass(), TargetClass.class)) {
+                /*
+                 * Synthetic methods are usually methods injected by javac to provide access to
+                 * private fields or methods (access$NNN). In substitution classes, the referenced
+                 * members might have been deleted, so do not expose their synthetic methods for
+                 * reflection. We could accurately determine affected methods by their graphs, but
+                 * these methods should never be relied on anyway.
+                 */
+                return null;
+            }
+            return analysisMethod;
+        } catch (UnsupportedFeatureException ignored) {
+            return null; // unsupported platform or deleted: reachability breaks image build
+        }
+    }
+
+    public boolean shouldExclude(ResolvedJavaField field) {
+        return getFilteredAnalysisField(field) == null;
+    }
+
+    public AnalysisField getFilteredAnalysisField(ResolvedJavaField field) {
+        Objects.requireNonNull(field);
+        if (shouldExclude(field.getDeclaringClass())) {
+            return null;
+        }
+        try {
+            AnalysisField analysisField = field instanceof AnalysisField aField ? aField : universe.lookup(field);
+            if (!hostVM.platformSupported(analysisField)) {
+                return null;
+            }
+            if (AnnotationUtil.isAnnotationPresent(analysisField, Delete.class) || AnnotationUtil.isAnnotationPresent(analysisField, InjectAccessors.class)) {
+                return null; // accesses would fail at runtime
+            }
+            if (AnnotationUtil.isAnnotationPresent(analysisField, UnknownObjectField.class) || AnnotationUtil.isAnnotationPresent(analysisField, UnknownPrimitiveField.class)) {
+                return null; // reflective accesses to unknown fields break the image build
+            }
+            if (forbiddenFields.getOrDefault(analysisField.getDeclaringClass(), Collections.emptySet()).contains(analysisField.getName())) {
+                return null;
+            }
+            return analysisField;
+        } catch (UnsupportedFeatureException ignored) {
+            return null; // unsupported platform or deleted: reachability breaks image build
+        }
     }
 }

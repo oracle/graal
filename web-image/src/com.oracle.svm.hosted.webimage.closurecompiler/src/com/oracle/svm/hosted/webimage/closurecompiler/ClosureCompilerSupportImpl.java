@@ -157,9 +157,9 @@ public class ClosureCompilerSupportImpl implements ClosureCompilerSupport {
         }
 
         if (!r.errors.isEmpty()) {
-            System.err.println("Errors:");
+            System.out.println("Errors:");
             for (JSError e : r.errors) {
-                System.err.println(e.toString());
+                System.out.println(e.toString());
             }
         }
 

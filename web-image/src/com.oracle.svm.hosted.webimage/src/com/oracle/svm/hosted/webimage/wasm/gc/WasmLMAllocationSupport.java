@@ -28,16 +28,21 @@ package com.oracle.svm.hosted.webimage.wasm.gc;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.word.Word;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WasmLMAllocationSupport implements GCAllocationSupport {
 
     private static final SubstrateForeignCallDescriptor NEW_INSTANCE = SnippetRuntime.findForeignCall(WasmAllocation.class, "newInstance", NO_SIDE_EFFECT);
@@ -66,11 +71,6 @@ public class WasmLMAllocationSupport implements GCAllocationSupport {
     @Override
     public ForeignCallDescriptor getNewPodInstanceStub() {
         throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Override
-    public boolean useTLAB() {
-        return false;
     }
 
     @Override

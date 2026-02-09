@@ -26,18 +26,20 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import static com.oracle.svm.interpreter.InterpreterFeature.assertionsEnabled;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.core.meta.MethodPointer;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -56,6 +58,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -66,7 +69,8 @@ import com.oracle.svm.util.ReflectionUtil;
 @Platforms(Platform.HOSTED_ONLY.class)
 @AutomaticallyRegisteredFeature
 public class CremaFeature implements InternalFeature {
-    private Method enterVTableInterpreterStub;
+    private AnalysisMethod enterVTableInterpreterStub;
+    private AnalysisMethod enterDirectInterpreterStub;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -84,32 +88,22 @@ public class CremaFeature implements InternalFeature {
         VMError.guarantee(!RuntimeClassLoading.isSupported() || ClassForNameSupport.respectClassLoader());
     }
 
-    private static boolean assertionsEnabled() {
-        boolean enabled = false;
-        assert (enabled = true) == true : "Enabling assertions";
-        return enabled;
-    }
-
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        methodHandleSetup();
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         try {
-            enterVTableInterpreterStub = InterpreterStubSection.class.getMethod("enterVTableInterpreterStub", int.class, Pointer.class);
+            AnalysisType declaringClass = accessImpl.getMetaAccess().lookupJavaType(InterpreterStubSection.class);
+
+            enterVTableInterpreterStub = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(accessImpl.getMetaAccess(), declaringClass,
+                            "enterVTableInterpreterStub", int.class, Pointer.class);
             accessImpl.registerAsRoot(enterVTableInterpreterStub, true, "stub for interpreter");
-        } catch (NoSuchMethodException e) {
+
+            enterDirectInterpreterStub = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(accessImpl.getMetaAccess(), declaringClass,
+                            "enterDirectInterpreterStub", InterpreterResolvedJavaMethod.class, Pointer.class);
+            accessImpl.registerAsRoot(enterDirectInterpreterStub, true, "stub for interpreter");
+        } catch (NoSuchMethodError e) {
             throw VMError.shouldNotReachHere(e);
         }
-    }
-
-    private static void methodHandleSetup() {
-        /*
-         * Get java.lang.invoke.LambdaForm.LF_FAILED initialized since we don't support perf counter
-         * creation at run-time. See Target_jdk_internal_perf_PerfCounter.
-         */
-        Class<?> lfClass = ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm");
-        Method failedCompilationCounterMethod = ReflectionUtil.lookupMethod(lfClass, "failedCompilationCounter");
-        ReflectionUtil.invokeMethod(failedCompilationCounterMethod, null);
     }
 
     @Override
@@ -147,6 +141,11 @@ public class CremaFeature implements InternalFeature {
         for (HostedType hType : hUniverse.getTypes()) {
             iUniverse.mirrorSVMVTable(hType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField, reason));
         }
+
+        InterpreterFeature.prepareSignatures();
+
+        accessImpl.registerAsImmutable(CremaSupport.singleton());
+        CremaSupport.singleton().setEnterDirectInterpreterStubEntryPoint(new MethodPointer(hUniverse.lookup(enterDirectInterpreterStub)));
     }
 
     @Override
@@ -196,6 +195,6 @@ public class CremaFeature implements InternalFeature {
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         FeatureImpl.BeforeImageWriteAccessImpl accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
-        stubSection.markEnterStubPatch(accessImpl.getHostedMetaAccess().lookupJavaMethod(enterVTableInterpreterStub));
+        stubSection.markEnterStubPatch(accessImpl.getHostedUniverse().lookup(enterVTableInterpreterStub));
     }
 }

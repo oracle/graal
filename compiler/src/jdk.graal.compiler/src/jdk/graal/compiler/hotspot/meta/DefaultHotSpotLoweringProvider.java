@@ -796,25 +796,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         }
         StructuredGraph graph = n.graph();
         assert !n.getHub().isConstant();
-        ValueNode memoryRead = createRead(graph, createOffsetAddress(graph, n.getHub(), runtime.getVMConfig().klassLayoutHelperOffset), HotSpotReplacementsUtil.KLASS_LAYOUT_HELPER_LOCATION,
-                        n.stamp(NodeView.DEFAULT), BarrierType.NONE, tool.lastFixedNode());
+        AddressNode address = createOffsetAddress(graph, n.getHub(), runtime.getVMConfig().klassLayoutHelperOffset);
+        Stamp stamp = n.stamp(NodeView.DEFAULT);
+        ValueNode memoryRead = FloatingReadNode.createRead(graph, address, HotSpotReplacementsUtil.KLASS_LAYOUT_HELPER_LOCATION, stamp, null, BarrierType.NONE, tool.lastFixedNode());
         n.replaceAtUsagesAndDelete(memoryRead);
-    }
-
-    private static ValueNode createRead(StructuredGraph graph, AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType, FixedWithNextNode insertAfter) {
-        return createRead(graph, address, location, stamp, null, barrierType, insertAfter);
-    }
-
-    private static ValueNode createRead(StructuredGraph graph, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType,
-                    FixedWithNextNode insertAfter) {
-        if (graph.getGraphState().allowsFloatingReads()) {
-            return graph.unique(new FloatingReadNode(address, location, null, stamp, guard, barrierType));
-        } else {
-            ReadNode memoryRead = graph.add(new ReadNode(address, location, null, stamp, guard, barrierType));
-            graph.addAfterFixed(insertAfter, memoryRead);
-            assert memoryRead.canFloat() : "this path is only useable for floatable reads: " + memoryRead;
-            return memoryRead;
-        }
     }
 
     private void lowerHubGetClassNode(HubGetClassNode n, LoweringTool tool) {
@@ -829,15 +814,15 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         AddressNode mirrorAddress = createOffsetAddress(graph, hub, vmConfig.classMirrorOffset);
         Stamp loadStamp = n.stamp(NodeView.DEFAULT);
         FixedWithNextNode insertAfter = tool.lastFixedNode();
-        ValueNode read = createRead(graph, mirrorAddress, HotSpotReplacementsUtil.CLASS_MIRROR_LOCATION, StampFactory.forKind(target.wordJavaKind),
-                        BarrierType.NONE, insertAfter);
+        Stamp stamp = StampFactory.forKind(target.wordJavaKind);
+        ValueNode read = FloatingReadNode.createRead(graph, mirrorAddress, HotSpotReplacementsUtil.CLASS_MIRROR_LOCATION, stamp, null, BarrierType.NONE, insertAfter);
         if (read instanceof FixedWithNextNode fixed) {
             insertAfter = fixed;
         }
         // Read the Object from the OopHandle
         AddressNode address = createOffsetAddress(graph, read, 0);
-        read = createRead(graph, address, HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION, loadStamp,
-                        barrierSet.readBarrierType(HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION, address, loadStamp), insertAfter);
+        BarrierType barrierType = barrierSet.readBarrierType(HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION, address, loadStamp);
+        read = FloatingReadNode.createRead(graph, address, HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION, loadStamp, null, barrierType, insertAfter);
         n.replaceAtUsagesAndDelete(read);
     }
 
@@ -849,7 +834,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         StructuredGraph graph = n.graph();
         assert !n.getValue().isConstant();
         AddressNode address = createOffsetAddress(graph, n.getValue(), runtime.getVMConfig().klassOffset);
-        ValueNode read = createRead(graph, address, HotSpotReplacementsUtil.CLASS_KLASS_LOCATION, n.stamp(NodeView.DEFAULT), BarrierType.NONE, tool.lastFixedNode());
+        Stamp stamp = n.stamp(NodeView.DEFAULT);
+        ValueNode read = FloatingReadNode.createRead(graph, address, HotSpotReplacementsUtil.CLASS_KLASS_LOCATION, stamp, null, BarrierType.NONE, tool.lastFixedNode());
         n.replaceAtUsagesAndDelete(read);
     }
 
@@ -924,7 +910,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
+    public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f, LoweringTool tool) {
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) f;
         JavaConstant base = constantReflection.asJavaClass(field.getDeclaringClass());
         return ConstantNode.forConstant(base, metaAccess, graph);
@@ -942,7 +928,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             guard = AbstractBeginNode.prevBegin(anchor);
         }
         AddressNode address = createOffsetAddress(graph, arrayHub, runtime.getVMConfig().arrayClassElementOffset);
-        return createRead(graph, address, HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, KlassPointerStamp.klassNonNull(), guard, BarrierType.NONE, insertAfter);
+        return FloatingReadNode.createRead(graph, address, HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, KlassPointerStamp.klassNonNull(), guard, BarrierType.NONE, insertAfter);
     }
 
     private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
@@ -1179,7 +1165,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
         if (config.useCompactObjectHeaders) {
             AddressNode address = createOffsetAddress(graph, object, config.markOffset);
-            ValueNode memoryRead = createRead(graph, address, COMPACT_HUB_LOCATION, StampFactory.forKind(JavaKind.Long), BarrierType.NONE, insertAfter);
+            Stamp stamp = StampFactory.forKind(JavaKind.Long);
+            ValueNode memoryRead = FloatingReadNode.createRead(graph, address, COMPACT_HUB_LOCATION, stamp, null, BarrierType.NONE, insertAfter);
             ValueNode rawCompressedHubWordSize = graph.addOrUnique(UnsignedRightShiftNode.create(memoryRead, ConstantNode.forInt(config.markWordKlassShift, graph), NodeView.DEFAULT));
             ValueNode rawCompressedHub = graph.addOrUnique(NarrowNode.create(rawCompressedHubWordSize, 32, NodeView.DEFAULT));
             ValueNode compressedKlassPointer = graph.addOrUnique(PointerCastNode.create(hubStamp, rawCompressedHub));
@@ -1187,7 +1174,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         }
         AddressNode address = createOffsetAddress(graph, object, config.hubOffset);
         LocationIdentity hubLocation = config.useCompressedClassPointers ? COMPRESSED_HUB_LOCATION : HUB_LOCATION;
-        ValueNode memoryRead = createRead(graph, address, hubLocation, hubStamp, BarrierType.NONE, insertAfter);
+        ValueNode memoryRead = FloatingReadNode.createRead(graph, address, hubLocation, hubStamp, null, BarrierType.NONE, insertAfter);
         if (config.useCompressedClassPointers) {
             return HotSpotCompressionNode.uncompress(graph, memoryRead, config.getKlassEncoding());
         } else {

@@ -41,17 +41,11 @@
 package org.graalvm.wasm;
 
 /**
- * Superclass for wasm entities that can hold embedder data.
+ * Interface for wasm entities that can hold embedder data.
  */
-public class EmbedderDataHolder {
-    private Object embedderData = WasmConstant.VOID;
+public interface EmbedderDataHolder {
 
-    public void setEmbedderData(Object embedderData) {
-        this.embedderData = embedderData;
-    }
+    void setEmbedderData(Object embedderData);
 
-    public Object getEmbedderData() {
-        return embedderData;
-    }
-
+    Object getEmbedderData();
 }

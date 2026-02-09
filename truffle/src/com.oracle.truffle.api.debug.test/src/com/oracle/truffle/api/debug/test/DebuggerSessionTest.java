@@ -63,7 +63,9 @@ import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -1010,25 +1012,41 @@ public class DebuggerSessionTest extends AbstractDebugTest {
     }
 
     @Test
-    public void testDebuggedSourcesCanBeReleasedAbsolute() {
-        testDebuggedSourcesCanBeReleased(() -> {
-            return Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT", "file").cached(false).buildLiteral();
+    public void testDebuggedSourcesCanBeReleasedAbsolute() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            testDebuggedSourcesCanBeReleased(() -> {
+                return Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT", "file").cached(false).buildLiteral();
+            });
         });
     }
 
     @Test
-    public void testDebuggedSourcesCanBeReleasedRelative() throws IOException {
-        String sourceContent = "\n  relative source\nVarA";
-        String relativePath = "relative/test.file";
-        Path testSourcePath = Files.createTempDirectory("testPath").toRealPath();
-        Files.createDirectory(testSourcePath.resolve("relative"));
-        Path filePath = testSourcePath.resolve(relativePath);
-        Files.write(filePath, sourceContent.getBytes());
-        testDebuggedSourcesCanBeReleased(() -> {
-            TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, true);
-            ProxyLanguage.setDelegate(language);
-            return Source.newBuilder(ProxyLanguage.ID, sourceContent, "file").cached(false).buildLiteral();
+    public void testDebuggedSourcesCanBeReleasedRelative() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            String sourceContent = "\n  relative source\nVarA";
+            String relativePath = "relative/test.file";
+            try {
+                Path testSourcePath = Files.createTempDirectory("testPath").toRealPath();
+                Files.createDirectory(testSourcePath.resolve("relative"));
+                Path filePath = testSourcePath.resolve(relativePath);
+                Files.write(filePath, sourceContent.getBytes());
+            } catch (IOException ioe) {
+                throw new AssertionError(ioe);
+            }
+            testDebuggedSourcesCanBeReleased(() -> {
+                TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, true);
+                ProxyLanguage.setDelegate(language);
+                return Source.newBuilder(ProxyLanguage.ID, sourceContent, "file").cached(false).buildLiteral();
+            });
         });
+    }
+
+    private static void runInSubprocess(Runnable runnable) throws IOException, InterruptedException {
+        if (ImageInfo.inImageCode()) {
+            runnable.run();
+        } else {
+            SubprocessTestUtils.newBuilder(DebuggerSessionTest.class, runnable).run();
+        }
     }
 
     private void testDebuggedSourcesCanBeReleased(Supplier<Source> sourceFactory) {

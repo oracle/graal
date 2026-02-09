@@ -694,7 +694,10 @@ class CustomLibJVMLinking(DefaultNativeProject):
         assert not missing_libs, "missing libraries expected by the VM: " + str(missing_libs)
 
         static_lib_dir = os.path.join(get_java_home_dep().java_home, "lib", "static", platform)
-        ldf = []
+        # Allow graal-builder-jdk (built with `make graal-builder-image` in labsjdk repo) to work
+        if not exists(static_lib_dir):
+            static_lib_dir = os.path.join(get_java_home_dep().java_home, "lib")
+        flags = []
 
         for jdk_static_lib in os.listdir(static_lib_dir):
             if not jdk_static_lib.endswith('.a'):
@@ -703,9 +706,9 @@ class CustomLibJVMLinking(DefaultNativeProject):
             if jdk_static_lib[3:-2] not in darwin_linked_in_libs:
                 continue
 
-            ldf.append(f'-Wl,-force_load,{os.path.join(static_lib_dir, jdk_static_lib)}')
+            flags.append(f'-Wl,-force_load,{os.path.join(static_lib_dir, jdk_static_lib)}')
 
-        return ldf + super(CustomLibJVMLinking, self).ldflags
+        return flags + super(CustomLibJVMLinking, self).ldflags
 
 
 def register_espresso_runtime_resource(java_home_dep, llvm_java_home_dep, register_project, register_distribution, suite, is_main):

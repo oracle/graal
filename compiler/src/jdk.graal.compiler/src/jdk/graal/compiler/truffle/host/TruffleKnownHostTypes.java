@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,9 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaMethod CompilerDirectives_hasNextTier = findMethod(CompilerDirectives, "hasNextTier");
     public final ResolvedJavaType TruffleBoundary = lookupType("com.oracle.truffle.api.CompilerDirectives$TruffleBoundary");
     public final ResolvedJavaType BytecodeInterpreterSwitch = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch");
+    public final ResolvedJavaType BytecodeInterpreterHandler = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandler");
+    public final ResolvedJavaType BytecodeInterpreterHandlerConfig = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig");
+    public final ResolvedJavaType BytecodeInterpreterFetchOpcode = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterFetchOpcode");
     public final ResolvedJavaType BytecodeInterpreterSwitchBoundary = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitchBoundary");
     public final ResolvedJavaType InliningCutoff = lookupType("com.oracle.truffle.api.HostCompilerDirectives$InliningCutoff");
     public final ResolvedJavaType InliningRoot = lookupTypeOptional("com.oracle.truffle.api.HostCompilerDirectives$InliningRoot");
@@ -66,14 +69,14 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
     }
 
     /**
-     * Determines if {@code method} is the inInterpeter method from CompilerDirectives.
+     * Determines if {@code method} is the inInterpreter method from CompilerDirectives.
      */
     public boolean isInInterpreter(ResolvedJavaMethod method) {
         return method.equals(CompilerDirectives_inInterpreter);
     }
 
     /**
-     * Determines if {@code method} is the inInterpeterFastPath method from HostCompilerDirectives.
+     * Determines if {@code method} is the inInterpreterFastPath method from HostCompilerDirectives.
      */
     public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
         return method.equals(HostCompilerDirectives_inInterpreterFastPath);

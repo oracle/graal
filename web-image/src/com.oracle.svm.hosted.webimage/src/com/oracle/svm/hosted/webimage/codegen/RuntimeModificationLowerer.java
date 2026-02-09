@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,19 +26,18 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import static com.oracle.svm.webimage.hightiercodegen.Emitter.of;
 
-import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.hightiercodegen.Emitter;
 import com.oracle.svm.webimage.type.TypeControl;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Lowers tweaks and modifications to the normal runtime.
@@ -80,24 +79,19 @@ public class RuntimeModificationLowerer {
     }
 
     private static void insertPrimitiveHubProperties(JSCodeGenTool tool, JavaKind kind) {
-        try {
-            Class<?> primitiveClass = kind.toJavaClass();
-            Class<?> boxedClass = kind.toBoxedJavaClass();
-            MetaAccessProvider meta = tool.getProviders().getMetaAccess();
-            TypeControl typeControl = tool.getJSProviders().typeControl();
-            HostedType primitiveType = (HostedType) meta.lookupJavaType(primitiveClass);
-            HostedType boxedType = (HostedType) meta.lookupJavaType(boxedClass);
-            assignHubProperty(tool, typeControl, primitiveType, of(RuntimeConstants.RUNTIME_SYMBOL + ".boxedHub"), typeControl.requestHubName(boxedType));
-            // Note: The valueOf and <type>Value methods are always added to the universe in the
-            // WebImageGenerator.
-            String boxedName = typeControl.requestTypeName(boxedType);
-            String valueOfName = typeControl.requestMethodName(meta.lookupJavaMethod(boxedClass.getMethod("valueOf", primitiveClass)));
-            assignHubProperty(tool, typeControl, primitiveType, of(RuntimeConstants.RUNTIME_SYMBOL + ".box"), boxedName + "." + valueOfName);
-            String toPrimitiveName = typeControl.requestMethodName(meta.lookupJavaMethod(boxedClass.getMethod(kind.getJavaName() + "Value")));
-            assignHubProperty(tool, typeControl, primitiveType, of(RuntimeConstants.RUNTIME_SYMBOL + ".unbox"), boxedName + ".prototype." + toPrimitiveName);
-        } catch (NoSuchMethodException e) {
-            throw JVMCIError.shouldNotReachHere(e);
-        }
+        Class<?> primitiveClass = kind.toJavaClass();
+        HostedMetaAccess meta = tool.getProviders().getMetaAccess();
+        TypeControl typeControl = tool.getJSProviders().typeControl();
+        HostedType primitiveType = meta.lookupJavaType(primitiveClass);
+        HostedType boxedType = meta.lookupJavaType(kind.toBoxedJavaClass());
+        assignHubProperty(tool, typeControl, primitiveType, of(RuntimeConstants.RUNTIME_SYMBOL + ".boxedHub"), typeControl.requestHubName(boxedType));
+        // Note: The valueOf and <type>Value methods are always added to the universe in the
+        // WebImageGenerator.
+        String boxedName = typeControl.requestTypeName(boxedType);
+        String valueOfName = typeControl.requestMethodName(JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, boxedType, "valueOf", primitiveClass));
+        assignHubProperty(tool, typeControl, primitiveType, of(RuntimeConstants.RUNTIME_SYMBOL + ".box"), boxedName + "." + valueOfName);
+        String toPrimitiveName = typeControl.requestMethodName(JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, boxedType, kind.getJavaName() + "Value"));
+        assignHubProperty(tool, typeControl, primitiveType, of(RuntimeConstants.RUNTIME_SYMBOL + ".unbox"), boxedName + ".prototype." + toPrimitiveName);
     }
 
     private static void assignHubProperty(JSCodeGenTool tool, TypeControl typeControl, HostedType primitiveType, Emitter propertyExpression, String value) {
@@ -110,18 +104,11 @@ public class RuntimeModificationLowerer {
     private static void indexHubs(JSCodeGenTool tool) {
         WebImageTypeControl typeControl = tool.getJSProviders().typeControl();
         tool.genComment("Create an index between class names and hubs in the image.");
-        MetaAccessProvider meta = tool.getProviders().getMetaAccess();
         for (HostedType type : typeControl.emittedTypes()) {
             assignJsClassToHub(tool, typeControl, type);
             if (COMPULSORY_RUNTIME_HUBS.contains(type.getJavaClass())) {
                 // Only classes necessary for coercion are emitted.
                 assignToRuntimeHubs(tool, typeControl, type, type.getJavaClass().getName());
-            }
-        }
-        for (JavaKind kind : JavaKind.values()) {
-            if (kind.isPrimitive() && kind != JavaKind.Void) {
-                Class<?> arrayClass = Array.newInstance(kind.toJavaClass(), 0).getClass();
-                assignToRuntimeHubs(tool, typeControl, (HostedType) meta.lookupJavaType(arrayClass), kind.getJavaName() + "[]");
             }
         }
     }

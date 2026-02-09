@@ -66,11 +66,12 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
@@ -84,7 +85,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
      * <li>All internal modules.</li>
      * <li>All tooling modules such as the java.compiler.</li>
      * <li>Modules that are currently not supported with Native Image (e.g.,
-     * <code>java.management</code>.</li>
+     * <code>java.management</code>).</li>
      * </ul>
      */
     public static final Set<String> JDK_MODULES_TO_PRESERVE = Set.of(
@@ -186,14 +187,29 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         return joiner.toString();
     }
 
-    public static void registerPreservedClasses(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
-        var classesOrPackagesToIgnore = SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet();
+    /**
+     * Sorts types such that subclasses precede superclasses and classes of the same class hierarchy
+     * depth are sorted alphabetically by name. This sort order avoids complexity related to field
+     * registration.
+     */
+    private static final Comparator<ResolvedJavaType> PRESERVED_CLASSES_COMPARATOR = (t1, t2) -> {
+        int t1Depth = JVMCIReflectionUtil.countSuperclasses(t1);
+        int t2Depth = JVMCIReflectionUtil.countSuperclasses(t2);
+        if (t1Depth == t2Depth) {
+            return t1.toClassName().compareTo(t2.toClassName());
+        }
+        return t2Depth - t1Depth;
+    };
+
+    public static void registerPreservedClasses(BigBang bb, NativeImageClassLoaderSupport classLoaderSupport) {
+        Set<String> classesOrPackagesToIgnore = SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet();
         ClassInclusionPolicy classInclusionPolicy = new DefaultAllInclusionPolicy("included by " + SubstrateOptionsParser.commandArgument(Preserve, ""));
         classInclusionPolicy.setBigBang(bb);
         var classesToPreserve = classLoaderSupport.getClassesToPreserve()
-                        .filter(clazz -> classInclusionPolicy.isOriginalTypeIncluded(originalMetaAccess.lookupJavaType(clazz)))
-                        .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
-                        .sorted(Comparator.comparing(ReflectionUtil::getClassHierarchyDepth).reversed())
+                        .filter(classInclusionPolicy::isOriginalTypeIncluded)
+                        .filter(t -> !(classesOrPackagesToIgnore.contains(JVMCIReflectionUtil.getPackageName(t)) || classesOrPackagesToIgnore.contains(t.toClassName())))
+                        .sorted(PRESERVED_CLASSES_COMPARATOR)
+                        .map(OriginalClassProvider::getJavaClass)
                         .toList();
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
@@ -202,10 +218,6 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         final RuntimeSerializationSupport<AccessCondition> serialization = RuntimeSerializationSupport.singleton();
         final AccessCondition always = AccessCondition.unconditional();
 
-        /*
-         * Sort descending by class hierarchy depth to avoid complexity related to field
-         * registration.
-         */
         classesToPreserve.forEach(c -> {
             registerType(reflection, c);
 
@@ -232,10 +244,10 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                 jni.register(always, true, c);
                 try {
                     for (Method declaredMethod : c.getDeclaredMethods()) {
-                        jni.register(always, false, true, declaredMethod);
+                        jni.register(always, true, declaredMethod);
                     }
                     for (Constructor<?> declaredConstructor : c.getDeclaredConstructors()) {
-                        jni.register(always, false, true, declaredConstructor);
+                        jni.register(always, true, declaredConstructor);
                     }
                     for (Field declaredField : c.getDeclaredFields()) {
                         jni.register(always, false, true, declaredField);
@@ -263,8 +275,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * upwards multiple times when caching is implemented.
          */
         classesToPreserve.reversed().forEach(c -> {
-            reflection.registerAllFields(always, true, c);
-            reflection.registerAllMethodsQuery(always, false, true, c);
+            reflection.register(always, false, true, c.getFields());
+            reflection.register(always, true, c.getMethods());
             serialization.register(always, true, c);
         });
 
@@ -275,19 +287,12 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         }
     }
 
-    private static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
+    public static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
         AccessCondition always = AccessCondition.unconditional();
         reflection.register(always, true, c);
 
-        reflection.registerAllDeclaredFields(always, true, c);
-        reflection.registerAllDeclaredMethodsQuery(always, false, true, c);
-        reflection.registerAllDeclaredConstructorsQuery(always, false, true, c);
-        reflection.registerAllConstructorsQuery(always, false, true, c);
-        reflection.registerAllClassesQuery(always, true, c);
-        reflection.registerAllDeclaredClassesQuery(always, true, c);
-        reflection.registerAllNestMembersQuery(always, true, c);
-        reflection.registerAllPermittedSubclassesQuery(always, true, c);
-        reflection.registerAllRecordComponentsQuery(always, c);
-        reflection.registerAllSignersQuery(always, c);
+        reflection.register(always, false, true, c.getDeclaredFields());
+        reflection.register(always, true, c.getDeclaredMethods());
+        reflection.register(always, true, c.getDeclaredConstructors());
     }
 }

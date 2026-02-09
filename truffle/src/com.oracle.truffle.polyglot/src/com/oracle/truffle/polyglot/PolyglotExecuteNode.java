@@ -119,7 +119,7 @@ abstract class PolyglotExecuteNode extends Node {
                     @Cached InlinedBranchProfile unsupportedError,
                     @Cached InlinedBranchProfile arityError,
                     @Cached InlinedBranchProfile unsupportedArgumentError) {
-        Object[] functionArgs = toGuests.execute(node, languageContext, argsArray);
+        Object[] functionArgs = toGuests.execute(node, argsArray);
         Object result;
         boolean executable = executableCondition.profile(node, interop.isExecutable(function));
         try {

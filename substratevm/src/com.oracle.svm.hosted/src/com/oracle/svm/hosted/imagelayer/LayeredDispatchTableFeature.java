@@ -26,10 +26,8 @@ package com.oracle.svm.hosted.imagelayer;
 
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,12 +38,11 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.util.OriginalClassProvider;
-import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.ObjectFile;
@@ -58,12 +55,11 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodRef;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -76,11 +72,12 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.VTableBuilder;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -102,16 +99,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link #beforeAnalysis}.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class LayeredDispatchTableFeature implements InternalFeature {
-    public static final class Options {
-        @Option(help = "Log discrepancies between layered open world type information. This is an experimental option which will be removed.")//
-        public static final HostedOptionKey<Boolean> LogLayeredDispatchTableDiscrepancies = new HostedOptionKey<>(false);
-
-        @Option(help = "Throw an error when there are discrepancies between layered open world type information. This is an experimental option which will be removed.")//
-        public static final HostedOptionKey<Boolean> ErrorOnLayeredDispatchTableDiscrepancies = new HostedOptionKey<>(false);
-    }
-
     private final boolean buildingSharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
     private final boolean buildingInitialLayer = buildingSharedLayer && ImageLayerBuildingSupport.buildingInitialLayer();
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
@@ -217,15 +206,15 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     }
 
     private PriorDispatchTable getPriorDispatchTable(HostedType hType) {
-        if (hType.getWrapped().isInBaseLayer()) {
+        if (hType.getWrapped().isInSharedLayer()) {
             return priorDispatchTableCache.computeIfAbsent(hType, this::createPriorDispatchTable);
         } else {
             return null;
         }
     }
 
-    private static Set<String> getPriorUnresolvedSymbols() {
-        Set<String> unresolvedSymbols = new HashSet<>();
+    private static Iterable<String> getPriorUnresolvedSymbols() {
+        EconomicSet<String> unresolvedSymbols = EconomicSet.create();
         var hubInfos = HostedImageLayerBuildingSupport.singleton().getLoader().getDynamicHubInfos();
         for (var hubInfo : hubInfos) {
             if (hubInfo.getInstalled()) {
@@ -241,7 +230,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
                 }
             }
         }
-        return Collections.unmodifiableSet(unresolvedSymbols);
+        return unresolvedSymbols;
     }
 
     static Stream<AnalysisMethod> getPriorVirtualCallTargets() {
@@ -349,7 +338,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     }
 
     private void injectPriorLayerInfo(HostedType type, HostedDispatchTable dispatchTable) {
-        if (type.getWrapped().isInBaseLayer()) {
+        if (type.getWrapped().isInSharedLayer()) {
             var priorInfo = getPriorDispatchTable(type);
             if (priorInfo != null) {
                 compareTypeInfo(dispatchTable, priorInfo);
@@ -399,7 +388,8 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     }
 
     private static void compareTypeInfo(HostedDispatchTable curInfo, PriorDispatchTable priorInfo) {
-        if (!(Options.LogLayeredDispatchTableDiscrepancies.getValue() || Options.ErrorOnLayeredDispatchTableDiscrepancies.getValue())) {
+        if (!(LayeredImageOptions.LayeredImageDiagnosticOptions.LogLayeredDispatchTableDiscrepancies.getValue() ||
+                        LayeredImageOptions.LayeredImageDiagnosticOptions.AbortOnLayeredDispatchTableDiscrepancies.getValue())) {
             // it is not necessary to compare type info
             return;
         }
@@ -428,10 +418,10 @@ public class LayeredDispatchTableFeature implements InternalFeature {
 
         if (!errorMessage.isEmpty()) {
             String message = String.format("Issue while comparing dispatch table info: %s and %s%n%s", curInfo, priorInfo, errorMessage);
-            if (Options.ErrorOnLayeredDispatchTableDiscrepancies.getValue()) {
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.AbortOnLayeredDispatchTableDiscrepancies.getValue()) {
                 throw VMError.shouldNotReachHere(message);
             }
-            if (Options.LogLayeredDispatchTableDiscrepancies.getValue()) {
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogLayeredDispatchTableDiscrepancies.getValue()) {
                 System.out.println(message);
             }
         }
@@ -535,7 +525,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
         HostedMethod invalidMethod = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
 
         Map<String, HostedMethod> resolvedPriorVTableMap = new HashMap<>();
-        Set<String> unresolvedVTableSymbolNames = generateUnresolvedSymbolNames ? new HashSet<>() : null;
+        EconomicSet<String> unresolvedVTableSymbolNames = generateUnresolvedSymbolNames ? EconomicSet.create() : null;
 
         Map<ResolvedJavaMethod, String> deduplicatedMethodMap = new HashMap<>();
         final var unresolvedSlotCount = IntStream.iterate(0, i -> i + 1).iterator();
@@ -791,7 +781,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
      * not always possible to match on method id. When it is not possible, we store
      * {@link PriorDispatchMethod#UNPERSISTED_METHOD_ID} as the value.
      */
-    record PriorDispatchMethod(int methodId, String symbolName, int vtableIndex, boolean isVirtualCallTarget) {
-        static final int UNPERSISTED_METHOD_ID = -1;
+    public record PriorDispatchMethod(int methodId, String symbolName, int vtableIndex, boolean isVirtualCallTarget) {
+        public static final int UNPERSISTED_METHOD_ID = -1;
     }
 }

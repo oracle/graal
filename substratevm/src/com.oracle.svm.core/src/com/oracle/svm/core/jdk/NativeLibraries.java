@@ -31,7 +31,6 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
@@ -41,6 +40,7 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import org.graalvm.word.impl.Word;
 
 /**
  * Base for holders of native libraries. The implemented methods provide different ways of loading a

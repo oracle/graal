@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -44,6 +44,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject;
@@ -59,7 +60,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.word.BarrieredAccess;
+import org.graalvm.word.impl.BarrieredAccess;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -269,7 +270,9 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
                 monitor = (JavaMonitor) UNSAFE.compareAndExchangeReference(obj, monitorOffset, null, newMonitor);
                 if (monitor == null) { // successful
                     JavaMonitorInflateEvent.emit(obj, startTicks, MonitorInflationCause.MONITOR_ENTER);
-                    newMonitor.latestJfrTid = current;
+                    if (HasJfrSupport.get()) {
+                        newMonitor.latestJfrTid = current;
+                    }
                     return;
                 }
             }

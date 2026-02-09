@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import java.util.function.BiConsumer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -58,7 +59,6 @@ import jdk.graal.compiler.hotspot.stubs.ForeignCallStub;
 import jdk.graal.compiler.hotspot.stubs.InvokeJavaMethodStub;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -119,9 +119,16 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      * know the signature of such calls during image building.
      */
     public void register(ForeignCallSignature sig) {
-        if (!foreignCalls.containsKey(sig)) {
+        if (!isRegistered(sig)) {
             foreignCalls.put(sig, null);
         }
+    }
+
+    /**
+     * Checks if a foreign call signature is registered.
+     */
+    public boolean isRegistered(ForeignCallSignature sig) {
+        return foreignCalls.containsKey(sig);
     }
 
     /**

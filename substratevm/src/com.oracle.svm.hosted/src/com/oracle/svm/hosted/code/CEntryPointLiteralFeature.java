@@ -77,7 +77,7 @@ public class CEntryPointLiteralFeature implements InternalFeature {
                     AnalysisMethod aStub = CEntryPointCallStubSupport.singleton().getStubForMethod(aMethod);
                     HostedMethod hStub = (HostedMethod) metaAccess.getUniverse().lookup(aStub);
                     assert hStub.wrapped.isNativeEntryPoint();
-                    assert hStub.isCompiled() || hStub.wrapped.isInBaseLayer();
+                    assert hStub.isCompiled() || hStub.wrapped.isInSharedLayer();
                     /*
                      * Only during compilation and native image writing, we do the actual
                      * replacement.

@@ -43,9 +43,6 @@ package com.oracle.truffle.api.object.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -56,8 +53,11 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
+@SuppressWarnings("deprecation")
 public class MergedLibraryTest extends AbstractLibraryTest {
 
     @ExportLibrary(InteropLibrary.class)
@@ -82,25 +82,25 @@ public class MergedLibraryTest extends AbstractLibraryTest {
         @ExportMessage(name = "isMemberReadable")
         @ExportMessage(name = "isMemberModifiable")
         final boolean isMemberReadable(String member,
-                        @CachedLibrary("this") DynamicObjectLibrary lib) {
+                        @CachedLibrary("this") com.oracle.truffle.api.object.DynamicObjectLibrary lib) {
             return lib.containsKey(this, member);
         }
 
         @ExportMessage
         final Object readMember(String member,
-                        @CachedLibrary("this") DynamicObjectLibrary lib) {
+                        @CachedLibrary("this") com.oracle.truffle.api.object.DynamicObjectLibrary lib) {
             return lib.getOrDefault(this, member, 42);
         }
 
         @ExportMessage
         final boolean isMemberInsertable(String member,
-                        @CachedLibrary("this") DynamicObjectLibrary lib) {
+                        @CachedLibrary("this") com.oracle.truffle.api.object.DynamicObjectLibrary lib) {
             return !isMemberReadable(member, lib);
         }
 
         @ExportMessage
         final void writeMember(String member, Object value,
-                        @CachedLibrary("this") DynamicObjectLibrary lib) {
+                        @CachedLibrary("this") com.oracle.truffle.api.object.DynamicObjectLibrary lib) {
             lib.put(this, member, value);
         }
     }

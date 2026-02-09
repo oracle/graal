@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
@@ -46,7 +47,7 @@ import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -76,6 +77,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -91,7 +93,6 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.word.Word;
 
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
@@ -211,7 +212,8 @@ public final class HeapImpl extends Heap {
     public boolean tearDown() {
         youngGeneration.tearDown();
         oldGeneration.tearDown();
-        getChunkProvider().tearDown();
+        chunkProvider.tearDown();
+        gcImpl.tearDown();
 
         if (Metaspace.isSupported()) {
             MetaspaceImpl.singleton().tearDown();
@@ -701,10 +703,22 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public void optionValueChanged(RuntimeOptionKey<?> key) {
-        if (!SubstrateUtil.HOSTED) {
-            GCImpl.getPolicy().updateSizeParameters();
+    public void optionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
+        if (SubstrateUtil.HOSTED || isIrrelevantForGCPolicy(key)) {
+            return;
         }
+
+        GCImpl.getPolicy().updateSizeParameters();
+    }
+
+    /** For the GC policy, mainly heap-size-related GC options are relevant. */
+    private static boolean isIrrelevantForGCPolicy(RuntimeOptionKey<?> key) {
+        return key == SubstrateGCOptions.DisableExplicitGC ||
+                        key == SubstrateGCOptions.PrintGC ||
+                        key == SubstrateGCOptions.VerboseGC ||
+                        key == SubstrateGCOptions.ConcealedOptions.VerifyBeforeGC ||
+                        key == SubstrateGCOptions.ConcealedOptions.VerifyDuringGC ||
+                        key == SubstrateGCOptions.ConcealedOptions.VerifyAfterGC;
     }
 
     @Override
@@ -1008,7 +1022,7 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private long maxMemory() {
-        GCImpl.getPolicy().updateSizeParameters();
+        GCImpl.getPolicy().ensureSizeParametersInitialized();
         return GCImpl.getPolicy().getMaximumHeapSize().rawValue();
     }
 

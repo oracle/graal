@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.1 (Internal Version 25.1.0)
+* (GR-70601) (GR-70592) (GR-70593) (GR-70598) (GR-71096): Add experimental support for just-in-time compilation of Java bytecodes loaded at run-time.
 * (GR-44384) Add size warnings for bundles when individual or cumulative file sizes exceed limits. Configure with options `size-warning-file-limit` and `size-warning-total-limit` to `bundle-create`, sizes in MiB.
 * (GR-43070) Add a new API flag `-Werror` to treat warnings as errors.
 * (GR-69280) Allow use of the `graal.` prefix for options without issuing a warning.
@@ -12,7 +13,15 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-70136) Add a new tool `--tool:llvm` for the LLVM backend of Native Image.
 * (GR-68984) Ship the `reachability-metadata-schema.json` together with GraalVM at `<graalvm-home>/lib/svm/schemas/reachability-metadata-schema.json`.
 * (GR-68984) Improve the schema to capture detailed constraints about each element in the `reachability-metadata-schema.json`.
+* (GR-57214) `-H:...` can now be used at build-time to set new defaults for both build-time and run-time options (for example, run-time option `-R:MaxHeapSize` can now also be set via `-H:MaxHeapSize`).
 * (GR-70046) Remove all support for running image builder on classpath.
+* (GR-71146) Make `ParseRuntimeOptions` a non-experimental flag and extract a separate (experimental) `InitializeVM` flag. If your project previously used `ParseRuntimeOptions` and you call `VMRuntime.initialize()` manually, you might have to disable the new flag.
+* (GR-69577) Retire `--future-defaults=complete-reflection-types`. All reflective operations on types registered for reflection will now return complete results.
+* (GR-71698) Introduced a new value for `--future-defaults=run-time-initialize-resource-bundles` that shifts away from build-time initialization for 'java.util.ResourceBundle'. Unless you store 'ResourceBundle'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+* (GR-71607) Deprecated and deleted the FallbackFeature. The flag `--no-fallback` is deprecated and has no effect any longer, other related options are removed.
+* (GR-71698) Introduced `--future-defaults=class-for-name-respects-class-loader` that changes 'Class.forName' and 'ClassLoader#loadClass' to respect the class loader arguments. 
+* (GR-72689) The context class loader seen during build-time context initialization is now part of the native image module layer. This means that by default, service loaders will now see some extra service providers definition coming from the native image module path.
+* (GR-52538) (GR-69523) (GR-73129) Introduce new SerialGC policy `Adaptive2` and default to mark-compact collection in the old generation. On average, this reduces memory usage and often improves throughput and latency. Restore the old behavior with: `-H:-CompactingOldGen -H:InitialCollectionPolicy=Adaptive`.
 
 ## GraalVM 25
 * (GR-52276) (GR-61959) Add support for Arena.ofShared().

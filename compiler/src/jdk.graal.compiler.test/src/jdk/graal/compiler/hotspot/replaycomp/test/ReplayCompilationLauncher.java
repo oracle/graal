@@ -30,6 +30,7 @@ import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope;
 
 import jdk.graal.compiler.api.test.ModuleSupport;
+import jdk.graal.compiler.hotspot.replaycomp.HardwarePerformanceCounters;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationRunner;
 import jdk.graal.compiler.hotspot.test.LibGraalCompilationDriver;
 
@@ -49,7 +50,8 @@ public class ReplayCompilationLauncher {
     /**
      * Calls libgraal C entry point
      * {@code jdk.graal.compiler.libgraal.LibGraalEntryPoints#replayCompilation}, which in turn
-     * calls {@link ReplayCompilationRunner#run(String[], PrintStream)}.
+     * calls
+     * {@link ReplayCompilationRunner#run(String[], PrintStream, HardwarePerformanceCounters.PAPIBridge)}.
      */
     public static native int runInLibgraal(long isolateThread, long argBuffer);
 
@@ -71,7 +73,7 @@ public class ReplayCompilationLauncher {
             }
         } else {
             System.out.println("Running in jargraal");
-            ReplayCompilationRunner.run(args, System.out).exitVM();
+            ReplayCompilationRunner.run(args, System.out, new HardwarePerformanceCounters.JargraalPAPIBridge()).exitVM();
         }
     }
 }

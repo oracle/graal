@@ -131,6 +131,14 @@
     }
   },
 
+  hotspot_interpreter:: {
+    platform:: "xint",
+    environment+: {
+      "JVM": "server",
+      "JVM_CONFIG": "xint"
+    }
+  },
+
   jargraal:: {
     platform:: "jargraal",
     environment+: {

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.os;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.io.File;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -32,14 +34,16 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 public abstract class AbstractRawFileOperationSupport implements RawFileOperationSupport {
     private final boolean useNativeByteOrder;
@@ -69,13 +73,13 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeBoolean(RawFileDescriptor fd, boolean data) {
         return writeByte(fd, (byte) (data ? 1 : 0));
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeByte(RawFileDescriptor fd, byte data) {
         int sizeInBytes = Byte.BYTES;
         Pointer dataPtr = StackValue.get(sizeInBytes);
@@ -84,7 +88,7 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeShort(RawFileDescriptor fd, short data) {
         int sizeInBytes = Short.BYTES;
         Pointer dataPtr = StackValue.get(sizeInBytes);
@@ -93,7 +97,7 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeChar(RawFileDescriptor fd, char data) {
         int sizeInBytes = Character.BYTES;
         Pointer dataPtr = StackValue.get(sizeInBytes);
@@ -102,7 +106,7 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeInt(RawFileDescriptor fd, int data) {
         int sizeInBytes = Integer.BYTES;
         Pointer dataPtr = StackValue.get(sizeInBytes);
@@ -111,7 +115,7 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeLong(RawFileDescriptor fd, long data) {
         int sizeInBytes = Long.BYTES;
         Pointer dataPtr = StackValue.get(sizeInBytes);
@@ -120,17 +124,18 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeFloat(RawFileDescriptor fd, float data) {
         return writeInt(fd, Float.floatToIntBits(data));
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean writeDouble(RawFileDescriptor fd, double data) {
         return writeLong(fd, Double.doubleToLongBits(data));
     }
 
+    @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
     public static class RawFileOperationSupportHolder {
         private final RawFileOperationSupport littleEndian;
         private final RawFileOperationSupport bigEndian;
@@ -143,22 +148,21 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
             this.nativeOrder = nativeOrder;
         }
 
-        @Fold
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         static RawFileOperationSupportHolder singleton() {
             return ImageSingletons.lookup(RawFileOperationSupportHolder.class);
         }
 
-        @Fold
         public static RawFileOperationSupport getLittleEndian() {
             return singleton().littleEndian;
         }
 
-        @Fold
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public static RawFileOperationSupport getBigEndian() {
             return singleton().bigEndian;
         }
 
-        @Fold
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public static RawFileOperationSupport getNativeByteOrder() {
             return singleton().nativeOrder;
         }

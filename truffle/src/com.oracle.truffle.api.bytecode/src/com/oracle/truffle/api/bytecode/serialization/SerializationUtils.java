@@ -59,8 +59,21 @@ public final class SerializationUtils {
      *
      * @see com.oracle.truffle.api.bytecode.GenerateBytecode#enableSerialization
      * @since 24.2
+     * @deprecated Use {@link #createByteBufferDataInput(ByteBuffer)}
      */
+    @Deprecated(since = "25.1")
     public static DataInput createDataInput(ByteBuffer buffer) {
+        return new ByteBufferDataInput(buffer);
+    }
+
+    /**
+     * Creates a {@link ByteBufferDataInput}. The result can be used as an input for
+     * {@code deserialize}.
+     *
+     * @see com.oracle.truffle.api.bytecode.GenerateBytecode#enableSerialization
+     * @since 25.1
+     */
+    public static ByteBufferDataInput createByteBufferDataInput(ByteBuffer buffer) {
         return new ByteBufferDataInput(buffer);
     }
 }

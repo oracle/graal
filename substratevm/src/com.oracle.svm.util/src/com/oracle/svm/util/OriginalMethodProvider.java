@@ -26,6 +26,9 @@ package com.oracle.svm.util;
 
 import java.lang.reflect.Executable;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -33,6 +36,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  *
  * @see GraalAccess
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public interface OriginalMethodProvider {
 
     /**

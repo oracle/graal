@@ -34,7 +34,6 @@ import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
-import jdk.graal.compiler.hotspot.meta.HotSpotIdentityHashCodeProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotMetaAccessExtensionProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
@@ -55,7 +54,6 @@ import jdk.graal.compiler.nodes.gc.NoBarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
@@ -221,12 +219,8 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
             try (InitTimer rt = timer("create Bytecode provider")) {
                 bytecodeProvider = createBytecodeProvider(metaAccess, snippetReflection);
             }
-            IdentityHashCodeProvider identityHashCodeProvider;
-            try (InitTimer rt = timer("create IdentityHashCode provider")) {
-                identityHashCodeProvider = createIdentityHashCodeProvider();
-            }
             providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, null, registers,
-                            snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config, identityHashCodeProvider,
+                            snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config,
                             graalRuntime.getReplayCompilationSupport());
 
             try (InitTimer rt = timer("create Replacements provider")) {
@@ -254,10 +248,6 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         try (InitTimer rt = timer("instantiate backend")) {
             return createBackend(config, graalRuntime, providers);
         }
-    }
-
-    protected IdentityHashCodeProvider createIdentityHashCodeProvider() {
-        return new HotSpotIdentityHashCodeProvider();
     }
 
     protected abstract HotSpotBackend createBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider graalRuntime, HotSpotProviders providers);

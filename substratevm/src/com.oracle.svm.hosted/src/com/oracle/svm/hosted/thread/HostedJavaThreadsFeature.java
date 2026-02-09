@@ -46,7 +46,6 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -87,6 +86,7 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "ngroups"), new FieldValueTransformerWithAvailability() {
+            // JVMCI migration blocked by GR-72587: Migrate (virtual) thread support for terminus
 
             /*
              * We must wait until reachableThreadGroups stabilizes after analysis to replace this
@@ -105,6 +105,7 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
         });
 
         a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "groups"), new FieldValueTransformerWithAvailability() {
+            // JVMCI migration blocked by GR-72587: Migrate (virtual) thread support for terminus
 
             /*
              * We must wait until reachableThreadGroups stabilizes after analysis to replace this
@@ -249,7 +250,7 @@ class ReachableThreadGroup {
 }
 
 @AutomaticallyRegisteredImageSingleton
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedJavaThreadsMetadata.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedJavaThreadsMetadata.LayeredCallbacks.class)
 class HostedJavaThreadsMetadata {
     long maxThreadId;
     int maxAutonumber;

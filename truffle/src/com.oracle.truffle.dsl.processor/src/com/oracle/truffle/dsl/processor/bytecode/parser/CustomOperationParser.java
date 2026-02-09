@@ -359,6 +359,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return;
         }
 
+        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Yield)) {
+            // Since the frame escapes, yields always store the bytecode index.
+            custom.setStoreBytecodeIndex(true);
+            return;
+        }
+
         AnnotationMirror proxyableMirror = resolveProxyableAnnotationMirror(mirror);
         custom.setStoreBytecodeIndex(ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "storeBytecodeIndex", false));
 
@@ -382,6 +388,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             MessageContainer targetMessageContainer;
             AnnotationMirror proxyMirror;
             AnnotationValue proxyValue;
+            DeclaredType declaredAnnotationType;
             if (isExternal(custom.getTemplateType())) {
                 /*
                  * It is important to emit this warning on the proxy of the parent model so we do
@@ -390,13 +397,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 targetMessageContainer = parent;
                 proxyMirror = mirror;
                 proxyValue = resolveProxyableAnnotationValue(mirror);
+                declaredAnnotationType = types.OperationProxy_Proxyable;
             } else {
                 // for internal operations
                 targetMessageContainer = custom;
                 proxyMirror = null;
                 proxyValue = null;
+                declaredAnnotationType = mirror.getAnnotationType();
             }
-            String type = getSimpleName(this.annotationType);
+            String type = getSimpleName(declaredAnnotationType);
             String message = String.format("For this operation it is recommended to specify @%s(storeBytecodeIndex=true|false). " +
                             "For example, the bytecode index may need to be stored for correct stack trace locations when guest level calls are performed. " +
                             "By default the DSL assumes that if any node receiver is bound then the bytecode index needs to be stored. " +
@@ -844,6 +853,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             } else {
                 after.add(constantOperand);
             }
+            if (typeEqualsAny(type, types.LocalAccessor, types.LocalRangeAccessor, types.MaterializedLocalAccessor)) {
+                parent.localAccessorsUsed.add(type);
+            }
         }
         return new ConstantOperandsModel(before, after);
     }
@@ -964,7 +976,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             result.add(createNodeChildAnnotation(operation.getConstantOperandBeforeName(i), before.get(i).type()));
         }
         for (int i = 0; i < signature.dynamicOperandCount; i++) {
-            result.add(createNodeChildAnnotation("child" + i, signature.getGenericType(i)));
+            result.add(createNodeChildAnnotation("child" + i, signature.getDynamicOperandType(i)));
         }
         List<ConstantOperandModel> after = operation.constantOperands.after();
         for (int i = 0; i < after.size(); i++) {
@@ -1031,7 +1043,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 ex.addParameter(new CodeVariableElement(before.get(i).type(), operation.getConstantOperandBeforeName(i)));
             }
             for (int i = 0; i < signature.dynamicOperandCount; i++) {
-                ex.addParameter(new CodeVariableElement(signature.getGenericType(i), "child" + i + "Value"));
+                ex.addParameter(new CodeVariableElement(signature.getDynamicOperandType(i), "child" + i + "Value"));
             }
             List<ConstantOperandModel> after = operation.constantOperands.after();
             for (int i = 0; i < after.size(); i++) {
@@ -1052,17 +1064,34 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      */
     private void createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
                     String operationName) {
+
+        /*
+         * We erase all specialized types. Without boxing elimination we cannot specialize any of
+         * the signature types in the instruction. If we introduce the notion of static types in the
+         * future we might be able to use more of the type information.
+         */
+        Signature erasedSignature = signature;
+        for (int i = 0; i < erasedSignature.getDynamicOperandTypes().size(); i++) {
+            TypeMirror targetType;
+            if (erasedSignature.isVariadicParameter(i)) {
+                targetType = context.getType(Object[].class);
+            } else {
+                targetType = context.getType(Object.class);
+            }
+            erasedSignature = erasedSignature.specializeDynamicOperandType(i, targetType);
+        }
+
         String instructionName = "c." + operationName;
         InstructionModel instr;
         if (customOperation.isEpilogExceptional()) {
             // We don't emit bytecode for this operation. Allocate an InstructionModel but don't
             // register it as an instruction.
-            instr = new InstructionModel(InstructionKind.CUSTOM, instructionName, signature);
+            instr = new InstructionModel(InstructionKind.CUSTOM, instructionName, erasedSignature);
         } else {
-            instr = parent.instruction(InstructionKind.CUSTOM, instructionName, signature);
+            instr = parent.instruction(InstructionKind.CUSTOM, instructionName, erasedSignature);
         }
         instr.nodeType = generatedNode;
-        instr.nodeData = parseGeneratedNode(customOperation, generatedNode, signature);
+        instr.nodeData = parseGeneratedNode(customOperation, generatedNode, erasedSignature);
 
         customOperation.operation.setInstruction(instr);
         if (customOperation.operation.variadicReturn) {

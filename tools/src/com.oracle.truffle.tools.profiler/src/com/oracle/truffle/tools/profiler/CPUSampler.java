@@ -36,14 +36,17 @@ import java.util.ListIterator;
 import java.util.Locale;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
+import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.logging.Level;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -119,6 +122,7 @@ public final class CPUSampler implements Closeable {
     private ResultProcessingRunnable processingThreadRunnable;
     private Future<?> processingThreadFuture;
     private Future<?> samplerFuture;
+    private List<ProcessSampleListener> processSampleListeners = new CopyOnWriteArrayList<>();
 
     private final SafepointStackSampler safepointStackSampler = new SafepointStackSampler(DEFAULT_STACK_LIMIT, DEFAULT_FILTER);
     private boolean gatherSelfHitTimes = false;
@@ -258,6 +262,18 @@ public final class CPUSampler implements Closeable {
             throw new ProfilerException(format("Invalid delay %s.", delay));
         }
         this.delay = delay;
+    }
+
+    /**
+     * Gets the delay period.
+     *
+     * @return the delay period.
+     *
+     * @see #setDelay(long)
+     * @since 25.1
+     */
+    public long getDelay() {
+        return delay;
     }
 
     /**
@@ -542,6 +558,17 @@ public final class CPUSampler implements Closeable {
         }
     }
 
+    /**
+     * Registers a listener that is notified about the processing of sampling results.
+     *
+     * @param listener the listener to register; must not be null.
+     *
+     * @since 25.1
+     */
+    public synchronized void addProcessSampleListener(ProcessSampleListener listener) {
+        this.processSampleListeners.add(Objects.requireNonNull(listener));
+    }
+
     private void resetSampling() {
         assert Thread.holdsLock(this);
         cleanup();
@@ -689,6 +716,24 @@ public final class CPUSampler implements Closeable {
         }
     }
 
+    /**
+     * A listener interface for notification about the processing of sampling results.
+     *
+     * @since 25.1
+     */
+    @FunctionalInterface
+    public interface ProcessSampleListener {
+        /**
+         * Invoked after each batch of samples has been processed for a context. This callback runs
+         * on the sampler's background processing thread and may be called frequently.
+         *
+         * @param context the context corresponding to the batch that was just processed.
+         *
+         * @since 25.1
+         */
+        void onSampleProcessed(TruffleContext context);
+    }
+
     /*
      * Process samples in a separate thread to avoid further delays during sampling and increase
      * accuracy.
@@ -730,6 +775,13 @@ public final class CPUSampler implements Closeable {
                                 }
                             });
                             record(sample, threadNode, result.startTime, mutableSamplerData);
+                        }
+                    }
+                    for (ProcessSampleListener listener : processSampleListeners) {
+                        try {
+                            listener.onSampleProcessed(result.context);
+                        } catch (Throwable t) {
+                            env.getLogger(CPUSamplerInstrument.ID).log(Level.WARNING, t, () -> String.format("Process sample listener %s threw an exception.", listener.toString()));
                         }
                     }
                 }

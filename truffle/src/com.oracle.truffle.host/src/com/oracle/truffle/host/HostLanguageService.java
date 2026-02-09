@@ -47,6 +47,7 @@ import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
@@ -54,13 +55,9 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.host.GuestToHostCodeCache.GuestToHostInvokeHandle;
-import com.oracle.truffle.host.GuestToHostCodeCache.GuestToHostInvokeReflect;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostLanguage.HostLanguageException;
-import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
 import com.oracle.truffle.host.HostMethodScope.ScopedObject;
-import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 
 public class HostLanguageService extends AbstractHostLanguageService {
 
@@ -136,56 +133,33 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object toGuestValue(Object hostContext, Object hostValue, boolean asValue) {
-        HostContext context = (HostContext) hostContext;
-        assert validHostValue(hostValue, context) : "polyglot unboxing should be a no-op at this point.";
+    public Object toGuestValue(Object node, Object hostValue, boolean asValue) {
+        assert validHostValue(node, hostValue) : "polyglot unboxing should be a no-op at this point.";
         if (HostContext.isGuestPrimitive(hostValue)) {
             return hostValue;
-        } else if (api.isProxy(hostValue)) {
-            return HostProxy.toProxyGuestObject(context, hostValue);
+        } else if (hostValue instanceof Proxy) {
+            return HostProxy.toProxyGuestObject(HostContext.get((Node) node), hostValue);
         } else if (!asValue && hostValue instanceof ScopedObject) {
             return ((ScopedObject) hostValue).unwrapForGuest();
         } else if (hostValue instanceof TruffleObject) {
             return hostValue;
         } else if (hostValue instanceof Class) {
-            return HostObject.forClass((Class<?>) hostValue, context);
+            return HostObject.forClass((Class<?>) hostValue, HostContext.get((Node) node));
         } else if (hostValue == null) {
             return HostObject.NULL;
         } else {
-            return HostObject.forObject(hostValue, context);
+            return HostObject.forObject(hostValue, HostContext.get((Node) node));
         }
     }
 
-    private boolean validHostValue(Object hostValue, HostContext context) {
-        Object unboxed = language.access.toGuestValue(context.internalContext, hostValue);
+    private boolean validHostValue(Object node, Object hostValue) {
+        Object unboxed = language.access.toGuestValue(node, language.api, hostValue);
         return unboxed == hostValue;
-    }
-
-    @Override
-    public boolean isHostValue(Object value) {
-        Object obj = HostLanguage.unwrapIfScoped(language, value);
-        return (obj instanceof HostObject) ||
-                        (obj instanceof HostFunction) ||
-                        (obj instanceof HostException) ||
-                        (obj instanceof HostProxy);
-    }
-
-    @Override
-    public Object unboxHostObject(Object hostValue) {
-        return HostObject.valueOf(language, hostValue);
     }
 
     @Override
     public Object unboxProxyObject(Object hostValue) {
         return HostProxy.toProxyHostObject(language, hostValue);
-    }
-
-    @Override
-    public Throwable unboxHostException(Throwable hostValue) {
-        if (hostValue instanceof HostException) {
-            return ((HostException) hostValue).getOriginal();
-        }
-        return null;
     }
 
     @Override
@@ -200,32 +174,8 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public boolean isHostException(Object exception) {
-        return exception instanceof HostException;
-    }
-
-    @Override
-    public boolean isHostFunction(Object value) {
-        return HostFunction.isInstance(language, value);
-    }
-
-    @Override
-    public boolean isHostObject(Object value) {
-        return HostObject.isInstance(language, value);
-    }
-
-    @Override
     public boolean isHostProxy(Object value) {
         return HostProxy.isProxyGuestObject(language, value);
-    }
-
-    @Override
-    public boolean isHostSymbol(Object obj) {
-        Object o = HostLanguage.unwrapIfScoped(language, obj);
-        if (o instanceof HostObject) {
-            return ((HostObject) o).isStaticClass();
-        }
-        return false;
     }
 
     @Override
@@ -261,7 +211,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
     public Object migrateValue(Object targetContext, Object value, Object valueContext) {
         assert targetContext != valueContext;
         if (value instanceof TruffleObject) {
-            assert value instanceof TruffleObject;
             if (HostObject.isInstance(language, value)) {
                 return HostObject.withContext(language, value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
             } else if (value instanceof HostProxy) {
@@ -271,7 +220,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
                  * The only way this can happen is with Value.asValue(TruffleObject). If it happens
                  * otherwise, its wrong.
                  */
-                assert value instanceof TruffleObject;
                 return value;
             } else {
                 // cannot migrate
@@ -280,29 +228,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
         } else {
             assert InteropLibrary.isValidValue(value);
             return value;
-        }
-    }
-
-    @Override
-    public Error toHostResourceError(Throwable hostException) {
-        Throwable t = unboxHostException(hostException);
-        if (t instanceof StackOverflowError || t instanceof OutOfMemoryError) {
-            return (Error) t;
-        }
-        return null;
-    }
-
-    @Override
-    public int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
-        StackTraceElement element = firstElement;
-        int index = nextElementIndex;
-        while (isGuestToHostReflectiveCall(element) && index < hostStack.length) {
-            element = hostStack[index++];
-        }
-        if (isGuestToHostCallFromHostInterop(element)) {
-            return index - nextElementIndex;
-        } else {
-            return -1;
         }
     }
 
@@ -320,49 +245,4 @@ public class HostLanguageService extends AbstractHostLanguageService {
     public boolean allowsPublicAccess() {
         return api.allowsPublicAccess(language.hostClassCache.hostAccess);
     }
-
-    private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
-        assert assertClassNameUnchanged(GuestToHostCalls.class, "com.oracle.truffle.host.HostObject$GuestToHostCalls");
-        assert assertClassNameUnchanged(GuestToHostCodeCache.class, "com.oracle.truffle.host.GuestToHostCodeCache");
-        assert assertClassNameUnchanged(SingleMethod.class, "com.oracle.truffle.host.HostMethodDesc$SingleMethod");
-        assert assertClassNameUnchanged(GuestToHostInvokeReflect.class, "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeReflect");
-        assert assertClassNameUnchanged(GuestToHostInvokeHandle.class, "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeHandle");
-
-        switch (element.getClassName()) {
-            case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MHBase":
-                return element.getMethodName().equals("invokeHandle");
-            case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MethodReflectImpl":
-                return element.getMethodName().equals("reflectInvoke");
-            case "com.oracle.truffle.host.HostObject$GuestToHostCalls":
-                return true;
-            case "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeReflect":
-            case "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeHandle":
-                return element.getMethodName().equals("executeImpl");
-            case "org.graalvm.polyglot.Engine$APIAccessImpl":
-                return element.getMethodName().startsWith("callProxy");
-            default:
-                return false;
-        }
-    }
-
-    private static boolean assertClassNameUnchanged(Class<?> c, String name) {
-        if (c.getName().equals(name)) {
-            return true;
-        }
-        throw new AssertionError("Class name is outdated. Expected " + name + " but got " + c.getName());
-    }
-
-    private static boolean isGuestToHostReflectiveCall(StackTraceElement element) {
-        switch (element.getClassName()) {
-            case "sun.reflect.NativeMethodAccessorImpl":
-            case "sun.reflect.DelegatingMethodAccessorImpl":
-            case "jdk.internal.reflect.NativeMethodAccessorImpl":
-            case "jdk.internal.reflect.DelegatingMethodAccessorImpl":
-            case "java.lang.reflect.Method":
-                return element.getMethodName().startsWith("invoke");
-            default:
-                return false;
-        }
-    }
-
 }

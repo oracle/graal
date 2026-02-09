@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -47,8 +47,8 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
+import org.graalvm.word.impl.Word;
 
 /** Uses {@link AlignedHeapChunk}s to manage the raw {@link Metaspace} memory. */
 class ChunkedMetaspaceMemory {

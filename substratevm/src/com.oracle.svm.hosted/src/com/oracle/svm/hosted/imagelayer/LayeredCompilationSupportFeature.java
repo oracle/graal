@@ -33,14 +33,17 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 
 /**
  * Internal logic for registering methods' layered compilation behavior during the
@@ -48,6 +51,7 @@ import com.oracle.svm.hosted.FeatureImpl;
  * {@link LayeredCompilationSupport#registerCompilationBehavior}s in {@link Feature#duringSetup}.
  */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class LayeredCompilationSupportFeature extends LayeredCompilationSupport implements InternalFeature {
     record BehaviorRequest(Executable method, LayeredCompilationBehavior.Behavior behavior) {
     }

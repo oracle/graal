@@ -33,6 +33,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
+
+/**
+ * Should be migrated to JVMCI (GR-71897).
+ */
 public interface ReflectionSubstitutionSupport {
 
     static ReflectionSubstitutionSupport singleton() {
@@ -41,10 +46,13 @@ public interface ReflectionSubstitutionSupport {
 
     SubstrateAccessor getOrCreateAccessor(Executable member);
 
-    SubstrateAccessor getOrCreateConstructorAccessor(Class<?> targetClass, Executable member);
+    SubstrateAccessor getOrCreateAccessor(Class<?> targetClass, Executable member);
 
     /** Offset of the field or -1 if the field was not registered for unsafe access. */
     int getFieldOffset(Field field, boolean checkUnsafeAccessed);
+
+    /** Offset of the field or -1 if the field was not registered for unsafe access. */
+    int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed);
 
     int getInstalledLayerNumber(Field field);
 

@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.espresso.substitutions.jvmci;
 
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.LOGGER;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.LOGGER;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIInstanceType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType.toJVMCIMethod;
 
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -79,28 +80,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMethodHandleAc
             meta.throwNullPointerExceptionBoundary();
         }
         StaticObject methodHandle = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(methodHandleMirror);
-        if (!InterpreterToVM.instanceOf(methodHandle, meta.java_lang_invoke_MethodHandle)) {
-            LOGGER.fine(() -> "EMHAP.resolveInvokeBasicTarget0 not a MethodHandle");
-            return StaticObject.NULL;
-        }
-        StaticObject form = meta.java_lang_invoke_MethodHandle_form.getObject(methodHandle);
-        if (StaticObject.isNull(form)) {
-            LOGGER.fine(() -> "EMHAP.resolveInvokeBasicTarget0 no form");
-            return StaticObject.NULL;
-        }
-        StaticObject memberName = meta.java_lang_invoke_LambdaForm_vmentry.getObject(form);
-        if (StaticObject.isNull(memberName)) {
-            if (forceBytecodeGeneration) {
-                LOGGER.fine(() -> "EMHAP.resolveInvokeBasicTarget0 compiling vmentry");
-                meta.java_lang_invoke_LambdaForm_compileToBytecode.invokeDirectVirtual(form);
-                memberName = meta.java_lang_invoke_LambdaForm_vmentry.getObject(form);
-            } else {
-                LOGGER.fine(() -> "EMHAP.resolveInvokeBasicTarget0 no vmentry");
-                return StaticObject.NULL;
-            }
-        }
-        Method target = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(memberName);
+        Method target = JVMCIUtils.resolveInvokeBasicTarget(methodHandle, forceBytecodeGeneration, meta);
         LOGGER.finer(() -> "EMHAP.resolveInvokeBasicTarget0 found " + target);
+        if (target == null) {
+            return StaticObject.NULL;
+        }
         StaticObject holder = toJVMCIInstanceType(target.getDeclaringKlass(), meta);
         return toJVMCIMethod(target, holder, meta);
     }

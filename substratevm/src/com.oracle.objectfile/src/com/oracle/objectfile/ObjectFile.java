@@ -36,7 +36,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -53,6 +52,7 @@ import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import org.graalvm.collections.EconomicSet;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -750,8 +750,8 @@ public abstract class ObjectFile {
     /** Determines whether references between debug sections should be recorded for relocation. */
     public abstract boolean shouldRecordDebugRelocations();
 
-    public static HashSet<BuildDependency> basicDependencies(Map<Element, LayoutDecisionMap> decisions, Element el, boolean sizeOnContent, boolean vaddrOnOffset) {
-        HashSet<BuildDependency> deps = new HashSet<>();
+    public static EconomicSet<BuildDependency> basicDependencies(Map<Element, LayoutDecisionMap> decisions, Element el, boolean sizeOnContent, boolean vaddrOnOffset) {
+        EconomicSet<BuildDependency> deps = EconomicSet.create();
         /*
          * As a minimum, we specify that the offset and vaddr of an element depend on its size. This
          * is so that once we assign an offset or vaddr, the "next available" offset/vaddr can
@@ -771,11 +771,11 @@ public abstract class ObjectFile {
         return deps;
     }
 
-    public static HashSet<BuildDependency> minimalDependencies(Map<Element, LayoutDecisionMap> decisions, Element el) {
+    public static EconomicSet<BuildDependency> minimalDependencies(Map<Element, LayoutDecisionMap> decisions, Element el) {
         return basicDependencies(decisions, el, false, true);
     }
 
-    public static HashSet<BuildDependency> defaultDependencies(Map<Element, LayoutDecisionMap> decisions, Element el) {
+    public static EconomicSet<BuildDependency> defaultDependencies(Map<Element, LayoutDecisionMap> decisions, Element el) {
         /*
          * By default, we specify that an element's own decisions are taken in a particular order:
          * content, size, offset. Some elements relax this so that their content can be decided
@@ -1258,7 +1258,7 @@ public abstract class ObjectFile {
         return sections;
     }
 
-    public abstract Set<Segment> getSegments();
+    public abstract Set<Segment> getSegments(); // noEconomicSet(streaming)
 
     /**
      * @return a platform-dependent {@link Header}. Depending on the mode of the object file (read
@@ -1292,7 +1292,7 @@ public abstract class ObjectFile {
 
     private final TreeSet<BuildDependency> allDependencies = new TreeSet<>();
 
-    private final HashSet<LayoutDecision> allDecisions = new HashSet<>();
+    private final EconomicSet<LayoutDecision> allDecisions = EconomicSet.create();
     private final Map<Element, LayoutDecisionMap> decisionsByElement = new IdentityHashMap<>();
     private final Map<Element, LayoutDecisionMap> decisionsTaken = new IdentityHashMap<>();
 
@@ -1358,7 +1358,7 @@ public abstract class ObjectFile {
 
     }
 
-    private String dependencyGraphAsDotString(Set<LayoutDecision> decisionsToInclude) {
+    private String dependencyGraphAsDotString(EconomicSet<LayoutDecision> decisionsToInclude) {
         // null argument means "include all decisions"
         StringBuilder sb = new StringBuilder();
         sb.append("digraph deps {").append(System.lineSeparator());
@@ -1456,7 +1456,7 @@ public abstract class ObjectFile {
          */
         LayoutDecision dummyFinalDecision = new LayoutDecision(LayoutDecision.Kind.OFFSET, null, null);
 
-        LayoutDecision[] realDecisions = allDecisions.toArray(new LayoutDecision[0]);
+        LayoutDecision[] realDecisions = allDecisions.toArray(new LayoutDecision[allDecisions.size()]);
         /* Add a dependency from this to every other decision. */
         allDecisions.add(dummyFinalDecision);
         for (LayoutDecision decision : realDecisions) {
@@ -1543,7 +1543,7 @@ public abstract class ObjectFile {
         List<LayoutDecision> reverseBuildOrder = new ArrayList<>();
 
         // 1. find nodes with no in-edges
-        Set<LayoutDecision> decisionsWithNoInEdges = new HashSet<>();
+        EconomicSet<LayoutDecision> decisionsWithNoInEdges = EconomicSet.create(allDecisions.size());
 
         decisionsWithNoInEdges.addAll(allDecisions);
         for (LayoutDecision d : allDecisions) {
@@ -1568,7 +1568,9 @@ public abstract class ObjectFile {
 
         // 2. run Kahn's algorithm
         Set<LayoutDecision> working = new TreeSet<>();
-        working.addAll(decisionsWithNoInEdges);
+        for (LayoutDecision l : decisionsWithNoInEdges) {
+            working.add(l);
+        }
         while (!working.isEmpty()) {
             LayoutDecision n = working.iterator().next();
             working.remove(n);
@@ -1599,7 +1601,7 @@ public abstract class ObjectFile {
             // this means we have a cycle somewhere in our dependencies
             // We print only the subgraph defined by the remaining nodes,
             // i.e. decisions in allDecisions but not in reverseBuildOrder.
-            Set<LayoutDecision> remainingDecisions = new HashSet<>();
+            EconomicSet<LayoutDecision> remainingDecisions = EconomicSet.create(allDecisions.size());
             remainingDecisions.addAll(allDecisions);
             remainingDecisions.removeAll(reverseBuildOrder);
             throw new IllegalStateException("Cyclic build dependencies: " + dependencyGraphAsDotString(remainingDecisions));

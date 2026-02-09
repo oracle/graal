@@ -28,15 +28,14 @@ import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.FRO
 import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.FROM_POINTER;
 import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.IS_NULL;
 
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
+import org.graalvm.word.impl.Word.Opcode;
+import org.graalvm.word.impl.Word.Operation;
 import org.graalvm.word.WordBase;
-
-import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.word.Word;
-import jdk.graal.compiler.word.Word.Opcode;
-import jdk.graal.compiler.word.Word.Operation;
 
 /**
  * Marker type for a metaspace pointer.

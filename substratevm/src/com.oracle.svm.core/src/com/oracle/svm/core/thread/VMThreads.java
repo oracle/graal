@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -40,7 +40,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -71,7 +71,6 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -83,8 +82,8 @@ import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.aarch64.AArch64;
+import org.graalvm.word.impl.Word;
 
 /**
  * Utility methods for the manipulation and iteration of {@link IsolateThread}s.
@@ -656,10 +655,15 @@ public abstract class VMThreads {
         return nextThread(thread) != thread;
     }
 
+    /**
+     * Verify that the thread's OS information matches the information that is cached in the
+     * {@link IsolateThread}.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean verifyIsCurrentThread(IsolateThread thread) {
+        OSThreadHandle osThreadHandle = getCurrentOSThreadHandle();
         OSThreadId osThreadId = getCurrentOSThreadId();
-        return OSThreadIdTL.get(thread).equal(osThreadId);
+        return OSThreadHandleTL.get(thread) == osThreadHandle && OSThreadIdTL.get(thread) == osThreadId;
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
@@ -995,7 +999,7 @@ public abstract class VMThreads {
          * Changes the safepoint behavior so that this thread won't freeze at a safepoint. The
          * thread will also actively prevent the VM from reaching a safepoint (regardless of its
          * thread status).
-         * 
+         *
          * NOTE: Be careful with this method and make sure that this thread does not allocate any
          * Java objects as this could result deadlocks. This method will only prevent safepoints
          * reliably if it is called from a thread with {@link StatusSupport#STATUS_IN_JAVA}.
@@ -1009,7 +1013,7 @@ public abstract class VMThreads {
         /**
          * Marks the thread as crashed. This method may only be used in places where it is not
          * possible to safely detach a thread.
-         * 
+         *
          * Changes the safepoint behavior so that this thread won't freeze at a safepoint. The
          * safepoint handling will ignore the thread so that the VM can reach a safepoint regardless
          * of the status of this thread.
@@ -1067,7 +1071,7 @@ public abstract class VMThreads {
      * synchronization barrier) if new code was made executable (see
      * <a href="https://developer.arm.com/documentation/ddi0487/latest">ARM Architecture Reference
      * Manual</a> Section B2.2.5).
-     * 
+     *
      * <pre>
      * For example, assume there are 4 cores and 2 Java threads:
      * - Thread A runs on core 0
@@ -1156,7 +1160,7 @@ public abstract class VMThreads {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class ThreadLookupFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

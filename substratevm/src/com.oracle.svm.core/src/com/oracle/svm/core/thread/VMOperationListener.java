@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 public interface VMOperationListener {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

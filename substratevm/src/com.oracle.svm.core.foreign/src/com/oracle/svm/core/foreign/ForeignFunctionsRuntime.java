@@ -50,16 +50,19 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
+import org.graalvm.nativeimage.impl.InternalPlatform.PLATFORM_JNI;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.foreign.AbiUtils.TrampolineTemplate;
 import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase.OptimizeSharedArenaConfig;
@@ -76,13 +79,12 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
-import jdk.graal.compiler.word.Word;
-import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.impl.Word;
 
 public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedArenaConfig {
     @Fold
@@ -121,14 +123,25 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void generateTrampolineTemplate(SubstrateBackendWithAssembler<?> backend) {
-        AbiUtils.singleton().generateTrampolineTemplate(backend, this.trampolineTemplate);
+        abiUtils.generateTrampolineTemplate(backend, this.trampolineTemplate);
     }
 
+    @Fold
+    public static boolean isLibcSupported() {
+        VMError.guarantee(BuildPhaseProvider.isSetupFinished());
+        return LibC.isSupported();
+    }
+
+    @Fold
+    public static boolean isWindowsApiSupported() {
+        VMError.guarantee(BuildPhaseProvider.isSetupFinished());
+        return WindowsAPIs.isSupported();
+    }
+
+    @Fold
     public static boolean areFunctionCallsSupported() {
-        return switch (CABI.current()) {
-            case CABI.SYS_V, CABI.WIN_64, CABI.MAC_OS_AARCH_64, CABI.LINUX_AARCH_64 -> true;
-            default -> false;
-        };
+        VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished());
+        return Platform.includedIn(PLATFORM_JNI.class) && Platform.includedIn(NATIVE_ONLY.class);
     }
 
     public static RuntimeException functionCallsUnsupported() {
@@ -406,7 +419,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
          * We never allow memory sessions with state 'OPEN' to be included in the image heap because
          * native memory may be associated with them which will be attempted to be free'd if the
          * session is closed. Non-closable or closed sessions are allowed.
-         * 
+         *
          * Note: This assumes that there is only one implementor of interface Scope which is
          * MemorySessionImpl. If JDK's class hierarchy changes, we need to adapt this as well.
          */
@@ -436,7 +449,8 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
      * WSA_GET_LAST_ERROR, ERRNO.
      *
      * Violation of the assertions should have already been caught in
-     * {@link AbiUtils#checkLibrarySupport()}, which is called when registering the feature.
+     * {@link AbiUtils#checkLibrarySupport()}, which is called in
+     * {@link Target_jdk_internal_foreign_abi_NativeEntryPoint#make}.
      */
     @Uninterruptible(reason = "Interruptions might change call state.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
@@ -447,7 +461,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
 
         int i = 0;
         if (isWindows()) {
-            assert WindowsAPIs.isSupported() : "Windows APIs should be supported on Windows OS";
+            VMError.guarantee(ForeignFunctionsRuntime.isWindowsApiSupported(), "Cannot capture call state without Windows API support");
 
             if ((statesToCapture & getMask("GetLastError")) != 0) {
                 captureBuffer.write(i, WindowsAPIs.getLastError());
@@ -459,7 +473,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
             ++i;
         }
 
-        assert LibC.isSupported() : "LibC should always be supported";
+        VMError.guarantee(ForeignFunctionsRuntime.isLibcSupported(), "Cannot capture call state without libc support");
         if ((statesToCapture & getMask("errno")) != 0) {
             captureBuffer.write(i, LibC.errno());
         }

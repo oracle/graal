@@ -949,6 +949,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfAny1(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0) {
         for (int i = fromIndex; i < length; i++) {
             if (readValue(array, offset, stride, i) == v0) {
@@ -962,6 +963,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfAny2(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
@@ -976,6 +978,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfAny3(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1, int v2) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
@@ -990,6 +993,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfAny4(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1, int v2, int v3) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
@@ -1004,6 +1008,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfRange1(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1) {
         for (int i = fromIndex; i < length; i++) {
             if (inRange(v0, v1, readValue(array, offset, stride, i))) {
@@ -1017,6 +1022,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfRange2(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1, int v2, int v3) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
@@ -1031,6 +1037,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfRangeForeignEndian1(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1) {
         for (int i = fromIndex; i < length; i++) {
             int value = Encodings.reverseBytes(readValue(array, offset, stride, i), stride);
@@ -1045,6 +1052,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfRangeForeignEndian2(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1,
                     int v2, int v3) {
         for (int i = fromIndex; i < length; i++) {
@@ -1060,6 +1068,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfTable(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, byte[] tables) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
@@ -1074,6 +1083,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfTableForeignEndian(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, byte[] tables) {
         for (int i = fromIndex; i < length; i++) {
             int value = Encodings.reverseBytes(readValue(array, offset, stride, i), stride);
@@ -1094,6 +1104,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfWithOrMaskWithStride(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int needle,
                     int mask) {
         for (int i = fromIndex; i < length; i++) {
@@ -1118,6 +1129,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOf2ConsecutiveWithStride(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int c1, int c2) {
         for (int i = fromIndex + 1; i < length; i++) {
             if (readValue(array, offset, stride, i - 1) == c1 && readValue(array, offset, stride, i) == c2) {
@@ -1131,6 +1143,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOf2ConsecutiveWithOrMaskWithStride(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex,
                     int c1, int c2, int mask1, int mask2) {
         for (int i = fromIndex + 1; i < length; i++) {
@@ -1156,6 +1169,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static boolean runRegionEqualsWithStride(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int length, int stubStride) {
@@ -1173,6 +1187,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static boolean runRegionEqualsWithOrMaskWithStride(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, byte[] arrayMask, int lengthCMP, int stubStride) {
@@ -1190,6 +1205,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runMemCmp(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int lengthCMP, int stubStride) {
@@ -1235,6 +1251,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runHashCode(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative) {
         int hash = 0;
         for (int i = 0; i < length; i++) {
@@ -1247,6 +1264,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runArrayCopy(Node location,
                     char[] arrayA, long offsetA,
                     byte[] arrayB, long offsetB, int lengthCPY, int stubStride) {
@@ -1261,6 +1279,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runArrayCopy(Node location,
                     int[] arrayA, long offsetA,
                     byte[] arrayB, long offsetB, int lengthCPY, int stubStride) {
@@ -1275,6 +1294,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runArrayCopy(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int lengthCPY, int stubStride) {
@@ -1289,6 +1309,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runByteSwapS1(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int length) {
@@ -1301,6 +1322,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runByteSwapS2(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int length) {
@@ -1313,6 +1335,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCalcStringAttributesLatin1(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
         for (int i = 0; i < length; i++) {
             if (readValueS0(array, offset, i) > 0x7f) {
@@ -1326,6 +1349,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCalcStringAttributesBMP(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
@@ -1355,6 +1379,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCalcStringAttributesUTF32(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
         return runCalcStringAttributesUTF32AnyArray(location, array, offset, length);
     }
@@ -1463,6 +1488,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static long runCalcStringAttributesUTF8(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative, boolean assumeValid) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
@@ -1515,6 +1541,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static long runCalcStringAttributesUTF16(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative, boolean assumeValid) {
         return runCalcStringAttributesUTF16AnyArray(location, array, offset, length, assumeValid);
     }
@@ -1589,6 +1616,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static long runCalcStringAttributesUTF16FE(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative, boolean assumeValid) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
@@ -1652,6 +1680,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCodePointIndexToByteIndexUTF8Valid(Node location, byte[] array, long offset, int length, int index, @SuppressWarnings("unused") boolean isNative) {
         int cpi = index;
         for (int i = 0; i < length; i++) {
@@ -1668,6 +1697,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCodePointIndexToByteIndexUTF16Valid(Node location, byte[] array, long offset, int length, int index, @SuppressWarnings("unused") boolean isNative) {
         int cpi = index;
         for (int i = 0; i < length; i++) {
@@ -1684,6 +1714,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCodePointIndexToByteIndexUTF16FEValid(Node location, byte[] array, long offset, int length, int index, @SuppressWarnings("unused") boolean isNative) {
         int cpi = index;
         for (int i = 0; i < length; i++) {

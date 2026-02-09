@@ -34,7 +34,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "5318b946652f95fa94903c4cccb47afd7b3b2f85",
+                "version": "a4224cc6fc93ad69f3712b292ae1e79cdfe1240d",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -43,17 +43,9 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "5318b946652f95fa94903c4cccb47afd7b3b2f85",
+                "version": "a4224cc6fc93ad69f3712b292ae1e79cdfe1240d",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
-                ]
-            },
-            {
-                "name": "truffleruby",
-                "version": "e278fbe3af5e173582ca925f9658a6a674ffb0bd",
-                "dynamic": True,
-                "urls": [
-                    {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
                 ]
             },
             {
@@ -66,7 +58,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "a60481408a48a438ea7bbbad36e4a3729124363e",
+                "version": "be7166acb3a9f0d5c7d2afc0a3f434ee5d94597c",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -79,6 +71,17 @@ suite = {
                 "urls": [
                     {"url": "https://github.com/graalvm/polybenchmarks.git", "kind": "git"},
                 ]
+            },
+            # dynamic import for the 'barista' bench suite
+            {
+                "name": "barista",
+                "subdir": False,
+                "version": "0.6.5",
+                "foreign": True, # barista is not an mx suite
+                "dynamic": True,
+                "urls": [
+                    {"url": "https://github.com/barista-benchmarks/barista.git", "kind" : "git"},
+                ],
             },
         ]
     },

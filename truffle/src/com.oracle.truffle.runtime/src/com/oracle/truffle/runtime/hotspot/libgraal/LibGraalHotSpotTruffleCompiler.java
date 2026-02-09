@@ -48,6 +48,7 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 import com.oracle.truffle.compiler.hotspot.HotSpotTruffleCompiler;
+import com.oracle.truffle.runtime.ModulesSupport;
 import com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -115,17 +116,25 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @Override
     @SuppressWarnings("try")
     public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
-        try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.installTruffleCallBoundaryMethod(getIsolateThread(), getOrCreateIsolate(compilable, false), LibGraal.translate(method));
-        }
+        Supplier<Void> action = () -> {
+            try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+                TruffleToLibGraalCalls.installTruffleCallBoundaryMethod(getIsolateThread(), getOrCreateIsolate(compilable, false), LibGraal.translate(method));
+            }
+            return null;
+        };
+        ModulesSupport.getJavaLangSupport().runInPinnedVirtualThread(action);
     }
 
     @Override
     @SuppressWarnings("try")
     public void installTruffleReservedOopMethod(ResolvedJavaMethod method, TruffleCompilable compilable) {
-        try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.installTruffleReservedOopMethod(getIsolateThread(), getOrCreateIsolate(compilable, false), LibGraal.translate(method));
-        }
+        Supplier<Void> action = () -> {
+            try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+                TruffleToLibGraalCalls.installTruffleReservedOopMethod(getIsolateThread(), getOrCreateIsolate(compilable, false), LibGraal.translate(method));
+            }
+            return null;
+        };
+        ModulesSupport.getJavaLangSupport().runInPinnedVirtualThread(action);
     }
 
     Integer pendingTransferToInterpreterOffset;

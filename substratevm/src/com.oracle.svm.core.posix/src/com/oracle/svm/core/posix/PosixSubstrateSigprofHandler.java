@@ -36,7 +36,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -100,7 +100,7 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
     @Override
     protected void installSignalHandler() {
         PosixSignalHandlerSupport.installNativeSignalHandler(Signal.SignalEnum.SIGPROF, advancedSignalDispatcher.getFunctionPointer(), Signal.SA_RESTART(),
-                        SubstrateOptions.EnableSignalHandling.getValue());
+                        SubstrateOptions.isSignalHandlingAllowed());
     }
 
     static boolean isSignalHandlerBasedExecutionSamplerEnabled() {
@@ -112,7 +112,7 @@ public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandl
     }
 
     private static boolean isPlatformSupported() {
-        return (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) && SubstrateOptions.EnableSignalHandling.getValue();
+        return (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) && SubstrateOptions.isSignalHandlingAllowed();
     }
 
     private static void validateSamplerOption(HostedOptionKey<Boolean> isSamplerEnabled) {

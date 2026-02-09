@@ -40,12 +40,10 @@
  */
 package org.graalvm.wasm.api;
 
-import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
@@ -57,6 +55,9 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.NumberType;
+import org.graalvm.wasm.types.ValueType;
 
 /**
  * Wrapper call target for executing wasm functions, validating and adapting the arguments for wasm
@@ -72,11 +73,11 @@ public final class InteropCallAdapterNode extends RootNode {
 
     private static final int MAX_UNROLL = 32;
 
-    private final SymbolTable.ClosedFunctionType functionType;
+    private final FunctionType functionType;
     private final BranchProfile errorBranch = BranchProfile.create();
     @Child private WasmIndirectCallNode callNode;
 
-    public InteropCallAdapterNode(WasmLanguage language, SymbolTable.ClosedFunctionType functionType) {
+    public InteropCallAdapterNode(WasmLanguage language, FunctionType functionType) {
         super(language);
         this.functionType = functionType;
         this.callNode = WasmIndirectCallNode.create();
@@ -107,7 +108,7 @@ public final class InteropCallAdapterNode extends RootNode {
     }
 
     private Object[] validateArguments(Object[] arguments, int offset) throws ArityException, UnsupportedTypeException {
-        final SymbolTable.ClosedValueType[] paramTypes = functionType.paramTypes();
+        final ValueType[] paramTypes = functionType.paramTypes();
         final int paramCount = paramTypes.length;
         CompilerAsserts.partialEvaluationConstant(paramCount);
         if (arguments.length - offset != paramCount) {
@@ -124,14 +125,14 @@ public final class InteropCallAdapterNode extends RootNode {
     }
 
     @ExplodeLoop
-    private static void validateArgumentsUnroll(Object[] arguments, int offset, SymbolTable.ClosedValueType[] paramTypes, int paramCount) throws UnsupportedTypeException {
+    private static void validateArgumentsUnroll(Object[] arguments, int offset, ValueType[] paramTypes, int paramCount) throws UnsupportedTypeException {
         for (int i = 0; i < paramCount; i++) {
             validateArgument(arguments, offset, paramTypes, i);
         }
     }
 
-    private static void validateArgument(Object[] arguments, int offset, SymbolTable.ClosedValueType[] paramTypes, int i) throws UnsupportedTypeException {
-        SymbolTable.ClosedValueType paramType = paramTypes[i];
+    private static void validateArgument(Object[] arguments, int offset, ValueType[] paramTypes, int i) throws UnsupportedTypeException {
+        ValueType paramType = paramTypes[i];
         Object value = arguments[i + offset];
         if (!paramType.matchesValue(value)) {
             throw UnsupportedTypeException.create(arguments);
@@ -142,7 +143,7 @@ public final class InteropCallAdapterNode extends RootNode {
         final var multiValueStack = language.multiValueStack();
         final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
         final Object[] objectMultiValueStack = multiValueStack.objectStack();
-        final SymbolTable.ClosedValueType[] resultTypes = functionType.resultTypes();
+        final ValueType[] resultTypes = functionType.resultTypes();
         final int resultCount = resultTypes.length;
         assert primitiveMultiValueStack.length >= resultCount;
         assert objectMultiValueStack.length >= resultCount;
@@ -159,25 +160,21 @@ public final class InteropCallAdapterNode extends RootNode {
     }
 
     @ExplodeLoop
-    private static void popMultiValueResultUnroll(Object[] values, long[] primitiveMultiValueStack, Object[] objectMultiValueStack, SymbolTable.ClosedValueType[] resultTypes, int resultCount) {
+    private static void popMultiValueResultUnroll(Object[] values, long[] primitiveMultiValueStack, Object[] objectMultiValueStack, ValueType[] resultTypes, int resultCount) {
         for (int i = 0; i < resultCount; i++) {
             values[i] = popMultiValueResult(primitiveMultiValueStack, objectMultiValueStack, resultTypes, i);
         }
     }
 
-    private static Object popMultiValueResult(long[] primitiveMultiValueStack, Object[] objectMultiValueStack, SymbolTable.ClosedValueType[] resultTypes, int i) {
-        final SymbolTable.ClosedValueType resultType = resultTypes[i];
-        return switch (resultType.kind()) {
-            case Number -> {
-                SymbolTable.NumberType numberType = (SymbolTable.NumberType) resultType;
-                yield switch (numberType.value()) {
-                    case WasmType.I32_TYPE -> (int) primitiveMultiValueStack[i];
-                    case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
-                    case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
-                    case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
-                    default -> throw CompilerDirectives.shouldNotReachHere();
-                };
-            }
+    private static Object popMultiValueResult(long[] primitiveMultiValueStack, Object[] objectMultiValueStack, ValueType[] resultTypes, int i) {
+        final ValueType resultType = resultTypes[i];
+        return switch (resultType.valueKind()) {
+            case Number -> switch ((NumberType) resultType) {
+                case I32 -> (int) primitiveMultiValueStack[i];
+                case I64 -> primitiveMultiValueStack[i];
+                case F32 -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
+                case F64 -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
+            };
             case Vector, Reference -> {
                 Object obj = objectMultiValueStack[i];
                 objectMultiValueStack[i] = null;

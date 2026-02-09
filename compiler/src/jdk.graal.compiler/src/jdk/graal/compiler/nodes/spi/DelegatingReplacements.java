@@ -45,10 +45,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * A convenience class for overriding just a portion of the Replacements API.
  */
-public class DelegatingReplacements implements Replacements {
-    protected final Replacements delegate;
+public class DelegatingReplacements<T extends Replacements> implements Replacements {
+    protected final T delegate;
 
-    public DelegatingReplacements(Replacements delegate) {
+    public DelegatingReplacements(T delegate) {
         this.delegate = delegate;
     }
 
@@ -58,7 +58,7 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public <T> T getInjectedArgument(Class<T> type) {
+    public <S> S getInjectedArgument(Class<S> type) {
         return delegate.getInjectedArgument(type);
     }
 
@@ -125,7 +125,7 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public <T extends SnippetTemplateCache> T getSnippetTemplateCache(Class<T> templatesClass) {
+    public <S extends SnippetTemplateCache> S getSnippetTemplateCache(Class<S> templatesClass) {
         return delegate.getSnippetTemplateCache(templatesClass);
     }
 

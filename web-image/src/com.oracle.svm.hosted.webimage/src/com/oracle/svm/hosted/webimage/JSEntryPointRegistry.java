@@ -52,21 +52,16 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
     }
 
     @Override
-    public void register(AccessCondition condition, boolean queriedOnly, boolean preserved, Executable... methods) {
+    public void register(AccessCondition condition, boolean preserved, Executable method) {
         if (!AccessCondition.unconditional().equals(condition)) {
-            System.err.println("Conditional specification in entry points configuration is not supported and is ignored");
+            System.out.println("Conditional specification in entry points configuration is not supported and is ignored");
         }
-
-        if (queriedOnly) {
-            System.err.println("Query specification in entry points configuration is not supported and is ignored");
-        } else {
-            Collections.addAll(entryPoints, methods);
-        }
+        entryPoints.add(method);
     }
 
     @Override
-    public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field... fields) {
-        System.err.println("The specification for fields in entry points configuration is not supported and is ignored.");
+    public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field field) {
+        System.out.println("The specification for fields in entry points configuration is not supported and is ignored.");
     }
 
     @Override
@@ -76,16 +71,6 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
 
     @Override
     public void registerFieldLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String fieldName) {
-
-    }
-
-    @Override
-    public void registerMethodLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
-
-    }
-
-    @Override
-    public void registerConstructorLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, Class<?>... parameterTypes) {
 
     }
 }

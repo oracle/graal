@@ -47,26 +47,32 @@ import javax.management.ObjectName;
 import javax.management.StandardEmitterMBean;
 import javax.management.StandardMBean;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
+import com.oracle.svm.util.HostModuleUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
-
-import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * This class provides the SVM-specific MX bean support, which is accessible in the JDK via
@@ -103,6 +109,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * platform objects and directly calling methods on them is much easier and therefore the common use
  * case. We therefore believe that the automatic reflection registration is indeed unnecessary.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class ManagementSupport implements ThreadListener {
     private static final Class<? extends PlatformManagedObject> FLIGHT_RECORDER_MX_BEAN_CLASS = getFlightRecorderMXBeanClass();
 
@@ -115,7 +122,7 @@ public final class ManagementSupport implements ThreadListener {
     private MBeanServer platformMBeanServer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    ManagementSupport(SubstrateRuntimeMXBean runtimeMXBean, SubstrateThreadMXBean threadMXBean) {
+    public ManagementSupport(SubstrateRuntimeMXBean runtimeMXBean, SubstrateThreadMXBean threadMXBean) {
         SubstrateClassLoadingMXBean classLoadingMXBean = new SubstrateClassLoadingMXBean();
         SubstrateCompilationMXBean compilationMXBean = new SubstrateCompilationMXBean();
         this.threadMXBean = threadMXBean;
@@ -133,7 +140,6 @@ public final class ManagementSupport implements ThreadListener {
         }
     }
 
-    @Fold
     public static ManagementSupport getSingleton() {
         return ImageSingletons.lookup(ManagementSupport.class);
     }
@@ -177,14 +183,14 @@ public final class ManagementSupport implements ThreadListener {
     }
 
     public Set<Class<? extends PlatformManagedObject>> getPlatformManagementInterfaces() {
-        Set<Class<? extends PlatformManagedObject>> result = new HashSet<>(mxBeans.classToObject.keySet());
+        Set<Class<? extends PlatformManagedObject>> result = new HashSet<>(mxBeans.classToObject.keySet()); // noEconomicSet(substitution)
         result.addAll(GCRelatedMXBeans.mxBeans().classToObject.keySet());
         return Collections.unmodifiableSet(result);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Set<PlatformManagedObject> getPlatformManagedObjects() {
-        Set<PlatformManagedObject> result = Collections.newSetFromMap(new IdentityHashMap<>());
+    public EconomicSet<PlatformManagedObject> getPlatformManagedObjects() {
+        EconomicSet<PlatformManagedObject> result = EconomicSet.create(Equivalence.IDENTITY);
         result.addAll(mxBeans.objects);
         result.addAll(GCRelatedMXBeans.mxBeans().objects);
         return result;
@@ -297,9 +303,9 @@ public final class ManagementSupport implements ThreadListener {
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("unchecked")
     private static Class<? extends PlatformManagedObject> getFlightRecorderMXBeanClass() {
-        var jfrModule = ModuleLayer.boot().findModule("jdk.management.jfr");
+        var jfrModule = JVMCIReflectionUtil.bootModuleLayer().findModule("jdk.management.jfr");
         if (jfrModule.isPresent()) {
-            ManagementSupport.class.getModule().addReads(jfrModule.get());
+            HostModuleUtil.addReads(ManagementSupport.class, jfrModule.get());
             try {
                 return (Class<? extends PlatformManagedObject>) Class.forName("jdk.management.jfr.FlightRecorderMXBean", false, Object.class.getClassLoader());
             } catch (ClassNotFoundException ex) {
@@ -321,7 +327,7 @@ public final class ManagementSupport implements ThreadListener {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public boolean verifyNoOverlappingMxBeans() {
-        Set<Class<? extends PlatformManagedObject>> overlapping = new HashSet<>(mxBeans.classToObject.keySet());
+        Set<Class<? extends PlatformManagedObject>> overlapping = new HashSet<>(mxBeans.classToObject.keySet());  // noEconomicSet(retainAll)
         overlapping.retainAll(GCRelatedMXBeans.mxBeans().classToObject.keySet());
         return overlapping.isEmpty();
     }

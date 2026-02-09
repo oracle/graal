@@ -54,18 +54,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.Location.LocationVisitor;
-import com.oracle.truffle.api.object.Transition.ObjectFlagsTransition;
-import com.oracle.truffle.api.object.Transition.ObjectTypeTransition;
-import com.oracle.truffle.api.object.Transition.RemovePropertyTransition;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.object.ExtLocations.ObjectLocation;
 import com.oracle.truffle.api.object.Transition.AbstractReplacePropertyTransition;
 import com.oracle.truffle.api.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.api.object.Transition.DirectReplacePropertyTransition;
+import com.oracle.truffle.api.object.Transition.ObjectFlagsTransition;
+import com.oracle.truffle.api.object.Transition.ObjectTypeTransition;
+import com.oracle.truffle.api.object.Transition.RemovePropertyTransition;
 
 @SuppressWarnings("deprecation")
 abstract class ObsolescenceStrategy {
@@ -133,9 +132,9 @@ abstract class ObsolescenceStrategy {
         if (generalLocation == specificLocation) {
             return;
         }
-        if (generalLocation instanceof ExtLocations.AbstractObjectLocation objLocGeneral && specificLocation instanceof ExtLocations.AbstractObjectLocation objLocSpecific) {
-            ExtLocations.TypeAssumption assGeneral = objLocGeneral.getTypeAssumption();
-            ExtLocations.TypeAssumption assSpecific = objLocSpecific.getTypeAssumption();
+        if (generalLocation instanceof ObjectLocation objLocGeneral && specificLocation instanceof ObjectLocation objLocSpecific) {
+            var assGeneral = objLocGeneral.getTypeAssumption();
+            var assSpecific = objLocSpecific.getTypeAssumption();
             if (assGeneral != assSpecific) {
                 if (!assGeneral.type.isAssignableFrom(assSpecific.type) || assGeneral.nonNull && !assSpecific.nonNull) {
                     // If assignable check failed, merge type assumptions to ensure safety.
@@ -148,47 +147,24 @@ abstract class ObsolescenceStrategy {
 
     private static boolean assertLocationInRange(final Shape shape, final Location location) {
         final LayoutImpl layout = shape.getLayout();
-        location.accept(new LocationVisitor() {
-            @Override
-            public void visitPrimitiveField(int index, int count) {
-                assert index + count <= layout.getPrimitiveFieldCount();
+        if (location.isFieldLocation()) {
+            if (location.isObjectLocation()) {
+                assert location.getIndex() + location.objectFieldCount() <= layout.getObjectFieldCount() : location;
+            } else {
+                assert location.getIndex() + location.primitiveFieldCount() <= layout.getPrimitiveFieldCount() : location;
             }
-
-            @Override
-            public void visitObjectField(int index, int count) {
-                assert index + count <= layout.getObjectFieldCount();
-            }
-
-            @Override
-            public void visitPrimitiveArray(int index, int count) {
-            }
-
-            @Override
-            public void visitObjectArray(int index, int count) {
-            }
-        });
+        }
         return true;
     }
 
     @TruffleBoundary
-    static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
-        if (existingProperty == null) {
-            if (Flags.isPutIfPresent(putFlags)) {
-                return false;
-            }
-        } else {
-            if (Flags.isPutIfAbsent(putFlags)) {
-                return true;
-            } else if (!Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canStore(value)) {
-                existingProperty.getLocation().setSafe(object, value, false, false);
-                return true;
-            }
-        }
-        return putGenericSlowPath(object, key, value, newPropertyFlags, putFlags, s, existingProperty);
+    static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int mode) {
+        return putGeneric(object, key, value, newPropertyFlags, mode, null, null);
     }
 
-    private static boolean putGenericSlowPath(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags,
-                    Shape initialShape, Property propertyOfInitialShape) {
+    @TruffleBoundary
+    static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int mode,
+                    Shape cachedShape, Property propertyOfCachedShape) {
         CompilerAsserts.neverPartOfCompilation();
         updateShape(object);
         Shape oldShape;
@@ -196,42 +172,39 @@ abstract class ObsolescenceStrategy {
         Property property;
         do {
             oldShape = object.getShape();
-            final Property existingProperty = reusePropertyLookup(key, initialShape, propertyOfInitialShape, oldShape);
+            final Property existingProperty = reusePropertyLookup(key, cachedShape, propertyOfCachedShape, oldShape);
             if (existingProperty == null) {
-                if (Flags.isPutIfPresent(putFlags)) {
+                if (Flags.isPutIfPresent(mode)) {
                     return false;
                 } else {
-                    newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
+                    newShape = defineProperty(oldShape, key, value, newPropertyFlags, null, mode);
                     property = newShape.getProperty(key);
                 }
-            } else if (Flags.isPutIfAbsent(putFlags)) {
-                return true;
-            } else if (Flags.isUpdateFlags(putFlags) && newPropertyFlags != existingProperty.getFlags()) {
-                newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
-                property = newShape.getProperty(key);
-            } else {
-                if (existingProperty.getLocation().canStore(value)) {
+            } else if (Flags.isPutIfAbsent(mode)) {
+                return false;
+            } else if (!Flags.isUpdateFlags(mode) || newPropertyFlags == existingProperty.getFlags()) {
+                if (existingProperty.getLocation().canStoreValue(value)) {
                     newShape = oldShape;
                     property = existingProperty;
                 } else {
-                    assert !Flags.isUpdateFlags(putFlags) || newPropertyFlags == existingProperty.getFlags();
-                    newShape = defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, putFlags);
+                    newShape = defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, mode);
                     property = newShape.getProperty(key);
                 }
+            } else {
+                newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, mode);
+                property = newShape.getProperty(key);
             }
         } while (updateShape(object));
 
         assert object.getShape() == oldShape;
+        assert !Flags.isPutIfAbsent(mode) || oldShape != newShape;
+
         Location location = property.getLocation();
+        location.setInternal(object, value, false, oldShape, newShape);
+
         if (oldShape != newShape) {
-            DynamicObjectSupport.grow(object, oldShape, newShape);
-            location.setSafe(object, value, false, true);
             DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
             updateShape(object);
-        } else if (Flags.isPutIfAbsent(putFlags)) {
-            return true;
-        } else {
-            location.setSafe(object, value, false, false);
         }
         return true;
     }
@@ -260,7 +233,7 @@ abstract class ObsolescenceStrategy {
 
     static Shape defineProperty(Shape oldShape, Object key, Object value, int propertyFlags, Property existing, int putFlags) {
         if (existing == null) {
-            return defineNewProperty(oldShape, key, value, propertyFlags, putFlags);
+            return ensureValid(defineNewProperty(oldShape, key, value, propertyFlags, putFlags));
         } else {
             if (existing.getFlags() == propertyFlags) {
                 if (existing.getLocation().canStore(value)) {
@@ -275,20 +248,37 @@ abstract class ObsolescenceStrategy {
     }
 
     private static Shape defineNewProperty(Shape oldShape, Object key, Object value, int propertyFlags, int putFlags) {
-        if (!Flags.isConstant(putFlags)) {
+        Property property;
+        AddPropertyTransition addTransition;
+        if (Flags.isConstant(putFlags)) {
+            Location location = createLocationForValue(oldShape, value, putFlags);
+            property = Property.create(key, location, propertyFlags);
+            addTransition = new AddPropertyTransition(property, location);
+        } else {
+            property = null;
             Class<?> locationType = detectLocationType(value);
-            if (locationType != null) {
-                AddPropertyTransition addTransition = new AddPropertyTransition(key, propertyFlags, locationType);
-                Shape cachedShape = oldShape.queryTransition(addTransition);
-                if (cachedShape != null) {
-                    return ensureValid(cachedShape);
-                }
-            }
+            addTransition = new AddPropertyTransition(key, propertyFlags, locationType);
         }
 
-        Location location = createLocationForValue(oldShape, value, putFlags);
-        Property property = Property.create(key, location, propertyFlags);
-        return addProperty(oldShape, property);
+        oldShape.onPropertyTransition(addTransition);
+        Shape cachedShape = oldShape.queryTransition(addTransition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+
+        if (property == null) {
+            Location location = createLocationForValue(oldShape, value, putFlags);
+            property = Property.create(key, location, propertyFlags);
+            addTransition = newAddPropertyTransition(property);
+        }
+
+        Shape newShape = addPropertyTransition(oldShape, property, addTransition);
+
+        Property actualProperty = newShape.getLastProperty();
+        // Ensure the actual property location is of the same type or more general.
+        ensureSameTypeOrMoreGeneral(actualProperty, property);
+
+        return newShape;
     }
 
     private static Class<?> detectLocationType(Object value) {
@@ -398,29 +388,31 @@ abstract class ObsolescenceStrategy {
         return ensureValid ? ensureValid(newShape) : newShape;
     }
 
-    static Shape addProperty(Shape shape, Property property) {
-        return addProperty(shape, property, true);
+    static Shape addProperty(Shape shape, Property property, boolean ensureValid) {
+        Shape newShape = addPropertyInner(shape, property);
+        return ensureValid ? ensureValid(newShape) : newShape;
     }
 
-    private static Shape addProperty(Shape shape, Property property, boolean ensureValid) {
-        Shape newShape = addPropertyInner(shape, property);
+    private static Shape addPropertyInner(Shape shape, Property property) {
+        AddPropertyTransition addTransition = newAddPropertyTransition(property);
+        shape.onPropertyTransition(addTransition);
+        Shape cachedShape = shape.queryTransition(addTransition);
+        Shape newShape;
+        if (cachedShape != null) {
+            newShape = cachedShape;
+        } else {
+            newShape = addPropertyTransition(shape, property, addTransition);
+        }
 
         Property actualProperty = newShape.getLastProperty();
         // Ensure the actual property location is of the same type or more general.
         ensureSameTypeOrMoreGeneral(actualProperty, property);
 
-        return ensureValid ? ensureValid(newShape) : newShape;
+        return newShape;
     }
 
-    private static Shape addPropertyInner(Shape shape, Property property) {
+    private static Shape addPropertyTransition(Shape shape, Property property, AddPropertyTransition addTransition) {
         assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
-
-        AddPropertyTransition addTransition = newAddPropertyTransition(property);
-        shape.onPropertyTransition(addTransition);
-        Shape cachedShape = shape.queryTransition(addTransition);
-        if (cachedShape != null) {
-            return cachedShape;
-        }
 
         Shape oldShape = ensureSpace(shape, property.getLocation());
 
@@ -508,11 +500,15 @@ abstract class ObsolescenceStrategy {
         }
     }
 
-    @TruffleBoundary
     static boolean updateShape(DynamicObject object) {
-        boolean changed = checkForObsoleteShapeAndMigrate(object);
-        // shape should be valid now, but we cannot assert this due to a possible race
-        return changed;
+        return updateShape(object, object.getShape());
+    }
+
+    static boolean updateShape(DynamicObject object, Shape currentShape) {
+        if (currentShape.isValid()) {
+            return false;
+        }
+        return migrateObsoleteShape(object, currentShape);
     }
 
     private static Shape ensureValid(Shape newShape) {
@@ -697,7 +693,6 @@ abstract class ObsolescenceStrategy {
             performCopy(store, toCopy);
 
             DynamicObjectSupport.setShapeWithStoreFence(store, newShape);
-            assert store.getShape() == newShape;
         } catch (StackOverflowError e) {
             throw STACK_OVERFLOW_ERROR;
         }
@@ -722,12 +717,11 @@ abstract class ObsolescenceStrategy {
     }
 
     static boolean checkExtensionArrayInvariants(DynamicObject store, Shape newShape) {
-        assert store.getShape() == newShape;
         Object[] objectArray = store.getObjectStore();
-        assert (objectArray == null && newShape.getObjectArrayCapacity() == 0) || (objectArray != null && objectArray.length == newShape.getObjectArrayCapacity());
+        assert ((objectArray == null ? 0 : objectArray.length) >= newShape.getObjectArrayCapacity());
         if (newShape.hasPrimitiveArray()) {
             int[] primitiveArray = store.getPrimitiveStore();
-            assert (primitiveArray == null && newShape.getPrimitiveArrayCapacity() == 0) || (primitiveArray != null && primitiveArray.length == newShape.getPrimitiveArrayCapacity());
+            assert ((primitiveArray == null ? 0 : primitiveArray.length) >= newShape.getPrimitiveArrayCapacity());
         }
         return true;
     }
@@ -785,7 +779,7 @@ abstract class ObsolescenceStrategy {
             Property toProperty = toMapIt.next();
             Property fromProperty = fromMap.get(toProperty.getKey());
 
-            // copy only if property has a location and it's not the same as the source location
+            // copy only if property has a location, and it's not the same as the source location
             if (!toProperty.getLocation().isValue() && !toProperty.getLocation().equals(fromProperty.getLocation())) {
                 Object value = fromProperty.getLocation().get(fromObject, false);
                 toCopy.add(toProperty);
@@ -807,21 +801,14 @@ abstract class ObsolescenceStrategy {
         toProperty.getLocation().set(toObject, value, false, true);
     }
 
-    private static boolean checkForObsoleteShapeAndMigrate(DynamicObject store) {
-        Shape currentShape = store.getShape();
-        if (currentShape.isValid()) {
-            return false;
-        }
-        CompilerDirectives.transferToInterpreter();
-        return migrateObsoleteShape(currentShape, store);
-    }
-
-    private static boolean migrateObsoleteShape(Shape currentShape, DynamicObject store) {
+    @TruffleBoundary
+    private static boolean migrateObsoleteShape(DynamicObject store, Shape currentShape) {
         CompilerAsserts.neverPartOfCompilation();
         synchronized (currentShape.getMutex()) {
             if (!currentShape.isValid()) {
                 assert !currentShape.isShared();
                 reshape(store);
+                // shape should be valid now, but we cannot assert this due to a possible race
                 return true;
             }
             return false;

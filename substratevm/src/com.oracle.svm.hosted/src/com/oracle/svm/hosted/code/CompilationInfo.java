@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.code;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.common.meta.MethodVariant;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -36,7 +37,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.deopt.Specialize;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
@@ -94,7 +94,7 @@ public class CompilationInfo {
     }
 
     public boolean isDeoptEntry(int bci, FrameState.StackState stackState) {
-        return method.isDeoptTarget() && (method.getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting ||
+        return method.isDeoptTarget() && (method.getMethodVariant(MethodVariant.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting ||
                         SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry(method, bci, stackState));
     }
 

@@ -1039,6 +1039,7 @@ public final class TruffleLogger {
                         found = logger;
                         break;
                     }
+                    // Parfait_ALLOW toctou-race-condition-warning (compare-and-set pattern)
                     found = getLogger(loggerName);
                 }
             }

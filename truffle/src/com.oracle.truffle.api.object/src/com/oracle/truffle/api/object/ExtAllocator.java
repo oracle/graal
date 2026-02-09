@@ -54,19 +54,11 @@ import static com.oracle.truffle.api.object.ObjectStorageOptions.PrimitiveLocati
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.impl.AbstractAssumption;
-import com.oracle.truffle.api.object.ExtLocations.AbstractObjectLocation;
-import com.oracle.truffle.api.object.ExtLocations.DoubleArrayLocation;
-import com.oracle.truffle.api.object.ExtLocations.DoubleFieldLocation;
 import com.oracle.truffle.api.object.ExtLocations.DoubleLocation;
 import com.oracle.truffle.api.object.ExtLocations.InstanceLocation;
-import com.oracle.truffle.api.object.ExtLocations.IntArrayLocation;
-import com.oracle.truffle.api.object.ExtLocations.IntFieldLocation;
 import com.oracle.truffle.api.object.ExtLocations.IntLocation;
-import com.oracle.truffle.api.object.ExtLocations.LongArrayLocation;
-import com.oracle.truffle.api.object.ExtLocations.LongFieldLocation;
 import com.oracle.truffle.api.object.ExtLocations.LongLocation;
-import com.oracle.truffle.api.object.ExtLocations.ObjectArrayLocation;
-import com.oracle.truffle.api.object.ExtLocations.ObjectFieldLocation;
+import com.oracle.truffle.api.object.ExtLocations.ObjectLocation;
 import com.oracle.truffle.api.object.ExtLocations.TypeAssumption;
 
 import sun.misc.Unsafe;
@@ -94,13 +86,11 @@ final class ExtAllocator extends BaseAllocator {
         final boolean decorateFinal = false;
         if (oldLocation instanceof IntLocation) {
             return newIntLocation(decorateFinal, oldLocation, NO_VALUE);
-        } else if (oldLocation instanceof DoubleLocation) {
-            return newDoubleLocation(decorateFinal, ((DoubleLocation) oldLocation).isImplicitCastIntToDouble(), oldLocation, NO_VALUE);
-        } else if (oldLocation instanceof LongLocation) {
-            return newLongLocation(decorateFinal, ((LongLocation) oldLocation).isImplicitCastIntToLong(), oldLocation, NO_VALUE);
-        } else if (oldLocation instanceof ObjectFieldLocation) {
-            return newObjectLocation(decorateFinal, oldLocation, NO_VALUE);
-        } else if (oldLocation instanceof ObjectArrayLocation) {
+        } else if (oldLocation instanceof DoubleLocation doubleLocation) {
+            return newDoubleLocation(decorateFinal, doubleLocation.isImplicitCastIntToDouble(), oldLocation, NO_VALUE);
+        } else if (oldLocation instanceof LongLocation longLocation) {
+            return newLongLocation(decorateFinal, longLocation.isImplicitCastIntToLong(), oldLocation, NO_VALUE);
+        } else if (oldLocation instanceof ObjectLocation) {
             return newObjectLocation(decorateFinal, oldLocation, NO_VALUE);
         }
         assert oldLocation.isValue();
@@ -130,29 +120,29 @@ final class ExtAllocator extends BaseAllocator {
         return advance(location);
     }
 
-    private static ObjectFieldLocation newObjectFieldLocationWithAssumption(int index, FieldInfo fieldInfo,
+    private static ObjectLocation newObjectFieldLocationWithAssumption(int index, FieldInfo fieldInfo,
                     TypeAssumption initialTypeAssumption, AbstractAssumption initialFinalAssumption) {
-        return new ObjectFieldLocation(index, fieldInfo, initialFinalAssumption, initialTypeAssumption);
+        return ObjectLocation.createObjectFieldLocation(index, fieldInfo, initialFinalAssumption, initialTypeAssumption);
     }
 
-    private static ObjectArrayLocation newObjectArrayLocationWithAssumption(int index,
+    private static ObjectLocation newObjectArrayLocationWithAssumption(int index,
                     TypeAssumption initialTypeAssumption, AbstractAssumption initialFinalAssumption) {
-        return new ObjectArrayLocation(index, initialFinalAssumption, initialTypeAssumption);
+        return ObjectLocation.createObjectArrayLocation(index, initialFinalAssumption, initialTypeAssumption);
     }
 
     private static boolean allowTypeSpeculation(Location oldLocation, Object value) {
-        return (value != NO_VALUE && oldLocation == null) || (oldLocation instanceof AbstractObjectLocation);
+        return (value != NO_VALUE && oldLocation == null) || (oldLocation instanceof ObjectLocation);
     }
 
     private static TypeAssumption getTypeAssumption(Location oldLocation, Object value) {
         if (NewTypeSpeculation && allowTypeSpeculation(oldLocation, value)) {
             if (value != NO_VALUE && oldLocation == null) {
-                if (AbstractObjectLocation.LAZY_ASSUMPTION) {
+                if (ObjectLocation.LAZY_TYPE_ASSUMPTION) {
                     return null;
                 }
-                return AbstractObjectLocation.createTypeAssumptionFromValue(value);
-            } else if (oldLocation instanceof AbstractObjectLocation) {
-                return ((AbstractObjectLocation) oldLocation).getTypeAssumption();
+                return ObjectLocation.createTypeAssumptionFromValue(value);
+            } else if (oldLocation instanceof ObjectLocation objectLocation) {
+                return objectLocation.getTypeAssumption();
             }
         }
         return TypeAssumption.ANY;
@@ -165,8 +155,8 @@ final class ExtAllocator extends BaseAllocator {
                     return null;
                 }
                 return InstanceLocation.createFinalAssumption();
-            } else if (oldLocation instanceof InstanceLocation) {
-                return ((InstanceLocation) oldLocation).getFinalAssumptionField();
+            } else if (oldLocation instanceof InstanceLocation instanceLocation) {
+                return instanceLocation.getFinalAssumptionField();
             }
         }
         return (AbstractAssumption) Assumption.NEVER_VALID;
@@ -185,14 +175,14 @@ final class ExtAllocator extends BaseAllocator {
                 if (fieldIndex >= 0) {
                     FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
                     AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                    Location location = new IntFieldLocation(fieldIndex, fieldInfo, initialFinalAssumption);
+                    Location location = IntLocation.createIntFieldLocation(fieldIndex, fieldInfo, initialFinalAssumption);
                     return advance(location);
                 }
             }
             if (l.hasPrimitiveExtensionArray()) {
                 int index = alignArrayIndex(primitiveArraySize, INT_ARRAY_SLOT_SIZE);
                 AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                Location location = new IntArrayLocation(index, initialFinalAssumption);
+                Location location = IntLocation.createIntArrayLocation(index, initialFinalAssumption);
                 return advance(location);
             }
         }
@@ -207,14 +197,14 @@ final class ExtAllocator extends BaseAllocator {
                 if (fieldIndex >= 0) {
                     FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
                     AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                    Location location = new DoubleFieldLocation(fieldIndex, fieldInfo, allowIntToDouble, initialFinalAssumption);
+                    Location location = DoubleLocation.createDoubleFieldLocation(fieldIndex, fieldInfo, allowIntToDouble, initialFinalAssumption);
                     return advance(location);
                 }
             }
             if (l.hasPrimitiveExtensionArray()) {
                 int index = alignArrayIndex(primitiveArraySize, DOUBLE_ARRAY_SLOT_SIZE);
                 AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                Location location = new DoubleArrayLocation(index, allowIntToDouble, initialFinalAssumption);
+                Location location = DoubleLocation.createDoubleArrayLocation(index, allowIntToDouble, initialFinalAssumption);
                 return advance(location);
             }
         }
@@ -247,14 +237,14 @@ final class ExtAllocator extends BaseAllocator {
                 if (fieldIndex >= 0) {
                     FieldInfo fieldInfo = l.getPrimitiveField(fieldIndex);
                     AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                    Location location = new LongFieldLocation(fieldIndex, fieldInfo, allowIntToLong, initialFinalAssumption);
+                    Location location = LongLocation.createLongFieldLocation(fieldIndex, fieldInfo, allowIntToLong, initialFinalAssumption);
                     return advance(location);
                 }
             }
             if (l.hasPrimitiveExtensionArray()) {
                 int index = alignArrayIndex(primitiveArraySize, LONG_ARRAY_SLOT_SIZE);
                 AbstractAssumption initialFinalAssumption = getFinalAssumption(oldLocation, decorateFinal);
-                Location location = new LongArrayLocation(index, allowIntToLong, initialFinalAssumption);
+                Location location = LongLocation.createLongArrayLocation(index, allowIntToLong, initialFinalAssumption);
                 return advance(location);
             }
         }
@@ -270,7 +260,7 @@ final class ExtAllocator extends BaseAllocator {
         }
 
         // Object-typed locations should be able to store all values and therefore not reach here.
-        assert !(oldLocation instanceof AbstractObjectLocation) : oldLocation;
+        assert !(oldLocation instanceof ObjectLocation) : oldLocation;
         final boolean decorateFinal = false;
         Location newLocation = null;
         // if shape is shared, transition to an untyped location directly

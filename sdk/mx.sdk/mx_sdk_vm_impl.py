@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -420,10 +420,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                 for profile in _image_profiles(GraalVmNativeProperties.canonical_image_name(image_config)):
                     _add(layout, _macro_dir, 'file:{}'.format(abspath(profile)))
 
-        def _add_link(_dest, _target, _component=None, _dest_base_name=None):
+        def _add_link(_dest, _target, _component=None, _suggested_dest_base_name=None):
             assert _dest.endswith('/')
             _linkname = relpath(path_substitutions.substitute(_target), start=path_substitutions.substitute(_dest[:-1]))
-            dest_base_name = _dest_base_name or basename(_target)
+            dest_base_name = _suggested_dest_base_name or basename(_target)
             if _linkname != dest_base_name:
                 if mx.is_windows():
                     if _target.endswith('.exe') or _target.endswith('.cmd'):
@@ -585,10 +585,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                     _link_dest = _component_base + _component_link
                     # add links `LauncherConfig.links` -> `LauncherConfig.destination`
                     _link_dest_dir, _link_dest_base_name = os.path.split(_link_dest)
-                    _add_link(_link_dest_dir + '/', _launcher_dest, _component, _dest_base_name=_link_dest_base_name)
+                    _final_link_dest = _add_link(_link_dest_dir + '/', _launcher_dest, _component, _suggested_dest_base_name=_link_dest_base_name)
                     # add links from jre/bin to component link
                     if _launcher_config.default_symlinks:
-                        _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
+                        _link_path = _add_link(_jdk_jre_bin, _final_link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
                 if stage1 or _rebuildable_image(_launcher_config):
                     _add_native_image_macro(_launcher_config, _component, stage1)
@@ -1232,7 +1232,7 @@ class GraalVmNativeProperties(GraalVmProject):
 
 class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
-    implicit_excludes = ['substratevm:LIBRARY_SUPPORT']
+    implicit_excludes = ['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST']
 
     def __init__(self, subject, args):
         """
@@ -1278,7 +1278,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         if self._contents is None:
             image_config = self.subject.image_config
             build_args = [
-                '--no-fallback',
                 '-march=compatibility',  # Target maximum portability of all GraalVM images.
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
             ] + svm_experimental_options([
@@ -1348,7 +1347,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(self._graalvm_dist, graalvm_home, image_config, self.subject.component, exclude_implicit=True)
                     build_args += ['-Dorg.graalvm.launcher.classpath=' + os.pathsep.join(launcher_classpath)]
                     if isinstance(image_config, mx_sdk.LauncherConfig):
-                        build_args += svm_experimental_options(['-H:-ParseRuntimeOptions'])
+                        build_args += ['-H:-ParseRuntimeOptions'] + svm_experimental_options(['-H:-InitializeVM'])
 
                 if has_component('svmee', stage1=True):
                     build_args += [
@@ -1377,7 +1376,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             build_with_module_path = image_config.use_modules == 'image'
             if build_with_module_path:
-                export_deps_to_exclude = [str(dep) for dep in mx.classpath_entries(['substratevm:LIBRARY_SUPPORT'])] + list(_known_missing_jars)
+                export_deps_to_exclude = [str(dep) for dep in mx.classpath_entries(['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST'])] + list(_known_missing_jars)
                 build_args += image_config.get_add_exports(set(export_deps_to_exclude))
 
             requires = [arg[2:] for arg in build_args if arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:')]
@@ -2337,10 +2336,14 @@ def _get_jvm_cfg_contents(cfgs_to_add):
     }
 
     new_lines = []
+    added_lines = set()
     for _, cfg in sorted(all_cfgs.items()):
         for config in cfg['configs']:
             validate_cfg_line(config, cfg['source'])
-            new_lines.append(config.strip() + os.linesep)
+            line_to_add = config.strip()
+            if line_to_add not in added_lines:
+                new_lines.append(line_to_add + os.linesep)
+                added_lines.add(line_to_add)
     # escape things that look like string substitutions
     return re.sub(r'<[\w\-]+?(:(.+?))?>', lambda m: '<esc:' + m.group(0)[1:], ''.join(new_lines))
 

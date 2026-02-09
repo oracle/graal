@@ -740,7 +740,11 @@ public final class JavaRegexLexer extends RegexLexer {
                 retreat();
                 return CodePointSet.create(ch);
             }
-            int upper = parseCharClassAtomCodePoint(consumeChar());
+            char c2 = consumeChar();
+            if (c2 == '\\' && (atEnd() || isEscapeCharClass(curChar()))) {
+                throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE, ErrorCode.InvalidCharacterClass);
+            }
+            int upper = parseCharClassAtomCodePoint(c2);
             if (upper < ch) {
                 throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE, ErrorCode.InvalidCharacterClass);
             }

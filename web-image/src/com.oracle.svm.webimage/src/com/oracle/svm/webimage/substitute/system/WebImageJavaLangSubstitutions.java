@@ -25,7 +25,7 @@
 
 package com.oracle.svm.webimage.substitute.system;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.ByteArrayInputStream;
 import java.io.Console;
@@ -48,7 +48,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;

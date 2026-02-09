@@ -28,7 +28,6 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
@@ -118,10 +117,17 @@ public class PointsToAnalysisField extends AnalysisField {
 
     @Override
     public void injectDeclaredType() {
-        BigBang bb = getUniverse().getBigbang();
+        var bb = getUniverse().getBigbang();
+        if (!bb.isSupportedJavaKind(getStorageKind())) {
+            /*
+             * If this JavaKind is not tracked by the analysis, there is no point in inserting any
+             * state into the field.
+             */
+            return;
+        }
         if (getStorageKind().isObject()) {
             bb.injectFieldTypes(this, List.of(this.getType()), true);
-        } else if (bb.trackPrimitiveValues() && getStorageKind().isPrimitive()) {
+        } else {
             this.saturatePrimitiveField();
         }
     }
@@ -151,7 +157,7 @@ public class PointsToAnalysisField extends AnalysisField {
         return false;
     }
 
-    public void saturatePrimitiveField() {
+    private void saturatePrimitiveField() {
         assert fieldType.isPrimitive() || fieldType.isWordType() : this;
         var bb = ((PointsToAnalysis) getUniverse().getBigbang());
         initialFlow.addState(bb, TypeState.anyPrimitiveState());

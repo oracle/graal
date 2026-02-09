@@ -34,9 +34,9 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.word.impl.Word;
 
 /**
  * Support for deoptimization with virtual Vector API objects in the state.

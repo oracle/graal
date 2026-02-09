@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.core.c.libc;
 
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class NoLibC implements LibCBase {
 
     public static final String NO_LIBC_ERROR = "Should not call this method when not running on Linux.";

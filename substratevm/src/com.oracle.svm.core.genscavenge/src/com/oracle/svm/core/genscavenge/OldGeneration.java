@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.log.Log;
@@ -41,13 +41,13 @@ public abstract class OldGeneration extends Generation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    abstract void beginPromotion(boolean incrementalGc);
+    abstract void beginPromotion(boolean completeCollection);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     abstract void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    abstract boolean scanGreyObjects(boolean incrementalGc);
+    abstract boolean scanGreyObjects(boolean completeCollection);
 
     abstract void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser);
 

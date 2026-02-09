@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.List;
 
@@ -33,9 +33,10 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -55,7 +56,6 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import jdk.graal.compiler.word.Word;
 
 public final class AlignedChunkRememberedSet {
     private AlignedChunkRememberedSet() {
@@ -102,7 +102,7 @@ public final class AlignedChunkRememberedSet {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
 
-        Word objPtr = Word.objectToUntrackedPointer(obj);
+        Word objPtr = Word.objectToUntrackedWord(obj);
         UnsignedWord startOffset = objPtr.subtract(objectsStart);
         UnsignedWord endOffset = startOffset.add(objSize);
 

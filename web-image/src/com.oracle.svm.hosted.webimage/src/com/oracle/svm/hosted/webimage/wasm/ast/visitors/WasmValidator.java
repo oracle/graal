@@ -84,10 +84,6 @@ public class WasmValidator extends WasmVisitor {
          * in the frame, but if this is true, execution can never reach the end of the block.
          */
         boolean unreachable = false;
-        /**
-         * Whether any instructions target this block.
-         */
-        boolean targeted = false;
 
         CtrlFrame(WasmId.Label label, WasmValType returnType) {
             this.label = label;
@@ -465,15 +461,6 @@ public class WasmValidator extends WasmVisitor {
         assertStackEmpty();
         errorIf(frame.label != expectedLabel, "Expected control frame " + expectedLabel + " but got " + frame.label);
         ctrls.pop();
-        /*
-         * If the end of the frame was unreachable and no instruction targeted it, it means that it
-         * is impossible to reach the instruction right after it and we have to mark the outer block
-         * as unreachable as well.
-         */
-        if (!frame.targeted && frame.unreachable && !ctrls.isEmpty()) {
-            markUnreachable();
-        }
-
     }
 
     private void popBlockCtrl(Instruction.WasmBlock block) {
@@ -514,14 +501,12 @@ public class WasmValidator extends WasmVisitor {
         typeUse.results.forEach(this::pushVal);
     }
 
-    private CtrlFrame markLabelTargeted(WasmId.Label label) {
-        CtrlFrame frame = ctrls.stream().filter(f -> idsEqual(label, f.label)).findFirst().orElseThrow(() -> error("Label " + label + " does not exist."));
-        frame.targeted = true;
-        return frame;
+    private CtrlFrame assertLabelExists(WasmId.Label label) {
+        return ctrls.stream().filter(f -> idsEqual(label, f.label)).findFirst().orElseThrow(() -> error("Label " + label + " does not exist."));
     }
 
-    private void markLabelTargetedWithReturnType(WasmId.Label label, WasmValType returnType) {
-        CtrlFrame frame = markLabelTargeted(label);
+    private void assertLabelExistsWithReturnType(WasmId.Label label, WasmValType returnType) {
+        CtrlFrame frame = assertLabelExists(label);
         errorIf(!Objects.equals(frame.getReturnType(), returnType), "Label " + label + " has return type " + frame.getReturnType() + " but " + returnType + " was expected");
     }
 
@@ -703,7 +688,7 @@ public class WasmValidator extends WasmVisitor {
         errorIf(!ctxt.hasTag(catchClause.tag), "No matching tag for catch clause: " + catchClause);
         List<WasmValType> catchParams = catchClause.tag.typeUse.params;
         errorIf(catchParams.size() != 1, "Can only support catch clause tags with a single param, got" + catchParams.size());
-        markLabelTargetedWithReturnType(catchClause.label, catchParams.getFirst());
+        assertLabelExistsWithReturnType(catchClause.label, catchParams.getFirst());
     }
 
     @Override
@@ -746,7 +731,7 @@ public class WasmValidator extends WasmVisitor {
 
         WasmId.Label targetLabel = inst.getTarget();
 
-        markLabelTargeted(targetLabel);
+        assertLabelExists(targetLabel);
 
         if (inst.condition == null) {
             markUnreachable();
@@ -762,10 +747,10 @@ public class WasmValidator extends WasmVisitor {
         popVals(i32);
 
         WasmId.Label defaultLabel = inst.getDefaultTarget();
-        markLabelTargeted(defaultLabel);
+        assertLabelExists(defaultLabel);
 
         for (int i = 0; i < inst.numTargets(); i++) {
-            markLabelTargeted(inst.getTarget(i));
+            assertLabelExists(inst.getTarget(i));
         }
 
         markUnreachable();

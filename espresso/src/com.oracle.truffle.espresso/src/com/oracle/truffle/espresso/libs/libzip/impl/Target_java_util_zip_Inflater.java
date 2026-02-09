@@ -22,16 +22,18 @@
  */
 package com.oracle.truffle.espresso.libs.libzip.impl;
 
-import java.nio.ByteBuffer;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.libs.libzip.LibZip;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -73,9 +75,13 @@ public final class Target_java_util_zip_Inflater {
     }
 
     @Substitution
-    public static void setDictionaryBuffer(long addr, long bufAddress, int len, @Inject LibsState libsState) {
-        ByteBuffer dst = NativeUtils.directByteBuffer(bufAddress, len);
-        libsState.getInflater(addr).setDictionary(dst);
+    @TruffleBoundary
+    public static void setDictionaryBuffer(long addr, long bufAddress, int len, @Inject LibsState libsState, @Inject EspressoContext ctx, @Inject Meta meta) {
+        try {
+            libsState.getInflater(addr).setDictionary(ctx.getNativeAccess().nativeMemory().wrapNativeMemory(bufAddress, len));
+        } catch (IllegalMemoryAccessException e) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid memory access: bufAddress and len refer to memory outside the allocated region");
+        }
     }
 
     @Substitution(hasReceiver = true)
@@ -106,10 +112,11 @@ public final class Target_java_util_zip_Inflater {
     @Substitution(hasReceiver = true)
     public static long inflateBytesBuffer(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     @JavaType(byte[].class) StaticObject inputArray, int inputOff, int inputLen,
-                    long outputAddress, int outputLen, @Inject LibsState libsState, @Inject LibsMeta libsMeta, @Inject EspressoLanguage lang) {
+                    long outputAddress, int outputLen,
+                    @Inject LibsState libsState, @Inject LibsMeta libsMeta,
+                    @Inject EspressoLanguage language, @Inject EspressoContext ctx) {
         // get Input/Output Array/Buffer
-        byte[] inputByteArray = inputArray.unwrap(lang);
-        ByteBuffer outputByteBuffer = NativeUtils.directByteBuffer(outputAddress, outputLen);
+        byte[] inputByteArray = inputArray.unwrap(language);
         // get host Inflater and set Input
         Inflater hostInflater = libsState.getInflater(addr);
         hostInflater.setInput(inputByteArray, inputOff, inputLen);
@@ -117,12 +124,15 @@ public final class Target_java_util_zip_Inflater {
         long bytesReadOld = hostInflater.getBytesRead();
         long bytesWrittenOld = hostInflater.getBytesWritten();
         try {
-            int written = hostInflater.inflate(outputByteBuffer);
+            // do inflate and encode result
+            int written = hostInflater.inflate(ctx.getNativeAccess().nativeMemory().wrapNativeMemory(outputAddress, outputLen));
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
         } catch (DataFormatException e) {
             updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, libsMeta);
             throw libsMeta.getMeta().throwExceptionWithMessage(libsMeta.java_util_zip_DataFormatException, e.getMessage());
+        } catch (IllegalMemoryAccessException e) {
+            throw libsMeta.getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: outputAddress and outputLen refer to memory outside the allocated region");
         }
     }
 
@@ -130,25 +140,26 @@ public final class Target_java_util_zip_Inflater {
     public static long inflateBufferBytes(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     long inputAddress, int inputLen,
                     @JavaType(byte[].class) StaticObject outputArray, int outputOff, int outputLen,
-                    @Inject LibsState libsState, @Inject LibsMeta libsMeta,
-                    @Inject EspressoLanguage lang) {
+                    @Inject LibsState libsState, @Inject LibsMeta libsMeta, @Inject EspressoLanguage language,
+                    @Inject EspressoContext ctx) {
 
-        // get Input/Output Array/Buffer
-        ByteBuffer inputByteBuffer = NativeUtils.directByteBuffer(inputAddress, inputLen);
-        byte[] outputByteArray = outputArray.unwrap(lang);
-        // get host Inflater and set Input
+        // get host Inflater
         Inflater hostInflater = libsState.getInflater(addr);
-        hostInflater.setInput(inputByteBuffer);
         // cache bytes/read/written for the exception case
         long bytesReadOld = hostInflater.getBytesRead();
         long bytesWrittenOld = hostInflater.getBytesWritten();
         try {
+            // do inflate and encode result
+            hostInflater.setInput(ctx.getNativeAccess().nativeMemory().wrapNativeMemory(inputAddress, inputLen));
+            byte[] outputByteArray = outputArray.unwrap(language);
             int written = hostInflater.inflate(outputByteArray, outputOff, outputLen);
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
         } catch (DataFormatException e) {
             updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, libsMeta);
             throw libsMeta.getMeta().throwExceptionWithMessage(libsMeta.java_util_zip_DataFormatException, e.getMessage());
+        } catch (IllegalMemoryAccessException e) {
+            throw libsMeta.getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: inputAddress and inputLen refer to memory outside the allocated region");
         }
     }
 
@@ -157,24 +168,24 @@ public final class Target_java_util_zip_Inflater {
     public static long inflateBufferBuffer(@JavaType(Inflater.class) StaticObject guestInflater, long addr,
                     long inputAddress, int inputLen,
                     long outputAddress, int outputLen,
-                    @Inject LibsState libsState, @Inject LibsMeta libsMeta,
-                    @Inject EspressoLanguage lang) {
-        // get Input/Output Array/Buffer
-        ByteBuffer inputByteBuffer = NativeUtils.directByteBuffer(inputAddress, inputLen);
-        ByteBuffer outputByteBuffer = NativeUtils.directByteBuffer(outputAddress, outputLen);
-        // get host Inflater and set Input
+                    @Inject LibsState libsState, @Inject LibsMeta libsMeta, @Inject EspressoLanguage language,
+                    @Inject EspressoContext ctx) {
+        // get host Inflater
         Inflater hostInflater = libsState.getInflater(addr);
-        hostInflater.setInput(inputByteBuffer);
         // cache bytes/read/written for the exception case
         long bytesReadOld = hostInflater.getBytesRead();
         long bytesWrittenOld = hostInflater.getBytesWritten();
         try {
-            int written = hostInflater.inflate(outputByteBuffer);
+            // do inflate and encode result
+            hostInflater.setInput(ctx.getNativeAccess().nativeMemory().wrapNativeMemory(inputAddress, inputLen));
+            int written = hostInflater.inflate(ctx.getNativeAccess().nativeMemory().wrapNativeMemory(outputAddress, outputLen));
             int read = Math.toIntExact(hostInflater.getBytesRead() - bytesReadOld);
             return encodeResult(read, written, hostInflater);
         } catch (DataFormatException e) {
             updateGuestInflater(hostInflater, bytesReadOld, bytesWrittenOld, guestInflater, libsMeta);
             throw libsMeta.getMeta().throwExceptionWithMessage(libsMeta.java_util_zip_DataFormatException, e.getMessage());
+        } catch (IllegalMemoryAccessException e) {
+            throw libsMeta.getMeta().throwIllegalArgumentExceptionBoundary("Invalid memory access: an input or output address and length refers to memory outside the allocated region");
         }
     }
 

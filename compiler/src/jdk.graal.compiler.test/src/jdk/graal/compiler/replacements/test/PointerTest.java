@@ -24,6 +24,12 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
@@ -38,13 +44,7 @@ import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordCastNode;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;

@@ -153,6 +153,8 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     // endregion open-world only fields
 
+    public static final Object UNINITIALIZED = new Object();
+
     /**
      * The unique implementor of this type that can replace it in stamps as an exact type.
      * <p>
@@ -163,7 +165,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
      * In open-world analysis the field is set to {@code null} for non-leaf types since we have to
      * assume that there may be some instantiated subtypes that we haven't seen yet.
      */
-    protected HostedType uniqueConcreteImplementation;
+    protected Object uniqueConcreteImplementation = UNINITIALIZED;
 
     /**
      * A more precise subtype that can replace this type as the declared type of values.
@@ -176,7 +178,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
      * In open-world analysis the field is set to this type itself for non-leaf types since we have
      * to assume that there may be some instantiated subtypes that we haven't seen yet.
      */
-    protected HostedType strengthenStampType;
+    protected Object strengthenStampType = UNINITIALIZED;
 
     public HostedType(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces) {
         this.universe = universe;
@@ -189,7 +191,8 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     public HostedType getStrengthenStampType() {
-        return strengthenStampType;
+        VMError.guarantee(strengthenStampType != UNINITIALIZED, "The strengthenStampType field not initialized for %s", this);
+        return (HostedType) strengthenStampType;
     }
 
     public HostedType[] getSubTypes() {
@@ -490,7 +493,8 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public HostedType getSingleImplementor() {
-        return uniqueConcreteImplementation;
+        VMError.guarantee(uniqueConcreteImplementation != UNINITIALIZED, "The uniqueConcreteImplementation field not initialized for %s", this);
+        return (HostedType) uniqueConcreteImplementation;
     }
 
     @Override
@@ -586,7 +590,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
-        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+        return wrapped.getRecordComponents();
     }
 
     @Override
@@ -643,12 +647,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public boolean isCloneableWithAllocation() {
         return wrapped.isCloneableWithAllocation();
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return universe.lookup(wrapped.getHostClass());
     }
 
     @Override

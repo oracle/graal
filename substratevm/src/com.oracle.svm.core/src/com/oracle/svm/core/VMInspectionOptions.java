@@ -36,15 +36,16 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
 
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.management.ManagementAgentModule;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -83,6 +84,7 @@ public final class VMInspectionOptions {
                     ", or '" + MONITORING_ALL_NAME + "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
     @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_DEFAULT_NAME)//
+    @LayerVerifiedOption(kind = LayerVerifiedOption.Kind.Changed, severity = LayerVerifiedOption.Severity.Error)//
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES_TEXT + ". " +
                     "For example: '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "'.", type = OptionType.User)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(
@@ -187,8 +189,10 @@ public final class VMInspectionOptions {
             try {
                 HeapDumping.singleton().dumpHeap(absoluteHeapDumpPath, true);
             } catch (IOException e) {
-                System.err.println("Failed to create heap dump:");
-                e.printStackTrace();
+                // Checkstyle: allow System.err (for JDK compatibility)
+                System.err.println("Failed to create heap dump file:");
+                e.printStackTrace(System.err);
+                // Checkstyle: disallow System.err
                 return false;
             }
             System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");

@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.Arrays;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -160,12 +162,6 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     @VisibleForSerialization
-    public static InterpreterResolvedObjectType create(ParserKlass parserKlass, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
-                    InterpreterResolvedObjectType[] interfaces, Class<?> javaClass, boolean isWordType) {
-        return new InterpreterResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, isWordType);
-    }
-
-    @VisibleForSerialization
     public static InterpreterResolvedObjectType createWithOpaqueClass(String name, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces, InterpreterConstantPool constantPool,
                     JavaConstant clazzConstant,
@@ -270,6 +266,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
      * Returns the virtual dispatch table. For interfaces this returns the interface dispatch table
      * prototype.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public final InterpreterResolvedJavaMethod[] getVtable() {
         if (vtableHolder == null) {
             return null;
@@ -283,8 +280,12 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     @Override
     public final InterpreterResolvedJavaMethod lookupVTableEntry(int vtableIndex) {
-        assert getVtable() != null;
-        return getVtable()[vtableIndex];
+        InterpreterResolvedJavaMethod[] vtable = getVtable();
+        assert vtable != null;
+        if (vtableIndex >= vtable.length) {
+            return null;
+        }
+        return vtable[vtableIndex];
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -323,17 +324,87 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     @Override
     public InterpreterResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        throw VMError.unimplemented("getInstanceFields: Likely not used until JIT added to runtime loaded classes.");
+        // Collect non-static fields declared in this class
+        int thisClazzFieldCount = 0;
+        for (InterpreterResolvedJavaField f : declaredFields) {
+            if (!f.isStatic()) {
+                thisClazzFieldCount++;
+            }
+        }
+
+        InterpreterResolvedJavaField[] thisClazzFields;
+        if (thisClazzFieldCount == 0) {
+            thisClazzFields = InterpreterResolvedJavaField.EMPTY_ARRAY;
+        } else {
+            thisClazzFields = new InterpreterResolvedJavaField[thisClazzFieldCount];
+            int idx = 0;
+            for (InterpreterResolvedJavaField f : declaredFields) {
+                if (!f.isStatic()) {
+                    thisClazzFields[idx++] = f;
+                }
+            }
+        }
+
+        // If not including superclasses or no superclass, return thisClazzFields
+        if (!includeSuperclasses || superclass == null) {
+            return thisClazzFields;
+        }
+
+        // Merge with superclass instance fields: superclass first, preserving declared order
+        InterpreterResolvedJavaField[] parent = superclass.getInstanceFields(true);
+        if (parent.length == 0) {
+            return thisClazzFields;
+        }
+        if (thisClazzFields.length == 0) {
+            return parent;
+        }
+        InterpreterResolvedJavaField[] result = Arrays.copyOf(parent, parent.length + thisClazzFields.length);
+        System.arraycopy(thisClazzFields, 0, result, parent.length, thisClazzFields.length);
+        return result;
     }
 
     @Override
     public InterpreterResolvedJavaField[] getStaticFields() {
-        throw VMError.unimplemented("getStaticFields: Likely not used until JIT added to runtime loaded classes.");
+        InterpreterResolvedJavaField[] declared = this.declaredFields;
+        if (declared == null || declared.length == 0) {
+            return InterpreterResolvedJavaField.EMPTY_ARRAY;
+        }
+        int thisClazzStaticFieldCount = 0;
+        for (InterpreterResolvedJavaField f : declared) {
+            if (f.isStatic()) {
+                thisClazzStaticFieldCount++;
+            }
+        }
+        if (thisClazzStaticFieldCount == 0) {
+            return InterpreterResolvedJavaField.EMPTY_ARRAY;
+        }
+        InterpreterResolvedJavaField[] thisClazzStaticFields = new InterpreterResolvedJavaField[thisClazzStaticFieldCount];
+        int idx = 0;
+        for (InterpreterResolvedJavaField f : declared) {
+            if (f.isStatic()) {
+                thisClazzStaticFields[idx++] = f;
+            }
+        }
+        return thisClazzStaticFields;
     }
 
     @Override
     public InterpreterResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-        throw VMError.unimplemented("findInstanceFieldWithOffset: Likely not used until JIT added to runtime loaded classes.");
+        if (offset < 0) {
+            return null;
+        }
+        // Search all instance fields including superclasses
+        InterpreterResolvedJavaField[] fields = getInstanceFields(true);
+        for (InterpreterResolvedJavaField f : fields) {
+            // Compare offsets (stored as int at build time but passed as long here)
+            if (f.getOffset() == offset) {
+                // If an expected kind is provided, enforce it
+                if (expectedKind == null || expectedKind == f.getJavaKind()) {
+                    return f;
+                }
+            }
+        }
+        return null;
     }
 
     @Override

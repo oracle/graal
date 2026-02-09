@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,18 @@
  */
 package org.graalvm.word.test;
 
-import static org.graalvm.word.WordFactory.unsigned;
-import static org.graalvm.word.WordFactory.signed;
-import static org.graalvm.word.WordFactory.pointer;
+import static org.graalvm.word.impl.Word.pointer;
+import static org.graalvm.word.impl.Word.signed;
+import static org.graalvm.word.impl.Word.unsigned;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.List;
-import java.util.stream.LongStream;
-
+@AddExports("org.graalvm.word/org.graalvm.word.impl")
 public class WordTests {
 
     static long[] words = {
@@ -71,30 +70,19 @@ public class WordTests {
                     Integer.MIN_VALUE + 1L
     };
 
-    static SignedWord signedWord(long val) {
-        return signed(val);
-    }
-
-    static UnsignedWord unsignedWord(long val) {
-        return unsigned(val);
-    }
-
-    static Pointer asPointer(long val) {
-        return pointer(val);
-    }
-
-    static List<SignedWord> signedWords = LongStream.of(words).mapToObj(WordTests::signedWord).toList();
-    static List<UnsignedWord> unsignedWords = LongStream.of(words).mapToObj(WordTests::unsignedWord).toList();
-    static List<Pointer> pointers = LongStream.of(words).mapToObj(WordTests::asPointer).toList();
-
     @Test
     public void testSigned() {
-        for (var x : signedWords) {
+        SignedWord[] signeds = new SignedWord[words.length];
+        int i = 0;
+        for (var xRaw : words) {
+            SignedWord x = signed(xRaw);
+            signeds[i] = x;
             Assert.assertEquals(x.not().rawValue(), ~x.rawValue());
 
-            for (var y : signedWords) {
-                Assert.assertEquals(x.equal(y), x == y);
-                Assert.assertEquals(x.notEqual(y), x != y);
+            for (var yRaw : words) {
+                var y = Word.signed(yRaw);
+                Assert.assertEquals(x.equal(y), x.rawValue() == y.rawValue());
+                Assert.assertEquals(x.notEqual(y), x.rawValue() != y.rawValue());
 
                 Assert.assertEquals(x.add(y).rawValue(), x.rawValue() + y.rawValue());
                 Assert.assertEquals(x.subtract(y).rawValue(), x.rawValue() - y.rawValue());
@@ -108,8 +96,8 @@ public class WordTests {
                 Assert.assertEquals(x.or(y).rawValue(), x.rawValue() | y.rawValue());
                 Assert.assertEquals(x.xor(y).rawValue(), x.rawValue() ^ y.rawValue());
 
-                Assert.assertEquals(x.equal(y), x == y);
-                Assert.assertEquals(x.notEqual(y), x != y);
+                Assert.assertEquals(x.equal(y), x.rawValue() == y.rawValue());
+                Assert.assertEquals(x.notEqual(y), x.rawValue() != y.rawValue());
 
                 Assert.assertEquals(x.greaterThan(y), x.rawValue() > y.rawValue());
                 Assert.assertEquals(x.greaterOrEqual(y), x.rawValue() >= y.rawValue());
@@ -124,12 +112,14 @@ public class WordTests {
 
     @Test
     public void testUnsigned() {
-        for (var x : unsignedWords) {
+        for (var xRaw : words) {
+            UnsignedWord x = Word.unsigned(xRaw);
             Assert.assertEquals(x.not().rawValue(), ~x.rawValue());
 
-            for (var y : unsignedWords) {
-                Assert.assertEquals(x.equal(y), x == y);
-                Assert.assertEquals(x.notEqual(y), x != y);
+            for (var yRaw : words) {
+                var y = Word.unsigned(yRaw);
+                Assert.assertEquals(x.equal(y), x.rawValue() == y.rawValue());
+                Assert.assertEquals(x.notEqual(y), x.rawValue() != y.rawValue());
 
                 Assert.assertEquals(x.add(y).rawValue(), x.rawValue() + y.rawValue());
                 Assert.assertEquals(x.subtract(y).rawValue(), x.rawValue() - y.rawValue());
@@ -143,8 +133,8 @@ public class WordTests {
                 Assert.assertEquals(x.or(y).rawValue(), x.rawValue() | y.rawValue());
                 Assert.assertEquals(x.xor(y).rawValue(), x.rawValue() ^ y.rawValue());
 
-                Assert.assertEquals(x.equal(y), x == y);
-                Assert.assertEquals(x.notEqual(y), x != y);
+                Assert.assertEquals(x.equal(y), x.rawValue() == y.rawValue());
+                Assert.assertEquals(x.notEqual(y), x.rawValue() != y.rawValue());
 
                 Assert.assertEquals(x.aboveThan(y), longAboveThan(x.rawValue(), y.rawValue()));
                 Assert.assertEquals(x.aboveOrEqual(y), longAboveOrEqual(x.rawValue(), y.rawValue()));
@@ -159,14 +149,16 @@ public class WordTests {
 
     @Test
     public void testPointer() {
-        for (var x : pointers) {
+        for (var xRaw : words) {
+            Pointer x = pointer(xRaw);
             Assert.assertEquals(x.not().rawValue(), ~x.rawValue());
             Assert.assertEquals(x.isNull(), x.rawValue() == 0);
             Assert.assertEquals(x.isNonNull(), x.rawValue() != 0);
 
-            for (var y : pointers) {
-                Assert.assertEquals(x.equal(y), x == y);
-                Assert.assertEquals(x.notEqual(y), x != y);
+            for (var yRaw : words) {
+                Pointer y = Word.pointer(yRaw);
+                Assert.assertEquals(x.equal(y), x.rawValue() == y.rawValue());
+                Assert.assertEquals(x.notEqual(y), x.rawValue() != y.rawValue());
 
                 Assert.assertEquals(x.add(y).rawValue(), x.rawValue() + y.rawValue());
                 Assert.assertEquals(x.subtract(y).rawValue(), x.rawValue() - y.rawValue());
@@ -180,8 +172,8 @@ public class WordTests {
                 Assert.assertEquals(x.or(y).rawValue(), x.rawValue() | y.rawValue());
                 Assert.assertEquals(x.xor(y).rawValue(), x.rawValue() ^ y.rawValue());
 
-                Assert.assertEquals(x.equal(y), x == y);
-                Assert.assertEquals(x.notEqual(y), x != y);
+                Assert.assertEquals(x.equal(y), x.rawValue() == y.rawValue());
+                Assert.assertEquals(x.notEqual(y), x.rawValue() != y.rawValue());
 
                 Assert.assertEquals(x.aboveThan(y), longAboveThan(x.rawValue(), y.rawValue()));
                 Assert.assertEquals(x.aboveOrEqual(y), longAboveOrEqual(x.rawValue(), y.rawValue()));

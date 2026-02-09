@@ -36,7 +36,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -44,6 +45,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
+import com.oracle.svm.util.RuntimeAnnotated;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -56,7 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public class SubstrateType implements SharedType {
+public class SubstrateType implements SharedType, RuntimeAnnotated {
     private final JavaKind kind;
     private final DynamicHub hub;
 
@@ -66,18 +68,27 @@ public class SubstrateType implements SharedType {
      * If it is not known if the type has an instance field (because the type metadata was created
      * at image runtime), it is null.
      */
-    @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
+    @UnknownObjectField(availability = AfterCompilation.class, canBeNull = true)//
     SubstrateField[] rawAllInstanceFields;
 
-    @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
+    @UnknownObjectField(availability = AfterCompilation.class, canBeNull = true)//
     protected DynamicHub uniqueConcreteImplementation;
 
-    @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
-    protected SubstrateType[] permittedSubclasses;
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private SubstrateType[] permittedSubclasses;
+
+    /**
+     * Cache used to save the results of {@link #getName()}. Note, to reduce the image size, this
+     * cache is cleared before the object is installed in the image heap via
+     * {@link #clearNameCache()}.
+     */
+    @UnknownObjectField(availability = AfterCompilation.class, canBeNull = true)//
+    private String nameCache;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
         this.kind = kind;
         this.hub = hub;
+        nameCache = MetaUtil.toInternalName(hub.getName());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -106,7 +117,7 @@ public class SubstrateType implements SharedType {
     /**
      * The kind of the field in memory (in contrast to {@link #getJavaKind()}, which is the kind of
      * the field on the Java type system level). For example {@link WordBase word types} have a
-     * {@link #getJavaKind} of {@link JavaKind#Object}, but a primitive {@link #getStorageKind}.
+     * {@link #getJavaKind} of {@link JavaKind#Object}, but a primitive storage kind.
      */
     @Override
     public final JavaKind getStorageKind() {
@@ -127,9 +138,18 @@ public class SubstrateType implements SharedType {
         return hub;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void clearNameCache() {
+        nameCache = null;
+    }
+
     @Override
     public String getName() {
-        return MetaUtil.toInternalName(hub.getName());
+        assert !(SubstrateUtil.HOSTED && nameCache == null) : "nameCache used after being cleared";
+        if (nameCache == null) {
+            nameCache = MetaUtil.toInternalName(hub.getName());
+        }
+        return nameCache;
     }
 
     @Override
@@ -269,7 +289,7 @@ public class SubstrateType implements SharedType {
         return result;
     }
 
-    private SubstrateType getSuperType() {
+    protected SubstrateType getSuperType() {
         if (isArray() || isInterface()) {
             return SubstrateMetaAccess.singleton().lookupJavaType(Object.class);
         } else {
@@ -312,14 +332,15 @@ public class SubstrateType implements SharedType {
 
     @Override
     public ResolvedJavaType getArrayClass() {
-        if (hub.getArrayHub() == null) {
+        DynamicHub arrayHub = hub.getOrCreateArrayHub();
+        if (arrayHub == null) {
             /*
              * Returning null is not ideal because it can lead to a subsequent NullPointerException.
              * But it matches the behavior of HostedType, which also returns null.
              */
             return null;
         }
-        return SubstrateMetaAccess.singleton().lookupJavaTypeFromHub(hub.getArrayHub());
+        return SubstrateMetaAccess.singleton().lookupJavaTypeFromHub(arrayHub);
     }
 
     @Override
@@ -328,6 +349,7 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public List<? extends SubstrateType> getPermittedSubclasses() {
         Class<?>[] hubPermittedSubclasses = hub.getPermittedSubclasses();
         if (hubPermittedSubclasses == null) {
@@ -397,18 +419,7 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        // Once GR-70556 is resolved: throw annotationsUnimplemented();
         return DynamicHub.toClass(getHub()).getAnnotation(annotationClass);
     }
 
@@ -538,12 +549,6 @@ public class SubstrateType implements SharedType {
     @Override
     public boolean isCloneableWithAllocation() {
         return SubstrateMetaAccess.singleton().lookupJavaType(Cloneable.class).isAssignableFrom(this);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

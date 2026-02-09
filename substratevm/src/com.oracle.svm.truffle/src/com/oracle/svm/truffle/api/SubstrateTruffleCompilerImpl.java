@@ -35,8 +35,8 @@ import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
-import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -125,17 +125,17 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
 
     @Override
     public DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, TruffleCompilable callTarget, PrintStream logStream) {
-        return TruffleRuntimeCompilationSupport.get().openDebugContext(options, compilationId, callTarget, logStream);
+        return RuntimeCompilationSupport.get().openDebugContext(options, compilationId, callTarget, logStream);
     }
 
     @Override
     protected DiagnosticsOutputDirectory getDebugOutputDirectory() {
-        return TruffleRuntimeCompilationSupport.get().getDebugOutputDirectory();
+        return RuntimeCompilationSupport.get().getDebugOutputDirectory();
     }
 
     @Override
     protected Map<CompilationWrapper.ExceptionAction, Integer> getCompilationProblemsPerAction() {
-        return TruffleRuntimeCompilationSupport.get().getCompilationProblemsPerAction();
+        return RuntimeCompilationSupport.get().getCompilationProblemsPerAction();
     }
 
     @Override

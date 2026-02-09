@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.strings;
 
+import static com.oracle.truffle.api.strings.TStringInternalNodes.CodePointIndexToRaw.codePointIndexToRaw;
 import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import java.lang.ref.Reference;
@@ -485,7 +486,6 @@ public final class MutableTruffleString extends AbstractTruffleString {
                         @Cached InlinedConditionProfile nativeProfileA,
                         @Cached InlinedConditionProfile managedProfileB,
                         @Cached InlinedConditionProfile nativeProfileB,
-                        @Cached TStringInternalNodes.ConcatMaterializeBytesNode materializeBytesNode,
                         @Cached InlinedBranchProfile outOfMemoryProfile) {
             a.checkEncoding(expectedEncoding);
             b.checkEncoding(expectedEncoding);
@@ -526,7 +526,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
                 int length = TruffleString.ConcatNode.addByteLengths(this, lengthA, lengthB, expectedEncoding.naturalStride, outOfMemoryProfile);
                 int offset = 0;
-                byte[] array = materializeBytesNode.execute(this,
+                byte[] array = TStringInternalNodes.concatMaterializeBytes(this,
                                 arrayA, offsetA, lengthA, strideA,
                                 arrayB, offsetB, lengthB, strideB, expectedEncoding, length, expectedEncoding.naturalStride);
                 return MutableTruffleString.create(array, offset, length, expectedEncoding);
@@ -589,9 +589,10 @@ public final class MutableTruffleString extends AbstractTruffleString {
         MutableTruffleString substring(AbstractTruffleString a, int fromIndex, int length, Encoding encoding,
                         @Cached InlinedConditionProfile managedProfileA,
                         @Cached InlinedConditionProfile nativeProfileA,
-                        @Cached TStringInternalNodes.GetCodeRangeForIndexCalculationNode getCodeRangeANode,
-                        @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
-                        @Cached TStringInternalNodes.CodePointIndexToRawNode translateIndexNode,
+                        @Cached InlinedConditionProfile impreciseProfile,
+                        @Cached InlinedConditionProfile calcCodePointLengthProfile,
+                        @Cached InlinedConditionProfile fixedProfile,
+                        @Cached InlinedConditionProfile validProfile,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
             a.checkEncoding(encoding);
             Object dataA = a.data();
@@ -612,10 +613,10 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 final int lengthA = a.length();
                 final int strideA = a.stride();
 
-                a.boundsCheckRegion(this, arrayA, offsetA, fromIndex, length, encoding, getCodePointLengthNode);
-                final int codeRangeA = getCodeRangeANode.execute(this, a, arrayA, offsetA, encoding);
-                int fromIndexRaw = translateIndexNode.execute(this, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, 0, fromIndex, length == 0);
-                int lengthRaw = translateIndexNode.execute(this, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, fromIndexRaw, length, true);
+                a.boundsCheckRegion(this, arrayA, offsetA, fromIndex, length, encoding, calcCodePointLengthProfile);
+                final int codeRangeA = TStringInternalNodes.getCodeRangeForIndexCalculation(this, a, arrayA, offsetA, encoding, impreciseProfile);
+                int fromIndexRaw = codePointIndexToRaw(this, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, 0, fromIndex, length == 0, fixedProfile, validProfile);
+                int lengthRaw = codePointIndexToRaw(this, a, arrayA, offsetA, lengthA, strideA, codeRangeA, encoding, fromIndexRaw, length, true, fixedProfile, validProfile);
                 int stride = encoding.naturalStride;
                 return SubstringByteIndexNode.createSubstring(a, fromIndexRaw << stride, lengthRaw << stride, encoding, copyToByteArrayNode);
             } finally {

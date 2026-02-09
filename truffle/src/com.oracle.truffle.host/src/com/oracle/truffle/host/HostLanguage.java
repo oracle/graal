@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -62,6 +63,7 @@ import com.oracle.truffle.host.HostMethodScope.ScopedObject;
 /*
  * Java host language implementation.
  */
+@Bind.DefaultExpression("get($node)")
 final class HostLanguage extends TruffleLanguage<HostContext> {
 
     static final String ID = "host";

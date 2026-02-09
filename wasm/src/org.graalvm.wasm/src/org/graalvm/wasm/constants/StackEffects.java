@@ -56,12 +56,47 @@ public final class StackEffects {
     private static final byte POP_1 = -1;
     private static final byte POP_2 = -2;
     private static final byte POP_3 = -3;
+    private static final byte POP_4 = -4;
+    private static final byte POP_5 = -5;
     private static final byte UNREACHABLE = Byte.MIN_VALUE;
 
+    @CompilationFinal(dimensions = 1) private static final byte[] aggregateOpStackEffects = new byte[256];
     @CompilationFinal(dimensions = 1) private static final byte[] miscOpStackEffects = new byte[256];
     @CompilationFinal(dimensions = 1) private static final byte[] vectorOpStackEffects = new byte[256];
 
     static {
+        // unused, because stack effect is variable
+        aggregateOpStackEffects[Bytecode.STRUCT_NEW] = UNREACHABLE;
+        aggregateOpStackEffects[Bytecode.STRUCT_NEW_DEFAULT] = PUSH_1;
+        aggregateOpStackEffects[Bytecode.STRUCT_GET] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.STRUCT_GET_S] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.STRUCT_GET_U] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.STRUCT_SET] = POP_2;
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW_DEFAULT] = NO_EFFECT;
+        // unused, because stack effect is variable
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW_FIXED] = UNREACHABLE;
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW_DATA] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW_ELEM] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_GET] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_GET_S] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_GET_U] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_SET] = POP_3;
+        aggregateOpStackEffects[Bytecode.ARRAY_LEN] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.ARRAY_FILL] = POP_4;
+        aggregateOpStackEffects[Bytecode.ARRAY_COPY] = POP_5;
+        aggregateOpStackEffects[Bytecode.ARRAY_INIT_DATA] = POP_4;
+        aggregateOpStackEffects[Bytecode.ARRAY_INIT_ELEM] = POP_4;
+        aggregateOpStackEffects[Bytecode.REF_TEST] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.BR_ON_CAST_U8] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.REF_CAST] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.BR_ON_CAST_I32] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.BR_ON_CAST_FAIL_U8] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.BR_ON_CAST_FAIL_I32] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.REF_I31] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.I31_GET_S] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.I31_GET_U] = NO_EFFECT;
+
         miscOpStackEffects[Bytecode.I32_TRUNC_SAT_F32_S] = NO_EFFECT;
         miscOpStackEffects[Bytecode.I32_TRUNC_SAT_F32_U] = NO_EFFECT;
         miscOpStackEffects[Bytecode.I32_TRUNC_SAT_F64_S] = NO_EFFECT;
@@ -87,21 +122,22 @@ public final class StackEffects {
         miscOpStackEffects[Bytecode.TABLE_GROW] = POP_1;
         miscOpStackEffects[Bytecode.TABLE_SIZE] = PUSH_1;
         miscOpStackEffects[Bytecode.TABLE_FILL] = POP_3;
-        miscOpStackEffects[Bytecode.THROW] = UNREACHABLE; // unused, because stack effect is
-                                                          // followed by throw
-        miscOpStackEffects[Bytecode.THROW_REF] = UNREACHABLE; // unused, because stack effect is
-                                                              // followed by throw
+        // unused, because stack effect is followed by throw
+        miscOpStackEffects[Bytecode.THROW] = UNREACHABLE;
+        // unused, because stack effect is followed by throw
+        miscOpStackEffects[Bytecode.THROW_REF] = UNREACHABLE;
         miscOpStackEffects[Bytecode.TABLE_GET] = NO_EFFECT;
         miscOpStackEffects[Bytecode.TABLE_SET] = POP_2;
         miscOpStackEffects[Bytecode.REF_AS_NON_NULL] = NO_EFFECT;
-        miscOpStackEffects[Bytecode.BR_ON_NULL_U8] = UNREACHABLE; // unused, because stack effect is
-                                                                  // dynamic
-        miscOpStackEffects[Bytecode.BR_ON_NULL_I32] = UNREACHABLE; // unused, because stack effect
-                                                                   // is dynamic
-        miscOpStackEffects[Bytecode.BR_ON_NON_NULL_U8] = UNREACHABLE; // unused, because stack
-                                                                      // effect is dynamic
-        miscOpStackEffects[Bytecode.BR_ON_NON_NULL_I32] = UNREACHABLE; // unused, because stack
-                                                                       // effect is dynamic
+        // unused, because stack effect is dynamic
+        miscOpStackEffects[Bytecode.BR_ON_NULL_U8] = UNREACHABLE;
+        // unused, because stack effect is dynamic
+        miscOpStackEffects[Bytecode.BR_ON_NULL_I32] = UNREACHABLE;
+        // unused, because stack effect is dynamic
+        miscOpStackEffects[Bytecode.BR_ON_NON_NULL_U8] = UNREACHABLE;
+        // unused, because stack effect is dynamic
+        miscOpStackEffects[Bytecode.BR_ON_NON_NULL_I32] = UNREACHABLE;
+        miscOpStackEffects[Bytecode.REF_EQ] = POP_1;
 
         vectorOpStackEffects[Bytecode.VECTOR_V128_LOAD] = NO_EFFECT;
         vectorOpStackEffects[Bytecode.VECTOR_V128_LOAD8X8_S] = NO_EFFECT;
@@ -366,6 +402,21 @@ public final class StackEffects {
 
     /**
      * Indicates by how much the stack grows (positive return value) or shrinks (negative return
+     * value) after executing the {@link Bytecode#AGGREGATE}-prefixed bytecode
+     * {@code aggregateOpcode}.
+     *
+     * @param aggregateOpcode the {@code AGGREGATE} bytecode being executed
+     * @return the difference between the stack size after executing the bytecode and before
+     *         executing the bytecode
+     */
+    public static byte getAggregateOpStackEffect(int aggregateOpcode) {
+        assert aggregateOpcode < 256;
+        assert aggregateOpStackEffects[aggregateOpcode] != UNREACHABLE;
+        return aggregateOpStackEffects[aggregateOpcode];
+    }
+
+    /**
+     * Indicates by how much the stack grows (positive return value) or shrinks (negative return
      * value) after executing the {@link Bytecode#MISC}-prefixed bytecode {@code miscOpcode}.
      *
      * @param miscOpcode the {@code MISC} bytecode being executed
@@ -374,6 +425,7 @@ public final class StackEffects {
      */
     public static byte getMiscOpStackEffect(int miscOpcode) {
         assert miscOpcode < 256;
+        assert miscOpStackEffects[miscOpcode] != UNREACHABLE;
         return miscOpStackEffects[miscOpcode];
     }
 
@@ -387,6 +439,7 @@ public final class StackEffects {
      */
     public static byte getVectorOpStackEffect(int vectorOpcode) {
         assert vectorOpcode < 256;
+        assert vectorOpStackEffects[vectorOpcode] != UNREACHABLE;
         return vectorOpStackEffects[vectorOpcode];
     }
 }

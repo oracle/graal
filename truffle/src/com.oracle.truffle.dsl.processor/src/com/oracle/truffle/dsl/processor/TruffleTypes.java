@@ -120,6 +120,9 @@ public class TruffleTypes {
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
     public static final String CompilerDirectives_TruffleBoundary_Name = "com.oracle.truffle.api.CompilerDirectives.TruffleBoundary";
+    public static final String CompilerDirectives_ValueType_Name = "com.oracle.truffle.api.CompilerDirectives.ValueType";
+    public static final String CompilerDirectives_EarlyInline_Name = "com.oracle.truffle.api.CompilerDirectives.EarlyInline";
+    public static final String CompilerDirectives_EarlyEscapeAnalysis_Name = "com.oracle.truffle.api.CompilerDirectives.EarlyEscapeAnalysis";
     public static final String DenyReplace_Name = "com.oracle.truffle.api.nodes.DenyReplace";
     public static final String DirectCallNode_Name = "com.oracle.truffle.api.nodes.DirectCallNode";
     public static final String EncapsulatingNodeReference_Name = "com.oracle.truffle.api.nodes.EncapsulatingNodeReference";
@@ -186,6 +189,9 @@ public class TruffleTypes {
     public final DeclaredType CompilerDirectives = c.getDeclaredType(CompilerDirectives_Name);
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
     public final DeclaredType CompilerDirectives_TruffleBoundary = c.getDeclaredType(CompilerDirectives_TruffleBoundary_Name);
+    public final DeclaredType CompilerDirectives_ValueType = c.getDeclaredType(CompilerDirectives_ValueType_Name);
+    public final DeclaredType CompilerDirectives_EarlyInline = c.getDeclaredType(CompilerDirectives_EarlyInline_Name);
+    public final DeclaredType CompilerDirectives_EarlyEscapeAnalysis = c.getDeclaredType(CompilerDirectives_EarlyEscapeAnalysis_Name);
     public final DeclaredType DenyReplace = c.getDeclaredType(DenyReplace_Name);
     public final DeclaredType DirectCallNode = c.getDeclaredType(DirectCallNode_Name);
     public final DeclaredType EncapsulatingNodeReference = c.getDeclaredType(EncapsulatingNodeReference_Name);
@@ -239,6 +245,10 @@ public class TruffleTypes {
     public final DeclaredType UnexpectedResultException = c.getDeclaredType(UnexpectedResultException_Name);
     public final DeclaredType VirtualFrame = c.getDeclaredType(VirtualFrame_Name);
     public final DeclaredType HostLanguage = c.getDeclaredTypeOptional(HostLanguage_Name);
+
+    // impl
+    public static final String FrameWithoutBoxing_Name = "com.oracle.truffle.api.impl.FrameWithoutBoxing";
+    public final DeclaredType FrameWithoutBoxing = c.getDeclaredType(FrameWithoutBoxing_Name);
 
     // DSL API
     public static final String Bind_Name = "com.oracle.truffle.api.dsl.Bind";
@@ -438,6 +448,8 @@ public class TruffleTypes {
     public static final String ByteArraySupport_Name = "com.oracle.truffle.api.memory.ByteArraySupport";
     public static final String FrameExtensions_Name = "com.oracle.truffle.api.frame.FrameExtensions";
 
+    public static final String GenerateInstructionRewriter_Name = "com.oracle.truffle.api.bytecode.test.GenerateInstructionRewriter";
+
     public final DeclaredType BytecodeBuilder = c.getDeclaredTypeOptional(BytecodeBuilder_Name);
     public final DeclaredType BytecodeConfig = c.getDeclaredTypeOptional(BytecodeConfig_Name);
     public final DeclaredType BytecodeConfigEncoder = c.getDeclaredTypeOptional(BytecodeConfigEncoder_Name);
@@ -508,6 +520,8 @@ public class TruffleTypes {
     public final DeclaredType BytecodeDSLAccess = c.getDeclaredTypeOptional(BytecodeDSLAccess_Name);
     public final DeclaredType ByteArraySupport = c.getDeclaredTypeOptional(ByteArraySupport_Name);
     public final DeclaredType FrameExtensions = c.getDeclaredTypeOptional(FrameExtensions_Name);
+
+    public final DeclaredType GenerateInstructionRewriter = c.getDeclaredTypeOptional(GenerateInstructionRewriter_Name);
 
     // Library API
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";

@@ -32,7 +32,11 @@ import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCHeapWriter;
 
@@ -45,6 +49,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCHeapWriter;
  * @see WasmGCPartition
  * @see WasmGCHeapWriter
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class WasmGCHeapLayouter implements ImageHeapLayouter {
 
     /**
@@ -64,24 +69,25 @@ public class WasmGCHeapLayouter implements ImageHeapLayouter {
     @Override
     public void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable, boolean patched) {
         if (info.getWrapped() instanceof ImageHeapPrimitiveArray) {
-            singlePartition.add(info);
+            singlePartition.assign(info);
         } else {
-            pseudoPartition.add(info);
+            pseudoPartition.assign(info);
         }
     }
 
     @Override
-    public WasmGCImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterCallback callback) {
-        layoutPseudoPartition();
-        doLayout();
+    public WasmGCImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapObjectSorter objectSorter, ImageHeapLayouterCallback callback) {
+        layoutPseudoPartition(objectSorter);
+        doLayout(objectSorter);
 
         long totalSize = StreamSupport.stream(imageHeap.getObjects().spliterator(), false).mapToLong(ImageHeapObject::getSize).sum();
         long serializedSize = singlePartition.getStartOffset() + singlePartition.getSize();
         return new WasmGCImageHeapLayoutInfo(serializedSize, totalSize);
     }
 
-    private void doLayout() {
+    private void doLayout(ImageHeapObjectSorter objectSorter) {
         int offset = 0;
+        singlePartition.sortObjects(objectSorter);
         for (ImageHeapObject info : singlePartition.getObjects()) {
             // Only primitive arrays are supposed to be in this partition
             ImageHeapPrimitiveArray primitiveArray = (ImageHeapPrimitiveArray) info.getWrapped();
@@ -92,9 +98,10 @@ public class WasmGCHeapLayouter implements ImageHeapLayouter {
         singlePartition.setSize(offset);
     }
 
-    private void layoutPseudoPartition() {
+    private void layoutPseudoPartition(ImageHeapObjectSorter objectSorter) {
         // Approximate size of the partition (based on the SVM object layout size of the objects)
         long pseudoSize = 0;
+        pseudoPartition.sortObjects(objectSorter);
         for (ImageHeapObject info : pseudoPartition.getObjects()) {
             info.setOffsetInPartition(0);
             pseudoSize = info.getSize();

@@ -28,20 +28,17 @@ package com.oracle.svm.hosted.webimage;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
-import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
 
     /**
@@ -56,7 +53,7 @@ public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
         allImageHeapPartitions = access.getImage().getHeap().getLayouter().getPartitions();
 
         long totalByteSize = 0;
-        WebImageJSProviders providers = (WebImageJSProviders) ImageSingletons.lookup(WebImageProviders.class);
+        WebImageJSProviders providers = WebImageJSProviders.singleton();
         ConstantIdentityMapping identityMapping = providers.typeControl().getConstantMap().identityMapping;
 
         Map<HostedClass, HeapBreakdownEntry> objectTypeEntries = new HashMap<>();

@@ -126,14 +126,14 @@ public class TestAnnotationsOnMethods extends TestAnnotationsBase {
     private static void checkParameterAnnotationValues(Method m) {
         ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
         Annotation[][] parameterAnnotations = m.getParameterAnnotations();
-        List<List<AnnotationValue>> parameterAnnotationValues = AnnotationValueSupport.getParameterAnnotationValues(method);
-        if (parameterAnnotationValues != null) {
-            int parsedAnnotations = parameterAnnotationValues.size();
+        var parsed = AnnotationValueSupport.getParameterAnnotationValues(method);
+        if (parsed != null) {
+            int parsedAnnotations = parsed.values().size();
             if (parsedAnnotations != parameterAnnotations.length) {
                 // Remove slots injected for implicit leading parameters
                 parameterAnnotations = Arrays.copyOfRange(parameterAnnotations, parameterAnnotations.length - parsedAnnotations, parameterAnnotations.length);
             }
-            assertParameterAnnotationsEquals(parameterAnnotations, parameterAnnotationValues);
+            assertParameterAnnotationsEquals(parameterAnnotations, parsed.values());
         } else {
             for (Annotation[] annotations : parameterAnnotations) {
                 Assert.assertEquals(0, annotations.length);

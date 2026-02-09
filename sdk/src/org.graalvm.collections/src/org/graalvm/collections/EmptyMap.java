@@ -98,6 +98,7 @@ class EmptyMap {
     static final EconomicMap<Object, Object> EMPTY_MAP = new EconomicMap<>() {
         @Override
         public Object put(Object key, Object value) {
+            EconomicMapImpl.checkNonNull(key);
             throw new IllegalArgumentException("Cannot modify the always-empty map");
         }
 
@@ -108,16 +109,19 @@ class EmptyMap {
 
         @Override
         public Object removeKey(Object key) {
+            EconomicMapImpl.checkNonNull(key);
             throw new IllegalArgumentException("Cannot modify the always-empty map");
         }
 
         @Override
         public Object get(Object key) {
+            EconomicMapImpl.checkNonNull(key);
             return null;
         }
 
         @Override
         public boolean containsKey(Object key) {
+            EconomicMapImpl.checkNonNull(key);
             return false;
         }
 

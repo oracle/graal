@@ -52,7 +52,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -79,22 +78,10 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
 
         final InlinedNode[] inlinedNodes = new InlinedNode[INNER_LOOP];
         final CachedNode[] cachedNodes = new CachedNode[INNER_LOOP];
-        final InlinedSharedExclusiveNode[] sharedExclusiveInlinedNodes = new InlinedSharedExclusiveNode[INNER_LOOP];
-        final CachedSharedExclusiveNode[] sharedExclusiveCachedNodes = new CachedSharedExclusiveNode[INNER_LOOP];
         {
             for (int i = 0; i < INNER_LOOP; i++) {
                 inlinedNodes[i] = NodeInliningBenchmarkFactory.InlinedNodeGen.create();
                 cachedNodes[i] = NodeInliningBenchmarkFactory.CachedNodeGen.create();
-
-                sharedExclusiveInlinedNodes[i] = NodeInliningBenchmarkFactory.InlinedSharedExclusiveNodeGen.create();
-                sharedExclusiveCachedNodes[i] = NodeInliningBenchmarkFactory.CachedSharedExclusiveNodeGen.create();
-
-                sharedExclusiveInlinedNodes[i].execute(0, 0, 0, 0);
-                sharedExclusiveInlinedNodes[i].execute(1, 0, 0, 0);
-                sharedExclusiveInlinedNodes[i].execute(2, 0, 0, 0);
-                sharedExclusiveCachedNodes[i].execute(0, 0, 0, 0);
-                sharedExclusiveCachedNodes[i].execute(1, 0, 0, 0);
-                sharedExclusiveCachedNodes[i].execute(2, 0, 0, 0);
             }
         }
 
@@ -325,73 +312,6 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
             v = add2.execute(v, v3);
             return v;
         }
-    }
-
-    @SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-interpreted-performance"})
-    public abstract static class InlinedSharedExclusiveNode extends Node {
-
-        abstract long execute(long v0, long v1, long v2, long v3);
-
-        @Specialization(guards = "v0 == cachedV0", limit = "3")
-        @CompilerControl(Mode.DONT_INLINE)
-        @SuppressWarnings("unused")
-        static long do0(@SuppressWarnings("unused") long v0, long v1, long v2, long v3,
-                        @Bind Node node,
-                        @Cached("v0") long cachedV0,
-                        @Shared @Cached InlinedAddAbsNode add0,
-                        @Cached InlinedAddAbsNode add1,
-                        @Cached InlinedAddAbsNode add2) {
-            long v;
-            v = add0.execute(node, cachedV0, v1);
-            v = add1.execute(node, v, v2);
-            v = add2.execute(node, v, v3);
-            return v;
-        }
-
-        @Specialization(guards = "v0 == cachedV0", limit = "3")
-        @CompilerControl(Mode.DONT_INLINE)
-        @SuppressWarnings("unused")
-        static long do1(long v0, long v1, long v2, long v3,
-                        @Bind Node node,
-                        @Cached("v0") long cachedV0,
-                        @Shared @Cached InlinedAddAbsNode add0,
-                        @Cached InlinedAddAbsNode add1,
-                        @Cached InlinedAddAbsNode add2) {
-            long v;
-            v = add0.execute(node, cachedV0, v1);
-            v = add1.execute(node, v, v2);
-            v = add2.execute(node, v, v3);
-            return v;
-        }
-
-    }
-
-    /*
-     * Inlining beats a cached node by a wide margin if everything gets inlined properly. If
-     * inlining is explicitly disabled and the an inlining slow-path is triggered then inlined
-     * performs worse than cached.
-     */
-
-    @Benchmark
-    @OperationsPerInvocation(INNER_LOOP)
-    public long executeSharedExclusiveInlined(BenchmarkState state) {
-        var nodes = state.sharedExclusiveInlinedNodes;
-        long sum = 0;
-        for (int i = 0; i < nodes.length; i++) {
-            sum += nodes[i % 3].execute(0, -i, i, -i);
-        }
-        return sum;
-    }
-
-    @Benchmark
-    @OperationsPerInvocation(INNER_LOOP)
-    public long executeSharedExclusiveCached(BenchmarkState state) {
-        var nodes = state.sharedExclusiveCachedNodes;
-        long sum = 0;
-        for (int i = 0; i < nodes.length; i++) {
-            sum += nodes[i % 3].execute(0, -i, i, -i);
-        }
-        return sum;
     }
 
 }

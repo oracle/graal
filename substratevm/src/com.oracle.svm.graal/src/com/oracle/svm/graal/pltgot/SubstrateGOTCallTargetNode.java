@@ -40,6 +40,6 @@ public final class SubstrateGOTCallTargetNode extends SubstrateIndirectCallTarge
 
     public SubstrateGOTCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType,
                     InvokeKind invokeKind) {
-        super(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, null);
+        super(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, null, null);
     }
 }

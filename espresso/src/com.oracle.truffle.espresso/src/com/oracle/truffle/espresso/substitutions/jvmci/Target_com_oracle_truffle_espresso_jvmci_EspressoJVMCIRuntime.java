@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions.jvmci;
 
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.LOGGER;
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.findObjectType;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.LOGGER;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.findObjectType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIInstanceType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIObjectType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIPrimitiveType;
@@ -31,7 +31,6 @@ import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType.toJVMCIMethod;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_jdk_vm_ci_runtime_JVMCI.checkJVMCIAvailable;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -40,11 +39,11 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
-import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -70,13 +69,16 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
         if (meta.jvmci.DummyEspressoGraalJVMCICompiler == null) {
             throw meta.throwNoClassDefFoundErrorBoundary("com.oracle.truffle.espresso.graal.DummyEspressoGraalJVMCICompiler is missing");
         }
-        openJVMCITo(meta.jvmci.GraalJVMCICompiler.module(), meta);
+        /*
+         * JVMCI.initializeRuntime has already opened JVMCI to jdk.graal.compiler. Let's further
+         * open it to jdk.graal.compiler.espresso.
+         */
         openJVMCITo(meta.jvmci.DummyEspressoGraalJVMCICompiler.module(), meta);
         LOGGER.fine("Creating DummyEspressoGraalJVMCICompiler");
         return (StaticObject) meta.jvmci.DummyEspressoGraalJVMCICompiler_create.invokeDirectStatic(self);
     }
 
-    private static void openJVMCITo(ModuleTable.ModuleEntry compilerModuleEntry, Meta meta) {
+    static void openJVMCITo(ModuleTable.ModuleEntry compilerModuleEntry, Meta meta) {
         LOGGER.finer(() -> "Opening JVMCI to " + compilerModuleEntry.getNameAsString());
         StaticObject compilerModule = compilerModuleEntry.module();
         meta.jvmci.Services_openJVMCITo.invokeDirectStatic(compilerModule);
@@ -160,31 +162,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
             Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(jvmciMethod);
             ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(accessingClass);
             LOGGER.finer(() -> "resolveMethod " + method + " on " + receiverKlass + " as seen from " + accessingKlass);
-            if (method.isDeclaredSignaturePolymorphic() || !receiverKlass.isLinked() || receiverKlass.isInterface() || method.isStatic()) {
-                return StaticObject.NULL;
-            }
-
-            ObjectKlass declaringKlass = method.getDeclaringKlass();
-            if (!checkAccess(accessingKlass, declaringKlass, method)) {
-                return StaticObject.NULL;
-            }
-
-            Method resolved;
-            if (method.isPrivate()) {
-                resolved = method;
-            } else if (declaringKlass.isInterface()) {
-                if (!declaringKlass.isAssignableFrom(receiverKlass)) {
-                    return StaticObject.NULL;
-                }
-                assert method.getITableIndex() >= 0 : method;
-                resolved = receiverKlass.itableLookupOrNull(declaringKlass, method.getITableIndex());
-                if (resolved != null && !resolved.isPublic()) {
-                    return StaticObject.NULL;
-                }
-            } else {
-                assert method.getVTableIndex() >= 0 : method;
-                resolved = receiverKlass.vtableLookup(method.getVTableIndex());
-            }
+            Method resolved = JVMCIUtils.resolveMethod(receiverKlass, method, accessingKlass);
             if (resolved == null) {
                 return StaticObject.NULL;
             }
@@ -197,11 +175,6 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
                 jvmciHolder = toJVMCIInstanceType(resolved.getDeclaringKlass(), objectTypeConstructor, context, meta);
             }
             return toJVMCIMethod(resolved, jvmciHolder, methodConstructor, context, meta);
-        }
-
-        @TruffleBoundary
-        private static boolean checkAccess(ObjectKlass accessingKlass, ObjectKlass declaringKlass, Method method) {
-            return RuntimeConstantPool.memberCheckAccess(accessingKlass, declaringKlass, method);
         }
     }
 }

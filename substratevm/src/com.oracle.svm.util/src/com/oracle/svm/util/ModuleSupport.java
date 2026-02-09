@@ -63,7 +63,7 @@ public final class ModuleSupport {
     }
 
     public static Set<String> parseModuleSetModifierProperty(String prop) {
-        Set<String> specifiedModules = new HashSet<>();
+        Set<String> specifiedModules = new HashSet<>(); // noEconomicSet(streaming)
         String args = System.getProperty(prop, "");
         if (!args.isEmpty()) {
             specifiedModules.addAll(Arrays.asList(args.split(",")));
@@ -161,7 +161,10 @@ public final class ModuleSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void accessModule(Access access, Module accessingModule, Module declaringModule, String packageName) {
-        access.giveAccess(accessingModule, declaringModule, packageName);
+    public static void accessModule(Access access, Module accessingModule, Module declaringModule, String... packageNames) {
+        Set<String> packages = packageNames.length > 0 ? Set.of(packageNames) : declaringModule.getPackages();
+        for (String packageName : packages) {
+            access.giveAccess(accessingModule, declaringModule, packageName);
+        }
     }
 }

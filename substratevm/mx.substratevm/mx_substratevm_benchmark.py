@@ -36,6 +36,7 @@ from typing import List, Optional
 import mx
 import mx_benchmark
 import mx_sdk_benchmark
+from mx._impl.mx_benchmark import ConstantContextValueManager
 from mx_benchmark import bm_exec_context, SingleBenchmarkManager
 from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS, parse_prefixed_args
 from mx_util import StageName, Layer
@@ -268,6 +269,8 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
     If you want to run something like `hwloc-bind` or `taskset` prefixed before the app image, you should use the '--cmd-app-prefix' Barista harness option.
     If you want to pass options to the app image, you should use the '--app-args' Barista harness option.
     """
+    BUNDLE_PATHS = "BaristaBenchmarkSuite.bundle-paths"
+
     def __init__(self, custom_harness_command: mx_benchmark.CustomHarnessCommand = None):
         if custom_harness_command is None:
             custom_harness_command = BaristaNativeImageBenchmarkSuite.BaristaNativeImageCommand()
@@ -306,36 +309,6 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         # Support for other benchmarks, or even suites? (GR-64772)
         mx.abort(f"The '{self.benchmarkName()}' benchmark does not support layered native images!")
 
-    def get_bundle_path_for_benchmark_standalone(self, benchmark) -> str:
-        if benchmark not in self._application_nibs:
-            # Run subprocess retrieving the application nib from the Barista 'build' script
-            out = mx.OutputCapture()
-            mx.run([self.baristaBuilderPath(), "--get-nib", self.baristaHarnessBenchmarkName()], out=out)
-            # Capture the application nib from the Barista 'build' script output
-            nib_pattern = r"application nib file path is: ([^\n]+)\n"
-            nib_match = re.search(nib_pattern, out.data)
-            if not nib_match:
-                raise ValueError(f"Could not extract the nib file path from the command output! Expected to match pattern {repr(nib_pattern)}.")
-            # Cache for future access
-            self._application_nibs[benchmark] = nib_match.group(1)
-            # Try to capture the fixed image name from the Barista 'build' script output
-            fixed_image_name_pattern = r"fixed image name is: ([^\n]+)\n"
-            fixed_image_name_match = re.search(fixed_image_name_pattern, out.data)
-            # Cache fixed image name, if present
-            if fixed_image_name_match:
-                self._application_fixed_image_names[benchmark] = fixed_image_name_match.group(1)
-        return self._application_nibs[benchmark]
-
-    def get_bundle_path_for_benchmark_layer(self, benchmark, layer_info) -> str:
-        app_dir = self.baristaApplicationDirectoryPath(benchmark)
-        nib_candidates = list(app_dir.glob(f"**/layer{layer_info.index}-*.nib"))
-        if len(nib_candidates) == 0:
-            mx.abort(f"Expected to find exactly one 'layer{layer_info.index}-*.nib' file somewhere in the '{app_dir}' directory subtree, instead found none!")
-        if len(nib_candidates) > 1:
-            mx.abort(f"Expected to find exactly one 'layer{layer_info.index}-*.nib' file somewhere in the '{app_dir}' directory subtree, instead found "
-                     + "multiple: [" + ", ".join(str(path) for path in nib_candidates) + "]")
-        return str(nib_candidates[0])
-
     def get_latest_layer(self) -> Optional[Layer]:
         latest_image_stage = self.stages_info.get_latest_image_stage()
         if latest_image_stage is None or not latest_image_stage.is_layered():
@@ -343,12 +316,11 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return latest_image_stage.layer_info
 
     def application_fixed_image_name(self):
-        benchmark = self.benchmarkName()
-        self.get_bundle_path_for_benchmark_standalone(benchmark)
-        return self._application_fixed_image_names.get(benchmark, None)
+        self.get_bundle_path()
+        return self._application_fixed_image_names.get(self.benchmarkName(), None)
 
     def applicationDist(self):
-        return Path(self.get_bundle_path_for_benchmark_standalone(self.benchmarkName())).parent
+        return Path(self.get_bundle_path()).parent
 
     def uses_bundles(self):
         return True
@@ -376,9 +348,99 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
     def extra_image_build_argument(self, benchmark, args):
         extra_image_build_args = []
         if benchmark == "quarkus-tika":
-            # Band-aid solution for class initizalization deadlock due to org.openxmlformats.schemas.drawingml.x2006 (GR-59899)
-            extra_image_build_args += ["-H:NumberOfThreads=1"]
+            extra_image_build_args += [
+                # Band-aid solution for class initizalization deadlock due to org.openxmlformats.schemas.drawingml.x2006 (GR-59899)
+                "-H:NumberOfThreads=1",
+                # Prevents build-time initialization of sun.awt.datatransfer.DesktopDatatransferServiceImpl through DefaultDesktopDatatransferService.INSTANCE
+                # This class is made reachable through DragSource.<init>, which is reachable because XToolkit.createDragGestureRecognizer is registered for reflective querying
+                "--initialize-at-run-time=sun.datatransfer.DataFlavorUtil$DefaultDesktopDatatransferService"
+            ]
         return extra_image_build_args + super().extra_image_build_argument(benchmark, args)
+
+    def get_bundle_path(self) -> str:
+        benchmark = self.benchmarkName()
+        layer_info = self.get_latest_layer()
+        if layer_info is not None:
+            key = f"{benchmark}-layer{layer_info.index}"
+        else:
+            key = benchmark
+
+        if key not in bm_exec_context().get(self.BUNDLE_PATHS):
+            bundle = self._generate_or_lookup_bundle(benchmark, layer_info)
+            bm_exec_context().get(self.BUNDLE_PATHS)[key] = bundle
+            mx.log(f"Using bundle at '{bundle}' to generate the image for '{key}'.")
+        return bm_exec_context().get(self.BUNDLE_PATHS)[key]
+
+    def _generate_or_lookup_bundle(self, benchmark: str, layer_info: Layer) -> str:
+        """
+        Looks up the path to the NIB file for the app associated with the current benchmark,
+        generating it first if it does not exist.
+        """
+        app_dir = self.baristaApplicationDirectoryPath(benchmark)
+        nib_candidates = self._lookup_bundle(layer_info, app_dir)
+
+        # Generate a NIB file for the app if none exists
+        if len(nib_candidates) == 0:
+            self._generate_bundle(benchmark, layer_info)
+            # Repeat the lookup
+            nib_candidates = self._lookup_bundle(layer_info, app_dir)
+
+        # Final check
+        if len(nib_candidates) == 0:
+            mx.abort(f"Expected to find exactly one '.nib' file in the '{app_dir}' app directory, instead found none!")
+        if len(nib_candidates) > 1:
+            mx.abort(f"Expected to find exactly one '.nib' file in the '{app_dir}' app directory, instead found "
+                     + "multiple: [" + ", ".join(str(path) for path in nib_candidates) + "]")
+        return str(nib_candidates[0])
+
+    def _lookup_bundle(self, layer_info: Layer, app_dir: Path) -> List[Path]:
+        """
+        Looks up the path to the NIB file for the app-layer pair associated with the current benchmark stage.
+
+        The files are searched for in the subtree of the app's root directory. All the files that match the expected
+        naming pattern are matched. The naming pattern depends on whether the bundle has been generated for a standalone
+        application or a single layer of a layered application build. The name of the NIB file should:
+        * start with anything other than 'layer<NUMBER>-' if it is meant for building a standalone app image.
+        * start with 'layer<NUMBER>-' if it is meant for building a layer, where NUMBER is the index of the layer.
+        """
+        # Lookup all the NIB files located inside the subtree of the app root directory
+        nib_candidates = list(app_dir.glob("**/*.nib"))
+
+        # Filter for only the NIB files that correspond to the naming scheme associated with the current layer
+        if layer_info is None:
+            # Select only the nib files that do not start with r'layer\d+-'
+            nib_naming_pattern = r"^(?!layer\d+-).*\.nib$"
+        else:
+            # Select only the nib files that start with fr'layer{layer_info.index}-'
+            nib_naming_pattern = fr"^layer{layer_info.index}-.*\.nib$"
+        return [nib for nib in nib_candidates if re.match(nib_naming_pattern, nib.name)]
+
+    def _generate_bundle(self, app_name: str, layer_info: Layer):
+        """Generates the NIB file for the app-layer pair associated with the current benchmark stage."""
+        nib_generation_cmd = [str(self.baristaBuilderPath()), app_name]
+        if layer_info is not None:
+            assert app_name in ["micronaut-pegasus", "micronaut-shopcart"], f"Cannot generate a layer bundle for '{app_name}' app!"
+            assert layer_info.index in [0, 1], f"Cannot generate layer#{layer_info.index} bundle for '{app_name}' app!"
+            if layer_info.index == 0:
+                nib_generation_cmd += ["-m=-Pbase-layer"]
+            else:
+                nib_generation_cmd += ["-m=-Papp-layer"]
+        mx.log(f"Generating the NIB file by running {nib_generation_cmd}. This can take a while.")
+        try:
+            mx.run(nib_generation_cmd, env=self._get_nib_generation_env())
+        except BaseException as e:
+            if isinstance(e, SystemExit):
+                mx.abort(f"Generating the NIB file failed with exit code {e}!")
+            else:
+                mx.abort(f"{e}\nGenerating the NIB file failed!")
+
+    def _get_nib_generation_env(self) -> dict:
+        env = bm_exec_context().get(self.ENV).copy()
+        graalvm_home = bm_exec_context().get("vm").home()
+        # The Barista builder tool requires these env vars:
+        # - JAVA_HOME that points to a GraalVM distribution - so it can invoke native-image
+        env["JAVA_HOME"] = graalvm_home
+        return env
 
     def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
         # We cannot enable assertions along with emitting a build report for layered images, due to GR-65751
@@ -390,7 +452,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return super().build_assertions(benchmark, is_gate)
 
     def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
-        with SingleBenchmarkManager(self):
+        with SingleBenchmarkManager(self), ConstantContextValueManager(self.BUNDLE_PATHS, {}):
             return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def ensure_image_is_at_desired_location(self, bmSuiteArgs):
@@ -494,7 +556,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             barista_workload = suite.baristaHarnessBenchmarkWorkload()
 
             # Provide image built in the previous stage to the Barista harnesss using the `--app-executable` option
-            ni_barista_cmd = [suite.baristaHarnessPath(), "--mode", "native", "--app-executable", app_image]
+            ni_barista_cmd = [str(suite.baristaHarnessPath()), "--mode", "native", "--app-executable", app_image]
             if barista_workload is not None:
                 ni_barista_cmd.append(f"--config={barista_workload}")
             ni_barista_cmd += suite.runArgs(bm_suite_args) + self._energyTrackerExtraOptions(suite)

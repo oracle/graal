@@ -1446,8 +1446,8 @@ JNIEXPORT jobjectArray JNICALL JVM_ConstantPoolGetNameAndTypeRefInfoAt(JNIEnv *e
 }
 
 JNIEXPORT jbyte JNICALL JVM_ConstantPoolGetTagAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
-  UNIMPLEMENTED(JVM_ConstantPoolGetTagAt);
-  return 0;
+  IMPLEMENTED(JVM_ConstantPoolGetTagAt);
+  return (*getEnv())->JVM_ConstantPoolGetTagAt(env, unused, jcpool, index);
 }
 
 JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,

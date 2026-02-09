@@ -60,7 +60,7 @@ public class JSEntryPointCode {
          * The entry point gets passed an array of JS strings. Here we convert that into an array
          * (with hub) of Java strings.
          */
-        HostedType stringtype = (HostedType) jsLTools.getProviders().getMetaAccess().lookupJavaType(String.class);
+        HostedType stringtype = jsLTools.getProviders().getMetaAccess().lookupJavaType(String.class);
         jsLTools.genResolvedVarDeclPrefix(convertedArgName);
         Array.lowerNewArray(stringtype, Emitter.of(argName + ".length"), jsLTools);
         jsLTools.genResolvedVarDeclPostfix(null);

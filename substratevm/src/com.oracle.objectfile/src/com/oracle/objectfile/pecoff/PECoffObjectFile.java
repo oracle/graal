@@ -47,6 +47,7 @@ import com.oracle.objectfile.pecoff.PECoff.IMAGE_SECTION_HEADER;
 import com.oracle.objectfile.pecoff.cv.CVDebugInfo;
 import com.oracle.objectfile.pecoff.cv.CVSymbolSectionImpl;
 import com.oracle.objectfile.pecoff.cv.CVTypeSectionImpl;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Represents a PECoff object file.
@@ -330,7 +331,7 @@ public class PECoffObjectFile extends ObjectFile {
             // The Header depends on the section count and symbol table size and offset.
 
             // We don't use the default dependencies, because our offset mustn't depend on anything.
-            HashSet<BuildDependency> dependencies = new HashSet<>();
+            EconomicSet<BuildDependency> dependencies = EconomicSet.create(4);
 
             LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
             LayoutDecision ourOffset = decisions.get(this).getDecision(LayoutDecision.Kind.OFFSET);
@@ -458,7 +459,7 @@ public class PECoffObjectFile extends ObjectFile {
              * Table are "Elements" and not "Sections".
              *
              */
-            HashSet<BuildDependency> deps = ObjectFile.defaultDependencies(decisions, this);
+            EconomicSet<BuildDependency> deps = ObjectFile.defaultDependencies(decisions, this);
 
             LayoutDecision ourOffset = decisions.get(this).getDecision(LayoutDecision.Kind.OFFSET);
             LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
@@ -633,7 +634,7 @@ public class PECoffObjectFile extends ObjectFile {
 
     @Override
     public Set<Segment> getSegments() {
-        return new HashSet<>();
+        return new HashSet<>(); // noEconomicSet(streaming)
     }
 
     @Override

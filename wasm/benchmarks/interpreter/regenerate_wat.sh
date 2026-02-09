@@ -30,6 +30,12 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+if [ -z "$1" ]; then
+  TARGET_DIR="$SCRIPT_DIR"
+else
+  TARGET_DIR="$1"
+fi
+
 if [ -z "$WASI_SDK" ]; then
   echo "WASI_SDK is not set"
   exit 1
@@ -40,7 +46,7 @@ if [ -z "$WABT_DIR" ]; then
   exit 1
 fi
 
-EXPORTED_FUNCTIONS="run OutlierRemovalAverageSummary OutlierRemovalAverageSummaryLowerThreshold OutlierRemovalAverageSummaryUpperThreshold"
+EXPORTED_FUNCTIONS="run setup OutlierRemovalAverageSummary OutlierRemovalAverageSummaryLowerThreshold OutlierRemovalAverageSummaryUpperThreshold"
 
 EXPORT_FLAGS=""
 for sym in $EXPORTED_FUNCTIONS; do
@@ -71,17 +77,14 @@ extract_header() {
   printf '%s' "$header_lines"
 }
 
-for c_file in "$SCRIPT_DIR"/*.c; do
+for c_file in "$TARGET_DIR"/*.c; do
   wasm_file="${c_file%.c}.wasm"
   wat_file="${c_file%.c}.wat"
 
-  if [ "$(basename "$c_file")" = "sieve.c" ]; then
-    $WASI_SDK/bin/clang $EXPORT_FLAGS -Wl,-z,stack-size=4194304 -O3 -o "$wasm_file" "$c_file"
-  else
-    $WASI_SDK/bin/clang $EXPORT_FLAGS -O3 -o "$wasm_file" "$c_file"
-  fi
+  c_flags="$(sed -nE 's/\/\/\s*CFLAGS\s*=\s*(.*)/\1/p' $c_file)"
+  $WASI_SDK/bin/clang $EXPORT_FLAGS $c_flags -O3 -o "$wasm_file" "$c_file"
 
-  new_wat="$($WABT_DIR/bin/wasm2wat "$wasm_file")"
+  new_wat="$($WABT_DIR/wasm2wat "$wasm_file")"
 
   license_header="$(extract_header "$wat_file")"
 
@@ -91,4 +94,6 @@ for c_file in "$SCRIPT_DIR"/*.c; do
     printf '%s' "$new_wat"
     printf '\n'
   } > "$wat_file"
+
+  rm "$wasm_file"
 done

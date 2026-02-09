@@ -33,17 +33,17 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.common.meta.MethodVariant;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -64,9 +64,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FunctionPointerHolder;
-import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
@@ -74,8 +72,6 @@ import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
@@ -86,7 +82,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
-import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -96,13 +92,8 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
@@ -171,17 +162,17 @@ public class UniverseBuilder {
             }
             for (AnalysisMethod aMethod : aUniverse.getMethods()) {
                 assert aMethod.isOriginalMethod();
-                Collection<MultiMethod> allMethods = aMethod.getAllMultiMethods();
+                Collection<MethodVariant> allMethods = aMethod.getAllMethodVariants();
                 HostedMethod origHMethod = null;
                 if (allMethods.size() == 1) {
                     origHMethod = makeMethod(aMethod);
                 } else {
-                    ConcurrentHashMap<MultiMethod.MultiMethodKey, MultiMethod> multiMethodMap = new ConcurrentHashMap<>();
-                    for (MultiMethod method : aMethod.getAllMultiMethods()) {
+                    ConcurrentHashMap<MethodVariant.MethodVariantKey, MethodVariant> methodVariantsMap = new ConcurrentHashMap<>();
+                    for (MethodVariant method : aMethod.getAllMethodVariants()) {
                         HostedMethod hMethod = makeMethod((AnalysisMethod) method);
-                        hMethod.setMultiMethodMap(multiMethodMap);
-                        MultiMethod previous = multiMethodMap.put(hMethod.getMultiMethodKey(), hMethod);
-                        assert previous == null : "Overwriting multimethod key";
+                        hMethod.setMethodVariantsMap(methodVariantsMap);
+                        MethodVariant previous = methodVariantsMap.put(hMethod.getMethodVariantKey(), hMethod);
+                        assert previous == null : "Overwriting method variant key";
                         if (method.equals(aMethod)) {
                             origHMethod = hMethod;
                         }
@@ -444,11 +435,13 @@ public class UniverseBuilder {
 
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
+        var watchdog = DeadlockWatchdog.singleton();
         hUniverse.methods.values().parallelStream()
                         .forEach(method -> {
                             assert method.isOriginalMethod();
-                            for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                                HostedMethod hMethod = (HostedMethod) multiMethod;
+                            watchdog.recordActivity();
+                            for (MethodVariant methodVariant : method.getAllMethodVariants()) {
+                                HostedMethod hMethod = (HostedMethod) methodVariant;
                                 strengthenGraphs.applyResults(hMethod.getWrapped());
                             }
                         });
@@ -462,7 +455,7 @@ public class UniverseBuilder {
      * partition of the image heap. Immutable types will not get a monitor field and will always use
      * the secondary storage for monitor slots.
      */
-    private static final Set<Class<?>> IMMUTABLE_TYPES = new HashSet<>(Arrays.asList(
+    private static final EconomicSet<Class<?>> IMMUTABLE_TYPES = EconomicSet.create(Arrays.asList(
                     Boolean.class,
                     Byte.class,
                     Short.class,
@@ -487,8 +480,8 @@ public class UniverseBuilder {
         HostedConfiguration.instance().collectMonitorFieldInfo(bb, hUniverse, getImmutableTypes());
     }
 
-    private Set<AnalysisType> getImmutableTypes() {
-        Set<AnalysisType> immutableTypes = new HashSet<>();
+    private EconomicSet<AnalysisType> getImmutableTypes() {
+        EconomicSet<AnalysisType> immutableTypes = EconomicSet.create(IMMUTABLE_TYPES.size());
         for (Class<?> immutableType : IMMUTABLE_TYPES) {
             Optional<AnalysisType> aType = aMetaAccess.optionalLookupJavaType(immutableType);
             aType.ifPresent(immutableTypes::add);
@@ -1004,7 +997,7 @@ public class UniverseBuilder {
     }
 
     /**
-     * See {@link DynamicHubTypeCheckUtil#computeOpenTypeWorldTypeCheckData} for details on the
+     * See {@link DynamicHubUtils#computeOpenTypeWorldTypeCheckData} for details on the
      * {@link DynamicHub} type check layout in the open type world.
      */
     private static void setOpenTypeWorldData(HostedType type, DynamicHubLayout dynamicHubLayout, DynamicHub hub, boolean useOffsets) {
@@ -1020,7 +1013,7 @@ public class UniverseBuilder {
         long vTableOffset = dynamicHubLayout.vTableOffset();
         long vTableSlotSize = dynamicHubLayout.vTableSlotSize;
 
-        DynamicHubTypeCheckUtil.TypeCheckData typeCheckData = DynamicHubTypeCheckUtil.computeOpenTypeWorldTypeCheckData(implementsMethods, typeHierarchy, interfaceIDs, iTableOffsets, vTableOffset,
+        DynamicHubUtils.TypeCheckData typeCheckData = DynamicHubUtils.computeOpenTypeWorldTypeCheckData(implementsMethods, typeHierarchy, interfaceIDs, iTableOffsets, vTableOffset,
                         vTableSlotSize);
 
         MethodRef[] vtable = createVTable(type.openTypeWorldDispatchTables, useOffsets);
@@ -1076,21 +1069,5 @@ public class UniverseBuilder {
             return ReflectionUtil.newInstance(annotation.onlyIf()).getAsBoolean();
         }
         return false;
-    }
-}
-
-@AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
-final class InvalidVTableEntryFeature implements InternalFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.lastImageBuild();
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess a) {
-        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + InvalidVTableEntryFeature.class);
     }
 }

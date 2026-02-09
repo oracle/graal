@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,11 +43,9 @@ import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.Hybrid;
-import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
@@ -61,7 +59,6 @@ import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
@@ -92,7 +89,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCImageHeapLayoutInfo;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCPartition;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -269,11 +266,7 @@ public class WasmGCHeapWriter {
         this.indexArray = providers.idFactory().newTemporaryVariable(indexArrayType.asNonNull());
         this.dispatchArrayType = providers.knownIds().accessDispatchFieldType;
         this.dispatchArray = providers.idFactory().newTemporaryVariable(dispatchArrayType.asNonNull());
-    }
-
-    public WasmGCImageHeapLayoutInfo layout() {
         collectObjectData();
-        return (WasmGCImageHeapLayoutInfo) heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE, ImageHeapLayouterCallback.NONE);
     }
 
     public void write(WasmGCImageHeapLayoutInfo layout, WasmModule module) {
@@ -410,7 +403,7 @@ public class WasmGCHeapWriter {
      * object table for all indices and will correctly get {@code null} for index {@code 0}.
      */
     private void initializeObjects() {
-        int nullIndex = objectElements.addElement(new Instruction.RefNull(providers.util().getJavaLangObjectType()).setComment("Null Object"));
+        int nullIndex = objectElements.addElement(new Instruction.RefNull(WasmRefType.NONE).setComment("Null Object"));
         assert nullIndex == 0 : nullIndex + " image heap objects were added to image heap table before the null pointer";
 
         for (ObjectData data : getObjects()) {
@@ -649,7 +642,7 @@ public class WasmGCHeapWriter {
         ObjectData data = getConstantInfo(constant);
 
         List<HostedField> staticFields = new ArrayList<>();
-        for (HostedField f : ((HostedMetaAccess) providers.getMetaAccess()).getUniverse().getFields()) {
+        for (HostedField f : providers.getMetaAccess().getUniverse().getFields()) {
             if (shouldGenerateStaticField(f) && f.getStorageKind().isPrimitive() == isPrimitive) {
                 staticFields.add(f);
             }
@@ -718,7 +711,7 @@ public class WasmGCHeapWriter {
         try {
             return heap.hConstantReflection.readFieldValue(field, instance);
         } catch (AnalysisError.TypeNotFoundError ex) {
-            throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+            throw heap.reportIllegalType(ex.getType(), info);
         }
     }
 
@@ -885,7 +878,7 @@ public class WasmGCHeapWriter {
      */
     private Instruction createNewInstanceFuncRef(HostedType objectType) {
         if (WasmGCAllocationSupport.needsDynamicAllocationTemplate(objectType)) {
-            return new Instruction.RefFunc(providers.knownIds().instanceCreateTemplate.requestFunctionId(objectType.getJavaClass()));
+            return new Instruction.RefFunc(providers.knownIds().instanceCreateTemplate.requestFunctionId(objectType));
         } else {
             return new Instruction.RefNull(providers.knownIds().newInstanceFieldType);
         }
@@ -1054,8 +1047,7 @@ public class WasmGCHeapWriter {
         StringBuilder comment = new StringBuilder(clazz.toJavaName());
         if (DynamicHubLayout.singleton().isDynamicHub(clazz)) {
             ResolvedJavaType t = providers.getConstantReflection().asJavaType(data.getInfo().getConstant());
-            Class<?> representedClazz = OriginalClassProvider.getJavaClass(t);
-            comment.append(" for ").append(representedClazz.getTypeName());
+            comment.append(" for ").append(JVMCIReflectionUtil.getTypeName(t));
         }
 
         return comment.toString();

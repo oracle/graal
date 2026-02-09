@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.word.impl.Word;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.AssumptionViolatedException;
@@ -211,6 +212,14 @@ public class GraalTest {
                     Assert.assertArrayEquals(message, (double[]) expected, (double[]) actual, delta);
                 } else if (expected instanceof boolean[]) {
                     new ExactComparisonCriteria().arrayEquals(message, expected, actual);
+                } else if (expected instanceof Word[] expecteds) {
+                    Object[] actuals = (Object[]) actual;
+                    Assert.assertEquals(expecteds.length, actuals.length);
+                    for (int i = 0; i < actuals.length; i++) {
+                        Word e = expecteds[i];
+                        Word a = (Word) actuals[i];
+                        Assert.assertTrue("!%s.equal(%s)".formatted(e, a), e.equal(a));
+                    }
                 } else if (expected instanceof Object[]) {
                     new ComparisonCriteria() {
                         @Override

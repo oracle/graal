@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,8 +37,8 @@ import java.util.EnumSet;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
-import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -76,6 +76,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
     @Temp({OperandFlag.REG}) private Value vectorTempValue4;
 
     @Temp({OperandFlag.REG}) private Value tempValue5;
+    @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private Value tempMask;
 
     private final LIRGeneratorTool.CharsetName charset;
 
@@ -98,6 +99,12 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
         this.vectorTempValue4 = tool.newVariable(lirKind);
 
         this.tempValue5 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
+
+        if (supports(tool.target(), runtimeCheckedCPUFeatures, AMD64BaseAssembler.FULL_AVX512_FEATURES)) {
+            this.tempMask = tool.newVariable(LIRKind.value(AMD64Kind.MASK64));
+        } else {
+            this.tempMask = Value.ILLEGAL;
+        }
 
         this.charset = charset;
         assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1 : charset;
@@ -158,7 +165,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
                 masm.vmovdqu(vectorTemp3, new AMD64Address(src, len, Stride.S2, -64));
                 masm.vmovdqu(vectorTemp4, new AMD64Address(src, len, Stride.S2, -32));
                 masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, YMM);
-                masm.vptest(vectorTemp2, vectorTemp1, AVXKind.AVXSize.YMM);
+                emitPtest(masm, YMM, tempMask, vectorTemp2, vectorTemp1);
                 masm.jcc(ConditionFlag.NotZero, labelCopy32CharsExit, true);
                 masm.emit(VPACKUSWB, vectorTemp3, vectorTemp3, vectorTemp4, YMM);
                 masm.emit(VPERMQ, vectorTemp4, vectorTemp3, 0xD8, YMM);
@@ -181,7 +188,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
 
             if (supportsAVX2AndYMM()) {
                 masm.vmovdqu(vectorTemp2, new AMD64Address(src, len, Stride.S2, -32));
-                masm.vptest(vectorTemp2, vectorTemp1, AVXKind.AVXSize.YMM);
+                emitPtest(masm, YMM, tempMask, vectorTemp2, vectorTemp1);
                 masm.jcc(ConditionFlag.NotZero, labelCopy16CharsExit);
                 masm.emit(VPACKUSWB, vectorTemp2, vectorTemp2, vectorTemp1, YMM);
                 masm.emit(VPERMQ, vectorTemp3, vectorTemp2, 0xD8, YMM);
@@ -197,7 +204,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
                     masm.por(vectorTemp2, vectorTemp4);
                 }
 
-                masm.ptest(vectorTemp2, vectorTemp1);
+                emitPtest(masm, XMM, tempMask, vectorTemp2, vectorTemp1);
                 masm.jccb(ConditionFlag.NotZero, labelCopy16CharsExit);
                 masm.packuswb(vectorTemp3, vectorTemp4);
             }
@@ -212,7 +219,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
 
             masm.bind(labelCopy8Chars);
             masm.movdqu(vectorTemp3, new AMD64Address(src, len, Stride.S2, -16));
-            masm.ptest(vectorTemp3, vectorTemp1);
+            emitPtest(masm, XMM, tempMask, vectorTemp3, vectorTemp1);
             masm.jccb(ConditionFlag.NotZero, labelCopy8CharsExit);
 
             masm.packuswb(vectorTemp3, vectorTemp1);

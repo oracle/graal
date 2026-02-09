@@ -72,6 +72,9 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType AssertionError = lookupType(AssertionError.class);
     public final ResolvedJavaType AbstractMemorySegmentImpl = lookupTypeOptional("jdk.internal.foreign.AbstractMemorySegmentImpl");
     public final ResolvedJavaType MemorySegmentProxy = lookupTypeOptional("jdk.internal.access.foreign.MemorySegmentProxy");
+    public final ResolvedJavaType AtomicIntegerFieldUpdater = lookupType("java.util.concurrent.atomic.AtomicIntegerFieldUpdater$AtomicIntegerFieldUpdaterImpl");
+    public final ResolvedJavaType AtomicLongFieldUpdater = lookupType("java.util.concurrent.atomic.AtomicLongFieldUpdater$CASUpdater");
+    public final ResolvedJavaType AtomicReferenceFieldUpdater = lookupType("java.util.concurrent.atomic.AtomicReferenceFieldUpdater$AtomicReferenceFieldUpdaterImpl");
 
     public final Set<ResolvedJavaType> primitiveBoxTypes = Set.of(
                     lookupType(JavaKind.Boolean.toBoxedJavaClass()),
@@ -92,6 +95,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType CompilerDirectives_CompilationFinal = lookupType("com.oracle.truffle.api.CompilerDirectives$CompilationFinal");
     public final ResolvedJavaType CompilerDirectives_TruffleBoundary = lookupType("com.oracle.truffle.api.CompilerDirectives$TruffleBoundary");
     public final ResolvedJavaType CompilerDirectives_ValueType = lookupType("com.oracle.truffle.api.CompilerDirectives$ValueType");
+    public final ResolvedJavaType CompilerDirectives_EarlyInline = lookupTypeOptional("com.oracle.truffle.api.CompilerDirectives$EarlyInline");
+    public final ResolvedJavaType CompilerDirectives_EarlyEscapeAnalysis = lookupTypeOptional("com.oracle.truffle.api.CompilerDirectives$EarlyEscapeAnalysis");
     public final ResolvedJavaType CompilerAsserts = lookupType("com.oracle.truffle.api.CompilerAsserts");
     public final ResolvedJavaType ExactMath = lookupType("com.oracle.truffle.api.ExactMath");
     public final ResolvedJavaType HostCompilerDirectives = lookupType("com.oracle.truffle.api.HostCompilerDirectives");

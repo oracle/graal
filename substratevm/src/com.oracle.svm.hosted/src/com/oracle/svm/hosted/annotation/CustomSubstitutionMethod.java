@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.annotation;
 
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -45,6 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper, AnnotatedWrapper {
 
@@ -229,11 +229,6 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
     }
 
     @Override
-    public Annotation[][] getParameterAnnotations() {
-        return original.getParameterAnnotations();
-    }
-
-    @Override
     public Type[] getGenericParameterTypes() {
         return original.getGenericParameterTypes();
     }
@@ -275,6 +270,16 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
 
     @Override
     public SpeculationLog getSpeculationLog() {
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public AnnotationsInfo getParameterAnnotationInfo() {
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public AnnotationsInfo getAnnotationDefaultInfo() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 }

@@ -25,9 +25,9 @@
 package com.oracle.svm.core.graal.snippets;
 
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Used to abstract the GC-specific part of the allocation functionality, e.g., how does the TLAB
@@ -41,8 +41,6 @@ public interface GCAllocationSupport {
     ForeignCallDescriptor getNewStoredContinuationStub();
 
     ForeignCallDescriptor getNewPodInstanceStub();
-
-    boolean useTLAB();
 
     boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray);
 

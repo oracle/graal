@@ -26,7 +26,7 @@ package com.oracle.svm.core.c;
 
 import org.graalvm.nativeimage.IsolateThread;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 
 /**

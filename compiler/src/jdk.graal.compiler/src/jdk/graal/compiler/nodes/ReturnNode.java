@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,12 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.memory.MemoryMapNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodes.memory.MemoryMapNode;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_4, cyclesRationale = "Restore frame + ret", sizeRationale = "Restore frame + ret")
 public final class ReturnNode extends MemoryMapControlSinkNode implements LIRLowerable {
@@ -60,6 +60,17 @@ public final class ReturnNode extends MemoryMapControlSinkNode implements LIRLow
         assert verifyReturn(gen.getLIRGeneratorTool().target());
         if (result == null) {
             gen.getLIRGeneratorTool().emitReturn(JavaKind.Void, null);
+        } else if (result instanceof MultiReturnNode multiReturnNode) {
+            // If the return value is a MultiReturnsNode, extracts the unproxied return result, the
+            // additional return results, and the custom return address to emit a multi-return
+            // instruction.
+            ValueNode unproxiedResult = multiReturnNode.getReturnResult();
+            JavaKind returnResultKind = unproxiedResult == null ? JavaKind.Void : unproxiedResult.getStackKind();
+            Value returnResult = unproxiedResult == null ? null : gen.operand(unproxiedResult);
+            Value[] additionalReturnResults = multiReturnNode.getAdditionalReturnResults().stream().map(gen::operand).toArray(Value[]::new);
+            Value tailCallTarget = multiReturnNode.getTailCallTarget() == null ? null : gen.operand(multiReturnNode.getTailCallTarget());
+
+            gen.getLIRGeneratorTool().emitMultiReturns(returnResultKind, returnResult, additionalReturnResults, tailCallTarget);
         } else {
             gen.getLIRGeneratorTool().emitReturn(result.getStackKind(), gen.operand(result));
         }

@@ -73,7 +73,7 @@ public class TestAnnotationsBase extends Universe {
     @Test
     public void testIllegalElements() {
         if (!Assertions.assertionsEnabled()) {
-            // Element checking is performed in the AnnotationValue contructor
+            // Element checking is performed in the AnnotationValue constructor
             // only when assertions are enabled.
             return;
         }

@@ -33,11 +33,11 @@ import java.lang.reflect.Array;
 
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.snippets.WasmGCAllocationSnippets;
@@ -81,8 +81,15 @@ public class WasmGCAllocationSupport {
     private static Class<?> getCheckedComponentClass(DynamicHub componentType) {
         if (probability(EXTREMELY_FAST_PATH_PROBABILITY, componentType != null) && probability(EXTREMELY_FAST_PATH_PROBABILITY, componentType != DynamicHub.fromClass(void.class))) {
             DynamicHub arrayHub = componentType.getArrayHub();
-            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null) && probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub.isInstantiated())) {
-                return DynamicHub.toClass(componentType);
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null)) {
+                if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub.isInstantiated())) {
+                    return DynamicHub.toClass(componentType);
+                }
+            } else if (RuntimeClassLoading.isSupported()) {
+                arrayHub = getOrCreateArrayHubStub(componentType);
+                if (probability(EXTREMELY_FAST_PATH_PROBABILITY, arrayHub != null)) {
+                    return DynamicHub.toClass(componentType);
+                }
             }
         }
 
@@ -99,6 +106,11 @@ public class WasmGCAllocationSupport {
         } else {
             throw VMError.shouldNotReachHereUnexpectedInput(componentType); // ExcludeFromJacocoGeneratedReport
         }
+    }
+
+    private static DynamicHub getOrCreateArrayHubStub(DynamicHub componentType) {
+        assert RuntimeClassLoading.isSupported();
+        return componentType.getOrCreateArrayHub();
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -141,9 +153,9 @@ public class WasmGCAllocationSupport {
      * needs a {@link com.oracle.svm.hosted.webimage.wasm.codegen.WasmCodeGenTool} instance.
      */
     public static void preRegisterAllocationTemplates(WebImageWasmGCProviders providers) {
-        for (HostedType type : ((HostedMetaAccess) providers.getMetaAccess()).getUniverse().getTypes()) {
+        for (HostedType type : providers.getMetaAccess().getUniverse().getTypes()) {
             if (needsDynamicAllocationTemplate(type)) {
-                providers.knownIds().instanceCreateTemplate.requestFunctionId(type.getJavaClass());
+                providers.knownIds().instanceCreateTemplate.requestFunctionId(type);
             }
         }
     }

@@ -25,8 +25,6 @@
  */
 package com.oracle.svm.core.reflect.serialize;
 
-import static com.oracle.svm.core.SubstrateOptions.ThrowMissingRegistrationErrors;
-
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
@@ -288,14 +286,8 @@ public class SerializationSupport implements SerializationRegistry {
         }
 
         String targetConstructorClassName = targetConstructorClass.getName();
-        if (ThrowMissingRegistrationErrors.hasBeenSet()) {
-            MissingSerializationRegistrationUtils.reportSerialization(declaringClass,
-                            "type '" + declaringClass.getTypeName() + "' with target constructor class '" + targetConstructorClassName + "'");
-        } else {
-            throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
-                            " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
-                            " to serialization-config.json fixes the problem.");
-        }
+        MissingSerializationRegistrationUtils.reportSerialization(declaringClass,
+                        "type '" + declaringClass.getTypeName() + "' with target constructor class '" + targetConstructorClassName + "'");
         return null;
     }
 

@@ -26,7 +26,6 @@ package com.oracle.graal.pointsto.heap;
 
 import java.lang.reflect.Field;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -52,20 +51,21 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Scanning is triggered when:
@@ -91,6 +91,10 @@ public abstract class ImageHeapScanner {
     protected final ConstantReflectionProvider hostedConstantReflection;
     protected final SnippetReflectionProvider hostedSnippetReflection;
 
+    private final AnalysisType stringType;
+    private final AnalysisType enumType;
+    private final ResolvedJavaMethod hashCodeMethod;
+
     protected ObjectScanningObserver scanningObserver;
 
     private boolean sealed;
@@ -111,6 +115,9 @@ public abstract class ImageHeapScanner {
         scanningObserver = aScanningObserver;
         hostedConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
         hostedSnippetReflection = GraalAccess.getOriginalProviders().getSnippetReflection();
+        stringType = metaAccess.lookupJavaType(String.class);
+        enumType = metaAccess.lookupJavaType(Enum.class);
+        hashCodeMethod = OriginalMethodProvider.getOriginalMethod(JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess.lookupJavaType(Object.class), "hashCode"));
     }
 
     public ConstantReflectionProvider getConstantReflection() {
@@ -150,11 +157,7 @@ public abstract class ImageHeapScanner {
              *
              * GR-52421: the field state needs to be serialized from the base layer analysis
              */
-            if (field.getStorageKind().isObject()) {
-                bb.injectFieldTypes(field, List.of(field.getType()), true);
-            } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive()) {
-                ((PointsToAnalysisField) field).saturatePrimitiveField();
-            }
+            field.injectDeclaredType();
         } else if (isValueAvailable(field, null)) {
             JavaConstant fieldValue = readStaticFieldValue(field);
             if (fieldValue instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
@@ -372,7 +375,7 @@ public abstract class ImageHeapScanner {
         AnalysisError.guarantee(hostedValue.isNonNull(), "A relinked constant cannot have a NULL_CONSTANT hosted value.");
         Object existingSnapshot = imageHeap.getSnapshot(hostedValue);
         if (existingSnapshot != null) {
-            AnalysisError.guarantee(existingSnapshot == constant || existingSnapshot instanceof AnalysisFuture<?> task && task.ensureDone() == constant,
+            AnalysisError.guarantee(existingSnapshot.equals(constant) || existingSnapshot instanceof AnalysisFuture<?> task && task.ensureDone().equals(constant),
                             "Found unexpected snapshot value for base layer value.%nExisting value: %s.%nNew value: %s.%nHosted value: %s.%nReason: %s.",
                             existingSnapshot, constant, hostedValue, reason);
         } else {
@@ -432,7 +435,7 @@ public abstract class ImageHeapScanner {
         } else if (unwrapped instanceof ImageHeapConstant) {
             throw GraalError.shouldNotReachHere(formatReason("Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable.", reason)); // ExcludeFromJacocoGeneratedReport
         }
-        maybeForceHashCodeComputation(unwrapped);
+        maybeForceHashCodeComputation(constant);
 
         /* Run all registered object replacers. */
         if (constant.getJavaKind() == JavaKind.Object) {
@@ -452,17 +455,26 @@ public abstract class ImageHeapScanner {
         return Optional.empty();
     }
 
-    public static void maybeForceHashCodeComputation(Object constant) {
-        if (constant instanceof String stringConstant) {
-            forceHashCodeComputation(stringConstant);
-        } else if (constant instanceof Enum<?> enumConstant) {
+    public void maybeForceHashCodeComputation(JavaConstant constant) {
+        JavaConstant unwrapped = Objects.requireNonNull(constant, "The constant passed into maybeForceHashCodeComputation should never be null.");
+        if (constant instanceof ImageHeapConstant imageHeapConstant) {
+            unwrapped = Objects.requireNonNull(imageHeapConstant.getHostedObject(),
+                            () -> "ImageHeapConstant passed into maybeForceHashCodeComputation should always have an associated hosted object: " + imageHeapConstant);
+        }
+        var type = metaAccess.getWrapped().lookupJavaType(unwrapped);
+        if (type == null) {
+            return;
+        }
+        if (stringType.isAssignableFrom(type)) {
+            forceHashCodeComputation(unwrapped);
+        } else if (enumType.isAssignableFrom(type)) {
             /*
              * Starting with JDK 21, Enum caches the identity hash code in a separate hash field. We
              * want to allow Enum values to be manually marked as immutable objects, so we eagerly
              * initialize the hash field. This is safe because Enum.hashCode() is a final method,
              * i.e., cannot be overwritten by the user.
              */
-            forceHashCodeComputation(enumConstant);
+            forceHashCodeComputation(unwrapped);
         }
     }
 
@@ -470,9 +482,8 @@ public abstract class ImageHeapScanner {
      * For immutable Strings and other objects in the native image heap, force eager computation of
      * the hash field.
      */
-    @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "eager hash field computation")
-    private static void forceHashCodeComputation(Object object) {
-        object.hashCode();
+    private void forceHashCodeComputation(JavaConstant constant) {
+        GraalAccess.getVMAccess().invoke(hashCodeMethod, constant);
     }
 
     JavaConstant onFieldValueReachable(AnalysisField field, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
@@ -738,7 +749,7 @@ public abstract class ImageHeapScanner {
                     JavaConstant fieldSnapshot = receiverObject.readFieldValue(field);
                     JavaConstant unwrappedSnapshot = ScanningObserver.maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant);
 
-                    if (fieldSnapshot instanceof ImageHeapConstant ihc && ihc.isInBaseLayer() && ihc.getHostedObject() == null) {
+                    if (fieldSnapshot instanceof ImageHeapConstant ihc && ihc.isInSharedLayer() && ihc.getHostedObject() == null) {
                         /*
                          * We cannot verify a base layer constant which doesn't have a backing
                          * hosted object. Since the hosted object is missing the constant would be
@@ -808,6 +819,15 @@ public abstract class ImageHeapScanner {
         });
         arrayObject.setElementTask(index, task);
         return task;
+    }
+
+    /**
+     * Returns true if the provided {@code object} has an {@link ImageHeapConstant} representation,
+     * meaning it is a candidate to be installed in the image heap.
+     */
+    public boolean hasImageHeapConstant(Object object) {
+        var javaConstant = asConstant(Objects.requireNonNull(object));
+        return imageHeap.getSnapshot(javaConstant) instanceof ImageHeapConstant;
     }
 
     /**

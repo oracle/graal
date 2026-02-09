@@ -1,0 +1,10 @@
+{
+   "resources": [
+     {
+       "condition": {
+         "typeReached": "sun.net.httpserver.simpleserver.SimpleFileServerImpl"
+       },
+       "bundle": "sun.net.httpserver.simpleserver.resources.simpleserver"
+     }
+   ]
+ }

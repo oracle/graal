@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,23 +31,19 @@ import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.EMITT
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
-import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -128,14 +124,16 @@ public abstract class WebImageCodeGen {
     protected final HostedMethod mainEntryPoint;
 
     protected final WebImageCodeCache codeCache;
+    protected final ImageHeapLayoutInfo heapLayout;
     protected final Map<HostedMethod, WebImageCompilationResult> compilations;
 
     protected final WebImageHostedConfiguration configuration;
 
-    protected WebImageCodeGen(WebImageCodeCache codeCache, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint, WebImageProviders providers, DebugContext debug,
-                    WebImageHostedConfiguration config) {
-        this.hMetaAccess = (HostedMetaAccess) providers.getMetaAccess();
+    protected WebImageCodeGen(WebImageCodeCache codeCache, ImageHeapLayoutInfo heapLayout, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint, WebImageProviders providers,
+                    DebugContext debug, WebImageHostedConfiguration config) {
+        this.hMetaAccess = providers.getMetaAccess();
         this.codeCache = codeCache;
+        this.heapLayout = heapLayout;
         this.compilations = codeCache.webImageCompilationResults;
         this.hostedEntryPoints = hostedEntryPoints;
         this.mainEntryPoint = Objects.requireNonNull(mainEntryPoint);
@@ -179,9 +177,9 @@ public abstract class WebImageCodeGen {
     }
 
     @SuppressWarnings("try")
-    public static WebImageCodeGen generateCode(WebImageCodeCache codeCache, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint, WebImageProviders providers, DebugContext debug,
-                    WebImageHostedConfiguration config, ImageClassLoader imageClassLoader) {
-        WebImageCodeGen codegen = config.createCodeGen(codeCache, hostedEntryPoints, mainEntryPoint, providers, debug, imageClassLoader);
+    public static WebImageCodeGen generateCode(WebImageCodeCache codeCache, ImageHeapLayoutInfo heapLayout, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint,
+                    WebImageProviders providers, DebugContext debug, WebImageHostedConfiguration config, ImageClassLoader imageClassLoader) {
+        WebImageCodeGen codegen = config.createCodeGen(codeCache, heapLayout, hostedEntryPoints, mainEntryPoint, providers, debug, imageClassLoader);
         try (LoggerScope loggerScope = LoggerContext.currentContext().scope(CODE_GEN_SCOPE_NAME, codegen::saveCodegenCounters)) {
             codegen.buildImage();
             return codegen;
@@ -195,19 +193,6 @@ public abstract class WebImageCodeGen {
         }
 
         postProcess();
-    }
-
-    protected void afterHeapLayout() {
-        // after this point, the layout is final and must not be changed anymore
-        assert !hasDuplicatedObjects(codeCache.nativeImageHeap) : "heap.getObjects() must not contain any duplicates";
-        BuildPhaseProvider.markHeapLayoutFinished();
-        codeCache.nativeImageHeap.getLayouter().afterLayout(codeCache.nativeImageHeap);
-    }
-
-    protected boolean hasDuplicatedObjects(NativeImageHeap heap) {
-        Set<NativeImageHeap.ObjectInfo> deduplicated = Collections.newSetFromMap(new IdentityHashMap<>());
-        deduplicated.addAll(heap.getObjects());
-        return deduplicated.size() != heap.getObjectCount();
     }
 
     /**

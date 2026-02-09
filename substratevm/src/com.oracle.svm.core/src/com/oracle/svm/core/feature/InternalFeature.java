@@ -40,6 +40,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugi
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface InternalFeature extends Feature {
 
@@ -134,5 +136,12 @@ public interface InternalFeature extends Feature {
      * @since 24.2
      */
     default void afterAbstractImageCreation(AfterAbstractImageCreationAccess access) {
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface InternalFeatureAccess extends FeatureAccess {
+        ResolvedJavaType findTypeByName(String className);
+
+        MetaAccessProvider getMetaAccess();
     }
 }

@@ -360,6 +360,7 @@ meth public abstract !hasdefault boolean allowUnsafe()
 meth public abstract !hasdefault boolean captureFramesForTrace()
 meth public abstract !hasdefault boolean enableBlockScoping()
 meth public abstract !hasdefault boolean enableBytecodeDebugListener()
+meth public abstract !hasdefault boolean enableInstructionRewriting()
 meth public abstract !hasdefault boolean enableInstructionTracing()
 meth public abstract !hasdefault boolean enableMaterializedLocalAccesses()
 meth public abstract !hasdefault boolean enableQuickening()
@@ -373,10 +374,12 @@ meth public abstract !hasdefault boolean enableUncachedInterpreter()
 meth public abstract !hasdefault boolean enableYield()
 meth public abstract !hasdefault boolean inlinePrimitiveConstants()
 meth public abstract !hasdefault boolean storeBytecodeIndexInFrame()
+meth public abstract !hasdefault java.lang.Class<? extends java.lang.RuntimeException> illegalLocalException()
 meth public abstract !hasdefault java.lang.Class<?> tagTreeNodeLibrary()
 meth public abstract !hasdefault java.lang.Class<?>[] boxingEliminationTypes()
 meth public abstract !hasdefault java.lang.String defaultLocalValue()
 meth public abstract !hasdefault java.lang.String defaultUncachedThreshold()
+meth public abstract !hasdefault java.lang.String illegalLocalExceptionFactory()
 meth public abstract !hasdefault java.lang.String variadicStackLimit()
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> languageClass()
 
@@ -830,6 +833,28 @@ meth public com.oracle.truffle.api.bytecode.debug.PrintInstructionTracer$Builder
 supr java.lang.Object
 hfds filter,out
 
+CLSS public final com.oracle.truffle.api.bytecode.serialization.ByteBufferDataInput
+intf java.io.DataInput
+meth public boolean readBoolean() throws java.io.IOException
+meth public byte readByte() throws java.io.IOException
+meth public char readChar() throws java.io.IOException
+meth public double readDouble() throws java.io.IOException
+meth public float readFloat() throws java.io.IOException
+meth public int position()
+meth public int readInt() throws java.io.IOException
+meth public int readUnsignedByte() throws java.io.IOException
+meth public int readUnsignedShort() throws java.io.IOException
+meth public int skipBytes(int) throws java.io.IOException
+meth public java.lang.String readLine() throws java.io.IOException
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+meth public java.lang.String readUTF() throws java.io.IOException
+meth public long readLong() throws java.io.IOException
+meth public short readShort() throws java.io.IOException
+meth public void readFully(byte[]) throws java.io.IOException
+meth public void readFully(byte[],int,int) throws java.io.IOException
+supr java.lang.Object
+hfds buffer,lineBuffer
+
 CLSS public abstract interface com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer
  anno 0 java.lang.FunctionalInterface()
 innr public abstract interface static DeserializerContext
@@ -849,7 +874,9 @@ CLSS public abstract interface static com.oracle.truffle.api.bytecode.serializat
 meth public abstract void writeBytecodeNode(java.io.DataOutput,com.oracle.truffle.api.bytecode.BytecodeRootNode) throws java.io.IOException
 
 CLSS public final com.oracle.truffle.api.bytecode.serialization.SerializationUtils
+meth public static com.oracle.truffle.api.bytecode.serialization.ByteBufferDataInput createByteBufferDataInput(java.nio.ByteBuffer)
 meth public static java.io.DataInput createDataInput(java.nio.ByteBuffer)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 supr java.lang.Object
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Bind
@@ -1013,6 +1040,23 @@ hfds LOCK_UPDATER,callTarget,frameDescriptor,instrumentationBits,lock
 hcls Constant
 
 CLSS public abstract interface com.oracle.truffle.api.nodes.UnadoptableNode
+
+CLSS public abstract interface java.io.DataInput
+meth public abstract boolean readBoolean() throws java.io.IOException
+meth public abstract byte readByte() throws java.io.IOException
+meth public abstract char readChar() throws java.io.IOException
+meth public abstract double readDouble() throws java.io.IOException
+meth public abstract float readFloat() throws java.io.IOException
+meth public abstract int readInt() throws java.io.IOException
+meth public abstract int readUnsignedByte() throws java.io.IOException
+meth public abstract int readUnsignedShort() throws java.io.IOException
+meth public abstract int skipBytes(int) throws java.io.IOException
+meth public abstract java.lang.String readLine() throws java.io.IOException
+meth public abstract java.lang.String readUTF() throws java.io.IOException
+meth public abstract long readLong() throws java.io.IOException
+meth public abstract short readShort() throws java.io.IOException
+meth public abstract void readFully(byte[]) throws java.io.IOException
+meth public abstract void readFully(byte[],int,int) throws java.io.IOException
 
 CLSS public abstract interface java.io.Serializable
 

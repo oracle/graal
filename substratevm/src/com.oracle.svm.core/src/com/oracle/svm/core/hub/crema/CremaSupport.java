@@ -27,6 +27,7 @@ package com.oracle.svm.core.hub.crema;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
@@ -63,13 +64,15 @@ public interface CremaSupport {
 
     DynamicHub createHub(ParserKlass parsed, ClassDefinitionInfo info, int typeID, String externalName, Module module, ClassLoader classLoader, Class<?> superClass, Class<?>[] superInterfaces);
 
+    DynamicHub getOrCreateArrayHub(DynamicHub dynamicHub);
+
     /**
      * Creates a new instance of {@code type} without running any constructor yet. The caller should
      * make sure to run a constructor before publishing the result.
      */
     Object allocateInstance(ResolvedJavaType type);
 
-    Object execute(ResolvedJavaMethod targetMethod, Object[] args);
+    Object execute(ResolvedJavaMethod targetMethod, Object[] args, boolean isVirtual);
 
     Class<?> toClass(ResolvedJavaType resolvedJavaType);
 
@@ -101,7 +104,14 @@ public interface CremaSupport {
 
     ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature);
 
+    Object computeEnclosingClass(DynamicHub hub);
+
     static CremaSupport singleton() {
         return ImageSingletons.lookup(CremaSupport.class);
     }
+
+    CFunctionPointer getEnterDirectInterpreterStubEntryPoint();
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint);
 }

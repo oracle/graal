@@ -91,7 +91,7 @@ public final class RegexRootNode extends RootNode {
     @TruffleBoundary
     @Override
     public String toString() {
-        return getBodyUnwrapped().toString();
+        return source.toNodeName();
     }
 
     /**

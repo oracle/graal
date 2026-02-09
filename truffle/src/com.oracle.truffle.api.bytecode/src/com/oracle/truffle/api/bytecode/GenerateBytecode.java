@@ -507,9 +507,12 @@ public @interface GenerateBytecode {
     boolean enableSpecializationIntrospection() default false;
 
     /**
-     * Sets the default value that {@link BytecodeLocal locals} return when they are read without
-     * ever being written. Unless a default local value is specified, loading from a
-     * {@link BytecodeLocal local} that was never stored into throws a
+     * Specifies the default value produced when attempting to load a cleared {@link BytecodeLocal
+     * local} (i.e., a local that has not been written to).
+     * <p>
+     * This attribute is mutually exclusive with {@link #illegalLocalException()}: the interpreter
+     * can either produce a default value or throw a user-provided exception when loading a cleared
+     * local. If neither is explicitly specified, the interpreter defaults to throwing a
      * {@link FrameSlotTypeException}.
      * <p>
      * It is recommended for the default local value expression to refer to a static and final
@@ -533,6 +536,77 @@ public @interface GenerateBytecode {
      * @since 24.2
      */
     String defaultLocalValue() default "";
+
+    /**
+     * Specifies the exception to throw when attempting to load a cleared {@link BytecodeLocal
+     * local} (i.e., a local that has not been written to).
+     * <p>
+     * This attribute is mutually exclusive with {@link #defaultLocalValue()}: the interpreter can
+     * either produce a default value or throw a user-provided exception when loading a cleared
+     * local. If neither is explicitly specified, the interpreter defaults to throwing a
+     * {@link FrameSlotTypeException}.
+     * <p>
+     * When an illegal local exception is specified, the interpreter checks if a local is cleared
+     * before each load; if the local is cleared, the interpreter creates and throws an instance of
+     * the exception using the factory method. The interpreter will attempt to
+     * {@link #enableQuickening() quicken} away the clear check when possible.
+     * <p>
+     * Below is an example:
+     *
+     * <pre>
+     * &#64;GenerateBytecode(..., illegalLocalException = MyIllegalLocalException.class)
+     * abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode {
+     *     // ...
+     * }
+     *
+     * class MyIllegaLocalException extends AbstractTruffleException {
+     *     public static MyIllegalLocalException create(Node location, BytecodeNode bytecode, BytecodeLocation location, LocalVariable variable) {
+     *         // ...
+     *     }
+     * }
+     * </pre>
+     *
+     * The provided exception class must declare a static factory method for instantiating
+     * exceptions. By default, this method is named {@code create}, but this can be overridden using
+     * {@link #illegalLocalExceptionFactory()}.
+     * <p>
+     * The factory method should return an instance of the exception class. It may take zero or more
+     * parameters of the following types (in any order):
+     * <ul>
+     * <li>{@link Node}: the current location (equivalent to {@code @Bind("$node")})</li>
+     * <li>{@link BytecodeNode}: the current bytecode node</li>
+     * <li>{@link BytecodeLocation}: the current bytecode location</li>
+     * <li>{@link LocalVariable}: an introspection object modeling the local's metadata (name, info,
+     * etc.)</li>
+     * </ul>
+     *
+     * <p>
+     * If the provided exception class is a Truffle exception (i.e., it extends
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException}), the exception can be
+     * thrown from runtime compiled code without deoptimization; otherwise, it is considered an
+     * internal error and throwing the exception will always trigger deoptimization.
+     * <p>
+     * Note: due to current limitations of the Bytecode DSL implementation, illegal local exceptions
+     * are not yet fully supported with local accessors:
+     * <ul>
+     * <li>If an operation uses a {@link LocalAccessor} or {@link LocalRangeAccessor}, the factory
+     * method cannot declare a {@link BytecodeLocation} parameter.</li>
+     * <li>If an operation uses a {@link MaterializedLocalAccessor}, illegal local exceptions cannot
+     * be used.</li>
+     * </ul>
+     *
+     * @since 25.1
+     */
+    Class<? extends RuntimeException> illegalLocalException() default FrameSlotTypeException.class;
+
+    /**
+     * Specifies the name of the static factory method used to instantiate illegal local exceptions.
+     * This attribute is only applicable if an {@link #illegalLocalException()} class is specified.
+     *
+     * @see #illegalLocalException()
+     * @since 25.1
+     */
+    String illegalLocalExceptionFactory() default "create";
 
     /**
      * Whether the {@link BytecodeDebugListener} methods should be notified by generated code. By
@@ -605,5 +679,15 @@ public @interface GenerateBytecode {
      * @since 25.1
      */
     boolean enableInstructionTracing() default true;
+
+    /**
+     * Enables instruction rewriting support for the generated bytecode interpreter.
+     * <p>
+     * Instruction rewriting is used to implement peephole optimizations (e.g., remove redundant
+     * loads) and other bytecode optimizations.
+     *
+     * @since 25.1
+     */
+    boolean enableInstructionRewriting() default true;
 
 }

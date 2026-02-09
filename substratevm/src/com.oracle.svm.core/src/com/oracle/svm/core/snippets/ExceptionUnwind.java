@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.snippets;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.stack.JavaFrameAnchors.verifyTopFrameAnchor;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
@@ -39,7 +39,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.BooleanPointer;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
@@ -58,7 +58,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.UnreachableNode;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public abstract class ExceptionUnwind {
 

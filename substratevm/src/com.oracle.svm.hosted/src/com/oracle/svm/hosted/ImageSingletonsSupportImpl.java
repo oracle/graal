@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -40,13 +39,14 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
@@ -58,7 +58,6 @@ import com.oracle.svm.core.traits.SingletonAccessSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKindSupplier;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
@@ -74,7 +73,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport implements LayeredImageSingletonSupport {
 
     @Override
@@ -322,7 +321,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                  */
                 singletonDuringImageBuild.installPriorSingletonInfo(support.getSingletonLoader());
             } else {
-                singletonDuringImageBuild.addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(Set.of()));
+                singletonDuringImageBuild.addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(EconomicSet.emptySet()));
             }
         }
 
@@ -340,7 +339,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
             };
             var result = info.loadImageSingletons(forbiddenObjectCreator);
-            Set<Class<?>> installedKeys = new HashSet<>();
+            EconomicSet<Class<?>> installedKeys = EconomicSet.create();
             for (var entry : result.entrySet()) {
                 Object singletonToInstall = entry.getKey();
                 for (Class<?> key : entry.getValue()) {
@@ -356,7 +355,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             }
 
             // document what was installed during loading
-            addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(Set.copyOf(installedKeys)));
+            addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(installedKeys));
         }
 
         public static void clear() {
@@ -394,7 +393,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor) {
             this.configObjects = new ConcurrentHashMap<>();
             this.singletonToTraitMap = new ConcurrentIdentityHashMap<>();
-            forbiddenInstallationKinds = EnumSet.of(SingletonLayeredInstallationKind.InstallationKind.DISALLOWED);
+            forbiddenInstallationKinds = EnumSet.noneOf(SingletonLayeredInstallationKind.InstallationKind.class);
             if (support != null) {
                 this.layeredBuild = support.buildingImageLayer;
                 this.extensionLayerBuild = support.buildingImageLayer && !support.buildingInitialLayer;
@@ -435,10 +434,13 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     traitMap.getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND).ifPresent(trait -> {
                         var kind = SingletonLayeredInstallationKind.getInstallationKind(trait);
                         if (forbiddenInstallationKinds.contains(kind)) {
-                            if (SubstrateOptions.LayerOptionVerification.getValue()) {
+                            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
                                 throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", kind, value);
                             }
                         }
+                    });
+                    traitMap.getTrait(SingletonTraitKind.DISALLOWED).ifPresent(_ -> {
+                        throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
                     });
                 }
                 /*

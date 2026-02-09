@@ -26,8 +26,8 @@ package jdk.graal.compiler.graph;
 
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHere;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
-import static jdk.graal.compiler.graph.Edges.NEXT_EDGE;
 import static jdk.graal.compiler.graph.Edges.LIST_MASK;
+import static jdk.graal.compiler.graph.Edges.NEXT_EDGE;
 import static jdk.graal.compiler.graph.Edges.OFFSET_MASK;
 import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static jdk.graal.compiler.graph.Node.WithAllEdges;
@@ -44,7 +44,6 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -70,6 +69,13 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.NodeClassMap;
+import jdk.graal.compiler.nodes.PhiNode;
+import jdk.graal.compiler.nodes.ProxyNode;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
+import jdk.graal.compiler.nodes.memory.MemoryMap;
+import jdk.graal.compiler.nodes.spi.MemoryEdgeProxy;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -242,6 +248,17 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             debug.log("Node cost for node of type __| %s |_, cycles:%s,size:%s", clazz, cycles, size);
         }
         checkMemoryEdgeInvariant();
+
+        checkMemoryKillStaticInvariants(clazz);
+    }
+
+    private void checkMemoryKillStaticInvariants(Class<T> clazz) {
+        GraalError.guarantee(!MemoryKill.class.isAssignableFrom(clazz) || FixedNode.class.isAssignableFrom(clazz) || isAllowListedFloatingKill(clazz),
+                        "Only fixed nodes are allowed to be memory kills.");
+    }
+
+    private boolean isAllowListedFloatingKill(Class<T> clazz) {
+        return PhiNode.class.isAssignableFrom(clazz) || ProxyNode.class.isAssignableFrom(clazz) || MemoryEdgeProxy.class.isAssignableFrom(clazz) || MemoryMap.class.isAssignableFrom(clazz);
     }
 
     private void checkMemoryEdgeInvariant() {

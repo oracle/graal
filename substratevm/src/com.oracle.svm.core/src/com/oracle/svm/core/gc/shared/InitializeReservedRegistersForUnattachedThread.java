@@ -26,12 +26,11 @@ package com.oracle.svm.core.gc.shared;
 
 import org.graalvm.nativeimage.Isolate;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Prologue;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Prologue that only initializes the base registers so that an unattached thread can execute SVM

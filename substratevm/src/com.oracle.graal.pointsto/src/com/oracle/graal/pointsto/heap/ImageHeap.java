@@ -52,13 +52,13 @@ public class ImageHeap {
 
     /*
      * Note on the idea of merging the heapObjects and typesToObjects maps:
-     * 
+     *
      * - heapObjects maps both the original and the replaced JavaConstant objects to the
      * corresponding ImageHeapObject (which also wraps the replaced JavaConstant).
-     * 
+     *
      * - typesToObjects maps the AnalysisType of the replaced objects to the collection of
      * corresponding ImageHeapObject
-     * 
+     *
      * - If we were to combine the two into a Map<AnalysisType, Map<JavaConstant, Object>> which
      * type do we use as a key? That would be the type of the JavaConstant object, but that doesn't
      * always match with the type of the ImageHeapObject in case of object replacers that change
@@ -84,7 +84,7 @@ public class ImageHeap {
              * A base layer constant was in the objectsCache from the base image. It might not have
              * been put in the objectsCache of the extension image yet.
              */
-            assert imageHeapConstant.getHostedObject() == null || imageHeapConstant.isInBaseLayer() || objectsCache.get(imageHeapConstant.getHostedObject()).equals(imageHeapConstant);
+            assert imageHeapConstant.getHostedObject() == null || imageHeapConstant.isInSharedLayer() || objectsCache.get(imageHeapConstant.getHostedObject()).equals(imageHeapConstant);
             return imageHeapConstant;
         }
         return objectsCache.get(uncompressed);
@@ -100,7 +100,7 @@ public class ImageHeap {
     public void setValue(JavaConstant constant, ImageHeapConstant value) {
         assert !(constant instanceof ImageHeapConstant) : constant;
         Object previous = objectsCache.put(CompressibleConstant.uncompress(constant), value);
-        AnalysisError.guarantee(!(previous instanceof ImageHeapConstant) || previous == value, "An ImageHeapConstant: %s is already registered for hosted JavaConstant: %s.", previous, constant);
+        AnalysisError.guarantee(!(previous instanceof ImageHeapConstant) || previous.equals(value), "An ImageHeapConstant: %s is already registered for hosted JavaConstant: %s.", previous, constant);
     }
 
     public Set<ImageHeapConstant> getReachableObjects(AnalysisType type) {

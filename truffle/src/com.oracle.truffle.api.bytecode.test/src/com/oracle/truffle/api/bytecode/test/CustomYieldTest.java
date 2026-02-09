@@ -76,8 +76,8 @@ import com.oracle.truffle.api.bytecode.Yield;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
-import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.ErrorLanguage;
+import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -88,8 +88,8 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -133,7 +133,7 @@ public class CustomYieldTest {
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         nodes.serialize(new DataOutputStream(output), SERIALIZER);
-        Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+        Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
         BytecodeRootNodes<CustomYieldTestRootNode> deserialized = CustomYieldTestRootNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
         CustomYieldTestRootNode root = deserialized.getNode(0);
 
@@ -457,7 +457,7 @@ public class CustomYieldTest {
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         nodes.serialize(new DataOutputStream(output), SERIALIZER);
-        Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+        Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
         BytecodeRootNodes<ComplexCustomYieldTestRootNode> deserialized = ComplexCustomYieldTestRootNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
         ComplexCustomYieldTestRootNode root = deserialized.getNode(0);
 

@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -56,6 +55,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
@@ -175,7 +175,6 @@ public class ResourcesFeature implements InternalFeature {
     private Set<ConditionalPattern> globWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<ConditionalPattern> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
     private DynamicAccessInferenceLog inferenceLog;
@@ -183,7 +182,7 @@ public class ResourcesFeature implements InternalFeature {
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry<AccessCondition> {
         private final ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
 
-        private final Set<String> alreadyAddedResources = new HashSet<>();
+        private final EconomicSet<String> alreadyAddedResources = EconomicSet.create();
 
         ResourcesRegistryImpl() {
         }
@@ -285,16 +284,6 @@ public class ResourcesFeature implements InternalFeature {
         public boolean shouldRegisterResource(Module module, String resourceName) {
             /* we only do this if we are on the classPath */
             if ((module == null || !module.isNamed())) {
-                /*
-                 * This check is not thread safe! If the resource is not added yet, maybe some other
-                 * thread is attempting to do it, so we have to perform same check again in
-                 * synchronized block (in that case). Anyway this check will cut the case when we
-                 * are sure that resource is added (so we don't need to enter synchronized block)
-                 */
-                if (alreadyAddedResources.contains(resourceName)) {
-                    return false;
-                }
-
                 /* addResources can be called from multiple threads */
                 synchronized (alreadyAddedResources) {
                     if (!alreadyAddedResources.contains(resourceName)) {
@@ -356,7 +345,7 @@ public class ResourcesFeature implements InternalFeature {
             /*
              * getResources could return same entry that was found by different(parent) classLoaders
              */
-            Set<String> alreadyProcessedResources = new HashSet<>();
+            EconomicSet<String> alreadyProcessedResources = EconomicSet.create();
             while (urls.hasMoreElements()) {
                 URL url = urls.nextElement();
                 if (alreadyProcessedResources.contains(url.toString())) {
@@ -430,11 +419,11 @@ public class ResourcesFeature implements InternalFeature {
 
         ResourceConfigurationParser<AccessCondition> parser = ResourceConfigurationParser.create(true, conditionResolver, ResourcesRegistry.singleton(),
                         ConfigurationFiles.Options.getConfigurationParserOptions());
-        loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "resource");
+        ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "resource");
 
         ResourceConfigurationParser<AccessCondition> legacyParser = ResourceConfigurationParser.create(false, conditionResolver, ResourcesRegistry.singleton(),
                         ConfigurationFiles.Options.getConfigurationParserOptions());
-        loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, imageClassLoader, "resource",
+        ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
                         ConfigurationFile.RESOURCES.getFileName());
 
@@ -669,7 +658,7 @@ public class ResourcesFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        resourcesRegistry.sealed();
+        resourcesRegistry.seal();
         if (Options.GenerateEmbeddedResourcesFile.getValue()) {
             Path reportLocation = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(Options.EMBEDDED_RESOURCES_FILE_NAME);
             try (JsonWriter writer = new JsonWriter(reportLocation)) {
@@ -685,17 +674,6 @@ public class ResourcesFeature implements InternalFeature {
         GlobTrieNode<ConditionWithOrigin> root = Resources.currentLayer().getResourcesTrieRoot();
         CompressedGlobTrie.removeNodes(root, (conditionWithOrigin) -> !access.isReachable(((TypeReachabilityCondition) conditionWithOrigin.condition()).getType()));
         CompressedGlobTrie.finalize(root);
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        if (!ImageSingletons.contains(FallbackFeature.class)) {
-            return;
-        }
-        FallbackFeature.FallbackImageRequest resourceFallback = ImageSingletons.lookup(FallbackFeature.class).resourceFallback;
-        if (resourceFallback != null && Options.IncludeResources.getValue().values().isEmpty() && loadedConfigurations == 0) {
-            throw resourceFallback;
-        }
     }
 
     @Override

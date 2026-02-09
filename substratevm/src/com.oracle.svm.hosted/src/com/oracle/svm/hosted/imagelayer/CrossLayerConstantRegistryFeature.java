@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -51,7 +52,6 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -68,7 +68,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class CrossLayerConstantRegistryFeature implements InternalFeature, CrossLayerConstantRegistry {
     static final int INVALID = -1;
     static final int NULL_CONSTANT_ID = -1;
@@ -139,7 +139,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Cross
     }
 
     private void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
-        String addReason = "Registered as a required heap constant within the CrossLayerConstantRegistry";
+        Object addReason = ImageHeapReasonSupport.singleton().description("Registered as a required heap constant within the CrossLayerConstantRegistry");
 
         for (Object constant : requiredConstants.values()) {
             ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(constant);
@@ -186,7 +186,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Cross
          */
         constantCandidates.entrySet().stream().filter(e -> !(e.getValue() instanceof FutureConstantCandidateInfo)).forEach(entry -> {
             Object object = entry.getValue();
-            var optional = config.getHostedMetaAccess().optionalLookupJavaType(object.getClass());
+            var optional = config.getMetaAccess().optionalLookupJavaType(object.getClass());
             if (optional.isPresent()) {
                 var constant = (ImageHeapConstant) snippetReflection.forObject(object);
                 var objectInfo = heap.getConstantInfo(constant);
@@ -417,7 +417,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Cross
 
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ImageLayerIdTrackingSingleton.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ImageLayerIdTrackingSingleton.LayeredCallbacks.class)
 class ImageLayerIdTrackingSingleton {
     private final Map<String, TrackingInfo> keyToTrackingInfoMap = new HashMap<>();
     final Map<String, List<Integer>> futureKeyToPatchingOffsetsMap = new ConcurrentHashMap<>();

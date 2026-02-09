@@ -55,37 +55,19 @@ public enum SingletonTraitKind {
      *
      * <p>
      * In cases where this SingletonTrait is not defined the singleton will have the equivalent
-     * behavior as {@link SingletonLayeredInstallationKind.Independent}.
+     * behavior as {@link com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Duplicable}.
      */
     LAYERED_INSTALLATION_KIND(SingletonLayeredInstallationKind.class),
 
     /**
-     * Used as a marker to indicate this singleton's behavior should be made layer-aware in the
-     * future.
-     *
-     * <p>
-     * In detail, a duplicable singleton can have multiple instances of the object installed in the
-     * Image Heap (at most one per a layer). The specific instance referred to from a given piece of
-     * code is dependent on the layer in which the code was installed in.
-     *
-     * <p>
-     * It is expected that either the installed objects (1) have no instance fields or (2) have
-     * instance fields which have been made layer-aware through other means (e.g. using a layered
-     * ImageHeapMap).
-     *
-     * <p>
-     * Note this is a temporary marker and eventually all instances of this trait should be removed.
-     * This trait should only be used when there is not a correctness issue with installing multiple
-     * instances of the singleton. Instead, the trait indicates there is merely a performance/memory
-     * overhead due to having multiple copies of this singleton installed (via different layers)
-     * within the image heap.
-     */
-    DUPLICABLE(EmptyMetadata.class),
-
-    /**
      * Used as a marker to indicate the singleton is not yet fully compatible with layered images.
      */
-    PARTIALLY_LAYER_AWARE(EmptyMetadata.class);
+    PARTIALLY_LAYER_AWARE(EmptyMetadata.class),
+
+    /**
+     * Used as a marker to indicate the singleton is not allowed to be used with layered images.
+     */
+    DISALLOWED(EmptyMetadata.class);
 
     private final Class<?> metadataClass;
 
@@ -104,7 +86,7 @@ public enum SingletonTraitKind {
     public boolean isInConfiguration(boolean layeredBuild) {
         return switch (this) {
             case ACCESS -> true;
-            case LAYERED_CALLBACKS, DUPLICABLE, LAYERED_INSTALLATION_KIND, PARTIALLY_LAYER_AWARE -> layeredBuild;
+            case LAYERED_CALLBACKS, LAYERED_INSTALLATION_KIND, PARTIALLY_LAYER_AWARE, DISALLOWED -> layeredBuild;
         };
     }
 

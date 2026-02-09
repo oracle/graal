@@ -24,11 +24,15 @@
  */
 package com.oracle.svm.hosted.c.libc;
 
-import com.oracle.svm.core.c.libc.NoLibC;
-import com.oracle.svm.core.util.VMError;
-
 import java.util.List;
 
+import com.oracle.svm.core.c.libc.NoLibC;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.VMError;
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class HostedNoLibC extends NoLibC implements HostedLibCBase {
 
     @Override

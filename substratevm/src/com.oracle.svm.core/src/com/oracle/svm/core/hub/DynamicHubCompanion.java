@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,12 +54,12 @@ import sun.reflect.generics.repository.ClassRepository;
  * improve sharing between isolates and processes, but could increase image size.
  */
 public final class DynamicHubCompanion {
-
     /** Field used for module information access at run-time. */
     final Module module;
 
     /**
-     * The hub for the superclass, or null if an interface or primitive type.
+     * The hub for the superclass, or null if an interface, a primitive type, or
+     * {@link java.lang.Object}.
      *
      * @see Class#getSuperclass()
      */
@@ -84,7 +84,7 @@ public final class DynamicHubCompanion {
      * The class that declares this class, as returned by {@code Class.getDeclaringClass0} or an
      * exception that happened at image-build time.
      */
-    final Object declaringClass;
+    Object declaringClass;
 
     final String signature;
 
@@ -92,13 +92,13 @@ public final class DynamicHubCompanion {
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterHostedUniverse.class) //
     @Stable byte additionalFlags;
 
+    //
     /**
      * The hub for an array of this type, or null if the array type has been determined as
      * uninstantiated by the static analysis. In layered builds, it is possible for this value to be
      * initially set to null and then updated in a subsequent layer.
      */
-    @LayeredFieldValue(transformer = ArrayHubTransformer.class) //
-    @Stable DynamicHub arrayHub;
+    @LayeredFieldValue(transformer = ArrayHubTransformer.class) @Stable DynamicHub arrayHub;
 
     /**
      * The interfaces that this class implements. Either null (no interfaces), a {@link DynamicHub}
@@ -135,6 +135,9 @@ public final class DynamicHubCompanion {
     @UnknownObjectField(canBeNull = true, types = ImageDynamicHubMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
     @Stable DynamicHubMetadata hubMetadata;
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    @Stable DynamicHub dynamicHub;
+
     /**
      * Classloader used for loading this class. Most classes have the correct class loader set
      * already at image build time. {@link PredefinedClassesSupport Predefined classes} get their
@@ -157,8 +160,15 @@ public final class DynamicHubCompanion {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static DynamicHubCompanion createHosted(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
-                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData) {
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, classData, null);
+                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData, DynamicHub dynamicHub) {
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, classData, dynamicHub);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData, DynamicHub dynamicHub) {
+        this(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, classData, (ProtectionDomain) null);
+        this.dynamicHub = dynamicHub;
     }
 
     static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
@@ -191,11 +201,17 @@ public final class DynamicHubCompanion {
         this.reflectionMetadata = reflectionMetadata;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public DynamicHub getDynamicHub() {
+        return dynamicHub;
+    }
+
     /**
      * In layered builds it is possible for a {@link DynamicHubCompanion#arrayHub} to become
      * reachable in a later layer than the layer in which the companion is installed in. When this
      * happens we must update the companion's field to point to the newly installed value.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     static class ArrayHubTransformer extends LayeredFieldValueTransformer<DynamicHubCompanion> {
         boolean appLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
 

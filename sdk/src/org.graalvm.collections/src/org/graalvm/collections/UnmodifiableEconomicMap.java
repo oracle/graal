@@ -52,6 +52,7 @@ public interface UnmodifiableEconomicMap<K, V> {
      * Returns the value to which {@code key} is mapped, or {@code null} if this map contains no
      * mapping for {@code key}. The {@code key} must not be {@code null}.
      *
+     * @throws UnsupportedOperationException if {@code key == null}
      * @since 19.0
      */
     V get(K key);
@@ -60,6 +61,7 @@ public interface UnmodifiableEconomicMap<K, V> {
      * Returns the value to which {@code key} is mapped, or {@code defaultValue} if this map
      * contains no mapping for {@code key}. The {@code key} must not be {@code null}.
      *
+     * @throws UnsupportedOperationException if {@code key == null}
      * @since 19.0
      */
     default V get(K key, V defaultValue) {
@@ -71,9 +73,10 @@ public interface UnmodifiableEconomicMap<K, V> {
     }
 
     /**
-     * Returns {@code true} if this map contains a mapping for {@code key}. Always returns
-     * {@code false} if the {@code key} is {@code null}.
+     * Returns {@code true} if this map contains a mapping for {@code key}. The {@code key} must not
+     * be {@code null}.
      *
+     * @throws UnsupportedOperationException if {@code key == null}
      * @since 19.0
      */
     boolean containsKey(K key);

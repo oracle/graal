@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.meta;
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
@@ -36,14 +35,17 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.SkipStackOverflowCheck;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.CustomCallingConventionMethod;
@@ -82,7 +84,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public final class HostedMethod extends HostedElement implements SharedMethod, WrappedJavaMethod, JavaMethodContext, OriginalMethodProvider, MultiMethod {
+public final class HostedMethod extends HostedElement implements SharedMethod, WrappedJavaMethod, JavaMethodContext, OriginalMethodProvider, MethodVariant {
 
     public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
@@ -143,21 +145,20 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     private final String name;
     private final String uniqueShortName;
 
-    private final MultiMethodKey multiMethodKey;
+    private final MethodVariantKey methodVariantKey;
 
     /**
-     * Map from a key to the corresponding implementation. All multi-method implementations for a
-     * given Java method share the same map. This allows one to easily switch between different
-     * implementations when needed. When {@code multiMethodMap} is null, then
-     * {@link #multiMethodKey} points to {@link #ORIGINAL_METHOD} and no other implementations exist
-     * for the method. This is done to reduce the memory overhead in the common case when only this
-     * one implementation is present.
+     * Map from a method variant key to the corresponding method variant implementation. All method
+     * variants for a given Java method share the same map. This allows one to easily switch between
+     * different implementations when needed. When {@code methodVariantsMap} is {@code null}, then
+     * {@link #methodVariantKey} points to {@link #ORIGINAL_METHOD} and no other implementations
+     * exist for the method. This is done to reduce the memory overhead in the common case when only
+     * this one implementation is present.
      */
-    private volatile Map<MultiMethodKey, MultiMethod> multiMethodMap;
+    private volatile Map<MethodVariantKey, MethodVariant> methodVariantsMap;
 
     @SuppressWarnings("rawtypes") //
-    private static final AtomicReferenceFieldUpdater<HostedMethod, Map> MULTIMETHOD_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(HostedMethod.class, Map.class,
-                    "multiMethodMap");
+    private static final AtomicReferenceFieldUpdater<HostedMethod, Map> METHOD_VARIANTS_UPDATER = AtomicReferenceFieldUpdater.newUpdater(HostedMethod.class, Map.class, "methodVariantsMap");
 
     public static final HostedMethod[] EMPTY_ARRAY = new HostedMethod[0];
 
@@ -165,18 +166,19 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
                     ConstantPool constantPool, ExceptionHandler[] handlers) {
         LocalVariableTable localVariableTable = createLocalVariableTable(universe, wrapped);
 
-        return create0(wrapped, holder, signature, constantPool, handlers, wrapped.getMultiMethodKey(), null, localVariableTable);
+        return create0(wrapped, holder, signature, constantPool, handlers, wrapped.getMethodVariantKey(), null, localVariableTable);
     }
 
     private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature,
-                    ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
+                    ConstantPool constantPool, ExceptionHandler[] handlers, MethodVariantKey key, Map<MethodVariantKey, MethodVariant> methodVariantMap, LocalVariableTable localVariableTable) {
         var generator = new HostedMethodNameFactory.NameGenerator() {
 
             @Override
             public HostedMethodNameFactory.MethodNameInfo generateMethodNameInfo(int collisionCount) {
-                String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
+                // want name w/o any methodvariantkey suffix
+                String name = wrapped.wrapped.getName();
                 if (key != ORIGINAL_METHOD) {
-                    name += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + key;
+                    name += StableMethodNameFormatter.METHOD_VARIANT_KEY_SEPARATOR + key;
                 }
                 if (collisionCount > 0) {
                     name = name + METHOD_NAME_COLLISION_SEPARATOR + collisionCount;
@@ -195,7 +197,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
         HostedMethodNameFactory.MethodNameInfo names = HostedMethodNameFactory.singleton().createNames(generator, wrapped);
 
-        return new HostedMethod(wrapped, holder, signature, constantPool, handlers, names.name(), names.uniqueShortName(), localVariableTable, key, multiMethodMap);
+        return new HostedMethod(wrapped, holder, signature, constantPool, handlers, names.name(), names.uniqueShortName(), localVariableTable, key, methodVariantMap);
     }
 
     private static LocalVariableTable createLocalVariableTable(HostedUniverse universe, AnalysisMethod wrapped) {
@@ -222,8 +224,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     private HostedMethod(AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature, ConstantPool constantPool,
-                    ExceptionHandler[] handlers, String name, String uniqueShortName, LocalVariableTable localVariableTable, MultiMethodKey multiMethodKey,
-                    Map<MultiMethodKey, MultiMethod> multiMethodMap) {
+                    ExceptionHandler[] handlers, String name, String uniqueShortName, LocalVariableTable localVariableTable, MethodVariantKey methodVariantKey,
+                    Map<MethodVariantKey, MethodVariant> methodVariantsMap) {
         this.wrapped = wrapped;
         this.holder = holder;
         this.signature = signature;
@@ -233,8 +235,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         this.localVariableTable = localVariableTable;
         this.name = name;
         this.uniqueShortName = uniqueShortName;
-        this.multiMethodKey = multiMethodKey;
-        this.multiMethodMap = multiMethodMap;
+        this.methodVariantKey = methodVariantKey;
+        this.methodVariantsMap = methodVariantsMap;
     }
 
     @Override
@@ -330,7 +332,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     @Override
     public int getImageCodeDeoptOffset() {
         int result = 0;
-        HostedMethod deoptTarget = getMultiMethod(SubstrateCompilationDirectives.DEOPT_TARGET_METHOD);
+        HostedMethod deoptTarget = getMethodVariant(SubstrateCompilationDirectives.DEOPT_TARGET_METHOD);
         if (deoptTarget != null && deoptTarget.isCodeAddressOffsetValid()) {
             result = deoptTarget.getCodeAddressOffset();
             assert result != 0;
@@ -355,17 +357,22 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean canDeoptimize() {
-        return compilationInfo.canDeoptForTesting() || multiMethodKey == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+        return compilationInfo.canDeoptForTesting() || methodVariantKey == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
     }
 
     @Override
     public boolean isUninterruptible() {
-        return Uninterruptible.Utils.isUninterruptible(wrapped);
+        return UninterruptibleAnnotationUtils.isUninterruptible(wrapped);
     }
 
     @Override
     public boolean needSafepointCheck() {
         return SubstrateSafepointInsertionPhase.needSafepointCheck(wrapped);
+    }
+
+    @Override
+    public boolean needStackOverflowCheck() {
+        return SharedMethod.super.needStackOverflowCheck() && !AnnotationUtil.isAnnotationPresent(this, SkipStackOverflowCheck.class);
     }
 
     @Override
@@ -565,11 +572,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public Annotation[][] getParameterAnnotations() {
-        return wrapped.getParameterAnnotations();
-    }
-
-    @Override
     public Type[] getGenericParameterTypes() {
         return wrapped.getGenericParameterTypes();
     }
@@ -650,56 +652,66 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public MultiMethodKey getMultiMethodKey() {
-        return multiMethodKey;
+    public MethodVariantKey getMethodVariantKey() {
+        return methodVariantKey;
     }
 
-    void setMultiMethodMap(ConcurrentHashMap<MultiMethodKey, MultiMethod> newMultiMethodMap) {
-        VMError.guarantee(multiMethodMap == null, "Resetting already initialized multimap");
-        if (!MULTIMETHOD_MAP_UPDATER.compareAndSet(this, null, newMultiMethodMap)) {
-            throw VMError.shouldNotReachHere("unable to set multimeMethodMap");
+    void setMethodVariantsMap(ConcurrentHashMap<MethodVariantKey, MethodVariant> newMethodVariantsMap) {
+        VMError.guarantee(methodVariantsMap == null, "Resetting already initialized methods variant map.");
+        if (!METHOD_VARIANTS_UPDATER.compareAndSet(this, null, newMethodVariantsMap)) {
+            throw VMError.shouldNotReachHere("unable to set methodVariantsMap");
         }
     }
 
     @Override
-    public HostedMethod getOrCreateMultiMethod(MultiMethodKey key) {
-        if (key == multiMethodKey) {
+    public HostedMethod getOrCreateMethodVariant(MethodVariantKey key) {
+        if (key == methodVariantKey) {
             return this;
         }
 
-        if (multiMethodMap == null) {
-            ConcurrentHashMap<MultiMethodKey, MultiMethod> newMultiMethodMap = new ConcurrentHashMap<>();
-            newMultiMethodMap.put(multiMethodKey, this);
-            MULTIMETHOD_MAP_UPDATER.compareAndSet(this, null, newMultiMethodMap);
+        if (methodVariantsMap == null) {
+            ConcurrentHashMap<MethodVariantKey, MethodVariant> newMethodVariantsMap = new ConcurrentHashMap<>();
+            newMethodVariantsMap.put(methodVariantKey, this);
+            METHOD_VARIANTS_UPDATER.compareAndSet(this, null, newMethodVariantsMap);
         }
 
-        return (HostedMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
-            HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
-            newMultiMethod.implementations = implementations;
-            newMultiMethod.computedVTableIndex = computedVTableIndex;
-            newMultiMethod.indirectCallTarget = indirectCallTarget;
-            newMultiMethod.indirectCallVTableIndex = indirectCallVTableIndex;
-            return newMultiMethod;
+        return (HostedMethod) methodVariantsMap.computeIfAbsent(key, (k) -> {
+            HostedMethod newMethodVariant = create0(wrapped, holder, signature, constantPool, handlers, k, methodVariantsMap, localVariableTable);
+            newMethodVariant.implementations = implementations;
+            newMethodVariant.computedVTableIndex = computedVTableIndex;
+            newMethodVariant.indirectCallTarget = indirectCallTarget;
+            newMethodVariant.indirectCallVTableIndex = indirectCallVTableIndex;
+            return newMethodVariant;
         });
     }
 
     @Override
-    public HostedMethod getMultiMethod(MultiMethodKey key) {
-        if (key == multiMethodKey) {
+    public HostedMethod getMethodVariant(MethodVariantKey key) {
+        if (key == methodVariantKey) {
             return this;
-        } else if (multiMethodMap == null) {
+        } else if (methodVariantsMap == null) {
             return null;
         } else {
-            return (HostedMethod) multiMethodMap.get(key);
+            return (HostedMethod) methodVariantsMap.get(key);
         }
     }
 
     @Override
-    public Collection<MultiMethod> getAllMultiMethods() {
-        if (multiMethodMap == null) {
+    public Collection<MethodVariant> getAllMethodVariants() {
+        if (methodVariantsMap == null) {
             return Collections.singleton(this);
         } else {
-            return multiMethodMap.values();
+            return methodVariantsMap.values();
         }
+    }
+
+    @Override
+    public CFunctionPointer getAOTEntrypoint() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public ResolvedJavaMethod getInterpreterMethod() {
+        return null;
     }
 }
