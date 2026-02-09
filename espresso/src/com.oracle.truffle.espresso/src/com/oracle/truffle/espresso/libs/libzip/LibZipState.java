@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.libs.libzip;
 
+import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -44,6 +45,7 @@ public class LibZipState {
     // Checkstyle: resume field name check
 
     private final StrongHandles<Inflater> handle2Inflater = new StrongHandles<>();
+    private final StrongHandles<Deflater> handle2Deflater = new StrongHandles<>();
     private final Meta meta;
 
     public LibZipState(Meta meta) {
@@ -68,6 +70,22 @@ public class LibZipState {
             throw throwInternalError("the provided handle doesn't correspond to an Inflater");
         }
         return inflater;
+    }
+
+    public long handlifyDeflater(Deflater i) {
+        return handle2Deflater.handlify(i);
+    }
+
+    public void cleanDeflater(long handle) {
+        handle2Deflater.freeHandle(handle);
+    }
+
+    public Deflater getDeflater(long handle) {
+        Deflater deflater = handle2Deflater.getObject(handle);
+        if (deflater == null) {
+            throw throwInternalError("the provided handle doesn't correspond to an Deflater");
+        }
+        return deflater;
     }
 
     @TruffleBoundary
