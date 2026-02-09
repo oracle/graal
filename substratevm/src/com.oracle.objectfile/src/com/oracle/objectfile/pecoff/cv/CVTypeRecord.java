@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,8 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MEMBER;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_METHOD;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_METHODLIST;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MFUNCTION;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MFUNC_ID;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MODIFIER;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ONEMETHOD;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_PAD1;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_PAD2;
@@ -313,6 +315,50 @@ abstract class CVTypeRecord {
         }
     }
 
+    static final class CVTypeMFuncIdRecord extends CVTypeRecord {
+
+        int parentTypeIdx;
+        int typeIdx;
+        String name;
+
+        CVTypeMFuncIdRecord(int parentTypeIdx, int typeIdx, String name) {
+            super(LF_MFUNC_ID);
+            this.parentTypeIdx = parentTypeIdx;
+            this.typeIdx = typeIdx;
+            this.name = name;
+        }
+
+        @Override
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(parentTypeIdx, buffer, initialPos);
+            pos = CVUtil.putInt(typeIdx, buffer, pos);
+            return CVUtil.putUTF8StringBytes(name, buffer, pos);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("LF_MFUNC_ID 0x%04x parentTypeIdx=0x%x typeIdx=0x%x %s", getSequenceNumber(), parentTypeIdx, typeIdx, name);
+        }
+
+        @Override
+        public int hashCode() {
+            int h = type;
+            h = 31 * h + parentTypeIdx;
+            h = 31 * h + typeIdx;
+            h = 31 * h + name.hashCode();
+            return h;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!super.equals(obj)) {
+                return false;
+            }
+            CVTypeMFuncIdRecord other = (CVTypeMFuncIdRecord) obj;
+            return this.typeIdx == other.typeIdx && this.name.equals(other.name) && this.parentTypeIdx == other.parentTypeIdx;
+        }
+    }
+
     static final class CVTypeStringIdRecord extends CVTypeRecord {
 
         String string;
@@ -354,6 +400,55 @@ abstract class CVTypeRecord {
             }
             CVTypeStringIdRecord other = (CVTypeStringIdRecord) obj;
             return this.string.equals(other.string) && this.substringListIndex == other.substringListIndex;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    static final class CVTypeModifierRecord extends CVTypeRecord {
+
+        private final int typeIndex;
+        private final short attrs;
+
+        CVTypeModifierRecord(int typeIndex, short attrs) {
+            super(LF_MODIFIER);
+            this.typeIndex = typeIndex;
+            this.attrs = attrs;
+        }
+
+        CVTypeModifierRecord(int typeIndex, boolean isConst, boolean isVolatile, boolean isUnaligned) {
+            this(typeIndex, (short) ((isConst ? 1 : 0) + (isVolatile ? 2 : 0) + (isUnaligned ? 4 : 0)));
+        }
+
+        @Override
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(typeIndex, buffer, initialPos);
+            return CVUtil.putShort(attrs, buffer, pos);
+        }
+
+        @Override
+        public String toString() {
+            boolean isConst = (attrs & 0x0001) == 0x0001;
+            boolean isVolatile = (attrs & 0x0002) == 0x0002;
+            boolean isUnaligned = (attrs & 0x0004) == 0x0004;
+            return String.format("LF_MODIFIER 0x%04x attr=0x%x%s%s%s pointTo=0x%04x", getSequenceNumber(), attrs, isConst ? " const" : "", isVolatile ? " volatile" : "",
+                            isUnaligned ? " unaligned" : "", typeIndex);
+        }
+
+        @Override
+        public int hashCode() {
+            int h = type;
+            h = 31 * h + typeIndex;
+            h = 31 * h + attrs;
+            return h;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!super.equals(obj)) {
+                return false;
+            }
+            CVTypeModifierRecord other = (CVTypeModifierRecord) obj;
+            return this.typeIndex == other.typeIndex && this.attrs == other.attrs;
         }
     }
 
@@ -433,6 +528,10 @@ abstract class CVTypeRecord {
 
         void setClassType(int classType) {
             this.classType = classType;
+        }
+
+        int getClassType() {
+            return classType;
         }
 
         void setThisType(int thisType) {
@@ -1051,6 +1150,10 @@ abstract class CVTypeRecord {
             /* Keep a running total. */
             estimatedSize += CVUtil.align4(m.computeSize());
             members.add(m);
+        }
+
+        int count() {
+            return members.size();
         }
 
         int getEstimatedSize() {
