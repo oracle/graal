@@ -64,13 +64,6 @@ public interface ProcessPropertiesSupport {
         return null;
     }
 
-    /**
-     * @deprecated in 25.0 without replacement. This method is inherently unsafe because
-     *             {@code setlocale(...)} is not thread-safe on the OS level.
-     */
-    @Deprecated
-    String setLocale(String category, String locale);
-
     boolean destroy(long processID);
 
     boolean destroyForcibly(long processID);

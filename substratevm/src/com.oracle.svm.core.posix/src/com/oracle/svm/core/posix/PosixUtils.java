@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.FileDescriptor;
 
@@ -42,12 +42,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.c.libc.GLibC;
-import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -56,7 +52,6 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
-import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Pwd;
 import com.oracle.svm.core.posix.headers.Pwd.passwd;
 import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
@@ -68,64 +63,9 @@ import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 public class PosixUtils {
-    /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
-    static String setLocale(String category, String locale) {
-        int intCategory = getCategory(category);
-        return setLocale(intCategory, locale);
-    }
-
-    /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
-    private static String setLocale(int category, String locale) {
-        if (locale == null) {
-            CCharPointer cstrResult = Locale.setlocale(category, Word.nullPointer());
-            return CTypeConversion.toJavaString(cstrResult);
-        }
-        try (CCharPointerHolder localePin = CTypeConversion.toCString(locale)) {
-            CCharPointer cstrLocale = localePin.get();
-            CCharPointer cstrResult = Locale.setlocale(category, cstrLocale);
-            return CTypeConversion.toJavaString(cstrResult);
-        }
-    }
-
-    private static int getCategory(String category) {
-        switch (category) {
-            case "LC_ALL":
-                return Locale.LC_ALL();
-            case "LC_COLLATE":
-                return Locale.LC_COLLATE();
-            case "LC_CTYPE":
-                return Locale.LC_CTYPE();
-            case "LC_MONETARY":
-                return Locale.LC_MONETARY();
-            case "LC_NUMERIC":
-                return Locale.LC_NUMERIC();
-            case "LC_TIME":
-                return Locale.LC_TIME();
-            case "LC_MESSAGES":
-                return Locale.LC_MESSAGES();
-        }
-
-        if (Platform.includedIn(Platform.LINUX.class) && LibCBase.targetLibCIs(GLibC.class)) {
-            switch (category) {
-                case "LC_PAPER":
-                    return Locale.LC_PAPER();
-                case "LC_NAME":
-                    return Locale.LC_NAME();
-                case "LC_ADDRESS":
-                    return Locale.LC_ADDRESS();
-                case "LC_TELEPHONE":
-                    return Locale.LC_TELEPHONE();
-                case "LC_MEASUREMENT":
-                    return Locale.LC_MEASUREMENT();
-                case "LC_IDENTIFICATION":
-                    return Locale.LC_IDENTIFICATION();
-            }
-        }
-        throw new IllegalArgumentException("Unknown locale category: " + category);
-    }
-
     @TargetClass(java.io.FileDescriptor.class)
     private static final class Target_java_io_FileDescriptor {
 

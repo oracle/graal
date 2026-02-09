@@ -41,20 +41,4 @@ public class ProcessPropertiesTest {
         long pid = ProcessProperties.getProcessID();
         Assert.assertTrue("Invalid pid.", pid > 0);
     }
-
-    /** {@link ProcessProperties#setLocale} is deprecated and was only ever supported on Linux. */
-    @Test
-    @SuppressWarnings("deprecation")
-    public void testSetLocale() {
-        /* Get the default locale. */
-        String before = ProcessProperties.setLocale("LC_ALL", null);
-        Assert.assertFalse("Default locale is empty.", before.isEmpty());
-
-        /* Set locale to a new value. */
-        ProcessProperties.setLocale("LC_ALL", "en_US.UTF-8");
-
-        /* Get the locale value again. */
-        String after = ProcessProperties.setLocale("LC_ALL", null);
-        Assert.assertEquals("Locale is wrong.", "en_US.UTF-8", after);
-    }
 }

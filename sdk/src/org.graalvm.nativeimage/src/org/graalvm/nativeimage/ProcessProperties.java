@@ -142,19 +142,6 @@ public final class ProcessProperties {
     }
 
     /**
-     * Set the program locale.
-     *
-     * @since 19.0
-     * @deprecated in 25.0 without replacement. This method is inherently unsafe because
-     *             {@code setlocale(...)} is not thread-safe on the OS level.
-     */
-    @Deprecated(since = "25.0")
-    @SuppressWarnings("deprecation")
-    public static String setLocale(String category, String locale) {
-        return ImageSingletons.lookup(ProcessPropertiesSupport.class).setLocale(category, locale);
-    }
-
-    /**
      * Replaces the current process image with the process image specified by the given path invoked
      * with the given args. This method does not return if the call is successful.
      *
