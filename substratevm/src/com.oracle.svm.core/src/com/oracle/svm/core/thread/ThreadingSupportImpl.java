@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -33,12 +31,9 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.impl.ThreadingSupport;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTimer;
-
-import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton(ThreadingSupport.class)
 public class ThreadingSupportImpl implements ThreadingSupport {
@@ -67,23 +62,5 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         } else if (RecurringCallbackSupport.isEnabled()) {
             RecurringCallbackSupport.uninstallCallback(thread);
         }
-    }
-
-    // GR-63737 only called from legacy code
-    @Fold
-    public static boolean isRecurringCallbackSupported() {
-        return RecurringCallbackSupport.isEnabled();
-    }
-
-    // GR-63737 only called from legacy code
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static void pauseRecurringCallback(String reason) {
-        RecurringCallbackSupport.suspendCallbackTimer(reason);
-    }
-
-    // GR-63737 only called from legacy code
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static void resumeRecurringCallbackAtNextSafepoint() {
-        RecurringCallbackSupport.resumeCallbackTimerAtNextSafepointCheck();
     }
 }
