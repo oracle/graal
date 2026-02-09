@@ -238,6 +238,10 @@ suite = {
           "<others>": {
             "optional": True,
           },
+          "riscv64": {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.2.1-musl-1.2.2-linux-riscv64.tar.gz"],
+            "digest" : "sha512:c9939e2aaa000dcea6f760d19057a617ff50958c039ccbac49a0c99dec4b6c5a1ab1e016965b1329bed72bf5e5ef96495f5e6de560f61a9f5f11d21dd49e6648",
+          },
         },
         "<others>": {
           "<others>": {
@@ -1678,6 +1682,23 @@ AR=<path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linux-musl-ar
 CFLAGS=
 CXXFLAGS=
 LDFLAGS=
+'''
+              },
+            },
+            "dependencies": [
+              "MUSL_GCC_TOOLCHAIN",
+              "mx:GCC_NINJA_TOOLCHAIN",
+            ],
+          },
+          "riscv64": {
+            "layout": {
+              "toolchain.ninja": {
+                "source_type": "string",
+                "value": '''
+include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+CC=<path:MUSL_GCC_TOOLCHAIN>/riscv64-linux-musl-native/bin/gcc
+CXX=<path:MUSL_GCC_TOOLCHAIN>/riscv64-linux-musl-native/bin/g++
+AR=<path:MUSL_GCC_TOOLCHAIN>/riscv64-linux-musl-native/bin/ar
 '''
               },
             },
