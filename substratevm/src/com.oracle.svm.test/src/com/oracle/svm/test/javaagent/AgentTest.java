@@ -42,8 +42,8 @@ public class AgentTest {
     }
 
     private static void testPremainSequence() {
-        String first = AgentPremainHelper.getFirst();
-        String second = AgentPremainHelper.getSecond();
+        String first = System.getProperty("first.load.agent");
+        String second = System.getProperty("second.load.agent");
         Assert.assertNotNull(first);
         if (second != null) {
             String agentName = TestJavaAgent1.class.getName();
@@ -58,10 +58,20 @@ public class AgentTest {
         }
     }
 
+    private static void testInstrumentation() {
+        // The return value of getCounter() should be changed by agent
+        Assert.assertEquals(11, getCounter());
+    }
+
+    private static int getCounter() {
+        return 10;
+    }
+
     public static void main(String[] args) {
         testPremain();
         testAgentOptions();
         testPremainSequence();
+        testInstrumentation();
         System.out.println("Finished running Agent test.");
     }
 }
