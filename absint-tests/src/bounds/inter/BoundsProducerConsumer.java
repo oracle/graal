@@ -1,8 +1,7 @@
-// Inter-procedural: simple producer/consumer using last index
 public class BoundsProducerConsumer {
   static int consumeLast(int[] a) {
     if (a.length == 0) return 0;
-    int i = a.length - 1; // derived safe index
+    int i = a.length - 1;
     return a[i];
   }
 

@@ -1,12 +1,8 @@
-public class RecursiveFibonacci {
-
-    public static void main(String[] args) {
-        int res = getFibonacci(45);
-        System.out.println(res);
+class RecursiveFibonacci {
+    static void main(String[] args) {
+        System.out.println(getFibonacci(40));
     }
-
-
-    private static int getFibonacci(int idx) {
+    static int getFibonacci(int idx) {
         if (idx < 2) {
             return 1;
         }

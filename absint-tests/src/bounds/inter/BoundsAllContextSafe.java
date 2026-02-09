@@ -1,6 +1,5 @@
-class BoundsAllContextSafe {
-
-    private static final int[] arr = new int[100];
+public class BoundsAllContextSafe {
+    static final int[] arr = new int[100];
 
     static void safeStore(int idx, int value) {
         arr[idx] = value;

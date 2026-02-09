@@ -8,7 +8,7 @@ public class BoundsCallerGuards {
         for (int i = 0; i < a.length; i++) a[i] = i * 2;
         int sum = 0;
         for (int i = 0; i < a.length; i++) {
-            sum += uncheckedAt(a, i); // should be provably safe
+            sum += uncheckedAt(a, i);
         }
         if (sum == -1) System.out.println("impossible");
     }
