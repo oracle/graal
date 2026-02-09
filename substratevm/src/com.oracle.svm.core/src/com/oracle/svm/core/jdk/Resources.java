@@ -777,7 +777,7 @@ public final class Resources {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerIncludePattern(AccessCondition condition, String module, String pattern) {
-        assert MissingRegistrationUtils.throwMissingRegistrationErrors();
+        assert MissingRegistrationUtils.preciseDynamicAccess();
         synchronized (requestedPatterns) {
             updateTimeStamp();
             addPattern(new RequestedPattern(encoder.encodeModule(module), handleEscapedCharacters(pattern)), RuntimeDynamicAccessMetadata.createHosted(condition, false));
@@ -858,7 +858,7 @@ public final class Resources {
         String moduleName = moduleName(module);
         ConditionalRuntimeValue<ResourceStorageEntryBase> entry = loaderKey == null ? getEntry(module, canonicalResourceName) : getEntry(loaderKey, module, canonicalResourceName);
         if (entry == null) {
-            if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+            if (MissingRegistrationUtils.preciseDynamicAccess()) {
                 boolean resourceNameMatchesIncludePattern = missingResourceMatchesIncludePattern(resourceName, moduleName);
                 boolean canonicalResourceNameMatchesIncludePattern = !resourceNameMatchesIncludePattern &&
                                 missingResourceMatchesIncludePattern(canonicalResourceName, moduleName);
@@ -961,7 +961,7 @@ public final class Resources {
      * time. In such a case, we should not report missing metadata.
      */
     private static boolean missingResourceMatchesIncludePattern(String resourceName, String moduleName) {
-        VMError.guarantee(MissingRegistrationUtils.throwMissingRegistrationErrors(), "include patterns are only stored in the image with exact reachability metadata");
+        VMError.guarantee(MissingRegistrationUtils.preciseDynamicAccess(), "include patterns are only stored in the image with exact reachability metadata");
         String glob = GlobUtils.transformToTriePath(resourceName, moduleName);
         for (var r : layeredSingletons()) {
             MapCursor<RequestedPattern, RuntimeDynamicAccessMetadata> cursor = r.requestedPatterns.getEntries();

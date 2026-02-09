@@ -749,7 +749,7 @@ public class ResourcesFeature implements InternalFeature {
          * register all included patterns in Resources singleton (if we are throwing
          * MissingRegistrationErrors), so they can be queried at runtime to detect missing entries
          */
-        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+        if (MissingRegistrationUtils.preciseDynamicAccess()) {
             includePatterns.forEach(resourcePattern -> collector.registerIncludePattern(resourcePattern.condition, resourcePattern.compiledPattern.moduleName(),
                             resourcePattern.compiledPattern.pattern.pattern()));
         }

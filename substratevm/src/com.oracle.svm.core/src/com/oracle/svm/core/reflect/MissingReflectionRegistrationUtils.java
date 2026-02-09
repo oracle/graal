@@ -52,6 +52,19 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         report(exception);
     }
 
+    public static MissingReflectionRegistrationError reportDefineClass(String className) {
+        String json = elementToJSON(namedConfigurationType(className));
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("access the class", quote(className), json),
+                        Class.class, null, className, null);
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        throw exception;
+    }
+
     public static MissingReflectionRegistrationError reportUnsafeAllocation(Class<?> clazz) {
         ConfigurationType type = getConfigurationType(clazz);
         type.setUnsafeAllocated();

@@ -326,7 +326,7 @@ public final class ReflectionPlugins {
         registerFoldInvocationPlugins(plugins, false, ReflectionUtil.lookupClass(false, "sun.nio.ch.Reflect"),
                         "lookupConstructor", "lookupMethod", "lookupField");
 
-        if (nonStrictDynamicAccessInference() && MissingRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+        if (nonStrictDynamicAccessInference() && MissingRegistrationUtils.preciseDynamicAccess() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);

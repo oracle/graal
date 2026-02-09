@@ -386,7 +386,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 return hub;
             } else {
                 Class<?> clazz = DynamicHub.toClass(hub);
-                if (FutureDefaultsOptions.exactReflection()) {
+                if (FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.preciseDynamicAccess()) {
                     throw MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
                 }
                 if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
