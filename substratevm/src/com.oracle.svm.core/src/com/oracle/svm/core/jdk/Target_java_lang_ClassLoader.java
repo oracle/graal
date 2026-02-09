@@ -128,6 +128,7 @@ public final class Target_java_lang_ClassLoader {
     public native Enumeration<URL> findResources(String name);
 
     @Substitute
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
     private Enumeration<URL> getResources(String name) {
         /* Every class loader sees every resource, so we still need this substitution (GR-19998). */
         Enumeration<URL> urls = ResourcesHelper.nameToResourceEnumerationURLs(name);
