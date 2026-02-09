@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.module.ModuleFinder;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +45,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
@@ -318,10 +320,13 @@ public class NativeImageGeneratorRunner {
         builder.classPath(List.of(classpath));
         builder.modulePath(List.of(modulepath));
 
-        if ("espresso".equals(builder.getVMAccessName())) {
-            // Needed to resolve types in org.graalvm.nativeimage.guest
-            builder.addModule("org.graalvm.nativeimage.guest");
+        // Make all modules on the image module path be root modules
+        // so that their enclosed types can be looked up via VMAccess.
+        ModuleFinder.of(Stream.of(modulepath).map(Path::of).toArray(Path[]::new))//
+                        .findAll()//
+                        .forEach(ref -> builder.addModule(ref.descriptor().name()));
 
+        if ("espresso".equals(builder.getVMAccessName())) {
             // Propagate --add-exports into the Espresso guest.
             // GR-73131 will make this non-Espresso specific.
             EconomicMap<OptionKey<?>, Object> options = parser.getHostedValues();
