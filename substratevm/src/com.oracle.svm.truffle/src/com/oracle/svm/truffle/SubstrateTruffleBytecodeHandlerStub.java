@@ -30,6 +30,7 @@ import static com.oracle.svm.core.graal.code.SubstrateCallingConventionType.Subs
 import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -61,7 +62,13 @@ import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandler;
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.MultiReturnNode;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.replacements.GraphKit;
+import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
 import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite;
 import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.ArgumentInfo;
 import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.TruffleBytecodeHandlerTypes;
@@ -88,19 +95,21 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod implements CustomCallingConventionMethod {
 
-    private final SubstrateTruffleBytecodeHandlerStubHolder stubHolder;
+    private final SubstrateTruffleBytecodeHandlerStubHelper stubHolder;
     private final TruffleBytecodeHandlerCallsite callsite;
     private final boolean threading;
     private final boolean needSafepoint;
+    private final boolean isDefault;
     private final ResolvedJavaMethod nextOpcodeMethod;
 
-    public SubstrateTruffleBytecodeHandlerStub(SubstrateTruffleBytecodeHandlerStubHolder stubHolder, ResolvedJavaType declaringClass, TruffleBytecodeHandlerCallsite callsite,
-                    boolean threading, ResolvedJavaMethod nextOpcodeMethod, boolean needSafepoint) {
-        super(callsite.getStubName(), true, declaringClass, ResolvedSignature.fromList(callsite.getArgumentTypes(),
+    public SubstrateTruffleBytecodeHandlerStub(SubstrateTruffleBytecodeHandlerStubHelper stubHolder, ResolvedJavaType declaringClass, String stubName,
+                    TruffleBytecodeHandlerCallsite callsite, boolean threading, ResolvedJavaMethod nextOpcodeMethod, boolean needSafepoint, boolean isDefault) {
+        super(stubName, true, declaringClass, ResolvedSignature.fromList(callsite.getArgumentTypes(),
                         callsite.getReturnType()), declaringClass.getDeclaredConstructors(false)[0].getConstantPool());
         this.stubHolder = stubHolder;
         this.callsite = callsite;
         this.threading = threading;
+        this.isDefault = isDefault;
         this.nextOpcodeMethod = nextOpcodeMethod;
         this.needSafepoint = needSafepoint;
     }
@@ -108,7 +117,47 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        if (isDefault) {
+            return createEmptyStub(kit);
+        }
         return callsite.createStub(kit, method, threading, nextOpcodeMethod, () -> stubHolder.getBytecodeHandlers(callsite.getEnclosingMethod()));
+    }
+
+    /**
+     * Generates a graph for a default bytecode handler stub that serves as a fallback when no
+     * specific handler is available.
+     *
+     * The generated graph returns the value from the return register and passes the original
+     * parameters as additional return results. This stub effectively terminates the threading and
+     * triggers a re-dispatch of the bytecode in the caller.
+     */
+    private StructuredGraph createEmptyStub(GraphKit kit) {
+        StructuredGraph graph = kit.getGraph();
+        graph.getGraphState().forceDisableFrameStateVerification();
+
+        ParameterNode[] parameterNodes = callsite.collectParameterNodes(kit);
+        ValueNode returnResult = null;
+
+        for (ArgumentInfo argumentInfo : callsite.getArgumentInfos()) {
+            if (argumentInfo.copyFromReturn()) {
+                returnResult = parameterNodes[argumentInfo.index()];
+                break;
+            }
+        }
+
+        if (returnResult == null) {
+            JavaKind returnKind = callsite.getReturnType().getJavaKind();
+            if (returnKind != JavaKind.Void) {
+                returnResult = kit.append(new ReadRegisterNode(getReturnRegister(getRegisterConfig()), returnKind, false, true));
+            }
+        }
+
+        MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(returnResult, null));
+        multiReturnNode.getAdditionalReturnResults().addAll(Arrays.asList(parameterNodes));
+
+        kit.append(new ReturnNode(multiReturnNode));
+        graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Initial graph for default bytecode handler stub");
+        return graph;
     }
 
     public TruffleBytecodeHandlerCallsite getCallsite() {
@@ -127,18 +176,26 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
         };
     }
 
-    @Override
-    public SubstrateCallingConventionType getCallingConvention() {
+    private static RegisterConfig getRegisterConfig() {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
-        RegisterConfig registerConfig = SubstrateRegisterConfigFactory.singleton()
-                        .newRegisterFactory(SubstrateRegisterConfig.ConfigKind.NORMAL, null, target, SubstrateOptions.PreserveFramePointer.getValue());
+        return SubstrateRegisterConfigFactory.singleton().newRegisterFactory(SubstrateRegisterConfig.ConfigKind.NORMAL, null, target, SubstrateOptions.PreserveFramePointer.getValue());
+    }
 
+    private Register getReturnRegister(RegisterConfig registerConfig) {
         Register returnRegister = null;
         ResolvedJavaType returnType = callsite.getReturnType();
         if (returnType.getJavaKind() != JavaKind.Void) {
             returnRegister = registerConfig.getReturnRegister(returnType.getJavaKind());
             GraalError.guarantee(returnRegister != null, "Cannot allocate register for return type %s", returnType.getUnqualifiedName());
         }
+        return returnRegister;
+    }
+
+    @Override
+    public SubstrateCallingConventionType getCallingConvention() {
+        SubstrateTargetDescription target = ConfigurationValues.getTarget();
+        RegisterConfig registerConfig = getRegisterConfig();
+        Register returnRegister = getReturnRegister(registerConfig);
 
         List<Register> argumentRegisters = new ArrayList<>();
 

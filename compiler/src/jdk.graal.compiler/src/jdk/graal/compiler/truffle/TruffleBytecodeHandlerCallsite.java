@@ -267,7 +267,7 @@ public final class TruffleBytecodeHandlerCallsite {
      * Creates (if not yet) and returns {@link ParameterNode}s for the arguments described by
      * {@link #argumentInfos}.
      */
-    private ParameterNode[] collectParameterNodes(GraphKit kit) {
+    public ParameterNode[] collectParameterNodes(GraphKit kit) {
         ParameterNode[] parameterNodes = new ParameterNode[argumentInfos.size()];
 
         for (ArgumentInfo argumentInfo : argumentInfos) {
