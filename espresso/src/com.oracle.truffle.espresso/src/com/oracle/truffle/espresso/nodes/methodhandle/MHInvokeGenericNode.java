@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 /**
  * Orchestrates the semantics of invoke and invoke exacts, and newer polymorphic signature methods
  * (eg: VarHandle.get(), ...).
- * 
+ *
  * Creating a call site for such a method goes to java code to create an invoker method that
  * implements type checking and the actual invocation of the payload. This node is basically a
  * bridge to the actual work.
@@ -84,7 +84,7 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
                         method.getDeclaringKlass().mirror(), meta.toGuestString(methodName), meta.toGuestString(signature),
                         appendixBox);
         StaticObject appendix = appendixBox.get(language, 0);
-        Method target = (Method) method.getMeta().HIDDEN_VMTARGET.getHiddenObject(memberName);
+        Method target = (Method) method.getMeta().java_lang_invoke_MemberName_0vmTarget.getHiddenObject(memberName);
         return new MethodHandleInvoker(target, appendix, target.getReturnKind() != method.getReturnKind());
     }
 

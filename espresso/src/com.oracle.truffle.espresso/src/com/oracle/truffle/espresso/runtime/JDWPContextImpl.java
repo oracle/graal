@@ -358,7 +358,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public KlassRef getReflectedType(Object classObject) {
         if (classObject instanceof StaticObject staticObject) {
             if (staticObject.getKlass().getType() == Types.java_lang_Class) {
-                return (KlassRef) context.getMeta().HIDDEN_MIRROR_KLASS.getHiddenObject(staticObject);
+                return (KlassRef) context.getMeta().java_lang_Class_0klass.getHiddenObject(staticObject);
             }
         }
         return null;

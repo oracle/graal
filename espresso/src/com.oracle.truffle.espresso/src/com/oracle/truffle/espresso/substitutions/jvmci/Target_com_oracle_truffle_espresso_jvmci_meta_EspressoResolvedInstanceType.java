@@ -67,7 +67,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
 
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             return toJVMCIFields(klass.getStaticFieldTable(), self, fieldConstructor, context, meta);
         }
     }
@@ -83,7 +83,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
 
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             return toJVMCIFields(klass.getAllDeclaredInstanceFields(), self, fieldConstructor, context, meta);
         }
     }
@@ -113,17 +113,19 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     }
 
     static StaticObject toJVMCIField(Field f, StaticObject holder, DirectCallNode fieldConstructor, EspressoContext context, Meta meta) {
-        assert meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder) == f.getDeclaringKlass() : f + " not declared in " + meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder);
+        assert meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(holder) == f.getDeclaringKlass() : f + " not declared in " +
+                        meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(holder);
         StaticObject jvmciMirror = meta.jvmci.EspressoResolvedJavaField.allocateInstance(context);
-        meta.jvmci.HIDDEN_FIELD_MIRROR.setHiddenObject(jvmciMirror, f);
+        meta.jvmci.EspressoResolvedJavaField_0vmField.setHiddenObject(jvmciMirror, f);
         fieldConstructor.call(jvmciMirror, holder);
         return jvmciMirror;
     }
 
     static StaticObject toJVMCIField(Field f, StaticObject holder, Meta meta) {
-        assert meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder) == f.getDeclaringKlass() : f + " not declared in " + meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder);
+        assert meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(holder) == f.getDeclaringKlass() : f + " not declared in " +
+                        meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(holder);
         StaticObject jvmciMirror = meta.jvmci.EspressoResolvedJavaField.allocateInstance(meta.getContext());
-        meta.jvmci.HIDDEN_FIELD_MIRROR.setHiddenObject(jvmciMirror, f);
+        meta.jvmci.EspressoResolvedJavaField_0vmField.setHiddenObject(jvmciMirror, f);
         meta.jvmci.EspressoResolvedJavaField_init.invokeDirectSpecial(jvmciMirror, holder);
         return jvmciMirror;
     }
@@ -170,9 +172,9 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
         // * It also ensures the methods have the right i/v-table indices
         Method identityMethod = m.identity();
         boolean poisoned = m.hasPoisonPill();
-        assert meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder) == identityMethod.getDeclaringKlass();
+        assert meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(holder) == identityMethod.getDeclaringKlass();
         StaticObject jvmciMirror = meta.jvmci.EspressoResolvedJavaMethod.allocateInstance(context);
-        meta.jvmci.HIDDEN_METHOD_MIRROR.setHiddenObject(jvmciMirror, identityMethod);
+        meta.jvmci.EspressoResolvedJavaMethod_0vmMethod.setHiddenObject(jvmciMirror, identityMethod);
         methodConstructor.call(jvmciMirror, holder, poisoned);
         return jvmciMirror;
     }
@@ -181,9 +183,9 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
         // We need to get the identity method (see above)
         Method identityMethod = m.identity();
         boolean poisoned = m.hasPoisonPill();
-        assert meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder) == identityMethod.getDeclaringKlass();
+        assert meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(holder) == identityMethod.getDeclaringKlass();
         StaticObject jvmciMirror = meta.jvmci.EspressoResolvedJavaMethod.allocateInstance(meta.getContext());
-        meta.jvmci.HIDDEN_METHOD_MIRROR.setHiddenObject(jvmciMirror, identityMethod);
+        meta.jvmci.EspressoResolvedJavaMethod_0vmMethod.setHiddenObject(jvmciMirror, identityMethod);
         meta.jvmci.EspressoResolvedJavaMethod_init.invokeDirectSpecial(jvmciMirror, holder, poisoned);
         return jvmciMirror;
     }
@@ -202,7 +204,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static int getFlags(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return klass.getModifiers();
     }
 
@@ -214,8 +216,8 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
         if (StaticObject.isNull(that)) {
             throw meta.throwNullPointerExceptionBoundary();
         }
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
-        ObjectKlass thatKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(that);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
+        ObjectKlass thatKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(that);
         return selfKlass.equals(thatKlass);
     }
 
@@ -223,7 +225,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static int hashCode(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return selfKlass.hashCode();
     }
 
@@ -238,7 +240,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
 
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             ObjectKlass superKlass = klass.getSuperKlass();
             if (superKlass == null) {
                 meta.throwIllegalArgumentExceptionBoundary();
@@ -259,7 +261,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
 
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             ObjectKlass[] interfaces = klass.getSuperInterfaces();
             if (interfaces.length == 0) {
                 return StaticObject.NULL;
@@ -283,7 +285,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
                         @Cached InitCheck initCheck) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             initCheck.execute(klass);
         }
     }
@@ -292,7 +294,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static boolean declaresDefaultMethods(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return selfKlass.hasDeclaredDefaultMethods();
     }
 
@@ -300,7 +302,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static boolean hasDefaultMethods(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return selfKlass.hasDefaultMethods();
     }
 
@@ -309,8 +311,8 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
                     @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
-        ObjectKlass otherKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(other);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
+        ObjectKlass otherKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(other);
         return selfKlass.getDefiningClassLoader() == otherKlass.getDefiningClassLoader();
     }
 
@@ -318,7 +320,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static @JavaType(String.class) StaticObject getName0(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         Symbol<Type> type = selfKlass.getType();
         if (selfKlass.isAnonymous()) {
             return meta.toGuestString(appendId(type, selfKlass));
@@ -345,7 +347,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static boolean isLinked(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return selfKlass.isLinked();
     }
 
@@ -353,7 +355,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static void link(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         selfKlass.ensureLinked();
     }
 
@@ -361,7 +363,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static boolean isInitialized(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return selfKlass.isInitialized();
     }
 
@@ -369,7 +371,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static @JavaType(String.class) StaticObject getSourceFileName(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return meta.toGuestString(selfKlass.getSourceFile());
     }
 
@@ -378,7 +380,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return klass.mirror();
     }
 
@@ -393,7 +395,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
 
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             return toJVMCIMethods(klass.getDeclaredMethods(), false, self, methodConstructor, context, meta);
         }
     }
@@ -409,7 +411,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
 
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             return toJVMCIMethods(klass.getDeclaredMethods(), true, self, methodConstructor, context, meta);
         }
     }
@@ -425,7 +427,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
 
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             Method classInitializer = getClassInitializer(klass);
             if (classInitializer == null) {
                 return StaticObject.NULL;
@@ -449,7 +451,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             /*
              * Note: What espresso calls "single implementor" is called "leaf concrete subtype" by
              * JVMCI
@@ -475,7 +477,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static boolean isLeafClass(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return context.getClassHierarchyOracle().isLeafKlass(selfKlass).isValid();
     }
 
@@ -483,7 +485,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static int getVtableLength(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass selfKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         if (selfKlass.isInterface()) {
             return 0;
         }
@@ -494,7 +496,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static @JavaType(internalName = "[Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedJavaMethod;") StaticObject getAllMethods0(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return JVMCIUtils.getAllMethods(klass, meta.jvmci.EspressoResolvedJavaMethod::allocateReferenceArray, (array, i, m) -> {
             StaticObject holder;
             if (m.getDeclaringKlass() == klass) {
@@ -511,7 +513,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     public static boolean isRecord(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+        ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
         return klass.isRecord();
     }
 
@@ -525,7 +527,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedJavaRecordComponent_init.getCallTarget())") DirectCallNode methodConstructor) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             RecordAttribute record = klass.getAttribute(RecordAttribute.NAME, RecordAttribute.class);
             if (record == null) {
                 return StaticObject.NULL;
@@ -552,7 +554,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
                         @Bind("getContext()") EspressoContext context) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
-            ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
+            ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(self);
             return getRawAnnotationBytes(klass, category, meta);
         }
     }

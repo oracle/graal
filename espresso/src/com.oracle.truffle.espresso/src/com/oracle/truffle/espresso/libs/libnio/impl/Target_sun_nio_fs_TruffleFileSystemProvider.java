@@ -70,7 +70,7 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
                     int openOptionsMask, int fileAttributeMask, @Inject TruffleIO io) {
         // decode openOptionsMask to avoid guest/host Object passing
         Set<? extends OpenOption> options = maskToOpenOptions(openOptionsMask);
-        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path);
+        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path);
         // populate fd
         io.open(fileDescriptor, FDAccess.forFileDescriptor(), tf, options, toFileAttribute(fileAttributeMask, io));
     }
@@ -79,7 +79,7 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
     @TruffleBoundary
     @Throws(IOException.class)
     public static void createDirectory0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path, int fileAttributeMask, @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path);
+        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path);
         try {
             tf.createDirectory(toFileAttribute(fileAttributeMask, io));
         } catch (IOException e) {
@@ -127,7 +127,7 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
     @Substitution
     @Throws(IOException.class)
     public static void delete0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path, @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path);
+        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path);
         try {
             tf.delete();
         } catch (IOException e) {
@@ -142,8 +142,8 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject source,
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject target,
                     int copyOptions, @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        TruffleFile sourceTf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(source);
-        TruffleFile targetTf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(target);
+        TruffleFile sourceTf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(source);
+        TruffleFile targetTf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(target);
         try {
             sourceTf.copy(targetTf, maskToCopyOptions(copyOptions));
         } catch (IOException e) {
@@ -158,8 +158,8 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject source,
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject target,
                     int copyOptions, @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        TruffleFile sourceTf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(source);
-        TruffleFile targetTf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(target);
+        TruffleFile sourceTf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(source);
+        TruffleFile targetTf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(target);
         try {
             sourceTf.move(targetTf, maskToCopyOptions(copyOptions));
         } catch (IOException e) {
@@ -172,8 +172,8 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
     public static boolean isSameFile0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject path1,
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject path2, @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        TruffleFile tf1 = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path1);
-        TruffleFile tf2 = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path2);
+        TruffleFile tf1 = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path1);
+        TruffleFile tf2 = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path2);
         try {
             return tf1.isSameFile(tf2);
         } catch (IOException e) {
@@ -190,7 +190,7 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
                     int accessModesMask, @Inject TruffleIO io, @Inject EspressoContext ctx) {
         // TruffleFile does not have a checkAccess API. So we explicit call the method
         // corresponding to the accessMode-check.
-        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path);
+        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path);
         if (!tf.exists()) {
             throw Throw.throwIOException("No such file: " + tf.getPath(), ctx);
         }
@@ -213,8 +213,8 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
     public static void createSymbolicLink0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject link,
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject target, int fileAttributeMask, @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        TruffleFile linkTf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(link);
-        TruffleFile targetTf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(target);
+        TruffleFile linkTf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(link);
+        TruffleFile targetTf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(target);
         try {
             linkTf.createSymbolicLink(targetTf, toFileAttribute(fileAttributeMask, io));
         } catch (IOException e) {
@@ -227,8 +227,8 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
     public static void createLink0(
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject link,
                     @JavaType(internalName = TRUFFLE_PATH) StaticObject target, @Inject TruffleIO io, @Inject EspressoContext ctx) {
-        TruffleFile linkTf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(link);
-        TruffleFile targetTf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(target);
+        TruffleFile linkTf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(link);
+        TruffleFile targetTf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(target);
         try {
             linkTf.createLink(targetTf);
         } catch (IOException e) {
@@ -240,7 +240,7 @@ public final class Target_sun_nio_fs_TruffleFileSystemProvider {
     @Substitution
     public static @JavaType(String.class) StaticObject readSymbolicLink0(@JavaType(internalName = TRUFFLE_PATH) StaticObject link, @Inject TruffleIO io, @Inject EspressoContext ctx,
                     @Inject Meta meta) {
-        TruffleFile linkTf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(link);
+        TruffleFile linkTf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(link);
         try {
             return meta.toGuestString(linkTf.readSymbolicLink().getPath());
         } catch (IOException e) {

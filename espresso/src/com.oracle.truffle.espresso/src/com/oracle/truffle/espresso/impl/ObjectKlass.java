@@ -224,7 +224,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         if (info.protectionDomain != null && !StaticObject.isNull(info.protectionDomain)) {
             // Protection domain should not be host null, and will be initialized to guest null on
             // mirror creation.
-            getMeta().HIDDEN_PROTECTION_DOMAIN.setMaybeHiddenObject(initializeGuestClassMirror(), info.protectionDomain);
+            getMeta().java_lang_Class_0protectedDomain.setMaybeHiddenObject(initializeGuestClassMirror(), info.protectionDomain);
         }
         if (info.classData != null) {
             getMeta().java_lang_Class_classData.setObject(initializeGuestClassMirror(), info.classData);

@@ -224,23 +224,27 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         }
     }
 
-    /**
-     * Gets the {@link Field} value backing the {@link java.lang.reflect.Field} value in
-     * {@code reflectField}. This value is obtained by reading {@code reflectField.0vmField} (a
-     * hidden field described by {@link Meta#HIDDEN_FIELD_KEY}). If it's null, then this method
-     * follows the {@code reflectField.root} chain until a non-null {@code reflectField.0vmField}
-     * value is found.
-     */
+    //@formatter:off
+    /// Gets the [Field] value associated with `reflectField`.
+    ///
+    /// ```
+    /// while (reflectField.0vmField == null) {
+    ///     reflectField = reflectField.root;
+    /// }
+    /// reflectField.0vmField
+    /// ```
+    //@formatter:on
     public static Field getVMField(@JavaType(java.lang.reflect.Field.class) StaticObject reflectField, Meta meta) {
         StaticObject curField = reflectField;
-        Field target = null;
-        while (target == null) {
-            target = (Field) meta.HIDDEN_FIELD_KEY.getHiddenObject(curField);
-            if (target == null) {
-                curField = meta.java_lang_reflect_Field_root.getObject(curField);
+        do {
+            Field target = (Field) meta.java_lang_reflect_Field_0vmField.getHiddenObject(curField);
+            if (target != null) {
+                return target;
             }
-        }
-        return target;
+            curField = meta.java_lang_reflect_Field_root.getObject(curField);
+        } while (StaticObject.notNull(curField));
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Could not find non-null Field.0vmField");
     }
 
     @Override
@@ -1054,8 +1058,8 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
                             /* signature */ meta.toGuestString(getGenericSignature()),
                             /* annotations */ runtimeVisibleAnnotations);
         }
-        meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, this);
-        meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        meta.java_lang_reflect_Field_0vmField.setHiddenObject(instance, this);
+        meta.java_lang_reflect_Field_0runtimeVisibleTypeAnnotations.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
         return instance;
     }
 

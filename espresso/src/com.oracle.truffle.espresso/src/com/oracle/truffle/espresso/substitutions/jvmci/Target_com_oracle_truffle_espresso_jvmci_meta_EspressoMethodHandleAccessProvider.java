@@ -54,7 +54,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMethodHandleAc
         if (StaticObject.isNull(jvmciMethod)) {
             meta.throwNullPointerExceptionBoundary();
         }
-        Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(jvmciMethod);
+        Method method = (Method) meta.jvmci.EspressoResolvedJavaMethod_0vmMethod.getHiddenObject(jvmciMethod);
         SignaturePolymorphicIntrinsic iid = SignaturePolymorphicIntrinsic.getId(method);
         if (iid == null) {
             return StaticObject.NULL;
@@ -79,7 +79,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMethodHandleAc
         if (StaticObject.isNull(methodHandleMirror)) {
             meta.throwNullPointerExceptionBoundary();
         }
-        StaticObject methodHandle = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(methodHandleMirror);
+        StaticObject methodHandle = (StaticObject) meta.jvmci.EspressoObjectConstant_0object.getHiddenObject(methodHandleMirror);
         Method target = JVMCIUtils.resolveInvokeBasicTarget(methodHandle, forceBytecodeGeneration, meta);
         LOGGER.finer(() -> "EMHAP.resolveInvokeBasicTarget0 found " + target);
         if (target == null) {
@@ -98,11 +98,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMethodHandleAc
         if (StaticObject.isNull(memberNameMirror)) {
             meta.throwNullPointerExceptionBoundary();
         }
-        StaticObject memberName = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(memberNameMirror);
+        StaticObject memberName = (StaticObject) meta.jvmci.EspressoObjectConstant_0object.getHiddenObject(memberNameMirror);
         if (!InterpreterToVM.instanceOf(memberName, meta.java_lang_invoke_MemberName)) {
             throw meta.throwIllegalArgumentExceptionBoundary("Constant is not a MemberName");
         }
-        Method target = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(memberName);
+        Method target = (Method) meta.java_lang_invoke_MemberName_0vmTarget.getHiddenObject(memberName);
         LOGGER.finer(() -> "EMHAP.resolveLinkToTarget0 found " + target);
         StaticObject holder = toJVMCIInstanceType(target.getDeclaringKlass(), meta);
         return toJVMCIMethod(target, holder, meta);

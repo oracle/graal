@@ -169,9 +169,9 @@ public final class GuestAllocator implements LanguageAccess {
             meta.java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeGuestClassMirror());
         }
         // Will be overriden if necessary, but should be initialized to non-host null.
-        meta.HIDDEN_PROTECTION_DOMAIN.setMaybeHiddenObject(newObj, StaticObject.NULL);
+        meta.java_lang_Class_0protectedDomain.setMaybeHiddenObject(newObj, StaticObject.NULL);
         // Final hidden field assignment
-        meta.HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
+        meta.java_lang_Class_0klass.setHiddenObject(newObj, klass);
 
         if (lang.getJavaVersion().java25OrLater()) {
             assert meta.java_lang_Class_modifiers != null && meta.java_lang_Class_primitive != null;
@@ -294,7 +294,7 @@ public final class GuestAllocator implements LanguageAccess {
         assert !(foreignObject instanceof StaticObject);
 
         StaticObject foreignException = createNew(meta.polyglot.ForeignException);
-        meta.HIDDEN_FRAMES.setHiddenObject(foreignException, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
+        meta.java_lang_Throwable_0frames.setHiddenObject(foreignException, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
 
         StaticObject foreignWrapper = createForeign(getLanguage(), meta.java_lang_Object, foreignObject, interopLibrary);
         meta.java_lang_Throwable_backtrace.setObject(foreignException, foreignWrapper);

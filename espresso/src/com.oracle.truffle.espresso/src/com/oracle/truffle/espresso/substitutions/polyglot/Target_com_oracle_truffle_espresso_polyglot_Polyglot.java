@@ -154,7 +154,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         }
 
         static EspressoType getEspressoType(StaticObject targetType, Meta meta) {
-            return (EspressoType) meta.polyglot.HIDDEN_TypeLiteral_internalType.getHiddenObject(targetType);
+            return (EspressoType) meta.polyglot.TypeLiteral_0internalType.getHiddenObject(targetType);
         }
 
         static ToReference createToEspressoNode(EspressoType type, Meta meta) {

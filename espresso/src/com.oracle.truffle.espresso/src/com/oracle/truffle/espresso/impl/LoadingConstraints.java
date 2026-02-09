@@ -393,7 +393,7 @@ final class LoadingConstraints extends ContextAccessImpl {
         if (StaticObject.isNull(loader)) {
             return meta.getContext().getBootClassLoaderID();
         }
-        ClassRegistry classRegistry = (ClassRegistry) meta.HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObject(loader, true);
+        ClassRegistry classRegistry = (ClassRegistry) meta.java_lang_ClassLoader_0registry.getHiddenObject(loader, true);
         if (classRegistry == null) {
             throw EspressoError.shouldNotReachHere();
         }

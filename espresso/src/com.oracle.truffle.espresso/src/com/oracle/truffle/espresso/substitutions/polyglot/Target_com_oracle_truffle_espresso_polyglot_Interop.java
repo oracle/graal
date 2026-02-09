@@ -4574,7 +4574,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     meta.java_lang_Throwable_depth.setInt(converted, meta.java_lang_Throwable_depth.getInt(foreignException));
                 }
                 meta.java_lang_Throwable_stackTrace.setObject(converted, StaticObject.NULL);
-                meta.HIDDEN_FRAMES.setHiddenObject(converted, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
+                meta.java_lang_Throwable_0frames.setHiddenObject(converted, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
 
                 throw EspressoException.wrap(converted, meta);
             }

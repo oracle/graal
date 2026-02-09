@@ -48,11 +48,11 @@ public final class Target_sun_nio_fs_TrufflePath {
 
     private static void injectTruffleFile(StaticObject trufflePath, String path, TruffleIO io) {
         TruffleFile file = io.getInternalTruffleFile(path);
-        io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.setHiddenObject(trufflePath, file);
+        io.sun_nio_fs_TrufflePath_0file.setHiddenObject(trufflePath, file);
     }
 
     static TruffleFile getTruffleFile(StaticObject trufflePath, TruffleIO io) {
-        return (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(trufflePath);
+        return (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(trufflePath);
     }
 
     @Substitution(hasReceiver = true)

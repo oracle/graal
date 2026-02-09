@@ -233,6 +233,6 @@ public final class JVMCIUtils {
                 return null;
             }
         }
-        return (Method) meta.HIDDEN_VMTARGET.getHiddenObject(memberName);
+        return (Method) meta.java_lang_invoke_MemberName_0vmTarget.getHiddenObject(memberName);
     }
 }

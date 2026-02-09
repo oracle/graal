@@ -39,7 +39,7 @@ public final class Target_java_util_zip_CRC32 {
         if (StaticObject.isNull(crc)) {
             throw lMeta.getMeta().throwNullPointerException();
         }
-        Object hostCRC = lMeta.HIDDEN_CRC32.getHiddenObject(crc);
+        Object hostCRC = lMeta.java_util_zip_CRC32_0value.getHiddenObject(crc);
         assert hostCRC != null;
         return (CRC32) hostCRC;
     }
@@ -47,7 +47,7 @@ public final class Target_java_util_zip_CRC32 {
     @Substitution
     public static void init(@JavaType(CRC32.class) StaticObject crc,
                     @Inject LibsMeta lMeta) {
-        lMeta.HIDDEN_CRC32.setHiddenObject(crc, new CRC32());
+        lMeta.java_util_zip_CRC32_0value.setHiddenObject(crc, new CRC32());
     }
 
     @Substitution

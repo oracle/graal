@@ -764,41 +764,51 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return getParameterCount() + (isStatic() ? 0 : 1);
     }
 
-    /**
-     * Gets the {@link Method} value backing the {@link java.lang.reflect.Method} value in
-     * {@code reflectMethod}. This value is obtained by reading {@code reflectMethod.0vmMethod} (a
-     * hidden field described by {@link Meta#HIDDEN_FIELD_KEY}). If it's null, then this method
-     * follows the {@code reflectMethod.root} chain until a non-null {@code reflectMethod.0vmMethod}
-     * value is found.
-     */
+    //@formatter:off
+    /// Gets the [Method] value associated with `reflectMethod`.
+    ///
+    /// ```
+    /// while (reflectMethod.0vmMethod == null) {
+    ///     reflectMethod = reflectMethod.root;
+    /// }
+    /// reflectMethod.0vmMethod
+    /// ```
+    //@formatter:on
     public static Method getVMMethod(@JavaType(java.lang.reflect.Method.class) StaticObject reflectMethod, Meta meta) {
         assert reflectMethod.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(reflectMethod.getKlass());
         StaticObject curMethod = reflectMethod;
         do {
-            Method target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
+            Method target = (Method) meta.java_lang_reflect_Method_0vmMethod.getHiddenObject(curMethod);
             if (target != null) {
                 return target;
             }
             curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
         } while (StaticObject.notNull(curMethod));
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Could not find HIDDEN_METHOD_KEY");
+        throw EspressoError.shouldNotReachHere("Could not find non-null Method.0vmMethod");
     }
 
-    /**
-     * Gets the {@link Method} value backing the {@link java.lang.reflect.Constructor} value in
-     * {@code reflectConstructor}. This value is obtained by reading
-     * {@code reflectConstructor.0vmMethod} (a hidden field described by
-     * {@link Meta#HIDDEN_FIELD_KEY}). If it's null, then this method follows the
-     * {@code reflectConstructor.root} chain until a non-null {@code reflectConstructor.0vmMethod}
-     * value is found.
-     */
+    //@formatter:off
+    /// Gets the [Method] value associated with `reflectConstructor`.
+    ///
+    /// ```
+    /// var root;
+    /// do {
+    ///     if (reflectConstructor.0vmMethod != null) {
+    ///         return reflectConstructor.0vmMethod;
+    ///     }
+    ///     root = reflectConstructor;
+    ///     reflectConstructor = reflectConstructor.root;
+    /// } while (reflectConstructor != null);
+    /// return (root.0vmMethod = lookupDeclaredMethod(root.clazz, "<init>", root.parameterTypes));
+    /// ```
+    //@formatter:on
     public static Method getVMMethodForConstructor(@JavaType(java.lang.reflect.Constructor.class) StaticObject reflectConstructor, Meta meta) {
         assert reflectConstructor.getKlass().getMeta().java_lang_reflect_Constructor.isAssignableFrom(reflectConstructor.getKlass());
         StaticObject curMethod = reflectConstructor;
         StaticObject rootMethod;
         do {
-            Method target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curMethod);
+            Method target = (Method) meta.java_lang_reflect_Constructor_0vmMethod.getHiddenObject(curMethod);
             if (target != null) {
                 return target;
             }
@@ -806,10 +816,10 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             curMethod = meta.java_lang_reflect_Constructor_root.getObject(curMethod);
         } while ((StaticObject.notNull(curMethod)));
         CompilerDirectives.transferToInterpreter();
-        // the root Constructor was not created by makeConstructor
-        // this can happen in ReflectionFactory#generateConstructor
-        // use the reflection data to find the constructor.
-        // the best would be to use the slot, but we don't have a redefinition-stable int that
+        // The root Constructor was not created by makeConstructor.
+        // This can happen in ReflectionFactory#generateConstructor.
+        // Use the reflection data to find the constructor.
+        // Best would be to use Constructor.slot, but we don't have a redefinition-stable int that
         // identifies the constructor.
         Klass holder = meta.java_lang_reflect_Constructor_clazz.getObject(rootMethod).getMirrorKlass(meta);
         Symbol<Signature> signature = rebuildConstructorSignature(meta, rootMethod);
@@ -817,7 +827,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         Method method = holder.lookupDeclaredMethod(Names._init_, signature, LookupMode.INSTANCE_ONLY);
         assert method != null;
         // remember the mapping for the next query
-        meta.HIDDEN_CONSTRUCTOR_KEY.setHiddenObject(rootMethod, method);
+        meta.java_lang_reflect_Constructor_0vmMethod.setHiddenObject(rootMethod, method);
         return method;
     }
 
@@ -1164,8 +1174,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         /* annotations */ runtimeVisibleAnnotations,
                         /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
 
-        meta.HIDDEN_CONSTRUCTOR_KEY.setHiddenObject(instance, this);
-        meta.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        meta.java_lang_reflect_Constructor_0vmMethod.setHiddenObject(instance, this);
+        meta.java_lang_reflect_Constructor_0runtimeVisibleTypeAnnotations.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
 
         return instance;
     }
@@ -1232,8 +1242,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         /* annotations */ runtimeVisibleAnnotations,
                         /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
                         /* annotationDefault */ annotationDefault);
-        meta.HIDDEN_METHOD_KEY.setHiddenObject(instance, this);
-        meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        meta.java_lang_reflect_Method_0vmMethod.setHiddenObject(instance, this);
+        meta.java_lang_reflect_Method_0runtimeVisibleTypeAnnotations.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
         return instance;
     }
 

@@ -58,7 +58,7 @@ public final class ParameterizedTypeImpl implements ParameterizedEspressoType {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             EspressoContext context = getRawType().getContext();
             StaticObject result = context.getAllocator().createNew(context.getMeta().polyglot.TypeLiteral$InternalTypeLiteral);
-            context.getMeta().polyglot.HIDDEN_TypeLiteral_internalType.setHiddenObject(result, this);
+            context.getMeta().polyglot.TypeLiteral_0internalType.setHiddenObject(result, this);
             context.getMeta().polyglot.TypeLiteral_rawType.setObject(result, getRawType().mirror());
             guestTypeLiteral = result;
         }
@@ -75,7 +75,7 @@ public final class ParameterizedTypeImpl implements ParameterizedEspressoType {
      * If the number of actual type arguments (i.e., the size of the array {@code typeArgs}) does
      * not correspond to the number of formal type arguments. If any of the actual type arguments is
      * not an instance of the bounds on the corresponding formal.
-     * 
+     *
      * @param rawType the Class representing the generic type declaration being instantiated
      * @param actualTypeArguments a (possibly empty) array of types representing the actual type
      *            arguments to the parameterized type

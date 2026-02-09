@@ -583,9 +583,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance(this);
 
             // Preemptively set stack trace.
-            meta.HIDDEN_FRAMES.setHiddenObject(stackOverflowErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_0frames.setHiddenObject(stackOverflowErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
             meta.java_lang_Throwable_backtrace.setObject(stackOverflowErrorInstance, stackOverflowErrorInstance);
-            meta.HIDDEN_FRAMES.setHiddenObject(outOfMemoryErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_0frames.setHiddenObject(outOfMemoryErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
             meta.java_lang_Throwable_backtrace.setObject(outOfMemoryErrorInstance, outOfMemoryErrorInstance);
 
             this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance, meta);

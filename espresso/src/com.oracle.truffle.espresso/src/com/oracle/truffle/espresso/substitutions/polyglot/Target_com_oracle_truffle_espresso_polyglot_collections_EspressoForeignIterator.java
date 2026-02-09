@@ -66,12 +66,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_collections_Espre
             EspressoLanguage language = getLanguage();
             // apply type argument from type literal
             EspressoType[] types = new EspressoType[1];
-            EspressoType type = (EspressoType) meta.polyglot.HIDDEN_TypeLiteral_internalType.getHiddenObject(typeArgument);
+            EspressoType type = (EspressoType) meta.polyglot.TypeLiteral_0internalType.getHiddenObject(typeArgument);
             if (type != null) {
                 types[0] = type;
             }
             // create the foreign iterator instance
-            StaticObject foreign = StaticObject.createForeign(language, meta.polyglot.EspressoForeignIterator, foreignIterator.rawForeignObject(language), interop);
+            StaticObject foreign = StaticObject.createForeign(language, meta.polyglot.EspressoForeignIterator,
+                            foreignIterator.rawForeignObject(language), interop);
             getLanguage().getTypeArgumentProperty().setObject(foreign, types);
             return foreign;
         }

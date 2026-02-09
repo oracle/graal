@@ -103,7 +103,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
             }
             String type = meta.toHostString(guestTypeString);
             LOGGER.finer(() -> "lookupType " + type + " resolved:" + resolve);
-            ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(accessingClass);
+            ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(accessingClass);
             return lookupType(type, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, createUnresolved, context, meta);
         }
     }
@@ -158,9 +158,9 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
             if (StaticObject.isNull(receiver) || StaticObject.isNull(accessingClass) || StaticObject.isNull(jvmciMethod)) {
                 throw meta.throwNullPointerExceptionBoundary();
             }
-            ObjectKlass receiverKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(receiver);
-            Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(jvmciMethod);
-            ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(accessingClass);
+            ObjectKlass receiverKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(receiver);
+            Method method = (Method) meta.jvmci.EspressoResolvedJavaMethod_0vmMethod.getHiddenObject(jvmciMethod);
+            ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(accessingClass);
             LOGGER.finer(() -> "resolveMethod " + method + " on " + receiverKlass + " as seen from " + accessingKlass);
             Method resolved = JVMCIUtils.resolveMethod(receiverKlass, method, accessingKlass);
             if (resolved == null) {

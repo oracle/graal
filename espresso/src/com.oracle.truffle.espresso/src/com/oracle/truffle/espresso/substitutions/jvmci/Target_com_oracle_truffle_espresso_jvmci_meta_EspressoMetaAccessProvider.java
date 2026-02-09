@@ -137,14 +137,14 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
 
     static StaticObject toJVMCIInstanceType(ObjectKlass klass, DirectCallNode objectTypeConstructor, EspressoContext context, Meta meta) {
         StaticObject jvmciMirror = meta.jvmci.EspressoResolvedInstanceType.allocateInstance(context);
-        meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.setHiddenObject(jvmciMirror, klass);
+        meta.jvmci.EspressoResolvedInstanceType_0vmKlass.setHiddenObject(jvmciMirror, klass);
         objectTypeConstructor.call(jvmciMirror);
         return jvmciMirror;
     }
 
     static StaticObject toJVMCIInstanceType(ObjectKlass klass, Meta meta) {
         StaticObject jvmciMirror = meta.jvmci.EspressoResolvedInstanceType.allocateInstance(meta.getContext());
-        meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.setHiddenObject(jvmciMirror, klass);
+        meta.jvmci.EspressoResolvedInstanceType_0vmKlass.setHiddenObject(jvmciMirror, klass);
         meta.jvmci.EspressoResolvedInstanceType_init.invokeDirectSpecial(jvmciMirror);
         return jvmciMirror;
     }

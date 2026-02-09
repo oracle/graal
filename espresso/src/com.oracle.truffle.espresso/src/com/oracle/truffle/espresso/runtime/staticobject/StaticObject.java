@@ -233,7 +233,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     public final Klass getMirrorKlass(Meta meta) {
         assert isMirrorKlass();
         checkNotForeign();
-        Klass result = (Klass) meta.HIDDEN_MIRROR_KLASS.getHiddenObject(this);
+        Klass result = (Klass) meta.java_lang_Class_0klass.getHiddenObject(this);
         assert result != null : "Uninitialized mirror class";
         return result;
     }

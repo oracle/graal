@@ -55,7 +55,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedPrimitiveType_forBasicType.getCallTarget())") DirectCallNode forBasicType) {
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
-            StaticObject object = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(self);
+            StaticObject object = (StaticObject) meta.jvmci.EspressoObjectConstant_0object.getHiddenObject(self);
             return toJVMCIObjectType(object.getKlass(), objectTypeConstructor, arrayTypeConstructor, forBasicType, context, meta);
         }
     }
@@ -67,8 +67,8 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant
         if (StaticObject.isNull(that)) {
             throw meta.throwNullPointerExceptionBoundary();
         }
-        StaticObject selfObject = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(self);
-        StaticObject thatObject = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(that);
+        StaticObject selfObject = (StaticObject) meta.jvmci.EspressoObjectConstant_0object.getHiddenObject(self);
+        StaticObject thatObject = (StaticObject) meta.jvmci.EspressoObjectConstant_0object.getHiddenObject(that);
         return selfObject == thatObject;
     }
 
@@ -76,7 +76,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant
     public static int hashCode(StaticObject self, @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
-        StaticObject object = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(self);
+        StaticObject object = (StaticObject) meta.jvmci.EspressoObjectConstant_0object.getHiddenObject(self);
         return System.identityHashCode(object);
     }
 }

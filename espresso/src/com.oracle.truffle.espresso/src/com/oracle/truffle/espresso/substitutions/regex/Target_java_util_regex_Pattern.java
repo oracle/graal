@@ -148,9 +148,9 @@ public final class Target_java_util_regex_Pattern {
                 }
             }
 
-            meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_tregexSearch.setHiddenObject(self, null);
-            meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_tregexMatch.setHiddenObject(self, null);
-            meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_tregexFullmatch.setHiddenObject(self, null);
+            meta.tRegexSupport.java_util_regex_Pattern_0tregexSearch.setHiddenObject(self, null);
+            meta.tRegexSupport.java_util_regex_Pattern_0tregexMatch.setHiddenObject(self, null);
+            meta.tRegexSupport.java_util_regex_Pattern_0tregexFullmatch.setHiddenObject(self, null);
 
             meta.tRegexSupport.java_util_regex_Pattern_capturingGroupCount.setInt(self, 0);
             meta.tRegexSupport.java_util_regex_Pattern_pattern.setObject(self, p);

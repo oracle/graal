@@ -735,7 +735,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @TruffleBoundary
     public StaticObject createGuestTypeLiteral() {
         StaticObject result = getContext().getAllocator().createNew(getMeta().polyglot.TypeLiteral$InternalTypeLiteral);
-        getMeta().polyglot.HIDDEN_TypeLiteral_internalType.setHiddenObject(result, this);
+        getMeta().polyglot.TypeLiteral_0internalType.setHiddenObject(result, this);
         getMeta().polyglot.TypeLiteral_rawType.setObject(result, this.mirror());
         return result;
     }
@@ -1750,7 +1750,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     public StaticObject protectionDomain() {
-        return getMeta().HIDDEN_PROTECTION_DOMAIN.getMaybeHiddenObject(mirror());
+        return getMeta().java_lang_Class_0protectedDomain.getMaybeHiddenObject(mirror());
     }
 
     /**

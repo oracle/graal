@@ -74,7 +74,7 @@ public class InteropUtils {
         if (guestException.getKlass() == meta.polyglot.ForeignException) {
             return true;
         }
-        Object stack = meta.HIDDEN_FRAMES.getHiddenObject(guestException);
+        Object stack = meta.java_lang_Throwable_0frames.getHiddenObject(guestException);
         return stack == VM.StackTrace.FOREIGN_MARKER_STACK_TRACE;
     }
 
