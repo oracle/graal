@@ -82,7 +82,7 @@ public class AIFOptions {
     public static final OptionKey<String> AILogFilePath = new OptionKey<>("ai_analysis.log");
 
     @Option(help = "Enable IGV (Ideal Graph Visualizer) dumps for abstract interpretation.")
-    public static final OptionKey<Boolean> AIEnableIGVDump = new OptionKey<>(false);
+    public static final OptionKey<Boolean> AIEnableIGVDump = new OptionKey<>(true);
 
     @Option(help = "Export analyzed graphs to JSON format for inspection.")
     public static final OptionKey<Boolean> AIExportGraphToJSON = new OptionKey<>(false);
