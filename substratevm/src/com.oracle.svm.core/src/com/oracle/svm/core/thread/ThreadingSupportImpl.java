@@ -26,14 +26,11 @@ package com.oracle.svm.core.thread;
 
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.impl.ThreadingSupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTimer;
 
 @AutomaticallyRegisteredImageSingleton(ThreadingSupport.class)
 public class ThreadingSupportImpl implements ThreadingSupport {
@@ -45,22 +42,23 @@ public class ThreadingSupportImpl implements ThreadingSupport {
      * will be overwritten.
      */
     @Override
+    @Deprecated(since = "25.1")
+    @SuppressWarnings("deprecation")
     public void registerRecurringCallback(long interval, TimeUnit unit, Threading.RecurringCallback callback) {
-        IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (callback != null) {
             if (!RecurringCallbackSupport.isEnabled()) {
                 throw new UnsupportedOperationException("Recurring callbacks must be enabled during image build with option " + ENABLE_SUPPORT_OPTION);
             }
 
             long intervalNanos = unit.toNanos(interval);
-            if (intervalNanos < 1) {
-                throw new IllegalArgumentException("The intervalNanos field is less than one.");
+            if (intervalNanos <= 0) {
+                throw new IllegalArgumentException("The interval must be greater than zero.");
             }
 
-            RecurringCallbackTimer callbackTimer = RecurringCallbackSupport.createCallbackTimer(intervalNanos, callback);
-            RecurringCallbackSupport.installCallback(thread, callbackTimer, true);
+            RecurringCallbackSupport.uninstallCallback();
+            RecurringCallbackSupport.installCallback(intervalNanos, callback);
         } else if (RecurringCallbackSupport.isEnabled()) {
-            RecurringCallbackSupport.uninstallCallback(thread);
+            RecurringCallbackSupport.uninstallCallback();
         }
     }
 }

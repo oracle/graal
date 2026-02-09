@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.Serial;
 
@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Threading.RecurringCallback;
 import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -42,6 +41,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.options.Option;
 
@@ -89,12 +89,9 @@ public class RecurringCallbackSupport {
         return new RecurringCallbackTimer();
     }
 
-    @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
-    public static void installCallback(IsolateThread thread, RecurringCallbackTimer timer, boolean overwriteExisting) {
-        if (overwriteExisting) {
-            uninstallCallback(thread);
-        }
-        installCallback(thread, timer);
+    public static void installCallback(long intervalNanos, RecurringCallback callback) {
+        RecurringCallbackTimer timer = createCallbackTimer(intervalNanos, callback);
+        installCallback(CurrentIsolate.getCurrentThread(), timer);
     }
 
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
@@ -107,6 +104,11 @@ public class RecurringCallbackSupport {
 
         timerTL.set(thread, timer);
         SafepointCheckCounter.setVolatile(thread, timer.requestedChecks);
+    }
+
+    @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
+    public static void uninstallCallback() {
+        uninstallCallback(CurrentIsolate.getCurrentThread());
     }
 
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
@@ -308,8 +310,8 @@ public class RecurringCallbackSupport {
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         @SuppressWarnings("hiding")
         public void initialize(long targetIntervalNanos, RecurringCallback callback) {
-            assert !isInitialized() : "initialize() may only be called once";
-            assert targetIntervalNanos > 0;
+            VMError.guarantee(!isInitialized(), "initialize() may only be called once");
+            VMError.guarantee(targetIntervalNanos > 0, "invalid recurring callback interval");
 
             this.targetIntervalNanos = targetIntervalNanos;
             this.flexibleTargetIntervalNanos = (long) (targetIntervalNanos * TARGET_INTERVAL_FLEXIBILITY);

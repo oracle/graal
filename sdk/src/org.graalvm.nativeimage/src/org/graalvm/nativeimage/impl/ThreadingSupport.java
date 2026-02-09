@@ -45,5 +45,6 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.nativeimage.Threading.RecurringCallback;
 
 public interface ThreadingSupport {
+    @Deprecated(since = "25.1")
     void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback);
 }

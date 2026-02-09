@@ -76,7 +76,11 @@ public final class Threading {
      * case, the values of {@code interval} and {@code unit} are ignored).
      *
      * @since 19.0
+     * @deprecated in 25.1 without replacement. This method is inherently unsafe as it can interfere
+     *             with other code.
      */
+    @Deprecated(since = "25.1")
+    @SuppressWarnings("deprecation")
     public static void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
         ImageSingletons.lookup(ThreadingSupport.class).registerRecurringCallback(interval, unit, callback);
     }
