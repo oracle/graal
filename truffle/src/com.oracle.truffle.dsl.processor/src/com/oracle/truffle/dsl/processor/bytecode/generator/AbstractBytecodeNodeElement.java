@@ -195,7 +195,6 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         this.add(createGetSourceSection());
         this.add(createGetSourceLocation());
         this.add(createGetSourceLocations());
-        this.add(createCreateSourceSection());
         this.add(createFindInstruction());
         this.add(createValidateBytecodeIndex());
         this.add(createGetSourceInformation());
@@ -1000,10 +999,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.declaration(generic(declaredType(List.class), types.Source), "localSources", "this.sources");
 
         b.startIf().string("info != null").end().startBlock();
-        b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-        b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
-        b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
-        b.declaration(type(int.class), "sourceIndex", "info[i + SOURCE_INFO_OFFSET_SOURCE]");
+        b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
+        b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
+        b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
+        b.declaration(type(int.class), "sourceIndex", parent.sourceInfoTable.loadSource("info", "i"));
         b.startIf().string("startBci > endBci").end().startBlock();
         b.tree(createValidationError("source bci range is malformed"));
         b.end().startElseIf().string("sourceIndex < 0 || sourceIndex > localSources.size()").end().startBlock();
@@ -1735,12 +1734,14 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.startReturn().string("null").end();
         b.end();
 
-        b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-        b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
-        b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
+        b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
+        b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
+        b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
 
         b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
-        b.startReturn().string("createSourceSection(sources, info, i)").end();
+        b.startReturn();
+        b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("i").end();
+        b.end();
         b.end();
 
         b.end();
@@ -1764,9 +1765,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.declaration(type(int.class), "sectionIndex", "0");
         b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
 
-        b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-        b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
-        b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
+        b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
+        b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
+        b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
 
         b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
 
@@ -1774,38 +1775,22 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.startAssign("sections").startStaticCall(type(Arrays.class), "copyOf");
         b.string("sections");
         // Double the size of the array, but cap it at the number of source section entries.
-        b.startStaticCall(type(Math.class), "min").string("sections.length * 2").string("info.length / SOURCE_INFO_LENGTH").end();
+        b.startStaticCall(type(Math.class), "min");
+        b.string("sections.length * 2");
+        b.startGroup().string("info.length / ").variable(parent.sourceInfoTable.entryLengthVariable).end();
+        b.end(); // call
         b.end(2); // assign
         b.end(); // if
 
-        b.startStatement().string("sections[sectionIndex++] = createSourceSection(sources, info, i)").end();
+        b.startAssign("sections[sectionIndex++]");
+        b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("i").end();
+        b.end();
 
         b.end(); // if
 
         b.end(); // for block
 
         b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("sections").string("sectionIndex").end().end();
-        return ex;
-    }
-
-    private CodeExecutableElement createCreateSourceSection() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), types.SourceSection, "createSourceSection");
-        ex.addParameter(new CodeVariableElement(generic(List.class, types.Source), "sources"));
-        ex.addParameter(new CodeVariableElement(type(int[].class), "info"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "index"));
-
-        CodeTreeBuilder b = ex.createBuilder();
-        b.declaration(type(int.class), "sourceIndex", "info[index + SOURCE_INFO_OFFSET_SOURCE]");
-        b.declaration(type(int.class), "start", "info[index + SOURCE_INFO_OFFSET_START]");
-        b.declaration(type(int.class), "length", "info[index + SOURCE_INFO_OFFSET_LENGTH]");
-
-        b.startIf().string("start == -1 && length == -1").end().startBlock();
-        b.startReturn().string("sources.get(sourceIndex).createUnavailableSection()").end();
-        b.end();
-
-        b.startAssert().string("start >= 0 : ").doubleQuote("invalid source start index").end();
-        b.startAssert().string("length >= 0 : ").doubleQuote("invalid source length").end();
-        b.startReturn().string("sources.get(sourceIndex).createSection(start, length)").end();
         return ex;
     }
 
@@ -1819,13 +1804,15 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.startReturn().string("null").end();
         b.end();
 
-        b.declaration(type(int.class), "lastEntry", "info.length - SOURCE_INFO_LENGTH");
+        b.startDeclaration(type(int.class), "lastEntry");
+        b.string("info.length - ").variable(parent.sourceInfoTable.entryLengthVariable);
+        b.end();
         b.startIf();
-        b.string("info[lastEntry + SOURCE_INFO_OFFSET_START_BCI] == 0 &&").startIndention().newLine();
-        b.string("info[lastEntry + SOURCE_INFO_OFFSET_END_BCI] == bytecodes.length").end();
+        b.tree(parent.sourceInfoTable.loadStartBci("info", "lastEntry")).string(" == 0 &&").startIndention().newLine();
+        b.tree(parent.sourceInfoTable.loadEndBci("info", "lastEntry")).string(" == bytecodes.length").end();
         b.end().startBlock();
         b.startReturn();
-        b.string("createSourceSection(sources, info, lastEntry)");
+        b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("lastEntry").end();
         b.end();
         b.end(); // if
 

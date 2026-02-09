@@ -165,10 +165,15 @@ public class OperationModel implements PrettyPrintable {
     public boolean variadicReturn;
 
     /**
-     * Internal operations are generated and used internally by the DSL. They should not be exposed
-     * through the builder and should not be serialized.
+     * Internal operations are generated and used internally by the DSL. They should not be
+     * serialized.
      */
     public boolean isInternal;
+    /**
+     * Private operations should not be exposed to the user through the builder. {@link #isInternal}
+     * implies {@link #isPrivate}.
+     */
+    public boolean isPrivate;
 
     public InstructionModel instruction;
     public CustomOperationModel customModel;
@@ -302,6 +307,11 @@ public class OperationModel implements PrettyPrintable {
 
     public OperationModel setInternal() {
         this.isInternal = true;
+        return setPrivate();
+    }
+
+    public OperationModel setPrivate() {
+        this.isPrivate = true;
         return this;
     }
 

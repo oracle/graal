@@ -77,21 +77,25 @@ final class SourceInformationImplElement extends AbstractElement {
     private CodeExecutableElement createGetStartBytecodeIndex() {
         CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getStartBytecodeIndex");
         CodeTreeBuilder b = ex.createBuilder();
-        b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_START_BCI]").end();
+        b.startReturn().tree(parent.sourceInfoTable.loadStartBci("bytecode.sourceInfo", "baseIndex")).end();
         return ex;
     }
 
     private CodeExecutableElement createGetEndBytecodeIndex() {
         CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getEndBytecodeIndex");
         CodeTreeBuilder b = ex.createBuilder();
-        b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_END_BCI]").end();
+        b.startReturn().tree(parent.sourceInfoTable.loadEndBci("bytecode.sourceInfo", "baseIndex")).end();
         return ex;
     }
 
     private CodeExecutableElement createGetSourceSection() {
         CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getSourceSection");
         CodeTreeBuilder b = ex.createBuilder();
-        b.statement("return AbstractBytecodeNode.createSourceSection(bytecode.sources, bytecode.sourceInfo, baseIndex)");
+        b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection);
+        b.string("bytecode.sources");
+        b.string("bytecode.sourceInfo");
+        b.string("baseIndex");
+        b.end(2);
         return ex;
     }
 

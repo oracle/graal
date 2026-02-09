@@ -74,7 +74,9 @@ final class SourceInformationListElement extends AbstractElement {
         CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "get", new String[]{"index"}, new TypeMirror[]{type(int.class)});
         ex.setReturnType(types.SourceInformation);
         CodeTreeBuilder b = ex.createBuilder();
-        b.declaration(type(int.class), "baseIndex", "index * SOURCE_INFO_LENGTH");
+        b.startDeclaration(type(int.class), "baseIndex");
+        b.string("index * ").variable(parent.sourceInfoTable.entryLengthVariable);
+        b.end();
         b.startIf().string("baseIndex < 0 || baseIndex >= bytecode.sourceInfo.length").end().startBlock();
         b.startThrow().startNew(type(IndexOutOfBoundsException.class)).string("String.valueOf(index)").end().end();
         b.end();
@@ -87,7 +89,7 @@ final class SourceInformationListElement extends AbstractElement {
     private CodeExecutableElement createSize() {
         CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "size");
         CodeTreeBuilder b = ex.createBuilder();
-        b.statement("return bytecode.sourceInfo.length / SOURCE_INFO_LENGTH");
+        b.startReturn().string("bytecode.sourceInfo.length / ").variable(parent.sourceInfoTable.entryLengthVariable).end();
         return ex;
     }
 
