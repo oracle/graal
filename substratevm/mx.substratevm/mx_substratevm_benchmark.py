@@ -357,6 +357,14 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             ]
         return extra_image_build_args + super().extra_image_build_argument(benchmark, args)
 
+    def _ensure_necessary_benchmark_files_exist(self):
+        if any([s.is_agent() for s in self.stages_info.effective_stages]):
+            # A jar file is only necessary if the `agent` stage will be executed
+            self._ensure_jar_exists(self.benchmarkName())
+        if any([s.is_image() for s in self.stages_info.effective_stages]):
+            # A nib file is only necessary if one of the Image stages (`image` or `instrument-image`) will be executed
+            self.get_bundle_path()
+
     def get_bundle_path(self) -> str:
         benchmark = self.benchmarkName()
         layer_info = self.get_latest_layer()
