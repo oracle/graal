@@ -630,7 +630,7 @@ public class NativeImageGenerator {
                 throw FallbackFeature.reportAsFallback(ufe);
             }
 
-            runAbstractInterpretation(debug);
+            runAbstractInterpretation(debug, options);
             /*
              * After this point, all TypeFlow (and therefore also TypeState) objects are
              * unreachable and can be garbage collected. This is important to keep the overall
@@ -772,12 +772,12 @@ public class NativeImageGenerator {
         }
     }
 
-    private void runAbstractInterpretation(DebugContext debug) {
+    private void runAbstractInterpretation(DebugContext debug, OptionValues options) {
         AnalysisMethod root = null;
         if (mainEntryPoint != null && mainEntryPoint.getLeft() != null) {
             root = bb.getMetaAccess().lookupJavaMethod(mainEntryPoint.getLeft());
         }
-        AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, root, bb);
+        AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, root, bb, options);
         driver.run();
     }
 

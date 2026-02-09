@@ -138,7 +138,9 @@ public final class AbstractInterpretationLogger {
             case SUMMARY -> "[SUMMARY] ";
             case INFO -> "[INFO] ";
             case DEBUG -> "[DEBUG] ";
-            case WARN -> "[WARN ]";
+            case WARN -> "[WARN] ";
+            case SILENT -> "";
+            case ERROR -> "[ERROR] ";
         };
     }
 
@@ -146,10 +148,11 @@ public final class AbstractInterpretationLogger {
         return switch (v) {
             case CHECKER -> ANSI.GREEN;
             case CHECKER_WARN, WARN -> ANSI.YELLOW;
-            case CHECKER_ERR -> ANSI.RED;
+            case CHECKER_ERR, ERROR -> ANSI.RED;
             case FACT -> ANSI.PURPLE;
             case SUMMARY, DEBUG -> ANSI.BLUE;
             case INFO -> ANSI.CYAN;
+            case SILENT -> ANSI.RESET;
         };
     }
 
@@ -181,10 +184,9 @@ public final class AbstractInterpretationLogger {
             }
         }
 
-        // Console output with threshold and color
         if (consoleEnabled && verbosity.compareTo(consoleThreshold) <= 0) {
             String colored = colorEnabled ? (colorFor(verbosity) + prefix + message + ANSI.RESET) : (prefix + message);
-            if (verbosity == LoggerVerbosity.CHECKER_ERR) {
+            if (verbosity == LoggerVerbosity.CHECKER_ERR || verbosity == LoggerVerbosity.ERROR) {
                 System.err.println(colored);
             } else {
                 System.out.println(colored);

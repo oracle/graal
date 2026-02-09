@@ -95,7 +95,7 @@ public class AbstractInterpretationEngine {
         var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
 
         // debugging purposes only additionally run the root manually if it wasn't found bt the interproc analysis
-        if (!methodGraphCache.containsKey(analysisRoot)) {
+        if (analysisRoot != null && !methodGraphCache.containsKey(analysisRoot)) {
             analyzer.runAnalysis(analysisRoot);
         }
         analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);

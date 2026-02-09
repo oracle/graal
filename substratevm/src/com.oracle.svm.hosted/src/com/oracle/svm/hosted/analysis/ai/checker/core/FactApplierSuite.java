@@ -75,7 +75,6 @@ public final class FactApplierSuite {
                                               AbstractInterpretationLogger.IGVDumpSession session) {
         ApplierResult total = ApplierResult.empty();
         for (FactApplier applier : appliers) {
-            // FIXME: we maybe want to dry-run the appliers so that we see what could have been applied
             if (!applier.shouldApply()) {
                 continue;
             }

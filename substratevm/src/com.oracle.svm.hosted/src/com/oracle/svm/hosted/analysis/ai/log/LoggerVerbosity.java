@@ -13,5 +13,5 @@ public enum LoggerVerbosity {
     SUMMARY, /* Log function summaries */
     INFO, /* Log analysis information */
     DEBUG,
-    WARN, /* Log debug information - most verbose, logs everything */
+    WARN, SILENT, ERROR, /* Log debug information - most verbose, logs everything */
 }
