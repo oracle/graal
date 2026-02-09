@@ -93,7 +93,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     public URL findResource(String name) {
-        if (this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
+        if (ClassForNameSupport.respectClassLoader() && this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
             /* Workaround for GR-73221 */
             return null;
         }
@@ -102,7 +102,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     public Enumeration<URL> findResources(String name) {
-        if (this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
+        if (ClassForNameSupport.respectClassLoader() && this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
             /* Workaround for GR-73221 */
             return null;
         }
@@ -122,7 +122,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     private URL findResourceOnClassPath(String name) {
-        if (this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
+        if (ClassForNameSupport.respectClassLoader() && this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
             /* Workaround for GR-73221 */
             return null;
         }
@@ -131,7 +131,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     private Enumeration<URL> findResourcesOnClassPath(String name) {
-        if (this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
+        if (ClassForNameSupport.respectClassLoader() && this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
             /* Workaround for GR-73221 */
             return null;
         }

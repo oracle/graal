@@ -25,9 +25,11 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.File;
+import java.net.URL;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -121,6 +123,17 @@ public final class Target_java_lang_ClassLoader {
 
     @Delete
     private static native ClassLoader initSystemClassLoader();
+
+    @Alias
+    public native Enumeration<URL> findResources(String name);
+
+    @Substitute
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
+    private Enumeration<URL> getResources(String name) {
+        /* Every class loader sees every resource, so we still need this substitution (GR-19998). */
+        Enumeration<URL> urls = ResourcesHelper.nameToResourceEnumerationURLs(name);
+        return urls.hasMoreElements() ? urls : findResources(name);
+    }
 
     @Substitute
     @SuppressWarnings("unused")
