@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.jni.access;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReachabilityMetadata;
+import static com.oracle.svm.core.MissingRegistrationUtils.preciseDynamicAccess;
 import static com.oracle.svm.core.SubstrateOptions.JNIVerboseLookupErrors;
 
 import java.io.PrintStream;
@@ -57,12 +58,12 @@ import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.Utf8.WrappedAsciiCString;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.shared.util.Utf8.WrappedAsciiCString;
 
 import jdk.graal.compiler.util.SignatureUtil;
 import jdk.vm.ci.meta.Signature;
@@ -275,7 +276,7 @@ public final class JNIReflectionDictionary {
     }
 
     private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, CharSequence name) {
-        if (throwMissingRegistrationErrors() && clazz == null) {
+        if (exactReachabilityMetadata() && clazz == null) {
             MissingJNIRegistrationUtils.reportClassAccess(name.toString());
         } else if (clazz != null && clazz.isNegative()) {
             return null;
@@ -407,12 +408,12 @@ public final class JNIReflectionDictionary {
     }
 
     private static JNIAccessibleMethod checkMethod(JNIAccessibleMethod method, Class<?> clazz, CharSequence name, CharSequence signature) {
-        if (throwMissingRegistrationErrors() && method == null && SignatureUtil.isSignatureValid(signature.toString(), false)) {
+        if (preciseDynamicAccess() && method == null && SignatureUtil.isSignatureValid(signature.toString(), false)) {
             /*
              * A malformed signature never throws a missing registration error since it can't
              * possibly match an existing method.
              */
-            MissingJNIRegistrationUtils.reportMethodAccess(clazz, name.toString(), signature.toString());
+            throw MissingJNIRegistrationUtils.reportMethodAccess(clazz, name.toString(), signature.toString());
         } else if (method != null && method.isNegative()) {
             return null;
         }
@@ -508,8 +509,8 @@ public final class JNIReflectionDictionary {
     }
 
     private static JNIAccessibleField checkField(JNIAccessibleField field, Class<?> clazz, CharSequence name) {
-        if (throwMissingRegistrationErrors() && field == null) {
-            MissingJNIRegistrationUtils.reportFieldAccess(clazz, name.toString());
+        if (preciseDynamicAccess() && field == null) {
+            throw MissingJNIRegistrationUtils.reportFieldAccess(clazz, name.toString());
         } else if (field != null && field.isNegative()) {
             return null;
         }

@@ -60,7 +60,7 @@ public class MissingRegistrationSupport {
     }
 
     private boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
-        return classFilter.isIncluded(moduleName, packageName, className) != null;
+        return FutureDefaultsOptions.preciseDynamicAccess() || classFilter.isIncluded(moduleName, packageName, className) != null;
     }
 
     private static String getPackageName(String className) {
