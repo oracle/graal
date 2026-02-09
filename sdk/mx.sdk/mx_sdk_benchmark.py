@@ -3890,7 +3890,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["0.14.1", "0.15.0", "0.16.0"]
+        return ["0.14.1", "0.15.0", "0.16.0", "0.16.1"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
