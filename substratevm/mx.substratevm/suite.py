@@ -2424,7 +2424,7 @@ suite = {
                 "com.oracle.svm.libjvm",
             ],
             "distDependencies": [
-                "LIBRARY_SUPPORT",
+                "SVM",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.libjvm",
