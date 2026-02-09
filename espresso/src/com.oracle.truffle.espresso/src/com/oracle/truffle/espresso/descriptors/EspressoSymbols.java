@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.descriptors;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
@@ -552,9 +555,10 @@ public class EspressoSymbols {
 
     /**
      * Contains commonly used (name) symbols.
-     *
+     * <p>
      * Symbols declared here must match exactly the field name; notable exceptions include
-     * {@link Names#_init_}, {@link Names#_clinit_} and hidden field names.
+     * {@link Names#_init_}, {@link Names#_clinit_} and hidden field names. Hidden field names are
+     * for injected fields and are exactly those that start with {@code "0"}.
      */
     public static class Names {
 
@@ -631,7 +635,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> unnamedModule = SYMBOLS.putName("unnamedModule");
         public static final Symbol<Name> nameAndId = SYMBOLS.putName("nameAndId");
         public static final Symbol<Name> resetArchivedStates = SYMBOLS.putName("resetArchivedStates");
-        public static final Symbol<Name> HIDDEN_CLASS_LOADER_REGISTRY = SYMBOLS.putName("0HIDDEN_CLASS_LOADER_REGISTRY");
+        public static final Symbol<Name> HIDDEN_registry = SYMBOLS.putName("0registry");
         // j.l.Module
         public static final Symbol<Name> loader = SYMBOLS.putName("loader");
         // j.l.RecordComponent
@@ -761,7 +765,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> open = SYMBOLS.putName("open");
         public static final Symbol<Name> INSTANCE = SYMBOLS.putName("INSTANCE");
         // sun.nio.fs.TrufflePath
-        public static final Symbol<Name> HIDDEN_TRUFFLE_FILE = SYMBOLS.putName("0HIDDEN_TRUFFLE_FILE");
+        public static final Symbol<Name> HIDDEN_file = SYMBOLS.putName("0file");
         public static final Symbol<Name> instance = SYMBOLS.putName("instance");
         // sun.nio.fs.TruffleFileSystemProvider
         public static final Symbol<Name> OWNER_READ_VALUE = SYMBOLS.putName("OWNER_READ_VALUE");
@@ -776,7 +780,7 @@ public class EspressoSymbols {
         // sun.nio.ch.FileChannelImpl
         public static final Symbol<Name> MAP_RW = SYMBOLS.putName("MAP_RW");
         // java.util.zip
-        public static final Symbol<Name> HIDDEN_CRC32 = SYMBOLS.putName("0HIDDEN_CRC32");
+        public static final Symbol<Name> HIDDEN_value = SYMBOLS.putName("0value");
         public static final Symbol<Name> inputConsumed = SYMBOLS.putName("inputConsumed");
         public static final Symbol<Name> outputConsumed = SYMBOLS.putName("outputConsumed");
         // java.net
@@ -846,7 +850,6 @@ public class EspressoSymbols {
         public static final Symbol<Name> form = SYMBOLS.putName("form");
         // ResolvedMethodName
         public static final Symbol<Name> vmholder = SYMBOLS.putName("vmholder");
-        public static final Symbol<Name> HIDDEN_VM_METHOD = SYMBOLS.putName("0HIDDEN_VM_METHOD");
         // MethodHandle
         public static final Symbol<Name> invoke = SYMBOLS.putName("invoke");
         public static final Symbol<Name> invokeExact = SYMBOLS.putName("invokeExact");
@@ -1001,67 +1004,60 @@ public class EspressoSymbols {
         public static final Symbol<Name> archivedBootLayer = SYMBOLS.putName("archivedBootLayer");
 
         // j.l.Object
-        public static final Symbol<Name> HIDDEN_SYSTEM_IHASHCODE = SYMBOLS.putName("0HIDDEN_SYSTEM_IHASHCODE");
+        public static final Symbol<Name> HIDDEN_systemHashCode = SYMBOLS.putName("0systemHashCode");
         // MemberName
-        public static final Symbol<Name> HIDDEN_VMINDEX = SYMBOLS.putName("0HIDDEN_VMINDEX");
-        public static final Symbol<Name> HIDDEN_VMTARGET = SYMBOLS.putName("0HIDDEN_VMTARGET");
-        // Method
-        public static final Symbol<Name> HIDDEN_METHOD_KEY = SYMBOLS.putName("0HIDDEN_METHOD_KEY");
-        public static final Symbol<Name> HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = SYMBOLS.putName("0HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
-        // Constructor
-        public static final Symbol<Name> HIDDEN_CONSTRUCTOR_KEY = SYMBOLS.putName("0HIDDEN_CONSTRUCTOR_KEY");
-        public static final Symbol<Name> HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = SYMBOLS.putName("0HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
-        // Field
-        public static final Symbol<Name> HIDDEN_FIELD_KEY = SYMBOLS.putName("0HIDDEN_FIELD_KEY");
-        public static final Symbol<Name> HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = SYMBOLS.putName("0HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
+        public static final Symbol<Name> HIDDEN_vmIndex = SYMBOLS.putName("0vmIndex");
+        public static final Symbol<Name> HIDDEN_vmTarget = SYMBOLS.putName("0vmTarget");
+        // Method/Constructor/Field
+        public static final Symbol<Name> HIDDEN_runtimeVisibleTypeAnnotations = SYMBOLS.putName("0runtimeVisibleTypeAnnotations");
         // Throwable
-        public static final Symbol<Name> HIDDEN_FRAMES = SYMBOLS.putName("0HIDDEN_FRAMES");
-        public static final Symbol<Name> HIDDEN_EXCEPTION_WRAPPER = SYMBOLS.putName("0HIDDEN_EXCEPTION_WRAPPER");
+        public static final Symbol<Name> HIDDEN_frames = SYMBOLS.putName("0frames");
+        public static final Symbol<Name> HIDDEN_exceptionWrapper = SYMBOLS.putName("0exceptionWrapper");
         // Thread
         public static final Symbol<Name> interrupted = SYMBOLS.putName("interrupted");
         public static final Symbol<Name> interrupt = SYMBOLS.putName("interrupt");
-        public static final Symbol<Name> HIDDEN_DEPRECATION_SUPPORT = SYMBOLS.putName("0HIDDEN_DEPRECATION_SUPPORT");
-        public static final Symbol<Name> HIDDEN_THREAD_UNPARK_SIGNALS = SYMBOLS.putName("0HIDDEN_THREAD_UNPARK_SIGNALS");
-        public static final Symbol<Name> HIDDEN_THREAD_PARK_LOCK = SYMBOLS.putName("0HIDDEN_THREAD_PARK_LOCK");
-        public static final Symbol<Name> HIDDEN_HOST_THREAD = SYMBOLS.putName("0HIDDEN_HOST_THREAD");
-        public static final Symbol<Name> HIDDEN_ESPRESSO_MANAGED = SYMBOLS.putName("0HIDDEN_ESPRESSO_MANAGED");
-        public static final Symbol<Name> HIDDEN_TO_NATIVE_LOCK = SYMBOLS.putName("0HIDDEN_TO_NATIVE_LOCK");
-        public static final Symbol<Name> HIDDEN_INTERRUPTED = SYMBOLS.putName("0HIDDEN_INTERRUPTED");
-        public static final Symbol<Name> HIDDEN_INTERRUPTED_EVENT = SYMBOLS.putName("0HIDDEN_INTERRUPTED_EVENT");
-        public static final Symbol<Name> HIDDEN_THREAD_PENDING_MONITOR = SYMBOLS.putName("0HIDDEN_THREAD_PENDING_MONITOR");
-        public static final Symbol<Name> HIDDEN_THREAD_WAITING_MONITOR = SYMBOLS.putName("0HIDDEN_THREAD_WAITING_MONITOR");
-        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = SYMBOLS.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
-        public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = SYMBOLS.putName("0HIDDEN_THREAD_WAITED_COUNT");
-        public static final Symbol<Name> HIDDEN_THREAD_DEPTH_FIRST_NUMBER = SYMBOLS.putName("0HIDDEN_THREAD_DEPTH_FIRST_NUMBER");
-        public static final Symbol<Name> HIDDEN_THREAD_SCOPED_VALUE_CACHE = SYMBOLS.putName("0HIDDEN_THREAD_SCOPED_VALUE_CACHE");
+        public static final Symbol<Name> HIDDEN_deprecationSupport = SYMBOLS.putName("0deprecationSupport");
+        public static final Symbol<Name> HIDDEN_unparkSignals = SYMBOLS.putName("0unparkSignals");
+        public static final Symbol<Name> HIDDEN_parkLock = SYMBOLS.putName("0parkLock");
+        public static final Symbol<Name> HIDDEN_hostThread = SYMBOLS.putName("0hostThread");
+        public static final Symbol<Name> HIDDEN_espressoManaged = SYMBOLS.putName("0espressoManaged");
+        public static final Symbol<Name> HIDDEN_toNativeLock = SYMBOLS.putName("0toNativeLock");
+        public static final Symbol<Name> HIDDEN_interrupted = SYMBOLS.putName("0interrupted");
+        public static final Symbol<Name> HIDDEN_interruptedEvent = SYMBOLS.putName("0interruptedEvent");
+        public static final Symbol<Name> HIDDEN_pendingMonitor = SYMBOLS.putName("0pendingMonitor");
+        public static final Symbol<Name> HIDDEN_waitingMonitor = SYMBOLS.putName("0waitingMonitor");
+        public static final Symbol<Name> HIDDEN_blockedCount = SYMBOLS.putName("0blockedCount");
+        public static final Symbol<Name> HIDDEN_waitedCount = SYMBOLS.putName("0waitedCount");
+        public static final Symbol<Name> HIDDEN_depthFirstNumber = SYMBOLS.putName("0depthFirstNumber");
+        public static final Symbol<Name> HIDDEN_scopedValueCache = SYMBOLS.putName("0scopedValueCache");
         // Class
-        public static final Symbol<Name> HIDDEN_MIRROR_KLASS = SYMBOLS.putName("0HIDDEN_MIRROR_KLASS");
-        public static final Symbol<Name> HIDDEN_SIGNERS = SYMBOLS.putName("0HIDDEN_SIGNERS");
-        public static final Symbol<Name> HIDDEN_PROTECTION_DOMAIN = SYMBOLS.putName("0HIDDEN_PROTECTION_DOMAIN");
+        public static final Symbol<Name> HIDDEN_klass = SYMBOLS.putName("0klass");
+        public static final Symbol<Name> HIDDEN_signers = SYMBOLS.putName("0signers");
+        public static final Symbol<Name> HIDDEN_protectionDomain = SYMBOLS.putName("0protectionDomain");
         // Module
-        public static final Symbol<Name> HIDDEN_MODULE_ENTRY = SYMBOLS.putName("0HIDDEN_MODULE_ENTRY");
+        public static final Symbol<Name> HIDDEN_entry = SYMBOLS.putName("0entry");
         // Pattern
-        public static final Symbol<Name> HIDDEN_TREGEX_MATCH = SYMBOLS.putName("0HIDDEN_TREGEX_MATCH");
-        public static final Symbol<Name> HIDDEN_TREGEX_FULLMATCH = SYMBOLS.putName("0HIDDEN_TREGEX_FULLMATCH");
-        public static final Symbol<Name> HIDDEN_TREGEX_SEARCH = SYMBOLS.putName("0HIDDEN_TREGEX_SEARCH");
-        public static final Symbol<Name> HIDDEN_TREGEX_STATUS = SYMBOLS.putName("0HIDDEN_TREGEX_STATUS");
+        public static final Symbol<Name> HIDDEN_match = SYMBOLS.putName("0match");
+        public static final Symbol<Name> HIDDEN_fullMatch = SYMBOLS.putName("0fullMatch");
+        public static final Symbol<Name> HIDDEN_search = SYMBOLS.putName("0search");
+        public static final Symbol<Name> HIDDEN_status = SYMBOLS.putName("0status");
         // Matcher
-        public static final Symbol<Name> HIDDEN_TREGEX_TSTRING = SYMBOLS.putName("0HIDDEN_TREGEX_TSTRING");
-        public static final Symbol<Name> HIDDEN_TREGEX_TEXT_SYNC = SYMBOLS.putName("0HIDDEN_TREGEX_TEXT_SYNC");
-        public static final Symbol<Name> HIDDEN_TREGEX_PATTERN_SYNC = SYMBOLS.putName("0HIDDEN_TREGEX_PATTERN_SYNC");
-        public static final Symbol<Name> HIDDEN_TREGEX_OLD_LAST_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_OLD_LAST_BACKUP");
-        public static final Symbol<Name> HIDDEN_TREGEX_MOD_COUNT_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_MOD_COUNT_BACKUP");
-        public static final Symbol<Name> HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP");
-        public static final Symbol<Name> HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP");
-        public static final Symbol<Name> HIDDEN_TREGEX_FROM_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_FROM_BACKUP");
-        public static final Symbol<Name> HIDDEN_TREGEX_TO_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_TO_BACKUP");
-        public static final Symbol<Name> HIDDEN_TREGEX_MATCHING_MODE_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_MATCHING_MODE_BACKUP");
-        public static final Symbol<Name> HIDDEN_TREGEX_SEARCH_FROM_BACKUP = SYMBOLS.putName("0HIDDEN_TREGEX_SEARCH_FROM_BACKUP");
+        public static final Symbol<Name> HIDDEN_tstring = SYMBOLS.putName("0tstring");
+        public static final Symbol<Name> HIDDEN_textSync = SYMBOLS.putName("0textSync");
+        public static final Symbol<Name> HIDDEN_patternSync = SYMBOLS.putName("0patternSync");
+        public static final Symbol<Name> HIDDEN_oldLastBackup = SYMBOLS.putName("0oldLastBackup");
+        public static final Symbol<Name> HIDDEN_modCountBackup = SYMBOLS.putName("0modCountBackup");
+        public static final Symbol<Name> HIDDEN_transparentBoundsBackup = SYMBOLS.putName("0transparentBoundsBackup");
+        public static final Symbol<Name> HIDDEN_anchoringBoundsBackup = SYMBOLS.putName("0anchoringBoundsBackup");
+        public static final Symbol<Name> HIDDEN_fromBackup = SYMBOLS.putName("0fromBackup");
+        public static final Symbol<Name> HIDDEN_toBackup = SYMBOLS.putName("0toBackup");
+        public static final Symbol<Name> HIDDEN_matchingModeBackup = SYMBOLS.putName("0matchingModeBackup");
+        public static final Symbol<Name> HIDDEN_searchFromBackup = SYMBOLS.putName("0searchFromBackup");
         // Reference
         public static final Symbol<Name> processPendingReferences = SYMBOLS.putName("processPendingReferences");
         public static final Symbol<Name> tryHandlePending = SYMBOLS.putName("tryHandlePending");
         public static final Symbol<Name> poll = SYMBOLS.putName("poll");
-        public static final Symbol<Name> HIDDEN_HOST_REFERENCE = SYMBOLS.putName("0HIDDEN_HOST_REFERENCE");
+        public static final Symbol<Name> HIDDEN_hostReference = SYMBOLS.putName("0hostReference");
         // Secrets
         public static final Symbol<Name> javaLangAccess = SYMBOLS.putName("javaLangAccess");
         // Polyglot ExceptionType
@@ -1073,7 +1069,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> toGuest = SYMBOLS.putName("toGuest");
         // Interop VM helpers
         public static final Symbol<Name> getDynamicModuleDescriptor = SYMBOLS.putName("getDynamicModuleDescriptor");
-        public static final Symbol<Name> HIDDEN_INTERNAL_TYPE = SYMBOLS.putName("0HIDDEN_INTERNAL_TYPE");
+        public static final Symbol<Name> HIDDEN_internalType = SYMBOLS.putName("0internalType");
         public static final Symbol<Name> rawType = SYMBOLS.putName("rawType");
         public static final Symbol<Name> espresso_polyglot = SYMBOLS.putName("espresso.polyglot");
         // Class redefinition plugin helpers
@@ -1090,7 +1086,7 @@ public class EspressoSymbols {
         // Continuations
         public static final Symbol<Name> suspend = SYMBOLS.putName("suspend");
         public static final Symbol<Name> stackFrameHead = SYMBOLS.putName("stackFrameHead");
-        public static final Symbol<Name> HIDDEN_CONTINUATION_FRAME_RECORD = SYMBOLS.putName("0HIDDEN_CONTINUATION_FRAME_RECORD");
+        public static final Symbol<Name> HIDDEN_frameRecord = SYMBOLS.putName("0frameRecord");
         public static final Symbol<Name> pointers = SYMBOLS.putName("pointers");
         public static final Symbol<Name> primitives = SYMBOLS.putName("primitives");
         public static final Symbol<Name> method = SYMBOLS.putName("method");
@@ -1120,14 +1116,51 @@ public class EspressoSymbols {
         public static final Symbol<Name> LINK_TO_SPECIAL = SYMBOLS.putName("LINK_TO_SPECIAL");
         public static final Symbol<Name> LINK_TO_INTERFACE = SYMBOLS.putName("LINK_TO_INTERFACE");
         public static final Symbol<Name> LINK_TO_NATIVE = SYMBOLS.putName("LINK_TO_NATIVE");
-        public static final Symbol<Name> HIDDEN_OBJECTKLASS_MIRROR = SYMBOLS.putName("0HIDDEN_KLASS_MIRROR");
-        public static final Symbol<Name> HIDDEN_JVMCIINDY = SYMBOLS.putName("0HIDDEN_JVMCIINDY");
-        public static final Symbol<Name> HIDDEN_FIELD_MIRROR = SYMBOLS.putName("0HIDDEN_FIELD_MIRROR");
-        public static final Symbol<Name> HIDDEN_METHOD_MIRROR = SYMBOLS.putName("0HIDDEN_METHOD_MIRROR");
-        public static final Symbol<Name> HIDDEN_OBJECT_CONSTANT = SYMBOLS.putName("0HIDDEN_OBJECT_CONSTANT");
+        public static final Symbol<Name> HIDDEN_vmKlass = SYMBOLS.putName("0vmKlass");
+        public static final Symbol<Name> HIDDEN_jvmciIndy = SYMBOLS.putName("0jvmciIndy");
+        public static final Symbol<Name> HIDDEN_vmField = SYMBOLS.putName("0vmField");
+        public static final Symbol<Name> HIDDEN_vmMethod = SYMBOLS.putName("0vmMethod");
+        public static final Symbol<Name> HIDDEN_object = SYMBOLS.putName("0object");
 
         public static void ensureInitialized() {
             assert _init_ == ParserSymbols.ParserNames._init_;
+            assert checkNames();
+        }
+
+        /**
+         * Checks invariants for fields in {@link Names}.
+         */
+        private static boolean checkNames() {
+            int staticFinal = Modifier.PUBLIC | Modifier.STATIC | Modifier.FINAL;
+            for (Field f : Names.class.getDeclaredFields()) {
+                int mods = f.getModifiers();
+                if ((mods & Modifier.PUBLIC) == 0) {
+                    // Ignore non-public fields
+                    continue;
+                }
+                assert (mods & staticFinal) == staticFinal : "Public field must be static and final: " + f;
+                try {
+                    assert f.getType().equals(Symbol.class) : "Field must have type " + Symbol.class.getName() + ": " + f;
+                    String fieldValue = f.get(null).toString();
+                    String fieldName = f.getName();
+                    boolean hidden = fieldName.startsWith("HIDDEN_");
+                    String expectFieldName;
+                    if (hidden) {
+                        assert fieldValue.charAt(0) == '0' : "Value of " + f + " must start with '0'";
+                        expectFieldName = "HIDDEN_" + fieldValue.substring(1);
+                    } else {
+                        assert fieldValue.charAt(0) != '0' : "Value of " + f + " must not start with '0'";
+                        expectFieldName = fieldValue.replace('<', '_').replace('>', '_').replace('/', '_').replace('.', '_');
+                        if (fieldValue.equals("this")) {
+                            expectFieldName = "thiz";
+                        }
+                    }
+                    assert fieldName.equals(expectFieldName) : "Name of %s unexpected: %s != %s".formatted(f, fieldName, expectFieldName);
+                } catch (IllegalAccessException e) {
+                    throw new AssertionError("Error reading value of " + f, e);
+                }
+            }
+            return true;
         }
     }
 

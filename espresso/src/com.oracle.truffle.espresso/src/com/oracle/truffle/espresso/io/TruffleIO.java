@@ -1209,7 +1209,7 @@ public final class TruffleIO implements ContextAccess {
         this.fileChannelImplSync = new FileChannelImpl_Sync(this);
 
         sun_nio_fs_TrufflePath = meta.knownKlass(Types.sun_nio_fs_TrufflePath);
-        sun_nio_fs_TrufflePath_0file = sun_nio_fs_TrufflePath.requireHiddenField(Names.HIDDEN_TRUFFLE_FILE);
+        sun_nio_fs_TrufflePath_0file = sun_nio_fs_TrufflePath.requireHiddenField(Names.HIDDEN_file);
 
         java_io_FileSystem = meta.knownKlass(Types.java_io_FileSystem);
         fileSystemSync = new FileSystem_Sync(this);

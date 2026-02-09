@@ -264,6 +264,9 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
         return vmMethodMirror.hashCode();
     }
 
+    /// Adapts a call to a guest Espresso method, converting between [JavaConstant] values and
+    /// the polyglot [Value]s, and back. The interop implementation in the Espresso is
+    /// `com.oracle.truffle.espresso.impl.Method.Execute#invoke`.
     JavaConstant invoke(JavaConstant receiver, JavaConstant... arguments) {
         if (isStatic() || isConstructor()) {
             if (receiver != null) {
