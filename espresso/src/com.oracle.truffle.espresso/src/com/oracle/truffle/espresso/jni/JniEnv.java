@@ -2525,9 +2525,9 @@ public final class JniEnv extends NativeEnv {
         assert InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Method) || InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor);
         Method guestMethod;
         if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Method)) {
-            guestMethod = Method.getHostReflectiveMethodRoot(method, getMeta());
+            guestMethod = Method.getVMMethod(method, getMeta());
         } else if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor)) {
-            guestMethod = Method.getHostReflectiveConstructorRoot(method, getMeta());
+            guestMethod = Method.getVMMethodForConstructor(method, getMeta());
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();

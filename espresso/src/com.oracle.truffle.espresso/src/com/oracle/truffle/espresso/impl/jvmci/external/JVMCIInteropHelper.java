@@ -1121,10 +1121,10 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             Meta meta = context.getMeta();
             Klass reflectExecutableKlass = reflectExecutable.getKlass();
             if (meta.java_lang_reflect_Method.isAssignableFrom(reflectExecutableKlass)) {
-                return Method.getHostReflectiveMethodRoot(reflectExecutable, meta);
+                return Method.getVMMethod(reflectExecutable, meta);
             }
             if (meta.java_lang_reflect_Constructor.isAssignableFrom(reflectExecutableKlass)) {
-                return Method.getHostReflectiveConstructorRoot(reflectExecutable, meta);
+                return Method.getVMMethodForConstructor(reflectExecutable, meta);
             }
             typeError.enter(node);
             throw UnsupportedTypeException.create(arguments, "Expected a java.lang.reflect.Executable object");
