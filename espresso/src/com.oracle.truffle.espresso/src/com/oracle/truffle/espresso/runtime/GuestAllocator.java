@@ -103,7 +103,7 @@ public final class GuestAllocator implements LanguageAccess {
     /**
      * Allocates a new instance of the given class; does not call any constructor. Initializes the
      * class.
-     * 
+     *
      * @param klass The klass of the reference to allocate. If it is PE-constant, the field
      *            initialization loop can be exploded. This is expected to be the case when
      *            executing the {@code NEW} bytecode, but may not be the case always (for example in
@@ -145,7 +145,7 @@ public final class GuestAllocator implements LanguageAccess {
 
     /**
      * Creates the guest world {@linkplain Class representation} of {@link Klass}.
-     * 
+     *
      * @param klass The klass for which to create the mirror (not guest {@link Class}).
      */
     public StaticObject createClass(Klass klass) {
@@ -166,7 +166,7 @@ public final class GuestAllocator implements LanguageAccess {
         }
         // The Class.componentType field is only available on 9+.
         if (klass.isArray() && meta.java_lang_Class_componentType != null) {
-            meta.java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeEspressoClass());
+            meta.java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeGuestClassMirror());
         }
         // Will be overriden if necessary, but should be initialized to non-host null.
         meta.HIDDEN_PROTECTION_DOMAIN.setMaybeHiddenObject(newObj, StaticObject.NULL);
@@ -236,7 +236,7 @@ public final class GuestAllocator implements LanguageAccess {
 
     /**
      * Allocates a guest reference array, and fills it with the guest {@link StaticObject#NULL}.
-     * 
+     *
      * @param componentKlass The class of the references to store in the array
      */
     public StaticObject createNewReferenceArray(Klass componentKlass, int length) {
@@ -250,7 +250,7 @@ public final class GuestAllocator implements LanguageAccess {
 
     /**
      * Creates a new guest multi-dimensional array. See jvms-6.5.multianewarray
-     * 
+     *
      * @param component The class of what is stored in the top-most array.
      * @param dimensions The dimensions array
      */
@@ -263,7 +263,7 @@ public final class GuestAllocator implements LanguageAccess {
     /**
      * Given a host {@code array}, wraps in a guest object, and advertise it to be of class
      * {@code klass}.
-     * 
+     *
      * @param klass The klass to wrap the given array with.
      * @param array A host array, either a primitive array (e.g.: {@code byte[]} or {@code int[]}),
      *            or a {@code StaticObject[]}.
