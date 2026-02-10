@@ -1891,9 +1891,14 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             int length = kind.getPlatformKind().getVectorLength();
             if (length == 1) {
                 return super.emitConstant(kind, constant);
-            } else if (constant instanceof SimdConstant) {
-                assert ((SimdConstant) constant).getVectorLength() == length;
-                return super.emitConstant(kind, constant);
+            } else if (constant instanceof SimdConstant simd) {
+                /*
+                 * JVMCI doesn't have a 16-bit vector kind. Two-byte constants are assigned a 32-bit
+                 * kind instead.
+                 */
+                boolean specialCaseTwoBytes = kind.getPlatformKind().equals(AMD64Kind.V32_BYTE) && simd.getSerializedSize() == 2;
+                assert specialCaseTwoBytes || simd.getVectorLength() == length : constant + " " + length;
+                return super.emitConstant(kind, simd);
             } else {
                 return super.emitConstant(kind, SimdConstant.broadcast(constant, length));
             }
