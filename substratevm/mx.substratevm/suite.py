@@ -1677,6 +1677,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc", # Unsafe
+                    "jdk.internal.vm.annotation",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",

@@ -593,7 +593,9 @@ public final class Interpreter {
         return res;
     }
 
-    // Transforms ints to sub-words
+    /**
+     * Convert ints to sub-words.
+     */
     private static Object unbasic(Object arg, JavaKind kind) {
         return switch (kind) {
             case Boolean -> (int) arg != 0;
@@ -604,19 +606,19 @@ public final class Interpreter {
         };
     }
 
+    /**
+     * Convert sub-words to int.
+     */
     static Object rebasic(Object value, JavaKind returnType) {
-        // @formatter:off
         return switch (returnType) {
-            case Boolean -> stackIntToBoolean((int) value);
-            case Byte    -> (byte) value;
-            case Short   -> (short) value;
-            case Char    -> (char) value;
-            case Int, Long, Float, Double, Object
-                         -> value;
-            case Void    -> null; // void
-            default      -> throw VMError.shouldNotReachHereAtRuntime();
+            case Boolean -> ((boolean) value) ? 1 : 0;
+            case Byte -> (int) (byte) value;
+            case Short -> (int) (short) value;
+            case Char -> (int) (char) value;
+            case Int, Long, Float, Double, Object -> value;
+            case Void -> null; // void
+            default -> throw VMError.shouldNotReachHereAtRuntime();
         };
-        // @formatter:on
     }
 
     public static final class Root {

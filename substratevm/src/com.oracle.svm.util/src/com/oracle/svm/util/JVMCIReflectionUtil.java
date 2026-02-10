@@ -127,6 +127,14 @@ public final class JVMCIReflectionUtil {
     }
 
     /**
+     * Shortcut for {@link #getDeclaredConstructor(boolean, ResolvedJavaType, ResolvedJavaType...)}
+     * with {@code optional} set to {@code false}.
+     */
+    public static ResolvedJavaMethod getDeclaredConstructor(ResolvedJavaType declaringClass, ResolvedJavaType... parameterTypes) {
+        return getDeclaredConstructor(false, declaringClass, parameterTypes);
+    }
+
+    /**
      * Gets the constructor declared by {@code declaringClass} uniquely identified by
      * {@code parameterTypes}. Like {@link Class#getDeclaredConstructor(Class...)}, this does not
      * consider super classes.

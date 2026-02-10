@@ -467,8 +467,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                     ImageSingletons.lookup(JavaMainSupport.class).mainArgs = remainingArgs;
                 }
             } catch (IllegalArgumentException e) {
+                Log.logStream().println("Error: " + e.getMessage());
                 if (exitWhenArgumentParsingFails) {
-                    Log.logStream().println("Error: " + e.getMessage());
                     System.exit(1);
                 } else {
                     return CEntryPointErrors.ARGUMENT_PARSING_FAILED;

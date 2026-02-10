@@ -142,7 +142,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             return -1L;
         }
         if (RuntimeClassLoading.isSupported() && self.resolved != null) {
-            return ((ResolvedJavaField) self.resolved).getOffset();
+            ResolvedJavaField field = (ResolvedJavaField) self.resolved;
+            int offset = field.getOffset();
+            if (offset < 0) {
+                throw new InternalError(field.format("Field %T.%n has no offset"));
+            }
+            return offset;
         }
         return UnsafeFieldUtil.getFieldOffset(SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class));
     }
@@ -160,7 +165,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             return -1L;
         }
         if (RuntimeClassLoading.isSupported() && self.resolved != null) {
-            return ((ResolvedJavaField) self.resolved).getOffset();
+            ResolvedJavaField field = (ResolvedJavaField) self.resolved;
+            int offset = field.getOffset();
+            if (offset < 0) {
+                throw new InternalError(field.format("Static field %T.%n has no offset"));
+            }
+            return offset;
         }
         return UnsafeFieldUtil.getFieldOffset(SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class));
     }

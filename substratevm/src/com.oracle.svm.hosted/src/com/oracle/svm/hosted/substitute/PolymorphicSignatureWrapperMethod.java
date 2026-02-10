@@ -35,6 +35,7 @@ import java.util.List;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.util.VMError;
@@ -163,9 +164,18 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                             case "linkToStatic":
                             case "linkToInterface":
                             case "linkToSpecial":
-                                methodHandleOrMemberName = args.getLast();
-                                unboxMethod = kit.getMetaAccess().lookupJavaMethod(
-                                                MethodHandleUtils.class.getMethod(unboxMethodName, Object.class, Target_java_lang_invoke_MemberName.class));
+                                if (RuntimeClassLoading.isSupported()) {
+                                    /*
+                                     * Crema already applies the conversion. See
+                                     * CremaSupportImpl.linkTo*
+                                     */
+                                    unboxMethod = null;
+                                    methodHandleOrMemberName = null;
+                                } else {
+                                    methodHandleOrMemberName = args.getLast();
+                                    unboxMethod = kit.getMetaAccess().lookupJavaMethod(
+                                                    MethodHandleUtils.class.getMethod(unboxMethodName, Object.class, Target_java_lang_invoke_MemberName.class));
+                                }
                                 break;
                             default:
                                 throw shouldNotReachHereUnexpectedInput(substitutionBaseMethod.getName()); // ExcludeFromJacocoGeneratedReport
@@ -173,7 +183,12 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                     } catch (NoSuchMethodException e) {
                         throw shouldNotReachHere(e);
                     }
-                    retVal = kit.createInvokeWithExceptionAndUnwind(unboxMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), retVal, methodHandleOrMemberName);
+                    if (unboxMethod != null) {
+                        assert methodHandleOrMemberName != null;
+                        retVal = kit.createInvokeWithExceptionAndUnwind(unboxMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), retVal, methodHandleOrMemberName);
+                    } else {
+                        retVal = kit.createUnboxing(invoke, returnKind);
+                    }
                     break;
                 default:
                     retVal = kit.createUnboxing(invoke, returnKind);

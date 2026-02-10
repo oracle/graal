@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -47,6 +46,8 @@ import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.espresso.shared.meta.TypeAccess;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -218,6 +219,12 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return JavaKind.Object;
     }
 
+    /**
+     * Returns the super class according to the contract of
+     * {@link ResolvedJavaType#getSuperclass()}.
+     * <p>
+     * Note that this is different from {@link #getSuperClass()} for interface and array types.
+     */
     @Override
     public final InterpreterResolvedObjectType getSuperclass() {
         return this.superclass;
@@ -420,8 +427,16 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         throw VMError.unimplemented("findLeastCommonAncestor");
     }
 
+    /**
+     * Returns the super class according to the contract of {@link TypeAccess#getSuperClass()}.
+     * <p>
+     * Note that this is different from {@link #getSuperclass()} for interface and array types.
+     */
     @Override
     public final InterpreterResolvedObjectType getSuperClass() {
+        if (isInterface() || isArray()) {
+            return (InterpreterResolvedObjectType) DynamicHub.fromClass(Object.class).getInterpreterType();
+        }
         return this.superclass;
     }
 
