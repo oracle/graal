@@ -26,10 +26,11 @@ package jdk.graal.compiler.truffle.nodes;
 
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 
-import java.util.function.Supplier;
+import java.util.function.IntFunction;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -60,21 +61,26 @@ public final class TruffleBytecodeHandlerDispatchAddressNode extends FixedWithNe
     public static final NodeClass<TruffleBytecodeHandlerDispatchAddressNode> TYPE = NodeClass.create(TruffleBytecodeHandlerDispatchAddressNode.class);
 
     @Input ValueNode opcode;
+    @Input ValueNode template;
 
-    private final Supplier<Object> bytecodeHandlerTableSupplier;
+    private final IntFunction<Object> bytecodeHandlerTableSupplier;
 
-    public TruffleBytecodeHandlerDispatchAddressNode(ValueNode opcode, Supplier<Object> bytecodeHandlerTableSupplier) {
+    public TruffleBytecodeHandlerDispatchAddressNode(ValueNode opcode, ValueNode template, IntFunction<Object> bytecodeHandlerTableSupplier) {
         super(TYPE, StampFactory.forKind(JavaKind.Long));
         this.opcode = opcode;
+        this.template = template;
         this.bytecodeHandlerTableSupplier = bytecodeHandlerTableSupplier;
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        // Treat bytecodeHandlerTable as a long[] and return bytecodeHandlerTable[opcode]
         StructuredGraph graph = graph();
-        JavaConstant bytecodeHandlerTable = tool.getSnippetReflection().forObject(bytecodeHandlerTableSupplier.get());
-        ConstantNode base = ConstantNode.forConstant(bytecodeHandlerTable, tool.getMetaAccess(), graph);
+        GraalError.guarantee(template.isConstant(), "%s is not constant", template);
+        int templateIndex = template.asJavaConstant().asInt();
+        Object bytecodeHandlerTable = bytecodeHandlerTableSupplier.apply(templateIndex);
+        JavaConstant bytecodeHandlerTableConstant = tool.getSnippetReflection().forObject(bytecodeHandlerTable);
+
+        ConstantNode base = ConstantNode.forConstant(bytecodeHandlerTableConstant, tool.getMetaAccess(), graph);
         ConstantNode baseOffset = ConstantNode.forLong(tool.getMetaAccess().getArrayBaseOffset(JavaKind.Long), graph);
         ConstantNode indexShift = ConstantNode.forInt(CodeUtil.log2(tool.getMetaAccess().getArrayIndexScale(JavaKind.Long)), graph);
         ValueNode extendedOpcode = graph.addOrUnique(ZeroExtendNode.create(opcode, 64, NodeView.DEFAULT));
