@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,22 @@
  */
 package org.graalvm.wasm.types;
 
-import com.oracle.truffle.api.CompilerAsserts;
-
 import java.util.Arrays;
 
-public record RecursiveTypes(SubType[] subTypes) {
+import com.oracle.truffle.api.CompilerAsserts;
+
+public final class RecursiveTypes {
+    private final SubType[] subTypes;
+    private final int hashCode;
+
+    public RecursiveTypes(SubType[] subTypes) {
+        this.subTypes = subTypes;
+        this.hashCode = Arrays.hashCode(subTypes);
+    }
+
+    public SubType[] subTypes() {
+        return subTypes;
+    }
 
     @Override
     public boolean equals(Object obj) {
@@ -53,7 +64,7 @@ public record RecursiveTypes(SubType[] subTypes) {
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(subTypes);
+        return hashCode;
     }
 
     @Override
