@@ -59,7 +59,7 @@ public abstract class SingletonLayeredCallbacks<T> {
     }
 
     /**
-     * When {@link ImageLayerBuildingSupport#buildingSharedLayer()} is true, this method is called
+     * When {@code ImageLayerBuildingSupport#buildingSharedLayer()} is true, this method is called
      * at the end of native image generation to perform any needed final actions. The method's
      * return value also specifies what actions should be taken at the startup of the next layer.
      */

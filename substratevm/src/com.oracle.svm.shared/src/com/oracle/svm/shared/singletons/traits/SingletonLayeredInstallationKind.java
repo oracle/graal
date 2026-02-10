@@ -60,7 +60,7 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
          * Referring to fields of an app layer singleton from a code compiled in a shared layer,
          * i.e., even before the value of the field can be known, is safe. This is because, instead
          * of being constant-folded in a shared layer, it is instead implemented via
-         * {@link LoadImageSingletonNode} and lowered into a singleton table read.
+         * {@code LoadImageSingletonNode} and lowered into a singleton table read.
          */
         APP_LAYER_ONLY(EmptyMetadata.class),
 
@@ -74,7 +74,7 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
          * for the given index. See {@link MultiLayeredAllowNullEntries} for more details. Within
          * the array, the singletons will be arranged so that index [0] corresponds to the singleton
          * originating from the initial layer and index [length - 1] holds the singleton from the
-         * application layer. See {@link ImageLayerBuildingSupport} for a description of the
+         * application layer. See {@code ImageLayerBuildingSupport} for a description of the
          * different layer names.
          *
          * <p>
