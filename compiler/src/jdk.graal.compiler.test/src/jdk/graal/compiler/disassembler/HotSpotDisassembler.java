@@ -67,6 +67,11 @@ public class HotSpotDisassembler implements Disassembler {
         if (!currentArchitecture.equals(arch)) {
             throw new IllegalArgumentException("Unsupported ISA: " + arch);
         }
+        String osName = System.getProperty("os.name", "");
+        if (osName.startsWith("Windows")) {
+            // The current implementation relies on fmemopen which is not available on Windows
+            throw new IllegalArgumentException("Unsupported OS: " + osName);
+        }
         this.architecture = arch;
         if (arch.equals(Architecture.AMD64)) {
             // Use Intel syntax
