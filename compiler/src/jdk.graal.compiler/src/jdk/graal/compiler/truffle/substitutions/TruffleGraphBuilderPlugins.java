@@ -186,7 +186,7 @@ public class TruffleGraphBuilderPlugins {
         registerBufferPlugins(plugins, types, canDelayIntrinsification);
         registerMemorySegmentPlugins(plugins, types, canDelayIntrinsification);
         registerByteArraySupportPlugins(plugins, canDelayIntrinsification);
-        registerAtomicFieldupdaterPlugins(plugins, types);
+        registerAtomicFieldUpdaterPlugins(plugins, types);
     }
 
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, KnownTruffleTypes types, boolean canDelayIntrinsification) {
@@ -1715,7 +1715,7 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    private static void registerAtomicFieldupdaterPlugins(InvocationPlugins plugins, KnownTruffleTypes types) {
+    private static void registerAtomicFieldUpdaterPlugins(InvocationPlugins plugins, KnownTruffleTypes types) {
         InvocationPlugins.Registration r;
 
         r = new InvocationPlugins.Registration(plugins, new ResolvedJavaSymbol(types.AtomicIntegerFieldUpdater));
