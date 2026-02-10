@@ -107,7 +107,7 @@ public class AbstractInterpretationDriver {
                 initialDomain,
                 interpreter,
                 summaryFactory,
-                InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT
+                InterAnalyzerMode.ANALYZE_FROM_ALL_ROOTS
             )
             .maxRecursionDepth(AIFOptions.MaxRecursionDepth.getValue(options))
             .maxCallStackDepth(AIFOptions.MaxCallStackDepth.getValue(options));

@@ -5,6 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.checker.appliers.*;
 import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationException;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.ArrayList;
@@ -54,8 +55,8 @@ public final class FactApplierSuite {
         if (graph == null || graph.getDebug() == null) {
             return false;
         }
-        // Check if this method passes Graal's dump filter (respects -Dump option)
-        return graph.getDebug().isDumpEnabled(jdk.graal.compiler.debug.DebugContext.BASIC_LEVEL);
+        return true;
+//        return graph.getDebug().isDumpEnabledForMethod();
     }
 
     /**

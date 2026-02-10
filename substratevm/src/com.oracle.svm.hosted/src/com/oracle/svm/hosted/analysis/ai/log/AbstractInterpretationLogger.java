@@ -157,7 +157,7 @@ public final class AbstractInterpretationLogger {
     }
 
     private synchronized void ensureFileWriter() {
-        if (!fileEnabled) {
+        if (!fileEnabled || fileThreshold == LoggerVerbosity.SILENT) {
             return;
         }
         if (fileWriter == null) {
@@ -176,7 +176,7 @@ public final class AbstractInterpretationLogger {
         String fileLine = ts + " " + prefix + message;
 
         // File output with threshold (re-open lazily if closed)
-        if (fileEnabled && verbosity.compareTo(fileThreshold) <= 0) {
+        if (fileEnabled && fileThreshold != LoggerVerbosity.SILENT && verbosity.compareTo(fileThreshold) <= 0) {
             ensureFileWriter();
             if (fileWriter != null) {
                 fileWriter.println(fileLine);
@@ -184,7 +184,8 @@ public final class AbstractInterpretationLogger {
             }
         }
 
-        if (consoleEnabled && verbosity.compareTo(consoleThreshold) <= 0) {
+        // Console output with threshold
+        if (consoleEnabled && consoleThreshold != LoggerVerbosity.SILENT && verbosity.compareTo(consoleThreshold) <= 0) {
             String colored = colorEnabled ? (colorFor(verbosity) + prefix + message + ANSI.RESET) : (prefix + message);
             if (verbosity == LoggerVerbosity.CHECKER_ERR || verbosity == LoggerVerbosity.ERROR) {
                 System.err.println(colored);
@@ -364,33 +365,6 @@ public final class AbstractInterpretationLogger {
         public void close() {
             scope.close();
         }
-    }
-
-    /**
-     * Opens an {@link IGVDumpSession} using the graph's {@link DebugContext} when available or
-     * creating a new one if necessary. Returns null if dumping isn't possible (no services).
-     */
-    @Deprecated // dumping to IGV is directly implemented in {@link FactApplierSuite}
-    public static IGVDumpSession openIGVDumpSession(AnalysisMethod method, StructuredGraph graph, String scopeName) throws Throwable {
-        if (graph == null) {
-            return null;
-        }
-        DebugContext debug = graph.getDebug();
-        if (debug == null) {
-            if (method == null) {
-                return null;
-            }
-            AbstractInterpretationServices services;
-            try {
-                services = AbstractInterpretationServices.getInstance();
-            } catch (IllegalStateException ise) {
-                return null;
-            }
-            var bb = services.getInflation();
-            DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
-            debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
-        }
-        return new IGVDumpSession(debug, graph, scopeName);
     }
 
     public synchronized void close() {

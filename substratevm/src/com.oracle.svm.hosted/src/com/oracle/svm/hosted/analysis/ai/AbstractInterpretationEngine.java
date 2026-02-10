@@ -33,7 +33,8 @@ public class AbstractInterpretationEngine {
         var analysisServices = AbstractInterpretationServices.getInstance(bb);
         this.analyzerManager = analyzerManager;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
-//        this.analysisRoot = analysisServices.getMainMethod(mainEntryPoint).orElse(null);
+        // The mainEntryPoint is not required per-se but we may need it for some debugging purposes, such as analyzing only from it
+        // this.analysisRoot = analysisServices.getMainMethod(mainEntryPoint).orElse(null);
         this.analysisRoot = mainEntryPoint;
         this.invokedMethods = analysisServices.getInvokedMethods();
     }
@@ -96,6 +97,7 @@ public class AbstractInterpretationEngine {
         var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
 
         // debugging purposes only additionally run the root manually if it wasn't found bt the interproc analysis
+        // todo: think how to make this more parallel
         if (analysisRoot != null && !methodGraphCache.containsKey(analysisRoot)) {
             analyzer.runAnalysis(analysisRoot);
         }

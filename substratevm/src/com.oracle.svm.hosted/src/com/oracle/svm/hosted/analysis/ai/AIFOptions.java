@@ -13,10 +13,10 @@ public class AIFOptions {
     public static final OptionKey<Boolean> RunAbstractInterpretation = new OptionKey<>(false);
 
     @Option(help = "Enable interprocedural abstract interpretation analysis.")
-    public static final OptionKey<Boolean> InterproceduralAnalysis = new OptionKey<>(true);
+    public static final OptionKey<Boolean> InterproceduralAnalysis = new OptionKey<>(false);
 
     @Option(help = "Enable intraprocedural abstract interpretation analysis.")
-    public static final OptionKey<Boolean> IntraproceduralAnalysis = new OptionKey<>(false);
+    public static final OptionKey<Boolean> IntraproceduralAnalysis = new OptionKey<>(true);
 
     @Option(help = "Maximum recursion depth for interprocedural analysis.")
     public static final OptionKey<Integer> MaxRecursionDepth = new OptionKey<>(5);
@@ -70,7 +70,7 @@ public class AIFOptions {
     public static final OptionKey<String> IncludeMethodPattern = new OptionKey<>("");
 
     @Option(help = "Set verbosity level for abstract interpretation logging: SILENT, ERROR, WARN, INFO, DEBUG.")
-    public static final OptionKey<String> AILogLevel = new OptionKey<>("INFO");
+    public static final OptionKey<String> AILogLevel = new OptionKey<>("SILENT");
 
     @Option(help = "Enable logging to console for abstract interpretation.")
     public static final OptionKey<Boolean> AILogToConsole = new OptionKey<>(false);
@@ -81,7 +81,7 @@ public class AIFOptions {
     @Option(help = "File path for abstract interpretation log output.")
     public static final OptionKey<String> AILogFilePath = new OptionKey<>("ai_analysis.log");
 
-    @Option(help = "Enable IGV (Ideal Graph Visualizer) dumps for abstract interpretation. Works in conjunction with -Dump filter to control which methods are dumped.")
+    @Option(help = "Enable IGV dumps for abstract interpretation. Works in conjunction with -Dump filter to control which methods are dumped.")
     public static final OptionKey<Boolean> AIEnableIGVDump = new OptionKey<>(true);
 
     @Option(help = "Export analyzed graphs to JSON format for inspection.")
