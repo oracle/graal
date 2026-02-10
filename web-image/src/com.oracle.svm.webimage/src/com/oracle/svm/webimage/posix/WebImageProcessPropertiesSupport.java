@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
-import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 
@@ -64,13 +63,6 @@ public class WebImageProcessPropertiesSupport extends BaseProcessPropertiesSuppo
     @Override
     public String getObjectFile(CEntryPointLiteral<?> symbol) {
         return null;
-    }
-
-    /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
-    @Override
-    @SuppressWarnings("deprecation")
-    public String setLocale(String category, String locale) {
-        throw new UnsupportedOperationException("Not implemented yet.");
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -139,19 +139,6 @@ public final class ProcessProperties {
      */
     public static String getObjectFile(CEntryPointLiteral<?> symbol) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).getObjectFile(symbol);
-    }
-
-    /**
-     * Set the program locale.
-     *
-     * @since 19.0
-     * @deprecated in 25.0 without replacement. This method is inherently unsafe because
-     *             {@code setlocale(...)} is not thread-safe on the OS level.
-     */
-    @Deprecated(since = "25.0")
-    @SuppressWarnings("deprecation")
-    public static String setLocale(String category, String locale) {
-        return ImageSingletons.lookup(ProcessPropertiesSupport.class).setLocale(category, locale);
     }
 
     /**
