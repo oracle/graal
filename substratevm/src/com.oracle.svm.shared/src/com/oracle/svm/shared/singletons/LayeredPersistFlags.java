@@ -22,11 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.shared.singletons;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 
 public enum LayeredPersistFlags {
     /**

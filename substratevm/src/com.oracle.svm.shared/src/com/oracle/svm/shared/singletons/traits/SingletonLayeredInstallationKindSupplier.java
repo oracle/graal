@@ -22,15 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
+package com.oracle.svm.shared.singletons.traits;
 
 /**
- * This metadata class is used for {@link SingletonTrait}s which need to store no additional
- * content.
+ * Represents a supplier of the {@link SingletonTraitKind#LAYERED_INSTALLATION_KIND}
+ * {@link SingletonTrait}. See {@link SingletonTraits} and
+ * {@link SingletonTraitKind#LAYERED_INSTALLATION_KIND} for more information.
  */
-final class EmptyMetadata {
-    static final EmptyMetadata EMPTY = new EmptyMetadata();
-
-    private EmptyMetadata() {
-    }
+// Checkstyle: stop
+public abstract sealed class SingletonLayeredInstallationKindSupplier permits SingletonLayeredInstallationKind.UnavailableAtRuntime, SingletonLayeredInstallationKind.InitialLayerOnly, SingletonLayeredInstallationKind.ApplicationLayerOnly, SingletonLayeredInstallationKind.MultiLayer, SingletonLayeredInstallationKind.Duplicable {
+// Checkstyle: resume
+    public abstract SingletonTrait getLayeredInstallationKindTrait();
 }

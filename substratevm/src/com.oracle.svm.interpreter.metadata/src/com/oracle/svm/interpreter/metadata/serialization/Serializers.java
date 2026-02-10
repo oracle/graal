@@ -40,7 +40,7 @@ import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.graal.code.PreparedArgumentType;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;

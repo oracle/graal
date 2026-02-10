@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import static com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport.LayeredCallbacks;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,17 +45,17 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layered.LayeredFieldValue;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -69,7 +70,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * properly relayed to {@link CrossLayerFieldUpdaterFeature}.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredFieldValueTransformerSupport.LayeredCallbacks.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredCallbacks.class)
 public class LayeredFieldValueTransformerSupport implements InternalFeature {
 
     private final Map<AnalysisField, LayeredFieldValueTransformerImpl> fieldToLayeredTransformer = new ConcurrentHashMap<>();

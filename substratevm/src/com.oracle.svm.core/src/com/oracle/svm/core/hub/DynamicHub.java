@@ -85,6 +85,7 @@ import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -1045,7 +1046,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /**
      * The identifier of the {@linkplain com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport
      * layer} that introduces this type which is an index into the array returned by
-     * {@link com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton#getAllLayers}.
+     * {@link MultiLayeredImageSingleton#getAllLayers}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getLayerId() {

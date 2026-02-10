@@ -56,7 +56,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading.WithRuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.UnsafeFieldUtil;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.util.VMError;

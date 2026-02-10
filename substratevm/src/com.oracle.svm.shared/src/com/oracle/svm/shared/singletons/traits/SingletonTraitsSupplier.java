@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.shared.singletons.traits;
 
-import java.util.List;
+/**
+ * Represents a supplier of {@link SingletonTrait}s. See {@link SingletonTraits} for more
+ * information.
+ */
+public abstract class SingletonTraitsSupplier {
 
-public interface ImageSingletonWriter {
-
-    void writeBoolList(String keyName, List<Boolean> value);
-
-    void writeInt(String keyName, int value);
-
-    void writeIntList(String keyName, List<Integer> value);
-
-    void writeLong(String keyName, long value);
-
-    void writeString(String keyName, String value);
-
-    void writeStringList(String keyName, List<String> value);
+    public abstract SingletonTrait getTrait();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.shared.singletons;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
- * Flags used to determine how the native image generator can access the image singleton.
+ * Temporary class to handle guarantees for singletons. Should be removed and replaced with
+ * {@code VMError} once it is migrated (GR-73355).
  */
-public enum SingletonAccessFlags {
-    /**
-     * This singleton can only be accessed at runtime.
-     */
-    RUNTIME_ACCESS_ONLY,
-    /**
-     * This singleton can only be accessed at buildtime.
-     */
-    BUILDTIME_ACCESS_ONLY,
+public class Invariants {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void guarantee(boolean condition, String msg) {
+        if (!condition) {
+            throw new Error(msg);
+        }
+    }
 
-    /**
-     * This singleton can be accessed from both buildtime and runtime.
-     */
-    ALL_ACCESS
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static RuntimeException shouldNotReachHere(String msg) {
+        throw new Error(msg);
+    }
 }

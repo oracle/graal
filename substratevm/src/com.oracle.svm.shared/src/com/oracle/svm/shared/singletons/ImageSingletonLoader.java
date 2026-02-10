@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
+package com.oracle.svm.shared.singletons;
 
-/**
- * Represents a supplier of {@link SingletonTrait}s. See {@link SingletonTraits} for more
- * information.
- */
-public abstract class SingletonTraitsSupplier {
+import java.util.List;
 
-    public abstract SingletonTrait getTrait();
+public interface ImageSingletonLoader {
+
+    List<Boolean> readBoolList(String keyName);
+
+    int readInt(String keyName);
+
+    List<Integer> readIntList(String keyName);
+
+    long readLong(String keyName);
+
+    String readString(String keyName);
+
+    List<String> readStringList(String keyName);
 }

@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
+import static com.oracle.svm.shared.singletons.MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;

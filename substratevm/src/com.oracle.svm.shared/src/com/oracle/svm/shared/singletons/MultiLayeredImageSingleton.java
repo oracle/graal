@@ -22,10 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.shared.singletons;
 
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InstallationKind;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InstallationKind;
 
 public final class MultiLayeredImageSingleton {
 
@@ -52,7 +51,7 @@ public final class MultiLayeredImageSingleton {
      */
     @SuppressWarnings("unused")
     public static <T> T[] getAllLayers(Class<T> key) {
-        throw VMError.shouldNotReachHere("This can only be called during runtime");
+        throw Invariants.shouldNotReachHere("This can only be called during runtime");
     }
 
     /**
@@ -62,6 +61,6 @@ public final class MultiLayeredImageSingleton {
      */
     @SuppressWarnings("unused")
     public static <T> T getForLayer(Class<T> key, int index) {
-        throw VMError.shouldNotReachHere("This can only be called during runtime");
+        throw Invariants.shouldNotReachHere("This can only be called during runtime");
     }
 }

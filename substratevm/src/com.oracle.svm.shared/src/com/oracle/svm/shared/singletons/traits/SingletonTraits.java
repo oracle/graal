@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
+package com.oracle.svm.shared.singletons.traits;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -32,7 +32,7 @@ import java.lang.annotation.Target;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.UnavailableAtRuntime;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.UnavailableAtRuntime;
 
 /**
  * Denotes behaviors associated with a singleton. Each singleton can have multiple

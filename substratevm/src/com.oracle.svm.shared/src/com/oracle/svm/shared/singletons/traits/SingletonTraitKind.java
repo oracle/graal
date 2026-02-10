@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
+package com.oracle.svm.shared.singletons.traits;
 
 /**
  * Enumerates the different kinds of traits that can be associated with a singleton via
@@ -55,7 +55,7 @@ public enum SingletonTraitKind {
      *
      * <p>
      * In cases where this SingletonTrait is not defined the singleton will have the equivalent
-     * behavior as {@link com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Duplicable}.
+     * behavior as {@link SingletonLayeredInstallationKind.Duplicable}.
      */
     LAYERED_INSTALLATION_KIND(SingletonLayeredInstallationKind.class),
 

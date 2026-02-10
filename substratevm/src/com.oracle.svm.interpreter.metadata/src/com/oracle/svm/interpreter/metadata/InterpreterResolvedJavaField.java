@@ -41,14 +41,14 @@ import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;

@@ -22,15 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
+package com.oracle.svm.shared.singletons.traits;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.graal.nodes.LoadImageSingletonNode;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredAllowNullEntries;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.singletons.Invariants;
+import com.oracle.svm.shared.singletons.MultiLayeredAllowNullEntries;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 
 /**
  * {@link SingletonTrait} which describes how this singleton is installed in layered builds at run
@@ -134,11 +132,11 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
     public SingletonLayeredInstallationKind(InstallationKind kind, Object metadata) {
         this.kind = kind;
         this.metadata = metadata;
-        VMError.guarantee(kind.metadataClass.isInstance(metadata));
+        Invariants.guarantee(kind.metadataClass.isInstance(metadata), "Unexpected metadat kind.");
     }
 
     public static InstallationKind getInstallationKind(SingletonTrait trait) {
-        VMError.guarantee(trait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND);
+        Invariants.guarantee(trait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND, "Unexpected trait kind.");
         return ((SingletonLayeredInstallationKind) trait.metadata()).kind;
     }
 
