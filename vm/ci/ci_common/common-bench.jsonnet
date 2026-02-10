@@ -246,6 +246,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         self.polybench_wrap(['mx', '--dy', 'graalpython', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'python:benchmark']),
       ],
       notify_groups +: ['python'],
+      timelimit: '6:00:00',
     }
   ] + [
     # NFI polybench jobs
