@@ -1232,7 +1232,7 @@ class GraalVmNativeProperties(GraalVmProject):
 
 class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
-    implicit_excludes = ['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST']
+    implicit_excludes = ['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST', 'substratevm:SVM']
 
     def __init__(self, subject, args):
         """
