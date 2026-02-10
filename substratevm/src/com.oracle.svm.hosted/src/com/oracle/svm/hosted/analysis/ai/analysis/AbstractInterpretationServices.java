@@ -91,7 +91,9 @@ public final class AbstractInterpretationServices {
         if (root == null) {
             return Optional.empty();
         }
+
         for (var invokeInfo : root.getInvokes()) {
+            System.out.println("root: " + root + " invoke: " + invokeInfo.getTargetMethod().getName());
             if (invokeInfo.getTargetMethod().getName().equals(name)) {
                 return Optional.of(invokeInfo.getTargetMethod());
             }

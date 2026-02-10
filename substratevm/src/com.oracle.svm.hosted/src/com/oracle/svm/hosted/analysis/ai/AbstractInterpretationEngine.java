@@ -33,7 +33,8 @@ public class AbstractInterpretationEngine {
         var analysisServices = AbstractInterpretationServices.getInstance(bb);
         this.analyzerManager = analyzerManager;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
-        this.analysisRoot = analysisServices.getMainMethod(mainEntryPoint).orElse(null);
+//        this.analysisRoot = analysisServices.getMainMethod(mainEntryPoint).orElse(null);
+        this.analysisRoot = mainEntryPoint;
         this.invokedMethods = analysisServices.getInvokedMethods();
     }
 
@@ -99,40 +100,6 @@ public class AbstractInterpretationEngine {
             analyzer.runAnalysis(analysisRoot);
         }
         analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
-
-        // wip: PARALLEL VERSION, for now it is slow af
-        // Build local analyzers and run analyses in parallel
-        //        java.util.List<InterProceduralAnalyzer<Domain>> locals = rootMethods
-        //            .parallelStream()
-        //            .map(root -> {
-        //                if (root == null) {
-        //                    return null;
-        //                }
-        //                InterProceduralAnalyzer<Domain> local =
-        //                    new InterProceduralAnalyzer.Builder<>(
-        //                            analyzer.getInitialDomain().copyOf(),
-        //                            analyzer.getAbstractInterpreter(),
-        //                            analyzer.getAnalysisContext().getSummaryFactory(),
-        //                            analyzer.getAnalyzerMode())
-        //                        .iteratorPolicy(analyzer.getAnalysisContext().getIteratorPolicy())
-        //                        .checkerManager(analyzer.getAnalysisContext().getCheckerManager())
-        //                        .methodFilterManager(analyzer.getAnalysisContext().getMethodFilterManager())
-        //                        .maxRecursionDepth(analyzer.getMaxRecursionDepth())
-        //                        .maxCallStackDepth(analyzer.getMaxCallStackDepth())
-        //                        .build();
-        //                local.runAnalysis(root);
-        //                return local;
-        //            })
-        //            .filter(java.util.Objects::nonNull)
-        //            .toList();
-        //
-        //        for (InterProceduralAnalyzer<Domain> local : locals) {
-        //            analyzer.getSummaryManager().mergeAggregateOnly(local.getSummaryManager());
-        //            analyzer.getAnalysisContext().getMethodGraphCache().joinWith(local.getAnalysisContext().getMethodGraphCache());
-        //        }
-        //  var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();
-        //        var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
-        //        analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
     }
 
     private static final class InterResult<Domain extends AbstractDomain<Domain>> {

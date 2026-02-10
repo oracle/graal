@@ -1,7 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.analysis.context;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WeakTopologicalOrdering;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
@@ -9,14 +8,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Central cache for per-method graph artifacts (CFG, WTO, WPO), so they are built once per method
+ * Central cache for per-method graph artifacts (CFG, WTO), so they are built once per method
  * and shared across fixpoint iterators.
  */
 public final class MethodGraphCache {
 
     private final Map<AnalysisMethod, StructuredGraph> methodGraphMap = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, WeakTopologicalOrdering> methodWtoMap = new ConcurrentHashMap<>();
-    private final Map<AnalysisMethod, WeakPartialOrdering> methodWpoMap = new ConcurrentHashMap<>();
 
     public Map<AnalysisMethod, StructuredGraph> getMethodGraphMap() {
         return methodGraphMap;
@@ -47,22 +45,6 @@ public final class MethodGraphCache {
         methodWtoMap.put(method, wto);
     }
 
-    public Map<AnalysisMethod, WeakPartialOrdering> getMethodWpoMap() {
-        return methodWpoMap;
-    }
-
-    public boolean containsMethodWpo(AnalysisMethod method) {
-        return methodWpoMap.containsKey(method);
-    }
-
-    public void setMethodWpoMap(Map<AnalysisMethod, WeakPartialOrdering> map) {
-        methodWpoMap.clear();
-        methodWpoMap.putAll(map);
-    }
-
-    public void addToMethodWpoMap(AnalysisMethod method, WeakPartialOrdering wpo) {
-        methodWpoMap.put(method, wpo);
-    }
 
     public void joinWith(MethodGraphCache other) {
         for (var method : other.methodGraphMap.keySet()) {
@@ -70,10 +52,6 @@ public final class MethodGraphCache {
             if (other.methodWtoMap.containsKey(method)) {
                 methodWtoMap.put(method, other.methodWtoMap.get(method));
             }
-            if (other.methodWpoMap.containsKey(method)) {
-                methodWpoMap.put(method, other.methodWpoMap.get(method));
-            }
         }
     }
 }
-

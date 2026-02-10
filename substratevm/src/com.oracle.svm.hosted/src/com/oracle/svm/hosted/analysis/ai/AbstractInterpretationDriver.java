@@ -47,14 +47,9 @@ public class AbstractInterpretationDriver {
     /* To see the output of the abstract interpretation, run with -H:Log=AbstractInterpretation */
     @SuppressWarnings("try")
     public void run() {
-        // Check if abstract interpretation is enabled
-        if (!AIFOptions.RunAbstractInterpretation.getValue(options)) {
-            return;
-        }
-
-        try (ProgressReporter.ReporterClosable c = ProgressReporter.singleton().printAbstractInterpretation()) {
+        try (ProgressReporter.ReporterClosable _ = ProgressReporter.singleton().printAbstractInterpretation()) {
             /* Creating a new scope for logging, run with -H:Log=AbstractInterpretation to activate it */
-            try (var scope = debug.scope("AbstractInterpretation")) {
+            try (var _ = debug.scope("AbstractInterpretation")) {
                 prepareAnalyses();
                 engine.executeAbstractInterpretation();
             } catch (AbstractInterpretationException e) {
@@ -71,7 +66,6 @@ public class AbstractInterpretationDriver {
      * Configuration is driven by {@link AIFOptions}.
      */
     private void prepareAnalyses() {
-        // Configure logger based on options
         LoggerVerbosity verbosity = parseLogLevel(AIFOptions.AILogLevel.getValue(options));
         String logFilePath = AIFOptions.AILogToFile.getValue(options)
             ? AIFOptions.AILogFilePath.getValue(options)

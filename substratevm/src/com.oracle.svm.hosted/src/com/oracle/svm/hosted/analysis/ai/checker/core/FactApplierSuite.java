@@ -43,6 +43,21 @@ public final class FactApplierSuite {
         return suite;
     }
 
+    public static boolean shouldDumpGraphToIGV(StructuredGraph graph) {
+        return shouldDumpToIGV(graph);
+    }
+
+    private static boolean shouldDumpToIGV(StructuredGraph graph) {
+        if (!AbstractInterpretationLogger.getInstance().isGraphIgvDumpEnabled()) {
+            return false;
+        }
+        if (graph == null || graph.getDebug() == null) {
+            return false;
+        }
+        // Check if this method passes Graal's dump filter (respects -Dump option)
+        return graph.getDebug().isDumpEnabled(jdk.graal.compiler.debug.DebugContext.BASIC_LEVEL);
+    }
+
     /**
      * Executes the appliers in registration order and returns aggregate counters for stats.
      */
@@ -52,7 +67,7 @@ public final class FactApplierSuite {
             return ApplierResult.empty();
         }
 
-        if (logger.isGraphIgvDumpEnabled()) {
+        if (shouldDumpToIGV(graph)) {
             try (var session = new AbstractInterpretationLogger.IGVDumpSession(graph.getDebug(), graph, "FactApplierScope")) {
                 session.dumpBeforeSuite("running provided (" + appliers.size() + ") appliers");
                 return runAppliersInternal(method, graph, aggregator, session);

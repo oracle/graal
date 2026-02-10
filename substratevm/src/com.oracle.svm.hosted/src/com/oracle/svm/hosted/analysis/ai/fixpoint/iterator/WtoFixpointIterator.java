@@ -125,12 +125,10 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
             logger.log("Visit " + visitCount + ": old pre = " + oldPreCondition + ", post = " + postCondition, LoggerVerbosity.DEBUG);
 
             // Convergence criteria:
-            // 1. Exact equality (standard)
             // 2. postCondition <= oldPreCondition (domain order) after widening: stable over-approximation
-            boolean equal = oldPreCondition.equals(postCondition);
             boolean dominated = postCondition.leq(oldPreCondition);
-            if (equal || dominated) {
-                logger.log("Loop converged (" + (equal ? "equal" : "post ⊑ oldPre") + ") after " + (visitCount + 1) + " visits", LoggerVerbosity.DEBUG);
+            if (dominated) {
+                logger.log("Loop converged after: " + (visitCount + 1) + " visits", LoggerVerbosity.DEBUG);
                 iterate = false;
             } else {
                 logger.log("No convergence yet (post !<= oldPre). Extrapolating.", LoggerVerbosity.DEBUG);
