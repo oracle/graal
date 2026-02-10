@@ -18,7 +18,6 @@ echo "========================================"
 echo "Running Interprocedural AI Analysis"
 echo "Main Class: $MAIN_CLASS"
 echo "Recursion Depth: $RECURSION_DEPTH"
-echo "Mode: Context-sensitive analysis"
 echo "========================================"
 
 mx native-image -cp ~/graal/absint-tests/out $MAIN_CLASS  \

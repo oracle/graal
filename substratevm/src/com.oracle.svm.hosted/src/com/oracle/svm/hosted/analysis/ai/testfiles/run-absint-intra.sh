@@ -14,7 +14,6 @@ shift
 echo "========================================"
 echo "Running Intraprocedural AI Analysis"
 echo "Main Class: $MAIN_CLASS"
-echo "Mode: Single-method analysis only"
 echo "========================================"
 
 mx native-image -cp ~/graal/absint-tests/out $MAIN_CLASS  \
