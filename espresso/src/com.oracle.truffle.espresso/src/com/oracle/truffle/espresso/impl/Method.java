@@ -764,9 +764,16 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return getParameterCount() + (isStatic() ? 0 : 1);
     }
 
-    public static Method getHostReflectiveMethodRoot(StaticObject seed, Meta meta) {
-        assert seed.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(seed.getKlass());
-        StaticObject curMethod = seed;
+    /**
+     * Gets the {@link Method} value backing the {@link java.lang.reflect.Method} value in
+     * {@code reflectMethod}. This value is obtained by reading {@code reflectMethod.0vmMethod} (a
+     * hidden field described by {@link Meta#HIDDEN_FIELD_KEY}). If it's null, then this method
+     * follows the {@code reflectMethod.root} chain until a non-null {@code reflectMethod.0vmMethod}
+     * value is found.
+     */
+    public static Method getVMMethod(@JavaType(java.lang.reflect.Method.class) StaticObject reflectMethod, Meta meta) {
+        assert reflectMethod.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(reflectMethod.getKlass());
+        StaticObject curMethod = reflectMethod;
         do {
             Method target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
             if (target != null) {
@@ -778,9 +785,17 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         throw EspressoError.shouldNotReachHere("Could not find HIDDEN_METHOD_KEY");
     }
 
-    public static Method getHostReflectiveConstructorRoot(StaticObject seed, Meta meta) {
-        assert seed.getKlass().getMeta().java_lang_reflect_Constructor.isAssignableFrom(seed.getKlass());
-        StaticObject curMethod = seed;
+    /**
+     * Gets the {@link Method} value backing the {@link java.lang.reflect.Constructor} value in
+     * {@code reflectConstructor}. This value is obtained by reading
+     * {@code reflectConstructor.0vmMethod} (a hidden field described by
+     * {@link Meta#HIDDEN_FIELD_KEY}). If it's null, then this method follows the
+     * {@code reflectConstructor.root} chain until a non-null {@code reflectConstructor.0vmMethod}
+     * value is found.
+     */
+    public static Method getVMMethodForConstructor(@JavaType(java.lang.reflect.Constructor.class) StaticObject reflectConstructor, Meta meta) {
+        assert reflectConstructor.getKlass().getMeta().java_lang_reflect_Constructor.isAssignableFrom(reflectConstructor.getKlass());
+        StaticObject curMethod = reflectConstructor;
         StaticObject rootMethod;
         do {
             Method target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curMethod);

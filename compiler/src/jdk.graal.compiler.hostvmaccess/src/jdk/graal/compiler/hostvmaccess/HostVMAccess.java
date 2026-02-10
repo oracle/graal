@@ -166,9 +166,12 @@ final class HostVMAccess implements VMAccess {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static void makeAccessible(Executable executable) {
         try {
-            executable.setAccessible(true);
+            if (!executable.isAccessible()) {
+                executable.setAccessible(true);
+            }
         } catch (InaccessibleObjectException e) {
             Class<?> declaringClass = executable.getDeclaringClass();
             ModuleSupport.addOpens(HostVMAccess.class.getModule(), declaringClass.getModule(), declaringClass.getPackageName());
@@ -200,6 +203,24 @@ final class HostVMAccess implements VMAccess {
             return providers.getMetaAccess().lookupJavaMethod(executable);
         }
         return null;
+    }
+
+    @Override
+    public JavaConstant asFieldConstant(ResolvedJavaField field) {
+        if (field.isInternal()) {
+            return null;
+        }
+        SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
+        return snippetReflection.forObject(snippetReflection.originalField(field));
+    }
+
+    @Override
+    public JavaConstant asExecutableConstant(ResolvedJavaMethod method) {
+        if (method.isClassInitializer()) {
+            return null;
+        }
+        SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
+        return snippetReflection.forObject(snippetReflection.originalMethod(method));
     }
 
     @Override

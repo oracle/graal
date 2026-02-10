@@ -176,7 +176,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
             if (StaticObject.isNull(reflectionField)) {
                 throw meta.throwNullPointerExceptionBoundary();
             }
-            Field field = Field.getReflectiveFieldRoot(reflectionField, meta);
+            Field field = Field.getVMField(reflectionField, meta);
             StaticObject holderMirror = toJVMCIInstanceType(field.getDeclaringKlass(), objectTypeConstructor, context, meta);
             return toJVMCIField(field, holderMirror, fieldConstructor, context, meta);
         }
@@ -197,7 +197,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
             if (StaticObject.isNull(reflectionObject)) {
                 throw meta.throwNullPointerExceptionBoundary();
             }
-            Method method = Method.getHostReflectiveMethodRoot(reflectionObject, meta);
+            Method method = Method.getVMMethod(reflectionObject, meta);
             StaticObject holderMirror = toJVMCIInstanceType(method.getDeclaringKlass(), objectTypeConstructor, context, meta);
             return toJVMCIMethod(method, holderMirror, methodConstructor, context, meta);
         }
@@ -218,7 +218,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
             if (StaticObject.isNull(reflectionObject)) {
                 throw meta.throwNullPointerExceptionBoundary();
             }
-            Method method = Method.getHostReflectiveConstructorRoot(reflectionObject, meta);
+            Method method = Method.getVMMethodForConstructor(reflectionObject, meta);
             StaticObject holderMirror = toJVMCIInstanceType(method.getDeclaringKlass(), objectTypeConstructor, context, meta);
             return toJVMCIMethod(method, holderMirror, methodConstructor, context, meta);
         }

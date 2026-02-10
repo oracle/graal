@@ -66,7 +66,7 @@ public final class ArrayKlass extends Klass {
         this.dimension = TypeSymbols.getArrayDimensions(getType());
         this.redefineAssumption = componentType.getRedefineAssumption();
         assert getMeta().java_lang_Class != null;
-        initializeEspressoClass();
+        initializeGuestClassMirror();
     }
 
     @Override

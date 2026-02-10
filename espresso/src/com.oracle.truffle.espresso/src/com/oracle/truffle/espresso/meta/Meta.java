@@ -1192,7 +1192,7 @@ public final class Meta extends ContextAccessImpl
     }
 
     private static void initializeEspressoClassInHierarchy(ObjectKlass klass) {
-        klass.initializeEspressoClass();
+        klass.initializeGuestClassMirror();
         if (klass.getSuperKlass() != null) {
             initializeEspressoClassInHierarchy(klass.getSuperKlass());
         }

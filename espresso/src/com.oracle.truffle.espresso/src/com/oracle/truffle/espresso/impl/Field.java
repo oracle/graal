@@ -68,6 +68,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe;
 
 /**
@@ -223,8 +224,15 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         }
     }
 
-    public static Field getReflectiveFieldRoot(StaticObject seed, Meta meta) {
-        StaticObject curField = seed;
+    /**
+     * Gets the {@link Field} value backing the {@link java.lang.reflect.Field} value in
+     * {@code reflectField}. This value is obtained by reading {@code reflectField.0vmField} (a
+     * hidden field described by {@link Meta#HIDDEN_FIELD_KEY}). If it's null, then this method
+     * follows the {@code reflectField.root} chain until a non-null {@code reflectField.0vmField}
+     * value is found.
+     */
+    public static Field getVMField(@JavaType(java.lang.reflect.Field.class) StaticObject reflectField, Meta meta) {
+        StaticObject curField = reflectField;
         Field target = null;
         while (target == null) {
             target = (Field) meta.HIDDEN_FIELD_KEY.getHiddenObject(curField);

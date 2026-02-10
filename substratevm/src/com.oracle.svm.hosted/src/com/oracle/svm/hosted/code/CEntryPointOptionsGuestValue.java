@@ -38,16 +38,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * @param epilogue {@link CEntryPointOptions#epilogue()}
  * @param callerEpilogue {@link CEntryPointOptions#callerEpilogue()}
  */
-public record CEntryPointOptionsValue(ResolvedJavaType nameTransformation,
+public record CEntryPointOptionsGuestValue(ResolvedJavaType nameTransformation,
                 ResolvedJavaType prologue,
                 ResolvedJavaType prologueBailout,
                 ResolvedJavaType epilogue,
                 ResolvedJavaType callerEpilogue) {
-    public static CEntryPointOptionsValue from(AnnotationValue av) {
+    public static CEntryPointOptionsGuestValue from(AnnotationValue av) {
         if (av == null) {
             return null;
         }
-        return new CEntryPointOptionsValue(
+        return new CEntryPointOptionsGuestValue(
                         av.getType("nameTransformation"),
                         av.getType("prologue"),
                         av.getType("prologueBailout"),

@@ -53,7 +53,7 @@ public final class PrimitiveKlass extends Klass {
         assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
         this.primitiveKind = primitiveKind;
         assert getMeta().java_lang_Class != null;
-        initializeEspressoClass();
+        initializeGuestClassMirror();
     }
 
     public JavaKind getPrimitiveJavaKind() {

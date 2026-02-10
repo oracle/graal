@@ -395,10 +395,10 @@ public final class ClassRegistries {
     public void processFixupList(StaticObject javaBase) {
         assert StaticObject.notNull(javaBase);
         for (PrimitiveKlass k : context.getMeta().PRIMITIVE_KLASSES) {
-            context.getMeta().java_lang_Class_module.setObject(k.initializeEspressoClass(), javaBase);
+            context.getMeta().java_lang_Class_module.setObject(k.initializeGuestClassMirror(), javaBase);
         }
         for (Klass k : fixupModuleList) {
-            context.getMeta().java_lang_Class_module.setObject(k.initializeEspressoClass(), javaBase);
+            context.getMeta().java_lang_Class_module.setObject(k.initializeGuestClassMirror(), javaBase);
         }
         fixupModuleList = null;
     }

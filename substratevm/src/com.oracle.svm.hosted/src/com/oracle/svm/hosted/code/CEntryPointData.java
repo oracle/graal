@@ -92,8 +92,8 @@ public final class CEntryPointData {
     public static final ResolvedJavaType FATAL_EXCEPTION_HANDLER = GraalAccess.lookupType(CEntryPoint.FatalExceptionHandler.class);
 
     public static CEntryPointData create(ResolvedJavaMethod method, String name) {
-        CEntryPointValue cEntryPoint = CEntryPointValue.from(AnnotationUtil.getAnnotationValue(method, CEntryPoint.class));
-        CEntryPointOptionsValue cEntryPointOptions = CEntryPointOptionsValue.from(AnnotationUtil.getAnnotationValue(method, CEntryPointOptions.class));
+        CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.from(AnnotationUtil.getAnnotationValue(method, CEntryPoint.class));
+        CEntryPointOptionsGuestValue cEntryPointOptions = CEntryPointOptionsGuestValue.from(AnnotationUtil.getAnnotationValue(method, CEntryPointOptions.class));
         assert cEntryPoint.name().isEmpty() || name.isEmpty();
         return create(cEntryPoint, cEntryPointOptions,
                         () -> !name.isEmpty() ? name : NativeImage.globalSymbolNameForMethod(method));
@@ -139,7 +139,7 @@ public final class CEntryPointData {
         return unpublished;
     }
 
-    private static CEntryPointData create(CEntryPointValue cEntryPoint, CEntryPointOptionsValue options, Supplier<String> alternativeNameSupplier) {
+    private static CEntryPointData create(CEntryPointGuestValue cEntryPoint, CEntryPointOptionsGuestValue options, Supplier<String> alternativeNameSupplier) {
         String annotatedName = cEntryPoint.name();
         ResolvedJavaType nameTransformation = DEFAULT_NAME_TRANSFORMATION;
         List<String> docLines = cEntryPoint.documentation();

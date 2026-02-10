@@ -2510,7 +2510,7 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     public @Handle(Field.class) long FromReflectedField(@JavaType(java.lang.reflect.Field.class) StaticObject field) {
         assert InterpreterToVM.instanceOf(field, getMeta().java_lang_reflect_Field);
-        Field guestField = Field.getReflectiveFieldRoot(field, getMeta());
+        Field guestField = Field.getVMField(field, getMeta());
         guestField.getDeclaringKlass().initialize();
         return fieldIds().handlify(guestField);
     }
@@ -2525,9 +2525,9 @@ public final class JniEnv extends NativeEnv {
         assert InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Method) || InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor);
         Method guestMethod;
         if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Method)) {
-            guestMethod = Method.getHostReflectiveMethodRoot(method, getMeta());
+            guestMethod = Method.getVMMethod(method, getMeta());
         } else if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor)) {
-            guestMethod = Method.getHostReflectiveConstructorRoot(method, getMeta());
+            guestMethod = Method.getVMMethodForConstructor(method, getMeta());
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();

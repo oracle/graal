@@ -3432,9 +3432,9 @@ public final class VM extends NativeEnv {
 
         Method method;
         if (meta.java_lang_reflect_Method.isAssignableFrom(executable.getKlass())) {
-            method = Method.getHostReflectiveMethodRoot(executable, meta);
+            method = Method.getVMMethod(executable, meta);
         } else if (meta.java_lang_reflect_Constructor.isAssignableFrom(executable.getKlass())) {
-            method = Method.getHostReflectiveConstructorRoot(executable, meta);
+            method = Method.getVMMethodForConstructor(executable, meta);
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();

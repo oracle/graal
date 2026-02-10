@@ -699,8 +699,11 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @CompilationFinal //
     private ArrayKlass arrayKlass;
 
+    /**
+     * The guest {@link Class} mirror associated with this {@link Klass} instance.
+     */
     @CompilationFinal //
-    private StaticObject espressoClass;
+    private StaticObject guestClassMirror;
 
     @CompilationFinal //
     private Class<?> dispatch;
@@ -886,7 +889,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
      * Returns the guest {@link Class} object associated with this {@link Klass} instance.
      */
     public final @JavaType(Class.class) StaticObject mirror() {
-        StaticObject result = this.espressoClass;
+        StaticObject result = this.guestClassMirror;
         assert result != null;
         assert getMeta().java_lang_Class != null;
         return result;
@@ -895,14 +898,14 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
                     justification = "espressoClass is deliberately non-volatile since it uses \"Unsafe Local DCL + Safe Singleton\" as described in https://shipilev.net/blog/2014/safe-public-construction\n" +
                                     "A static hasFinalInstanceField(StaticObject.class) assertion ensures correctness.")
-    public final StaticObject initializeEspressoClass() {
+    public final StaticObject initializeGuestClassMirror() {
         CompilerAsserts.neverPartOfCompilation();
-        StaticObject result = this.espressoClass;
+        StaticObject result = this.guestClassMirror;
         if (result == null) {
             synchronized (this) {
-                result = this.espressoClass;
+                result = this.guestClassMirror;
                 if (result == null) {
-                    this.espressoClass = result = getAllocator().createClass(this);
+                    this.guestClassMirror = result = getAllocator().createClass(this);
                 }
             }
         }

@@ -224,18 +224,18 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
         return getNonArrayType(value, access);
     }
 
-    static EspressoExternalResolvedJavaMethod methodAsJavaResolvedMethod(Value value, EspressoExternalVMAccess access) {
-        Value type = value.invokeMember("getDeclaringClass");
-        EspressoExternalResolvedInstanceType holder = (EspressoExternalResolvedInstanceType) getNonArrayType(type, access);
-        Value vmMethod = access.invokeJVMCIHelper("getVMMethod", value);
-        return new EspressoExternalResolvedJavaMethod(holder, vmMethod);
+    static EspressoExternalResolvedJavaMethod methodAsJavaResolvedMethod(Value reflectExecutable, EspressoExternalVMAccess access) {
+        Value declaringClass = reflectExecutable.invokeMember("getDeclaringClass");
+        EspressoExternalResolvedInstanceType holder = (EspressoExternalResolvedInstanceType) getNonArrayType(declaringClass, access);
+        Value vmMethod = access.invokeJVMCIHelper("getVMMethod", reflectExecutable);
+        return new EspressoExternalResolvedJavaMethod(holder, vmMethod, reflectExecutable);
     }
 
-    static EspressoExternalResolvedJavaField fieldAsJavaResolvedField(Value value, EspressoExternalVMAccess access) {
-        Value type = value.invokeMember("getDeclaringClass");
-        EspressoExternalResolvedInstanceType holder = (EspressoExternalResolvedInstanceType) getNonArrayType(type, access);
-        Value vmField = access.invokeJVMCIHelper("getVMField", value);
-        return new EspressoExternalResolvedJavaField(holder, vmField);
+    static EspressoExternalResolvedJavaField fieldAsJavaResolvedField(Value reflectField, EspressoExternalVMAccess access) {
+        Value declaringClass = reflectField.invokeMember("getDeclaringClass");
+        EspressoExternalResolvedInstanceType holder = (EspressoExternalResolvedInstanceType) getNonArrayType(declaringClass, access);
+        Value vmField = access.invokeJVMCIHelper("getVMField", reflectField);
+        return new EspressoExternalResolvedJavaField(holder, vmField, reflectField);
     }
 
     private static EspressoResolvedJavaType getNonArrayType(Value value, EspressoExternalVMAccess access) {
