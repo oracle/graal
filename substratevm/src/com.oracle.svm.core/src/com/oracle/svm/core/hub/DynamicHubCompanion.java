@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
@@ -155,7 +156,7 @@ public final class DynamicHubCompanion {
     Target_java_lang_Class_AnnotationData annotationData;
     Constructor<?> cachedConstructor;
     Object jfrEventConfiguration;
-    @Stable boolean canUnsafeAllocate;
+    @Stable RuntimeDynamicAccessMetadata canUnsafeAllocate;
     Object classData;
 
     @Platforms(Platform.HOSTED_ONLY.class)

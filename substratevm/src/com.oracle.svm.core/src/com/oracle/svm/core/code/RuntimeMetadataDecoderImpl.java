@@ -302,6 +302,13 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     }
 
     @Override
+    public RuntimeDynamicAccessMetadata parseDynamicAccessMetadata(int index, int layerId) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+        boolean preserved = reader.getU1() == 1;
+        return decodeDynamicAccessMetadata(reader, layerId, preserved);
+    }
+
+    @Override
     public boolean isHiding(int modifiers) {
         return (modifiers & HIDING_FLAG_MASK) != 0;
     }

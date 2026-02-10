@@ -289,6 +289,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         int enabledQueries = dataBuilder.getEnabledReflectionQueries(javaClass);
         VMError.guarantee((classAccessFlags & enabledQueries) == 0);
         int flags = classAccessFlags | enabledQueries;
+        RuntimeDynamicAccessMetadata unsafeAllocation = dataBuilder.getUnsafeAllocationMetadata(javaClass);
 
         /* Register string and class values in annotations */
         encoders.classes.addObject(javaClass);
@@ -308,11 +309,17 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 addConstantObject(signerConstants[i]);
             }
         }
+        if (unsafeAllocation != null) {
+            for (Class<?> conditionType : unsafeAllocation.getTypesForEncoding()) {
+                encoders.classes.addObject(conditionType);
+            }
+        }
         AnalysisType analysisType = type.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisType);
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisType);
 
-        registerClass(type, new ClassMetadata(innerTypes, enclosingMethodInfo, recordComponents, permittedSubtypes, nestMemberTypes, signerConstants, flags, annotations, typeAnnotations));
+        registerClass(type, new ClassMetadata(innerTypes, enclosingMethodInfo, recordComponents, permittedSubtypes, nestMemberTypes, signerConstants, flags, unsafeAllocation, annotations,
+                        typeAnnotations));
     }
 
     private void addConstantObject(JavaConstant constant) {
@@ -805,7 +812,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             if (!declaringType.getWrapped().isInSharedLayer()) {
                 int enclosingMethodInfoIndex = classMetadata.enclosingMethodInfo instanceof Throwable
                                 ? encodeErrorIndex((Throwable) classMetadata.enclosingMethodInfo)
-                                : addElement(buf, encodeEnclosingMethodInfo((Object[]) classMetadata.enclosingMethodInfo));
+                                : encodeAndAddElement(buf, b -> encodeEnclosingMethodInfo(b, (Object[]) classMetadata.enclosingMethodInfo));
                 int annotationsIndex = addEncodedElement(buf, encodeAnnotations(classMetadata.annotations));
                 int typeAnnotationsIndex = addEncodedElement(buf, encodeTypeAnnotations(classMetadata.typeAnnotations));
                 int classesEncodingIndex = encodeAndAddCollection(buf, classMetadata.classes, classLookupErrors.get(declaringType), this::encodeType, false);
@@ -822,9 +829,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             int methodsIndex = encodeAndAddCollection(buf, getMethods(declaringType), methodLookupErrors.get(declaringType), this::encodeExecutable, false);
             int constructorsIndex = encodeAndAddCollection(buf, getConstructors(declaringType), constructorLookupErrors.get(declaringType), this::encodeExecutable, false);
             int recordComponentsIndex = encodeAndAddCollection(buf, classMetadata.recordComponents, recordComponentLookupErrors.get(declaringType), this::encodeRecordComponent, true);
+            int unsafeAllocationIndex = encodeAndAddElement(buf, b -> encodeDynamicAccess(b, classMetadata.unsafeAllocation));
             int classFlags = classMetadata.flags;
-            if (anySet(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex) || classFlags != hub.getModifiers()) {
-                hub.setReflectionMetadata(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex, classFlags);
+            if (anySet(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex, unsafeAllocationIndex) || classFlags != hub.getModifiers()) {
+                hub.setReflectionMetadata(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex, unsafeAllocationIndex, classFlags);
             }
         }
 
@@ -895,11 +903,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return offset;
     }
 
-    private static int addElement(UnsafeArrayTypeWriter buf, byte[] encoding) {
-        if (encoding == null) {
+    private static int encodeAndAddElement(UnsafeArrayTypeWriter buf, Consumer<UnsafeArrayTypeWriter> encoder) {
+        int offset = TypeConversion.asS4(buf.getBytesWritten());
+        UnsafeArrayTypeWriter elementBuf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
+        encoder.accept(elementBuf);
+        byte[] encoding = elementBuf.toArray();
+        if (encoding.length == 0) {
             return NO_DATA;
         }
-        int offset = TypeConversion.asS4(buf.getBytesWritten());
         encodeBytes(buf, encoding);
         return offset;
     }
@@ -956,6 +967,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 encodeOtherString(buf, field.deletedReason);
             }
         }
+    }
+
+    private void encodeDynamicAccess(UnsafeArrayTypeWriter buf, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        if (dynamicAccessMetadata == null) {
+            return;
+        }
+        buf.putU1(dynamicAccessMetadata.isPreserved() ? 1 : 0);
+        encodeConditions(buf, dynamicAccessMetadata);
     }
 
     private void encodeConditions(UnsafeArrayTypeWriter buf, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
@@ -1162,16 +1181,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         encodeByteArray(buf, encodeTypeAnnotations(recordComponent.typeAnnotations));
     }
 
-    private byte[] encodeEnclosingMethodInfo(Object[] enclosingMethodInfo) {
+    private void encodeEnclosingMethodInfo(UnsafeArrayTypeWriter buf, Object[] enclosingMethodInfo) {
         if (enclosingMethodInfo == null) {
-            return null;
+            return;
         }
         assert enclosingMethodInfo.length == 3;
-        UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         encodeType(buf, (Class<?>) enclosingMethodInfo[0]);
         encodeMemberName(buf, (String) enclosingMethodInfo[1]);
         encodeOtherString(buf, (String) enclosingMethodInfo[2]);
-        return buf.toArray();
     }
 
     static final class ReflectionDataAccessors {
