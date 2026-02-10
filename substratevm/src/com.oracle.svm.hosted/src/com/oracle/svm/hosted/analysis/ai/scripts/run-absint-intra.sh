@@ -25,7 +25,7 @@ mx native-image -cp ~/graal/absint-tests/out $MAIN_CLASS  \
     -H:+RunAbstractInterpretation \
     -H:+IntraproceduralAnalysis \
     -H:-InterproceduralAnalysis \
-    -H:AILogLevel=INFO \
+    -H:AILogLevel=SILENT \
     -H:+AILogToFile \
     -H:AILogFilePath=intra_${MAIN_CLASS}.log \
     -H:+PrintOptimizationSummary \
