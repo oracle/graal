@@ -80,9 +80,9 @@ public class InitialLayerFeature implements InternalFeature {
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class), PINNED_TO_INITIAL_LAYER);
 
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
-        access.getUniverse().lookup(GuestTypes.UNINTERRUPTIBLE_TYPE).registerAsReachable("Core type");
+        access.getUniverse().lookup(GuestTypes.Uninterruptible).registerAsReachable("Core type");
         metaAccess.lookupJavaType(UninterruptibleUtils.class).registerAsReachable("Core type");
-        access.getUniverse().lookup(getProxyClass(GuestTypes.UNINTERRUPTIBLE_TYPE)).registerAsInstantiated("Core type");
+        access.getUniverse().lookup(getProxyClass(GuestTypes.Uninterruptible)).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.ExceptionWrapper.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(UnmanagedMemory.class).registerAsReachable("Core type");

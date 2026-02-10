@@ -108,15 +108,15 @@ public class UninterruptibleAnnotationUtils {
             return null;
         }
 
-        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.UNINTERRUPTIBLE_TYPE));
+        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.Uninterruptible));
         if (annotation != null) {
             /* Explicit annotated method. */
             return annotation;
         }
 
-        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.C_FUNCTION_TYPE));
+        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.CFunction));
         InvokeCFunctionPointerGuestValue cFunctionPointerAnnotation = InvokeCFunctionPointerGuestValue
-                        .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.INVOKE_C_FUNCTION_POINTER_TYPE));
+                        .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.InvokeCFunctionPointer));
         if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
                         (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
             /*
@@ -166,7 +166,7 @@ public class UninterruptibleAnnotationUtils {
                 return true;
             }
             UninterruptibleGuestValue calleeUninterruptibleAnnotation = UninterruptibleGuestValue
-                            .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(callee).get(GuestTypes.UNINTERRUPTIBLE_TYPE));
+                            .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(callee).get(GuestTypes.Uninterruptible));
             if (calleeUninterruptibleAnnotation != null && calleeUninterruptibleAnnotation.mayBeInlined()) {
                 return true;
             }

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.reflect.Proxy;
 import java.util.Objects;
 
 import org.graalvm.nativeimage.Platform;
@@ -33,6 +34,7 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.vmaccess.VMAccess;
+import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -42,10 +44,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class GuestTypes {
 
-    public static final ResolvedJavaType UNINTERRUPTIBLE_TYPE = lookupType("com.oracle.svm.guest.staging.Uninterruptible");
-    public static final ResolvedJavaType C_FUNCTION_TYPE = lookupType(CFunction.class);
-    public static final ResolvedJavaType INVOKE_C_FUNCTION_POINTER_TYPE = lookupType(InvokeCFunctionPointer.class);
-    public static final ResolvedJavaType INTERNAL_VM_METHOD_TYPE = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
+    public static final ResolvedJavaType java_lang_Class = lookupType(Class.class);
+    public static final ResolvedJavaType java_lang_reflect_Proxy = lookupType(Proxy.class);
+    public static final ResolvedJavaType jdk_internal_loader_ClassLoaders = lookupType(ClassLoaders.class);
+
+    public static final ResolvedJavaType Uninterruptible = lookupType("com.oracle.svm.guest.staging.Uninterruptible");
+    public static final ResolvedJavaType CFunction = lookupType(CFunction.class);
+    public static final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
+    public static final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
 
     private static ResolvedJavaType lookupType(Class<?> clazz) {
         ResolvedJavaType type = GraalAccess.getVMAccess().getProviders().getMetaAccess().lookupJavaType(clazz);

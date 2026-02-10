@@ -48,7 +48,7 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeMethod {
      * uninterruptible itself.
      */
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
-                    newAnnotationValue(GuestTypes.UNINTERRUPTIBLE_TYPE,
+                    newAnnotationValue(GuestTypes.Uninterruptible,
                                     "reason", "Entry point",
                                     "calleeMustBe", false));
 

@@ -261,7 +261,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
                     newAnnotationValue(ExplicitCallingConvention.class,
                                     "value", SubstrateCallingConventionKind.Custom),
-                    newAnnotationValue(GuestTypes.UNINTERRUPTIBLE_TYPE,
+                    newAnnotationValue(GuestTypes.Uninterruptible,
                                     "calleeMustBe", false,
                                     "reason", "Directly accesses registers and IsolateThread might not be correctly set up"));
 

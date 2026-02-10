@@ -514,7 +514,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             registerAsDeleted(annotated, original, deleteAnnotation);
         } else if (substituteAnnotation != null) {
-            if (AnnotationUtil.isAnnotationPresent(annotated, GuestTypes.UNINTERRUPTIBLE_TYPE) && !isEffectivelyFinal(original)) {
+            if (AnnotationUtil.isAnnotationPresent(annotated, GuestTypes.Uninterruptible) && !isEffectivelyFinal(original)) {
                 throw UserError.abort("@Uninterruptible may only be combined with @Substitute if the original method is effectively final: %s", annotatedMethod);
             }
 
@@ -524,7 +524,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             register(methodSubstitutions, annotated, original, substitution);
         } else if (annotateOriginalAnnotation != null) {
-            if (AnnotationUtil.isAnnotationPresent(annotated, GuestTypes.UNINTERRUPTIBLE_TYPE) && !isEffectivelyFinal(original)) {
+            if (AnnotationUtil.isAnnotationPresent(annotated, GuestTypes.Uninterruptible) && !isEffectivelyFinal(original)) {
                 throw UserError.abort("@Uninterruptible may only be combined with @AnnotateOriginal if the original method is effectively final: %s", annotatedMethod);
             }
 
