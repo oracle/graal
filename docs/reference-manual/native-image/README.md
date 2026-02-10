@@ -323,7 +323,7 @@ The analysis can determine some cases of dynamic class loading, but it cannot al
 To deal with these dynamic features of Java, you inform the analysis with details of the classes that use Reflection, Proxy, and so on, or what classes to be dynamically loaded.
 To achieve this, you either provide the `native-image` tool with JSON-formatted configuration files or pre-compute metadata in the code.
 
-To learn more about metadata, ways to provide it, and supported metadata types, see [Reachability Metadata](ReachabilityMetadata.md).
+To learn more about metadata, ways to provide it, and supported metadata types, see [Reachability Metadata](ReachabilityMetadata.md). For a comprehensive reference of JSON configuration fields, see the [Reachability Metadata JSON Format Reference](ReachabilityMetadata.md#reachability-metadata-json-format-reference).
 To automatically collect metadata for your application, see [Automatic Collection of Metadata](AutomaticMetadataCollection.md).
 
 Some applications may need additional configuration to be compiled with Native Image.

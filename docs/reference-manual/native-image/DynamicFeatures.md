@@ -11,7 +11,7 @@ When you build a native image, it only includes the reachable elements starting 
 However, the reachability of some elements may not be discoverable due to Java’s dynamic features including reflection, resource access, etc. 
 If an element is not reachable, it will not be included in the generated binary and this can lead to run time failures.
 
-Thus, some dynamic Java features may require special "treatment" such as a command line option or provisioning metadata to be compatible with ahead-of-time compilation using Native Image. 
+Thus, some dynamic Java features may require special "treatment" such as a command line option or provisioning metadata to be compatible with ahead-of-time compilation using Native Image. For a comprehensive reference of metadata JSON configuration fields, see [Reachability Metadata JSON Format Reference](ReachabilityMetadata.md#reachability-metadata-json-format-reference). 
 
 The reference information here explains how Native Image handles some dynamic features of Java:
 
