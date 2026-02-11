@@ -77,6 +77,8 @@ public final class ParserField implements AttributedElement {
         this.attributes = attributes;
     }
 
+    /// Determines if this field is not defined in a class file but is injected
+    /// by `com.oracle.truffle.espresso.impl.LinkedKlassFieldLayout.HiddenField`.
     public boolean isHidden() {
         return (flags & ACC_HIDDEN) != 0;
     }

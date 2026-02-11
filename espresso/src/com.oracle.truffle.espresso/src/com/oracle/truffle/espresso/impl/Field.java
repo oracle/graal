@@ -59,6 +59,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.impl.LinkedKlassFieldLayout.HiddenField;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
@@ -159,6 +160,9 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         return genericSignature;
     }
 
+    /**
+     * @see HiddenField
+     */
     public final boolean isHidden() {
         return linkedField.isHidden();
     }

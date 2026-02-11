@@ -557,8 +557,9 @@ public class EspressoSymbols {
      * Contains commonly used (name) symbols.
      * <p>
      * Symbols declared here must match exactly the field name; notable exceptions include
-     * {@link Names#_init_}, {@link Names#_clinit_} and hidden field names. Hidden field names are
-     * for injected fields and are exactly those that start with {@code "0"}.
+     * {@link Names#_init_}, {@link Names#_clinit_} and hidden field (see
+     * {@code com.oracle.truffle.espresso.impl.LinkedKlassFieldLayout.HiddenField}) names. Hidden
+     * field names are exactly those that start with {@code "0"}.
      */
     public static class Names {
 
