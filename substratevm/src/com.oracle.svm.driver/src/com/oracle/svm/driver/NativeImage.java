@@ -106,6 +106,7 @@ import com.oracle.svm.hosted.CommonPoolUncaughtExceptionHandler;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.StringUtil;
@@ -1594,8 +1595,18 @@ public class NativeImage {
         if (!applicationModules.isEmpty()) {
             // Remove modules that we already have built-in
             applicationModules.keySet().removeAll(getBuiltInModules());
-            // Remove modules that we get from the builder
-            applicationModules.keySet().removeAll(getModulesFromPath(mp).keySet());
+
+            String selectEspressoGuest = "-D" + GraalAccess.NAME_PROPERTY + "=espresso";
+            if (!javaArgs.contains(selectEspressoGuest)) {
+                /*
+                 * When using HostVMAccess, the NativeImageClassLoader delegates to
+                 * ClassLoaders#appClassLoader. In that configuration, a module (such as
+                 * org.graalvm.nativeimage.guest.staging) on both the image module path and builder
+                 * module path results in resolving the module twice, causing problems during module
+                 * resolution.
+                 */
+                applicationModules.keySet().removeAll(getModulesFromPath(mp).keySet());
+            }
         }
         List<Path> finalImageModulePath = applicationModules.values().stream().toList();
 

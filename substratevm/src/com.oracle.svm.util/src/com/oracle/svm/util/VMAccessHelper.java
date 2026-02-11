@@ -136,7 +136,7 @@ public class VMAccessHelper {
     }
 
     /**
-     * Short-cut for {@code this.object(String.class, val)}.
+     * Short-cut for {@code asHostObject(String.class, val)}.
      */
     public String asHostString(JavaConstant val) {
         return asHostObject(String.class, val);

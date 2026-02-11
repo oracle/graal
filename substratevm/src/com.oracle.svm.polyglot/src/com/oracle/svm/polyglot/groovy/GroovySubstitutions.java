@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
 
 final class GroovyIndyInterfaceFeature implements Feature {
 
@@ -52,7 +51,7 @@ final class GroovyIndyInterfaceFeature implements Feature {
 final class Target_org_codehaus_groovy_vmplugin_v7_IndyInterface_invalidateSwitchPoints {
     @Substitute
     protected static void invalidateSwitchPoints() {
-        VMError.shouldNotReachHere("IndyInterface.invalidateSwitchPoints() is not supported.");
+        throw new Error("IndyInterface.invalidateSwitchPoints() is not supported.");
     }
 }
 

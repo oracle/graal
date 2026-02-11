@@ -90,7 +90,7 @@ public final class GraalAccess {
     private static final String PROPERTY_PREFIX = ImageInfo.PROPERTY_NATIVE_IMAGE_PREFIX + "vmaccess.";
 
     /// Name of the property for selecting the guest context implementation.
-    private static final String NAME_PROPERTY = PROPERTY_PREFIX + "name";
+    public static final String NAME_PROPERTY = PROPERTY_PREFIX + "name";
 
     //@formatter:off
     /// Name of the property for setting guest context options. If the value of the option

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.polyglot.scala;
+package com.oracle.svm.hosted.scala;
 
 import java.util.Arrays;
 import java.util.function.BooleanSupplier;
@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -44,6 +45,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@AutomaticallyRegisteredFeature
 public class ScalaFeature implements InternalFeature {
 
     public static final String UNSUPPORTED_SCALA_VERSION = "This is not a supported Scala version. native-image supports Scala 2.11.x and onwards.";
