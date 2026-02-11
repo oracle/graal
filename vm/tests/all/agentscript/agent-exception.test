@@ -62,10 +62,10 @@ good you are?
 >[1] js --jvm --insight=agent-error3.js log.js
 insight: Unknown event type 'enterOrLeave'.*
 >[7] js --jvm --insight=agent-error.js log.js
-Error while initializing {id: "insight", version: "1.2"}
+Error while initializing {id: "insight", version: "1.3"}
 .*at <js> :.*agent-error.js.*
 >[7] js --insight=agent-error.js log.js
-Error while initializing {id: "insight", version: "1.2"}
+Error while initializing {id: "insight", version: "1.3"}
 .*at <js> :.*agent-error.js.*
 >[7] js --jvm --insight=agent-error4.js -f log.js
 Error loading of source log.js.*
