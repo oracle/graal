@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,6 +99,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.IsolateThreadCache;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
@@ -324,6 +325,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @NeverInline("Base registers are set in caller, prevent reads from floating before that.")
     private static int createIsolate0(Isolate isolate, IsolateArguments arguments) {
         assert Heap.getHeap().verifyImageHeapMapping();
+        IsolateThreadCache.initialize();
         IsolateArgumentParser.singleton().persistOptions(arguments);
         IsolateListenerSupport.singleton().afterCreateIsolate(isolate);
 
@@ -357,6 +359,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static final CGlobalData<PointerBase> FIRST_ISOLATE_INIT_STATE = CGlobalDataFactory.createWord();
     private static boolean isolateInitialized;
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isIsolateInitialized() {
         return isolateInitialized;
     }
@@ -565,9 +568,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         IsolateThread thread = Word.nullPointer();
         if (startedByIsolate) {
-            assert VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler).isNull();
+            assert VMThreads.singleton().findIsolateThreadToEnterCurrentOSThread(inCrashHandler).isNull();
         } else {
-            thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler);
+            thread = VMThreads.singleton().findIsolateThreadToEnterCurrentOSThread(inCrashHandler);
         }
 
         if (thread.isNull()) { // not attached
@@ -714,6 +717,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             IsolateListenerSupport.singleton().onIsolateTeardown();
 
             /* Free the native resources of the last thread. */
+            IsolateThreadCache.clear();
             PlatformThreads.detach(currentThread);
             PlatformThreads.singleton().closeOSThreadHandle(VMThreads.getOSThreadHandle(currentThread));
 
@@ -721,6 +725,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             CodeInfoTable.tearDown();
             NonmovableArrays.tearDown();
             Heap.getHeap().tearDown();
+            VMThreads.singleton().destroy();
             IsolateArgumentParser.singleton().tearDown();
 
             /* Tear down the heap address space, including the image heap. */
@@ -783,7 +788,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
 
-        IsolateThread thread = VMThreads.singleton().findIsolateThreadForCurrentOSThread(false);
+        IsolateThread thread = VMThreads.singleton().findIsolateThreadToEnterCurrentOSThread(false);
         if (thread.isNull()) {
             return CEntryPointErrors.UNATTACHED_THREAD;
         }
@@ -911,7 +916,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state not yet set up.")
     @NeverInline("Base registers are set in caller, prevent reads from floating before that.")
     private static boolean isAttached0() {
-        return VMThreads.isInitialized() && VMThreads.singleton().findIsolateThreadForCurrentOSThread(false).isNonNull();
+        return VMThreads.isInitialized() && VMThreads.singleton().findIsolateThreadToEnterCurrentOSThread(false).isNonNull();
     }
 
     @Snippet(allowMissingProbabilities = true)

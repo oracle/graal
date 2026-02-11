@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.thread.JavaThreads.fromTarget;
 import static com.oracle.svm.core.thread.JavaThreads.isCurrentThreadVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.toTarget;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -65,14 +65,13 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -105,6 +104,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -496,43 +496,58 @@ public abstract class PlatformThreads {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static RuntimeException unmanagedThreadUnsupported() {
+        throw VMError.shouldNotReachHere("Unmanaged threads are not supported on this platform.");
+    }
+
     @SuppressWarnings("unused")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, int stackSize) {
-        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.startThreadUnmanaged directly.");
+        throw unmanagedThreadUnsupported();
     }
 
     @SuppressWarnings("unused")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
-        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.joinThreadUnmanaged directly.");
+        throw unmanagedThreadUnsupported();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean supportsUnmanagedThreadLocal() {
+        return false;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static RuntimeException unmanagedThreadLocalUnsupported() {
+        throw VMError.shouldNotReachHere("Not supported on this platform. Usage of unmanaged thread locals need to be guarded by 'supportsUnmanagedThreadLocal()'.");
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public ThreadLocalKey createUnmanagedThreadLocal() {
-        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.createNativeThreadLocal directly.");
+        throw unmanagedThreadLocalUnsupported();
     }
 
     @SuppressWarnings("unused")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void deleteUnmanagedThreadLocal(ThreadLocalKey key) {
-        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.deleteNativeThreadLocal directly.");
+        throw unmanagedThreadLocalUnsupported();
     }
 
     @SuppressWarnings("unused")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public <T extends WordBase> T getUnmanagedThreadLocalValue(ThreadLocalKey key) {
-        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.getNativeThreadLocalValue directly.");
+        throw unmanagedThreadLocalUnsupported();
     }
 
     @SuppressWarnings("unused")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void setUnmanagedThreadLocalValue(ThreadLocalKey key, WordBase value) {
-        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.setNativeThreadLocalValue directly.");
+        throw unmanagedThreadLocalUnsupported();
     }
 
     @SuppressWarnings("unused")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void closeOSThreadHandle(OSThreadHandle threadHandle) {
         /* On most platforms, OS thread handles don't need to be closed. */
     }
