@@ -28,7 +28,7 @@ import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
 
 import java.util.List;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.util.GuestTypes;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ConstantPool;
@@ -42,13 +42,13 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeMethod {
     }
 
     /**
-     * Defines the {@link Uninterruptible} annotation returned for all call stub methods. The
+     * Defines the {@code Uninterruptible} annotation returned for all call stub methods. The
      * synthetic graphs set up the fixed registers used for safepoint and stack overflow checks, so
      * they must be uninterruptible. The method then called by the stub does not need to be
      * uninterruptible itself.
      */
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
-                    newAnnotationValue(Uninterruptible.class,
+                    newAnnotationValue(GuestTypes.Uninterruptible,
                                     "reason", "Entry point",
                                     "calleeMustBe", false));
 

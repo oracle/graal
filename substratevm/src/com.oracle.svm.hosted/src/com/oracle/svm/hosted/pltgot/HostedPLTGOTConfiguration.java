@@ -31,17 +31,16 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestTypes;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
@@ -74,13 +73,13 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
         if (AnnotationUtil.isAnnotationPresent(method, StubCallingConvention.class)) {
             return false;
         }
-        if (AnnotationUtil.isAnnotationPresent(method, Uninterruptible.class)) {
+        if (AnnotationUtil.isAnnotationPresent(method, GuestTypes.Uninterruptible)) {
             return false;
         }
         if (AnnotationUtil.isAnnotationPresent(method, SubstrateForeignCallTarget.class)) {
             return false;
         }
-        if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), InternalVMMethod.class)) {
+        if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), GuestTypes.InternalVMMethod)) {
             return false;
         }
         ExplicitCallingConvention ecc = AnnotationUtil.getAnnotation(method, ExplicitCallingConvention.class);

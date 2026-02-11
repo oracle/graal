@@ -30,12 +30,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestTypes;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -46,7 +46,7 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         ResolvedJavaMethod wrapper = method;
         if (method.isNative() && AnnotationUtil.isAnnotationPresent(method, CFunction.class)) {
-            if (AnnotationUtil.isAnnotationPresent(method, Uninterruptible.class)) {
+            if (AnnotationUtil.isAnnotationPresent(method, GuestTypes.Uninterruptible)) {
                 throw VMError.shouldNotReachHere("Native method '%s' incorrectly annotated with @Uninterruptible. Please use @CFunction(transition = NO_TRANSITION) instead.",
                                 method.format("%H.%n(%p)"));
             }

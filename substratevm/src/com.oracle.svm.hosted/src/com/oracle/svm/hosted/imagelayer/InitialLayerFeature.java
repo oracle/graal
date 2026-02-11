@@ -26,8 +26,6 @@ package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
 
-import java.lang.reflect.Proxy;
-
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -41,14 +39,21 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestTypes;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.ModifiableOptionValues;
-import jdk.internal.loader.ClassLoaders;
+import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
@@ -58,7 +63,6 @@ public class InitialLayerFeature implements InternalFeature {
         return ImageLayerBuildingSupport.buildingInitialLayer();
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
@@ -76,9 +80,9 @@ public class InitialLayerFeature implements InternalFeature {
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class), PINNED_TO_INITIAL_LAYER);
 
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
-        metaAccess.lookupJavaType(Uninterruptible.class).registerAsReachable("Core type");
+        access.getUniverse().lookup(GuestTypes.Uninterruptible).registerAsReachable("Core type");
         metaAccess.lookupJavaType(UninterruptibleUtils.class).registerAsReachable("Core type");
-        metaAccess.lookupJavaType(Proxy.getProxyClass(ClassLoaders.appClassLoader(), Uninterruptible.class)).registerAsInstantiated("Core type");
+        access.getUniverse().lookup(getProxyClass(GuestTypes.Uninterruptible)).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.ExceptionWrapper.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(UnmanagedMemory.class).registerAsReachable("Core type");
@@ -87,6 +91,22 @@ public class InitialLayerFeature implements InternalFeature {
         if (pthread != null) {
             metaAccess.lookupJavaType(pthread).registerAsReachable("Core type");
         }
+    }
+
+    private static ResolvedJavaType getProxyClass(ResolvedJavaType uninterruptibleType) {
+        VMAccess vmAccess = GraalAccess.getVMAccess();
+        MetaAccessProvider metaAccess = vmAccess.getProviders().getMetaAccess();
+        ConstantReflectionProvider constantReflection = vmAccess.getProviders().getConstantReflection();
+
+        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestTypes.java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class, Class[].class);
+        ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestTypes.jdk_internal_loader_ClassLoaders, "appClassLoader");
+
+        JavaConstant appClassLoader = vmAccess.invoke(appClassLoaderMethod, null);
+        JavaConstant uninterruptible = constantReflection.asJavaClass(uninterruptibleType);
+        JavaConstant interfaces = vmAccess.asArrayConstant(GuestTypes.java_lang_Class, uninterruptible);
+
+        JavaConstant proxyClass = vmAccess.invoke(getProxyClassMethod, null, appClassLoader, interfaces);
+        return constantReflection.asJavaType(proxyClass);
     }
 
     @Override

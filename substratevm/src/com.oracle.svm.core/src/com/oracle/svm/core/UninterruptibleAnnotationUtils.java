@@ -29,28 +29,75 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestTypes;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class UninterruptibleAnnotationUtils {
 
     /**
-     * The {@link Uninterruptible} annotation returned for C function calls with NO_TRANSITION.
+     * Wraps a guest-level {@code com.oracle.svm.guest.staging.Uninterruptible} annotation.
      */
-    private static final AtomicReference<Uninterruptible> NO_TRANSITION = new AtomicReference<>();
+    public record UninterruptibleGuestValue(String reason, boolean callerMustBe, boolean calleeMustBe, boolean mayBeInlined) {
+
+        static UninterruptibleGuestValue fromAnnotationValue(AnnotationValue annotationValue) {
+            if (annotationValue == null) {
+                return null;
+            }
+            return new UninterruptibleGuestValue(
+                            annotationValue.getString("reason"),
+                            annotationValue.getBoolean("callerMustBe"),
+                            annotationValue.getBoolean("calleeMustBe"),
+                            annotationValue.getBoolean("mayBeInlined"));
+        }
+    }
 
     /**
-     * Returns the {@link Uninterruptible} annotation of the method. Note that there are certain
-     * methods where the {@link Uninterruptible} annotation is injected due to other conditions, and
-     * there are certain methods where the {@link Uninterruptible} is filtered out because the
+     * Wraps a guest-level {@code org.graalvm.nativeimage.c.function.CFunction} annotation.
+     */
+    public record CFunctionGuestValue(String value, CFunction.Transition transition) {
+
+        public static CFunctionGuestValue fromAnnotationValue(AnnotationValue annotationValue) {
+            if (annotationValue == null) {
+                return null;
+            }
+            return new CFunctionGuestValue(
+                            annotationValue.getString("value"),
+                            annotationValue.getEnum(CFunction.Transition.class, "transition"));
+        }
+    }
+
+    /**
+     * Wraps a guest-level {@code org.graalvm.nativeimage.c.function.InvokeCFunctionPointer}
+     * annotation.
+     */
+    public record InvokeCFunctionPointerGuestValue(CFunction.Transition transition) {
+
+        public static InvokeCFunctionPointerGuestValue fromAnnotationValue(AnnotationValue annotationValue) {
+            if (annotationValue == null) {
+                return null;
+            }
+            return new InvokeCFunctionPointerGuestValue(
+                            annotationValue.getEnum(CFunction.Transition.class, "transition"));
+        }
+    }
+
+    /**
+     * The {@code Uninterruptible} annotation returned for C function calls with NO_TRANSITION.
+     */
+    private static final AtomicReference<UninterruptibleGuestValue> NO_TRANSITION = new AtomicReference<>();
+
+    /**
+     * Returns the {@code Uninterruptible} annotation of the method. Note that there are certain
+     * methods where the {@code Uninterruptible} annotation is injected due to other conditions, and
+     * there are certain methods where the {@code Uninterruptible} is filtered out because the
      * method must not be uninterruptible. So always use this method and never look up the
      * annotation directly on a method.
      */
-    public static Uninterruptible getAnnotation(ResolvedJavaMethod method) {
+    public static UninterruptibleGuestValue getAnnotation(ResolvedJavaMethod method) {
         if (method.isSynthetic()) {
             /*
              * Java compilers differ how annotations are inherited for synthetic methods: javac
@@ -61,14 +108,15 @@ public class UninterruptibleAnnotationUtils {
             return null;
         }
 
-        Uninterruptible annotation = AnnotationUtil.getAnnotation(method, Uninterruptible.class);
+        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.Uninterruptible));
         if (annotation != null) {
             /* Explicit annotated method. */
             return annotation;
         }
 
-        CFunction cFunctionAnnotation = AnnotationUtil.getAnnotation(method, CFunction.class);
-        InvokeCFunctionPointer cFunctionPointerAnnotation = AnnotationUtil.getAnnotation(method, InvokeCFunctionPointer.class);
+        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.CFunction));
+        InvokeCFunctionPointerGuestValue cFunctionPointerAnnotation = InvokeCFunctionPointerGuestValue
+                        .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestTypes.InvokeCFunctionPointer));
         if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
                         (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
             /*
@@ -77,8 +125,7 @@ public class UninterruptibleAnnotationUtils {
              * annotations.
              */
             if (NO_TRANSITION.get() == null) {
-                NO_TRANSITION.compareAndExchange(null, AnnotationUtil.newAnnotation(Uninterruptible.class,
-                                "reason", "@CFunction / @InvokeCFunctionPointer with Transition.NO_TRANSITION"));
+                NO_TRANSITION.compareAndExchange(null, new UninterruptibleGuestValue("@CFunction / @InvokeCFunctionPointer with Transition.NO_TRANSITION", false, true, false));
             }
             return NO_TRANSITION.get();
         }
@@ -88,7 +135,7 @@ public class UninterruptibleAnnotationUtils {
     }
 
     /**
-     * Returns whether the method is {@link Uninterruptible}, either by explicit annotation of the
+     * Returns whether the method is {@code Uninterruptible}, either by explicit annotation of the
      * method or implicitly due to other annotations.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -118,7 +165,8 @@ public class UninterruptibleAnnotationUtils {
             if (!calleeUninterruptible) {
                 return true;
             }
-            Uninterruptible calleeUninterruptibleAnnotation = AnnotationUtil.getAnnotation(callee, Uninterruptible.class);
+            UninterruptibleGuestValue calleeUninterruptibleAnnotation = UninterruptibleGuestValue
+                            .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(callee).get(GuestTypes.Uninterruptible));
             if (calleeUninterruptibleAnnotation != null && calleeUninterruptibleAnnotation.mayBeInlined()) {
                 return true;
             }

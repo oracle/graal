@@ -1371,6 +1371,11 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        # This is a transitional project that can be referenced from both the guest module and the builder
+        # module. It is intended as a staging place for code that eventually should go into the guest, but
+        # is currently still referenced in the builder. Eventually, all content of this project should move
+        # into `com.oracle.svm.guest`. It is important that this project only depends on content that
+        # should be in the guest. In particular, there should be no dependencies on builder code.
         "com.oracle.svm.guest.staging": {
             "subDir": "src",
             "sourceDirs": ["src"],

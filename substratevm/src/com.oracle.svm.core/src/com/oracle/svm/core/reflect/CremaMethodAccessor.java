@@ -27,8 +27,8 @@ package com.oracle.svm.core.reflect;
 import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.svm.core.hub.crema.CremaSupport;
-import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 import jdk.internal.reflect.MethodAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

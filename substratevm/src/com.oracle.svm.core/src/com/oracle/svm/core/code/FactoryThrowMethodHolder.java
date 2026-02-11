@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 /**
  * Holder class for generated factory methods (methods that combine object allocation and invocation
