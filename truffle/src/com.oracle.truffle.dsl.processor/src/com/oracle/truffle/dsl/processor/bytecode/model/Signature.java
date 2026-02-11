@@ -57,7 +57,7 @@ public record Signature(TypeMirror returnType,
 
     public Signature(TypeMirror returnType, List<Operand> operands, boolean isVariadic, int variadicOffset) {
         this(returnType, operands,
-                        // we materialize these lists for performance reasons
+                        // we materialize these cached lists for performance reasons
                         operands.stream().filter(Operand::isDynamic).toList(),
                         operands.stream().filter(Operand::isConstant).toList(),
                         isVariadic, variadicOffset);
@@ -70,82 +70,31 @@ public record Signature(TypeMirror returnType,
     public static List<Operand> createDefaultOperands(List<TypeMirror> types) {
         Operand[] operands = new Operand[types.size()];
         for (int i = 0; i < types.size(); i++) {
-            operands[i] = new Operand(types.get(i), "arg" + i, i, i, null);
+            operands[i] = new Operand(types.get(i), types.get(i), "arg" + i, i, i, null);
         }
         return List.of(operands);
     }
 
-    private Signature(Signature copy, List<TypeMirror> operandTypes, List<String> operandNames, TypeMirror returnType) {
-        this(returnType, copy.updateOperands(operandTypes, operandNames), copy.isVariadic, copy.variadicOffset);
+    public Signature(Signature copy, List<Operand> operands) {
+        this(copy.returnType(), operands, copy.isVariadic, copy.variadicOffset);
+        if (copy.operands().size() != operands.size()) {
+            throw new IllegalArgumentException(String.format("Operands size must not be changed. Expected %s but was %s.", copy.operands().size(), operands.size()));
+        }
     }
 
-    private List<Operand> updateOperands(List<TypeMirror> types, List<String> names) {
-        if (types == null && types == null) {
-            // no update needed
-            return this.operands;
-        }
-
-        if (types != null && types.size() != this.operands.size()) {
-            throw new IllegalArgumentException("Provided types list size does not match operands size.");
-        }
-        if (names != null && names.size() != this.operands.size()) {
-            throw new IllegalArgumentException("Provided names list size does not match operands size.");
-        }
-
-        List<Operand> newOperands = new ArrayList<>(this.operands.size());
-        for (int i = 0; i < this.operands.size(); i++) {
-            Operand current = this.operands.get(i);
-            if (types != null) {
-                current = current.withType(types.get(i));
-            }
-            if (names != null) {
-                current = current.withName(names.get(i));
-            }
-            newOperands.add(current);
-        }
-        return newOperands;
-
+    private Signature(Signature copy, TypeMirror returnType) {
+        this(returnType, copy.operands(), copy.isVariadic, copy.variadicOffset);
     }
 
-    public Signature withOperandTypes(List<TypeMirror> types) {
-        if (operandTypes().size() != this.operands.size()) {
-            throw new IllegalArgumentException("Invalid argument names");
-        }
-        Objects.requireNonNull(types);
-        return new Signature(this, types, null, this.returnType());
-    }
-
-    public Signature withDynamicOperandTypes(Class<?>... dynamicTypes) {
-        ProcessorContext context = ProcessorContext.getInstance();
-        return withDynamicOperandTypes(List.of(dynamicTypes).stream().map((c) -> context.getType(c)).toList());
-    }
-
-    public Signature withDynamicOperandType(int dynamicIndex, TypeMirror type) {
-        List<TypeMirror> types = new ArrayList<>(dynamicOperandTypes());
-        types.set(dynamicIndex, type);
-        return withDynamicOperandTypes(types);
-    }
-
-    public Signature withDynamicOperandTypes(List<TypeMirror> dynamicTypes) {
-        List<TypeMirror> operandTypes = new ArrayList<>();
-        for (Operand operand : operands()) {
-            if (operand.isDynamic()) {
-                operandTypes.add(dynamicTypes.get(operand.dynamicIndex()));
-            } else {
-                operandTypes.add(operand.type());
-            }
-        }
-        return new Signature(this, operandTypes, null, this.returnType());
+    public Signature withOperandType(int index, TypeMirror type, TypeMirror staticType) {
+        List<Operand> newOperands = new ArrayList<>(operands());
+        newOperands.set(index, operands().get(index).withType(type, staticType));
+        return new Signature(this, newOperands);
     }
 
     public Signature withReturnType(TypeMirror type) {
         Objects.requireNonNull(type);
-        return new Signature(this, null, null, type);
-    }
-
-    public Signature withOperandNames(List<String> names) {
-        Objects.requireNonNull(names);
-        return new Signature(this, null, names, this.returnType());
+        return new Signature(this, type);
     }
 
     public List<TypeMirror> dynamicOperandTypes() {
@@ -188,7 +137,7 @@ public record Signature(TypeMirror returnType,
     }
 
     public int dynamicOperandCount() {
-        return (int) operands.stream().filter(Operand::isDynamic).count();
+        return dynamicOperands().size();
     }
 
     public boolean isVoid() {
@@ -199,33 +148,37 @@ public record Signature(TypeMirror returnType,
         return operands().stream().map(Operand::type).toList();
     }
 
-    public List<String> dynamicOperandNames() {
-        return operands().stream().filter(Operand::isDynamic).map(Operand::name).toList();
-    }
-
-    public static record Operand(TypeMirror type, String name, int index, int dynamicIndex, ConstantOperandModel constant) {
-
-        public Operand(TypeMirror type, String name, int index, int dynamicIndex, ConstantOperandModel constant) {
-            this.type = type;
-            this.name = name;
-            this.index = index;
-            this.dynamicIndex = dynamicIndex;
-            this.constant = constant;
-        }
+    /**
+     * Represents the operand as part of a {@link Signature}.
+     * <ul>
+     * <li><code>type</code> is the stack type of the operand. The type the value is pushed to the
+     * stack with.
+     * <li><code>staticType</code> is the guaranteed known type of the operand. Every value of this
+     * operand is at least assignable to this type.
+     * <li><code>index</code> is the index of all the operands in the parent signature
+     * <li><code>dynamicIndex</code> is the index of all dynamic operands in the parent signature.
+     * </ul>
+     */
+    public record Operand(TypeMirror type,
+                    TypeMirror staticType, String name, int index, int dynamicIndex, ConstantOperandModel constant) {
 
         public Operand(int operandIndex, ConstantOperandModel constant, String name) {
-            this(constant.type(), name, operandIndex, -1, constant);
+            this(constant.type(), constant.type(), name, operandIndex, -1, constant);
         }
 
-        public Operand withType(TypeMirror newType) {
-            if (ElementUtils.typeEquals(this.type(), newType)) {
+        public Operand withType(TypeMirror newType, TypeMirror newStaticType) {
+            if (ElementUtils.typeEquals(this.type(), newType) && ElementUtils.typeEquals(this.staticType(), newStaticType)) {
                 return this;
             }
-            return new Operand(newType, name, index, dynamicIndex, constant);
+            return new Operand(newType, newStaticType, name, index, dynamicIndex, constant);
         }
 
         public Operand withName(String newName) {
-            return new Operand(type, newName, index, dynamicIndex, constant);
+            return new Operand(type, staticType, newName, index, dynamicIndex, constant);
+        }
+
+        public boolean isPrimitive() {
+            return ElementUtils.isPrimitive(type()) || ElementUtils.isPrimitive(staticType());
         }
 
         public boolean isConstant() {
@@ -251,5 +204,12 @@ public record Signature(TypeMirror returnType,
             return name + "_";
         }
 
+    }
+
+    public Operand singleDynamicOperand() {
+        if (dynamicOperandCount() != 1) {
+            throw new UnsupportedOperationException("Not a single operand.");
+        }
+        return dynamicOperands().get(0);
     }
 }

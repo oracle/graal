@@ -960,8 +960,12 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
                 if (baseInstruction.isYield()) {
                     /*
-                     * We must not support boxing elimination or quickening for custom yields as all
-                     * yield inputs would need to be boxing eliminated the same way to be safe.
+                     * The operand to a custom yield can be intercepted by tag.yield, which is not
+                     * designed to handle a boxing eliminated value. Therefore we cannot support
+                     * boxing elimination or quickening for custom yields. This is arguably a lazy
+                     * solution but also boxing elimination for yield values is very likely not a
+                     * performance bottleneck, given that it is dominated by the call overhead
+                     * anyway.
                      */
                     continue;
                 }
@@ -970,28 +974,29 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 if (quickening.types().size() != genericSignature.size()) {
                     throw new AssertionError("Invalid signature size in quickening " + quickening.types() + " : " + genericSignature);
                 }
-                List<TypeMirror> newSignature = new ArrayList<>(genericSignature.size());
-                for (int i = 0; i < genericSignature.size(); i++) {
-                    TypeMirror specialized = quickening.types().get(i);
-                    TypeMirror target;
 
-                    if (model.isBoxingEliminated(specialized) &&
-                                    /*
-                                     * Handles the corner case when the set of quickened
-                                     * specializations happens to be incompatible with boxing
-                                     * elimination of this type. May happen if implicit cast and
-                                     * non-implicit casts types of the same specialization argument
-                                     * are mixed in the same quickening. The only safe thing to do
-                                     * is to not boxing eliminate.
-                                     */
-                                    !ElementUtils.isObject(signature.getDynamicOperandType(i))) {
-                        target = specialized;
+                signature = new Signature(signature, signature.operands().stream().map((operand) -> {
+                    if (operand.isDynamic()) {
+                        TypeMirror specialized = quickening.types().get(operand.dynamicIndex());
+                        Operand genericOperand = baseInstruction.signature.operands().get(operand.index());
+                        if (model.isBoxingEliminated(specialized) &&
+                                        /*
+                                         * Handles the corner case when the set of quickened
+                                         * specializations happens to be incompatible with boxing
+                                         * elimination of this type. May happen if implicit cast and
+                                         * non-implicit casts types of the same specialization
+                                         * argument are mixed in the same quickening. The only safe
+                                         * thing to do is to not boxing eliminate.
+                                         */
+                                        !ElementUtils.isObject(operand.type())) {
+                            return operand.withType(specialized, specialized);
+                        } else {
+                            return operand.withType(genericOperand.type(), genericOperand.staticType());
+                        }
                     } else {
-                        target = genericSignature.get(i);
+                        return operand;
                     }
-                    newSignature.add(target);
-                }
-                signature = signature.withDynamicOperandTypes(newSignature);
+                }).toList());
 
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name), QuickeningKind.SPECIALIZED, null, false);
                 quickenedInstruction.setFilteredSpecializations(includedSpecializations);
@@ -1001,7 +1006,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         if (model.usesBoxingElimination()) {
             InstructionModel conditional = model.instruction(InstructionKind.MERGE_CONDITIONAL,
-                            "merge.conditional", model.signature(Object.class, "condition", boolean.class, "value", Object.class));
+                            "merge.conditional", model.signature(Object.class, "condition", Object.class, boolean.class, "value", Object.class, Object.class));
             model.conditionalOperation.setInstruction(conditional);
 
             for (InstructionModel instruction : model.getInstructions().toArray(InstructionModel[]::new)) {
@@ -1056,15 +1061,15 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         }
                         break;
                     case BRANCH_FALSE:
-                        if (model.isBoxingEliminated(context.getType(boolean.class))) {
+                        if (model.isBoxingEliminated(type(boolean.class))) {
                             instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
 
                             model.quickenInstruction(instruction,
-                                            instruction.signature.withDynamicOperandTypes(Object.class),
+                                            instruction.signature,
                                             "Generic", QuickeningKind.GENERIC, null, false);
 
                             model.quickenInstruction(instruction,
-                                            instruction.signature.withDynamicOperandTypes(boolean.class),
+                                            instruction.signature.withOperandType(0, type(boolean.class), type(boolean.class)),
                                             "Boolean", QuickeningKind.SPECIALIZED, context.getType(boolean.class), false);
                         }
                         break;
@@ -1073,7 +1078,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(1));
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
                             InstructionModel specializedInstruction = model.quickenInstruction(instruction,
-                                            instruction.signature.withDynamicOperandTypes(List.of(context.getType(boolean.class), boxedType)),
+                                            instruction.signature.withOperandType(1, boxedType, boxedType),
                                             ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)), QuickeningKind.SPECIALIZED, boxedType, false);
 
                             Signature newSignature = specializedInstruction.signature.withReturnType(boxedType);
@@ -1090,7 +1095,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
                             model.quickenInstruction(instruction,
-                                            instruction.signature.withDynamicOperandTypes(List.of(boxedType)),
+                                            instruction.signature.withOperandType(0, boxedType, boxedType),
                                             ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)), QuickeningKind.SPECIALIZED, boxedType, false);
                         }
 
@@ -1107,7 +1112,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
                             InstructionModel specializedInstruction = model.quickenInstruction(instruction,
-                                            instruction.signature.withDynamicOperandTypes(List.of(boxedType)),
+                                            instruction.signature.withOperandType(0, boxedType, boxedType),
                                             ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)), QuickeningKind.SPECIALIZED, boxedType, false);
 
                             Signature newSignature = specializedInstruction.signature.withReturnType(boxedType);
@@ -1155,7 +1160,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                             ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)), QuickeningKind.SPECIALIZED, boxedType, false);
 
                             model.quickenInstruction(specializedInstruction,
-                                            instruction.signature.withDynamicOperandType(0, boxedType),
+                                            instruction.signature.withOperandType(instruction.signature.operands().size() - 1, boxedType, boxedType),
                                             ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)), QuickeningKind.SPECIALIZED_UNBOXED, boxedType, false);
                         }
 

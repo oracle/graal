@@ -61,6 +61,7 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
+import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -275,7 +276,15 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
     @Operation(javadoc = "Adds the two operand values, which must either be longs or Strings.")
     static final class Add {
+
         @Specialization
+        @ForceQuickening("add")
+        public static long addInts(int lhs, int rhs) {
+            return lhs + rhs;
+        }
+
+        @Specialization
+        @ForceQuickening("add")
         public static long addLongs(long lhs, long rhs) {
             return lhs + rhs;
         }
@@ -633,9 +642,10 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static SourceSection doOperation(VirtualFrame frame, boolean ensure,
                         @Bind Node node,
                         @Bind BytecodeNode bytecode) {
-            // Put this branch in the operation itself so that the bytecode branch profile
-            // doesn't
-            // mark this path unreached during compilation.
+            /*
+             * Put this branch in the operation itself so that the bytecode branch profile doesn't
+             * mark this path unreached during compilation.
+             */
             if (ensure) {
                 return bytecode.ensureSourceInformation().getSourceLocation(frame, node);
             } else {

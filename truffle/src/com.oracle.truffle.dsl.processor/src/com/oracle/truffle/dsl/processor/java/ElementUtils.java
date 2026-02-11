@@ -1973,23 +1973,21 @@ public class ElementUtils {
     }
 
     public static List<TypeMirror> uniqueSortedTypes(Collection<TypeMirror> types, boolean reverse) {
-        List<TypeMirror> uniqueTypes = uniqueTypes(types);
-        if (uniqueTypes.size() <= 1) {
-            return uniqueTypes;
-        }
-        if (reverse) {
-            uniqueTypes = uniqueTypes.reversed();
-        }
-        return uniqueTypes;
+        return sortTypes(new ArrayList<>(uniqueTypes(types)), reverse);
     }
 
     @SuppressWarnings("cast")
-    public static List<TypeMirror> uniqueTypes(Collection<TypeMirror> types) {
+    public static Collection<TypeMirror> uniqueTypes(Collection<TypeMirror> types) {
+        if (types.isEmpty()) {
+            return types;
+        } else if (types.size() <= 1) {
+            return types;
+        }
         Map<String, TypeMirror> uniqueTypeMap = new LinkedHashMap<>();
         for (TypeMirror type : types) {
             uniqueTypeMap.put(ElementUtils.getUniqueIdentifier(type), type);
         }
-        return List.of(uniqueTypeMap.values().toArray(TypeMirror[]::new));
+        return uniqueTypeMap.values();
     }
 
     public static int compareMethod(ExecutableElement method1, ExecutableElement method2) {

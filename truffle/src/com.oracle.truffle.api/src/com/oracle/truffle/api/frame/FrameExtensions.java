@@ -92,6 +92,54 @@ public abstract class FrameExtensions {
      */
     public abstract void setLong(Frame frame, int slot, long value);
 
+    public final void setLongOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Long l) {
+            setLong(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setIntOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Integer l) {
+            setInt(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setByteOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Byte l) {
+            setByte(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setBooleanOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Boolean l) {
+            setBoolean(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setFloatOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Float l) {
+            setFloat(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setDoubleOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Double l) {
+            setDouble(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
     /**
      * Stores a float into the frame.
      *

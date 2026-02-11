@@ -93,6 +93,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.SuppressFBWarnings;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
@@ -100,9 +101,9 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediateEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.SourceSectionKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
+import com.oracle.truffle.dsl.processor.bytecode.model.SourceSectionKind;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
@@ -299,6 +300,20 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         sourceInfoTable.lazyInit();
 
+        // Define the generated Node classes for custom instructions.
+        List<CodeTypeElement> dataClasses = new ArrayList<>();
+        StaticConstants consts = new StaticConstants();
+        for (InstructionModel instr : model.getInstructions()) {
+            if (instr.nodeData == null || instr.quickeningBase != null) {
+                continue;
+            }
+            dataClasses.add(createCachedDataClass(instr, consts));
+        }
+        if (model.epilogExceptional != null) {
+            dataClasses.add(createCachedDataClass(model.epilogExceptional.operation.instruction, consts));
+        }
+        consts.addElementsTo(this);
+
         // Define the interpreter implementations.
         BytecodeNodeElement cachedBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.CACHED));
         abstractBytecodeNode.getPermittedSubclasses().add(cachedBytecodeNode.asType());
@@ -489,19 +504,6 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         this.add(createComputeSize());
 
-        // Define the generated Node classes for custom instructions.
-        StaticConstants consts = new StaticConstants();
-        for (InstructionModel instr : model.getInstructions()) {
-            if (instr.nodeData == null || instr.quickeningBase != null) {
-                continue;
-            }
-            this.add(createCachedDataClass(instr, consts));
-        }
-        if (model.epilogExceptional != null) {
-            this.add(createCachedDataClass(model.epilogExceptional.operation.instruction, consts));
-        }
-        consts.addElementsTo(this);
-
         if (model.usesBoxingElimination()) {
             for (TypeMirror boxingEliminatedType : model.boxingEliminatedTypes) {
                 this.add(createApplyQuickening(boxingEliminatedType));
@@ -538,6 +540,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         if (model.enableSerialization) {
             addMethodStubsToSerializationRootNode();
         }
+
+        this.addAll(dataClasses);
     }
 
     private CodeExecutableElement createNewConfigBuilder() {
@@ -629,6 +633,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return ex;
     }
 
+    final Map<InstructionModel, CodeExecutableElement> cachedExecuteMethods = new LinkedHashMap<>();
+    final Map<InstructionModel, CodeExecutableElement> uncachedExecuteMethods = new LinkedHashMap<>();
+    final Map<InstructionModel, CodeExecutableElement> specializeExecuteMethods = new LinkedHashMap<>();
+
     private CodeTypeElement createCachedDataClass(InstructionModel instr, StaticConstants consts) {
         NodeConstants nodeConsts = new NodeConstants();
         BytecodeDSLNodeGeneratorPlugs plugs = new BytecodeDSLNodeGeneratorPlugs(this, instr);
@@ -659,17 +667,28 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         el.getEnclosedElements().removeAll(ElementFilter.methodsIn(el.getEnclosedElements()).stream().//
                         filter((m) -> m.getSimpleName().toString().equals("executeObject")).toList());
 
-        emitExecute(plugs, factory, el, instr, InterpreterTier.CACHED);
+        CodeExecutableElement executeAndSpecialize = (CodeExecutableElement) ElementUtils.findMethod(el, "executeAndSpecialize");
+        if (executeAndSpecialize != null) {
+            specializeExecuteMethods.put(instr, executeAndSpecialize);
+        }
+
+        cachedExecuteMethods.put(instr, emitExecute(plugs, factory, el, instr, InterpreterTier.CACHED));
+        for (InstructionModel quickening : instr.getFlattenedQuickenedInstructions()) {
+            if (needsExecute(quickening)) {
+                cachedExecuteMethods.put(quickening, emitExecute(plugs, factory, el, quickening, InterpreterTier.CACHED));
+            }
+        }
+
         for (InstructionModel quickening : instr.getFlattenedQuickenedInstructions()) {
             if (!needsExecute(quickening)) {
-                // no return type quickenings needed
-                continue;
+                cachedExecuteMethods.put(quickening, cachedExecuteMethods.get(quickening.quickeningBase));
             }
-            emitExecute(plugs, factory, el, quickening, InterpreterTier.CACHED);
         }
+
         if (model.enableUncachedInterpreter) {
-            emitExecute(plugs, factory, el, instr, InterpreterTier.UNCACHED);
+            uncachedExecuteMethods.put(instr, emitExecute(plugs, factory, el, instr, InterpreterTier.UNCACHED));
         }
+
         CodeExecutableElement quicken = plugs.getQuickenMethod();
         if (quicken != null) {
             el.getEnclosedElements().add(quicken);
@@ -1881,7 +1900,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return boundVariables;
     }
 
-    private ExecutableElement emitExecute(BytecodeDSLNodeGeneratorPlugs plugs, FlatNodeGenFactory factory, CodeTypeElement el, InstructionModel instruction, InterpreterTier tier) {
+    private CodeExecutableElement emitExecute(BytecodeDSLNodeGeneratorPlugs plugs, FlatNodeGenFactory factory, CodeTypeElement el, InstructionModel instruction, InterpreterTier tier) {
         plugs.setInstruction(instruction);
 
         List<SpecializationData> specializations;
@@ -1911,8 +1930,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             executable.addParameter(new CodeVariableElement(types.AbstractTruffleException, "ex"));
         } else {
             int index = 0;
-            for (TypeMirror type : instruction.signature.operandTypes()) {
-                executable.addParameter(new CodeVariableElement(type, "arg" + index));
+            for (Operand operand : instruction.signature.operands()) {
+                executable.addParameter(new CodeVariableElement(operand.staticType(), "arg" + index));
                 index++;
             }
         }
@@ -2696,6 +2715,28 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
     static CodeTreeBuilder startSetFrame(CodeTreeBuilder b, TypeMirror type) {
         String methodName = getSetMethod(type);
+        b.startCall("FRAMES", methodName);
+        return b;
+    }
+
+    static String getSetPrimitiveOrObjectMethod(TypeMirror type) {
+        if (type == null) {
+            return "setValue";
+        } else {
+            return switch (type.getKind()) {
+                case BOOLEAN -> "setBooleanOrObject";
+                case BYTE -> "setByteOrObject";
+                case INT -> "setIntOrObject";
+                case LONG -> "setLongOrObject";
+                case FLOAT -> "setFloatOrObject";
+                case DOUBLE -> "setDoubleOrObject";
+                default -> "setObject";
+            };
+        }
+    }
+
+    static CodeTreeBuilder startSetPrimitiveOrObjectFrame(CodeTreeBuilder b, TypeMirror type) {
+        String methodName = getSetPrimitiveOrObjectMethod(type);
         b.startCall("FRAMES", methodName);
         return b;
     }

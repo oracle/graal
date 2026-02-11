@@ -79,8 +79,7 @@ public class SpecializationSignatureParser {
 
     @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "Calls to params poll() as expected. FindBugs false positive.")
     public Signature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperandsModel constantOperands) {
-        boolean isValid = true;
-        boolean isFallback = ElementUtils.findAnnotationMirror(specialization, types.Fallback) != null;
+        final boolean isFallback = ElementUtils.findAnnotationMirror(specialization, types.Fallback) != null;
 
         Queue<? extends VariableElement> params = new ArrayDeque<>(specialization.getParameters());
 
@@ -89,7 +88,6 @@ public class SpecializationSignatureParser {
         if (!params.isEmpty() && isAssignable(peekType(params), types.Frame)) {
             if (!isAssignable(params.poll().asType(), types.VirtualFrame)) {
                 errorTarget.addError(specialization, "Frame parameter must have type VirtualFrame.");
-                isValid = false;
             }
         }
         skipDSLParameters(params);
@@ -103,108 +101,92 @@ public class SpecializationSignatureParser {
             skipDSLParameters(params);
         }
 
-        List<String> operandNames = new ArrayList<>(operands.size());
         int numConstantOperands = constantOperands.before().size() + constantOperands.after().size();
         if (operands.size() < numConstantOperands) {
             errorTarget.addError(specialization, "Specialization should declare at least %d operand%s (one for each %s).",
                             numConstantOperands,
                             numConstantOperands == 1 ? "" : "s",
                             getSimpleName(types.ConstantOperand));
-            isValid = false;
-        } else {
-            // Operand layout: [consts_before..., dynamic_params..., consts_after...]
-            int numDynamicOperands = operands.size() - numConstantOperands;
-
-            // Process constant operands (before).
-            for (int i = 0; i < constantOperands.before().size(); i++) {
-                VariableElement operand = operands.get(i);
-                ConstantOperandModel constantOperand = constantOperands.before().get(i);
-                isValid = checkConstantOperandParam(operand, constantOperand, errorTarget) && isValid;
-                operandNames.add(constantOperand.getNameOrDefault(operand.getSimpleName().toString()));
-            }
-
-            // Process dynamic operands.
-            int dynamicOffset = constantOperands.before().size();
-            for (int i = 0; i < numDynamicOperands; i++) {
-                VariableElement dynamicOperand = operands.get(dynamicOffset + i);
-                if (hasVariadic) {
-                    // The variadic operand should be the last dynamic operand.
-                    if (isVariadic(dynamicOperand)) {
-                        errorTarget.addError(dynamicOperand, "Multiple variadic operands not allowed to an operation. Split up the operation if such behaviour is required.");
-                    } else {
-                        errorTarget.addError(dynamicOperand, "Non-variadic operands must precede variadic operands.");
-                    }
-                    isValid = false;
-                } else if (isVariadic(dynamicOperand)) {
-                    hasVariadic = true;
-                    variadicOffset = ElementUtils.getAnnotationValue(Integer.class, ElementUtils.findAnnotationMirror(dynamicOperand, types.Variadic), "startOffset");
-
-                    if (!ElementUtils.typeEquals(dynamicOperand.asType(), new ArrayCodeTypeMirror(context.getDeclaredType(Object.class)))) {
-                        errorTarget.addError(dynamicOperand, "Variadic operand must have type Object[].");
-                        isValid = false;
-                    }
-                    if (variadicOffset < 0) {
-                        errorTarget.addError(dynamicOperand, "Variadic startOffset must be positive.");
-                        isValid = false;
-                    }
-                }
-
-                if (isFallback) {
-                    /**
-                     * In the regular DSL, fallback specializations can take non-Object arguments if
-                     * they agree with the type signature of the abstract execute method. Since we
-                     * synthesize our own execute method that only takes Object arguments, fallback
-                     * specializations with non-Object parameters are unsupported.
-                     */
-                    if (!isObject(dynamicOperand.asType()) && !isVariadic(dynamicOperand)) {
-                        if (errorTarget != null) {
-                            errorTarget.addError(dynamicOperand, "Operands to @%s specializations of Operation nodes must have type %s.",
-                                            getSimpleName(types.Fallback),
-                                            getSimpleName(context.getDeclaredType(Object.class)));
-                        }
-                        isValid = false;
-                    }
-                }
-
-                operandNames.add(dynamicOperand.getSimpleName().toString());
-            }
-
-            // Process constant operands (after).
-            int constantAfterOffset = dynamicOffset + numDynamicOperands;
-            for (int i = 0; i < constantOperands.after().size(); i++) {
-                VariableElement operand = operands.get(constantAfterOffset + i);
-                ConstantOperandModel constantOperand = constantOperands.after().get(i);
-                isValid = checkConstantOperandParam(operand, constantOperand, errorTarget) && isValid;
-                operandNames.add(constantOperand.getNameOrDefault(operand.getSimpleName().toString()));
-            }
+            return null;
         }
 
-        if (!isValid) {
-            return null;
+        // Operand layout: [consts_before..., dynamic_params..., consts_after...]
+        int numDynamicOperands = operands.size() - numConstantOperands;
+
+        List<Signature.Operand> signatureOperands = new ArrayList<>();
+        int operandIndex = 0;
+
+        // Process constant operands (before).
+        for (int i = 0; i < constantOperands.before().size(); i++) {
+            VariableElement operand = operands.get(i);
+            ConstantOperandModel constantOperand = constantOperands.before().get(i);
+            checkConstantOperandParam(operand, constantOperand, errorTarget);
+            signatureOperands.add(new Signature.Operand(operandIndex, constantOperand, constantOperand.getNameOrDefault(operand.getSimpleName().toString())));
+            operandIndex++;
+        }
+
+        // Process dynamic operands.
+        int dynamicOffset = constantOperands.before().size();
+        for (int dynamicIndex = 0; dynamicIndex < numDynamicOperands; dynamicIndex++) {
+            VariableElement dynamicOperand = operands.get(dynamicOffset + dynamicIndex);
+            if (hasVariadic) {
+                // The variadic operand should be the last dynamic operand.
+                if (isVariadic(dynamicOperand)) {
+                    errorTarget.addError(dynamicOperand, "Multiple variadic operands not allowed to an operation. Split up the operation if such behaviour is required.");
+                } else {
+                    errorTarget.addError(dynamicOperand, "Non-variadic operands must precede variadic operands.");
+                }
+            } else if (isVariadic(dynamicOperand)) {
+                hasVariadic = true;
+                variadicOffset = ElementUtils.getAnnotationValue(Integer.class, ElementUtils.findAnnotationMirror(dynamicOperand, types.Variadic), "startOffset");
+
+                if (!ElementUtils.typeEquals(dynamicOperand.asType(), new ArrayCodeTypeMirror(context.getDeclaredType(Object.class)))) {
+                    errorTarget.addError(dynamicOperand, "Variadic operand must have type Object[].");
+                }
+                if (variadicOffset < 0) {
+                    errorTarget.addError(dynamicOperand, "Variadic startOffset must be positive.");
+                }
+            }
+
+            if (isFallback) {
+                /**
+                 * In the regular DSL, fallback specializations can take non-Object arguments if
+                 * they agree with the type signature of the abstract execute method. Since we
+                 * synthesize our own execute method that only takes Object arguments, fallback
+                 * specializations with non-Object parameters are unsupported.
+                 */
+                if (!isObject(dynamicOperand.asType()) && !isVariadic(dynamicOperand)) {
+                    if (errorTarget != null) {
+                        errorTarget.addError(dynamicOperand, "Operands to @%s specializations of Operation nodes must have type %s.",
+                                        getSimpleName(types.Fallback),
+                                        getSimpleName(context.getDeclaredType(Object.class)));
+                    }
+                }
+            }
+
+            TypeMirror type = dynamicOperand.asType();
+            signatureOperands.add(new Signature.Operand(type, type, dynamicOperand.getSimpleName().toString(), operandIndex, dynamicIndex, null));
+            operandIndex++;
+        }
+
+        // Process constant operands (after).
+        int constantAfterOffset = dynamicOffset + numDynamicOperands;
+        for (int i = 0; i < constantOperands.after().size(); i++) {
+            VariableElement operand = operands.get(constantAfterOffset + i);
+            ConstantOperandModel constantOperand = constantOperands.after().get(i);
+            checkConstantOperandParam(operand, constantOperand, errorTarget);
+            signatureOperands.add(new Signature.Operand(operandIndex, constantOperand, constantOperand.getNameOrDefault(operand.getSimpleName().toString())));
+            operandIndex++;
+        }
+
+        if (errorTarget.hasErrors()) {
+            return null; // error sync
         }
 
         TypeMirror returnType = specialization.getReturnType();
         if (ElementUtils.canThrowTypeExact(specialization.getThrownTypes(), CustomOperationParser.types().UnexpectedResultException)) {
             returnType = context.getDeclaredType(Object.class);
         }
-
-        List<Signature.Operand> signatureOperands = new ArrayList<>();
-        int operandIndex = 0;
-        for (ConstantOperandModel operand : constantOperands.before()) {
-            signatureOperands.add(new Signature.Operand(operandIndex, operand, operandNames.get(operandIndex)));
-            operandIndex++;
-        }
-
-        for (int dynamicIndex = 0; dynamicIndex < operands.size() - numConstantOperands; dynamicIndex++) {
-            signatureOperands.add(new Signature.Operand(operands.get(operandIndex).asType(), operandNames.get(operandIndex), operandIndex, dynamicIndex, null));
-            operandIndex++;
-        }
-
-        for (ConstantOperandModel operand : constantOperands.after()) {
-            signatureOperands.add(new Signature.Operand(operandIndex, operand, operandNames.get(operandIndex)));
-            operandIndex++;
-        }
-
         return new Signature(returnType, signatureOperands, hasVariadic, variadicOffset);
     }
 
@@ -289,7 +271,7 @@ public class SpecializationSignatureParser {
         }
 
         if (a.constantOperands().size() != b.constantOperands().size()) {
-            throw new AssertionError("Constant operand counts should match between merged signatures (%d and %d).".formatted(a.constantOperands(), b.constantOperands()));
+            throw new AssertionError("Constant operand counts should match between merged signatures (%d and %d).".formatted(a.constantOperands().size(), b.constantOperands().size()));
         }
         if (a.dynamicOperandCount() != b.dynamicOperandCount()) {
             if (errorTarget != null) {
@@ -303,7 +285,10 @@ public class SpecializationSignatureParser {
         for (int i = 0; i < a.operands().size(); i++) {
             Operand aOperand = a.operands().get(i);
             Operand bOperand = b.operands().get(i);
-            mergedOperands.add(aOperand.withType(mergeIfPrimitiveType(context, aOperand.type(), bOperand.type())));
+            TypeMirror mergedType = mergeIfPrimitiveType(context, aOperand.type(), bOperand.type());
+            TypeMirror mergedStaticType = mergeIfPrimitiveType(context, aOperand.staticType(), bOperand.staticType());
+            Operand merged = aOperand.withType(mergedType, mergedStaticType);
+            mergedOperands.add(merged);
         }
         return new Signature(newReturnType, mergedOperands, a.isVariadic(), a.variadicOffset());
     }

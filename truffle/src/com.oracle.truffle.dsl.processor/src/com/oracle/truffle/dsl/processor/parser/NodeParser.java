@@ -1710,10 +1710,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     usedTypes.add(parameter.getType());
                 }
                 usedTypes = uniqueSortedTypes(usedTypes, false);
-
                 if (usedTypes.size() == 1) {
                     polymorphicType = usedTypes.iterator().next();
                 } else {
+                    // we cannot compute a common super type as it might be ambiguous
                     polymorphicType = getCommonSuperType(context, usedTypes);
                 }
 

@@ -636,7 +636,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         OperationModel operation = customOperation.operation;
         operation.isVariadic = true;
         operation.isVoid = false;
-        operation.setDynamicOperands(new DynamicOperandModel(List.of("value"), false, false));
+        operation.setDynamicOperands(new DynamicOperandModel(List.of("condition"), false, false));
 
         /*
          * NB: This creates a new operation for the boolean converter (or reuses one if such an
@@ -925,16 +925,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return ElementUtils.typeEquals(annotationType, context.getTypes().Operation);
     }
 
-    private CodeExecutableElement createExecuteMethod(Signature signature, String name, TypeMirror type, boolean withUnexpected) {
+    private CodeExecutableElement createExecuteMethod(Signature signature, String name, TypeMirror type) {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, ABSTRACT), type, name);
-        if (withUnexpected) {
-            ex.addThrownType(types.UnexpectedResultException);
-        }
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
         for (Operand operand : signature.operands()) {
             ex.addParameter(new CodeVariableElement(operand.type(), operand.name()));
         }
-
         return ex;
     }
 
@@ -948,23 +944,28 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     private void createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
                     String operationName) {
 
+        TypeMirror objectType = context.getType(Object.class);
+
         /*
          * We erase all specialized types. Without boxing elimination we cannot specialize any of
-         * the signature types in the instruction. If we introduce the notion of static types in the
-         * future we might be able to use more of the type information.
+         * the signature types in the instruction. Unless types are implicitly casted we keep static
+         * types intact so we can produce more efficient code.
          */
-        List<TypeMirror> newTypes = signature.operands().stream().map((o) -> {
-            if (o.isDynamic()) {
-                if (signature.isVariadicOperand(o)) {
-                    return context.getType(Object[].class);
+        Signature erasedSignature = new Signature(signature, signature.operands().stream().map((operand) -> {
+            if (operand.isDynamic()) {
+                if (signature.isVariadicOperand(operand)) {
+                    TypeMirror objectArray = context.getType(Object[].class);
+                    return operand.withType(objectArray, objectArray);
+                } else if (parent.typeSystem != null && parent.typeSystem.hasImplicitSourceTypes(operand.staticType())) {
+                    // explicitly erase static type for implicit source types
+                    return operand.withType(objectType, objectType);
                 } else {
-                    return context.getType(Object.class);
+                    return operand.withType(objectType, operand.staticType());
                 }
             } else {
-                return o.type();
+                return operand;
             }
-        }).toList();
-        Signature erasedSignature = signature.withOperandTypes(newTypes);
+        }).toList());
 
         String instructionName = "c." + operationName;
         InstructionModel instr;
@@ -1029,7 +1030,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         // add dummy abstract execute method
-        generatedNode.add(createExecuteMethod(signature, "executeObject", signature.returnType(), false));
+        generatedNode.add(createExecuteMethod(signature, "executeObject", signature.returnType()));
 
         NodeData result;
         try {

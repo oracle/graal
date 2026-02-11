@@ -195,6 +195,7 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
                         "return");
 
         assertEquals(42L, node.getCallTarget().call(42L));
+
         var stable = assertQuickenings(node, 14, 7);
 
         assertStable(stable, node, 42L);

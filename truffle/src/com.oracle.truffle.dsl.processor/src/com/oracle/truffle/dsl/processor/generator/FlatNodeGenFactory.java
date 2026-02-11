@@ -2568,6 +2568,30 @@ public class FlatNodeGenFactory {
         SpecializationGroup group = SpecializationGroup.create(specializations);
         frameState.setSkipStateChecks(skipStateChecks);
         builder.tree(createFastPath(builder, specializations, group, type, frameState));
+
+        if (!group.hasFallthrough() && skipStateChecks) {
+            boolean removeUnexpectedResult = true;
+            for (SpecializationData specialization : specializations) {
+                SpecializationData overload = specialization.lookupBoxingOverload(type);
+                if (overload != null && overload.hasUnexpectedResultRewrite()) {
+                    removeUnexpectedResult = false;
+                    break;
+                }
+                if (specialization.hasUnexpectedResultRewrite()) {
+                    removeUnexpectedResult = false;
+                    break;
+                }
+                if (!specialization.getExceptions().isEmpty()) {
+                    removeUnexpectedResult = false;
+                    break;
+                }
+            }
+
+            if (removeUnexpectedResult) {
+                removeThrownException(method, types.UnexpectedResultException);
+            }
+        }
+
         return method;
     }
 
@@ -4009,18 +4033,22 @@ public class FlatNodeGenFactory {
             executable.addParameter(arg);
         }
 
-        DeclaredType unexpectedResult = types.UnexpectedResultException;
+        removeThrownException(executable, types.UnexpectedResultException);
+
+        if (needsUnexpectedResultException(executedType)) {
+            executable.getThrownTypes().add(types.UnexpectedResultException);
+        }
+
+        return executable;
+    }
+
+    private static void removeThrownException(CodeExecutableElement executable, DeclaredType unexpectedResult) {
         Iterator<TypeMirror> thrownTypes = executable.getThrownTypes().iterator();
         while (thrownTypes.hasNext()) {
             if (typeEquals(unexpectedResult, thrownTypes.next())) {
                 thrownTypes.remove();
             }
         }
-        if (needsUnexpectedResultException(executedType)) {
-            executable.getThrownTypes().add(unexpectedResult);
-        }
-
-        return executable;
     }
 
     private void renameOriginalParameters(ExecutableTypeData executedType, CodeExecutableElement executable, FrameState frameState) {
@@ -7293,7 +7321,7 @@ public class FlatNodeGenFactory {
         TypeMirror sourceType = value.getTypeMirror();
 
         List<ImplicitCastData> implicitCasts = typeSystem.lookupByTargetType(targetType);
-        List<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(targetType);
+        List<TypeMirror> sourceTypes = List.copyOf(typeSystem.lookupSourceTypes(targetType));
         CodeTree valueReference = value.createReference();
         if (implicitCasts.isEmpty()) {
             checkBuilder.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, valueReference));

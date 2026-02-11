@@ -130,6 +130,7 @@ public final class InstructionModel implements PrettyPrintable {
             }
             return false;
         }
+
     }
 
     public enum ImmediateWidth {
@@ -296,6 +297,10 @@ public final class InstructionModel implements PrettyPrintable {
 
     public enum QuickeningKind {
         /**
+         * Not a quickening.
+         */
+        BASE,
+        /**
          * Implements a specialized version of the base instruction. Typically this is a type
          * specialization but it need not be.
          */
@@ -309,7 +314,17 @@ public final class InstructionModel implements PrettyPrintable {
          * Implements a generic version of the base instruction. This instruction acts as a sink to
          * prevent the base instruction from re-quickening to a specialized case.
          */
-        GENERIC,
+        GENERIC;
+
+        public boolean isSpecialized() {
+            switch (this) {
+                case SPECIALIZED:
+                case SPECIALIZED_UNBOXED:
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 
     public final QuickeningKind quickeningKind;
@@ -350,7 +365,7 @@ public final class InstructionModel implements PrettyPrintable {
         this.signature = signature;
         this.quickeningName = null;
         this.quickeningBase = null;
-        this.quickeningKind = null;
+        this.quickeningKind = QuickeningKind.BASE;
         this.specializedType = null;
         this.checked = false;
     }
@@ -527,15 +542,12 @@ public final class InstructionModel implements PrettyPrintable {
 
         if (getQuickeningRoot().hasQuickenings()) {
             String quickenKind;
-            if (quickeningBase == null) {
-                quickenKind = "base";
-            } else {
-                quickenKind = switch (quickeningKind) {
-                    case GENERIC -> "generic";
-                    case SPECIALIZED -> "specialized";
-                    case SPECIALIZED_UNBOXED -> "return-type";
-                };
-            }
+            quickenKind = switch (quickeningKind) {
+                case BASE -> "base";
+                case GENERIC -> "generic";
+                case SPECIALIZED -> "specialized";
+                case SPECIALIZED_UNBOXED -> "return-type";
+            };
             printer.field("quicken-kind", quickenKind);
         }
 
@@ -571,19 +583,28 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public boolean isControlFlow() {
+    /**
+     * Returns <code>true</code> if this instruction has no stack effects. This is different to
+     * having {@link InstructionModel#getStackEffect()} being zero in that the return value is not
+     * popped and pushed from the stack. Void instructions with zero operands are automatically
+     * transparent.
+     */
+    public boolean isTransparent() {
+        if (signature.isVoid() && signature.dynamicOperandCount() == 0) {
+            return true;
+        }
         switch (kind) {
             case BRANCH:
             case BRANCH_BACKWARD:
-            case BRANCH_FALSE:
-            case RETURN:
-            case YIELD:
-            case THROW:
-            case CUSTOM_SHORT_CIRCUIT:
+            case TAG_ENTER:
+            case TAG_LEAVE:
+            case TAG_LEAVE_VOID:
+            case TAG_YIELD:
+            case TAG_YIELD_NULL:
+            case TAG_RESUME:
+            case TRACE_INSTRUCTION:
             case INVALIDATE:
                 return true;
-            case CUSTOM:
-                return operation.kind == OperationKind.CUSTOM_YIELD;
             default:
                 return false;
         }
@@ -874,11 +895,37 @@ public final class InstructionModel implements PrettyPrintable {
         return true;
     }
 
-    public int getStackEffect() {
+    public boolean hasVariableStackEffect() {
         return switch (kind) {
-            case LOAD_VARIADIC, CREATE_VARIADIC -> throw new IllegalArgumentException("Variadic instruction " + this + " does not have a fixed stack effect.");
-            default -> (signature.isVoid() ? 0 : 1) - signature.dynamicOperandCount();
+            case LOAD_VARIADIC, CREATE_VARIADIC -> true;
+            default -> false;
         };
+    }
+
+    public int getStackEffect() {
+        if (hasVariableStackEffect()) {
+            throw new IllegalArgumentException("Variadic instruction " + this + " does not have a fixed stack effect.");
+        }
+        return (signature.isVoid() ? 0 : 1) - signature.dynamicOperandCount();
+    }
+
+    public boolean isQuickeningRoot() {
+        return hasQuickenings() && quickeningBase == null;
+    }
+
+    public boolean isInliningCutoff() {
+        switch (this.kind) {
+            case TAG_ENTER:
+            case TAG_LEAVE:
+            case TAG_LEAVE_VOID:
+            case TAG_YIELD:
+            case TAG_YIELD_NULL:
+            case TAG_RESUME:
+            case TRACE_INSTRUCTION:
+                return true;
+
+        }
+        return false;
     }
 
 }

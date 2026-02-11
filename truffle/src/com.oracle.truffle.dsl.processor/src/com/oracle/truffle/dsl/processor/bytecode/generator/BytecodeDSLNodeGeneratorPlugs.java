@@ -105,9 +105,6 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     @Override
     public List<? extends VariableElement> additionalArguments() {
         List<CodeVariableElement> result = new ArrayList<>();
-        if (instruction.isYield()) {
-            result.add(new CodeVariableElement(context.getTypes().FrameWithoutBoxing, "$stackFrame"));
-        }
         result.add(new CodeVariableElement(nodeType, "$bytecode"));
         result.add(new CodeVariableElement(context.getType(byte[].class), "$bc"));
         result.add(new CodeVariableElement(context.getType(int.class), "$bci"));
@@ -215,6 +212,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         if (model.bytecodeDebugListener) {
             method.addParameter(new CodeVariableElement(rootNode.getAbstractBytecodeNode().asType(), "$bytecode"));
         }
+
         method.addParameter(new CodeVariableElement(context.getType(byte[].class), "$bc"));
         method.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
 

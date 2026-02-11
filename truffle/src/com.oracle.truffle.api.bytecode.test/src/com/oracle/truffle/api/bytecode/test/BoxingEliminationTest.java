@@ -1970,7 +1970,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "c.Consumer$Boolean",
                         "return");
 
-        var quickenings = assertQuickenings(node, 7, 3);
+        var quickenings = assertQuickenings(node, 9, 4);
 
         assertStable(quickenings, node, false);
         assertStable(quickenings, node, true);
@@ -2179,7 +2179,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "c.Consumer$Boolean",
                         "return");
 
-        var quickenings = assertQuickenings(node, 7, 3);
+        var quickenings = assertQuickenings(node, 9, 4);
 
         assertStable(quickenings, node, false);
         assertStable(quickenings, node, true);

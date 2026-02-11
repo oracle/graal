@@ -267,7 +267,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, STATIC), context.getType(int.class), name);
             method.addParameter(new CodeVariableElement(context.getType(Object.class), LOCAL_VALUE));
 
-            List<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
+            List<TypeMirror> sourceTypes = List.copyOf(typeSystem.lookupSourceTypes(type));
 
             CodeTreeBuilder builder = method.createBuilder();
             boolean elseIf = false;
