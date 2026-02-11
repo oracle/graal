@@ -461,9 +461,9 @@ To summarize this section, GraalVM Insight is a useful tool for polyglot, langua
 
 ## Tracking Local Variables
 
-Not only that GraalVM Insight can access local variables, but it can also act
-when those variables are being accessed or modified. Imagine following code
-snippet:
+GraalVM Insight can monitor variable access patterns in your code. 
+Beyond simply reading variable values, you can track when variables are written to or read from, enabling data flow analysis and dependency tracking.
+Consider this function that performs a calculation with intermediate variables:
 
 ```js
 function main(n) {
@@ -475,23 +475,27 @@ function main(n) {
 print(main(5));
 ```
 
-It prints out a number `8`.
-Apply the following Insight script `vars.js` to track which variable depends on
-which in the `main`:
+This function takes an input `n` (value 5), creates intermediate variables `a` and `b`, then computes the result `r`. The output is `8`.
+To track variable dependencies in the `main` function, create this Insight script and save it as `vars.js`:
 
 ```js
+// Track variable writes (assignments)
 insight.on('enter', (ctx, frame) => {
     print(`writeVariableNameEnter ${ctx.attributes.writeVariableName}`);
 }, {
     writes: true,
     rootNameFilter: 'main'
 });
+
+// Track completion of variable writes with their values
 insight.on('return', (ctx, frame) => {
     print(`writeVariableNameReturn ${ctx.attributes.writeVariableName} = ${ctx.returnValue(frame)}`);
 }, {
     writes: true,
     rootNameFilter: 'main'
 });
+
+// Track variable reads (access)
 insight.on('return', (ctx, frame) => {
     print(`  readVariableName ${ctx.attributes.readVariableName} = ${ctx.returnValue(frame)}`);
 }, {
@@ -500,8 +504,11 @@ insight.on('return', (ctx, frame) => {
 });
 ```
 
-When launched with `js --insight=vars.js main.js` it prints information about
-writing and reading of the local variables:
+When you run the script with:
+```bash
+js --insight=vars.js main.js
+```
+The output reveals the complete data flow:
 
 ```
 writeVariableNameEnter a
@@ -518,10 +525,12 @@ writeVariableNameReturn r = 8
 8
 ```
 
-The output reveals that in order to compute variable `r` one needs to access
-variables `a` and `b` and both these variables depend on variable `n`. Such
-a tracing can be used to track flow of tainted values in functions with unknown
-bodies.
+This outputs shows that:
+- Variables `a` and `b` both depend on input parameter `n`
+- Variable `r` depends on both `a` and `b`
+- The final result depends on all intermediate computations```
+You can use variable tracking for security checks, understanding code dependencies, and debugging data problems. 
+You can see how data moves through your code, find slow variable operations, and track down where wrong values come from.
 
 ## Modifying Local Variables
 
