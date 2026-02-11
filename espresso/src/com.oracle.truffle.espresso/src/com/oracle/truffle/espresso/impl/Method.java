@@ -77,6 +77,7 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -2447,7 +2448,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         @CachedLibrary(limit = "2") @Exclusive InteropLibrary interop,
                         @Cached @Exclusive InlinedBranchProfile typeError,
                         @Cached @Exclusive InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
-            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            EspressoLanguage language = EspressoLanguage.get(node);
+            assert language.isExternalJVMCIEnabled();
+            Meta meta = EspressoContext.get(node).getMeta();
             int argumentCount = receiver.getArgumentCount();
             if (argumentCount != arguments.length) {
                 arityError.enter(node);
@@ -2479,13 +2482,18 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                     if (interop.isNull(arguments[argumentIndex])) {
                         convertedArguments[argumentIndex] = StaticObject.NULL;
                     } else {
-                        if (!(arguments[argumentIndex] instanceof StaticObject object)) {
-                            typeError.enter(node);
-                            throw UnsupportedTypeException.create(arguments);
-                        }
                         Klass type = receiver.getMeta().resolveSymbolOrFail(typeSymbol,
                                         declaringKlass.getDefiningClassLoader(),
                                         declaringKlass.protectionDomain());
+                        StaticObject object;
+                        if (arguments[argumentIndex] instanceof StaticObject staticObject) {
+                            object = staticObject;
+                        } else if (type.isJavaLangObject()) {
+                            object = StaticObject.createForeign(language, meta.java_lang_Object, arguments[argumentIndex], interop);
+                        } else {
+                            typeError.enter(node);
+                            throw UnsupportedTypeException.create(arguments);
+                        }
                         if (!type.isAssignableFrom(object.getKlass())) {
                             typeError.enter(node);
                             throw UnsupportedTypeException.create(arguments);
@@ -2540,14 +2548,28 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                 }
             }
             Object result;
-            if (receiver.isStatic()) {
-                result = receiver.invokeDirectStatic(convertedArguments);
-            } else if (receiver.isConstructor() || receiver.isPrivate()) {
-                result = receiver.invokeDirectSpecial(convertedArguments);
-            } else if (declaringKlass.isInterface()) {
-                result = receiver.invokeDirectInterface(convertedArguments);
-            } else {
-                result = receiver.invokeDirectVirtual(convertedArguments);
+            try {
+                if (receiver.isStatic()) {
+                    result = receiver.invokeDirectStatic(convertedArguments);
+                } else if (receiver.isConstructor() || receiver.isPrivate()) {
+                    result = receiver.invokeDirectSpecial(convertedArguments);
+                } else if (declaringKlass.isInterface()) {
+                    result = receiver.invokeDirectInterface(convertedArguments);
+                } else {
+                    result = receiver.invokeDirectVirtual(convertedArguments);
+                }
+            } catch (EspressoException e) {
+                if (InterpreterToVM.instanceOf(e.getGuestException(), meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException)) {
+                    StaticObject hostExceptionWrapper = (StaticObject) meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_getHostException //
+                                    .invokeDirectVirtual(e.getGuestException());
+                    throw (AbstractTruffleException) hostExceptionWrapper.rawForeignObject(language);
+                }
+                throw e;
+            }
+            if (result instanceof StaticObject staticObject) {
+                if (staticObject.isForeignObject()) {
+                    return staticObject.rawForeignObject(language);
+                }
             }
             return result;
         }

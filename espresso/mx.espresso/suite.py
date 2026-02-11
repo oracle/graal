@@ -294,6 +294,16 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
+        "com.oracle.truffle.espresso.vmaccess.guest": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "sdk:VMACCESS_GUEST",
+            ],
+            "javaCompliance": "21+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         # Native library for Espresso native interface
         "com.oracle.truffle.espresso.native": {
             "subDir": "src",
@@ -900,6 +910,8 @@ suite = {
                     "dependency:espresso:HOTSWAP/*",
                     "dependency:espresso:CONTINUATIONS/*",
                     "dependency:espresso:ESPRESSO_JVMCI/*",
+                    "dependency:espresso:ESPRESSO_VMACCESS_GUEST/*",
+                    "dependency:sdk:VMACCESS_GUEST/*",
                     "dependency:espresso:ESPRESSO_IO/*",
                 ],
                 "./": {
@@ -1035,6 +1047,22 @@ suite = {
                 "com.oracle.truffle.espresso.jvmci",
             ],
             "description": "JVMCI implementation for Espresso",
+            "useModulePath": True,
+            "maven": False,
+        },
+
+        "ESPRESSO_VMACCESS_GUEST": {
+            "subDir": "src",
+            "moduleInfo": {
+                "name": "jdk.graal.compiler.espresso.vmaccess.guest",
+            },
+            "dependencies": [
+                "com.oracle.truffle.espresso.vmaccess.guest",
+            ],
+            "distDependencies": [
+                "sdk:VMACCESS_GUEST",
+            ],
+            "description": "Helper classes for espresso' external JVMCI implementation",
             "useModulePath": True,
             "maven": False,
         },

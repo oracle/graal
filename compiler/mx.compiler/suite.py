@@ -358,6 +358,7 @@ suite = {
       "subDir": "src",
       "sourceDirs": ["src"],
       "dependencies": [
+        "sdk:VMACCESS_GUEST",
         "jdk.graal.compiler.vmaccess",
       ],
       "requires": [
@@ -766,6 +767,7 @@ suite = {
         "jdk.graal.compiler.hostvmaccess",
       ],
       "distDependencies": [
+        "sdk:VMACCESS_GUEST",
         "VMACCESS",
       ],
       "useModulePath": True,

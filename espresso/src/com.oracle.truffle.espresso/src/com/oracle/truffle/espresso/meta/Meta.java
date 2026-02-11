@@ -1296,6 +1296,13 @@ public final class Meta extends ContextAccessImpl
         } else {
             this.jvmci = null;
         }
+        if (getLanguage().isExternalJVMCIEnabled()) {
+            com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException = knownPlatformKlass(Types.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException);
+            com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_init = com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException //
+                            .requireDeclaredMethod(Names._init_, Signatures._void_Object_String);
+            com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_getHostException = com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException //
+                            .requireDeclaredMethod(Names.getHostException, Signatures.Object);
+        }
 
         JImageExtensions jImageExtensions = getLanguage().getJImageExtensions();
         if (jImageExtensions != null && getJavaVersion().java9OrLater()) {
@@ -1987,6 +1994,10 @@ public final class Meta extends ContextAccessImpl
     public final Klass jdk_internal_foreign_abi_UpcallLinker_CallRegs;
     public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs;
     public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs;
+
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException;
+    @CompilationFinal public Method com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_init;
+    @CompilationFinal public Method com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_getHostException;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;
@@ -3310,7 +3321,7 @@ public final class Meta extends ContextAccessImpl
         if (hostPrimitive instanceof Long) {
             return (StaticObject) getMeta().java_lang_Long_valueOf.invokeDirectStatic((long) hostPrimitive);
         }
-
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Not a boxed type " + hostPrimitive);
     }
 

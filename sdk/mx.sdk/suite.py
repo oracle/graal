@@ -879,6 +879,15 @@ suite = {
       ],
       "graalCompilerSourceEdition": "ignore",
     },
+
+    "jdk.graal.compiler.vmaccess.guest": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "dependencies": [],
+      "javaCompliance": "21+",
+      "checkstyle" : "org.graalvm.word",
+      "graalCompilerSourceEdition": "ignore",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -1752,6 +1761,27 @@ set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linu
         },
       },
       "maven" : False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "VMACCESS_GUEST": {
+      "description" : "Provides classes used for VMAccess in the guest.",
+      "moduleInfo": {
+        "name": "jdk.graal.compiler.vmaccess.guest",
+        "exports": [
+          "jdk.graal.compiler.vmaccess.guest",
+        ],
+      },
+      "subDir": "src",
+      "dependencies": [
+        "jdk.graal.compiler.vmaccess.guest",
+      ],
+      "distDependencies": [],
+      "useModulePath": True,
+      "noMavenJavadoc": True,
+      "maven": {
+        "tag": ["default", "public"],
+      },
       "graalCompilerSourceEdition": "ignore",
     },
   },
