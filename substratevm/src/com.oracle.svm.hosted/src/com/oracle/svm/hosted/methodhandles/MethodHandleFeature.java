@@ -340,7 +340,7 @@ public class MethodHandleFeature implements InternalFeature {
             access.registerAsRoot(classDataMethod, true, "This can be accessed by generated code when crema is enabled");
 
             // BoundMethodHandle(MethodType, LambdaForm)
-            VMAccess vmAccess = GraalAccess.getVMAccess();
+            VMAccess vmAccess = GraalAccess.get();
             AnalysisType boundMHType = metaAccess.getUniverse().lookup(vmAccess.lookupBootClassLoaderType("java.lang.invoke.BoundMethodHandle"));
             AnalysisType methodTypeType = metaAccess.getUniverse().lookup(vmAccess.lookupBootClassLoaderType("java.lang.invoke.MethodType"));
             AnalysisType lambdaFormType = metaAccess.getUniverse().lookup(vmAccess.lookupBootClassLoaderType("java.lang.invoke.LambdaForm"));

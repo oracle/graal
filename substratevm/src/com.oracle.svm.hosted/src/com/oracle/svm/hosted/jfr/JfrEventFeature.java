@@ -77,11 +77,11 @@ public class JfrEventFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(Throwable.class), "jfrTracing"));
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(FileInputStream.class), "jfrTracing"));
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(FileOutputStream.class), "jfrTracing"));
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(FileChannelImpl.class), "jfrTracing"));
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(RandomAccessFile.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(Throwable.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(FileInputStream.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(FileOutputStream.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(FileChannelImpl.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(RandomAccessFile.class), "jfrTracing"));
     }
 
     @Override

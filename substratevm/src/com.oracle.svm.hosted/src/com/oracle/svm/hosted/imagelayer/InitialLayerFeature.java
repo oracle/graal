@@ -94,7 +94,7 @@ public class InitialLayerFeature implements InternalFeature {
     }
 
     private static ResolvedJavaType getProxyClass(ResolvedJavaType uninterruptibleType) {
-        VMAccess vmAccess = GraalAccess.getVMAccess();
+        VMAccess vmAccess = GraalAccess.get();
         MetaAccessProvider metaAccess = vmAccess.getProviders().getMetaAccess();
         ConstantReflectionProvider constantReflection = vmAccess.getProviders().getConstantReflection();
 

@@ -69,7 +69,7 @@ public class BootstrapMethodConfiguration implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        MetaAccessProvider metaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+        MetaAccessProvider metaAccess = GraalAccess.get().getProviders().getMetaAccess();
         /*
          * Bootstrap method used for Lambdas. Executing this method at run time implies defining
          * hidden class at run time, which is unsupported.

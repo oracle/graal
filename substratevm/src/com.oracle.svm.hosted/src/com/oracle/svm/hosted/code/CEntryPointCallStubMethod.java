@@ -131,7 +131,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     static CEntryPointCallStubMethod create(BigBang bb, AnalysisMethod targetMethod, CEntryPointData entryPointData) {
-        MetaAccessProvider originalMetaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+        MetaAccessProvider originalMetaAccess = GraalAccess.get().getProviders().getMetaAccess();
         ResolvedJavaType declaringClass = originalMetaAccess.lookupJavaType(IsolateEnterStub.class);
         ConstantPool constantPool = IsolateEnterStub.getConstantPool(originalMetaAccess);
         return new CEntryPointCallStubMethod(entryPointData, targetMethod, declaringClass, constantPool, bb.getMetaAccess());

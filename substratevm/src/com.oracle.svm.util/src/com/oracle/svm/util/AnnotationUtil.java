@@ -234,7 +234,7 @@ public final class AnnotationUtil {
      *            {@link ResolvedJavaType} values respectively.
      */
     public static <T extends Annotation> AnnotationValue newAnnotationValue(Class<T> annotationType, Object... elements) {
-        return newAnnotationValue(GraalAccess.lookupType(annotationType), elements);
+        return newAnnotationValue(GraalAccess.get().lookupType(annotationType), elements);
     }
 
     /**

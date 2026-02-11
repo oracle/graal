@@ -83,6 +83,7 @@ import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaType;
@@ -417,7 +418,8 @@ public class PointsToStats {
     }
 
     private static long getObjectSize(Object object) {
-        return GraalAccess.getOriginalProviders().getMetaAccess().getMemorySize(GraalAccess.getOriginalProviders().getSnippetReflection().forObject(object));
+        Providers providers = GraalAccess.get().getProviders();
+        return providers.getMetaAccess().getMemorySize(providers.getSnippetReflection().forObject(object));
     }
 
     /**

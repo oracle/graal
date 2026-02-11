@@ -65,7 +65,7 @@ public interface OriginalFieldProvider {
         ResolvedJavaField originalField = getOriginalField(field);
         if (originalField != null) {
             try {
-                return GraalAccess.getOriginalSnippetReflection().originalField(originalField);
+                return GraalAccess.get().getSnippetReflection().originalField(originalField);
             } catch (LinkageError ignored) {
                 /*
                  * Ignore any linking problems and incompatible class change errors. Looking up a

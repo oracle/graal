@@ -180,7 +180,7 @@ public class SerializationFeature implements InternalFeature {
          * configuration file for serialization. In order to find all the lambdas from a class, we
          * parse all the methods of the given class and find all the lambdas in them.
          */
-        MetaAccessProvider metaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+        MetaAccessProvider metaAccess = GraalAccess.get().getProviders().getMetaAccess();
         capturingClasses.parallelStream()
                         .map(metaAccess::lookupJavaType)
                         .flatMap(LambdaParser::allExecutablesDeclaredInClass)

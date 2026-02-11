@@ -64,7 +64,7 @@ public interface FieldValueTransformerWithAvailability extends FieldValueTransfo
      * field value transformers will be executed via {@link VMAccess}.
      */
     static JavaConstant transformAndConvert(FieldValueTransformer fieldValueTransformer, JavaConstant receiver, JavaConstant originalValue) {
-        SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
+        SnippetReflectionProvider originalSnippetReflection = GraalAccess.get().getSnippetReflection();
         VMError.guarantee(originalValue != null, "Original value should not be `null`. Use `JavaConstant.NULL_POINTER`.");
         VMError.guarantee(receiver == null || !receiver.isNull(), "Receiver should not be a boxed `null` (`JavaConstant.isNull()`) for static fields. Use `null`instead");
         Object reflectionReceiver = toObject(receiver);
@@ -84,7 +84,7 @@ public interface FieldValueTransformerWithAvailability extends FieldValueTransfo
             return null;
         }
         if (javaConstant.getJavaKind().isObject()) {
-            SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
+            SnippetReflectionProvider originalSnippetReflection = GraalAccess.get().getSnippetReflection();
             return originalSnippetReflection.asObject(Object.class, javaConstant);
         }
         return javaConstant.asBoxedPrimitive();

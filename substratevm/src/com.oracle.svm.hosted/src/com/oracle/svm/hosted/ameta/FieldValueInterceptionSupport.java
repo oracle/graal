@@ -128,7 +128,7 @@ public final class FieldValueInterceptionSupport {
      * per field, if there is already a transformation in place, a {@link UserError} is reported.
      */
     public void registerLegacyFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
-        registerLegacyFieldValueTransformer(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
+        registerLegacyFieldValueTransformer(GraalAccess.get().getProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
     }
 
     /**
@@ -413,7 +413,7 @@ public final class FieldValueInterceptionSupport {
             if (oField == null) {
                 throw VMError.shouldNotReachHere("Cannot read value of field that has no host value: " + field.format("%H.%n"));
             }
-            value = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(oField, receiver);
+            value = GraalAccess.get().getProviders().getConstantReflection().readFieldValue(oField, receiver);
         }
 
         return interceptValue(field, value);

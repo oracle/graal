@@ -57,7 +57,7 @@ public interface OriginalClassProvider {
     }
 
     static Class<?> getJavaClass(JavaType type) {
-        Class<?> result = GraalAccess.getOriginalSnippetReflection().originalClass(getOriginalType(type));
+        Class<?> result = GraalAccess.get().getSnippetReflection().originalClass(getOriginalType(type));
         /*
          * Currently, we do not support types at run time that have no matching java.lang.Class in
          * the image generator. So while there is no 1:1 mapping between JVMCI types and classes,

@@ -92,7 +92,7 @@ public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionP
         } else {
             return null;
         }
-        MetaAccessExtensionProvider original = GraalAccess.getOriginalProviders().getMetaAccessExtensionProvider();
+        MetaAccessExtensionProvider original = GraalAccess.get().getProviders().getMetaAccessExtensionProvider();
         return aUniverse.lookup(original.getStaticFieldForAccess(hostedObject, offset, accessKind));
     }
 }

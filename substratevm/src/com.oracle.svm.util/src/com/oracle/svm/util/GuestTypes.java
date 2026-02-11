@@ -54,7 +54,7 @@ public final class GuestTypes {
     public static final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
 
     private static ResolvedJavaType lookupType(Class<?> clazz) {
-        ResolvedJavaType type = GraalAccess.getVMAccess().getProviders().getMetaAccess().lookupJavaType(clazz);
+        ResolvedJavaType type = GraalAccess.get().lookupType(clazz);
         if (type == null) {
             throw new GraalError("Unable to find type for class " + clazz.getName());
         }
@@ -63,7 +63,7 @@ public final class GuestTypes {
 
     private static ResolvedJavaType lookupType(String className) {
         Objects.requireNonNull(className, "className must not be null");
-        ResolvedJavaType type = GraalAccess.getVMAccess().lookupAppClassLoaderType(className);
+        ResolvedJavaType type = GraalAccess.get().lookupType(className);
         if (type == null) {
             throw new GraalError("Unable to find type for class name " + className);
         }

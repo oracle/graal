@@ -44,7 +44,7 @@ public final class NewEmptyArrayFieldValueTransformer implements JVMCIFieldValue
         if (originalValue.isNull()) {
             return JavaConstant.NULL_POINTER;
         }
-        Providers originalProviders = GraalAccess.getOriginalProviders();
+        Providers originalProviders = GraalAccess.get().getProviders();
         MetaAccessProvider metaAccess = originalProviders.getMetaAccess();
         Integer originalLength = originalProviders.getConstantReflection().readArrayLength(originalValue);
         VMError.guarantee(originalLength != null, "Original value is not an array or the array length is not known");

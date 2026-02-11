@@ -77,7 +77,7 @@ public class SnippetRuntime {
         SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
         VMError.guarantee(foreignCallTargetAnnotation != null, "Add missing @SubstrateForeignCallTarget to %s.%s", declaringClass.getName(), methodName);
 
-        boolean isUninterruptible = UninterruptibleAnnotationUtils.isUninterruptible(GraalAccess.lookupMethod(method));
+        boolean isUninterruptible = UninterruptibleAnnotationUtils.isUninterruptible(GraalAccess.get().lookupMethod(method));
         boolean isFullyUninterruptible = foreignCallTargetAnnotation.fullyUninterruptible();
         return findForeignCall(methodName, method, callSideEffect, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
     }

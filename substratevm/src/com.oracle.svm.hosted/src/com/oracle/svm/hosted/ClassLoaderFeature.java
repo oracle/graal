@@ -136,7 +136,7 @@ public class ClassLoaderFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        var packagesField = JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(ClassLoader.class), "packages");
+        var packagesField = JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(ClassLoader.class), "packages");
         if (!ImageLayerBuildingSupport.buildingImageLayer()) {
             config.registerFieldValueTransformer(packagesField, new TraditionalPackageMapTransformer());
         } else {

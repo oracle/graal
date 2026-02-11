@@ -219,7 +219,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
         if (array instanceof ImageHeapPrimitiveArray heapArray) {
             /* Unaligned accesses are only allowed for primitive arrays. */
-            MetaAccessProvider originalMetaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+            MetaAccessProvider originalMetaAccess = GraalAccess.get().getProviders().getMetaAccess();
             JavaKind arrayKind = JavaKind.fromJavaClass(heapArray.getType().getComponentType().getJavaClass());
             long hostedBaseOffset = originalMetaAccess.getArrayBaseOffset(arrayKind);
             long hostedIndexScale = originalMetaAccess.getArrayIndexScale(arrayKind);

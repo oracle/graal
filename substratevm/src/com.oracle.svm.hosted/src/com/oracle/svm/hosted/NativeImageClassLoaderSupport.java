@@ -424,7 +424,7 @@ public final class NativeImageClassLoaderSupport {
             for (String fqn : loader.getClassModuleMap().keySet()) {
                 try {
                     var clazz = ((ClassLoader) loader).loadClass(fqn);
-                    imageClassLoader.registerType(GraalAccess.lookupType(clazz));
+                    imageClassLoader.registerType(GraalAccess.get().lookupType(clazz));
                 } catch (ClassNotFoundException e) {
                     throw GraalError.shouldNotReachHere(e, loader + " could not load class " + fqn);
                 }

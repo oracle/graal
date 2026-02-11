@@ -63,10 +63,10 @@ import java.util.stream.Stream;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
@@ -105,7 +105,7 @@ public enum CPUTypeAMD64 implements CPUType {
 
     private static CPUFeature[] getNativeOrEmpty() {
         CPUFeature[] empty = new CPUFeature[0];
-        if (GraalAccess.getOriginalTarget().arch instanceof AMD64 arch) {
+        if (GraalAccess.get().getTarget().arch instanceof AMD64 arch) {
             return arch.getFeatures().toArray(empty);
         } else {
             return empty;

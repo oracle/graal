@@ -327,6 +327,7 @@ import jdk.graal.compiler.word.WordTypes;
 import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;
@@ -481,8 +482,9 @@ public class NativeImageGenerator {
             if (NativeImageOptions.RuntimeCheckedCPUFeatures.hasBeenSet()) {
                 runtimeCheckedFeatures.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.RuntimeCheckedCPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
             } else {
-                var disabledFeatures = RuntimeCPUFeatureCheck.getDefaultDisabledFeatures(GraalAccess.getOriginalTarget().arch);
-                for (Enum<?> feature : RuntimeCPUFeatureCheck.getSupportedFeatures(GraalAccess.getOriginalTarget().arch)) {
+                Architecture arch = GraalAccess.get().getTarget().arch;
+                var disabledFeatures = RuntimeCPUFeatureCheck.getDefaultDisabledFeatures(arch);
+                for (Enum<?> feature : RuntimeCPUFeatureCheck.getSupportedFeatures(arch)) {
                     if (!disabledFeatures.contains(feature)) {
                         runtimeCheckedFeatures.add((AMD64.CPUFeature) feature);
                     }
@@ -594,7 +596,7 @@ public class NativeImageGenerator {
 
         OptionValues options = HostedOptionValues.singleton();
 
-        try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
+        try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.get().getSnippetReflection())).build();
                         DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(options, entryPoints, javaMainSupport, imageName, harnessSubstitutions, debug);
 
@@ -978,7 +980,7 @@ public class NativeImageGenerator {
                     ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
                 }
 
-                Providers originalProviders = GraalAccess.getOriginalProviders();
+                Providers originalProviders = GraalAccess.get().getProviders();
                 MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
 
                 ClassLoaderSupportImpl classLoaderSupport = new ClassLoaderSupportImpl(loader.classLoaderSupport);
@@ -1493,7 +1495,7 @@ public class NativeImageGenerator {
                 throw UserError.abort("Entry point method %s.%s is not static. Add a static modifier to the method.", m.format("%H.%n"));
             }
             CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.from(AnnotationUtil.getAnnotationValue(m, CEntryPoint.class));
-            if (GraalAccess.getVMAccessHelper().callBooleanSupplier(cEntryPoint.include())) {
+            if (GraalAccess.get().callBooleanSupplier(cEntryPoint.include())) {
                 entryPoints.put(m, CEntryPointData.create(m));
             }
         }

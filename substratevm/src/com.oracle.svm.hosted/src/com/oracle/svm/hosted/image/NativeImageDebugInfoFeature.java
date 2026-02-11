@@ -100,9 +100,9 @@ class NativeImageDebugInfoFeature implements InternalFeature {
      * during analysis, but still reachable through the SubstrateDebugTypeEntrySupport singleton.
      */
     public static final Set<ResolvedJavaField> foreignTypeEntryFields = Set.of(
-                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(TypeEntry.class), "typeName"),
-                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(TypeEntry.class), "typeSignature"),
-                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(ForeignStructTypeEntry.class), "typedefName"));
+                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(TypeEntry.class), "typeName"),
+                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(TypeEntry.class), "typeSignature"),
+                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(ForeignStructTypeEntry.class), "typedefName"));
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -261,7 +261,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         try (Timer.StopTimer _ = timer.start()) {
             var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
             var image = accessImpl.getImage();
-            var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
+            var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.get().getSnippetReflection())).build();
             DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getMetaAccess(),
                             accessImpl.getRuntimeConfiguration());
             var objectFile = image.getObjectFile();

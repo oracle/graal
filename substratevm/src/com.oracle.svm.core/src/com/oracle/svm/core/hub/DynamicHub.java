@@ -26,7 +26,6 @@ package com.oracle.svm.core.hub;
 
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CLASSES_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
@@ -48,6 +47,7 @@ import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNINITIALIZED_DECLARING_CLASS_SENTINEL;
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.InputStream;
 import java.io.Serializable;
@@ -102,7 +102,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -142,6 +141,7 @@ import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPo
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -1927,7 +1927,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private boolean isHybrid() {
         if (SubstrateUtil.HOSTED) {
-            return AnnotationUtil.isAnnotationPresent(GraalAccess.lookupType(hostedJavaClass), Hybrid.class);
+            return AnnotationUtil.isAnnotationPresent(GraalAccess.get().lookupType(hostedJavaClass), Hybrid.class);
         } else {
             return LayoutEncoding.isHybrid(getLayoutEncoding());
         }

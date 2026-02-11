@@ -1048,8 +1048,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
-        ResolvedJavaType targetType = GraalAccess.lookupType(targetClass);
-        ResolvedJavaType transformedValueAllowedType = GraalAccess.lookupType(getTargetClass(annotatedField.getType()));
+        GraalAccess access = GraalAccess.get();
+        ResolvedJavaType targetType = access.lookupType(targetClass);
+        Class<?> cls = getTargetClass(annotatedField.getType());
+        ResolvedJavaType transformedValueAllowedType = access.lookupType(cls);
 
         JVMCIFieldValueTransformer newTransformer = switch (kind) {
             case None, Manual -> null;

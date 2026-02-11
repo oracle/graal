@@ -412,7 +412,7 @@ public class CompileQueue {
         this.defaultParseHooks = new ParseHooks(this);
 
         callForReplacements(debug, runtimeConfig);
-        generatedFoldInvocationPluginType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(GeneratedFoldInvocationPlugin.class);
+        generatedFoldInvocationPluginType = GraalAccess.get().getProviders().getMetaAccess().lookupJavaType(GeneratedFoldInvocationPlugin.class);
     }
 
     protected AnalysisToHostedGraphTransplanter createGraphTransplanter() {

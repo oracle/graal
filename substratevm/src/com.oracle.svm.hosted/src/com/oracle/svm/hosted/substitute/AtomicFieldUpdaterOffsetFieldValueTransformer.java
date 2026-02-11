@@ -58,7 +58,7 @@ public record AtomicFieldUpdaterOffsetFieldValueTransformer(ResolvedJavaField or
          * cached offset in this atomic updater object.
          */
         ResolvedJavaField tclassField = findField(original.getDeclaringClass(), "tclass");
-        ConstantReflectionProvider constantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
+        ConstantReflectionProvider constantReflection = GraalAccess.get().getProviders().getConstantReflection();
         ResolvedJavaType tclass = constantReflection.asJavaType(constantReflection.readFieldValue(tclassField, receiver));
 
         return TranslateFieldOffsetFieldValueTransformer.translateFieldOffset(original, receiver, tclass);

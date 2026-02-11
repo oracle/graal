@@ -33,14 +33,18 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
@@ -50,33 +54,45 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
 import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.graal.compiler.vmaccess.VMAccess;
-import jdk.graal.compiler.vmaccess.VMAccess.Builder;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
 
-/**
- * This class provides methods for converting core reflection objects into JVMCI counterparts
- * wrapping elements in a {@linkplain VMAccess guest context}. More helpers for working with these
- * JVMCI values are in {@link VMAccessHelper}.
- * <p>
- * This class is also used to access the JVMCI and {@linkplain #getOriginalProviders compiler
- * providers}.
- */
+/// This class supports Native Image's use of a [guest context][VMAccess]. It manages a
+/// lazily [planted][#plantConfiguration(VMAccess)] [singleton][#get()] and offers
+/// helper methods for extending the core functionality in [VMAccess].
+///
+/// To prepare for a world in which multiple images are built in a single process, with
+/// each image build using a fresh guest context, references to guest context values
+/// obtained from this object must not be stored in static fields. Such values will be
+/// stale/invalid when the guest context is discarded.
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class GraalAccess {
+public final class GraalAccess implements VMAccess {
 
-    /**
-     * The {@link VMAccess} used to implement the functionality in this class.
-     */
-    private static VMAccess vmAccess;
+    private final VMAccess delegate;
 
-    private static VMAccessHelper vmAccessHelper;
+    // Caches
+    private final Map<Class<?>, ResolvedJavaType> typeCache = new ConcurrentHashMap<>();
+    private final Map<Executable, ResolvedJavaMethod> methodCache = new ConcurrentHashMap<>();
+    private final Map<Field, ResolvedJavaField> fieldCache = new ConcurrentHashMap<>();
+    private final Map<RecordComponent, ResolvedJavaRecordComponent> recordCache = new ConcurrentHashMap<>();
+    private final MetaAccessProvider metaAccess;
+    private final ConstantReflectionProvider constantReflection;
+    private final SnippetReflectionProvider snippetReflection;
+
+    /// The singleton initialized by [#plantConfiguration(VMAccess)].
+    private static GraalAccess singleton;
 
     /**
      * Guards against multiple calls to {@link #plantConfiguration(VMAccess)}. The value is a stack
@@ -84,9 +100,15 @@ public final class GraalAccess {
      */
     private static volatile String providersInit;
 
-    private GraalAccess() {
+    private GraalAccess(VMAccess delegate) {
+        this.delegate = delegate;
+        Providers providers = delegate.getProviders();
+        this.metaAccess = providers.getMetaAccess();
+        this.constantReflection = providers.getConstantReflection();
+        this.snippetReflection = providers.getSnippetReflection();
     }
 
+    /// Prefix of system properties used to configure guest access.
     private static final String PROPERTY_PREFIX = ImageInfo.PROPERTY_NATIVE_IMAGE_PREFIX + "vmaccess.";
 
     /// Name of the property for selecting the guest context implementation.
@@ -103,15 +125,13 @@ public final class GraalAccess {
     /// | `log.level=ALL`             | "log.level=ALL"                    |
     /// | `,log.level=ALL,foo=bar,,,` | "log.level=ALL", "foo=bar"         |
     //@formatter:on
-    private static final String OPTIONS_PROPERTY = PROPERTY_PREFIX + "options";
+    public static final String OPTIONS_PROPERTY = PROPERTY_PREFIX + "options";
 
-    /**
-     * Gets a {@link VMAccess} builder whose {@linkplain Builder#getVMAccessName() name} is
-     * specified by the {@value #NAME_PROPERTY} system property. If no name is specified, then
-     * {@code "host"} is used.
-     *
-     * @throws GraalError if the requested builder cannot be found
-     */
+    /// Gets a [VMAccess] builder whose [name][Builder#getVMAccessName] is
+    /// specified by the {@value #NAME_PROPERTY} system property. If no name is specified,
+    /// `"host"` is used.
+    ///
+    /// @throws GraalError if the requested builder cannot be found
     public static VMAccess.Builder getVmAccessBuilder() {
         String oldProp = NAME_PROPERTY.replace(".name", "name");
         if (System.getProperty(oldProp) != null) {
@@ -174,13 +194,18 @@ public final class GraalAccess {
     }
 
     /**
-     * Configures {@link GraalAccess} based on {@code vmAccess}. This method must be called before
-     * calling any other methods in this class and can only be called once to ensure the whole
-     * system uses a stable configuration.
+     * Initializes the {@link GraalAccess} singleton based on {@code vmAccess}.
+     * <p>
+     * If {@code vmAccess != null}, this method must be called before calling {@link #get()} and it
+     * can only be called once to ensure the whole system uses a stable configuration.
+     * <p>
+     * Naming this method with a "plant" prefix (as opposed to "set" or "init") is intentional. It
+     * conveys the fact that this initialization is done "from the side" where as ideally it should
+     * be done in the static initializer of this class.
      *
      * @param access the {@link VMAccess} value to use for configuring {@link GraalAccess}. If
-     *            {@code null}, then {@link #getVmAccessBuilder()} is used to create a VMAccess that
-     *            reflects the host configuration.
+     *            {@code null}, then {@link #getVmAccessBuilder()} is used to create an instance
+     *            that reflects the host configuration.
      */
     public static synchronized void plantConfiguration(VMAccess access) {
         GraalError.guarantee(providersInit == null, "Providers have already been planted: %s", providersInit);
@@ -190,17 +215,35 @@ public final class GraalAccess {
             if (cp != null) {
                 builder.classPath(Arrays.asList(cp.split(File.pathSeparator)));
             }
-            vmAccess = builder.build();
+            singleton = new GraalAccess(builder.build());
         } else {
-            vmAccess = access;
+            singleton = new GraalAccess(access);
         }
-        vmAccessHelper = new VMAccessHelper(vmAccess);
         StringWriter sw = new StringWriter();
         new Exception("providers previously planted here:").printStackTrace(new PrintWriter(sw));
         providersInit = sw.toString();
     }
 
-    private static void ensureInitialized() {
+    /**
+     * Shortcut for {@code getProviders().getCodeCache().getTarget()}.
+     */
+    public TargetDescription getTarget() {
+        return getProviders().getCodeCache().getTarget();
+    }
+
+    /**
+     * Shortcut for {@code getProviders().getSnippetReflection()}.
+     */
+    public SnippetReflectionProvider getSnippetReflection() {
+        return snippetReflection;
+    }
+
+    /**
+     * Gets the singleton {@link GraalAccess} value. If an externally configured {@link VMAccess} is
+     * being used, then it must be {@linkplain #plantConfiguration(VMAccess) set} prior to the first
+     * call to this method.
+     */
+    public static GraalAccess get() {
         if (providersInit == null) {
             synchronized (GraalAccess.class) {
                 if (providersInit == null) {
@@ -208,45 +251,17 @@ public final class GraalAccess {
                 }
             }
         }
+        return singleton;
     }
-
-    public static TargetDescription getOriginalTarget() {
-        return getOriginalProviders().getCodeCache().getTarget();
-    }
-
-    public static Providers getOriginalProviders() {
-        return getVMAccess().getProviders();
-    }
-
-    /**
-     * Gets the {@link VMAccess} used to configure this class.
-     */
-    public static VMAccess getVMAccess() {
-        ensureInitialized();
-        return vmAccess;
-    }
-
-    /**
-     * Gets the {@link VMAccessHelper} used to configure this class.
-     */
-    public static VMAccessHelper getVMAccessHelper() {
-        ensureInitialized();
-        return vmAccessHelper;
-    }
-
-    private static final Map<Class<?>, ResolvedJavaType> typeCache = new ConcurrentHashMap<>();
-    private static final Map<Executable, ResolvedJavaMethod> methodCache = new ConcurrentHashMap<>();
-    private static final Map<Field, ResolvedJavaField> fieldCache = new ConcurrentHashMap<>();
-    private static final Map<RecordComponent, ResolvedJavaRecordComponent> recordCache = new ConcurrentHashMap<>();
 
     /**
      * Gets the {@link Annotated} equivalent value for element.
      *
      * @return {@code null} if element is a {@link Package} that has no annotations
      */
-    public static Annotated toAnnotated(AnnotatedElement element) {
+    public Annotated toAnnotated(AnnotatedElement element) {
         return switch (element) {
-            case Class<?> clazz -> lookupType(clazz);
+            case Class<?> clazz -> get().lookupType(clazz);
             case Method method -> lookupMethod(method);
             case Constructor<?> cons -> lookupMethod(cons);
             case Package pkg -> lookupPackage(pkg);
@@ -256,23 +271,23 @@ public final class GraalAccess {
         };
     }
 
-    public static ResolvedJavaType lookupType(Class<?> cls) {
-        return typeCache.computeIfAbsent(cls, c -> getOriginalProviders().getMetaAccess().lookupJavaType(cls));
+    public ResolvedJavaType lookupType(Class<?> cls) {
+        return typeCache.computeIfAbsent(cls, metaAccess::lookupJavaType);
     }
 
-    public static ResolvedJavaMethod lookupMethod(Executable exe) {
-        return methodCache.computeIfAbsent(exe, e -> getOriginalProviders().getMetaAccess().lookupJavaMethod(e));
+    public ResolvedJavaMethod lookupMethod(Executable exe) {
+        return methodCache.computeIfAbsent(exe, metaAccess::lookupJavaMethod);
     }
 
-    public static ResolvedJavaField lookupField(Field field) {
-        return fieldCache.computeIfAbsent(field, f -> getOriginalProviders().getMetaAccess().lookupJavaField(f));
+    public ResolvedJavaField lookupField(Field field) {
+        return fieldCache.computeIfAbsent(field, metaAccess::lookupJavaField);
     }
 
-    public static ResolvedJavaRecordComponent lookupRecordComponent(RecordComponent rc) {
-        return recordCache.computeIfAbsent(rc, r -> getOriginalProviders().getMetaAccess().lookupJavaRecordComponent(rc));
+    public ResolvedJavaRecordComponent lookupRecordComponent(RecordComponent rc) {
+        return recordCache.computeIfAbsent(rc, metaAccess::lookupJavaRecordComponent);
     }
 
-    private static ResolvedJavaPackage lookupPackage(Package pkg) {
+    private ResolvedJavaPackage lookupPackage(Package pkg) {
         /*
          * All Packages should have at least the package-info.class. We convert that Class object to
          * a ResolvedJavaType and use that to query the ResolvedJavaPackage.
@@ -282,10 +297,180 @@ public final class GraalAccess {
         if (packageInfo == null) {
             throw new NullPointerException("Package info of " + pkg.getName() + " is null");
         }
-        return getVMAccess().getPackage(lookupType(packageInfo));
+        return getPackage(lookupType(packageInfo));
     }
 
-    public static SnippetReflectionProvider getOriginalSnippetReflection() {
-        return getOriginalProviders().getSnippetReflection();
+    /**
+     * Instantiates an instance of {@code supplierType} in the guest and invokes
+     * {@link BooleanSupplier#getAsBoolean()} on it.
+     *
+     * @param supplierType a concrete {@link java.util.function.BooleanSupplier} type
+     */
+    public boolean callBooleanSupplier(ResolvedJavaType supplierType) {
+        ResolvedJavaMethod cons = JVMCIReflectionUtil.getDeclaredConstructor(false, supplierType);
+        JavaConstant supplier = invoke(cons, null);
+        ResolvedJavaMethod getAsBoolean = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, BooleanSupplier.class, "getAsBoolean");
+        return invoke(getAsBoolean, supplier).asBoolean();
+    }
+
+    /**
+     * Instantiates an instance of {@code functionType} in the guest and invokes
+     * {@link Function#apply(Object)} on it.
+     *
+     * @param functionType a concrete {@link java.util.function.BooleanSupplier} type
+     * @param arg the single function argument for {@code apply}
+     */
+    public JavaConstant callFunction(ResolvedJavaType functionType, JavaConstant arg) {
+        ResolvedJavaMethod cons = JVMCIReflectionUtil.getDeclaredConstructor(false, functionType);
+        JavaConstant function = invoke(cons, null);
+        ResolvedJavaMethod apply = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, Function.class, "apply", Object.class);
+        return invoke(apply, function, arg);
+    }
+
+    /**
+     * Shortcut for {@code lookupAppClassLoaderType(name)}.
+     */
+    public ResolvedJavaType lookupType(String name) {
+        return lookupAppClassLoaderType(name);
+    }
+
+    /**
+     * Looks up a method in the guest.
+     *
+     * @param declaringType the class declaring the method
+     * @param name name of the method
+     * @param parameterTypes types of the method's parameters
+     */
+    public ResolvedJavaMethod lookupMethod(ResolvedJavaType declaringType, String name, Class<?>... parameterTypes) {
+        return JVMCIReflectionUtil.getUniqueDeclaredMethod(false, metaAccess, declaringType, name, parameterTypes);
+    }
+
+    /**
+     * Converts the host string {@code value} to a guest instance and returns a reference to it as a
+     * {@link JavaConstant}.
+     */
+    public JavaConstant asGuestString(String value) {
+        return constantReflection.forString(value);
+    }
+
+    /**
+     * Converts the guest {@code val} to a host {@code type} object instance.
+     *
+     * @return {@code null} if {@code val.isNull()} otherwise a non-null {@code type} instance
+     * @throws IllegalArgumentException if conversion is not supported for {@code type}
+     */
+    public <T> T asHostObject(Class<T> type, JavaConstant val) {
+        if (val.isNull()) {
+            return null;
+        }
+        T res = snippetReflection.asObject(type, val);
+        if (res == null) {
+            throw new IllegalArgumentException("Cannot convert guest constant to a %s: %s".formatted(type.getName(), val));
+        }
+        return res;
+    }
+
+    /**
+     * Shortcut for {@code asHostObject(String.class, val)}.
+     */
+    public String asHostString(JavaConstant val) {
+        return asHostObject(String.class, val);
+    }
+
+    public JavaConstant invokeStatic(ResolvedJavaMethod method, JavaConstant... args) {
+        assert method.isStatic() : method;
+        return invoke(method, null, args);
+    }
+
+    // delegating methods
+
+    @Override
+    public Providers getProviders() {
+        return delegate.getProviders();
+    }
+
+    @Override
+    public boolean owns(ResolvedJavaType value) {
+        return delegate.owns(value);
+    }
+
+    @Override
+    public boolean owns(ResolvedJavaMethod value) {
+        return delegate.owns(value);
+    }
+
+    @Override
+    public boolean owns(ResolvedJavaField value) {
+        return delegate.owns(value);
+    }
+
+    @Override
+    public JavaConstant invoke(ResolvedJavaMethod method, JavaConstant receiver, JavaConstant... args) {
+        return delegate.invoke(method, receiver, args);
+    }
+
+    @Override
+    public JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements) {
+        return delegate.asArrayConstant(componentType, elements);
+    }
+
+    @Override
+    public ResolvedJavaMethod asResolvedJavaMethod(Constant constant) {
+        return delegate.asResolvedJavaMethod(constant);
+    }
+
+    @Override
+    public ResolvedJavaField asResolvedJavaField(Constant constant) {
+        return delegate.asResolvedJavaField(constant);
+    }
+
+    @Override
+    public JavaConstant asExecutableConstant(ResolvedJavaMethod method) {
+        return delegate.asExecutableConstant(method);
+    }
+
+    @Override
+    public JavaConstant asFieldConstant(ResolvedJavaField field) {
+        return delegate.asFieldConstant(field);
+    }
+
+    @Override
+    public ResolvedJavaType lookupAppClassLoaderType(String name) {
+        return delegate.lookupAppClassLoaderType(name);
+    }
+
+    @Override
+    public ResolvedJavaType lookupPlatformClassLoaderType(String name) {
+        return delegate.lookupPlatformClassLoaderType(name);
+    }
+
+    @Override
+    public ResolvedJavaType lookupBootClassLoaderType(String name) {
+        return delegate.lookupBootClassLoaderType(name);
+    }
+
+    @Override
+    public ResolvedJavaModule getModule(ResolvedJavaType type) {
+        return delegate.getModule(type);
+    }
+
+    @Override
+    public ResolvedJavaPackage getPackage(ResolvedJavaType type) {
+        return delegate.getPackage(type);
+    }
+
+    @Override
+    public Stream<ResolvedJavaPackage> bootLoaderPackages() {
+        return delegate.bootLoaderPackages();
+    }
+
+    @Override
+    public ResolvedJavaModuleLayer bootModuleLayer() {
+        return delegate.bootModuleLayer();
+    }
+
+    @Override
+    public URL getCodeSourceLocation(ResolvedJavaType type) {
+        return delegate.getCodeSourceLocation(type);
     }
 }

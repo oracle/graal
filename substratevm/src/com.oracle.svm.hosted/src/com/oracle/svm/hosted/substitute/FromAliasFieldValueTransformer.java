@@ -39,6 +39,6 @@ public record FromAliasFieldValueTransformer(ResolvedJavaField aliasField) imple
     @Override
     public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
         aliasField.getDeclaringClass().initialize();
-        return GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(aliasField, null);
+        return GraalAccess.get().getProviders().getConstantReflection().readFieldValue(aliasField, null);
     }
 }

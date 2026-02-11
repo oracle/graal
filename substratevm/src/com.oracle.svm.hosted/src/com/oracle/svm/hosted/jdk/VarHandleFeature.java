@@ -436,8 +436,8 @@ final class StaticVarHandleInfo extends VarHandleInfo {
         long offset = offsetGetter.applyAsLong(varHandle);
         Object base = baseGetter.apply(varHandle);
         JavaKind kind = kindGetter.apply(varHandle);
-        JavaConstant baseHandle = GraalAccess.getOriginalProviders().getSnippetReflection().forObject(base);
-        ResolvedJavaField result = GraalAccess.getOriginalProviders().getMetaAccessExtensionProvider().getStaticFieldForAccess(baseHandle, offset, kind);
+        JavaConstant baseHandle = GraalAccess.get().getProviders().getSnippetReflection().forObject(base);
+        ResolvedJavaField result = GraalAccess.get().getProviders().getMetaAccessExtensionProvider().getStaticFieldForAccess(baseHandle, offset, kind);
         if (result == null) {
             throw VMError.shouldNotReachHere("Could not find static field referenced in VarHandle: base = " + base + ", offset = " + offset + ", kind = " + kind);
         }
@@ -457,7 +457,7 @@ final class InstanceVarHandleInfo extends VarHandleInfo {
     ResolvedJavaField findOriginalField(Object varHandle) {
         long offset = offsetGetter.applyAsLong(varHandle);
         Class<?> clazz = typeGetter.apply(varHandle);
-        ResolvedJavaType type = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
+        ResolvedJavaType type = GraalAccess.get().getProviders().getMetaAccess().lookupJavaType(clazz);
         JavaKind kind = kindGetter.apply(varHandle);
         ResolvedJavaField result = type.findInstanceFieldWithOffset(offset, kind);
         if (result == null) {

@@ -65,7 +65,7 @@ public interface OriginalMethodProvider {
         ResolvedJavaMethod originalMethod = getOriginalMethod(method);
         if (originalMethod != null) {
             try {
-                return GraalAccess.getOriginalSnippetReflection().originalMethod(originalMethod);
+                return GraalAccess.get().getSnippetReflection().originalMethod(originalMethod);
             } catch (IllegalArgumentException | LinkageError ignored) {
                 /*
                  * Ignore any linking problems and unsupported method types. Looking up a reflective

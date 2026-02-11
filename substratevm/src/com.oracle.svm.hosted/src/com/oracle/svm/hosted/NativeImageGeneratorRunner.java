@@ -82,7 +82,6 @@ import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalMethodProvider;
-import com.oracle.svm.util.VMAccessHelper;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.options.OptionKey;
@@ -477,7 +476,7 @@ public class NativeImageGeneratorRunner {
     }
 
     private static boolean isValidArchitecture() {
-        final Architecture originalTargetArch = GraalAccess.getOriginalTarget().arch;
+        final Architecture originalTargetArch = GraalAccess.get().getTarget().arch;
         return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64 || originalTargetArch instanceof RISCV64;
     }
 
@@ -554,19 +553,18 @@ public class NativeImageGeneratorRunner {
                                         SubstrateOptionsParser.commandArgument(SubstrateOptions.Method, "<method-name>"));
                     }
                     ResolvedJavaMethod mainEntryMethod;
-                    VMAccess vmAccess = classLoader.vmAccess;
+                    GraalAccess access = GraalAccess.get();
                     try {
-                        VMAccessHelper h = GraalAccess.getVMAccessHelper();
-                        ResolvedJavaType buildTimeSupport = h.lookupType("com.oracle.svm.guest.hosted.BuildTimeSupport");
-                        ResolvedJavaMethod getMainClassFromModule = h.lookupMethod(buildTimeSupport, "getMainEntryPointMethod",
+                        ResolvedJavaType buildTimeSupport = access.lookupType("com.oracle.svm.guest.hosted.BuildTimeSupport");
+                        ResolvedJavaMethod getMainClassFromModule = access.lookupMethod(buildTimeSupport, "getMainEntryPointMethod",
                                         String.class,
                                         String.class,
                                         String.class);
-                        JavaConstant res = h.invokeStatic(getMainClassFromModule,
-                                        h.asGuestString(className),
-                                        h.asGuestString(moduleName),
-                                        h.asGuestString(mainEntryPointName));
-                        mainEntryMethod = vmAccess.asResolvedJavaMethod(res);
+                        JavaConstant res = access.invokeStatic(getMainClassFromModule,
+                                        access.asGuestString(className),
+                                        access.asGuestString(moduleName),
+                                        access.asGuestString(mainEntryPointName));
+                        mainEntryMethod = access.asResolvedJavaMethod(res);
                     } catch (InvocationException ex) {
                         if (ex.getCause() instanceof ClassNotFoundException cnfe && cnfe.getMessage().equals(className)) {
                             throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
@@ -577,7 +575,7 @@ public class NativeImageGeneratorRunner {
                     String cEntryFunctionSig = "(I" + MetaUtil.toInternalName(CCharPointerPointer.class.getName()) + ";)";
                     if (!mainEntryMethod.getSignature().toMethodDescriptor().startsWith(cEntryFunctionSig)) {
                         javaMainSupport = createJavaMainSupport((Method) OriginalMethodProvider.getJavaMethod(mainEntryMethod), classLoader);
-                        mainEntryMethod = GraalAccess.lookupMethod(getMainEntryMethod(classLoader));
+                        mainEntryMethod = access.lookupMethod(getMainEntryMethod(classLoader));
                     }
 
                     verifyMainEntryPoint(mainEntryMethod, classLoader.classLoaderSupport.annotationExtractor);
@@ -676,7 +674,7 @@ public class NativeImageGeneratorRunner {
 
     public static boolean verifyValidJavaVersionAndPlatform() {
         if (!isValidArchitecture()) {
-            reportToolUserError("Runs on AMD64, AArch64 and RISCV64 only. Detected architecture: " + ClassUtil.getUnqualifiedName(GraalAccess.getOriginalTarget().arch.getClass()));
+            reportToolUserError("Runs on AMD64, AArch64 and RISCV64 only. Detected architecture: " + ClassUtil.getUnqualifiedName(GraalAccess.get().getTarget().arch.getClass()));
         }
         if (!isValidOperatingSystem()) {
             reportToolUserError("Runs on Linux, Mac OS X and Windows only. Detected OS: " + System.getProperty("os.name"));

@@ -106,7 +106,7 @@ public class InfoTreeBuilder {
             name = nameBuilder.toString();
         }
         this.nativeCodeInfo = new NativeCodeInfo(name, codeCtx.getDirectives(), isBuiltin);
-        originalProviders = GraalAccess.getOriginalProviders();
+        originalProviders = GraalAccess.get().getProviders();
     }
 
     public NativeCodeInfo construct() {

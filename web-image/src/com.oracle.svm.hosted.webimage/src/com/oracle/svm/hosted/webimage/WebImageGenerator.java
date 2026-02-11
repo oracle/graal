@@ -179,6 +179,7 @@ public class WebImageGenerator extends NativeImageGenerator {
 
     @Override
     protected void registerEntryPoints(Map<ResolvedJavaMethod, CEntryPointData> entryPoints) {
+        GraalAccess access = GraalAccess.get();
         if (WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASM || WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASMGC) {
             List<Method> startFunctions = loader.findAnnotatedMethods(WasmStartFunction.class);
             GraalError.guarantee(startFunctions.size() <= 1, "Only a single start function must exist: %s", startFunctions);
@@ -190,12 +191,12 @@ public class WebImageGenerator extends NativeImageGenerator {
                 GraalError.guarantee(startFunction.getParameterCount() == 0 && startFunction.getReturnType() == void.class, "Start function %s.%s must not have arguments or a return value.",
                                 startFunction.getDeclaringClass().getName(), startFunction.getName());
 
-                entryPoints.put(GraalAccess.lookupMethod(startFunction), null);
+                entryPoints.put(access.lookupMethod(startFunction), null);
             }
 
             for (Method m : loader.findAnnotatedMethods(WasmExport.class)) {
                 GraalError.guarantee(Modifier.isStatic(m.getModifiers()), "Exported method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().getName(), m.getName());
-                entryPoints.put(GraalAccess.lookupMethod(m), null);
+                entryPoints.put(access.lookupMethod(m), null);
             }
         }
 
@@ -204,13 +205,13 @@ public class WebImageGenerator extends NativeImageGenerator {
              * For non-executable images (shared libraries), the library initialization code needs
              * to be an entry point.
              */
-            entryPoints.put(GraalAccess.lookupMethod(libraryInit), null);
+            entryPoints.put(access.lookupMethod(libraryInit), null);
         }
 
         for (Class<?> c : loader.findAnnotatedClasses(JS.Export.class, false)) {
             for (Method m : c.getDeclaredMethods()) {
                 if (Modifier.isAbstract(m.getModifiers())) {
-                    entryPoints.put(GraalAccess.lookupMethod(m), null);
+                    entryPoints.put(access.lookupMethod(m), null);
                 }
             }
         }
@@ -249,7 +250,7 @@ public class WebImageGenerator extends NativeImageGenerator {
 
     @Override
     protected SubstrateTargetDescription createTarget() {
-        Architecture architecture = GraalAccess.getOriginalTarget().arch;
+        Architecture architecture = GraalAccess.get().getTarget().arch;
         return new SubstrateTargetDescription(architecture, false, 16, 0, null);
     }
 }

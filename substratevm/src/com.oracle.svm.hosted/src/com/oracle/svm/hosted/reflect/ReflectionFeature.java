@@ -393,7 +393,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
          * These transformers have to be registered before registering methods below which causes
          * the analysis to already see SubstrateMethodAccessor.vtableIndex.
          */
-        ResolvedJavaType substrateMethodAccessorType = GraalAccess.lookupType(SubstrateMethodAccessor.class);
+        ResolvedJavaType substrateMethodAccessorType = GraalAccess.get().lookupType(SubstrateMethodAccessor.class);
         analysisAccess.registerFieldValueTransformer(JVMCIReflectionUtil.getUniqueDeclaredField(substrateMethodAccessorType, "vtableIndex"), new ComputeVTableIndex());
         analysisAccess.registerFieldValueTransformer(JVMCIReflectionUtil.getUniqueDeclaredField(substrateMethodAccessorType, "interfaceTypeID"), new ComputeInterfaceTypeID());
 

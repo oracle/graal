@@ -227,7 +227,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
 
     private LayeredFieldValueTransformerImpl createTransformer(AnalysisField aField, LayeredFieldValue layeredFieldValue, Set<Integer> delayedValueReceivers) {
         return fieldToLayeredTransformer.computeIfAbsent(aField, _ -> {
-            var transformer = JVMCIReflectionUtil.newInstance(GraalAccess.lookupType(layeredFieldValue.transformer()));
+            var transformer = JVMCIReflectionUtil.newInstance(GraalAccess.get().lookupType(layeredFieldValue.transformer()));
             return new LayeredFieldValueTransformerImpl(aField, transformer, delayedValueReceivers);
         });
     }

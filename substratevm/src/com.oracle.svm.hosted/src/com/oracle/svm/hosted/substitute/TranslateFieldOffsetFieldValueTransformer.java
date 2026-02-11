@@ -55,7 +55,7 @@ public record TranslateFieldOffsetFieldValueTransformer(ResolvedJavaField origin
     }
 
     static JavaConstant translateFieldOffset(ResolvedJavaField original, JavaConstant receiver, ResolvedJavaType tclass) {
-        long searchOffset = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(original, receiver).asLong();
+        long searchOffset = GraalAccess.get().getProviders().getConstantReflection().readFieldValue(original, receiver).asLong();
         /* Search the declared fields for a field with a matching offset. */
         for (ResolvedJavaField f : tclass.getInstanceFields(false)) {
             long fieldOffset = f.getOffset();

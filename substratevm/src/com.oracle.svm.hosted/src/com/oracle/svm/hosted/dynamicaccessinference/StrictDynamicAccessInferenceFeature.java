@@ -145,7 +145,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
     public void afterRegistration(AfterRegistrationAccess access) {
         FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
         applicationClassLoader = accessImpl.getApplicationClassLoader();
-        ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GraalAccess.getOriginalProviders(), applicationClassLoader);
+        ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GraalAccess.get().getProviders(), applicationClassLoader);
         registry = new ConstantExpressionRegistry(analyzer);
         ImageSingletons.add(ConstantExpressionRegistry.class, registry);
     }

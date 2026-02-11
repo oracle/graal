@@ -59,6 +59,7 @@ public class CalendarFeature implements InternalFeature {
     private static void initializeCalendarSystem(InternalFeatureAccess access) {
         ResolvedJavaType calendarSystem = access.findTypeByName("sun.util.calendar.CalendarSystem");
         var forName = JVMCIReflectionUtil.getUniqueDeclaredMethod(access.getMetaAccess(), calendarSystem, "forName", String.class);
-        GraalAccess.getVMAccess().invoke(OriginalMethodProvider.getOriginalMethod(forName), null, GraalAccess.getOriginalSnippetReflection().forObject("julian"));
+        GraalAccess graalAccess = GraalAccess.get();
+        graalAccess.invoke(OriginalMethodProvider.getOriginalMethod(forName), null, graalAccess.getSnippetReflection().forObject("julian"));
     }
 }
