@@ -295,9 +295,12 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
 
     def default_stages(self) -> List[str]:
         if self.benchmarkName() == "micronaut-pegasus":
-            if bm_exec_context().has("vm") and bm_exec_context().get("vm").config_name().endswith("-ce"):
-                # fails on CE due to --enable-sbom EE only option injected from upstream pom (GR-66891)
-                return []
+            if bm_exec_context().has("vm"):
+                vm = bm_exec_context().get("vm")
+                if vm.graalvm_edition == "ce" or vm.static:
+                    # fails on CE due to --enable-sbom EE only option injected from upstream pom (GR-66891)
+                    # fails when building static executables (GR-73060)
+                    return []
             # The 'agent' stage is not supported, as currently we cannot run micronaut-pegasus on the JVM (GR-59793)
             return ["instrument-image", "instrument-run", "image", "run"]
         return super().default_stages()

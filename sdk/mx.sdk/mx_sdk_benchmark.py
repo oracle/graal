@@ -421,6 +421,10 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['-H:+GraalOS']
         if vm.use_string_inlining:
             base_image_build_args += ['-H:+UseStringInlining']
+        if vm.static:
+            base_image_build_args += ['--static', '--libc=musl']
+        if vm.mostly_static:
+            base_image_build_args += ['--static-nolibc']
         if vm.use_open_type_world:
             base_image_build_args += ['-H:-ClosedTypeWorld']
         if vm.copyingoldgen_oldpolicy: # for later removal: GR-73132
@@ -868,6 +872,8 @@ class NativeImageVM(StageAwareGraalVm):
         self.pie = False
         self.layered = False
         self.use_string_inlining = False
+        self.static = False
+        self.mostly_static = False
         self.is_llvm = False
         self.gc = None
         self.native_architecture = False
@@ -917,6 +923,10 @@ class NativeImageVM(StageAwareGraalVm):
             config += ["crema"]
         if self.use_string_inlining is True:
             config += ["string-inlining"]
+        if self.static is True:
+            config += ["static"]
+        if self.mostly_static is True:
+            config += ["mostly-static"]
         if self.use_open_type_world is True:
             config += ["otw"]
         if self.copyingoldgen_oldpolicy is True: # for later removal: GR-73132
@@ -1013,8 +1023,8 @@ class NativeImageVM(StageAwareGraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         # Note: the order of entries here must match the order of statements in NativeImageVM.config_name()
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<copyingoldgen_oldpolicy>copyingoldgen-oldpolicy-)?(?P<crema>crema-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
-               r'(?P<graalos>graalos-)?(?P<graalhost_graalos>graalhost-graalos-)?(?P<pie>pie-)?(?P<layered>layered-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<static>mostly-static-|static-)?(?P<otw>otw-)?(?P<copyingoldgen_oldpolicy>copyingoldgen-oldpolicy-)?(?P<crema>crema-)?' \
+               r'(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?(?P<graalos>graalos-)?(?P<graalhost_graalos>graalhost-graalos-)?(?P<pie>pie-)?(?P<layered>layered-)?' \
                r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
                r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
@@ -1066,6 +1076,17 @@ class NativeImageVM(StageAwareGraalVm):
         if matching.group("string_inlining") is not None:
             mx.logv(f"'string-inlining' is enabled for {config_name}")
             self.use_string_inlining = True
+
+        if matching.group("static") is not None:
+            static_mode = matching.group("static")[:-1]
+            if static_mode == "static":
+                mx.logv(f"'static' is enabled for {config_name}")
+                self.static = True
+            elif static_mode == "mostly-static":
+                mx.logv(f"'mostly-static' is enabled for {config_name}")
+                self.mostly_static = True
+            else:
+                mx.abort(f"Unknown static mode: {static_mode}")
 
         if matching.group("gate") is not None:
             mx.logv(f"'gate' mode is enabled for {config_name}")
