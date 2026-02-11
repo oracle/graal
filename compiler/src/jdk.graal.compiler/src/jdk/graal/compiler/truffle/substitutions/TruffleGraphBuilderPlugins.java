@@ -1418,6 +1418,14 @@ public class TruffleGraphBuilderPlugins {
                 if (arrayLength == null) {
                     return false;
                 }
+                JavaKind arrayKind = metaAccess.lookupJavaType(sourceConst).getComponentType().getJavaKind();
+                int arrayBaseOffset = metaAccess.getArrayBaseOffset(arrayKind);
+                int arrayIndexScale = metaAccess.getArrayIndexScale(arrayKind);
+                int elementSize = Math.max(arrayIndexScale, b.getMetaAccess().getArrayIndexScale(returnKind));
+                long arrayIndex = (offsetConst - arrayBaseOffset + elementSize - 1) / arrayIndexScale;
+                if (Long.compareUnsigned(arrayIndex, arrayLength) >= 0) {
+                    return false;
+                }
             }
 
             /*
@@ -1434,14 +1442,10 @@ public class TruffleGraphBuilderPlugins {
             }
 
             JavaConstant constant;
-            try {
-                if (returnKind.isObject()) {
-                    constant = constantReflection.getMemoryAccessProvider().readObjectConstant(sourceConst, offsetConst);
-                } else {
-                    constant = constantReflection.getMemoryAccessProvider().readPrimitiveConstant(returnKind, sourceConst, offsetConst, returnKind.getBitCount());
-                }
-            } catch (IllegalArgumentException ignored) {
-                return false;
+            if (returnKind.isObject()) {
+                constant = constantReflection.getMemoryAccessProvider().readObjectConstant(sourceConst, offsetConst);
+            } else {
+                constant = constantReflection.getMemoryAccessProvider().readPrimitiveConstant(returnKind, sourceConst, offsetConst, returnKind.getBitCount());
             }
 
             b.getAssumptions().record(new TruffleAssumption(finalAssumptionConst));
