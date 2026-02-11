@@ -21,16 +21,18 @@ public final class AbstractInterpretationServices {
 
     private static AbstractInterpretationServices instance;
     private final Inflation inflation;
+    private final DebugContext debug;
     private final AbstractInterpretationStatistics stats = new AbstractInterpretationStatistics();
     private final Set<AnalysisMethod> touchedMethods = new HashSet<>();
 
-    private AbstractInterpretationServices(Inflation inflation) {
+    private AbstractInterpretationServices(Inflation inflation, DebugContext debug) {
         this.inflation = inflation;
+        this.debug = debug;
     }
 
-    public static AbstractInterpretationServices getInstance(Inflation inflation) {
+    public static AbstractInterpretationServices getInstance(Inflation inflation, DebugContext debug) {
         if (instance == null) {
-            instance = new AbstractInterpretationServices(inflation);
+            instance = new AbstractInterpretationServices(inflation, debug);
         }
         return instance;
     }
@@ -48,6 +50,10 @@ public final class AbstractInterpretationServices {
 
     public Inflation getInflation() {
         return inflation;
+    }
+
+    public DebugContext getDebug() {
+        return debug;
     }
 
     public void markMethodTouched(AnalysisMethod method) {

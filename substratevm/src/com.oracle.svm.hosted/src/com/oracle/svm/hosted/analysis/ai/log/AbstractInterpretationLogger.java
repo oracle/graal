@@ -6,15 +6,12 @@ import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
-import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
-import com.oracle.svm.util.ClassUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -28,7 +25,6 @@ import java.util.List;
  * Represents a logger for abstract interpretation analysis.
  */
 public final class AbstractInterpretationLogger {
-
     private static AbstractInterpretationLogger instance;
     private PrintWriter fileWriter;
     private final String logFilePath;
@@ -248,14 +244,6 @@ public final class AbstractInterpretationLogger {
         log(fact.describe(), LoggerVerbosity.FACT);
     }
 
-    public boolean isDebugEnabled() {
-        return fileThreshold == LoggerVerbosity.DEBUG || consoleThreshold == LoggerVerbosity.DEBUG;
-    }
-
-    public String getLogFilePath() {
-        return logFilePath;
-    }
-
     /**
      * Export a graph to JSON format for sharing and analysis.
      * This is useful for getting help with abstract interpretation analysis.
@@ -286,84 +274,53 @@ public final class AbstractInterpretationLogger {
         }
     }
 
-    /**
-     * Dump the resulting graph to IGV using a fresh DebugContext to avoid giant single groups
-     * overflowing the BinaryGraphPrinter buffer.
-     */
-    public static void dumpGraph(AnalysisMethod method, StructuredGraph graph, String phaseName) {
-        if (method == null || graph == null) {
-            System.err.println("dumpGraph: method or graph is null; skipping dump (phase=" + phaseName + ")");
-            return;
-        }
-        AbstractInterpretationServices services;
-        try {
-            services = AbstractInterpretationServices.getInstance();
-        } catch (IllegalStateException ise) {
-            System.err.println("dumpGraph: AnalysisServices not initialized; skipping dump for method=" + method + ", phase=" + phaseName);
-            return;
-        }
-        var bb = services.getInflation();
-        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
-        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
-        try (DebugContext.Scope _ = debug.scope("AbstractInterpretationAnalysis", graph)) {
-            debug.dump(DebugContext.BASIC_LEVEL, graph, phaseName);
-        } catch (Throwable ex) {
-            try {
-                throw debug.handle(ex);
-            } catch (Throwable inner) {
-                System.err.println("dumpGraph: failed to dump graph for method=" + method + ", phase=" + phaseName + ": " + inner.getMessage());
-                inner.printStackTrace(System.err);
-            }
-        }
-    }
 
-    /**
-     * Session-style IGV dump helper that groups multiple dumps (e.g., per-applier) under a
-     * single top-level scope and uses Graal's dump levels (BASIC/INFO/INFO+1/ENABLED).
-     */
     public static final class IGVDumpSession implements AutoCloseable {
         private final DebugContext debug;
         private final StructuredGraph graph;
         private final String scopeName;
-        private final DebugContext.Scope scope;
         private boolean dumpedBefore;
 
         public IGVDumpSession(DebugContext debug, StructuredGraph graph, String scopeName) throws Throwable {
             this.debug = debug;
             this.graph = graph;
             this.scopeName = scopeName == null ? "GraalAF" : scopeName;
-            this.scope = this.debug.scope(this.scopeName, this.graph);
             this.dumpedBefore = false;
         }
 
         public void dumpBeforeSuite(String title) {
+            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "%s - Before %s", scopeName, title);
             if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-                debug.dump(DebugContext.BASIC_LEVEL, graph, "Before %s", title);
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "%s - Before %s", scopeName, title);
                 dumpedBefore = true;
+            } else if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
+                debug.dump(DebugContext.INFO_LEVEL, graph, "%s - %s", scopeName, title);
             }
         }
 
         public void dumpApplierSubphase(String applierDescription) {
-            if (debug.isDumpEnabled(DebugContext.INFO_LEVEL + 1)) {
-                debug.dump(DebugContext.INFO_LEVEL + 1, graph, "After applier %s", applierDescription);
+            if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "%s - %s", scopeName, applierDescription);
+            } else if (debug.isDumpEnabled(DebugContext.INFO_LEVEL + 1)) {
+                debug.dump(DebugContext.INFO_LEVEL + 1, graph, "%s - After applier %s", scopeName, applierDescription);
             } else if (debug.isDumpEnabled(DebugContext.ENABLED_LEVEL) && dumpedBefore) {
-                debug.dump(DebugContext.ENABLED_LEVEL, graph, "After applier %s", applierDescription);
+                debug.dump(DebugContext.ENABLED_LEVEL, graph, "%s - After applier %s", scopeName, applierDescription);
             }
         }
 
         public void dumpAfterSuite(String title) {
             if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-                debug.dump(DebugContext.BASIC_LEVEL, graph, "After %s", title);
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "%s - After %s", scopeName, title);
             } else if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
-                debug.dump(DebugContext.INFO_LEVEL, graph, "After %s", title);
+                debug.dump(DebugContext.INFO_LEVEL, graph, "%s - After %s", scopeName, title);
             } else if (!dumpedBefore && debug.isDumpEnabled(DebugContext.ENABLED_LEVEL)) {
-                debug.dump(DebugContext.ENABLED_LEVEL, graph, "After %s", title);
+                debug.dump(DebugContext.ENABLED_LEVEL, graph, "%s - After %s", scopeName, title);
             }
         }
 
         @Override
         public void close() {
-            scope.close();
+            // No scope to close
         }
     }
 

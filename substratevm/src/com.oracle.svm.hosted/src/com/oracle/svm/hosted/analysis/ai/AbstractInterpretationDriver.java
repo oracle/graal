@@ -41,7 +41,7 @@ public class AbstractInterpretationDriver {
         this.debug = debug;
         this.options = options;
         this.analyzerManager = new AnalyzerManager();
-        this.engine = new AbstractInterpretationEngine(analyzerManager, mainEntryPoint, bb);
+        this.engine = new AbstractInterpretationEngine(analyzerManager, mainEntryPoint, bb, debug);
     }
 
     /* To see the output of the abstract interpretation, run with -H:Log=AbstractInterpretation */

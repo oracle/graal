@@ -20,11 +20,12 @@ mx native-image -cp ~/graal/absint-tests/out $MAIN_CLASS  \
     -H:+ReportExceptionStackTraces \
     -H:Log=AbstractInterpretation \
     -H:Dump=:2 \
-    -H:PrintGraph=Network \
     -H:MethodFilter=$MAIN_CLASS.* \
+    -H:PrintGraph=Network \
     -H:+RunAbstractInterpretation \
     -H:+IntraproceduralAnalysis \
     -H:-InterproceduralAnalysis \
+    -H:+AIEnableIGVDump \
     -H:AILogLevel=SILENT \
     -H:+AILogToFile \
     -H:AILogFilePath=intra_${MAIN_CLASS}.log \

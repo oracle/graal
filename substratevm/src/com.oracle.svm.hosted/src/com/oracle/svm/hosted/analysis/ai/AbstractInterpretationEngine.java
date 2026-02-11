@@ -15,6 +15,7 @@ import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
+import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.List;
 
@@ -29,11 +30,11 @@ public class AbstractInterpretationEngine {
     private final List<AnalysisMethod> invokedMethods;
     private final AnalysisMethod analysisRoot;
 
-    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, AnalysisMethod mainEntryPoint, Inflation bb) {
-        var analysisServices = AbstractInterpretationServices.getInstance(bb);
+    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, AnalysisMethod mainEntryPoint, Inflation bb, DebugContext debug) {
+        var analysisServices = AbstractInterpretationServices.getInstance(bb, debug);
         this.analyzerManager = analyzerManager;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
-        // The mainEntryPoint is not required per-se but we may need it for some debugging purposes, such as analyzing only from it
+        // The mainEntryPoint is not required per-se, but we may need it for some debugging purposes, such as analyzing only from it
         // this.analysisRoot = analysisServices.getMainMethod(mainEntryPoint).orElse(null);
         this.analysisRoot = mainEntryPoint;
         this.invokedMethods = analysisServices.getInvokedMethods();

@@ -1,12 +1,16 @@
 package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 import com.oracle.svm.hosted.analysis.ai.checker.appliers.*;
 import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationException;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,51 +48,41 @@ public final class FactApplierSuite {
         return suite;
     }
 
-    public static boolean shouldDumpGraphToIGV(StructuredGraph graph) {
-        return shouldDumpToIGV(graph);
-    }
-
-    private static boolean shouldDumpToIGV(StructuredGraph graph) {
+    private static boolean shouldDumpToIGV(AnalysisMethod method, StructuredGraph graph) {
         if (!AbstractInterpretationLogger.getInstance().isGraphIgvDumpEnabled()) {
             return false;
         }
         if (graph == null || graph.getDebug() == null) {
             return false;
         }
-        return true;
-//        return graph.getDebug().isDumpEnabledForMethod();
+
+        OptionValues currentOptions = HostedOptionValues.singleton();
+        String filterString = DebugOptions.MethodFilter.getValue(currentOptions);
+
+        if (filterString == null || filterString.isEmpty()) {
+            return true;
+        }
+
+        MethodFilter filter = MethodFilter.parse(filterString);
+        return filter.matches(method.wrapped);
     }
 
     /**
      * Executes the appliers in registration order and returns aggregate counters for stats.
      */
     public ApplierResult runAppliers(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
-        var logger = AbstractInterpretationLogger.getInstance();
         if (graph == null) {
             return ApplierResult.empty();
         }
 
-        if (shouldDumpToIGV(graph)) {
-            try (var session = new AbstractInterpretationLogger.IGVDumpSession(graph.getDebug(), graph, "FactApplierScope")) {
-                session.dumpBeforeSuite("running provided (" + appliers.size() + ") appliers");
-                return runAppliersInternal(method, graph, aggregator, session);
-            } catch (AbstractInterpretationException e) {
-                throw new RuntimeException(e);
-            } catch (Throwable e) {
-                logger.log("[FactApplier] IGV dump failed" + e.getMessage(), LoggerVerbosity.CHECKER_WARN);
-            }
+        boolean shouldDump = shouldDumpToIGV(method, graph);
+        String methodName = method.format("%H.%n");
+
+        if (shouldDump) {
+            dumpGraph(graph, "Before phase Abstract Interpretation", methodName);
         }
 
-        return runAppliersInternal(method, graph, aggregator, null);
-    }
-
-    /**
-     * Shared core for executing all registered appliers, optionally emitting IGV subphase dumps.
-     */
-    private ApplierResult runAppliersInternal(AnalysisMethod method,
-                                              StructuredGraph graph,
-                                              FactAggregator aggregator,
-                                              AbstractInterpretationLogger.IGVDumpSession session) {
+        // Run all appliers
         ApplierResult total = ApplierResult.empty();
         for (FactApplier applier : appliers) {
             if (!applier.shouldApply()) {
@@ -102,10 +96,25 @@ public final class FactApplierSuite {
                 AbstractInterpretationException.graphVerifyFailed(applier.getDescription(), method);
             }
 
-            if (session != null && applier.shouldApply()) {
-                session.dumpApplierSubphase(applier.getDescription());
+            if (shouldDump && r.anyOptimizations()) {
+                dumpGraph(graph, "After Abstract Interpretation applier - %s", applier.getDescription());
             }
         }
+
         return total;
+    }
+
+    private void dumpGraph(StructuredGraph graph, String format, Object... args) {
+        DebugContext debug = AbstractInterpretationServices.getInstance().getDebug();
+
+        try (DebugContext.Scope _ = debug.scope("GraalAF", graph)) {
+            debug.dump(DebugContext.BASIC_LEVEL, graph, format, args);
+        } catch (Throwable e) {
+            AbstractInterpretationLogger.getInstance().log(
+                "Failed to dump graph: " + e.getMessage(),
+                com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity.CHECKER_WARN
+            );
+        }
+
     }
 }
