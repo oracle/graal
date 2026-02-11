@@ -1376,7 +1376,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             build_with_module_path = image_config.use_modules == 'image'
             if build_with_module_path:
-                export_deps_to_exclude = [str(dep) for dep in mx.classpath_entries(['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST'])] + list(_known_missing_jars)
+                export_deps_to_exclude = [str(dep) for dep in mx.classpath_entries(NativePropertiesBuildTask.implicit_excludes)] + list(_known_missing_jars)
                 build_args += image_config.get_add_exports(set(export_deps_to_exclude))
 
             requires = [arg[2:] for arg in build_args if arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:')]
