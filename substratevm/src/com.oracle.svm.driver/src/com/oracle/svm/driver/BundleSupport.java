@@ -65,9 +65,9 @@ import com.oracle.svm.driver.launcher.ContainerSupport;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
 import com.oracle.svm.driver.launcher.configuration.BundleEnvironmentParser;
 import com.oracle.svm.driver.launcher.configuration.BundlePathMapParser;
+import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;

@@ -46,8 +46,8 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
+import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;

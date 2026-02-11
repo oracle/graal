@@ -25,8 +25,8 @@
 
 package com.oracle.svm.core.jdk.localization;
 
-import static com.oracle.svm.util.StringUtil.toDotSeparated;
-import static com.oracle.svm.util.StringUtil.toSlashSeparated;
+import static com.oracle.svm.shared.util.StringUtil.toDotSeparated;
+import static com.oracle.svm.shared.util.StringUtil.toSlashSeparated;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;

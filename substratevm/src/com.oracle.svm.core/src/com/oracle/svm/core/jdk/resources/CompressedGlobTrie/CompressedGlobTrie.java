@@ -39,9 +39,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.util.GlobUtils;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.StringUtil;
 
 /**
  * This data structure represents an immutable, Trie-like data structure that stores glob patterns
