@@ -1064,7 +1064,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             if (!InterpreterToVM.instanceOf(memberName, meta.java_lang_invoke_MemberName)) {
                 return "Constant is not a MemberName";
             }
-            Method method = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(memberName);
+            Method method = (Method) meta.java_lang_invoke_MemberName_0vmTarget.getHiddenObject(memberName);
             if (method == null) {
                 return StaticObject.NULL;
             }

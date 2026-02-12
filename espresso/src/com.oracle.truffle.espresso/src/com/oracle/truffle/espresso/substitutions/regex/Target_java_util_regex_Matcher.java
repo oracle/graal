@@ -101,7 +101,7 @@ public final class Target_java_util_regex_Matcher {
             assert !isUnsupportedMatcher(self, meta) && anchor == ENDANCHOR;
 
             TRegexStatus action = TRegexStatus.FullMatch;
-            Field destination = meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_tregexFullmatch;
+            Field destination = meta.tRegexSupport.java_util_regex_Pattern_0tregexFullmatch;
 
             return runTRegexMatch(meta, self, from, node, tRegexCompileNode, tRegexExecNode, action, destination);
         }
@@ -116,7 +116,7 @@ public final class Target_java_util_regex_Matcher {
             assert !isUnsupportedMatcher(self, meta) && anchor == NOANCHOR;
 
             TRegexStatus action = TRegexStatus.Match;
-            Field destination = meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_tregexMatch;
+            Field destination = meta.tRegexSupport.java_util_regex_Pattern_0tregexMatch;
 
             return runTRegexMatch(meta, self, from, node, tRegexCompileNode, tRegexExecNode, action, destination);
         }
@@ -128,7 +128,7 @@ public final class Target_java_util_regex_Matcher {
             assert meta.getLanguage().useTRegex();
             assert isUnsupportedMatcher(self, meta);
 
-            meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
+            meta.tRegexSupport.java_util_regex_Matcher_0matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
             compileFallBackIfRequired(self, meta);
             return (Boolean) original.call(self, from, anchor);
         }
@@ -141,8 +141,8 @@ public final class Target_java_util_regex_Matcher {
                         TRegexStatus action, Field destination) {
             CompilerAsserts.partialEvaluationConstant(action);
 
-            meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_searchFromBackup.setInt(guestMatcher, from);
-            meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(guestMatcher, action);
+            meta.tRegexSupport.java_util_regex_Matcher_0searchFromBackup.setInt(guestMatcher, from);
+            meta.tRegexSupport.java_util_regex_Matcher_0matchingModeBackup.setHiddenObject(guestMatcher, action);
 
             StaticObject guestPattern = meta.tRegexSupport.java_util_regex_Matcher_parentPattern.getObject(guestMatcher);
             Object tRegexObject = tRegexCompileNode.execute(node, meta, guestPattern, action, destination);
@@ -175,11 +175,11 @@ public final class Target_java_util_regex_Matcher {
                         @Cached TRegexEnsureCompiledNode tRegexCompileNode,
                         @Bind Node node) {
             TRegexStatus action = TRegexStatus.Search;
-            Field destination = meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_tregexSearch;
+            Field destination = meta.tRegexSupport.java_util_regex_Pattern_0tregexSearch;
 
             assert meta.getLanguage().useTRegex();
-            meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_searchFromBackup.setInt(self, from);
-            meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, TRegexStatus.Search);
+            meta.tRegexSupport.java_util_regex_Matcher_0searchFromBackup.setInt(self, from);
+            meta.tRegexSupport.java_util_regex_Matcher_0matchingModeBackup.setHiddenObject(self, TRegexStatus.Search);
 
             StaticObject pattern = meta.tRegexSupport.java_util_regex_Matcher_parentPattern.getObject(self);
             Object regexObject = tRegexCompileNode.execute(node, meta, pattern, action, destination);
@@ -193,7 +193,7 @@ public final class Target_java_util_regex_Matcher {
                         @Bind("getMeta()") Meta meta,
                         @Cached("create(meta.tRegexSupport.java_util_regex_Matcher_search.getCallTargetNoSubstitution())") DirectCallNode original) {
             assert meta.getLanguage().useTRegex();
-            meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
+            meta.tRegexSupport.java_util_regex_Matcher_0matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
             compileFallBackIfRequired(self, meta);
             return (Boolean) original.call(self, from);
         }
@@ -318,7 +318,7 @@ public final class Target_java_util_regex_Matcher {
         @Specialization(guards = "isSynced(matcher, text, meta)")
         static TruffleString doSynced(StaticObject matcher, StaticObject text, Meta meta) {
             assert isSynced(matcher, text, meta);
-            return (TruffleString) meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_tstring.getHiddenObject(matcher);
+            return (TruffleString) meta.tRegexSupport.java_util_regex_Matcher_0tstring.getHiddenObject(matcher);
         }
 
         @Specialization(guards = {"!isSynced(matcher, text, meta)", "isString(text, meta)"})
@@ -340,7 +340,7 @@ public final class Target_java_util_regex_Matcher {
         }
 
         static boolean isSynced(StaticObject matcher, StaticObject text, Meta meta) {
-            Object syncedText = meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_textSync.getHiddenObject(matcher);
+            Object syncedText = meta.tRegexSupport.java_util_regex_Matcher_0textSync.getHiddenObject(matcher);
             return syncedText == text;
         }
 
@@ -368,7 +368,7 @@ public final class Target_java_util_regex_Matcher {
 
     private static void synchronizeWithParentPattern(StaticObject self, StaticObject parentPattern, Meta meta) {
         assert TRegexStatus.isGroupDataValid(meta, parentPattern);
-        Object currentSync = meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_patternSync.getHiddenObject(self);
+        Object currentSync = meta.tRegexSupport.java_util_regex_Matcher_0patternSync.getHiddenObject(self);
         if (currentSync != null && currentSync == parentPattern) {
             // Already sync-ed
             return;
@@ -382,7 +382,7 @@ public final class Target_java_util_regex_Matcher {
             StaticObject newGroups = meta._int.allocatePrimitiveArray(parentGroupCount * 2);
             meta.tRegexSupport.java_util_regex_Matcher_groups.setObject(self, newGroups);
         }
-        meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_patternSync.setHiddenObject(self, parentPattern);
+        meta.tRegexSupport.java_util_regex_Matcher_0patternSync.setHiddenObject(self, parentPattern);
     }
 
     static void compileFallBackIfRequired(StaticObject self, Meta meta) {
@@ -409,13 +409,13 @@ public final class Target_java_util_regex_Matcher {
     }
 
     private static void executeLastWithFallback(StaticObject self, Meta meta) {
-        if (meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_matchingModeBackup.getHiddenObject(self) != StaticObject.NULL) {
-            int from = meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_searchFromBackup.getInt(self);
-            TRegexStatus action = (TRegexStatus) meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_matchingModeBackup.getHiddenObject(self);
+        if (meta.tRegexSupport.java_util_regex_Matcher_0matchingModeBackup.getHiddenObject(self) != StaticObject.NULL) {
+            int from = meta.tRegexSupport.java_util_regex_Matcher_0searchFromBackup.getInt(self);
+            TRegexStatus action = (TRegexStatus) meta.tRegexSupport.java_util_regex_Matcher_0matchingModeBackup.getHiddenObject(self);
             assert action != TRegexStatus.Validate;
             compileFallBackIfRequired(self, meta);
             applyBackup(self, meta);
-            meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
+            meta.tRegexSupport.java_util_regex_Matcher_0matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
             switch (action) {
                 case Match -> executeMatch(self, from, NOANCHOR, meta);
                 case FullMatch -> executeMatch(self, from, ENDANCHOR, meta);
@@ -425,21 +425,21 @@ public final class Target_java_util_regex_Matcher {
     }
 
     private static void saveBackup(StaticObject self, Meta meta) {
-        meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_oldLastBackup.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_oldLast.getInt(self));
-        meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_modCountBackup.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_modCount.getInt(self));
-        meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_transparentBoundsBackup.setBoolean(self, meta.tRegexSupport.java_util_regex_Matcher_transparentBounds.getBoolean(self));
-        meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup.setBoolean(self, meta.tRegexSupport.java_util_regex_Matcher_anchoringBounds.getBoolean(self));
-        meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_fromBackup.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_from.getInt(self));
-        meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_toBackup.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_to.getInt(self));
+        meta.tRegexSupport.java_util_regex_Matcher_0oldLastBackup.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_oldLast.getInt(self));
+        meta.tRegexSupport.java_util_regex_Matcher_0modCountBackup.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_modCount.getInt(self));
+        meta.tRegexSupport.java_util_regex_Matcher_0transparentBoundsBackup.setBoolean(self, meta.tRegexSupport.java_util_regex_Matcher_transparentBounds.getBoolean(self));
+        meta.tRegexSupport.java_util_regex_Matcher_0anchoringBoundsBackup.setBoolean(self, meta.tRegexSupport.java_util_regex_Matcher_anchoringBounds.getBoolean(self));
+        meta.tRegexSupport.java_util_regex_Matcher_0fromBackup.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_from.getInt(self));
+        meta.tRegexSupport.java_util_regex_Matcher_0toBackup.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_to.getInt(self));
     }
 
     private static void applyBackup(StaticObject self, Meta meta) {
-        meta.tRegexSupport.java_util_regex_Matcher_oldLast.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_oldLastBackup.getInt(self));
-        meta.tRegexSupport.java_util_regex_Matcher_modCount.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_modCountBackup.getInt(self));
-        meta.tRegexSupport.java_util_regex_Matcher_transparentBounds.setBoolean(self, meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_transparentBoundsBackup.getBoolean(self));
-        meta.tRegexSupport.java_util_regex_Matcher_anchoringBounds.setBoolean(self, meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup.getBoolean(self));
-        meta.tRegexSupport.java_util_regex_Matcher_from.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_fromBackup.getInt(self));
-        meta.tRegexSupport.java_util_regex_Matcher_to.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_toBackup.getInt(self));
+        meta.tRegexSupport.java_util_regex_Matcher_oldLast.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_0oldLastBackup.getInt(self));
+        meta.tRegexSupport.java_util_regex_Matcher_modCount.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_0modCountBackup.getInt(self));
+        meta.tRegexSupport.java_util_regex_Matcher_transparentBounds.setBoolean(self, meta.tRegexSupport.java_util_regex_Matcher_0transparentBoundsBackup.getBoolean(self));
+        meta.tRegexSupport.java_util_regex_Matcher_anchoringBounds.setBoolean(self, meta.tRegexSupport.java_util_regex_Matcher_0anchoringBoundsBackup.getBoolean(self));
+        meta.tRegexSupport.java_util_regex_Matcher_from.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_0fromBackup.getInt(self));
+        meta.tRegexSupport.java_util_regex_Matcher_to.setInt(self, meta.tRegexSupport.java_util_regex_Matcher_0toBackup.getInt(self));
     }
 
     static boolean isUnsupportedMatcher(StaticObject self, Meta meta) {
@@ -465,8 +465,8 @@ public final class Target_java_util_regex_Matcher {
                     TruffleString.FromJavaStringNode fromJavaStringNode,
                     Meta meta) {
         TruffleString truffleString = fromJavaStringNode.execute(meta.toHostString(espressoString), TruffleString.Encoding.UTF_16);
-        meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_tstring.setHiddenObject(matcher, truffleString);
-        meta.tRegexSupport.java_util_regex_Matcher_HIDDEN_textSync.setHiddenObject(matcher, sync);
+        meta.tRegexSupport.java_util_regex_Matcher_0tstring.setHiddenObject(matcher, truffleString);
+        meta.tRegexSupport.java_util_regex_Matcher_0textSync.setHiddenObject(matcher, sync);
         return truffleString;
     }
 }

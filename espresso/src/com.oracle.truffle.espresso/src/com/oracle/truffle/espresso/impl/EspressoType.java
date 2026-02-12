@@ -37,7 +37,7 @@ public interface EspressoType {
         EspressoContext context = getRawType().getContext();
         Meta meta = context.getMeta();
         StaticObject guestTypeLiteral = context.getAllocator().createNew(meta.polyglot.TypeLiteral$InternalTypeLiteral);
-        meta.polyglot.HIDDEN_TypeLiteral_internalType.setHiddenObject(guestTypeLiteral, this);
+        meta.polyglot.TypeLiteral_0internalType.setHiddenObject(guestTypeLiteral, this);
         meta.polyglot.TypeLiteral_rawType.setObject(guestTypeLiteral, getRawType().mirror());
         return guestTypeLiteral;
     }

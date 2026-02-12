@@ -68,7 +68,7 @@ public abstract class GetTypeLiteralNode extends EspressoNode {
 
     public StaticObject genericObjectTypeLiteral(EspressoContext context) {
         StaticObject result = context.getAllocator().createNew(context.getMeta().polyglot.TypeLiteral$InternalTypeLiteral);
-        context.getMeta().polyglot.HIDDEN_TypeLiteral_internalType.setHiddenObject(result, context.getMeta().java_lang_Object);
+        context.getMeta().polyglot.TypeLiteral_0internalType.setHiddenObject(result, context.getMeta().java_lang_Object);
         context.getMeta().polyglot.TypeLiteral_rawType.setObject(result, context.getMeta().java_lang_Object.mirror());
         return result;
     }

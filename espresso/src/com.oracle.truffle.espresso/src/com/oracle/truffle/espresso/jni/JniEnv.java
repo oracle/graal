@@ -2461,10 +2461,10 @@ public final class JniEnv extends NativeEnv {
             Method m;
             if (method.isConstructor()) {
                 assert InterpreterToVM.instanceOf(declMethod, getMeta().java_lang_reflect_Constructor);
-                m = (Method) getMeta().HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(declMethod);
+                m = (Method) getMeta().java_lang_reflect_Constructor_0vmMethod.getHiddenObject(declMethod);
             } else {
                 assert InterpreterToVM.instanceOf(declMethod, getMeta().java_lang_reflect_Method);
-                m = (Method) getMeta().HIDDEN_METHOD_KEY.getHiddenObject(declMethod);
+                m = (Method) getMeta().java_lang_reflect_Method_0vmMethod.getHiddenObject(declMethod);
             }
             if (method == m) {
                 return declMethod;
@@ -2492,7 +2492,7 @@ public final class JniEnv extends NativeEnv {
         StaticObject fields = getVM().JVM_GetClassDeclaredFields(field.getDeclaringKlass().mirror(), false);
         for (StaticObject declField : fields.<StaticObject[]> unwrap(language)) {
             assert InterpreterToVM.instanceOf(declField, getMeta().java_lang_reflect_Field);
-            Field f = (Field) getMeta().HIDDEN_FIELD_KEY.getHiddenObject(declField);
+            Field f = (Field) getMeta().java_lang_reflect_Field_0vmField.getHiddenObject(declField);
             if (field == f) {
                 return declField;
             }
@@ -2999,7 +2999,7 @@ public final class JniEnv extends NativeEnv {
             throw e;
         }
 
-        meta.HIDDEN_PROTECTION_DOMAIN.setMaybeHiddenObject(guestClass, protectionDomain);
+        meta.java_lang_Class_0protectedDomain.setMaybeHiddenObject(guestClass, protectionDomain);
         // FindClass should initialize the class.
         guestClass.getMirrorKlass(meta).safeInitialize();
 

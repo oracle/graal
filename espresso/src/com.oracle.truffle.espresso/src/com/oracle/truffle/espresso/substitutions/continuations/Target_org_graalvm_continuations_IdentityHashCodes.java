@@ -85,7 +85,7 @@ public final class Target_org_graalvm_continuations_IdentityHashCodes {
         if (o.isArray()) {
             language.getArrayHashCodeProperty().compareAndExchangeInt(o, 0, hashcode);
         } else {
-            meta.HIDDEN_SYSTEM_IHASHCODE.compareAndExchangeInt(o, 0, hashcode);
+            meta.java_lang_Object_0systemHashCode.compareAndExchangeInt(o, 0, hashcode);
         }
         return getHashCode(o, meta, language);
     }
@@ -93,6 +93,6 @@ public final class Target_org_graalvm_continuations_IdentityHashCodes {
     private static int getHashCode(StaticObject o, Meta meta, EspressoLanguage language) {
         return o.isArray()
                         ? language.getArrayHashCodeProperty().getInt(o)
-                        : meta.HIDDEN_SYSTEM_IHASHCODE.getInt(o);
+                        : meta.java_lang_Object_0systemHashCode.getInt(o);
     }
 }

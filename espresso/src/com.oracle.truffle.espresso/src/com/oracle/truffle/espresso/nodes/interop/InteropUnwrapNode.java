@@ -112,7 +112,7 @@ public abstract class InteropUnwrapNode extends EspressoNode {
 
     private static Object unwrapForeignException(StaticObject object, Meta meta) {
         assert meta.java_lang_Throwable.isAssignableFrom(object.getKlass());
-        if (meta.HIDDEN_FRAMES.getHiddenObject(object) == VM.StackTrace.FOREIGN_MARKER_STACK_TRACE) {
+        if (meta.java_lang_Throwable_0frames.getHiddenObject(object) == VM.StackTrace.FOREIGN_MARKER_STACK_TRACE) {
             return meta.java_lang_Throwable_backtrace.getObject(object).rawForeignObject(meta.getLanguage());
         }
         return object;

@@ -106,7 +106,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_TypeLiteral {
                         @JavaType(Type.class) StaticObject type,
                         @Bind("getContext()") EspressoContext context) {
             assert type != null;
-            context.getMeta().polyglot.HIDDEN_TypeLiteral_internalType.setHiddenObject(receiver, extractEspressoType(type, context));
+            context.getMeta().polyglot.TypeLiteral_0internalType.setHiddenObject(receiver, extractEspressoType(type, context));
         }
 
         private EspressoType extractEspressoType(StaticObject type, EspressoContext context) {

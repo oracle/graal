@@ -173,7 +173,7 @@ public final class JVMCIConstantPoolUtils {
                 LOGGER.fine(() -> "ECP.lookupResolvedMethod no call site link or failed link in CP of %s at cpi=0x%08x".formatted(cpHolderKlass, cpi));
                 return null;
             }
-            return (Method) meta.HIDDEN_VMTARGET.getHiddenObject(successfulCallSiteLink.getMemberName());
+            return (Method) meta.java_lang_invoke_MemberName_0vmTarget.getHiddenObject(successfulCallSiteLink.getMemberName());
         }
         if (!Bytecodes.isInvoke(opcode) || !(safeTagAt(constantPool, cpi, meta).isMethod())) {
             LOGGER.fine(() -> "ECP.lookupResolvedMethod opcode=" + Bytecodes.nameOf(opcode) + " poolConstant=" + constantPool.toString(cpi));
@@ -451,7 +451,7 @@ public final class JVMCIConstantPoolUtils {
         StaticObject member = meta.java_lang_invoke_DirectMethodHandle_member.getObject(methodHandle);
 
         boolean isIndy = tag == ConstantPool.Tag.INVOKEDYNAMIC;
-        Method bootstrapMethod = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(member);
+        Method bootstrapMethod = (Method) meta.java_lang_invoke_MemberName_0vmTarget.getHiddenObject(member);
         Symbol<Name> name = constantPool.bsmName(index);
         StaticObject type;
         if (isIndy) {

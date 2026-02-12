@@ -100,10 +100,10 @@ public final class StackWalk {
     /**
      * initializes the stack walking, and anchors the Frame Walker instance to a particular frame
      * and fetches the first batch of frames requested by guest.
-     * 
+     *
      * Upon return, unanchors the Frame Walker, and it is then not possible to continue walking for
      * this walker anymore.
-     * 
+     *
      * @return The result of invoking guest
      *         {@code java.lang.StackStreamFactory.AbstractStackWalker#doStackWalk(long, int, int, int,
      *         int)} .
@@ -135,7 +135,7 @@ public final class StackWalk {
     /**
      * After {@link #fetchFirstBatch(StaticObject, long, int, int, int, StaticObject, Meta)}, this
      * method allows to continue frame walking, starting from where the previous calls left off.
-     * 
+     *
      * @return
      *         <ul>
      *         <li>In Java < 22: The position in the buffer at the end of fetching.</li>
@@ -403,7 +403,7 @@ public final class StackWalk {
             StaticObject memberName;
             if (meta.getJavaVersion().java22OrLater()) {
                 memberName = meta.java_lang_invoke_ResolvedMethodName.allocateInstance(meta.getContext());
-                meta.HIDDEN_VM_METHOD.setHiddenObject(memberName, m);
+                meta.java_lang_invoke_ResolvedMethodName_0vmMethod.setHiddenObject(memberName, m);
                 meta.java_lang_invoke_ResolvedMethodName_vmholder.setObject(memberName, m.getDeclaringKlass().mirror());
                 meta.java_lang_ClassFrameInfo_classOrMemberName.setObject(frame, memberName);
             } else {

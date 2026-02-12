@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.impl.LinkedKlassFieldLayout.HiddenField;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
@@ -147,6 +148,9 @@ final class LinkedField extends StaticProperty {
         return parserField.getKind();
     }
 
+    /**
+     * @see HiddenField
+     */
     public boolean isHidden() {
         return getParserField().isHidden();
     }

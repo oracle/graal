@@ -244,7 +244,7 @@ public final class VM extends NativeEnv {
     public void notifyThreadInterrupted(StaticObject guestThread, boolean interrupted) {
         assert needsThreadInterruptedNotification();
         try {
-            TruffleObject event = (TruffleObject) getMeta().HIDDEN_INTERRUPTED_EVENT.getHiddenObject(guestThread);
+            TruffleObject event = (TruffleObject) getMeta().java_lang_Thread_0interruptedEvent.getHiddenObject(guestThread);
             assert event != null;
             getUncached().execute(mokapotSetThreadInterrupted, event, interrupted);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
@@ -925,7 +925,7 @@ public final class VM extends NativeEnv {
             }
             boolean timedOut;
             if (context.getEspressoEnv().EnableManagement) {
-                Target_java_lang_Thread.incrementThreadCounter(currentThread, meta.HIDDEN_THREAD_WAITED_COUNT);
+                Target_java_lang_Thread.incrementThreadCounter(currentThread, meta.java_lang_Thread_0waitedCount);
                 timedOut = !InterpreterToVM.monitorWait(self.getLock(context), timeout, currentThread, self);
             } else {
                 timedOut = !InterpreterToVM.monitorWait(self.getLock(context), timeout);
@@ -997,8 +997,8 @@ public final class VM extends NativeEnv {
         if (klass.isPrimitive()) {
             return StaticObject.NULL;
         }
-        assert getMeta().HIDDEN_SIGNERS != null;
-        StaticObject signersArray = (StaticObject) getMeta().HIDDEN_SIGNERS.getHiddenObject(self);
+        assert getMeta().java_lang_Class_0signers != null;
+        StaticObject signersArray = (StaticObject) getMeta().java_lang_Class_0signers.getHiddenObject(self);
         if (signersArray == null || StaticObject.isNull(signersArray)) {
             return StaticObject.NULL;
         }
@@ -1009,8 +1009,8 @@ public final class VM extends NativeEnv {
     public void JVM_SetClassSigners(@JavaType(Class.class) StaticObject self, @JavaType(Object[].class) StaticObject signers) {
         Klass klass = self.getMirrorKlass(getMeta());
         if (!klass.isPrimitive() && !klass.isArray()) {
-            assert getMeta().HIDDEN_SIGNERS != null;
-            getMeta().HIDDEN_SIGNERS.setHiddenObject(self, signers);
+            assert getMeta().java_lang_Class_0signers != null;
+            getMeta().java_lang_Class_0signers.setHiddenObject(self, signers);
         }
     }
 
@@ -1382,7 +1382,7 @@ public final class VM extends NativeEnv {
         if (StaticObject.isNull(current)) {
             return StaticObject.NULL;
         }
-        StaticObject pd = getMeta().HIDDEN_PROTECTION_DOMAIN.getMaybeHiddenObject(current);
+        StaticObject pd = getMeta().java_lang_Class_0protectedDomain.getMaybeHiddenObject(current);
         return pd == null ? StaticObject.NULL : pd;
     }
 
@@ -1535,7 +1535,7 @@ public final class VM extends NativeEnv {
             context.unregisterThread(currentThread);
         }
         if (mokapotDestroyInterruptedEvent != null) {
-            TruffleObject event = (TruffleObject) getMeta().HIDDEN_INTERRUPTED_EVENT.getHiddenObject(currentThread);
+            TruffleObject event = (TruffleObject) getMeta().java_lang_Thread_0interruptedEvent.getHiddenObject(currentThread);
             if (event != null) {
                 try {
                     getUncached().execute(mokapotDestroyInterruptedEvent, event);
@@ -3380,7 +3380,7 @@ public final class VM extends NativeEnv {
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Method);
         StaticObject curMethod = seed;
         while (curMethod != null && StaticObject.notNull(curMethod)) {
-            Method target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
+            Method target = (Method) meta.java_lang_reflect_Method_0vmMethod.getHiddenObject(curMethod);
             if (target != null) {
                 return curMethod;
             }
@@ -3394,7 +3394,7 @@ public final class VM extends NativeEnv {
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Field);
         StaticObject curField = seed;
         while (curField != null && StaticObject.notNull(curField)) {
-            Field target = (Field) meta.HIDDEN_FIELD_KEY.getHiddenObject(curField);
+            Field target = (Field) meta.java_lang_reflect_Field_0vmField.getHiddenObject(curField);
             if (target != null) {
                 return curField;
             }
@@ -3408,7 +3408,7 @@ public final class VM extends NativeEnv {
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Constructor);
         StaticObject curConstructor = seed;
         while (curConstructor != null && StaticObject.notNull(curConstructor)) {
-            Method target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curConstructor);
+            Method target = (Method) meta.java_lang_reflect_Constructor_0vmMethod.getHiddenObject(curConstructor);
             if (target != null) {
                 return curConstructor;
             }
@@ -3501,11 +3501,11 @@ public final class VM extends NativeEnv {
         if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().java_lang_reflect_Method)) {
             StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod, getMeta());
             assert methodRoot != null;
-            return (StaticObject) getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.getHiddenObject(methodRoot);
+            return (StaticObject) getMeta().java_lang_reflect_Method_0runtimeVisibleTypeAnnotations.getHiddenObject(methodRoot);
         } else if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().java_lang_reflect_Constructor)) {
             StaticObject constructorRoot = getGuestReflectiveConstructorRoot(guestReflectionMethod, getMeta());
             assert constructorRoot != null;
-            return (StaticObject) getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.getHiddenObject(constructorRoot);
+            return (StaticObject) getMeta().java_lang_reflect_Constructor_0runtimeVisibleTypeAnnotations.getHiddenObject(constructorRoot);
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
@@ -3517,7 +3517,7 @@ public final class VM extends NativeEnv {
         assert InterpreterToVM.instanceOf(guestReflectionField, getMeta().java_lang_reflect_Field);
         StaticObject fieldRoot = getGuestReflectiveFieldRoot(guestReflectionField, getMeta());
         assert fieldRoot != null;
-        return (StaticObject) getMeta().HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.getHiddenObject(fieldRoot);
+        return (StaticObject) getMeta().java_lang_reflect_Field_0runtimeVisibleTypeAnnotations.getHiddenObject(fieldRoot);
     }
 
     // endregion annotations
@@ -3579,7 +3579,7 @@ public final class VM extends NativeEnv {
     @VmImpl
     public static @Pointer TruffleObject JVM_GetThreadInterruptEvent(@Inject EspressoContext context, @Inject Meta meta) {
         StaticObject currentThread = context.getCurrentPlatformThread();
-        return (TruffleObject) meta.HIDDEN_INTERRUPTED_EVENT.getHiddenObject(currentThread);
+        return (TruffleObject) meta.java_lang_Thread_0interruptedEvent.getHiddenObject(currentThread);
     }
 
     // endregion threads
@@ -3806,7 +3806,7 @@ public final class VM extends NativeEnv {
                 assert pkgEntry != null; // should have been checked before
             }
             // Link guest module to its host representation
-            meta.HIDDEN_MODULE_ENTRY.setHiddenObject(module, moduleEntry);
+            meta.java_lang_Module_0entry.setHiddenObject(module, moduleEntry);
         }
         if (StaticObject.isNull(loader) && getContext().getVmProperties().bootClassPathType().isExplodedModule()) {
             profiler.profile(11);
@@ -3868,7 +3868,7 @@ public final class VM extends NativeEnv {
             }
             javaBaseEntry.setModule(module);
             javaBaseEntry.setVersionAndLocation(moduleVersion, moduleLocation);
-            meta.HIDDEN_MODULE_ENTRY.setHiddenObject(module, javaBaseEntry);
+            meta.java_lang_Module_0entry.setHiddenObject(module, javaBaseEntry);
             getRegistries().processFixupList(module);
         }
     }
@@ -3891,7 +3891,7 @@ public final class VM extends NativeEnv {
         }
         ModuleEntry bootUnnamed = getRegistries().getBootClassRegistry().getUnnamedModule();
         bootUnnamed.setModule(module);
-        meta.HIDDEN_MODULE_ENTRY.setHiddenObject(module, bootUnnamed);
+        meta.java_lang_Module_0entry.setHiddenObject(module, bootUnnamed);
     }
 
     // endregion Modules
@@ -3921,7 +3921,7 @@ public final class VM extends NativeEnv {
             profiler.profile(0);
             getMeta().throwNullPointerException();
         }
-        EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
+        EspressoReference host = (EspressoReference) getMeta().java_lang_ref_Reference_0hostReference.getHiddenObject(ref);
         if (host == null) {
             // reference was cleared
             return StaticObject.isNull(object);
@@ -3944,7 +3944,7 @@ public final class VM extends NativeEnv {
                         || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_SoftReference) //
                         || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_PhantomReference) //
                         || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_FinalReference)) {
-            EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
+            EspressoReference host = (EspressoReference) getMeta().java_lang_ref_Reference_0hostReference.getHiddenObject(ref);
             if (host == null) {
                 // reference was cleared
                 return StaticObject.isNull(object);
@@ -4165,8 +4165,8 @@ public final class VM extends NativeEnv {
                         ? meta.java_lang_invoke_ResolvedMethodName_vmholder
                         : meta.java_lang_invoke_MemberName_clazz;
         Field targetField = meta.getJavaVersion().java22OrLater()
-                        ? meta.HIDDEN_VM_METHOD // ResolvedMethodName.vmMethod
-                        : meta.HIDDEN_VMTARGET; // MemberName.vmTarget
+                        ? meta.java_lang_invoke_ResolvedMethodName_0vmMethod // ResolvedMethodName.vmMethod
+                        : meta.java_lang_invoke_MemberName_0vmTarget; // MemberName.vmTarget
         assert mnameField != null && clazzField != null && targetField != null;
         StaticObject mname = mnameField.getObject(info);
         if (StaticObject.isNull(mname)) {
@@ -4201,7 +4201,7 @@ public final class VM extends NativeEnv {
             // foreign object wrapper passed as backtrace directly
             foreignWrapper = throwableOrBacktrace;
         } else { // check for foreign marker stack trace
-            stackTrace = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwableOrBacktrace);
+            stackTrace = (VM.StackTrace) meta.java_lang_Throwable_0frames.getHiddenObject(throwableOrBacktrace);
             if (stackTrace == StackTrace.FOREIGN_MARKER_STACK_TRACE) {
                 foreignWrapper = meta.java_lang_Throwable_backtrace.getObject(throwableOrBacktrace);
             }
@@ -4375,7 +4375,7 @@ public final class VM extends NativeEnv {
         if (StaticObject.isNull(resolvedMethodName) || resolvedMethodName.getKlass() != meta.java_lang_invoke_ResolvedMethodName) {
             return;
         }
-        Method m = (Method) meta.HIDDEN_VM_METHOD.getHiddenObject(resolvedMethodName);
+        Method m = (Method) meta.java_lang_invoke_ResolvedMethodName_0vmMethod.getHiddenObject(resolvedMethodName);
         if (m == null) {
             return;
         }

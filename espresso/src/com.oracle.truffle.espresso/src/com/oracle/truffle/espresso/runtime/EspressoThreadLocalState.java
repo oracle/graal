@@ -275,7 +275,7 @@ public class EspressoThreadLocalState {
                     "Current thread fast access set by non-current thread";
 
             EspressoContext ctx = EspressoContext.get(null);
-            Field managedBit = ctx.getMeta().HIDDEN_ESPRESSO_MANAGED;
+            Field managedBit = ctx.getMeta().java_lang_Thread_0espressoManaged;
 
             // Ensure we are not registering multiple guest threads for the same host thread.
             assert currentPlatformThread == null || currentPlatformThread == t : //
