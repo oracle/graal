@@ -59,7 +59,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -227,7 +227,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
 
     private LayeredFieldValueTransformerImpl createTransformer(AnalysisField aField, LayeredFieldValue layeredFieldValue, Set<Integer> delayedValueReceivers) {
         return fieldToLayeredTransformer.computeIfAbsent(aField, _ -> {
-            var transformer = JVMCIReflectionUtil.newInstance(GraalAccess.lookupType(layeredFieldValue.transformer()));
+            var transformer = JVMCIReflectionUtil.newInstance(GuestAccess.get().lookupType(layeredFieldValue.transformer()));
             return new LayeredFieldValueTransformerImpl(aField, transformer, delayedValueReceivers);
         });
     }

@@ -27,7 +27,7 @@ package com.oracle.graal.pointsto.meta;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.TypedConstant;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.GraalError;
@@ -92,7 +92,7 @@ public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionP
         } else {
             return null;
         }
-        MetaAccessExtensionProvider original = GraalAccess.getOriginalProviders().getMetaAccessExtensionProvider();
+        MetaAccessExtensionProvider original = GuestAccess.get().getProviders().getMetaAccessExtensionProvider();
         return aUniverse.lookup(original.getStaticFieldForAccess(hostedObject, offset, accessKind));
     }
 }

@@ -67,7 +67,7 @@ import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestTypes;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
@@ -131,7 +131,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     static CEntryPointCallStubMethod create(BigBang bb, AnalysisMethod targetMethod, CEntryPointData entryPointData) {
-        MetaAccessProvider originalMetaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+        MetaAccessProvider originalMetaAccess = GuestAccess.get().getProviders().getMetaAccess();
         ResolvedJavaType declaringClass = originalMetaAccess.lookupJavaType(IsolateEnterStub.class);
         ConstantPool constantPool = IsolateEnterStub.getConstantPool(originalMetaAccess);
         return new CEntryPointCallStubMethod(entryPointData, targetMethod, declaringClass, constantPool, bb.getMetaAccess());

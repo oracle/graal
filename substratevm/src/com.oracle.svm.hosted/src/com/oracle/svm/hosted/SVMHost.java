@@ -146,7 +146,7 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestTypes;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -286,7 +286,7 @@ public class SVMHost extends HostVM {
         this.classInitializationSupport = classInitializationSupport;
         this.annotationSubstitutions = annotationSubstitutions;
         this.missingRegistrationSupport = missingRegistrationSupport;
-        this.originalMetaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+        this.originalMetaAccess = GuestAccess.get().getProviders().getMetaAccess();
         this.stringTable = HostedStringDeduplication.singleton();
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticUnsafeTransformations = new AutomaticUnsafeTransformationSupport(options, annotationSubstitutions, loader);
@@ -464,8 +464,8 @@ public class SVMHost extends HostVM {
     public void registerType(AnalysisType analysisType, int identityHashCode) {
         DynamicHub hub = createHub(analysisType);
 
-        ConstantReflectionProvider constantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
-        JavaConstant hubConstant = GraalAccess.getOriginalSnippetReflection().forObject(hub);
+        ConstantReflectionProvider constantReflection = GuestAccess.get().getProviders().getConstantReflection();
+        JavaConstant hubConstant = GuestAccess.get().getSnippetReflection().forObject(hub);
         int actualHashCode = constantReflection.makeIdentityHashCode(hubConstant, identityHashCode);
         if (actualHashCode != identityHashCode) {
             throw VMError.shouldNotReachHere("The identity hash code was already set to %d when trying to set it to %d from the base layer.",
@@ -971,7 +971,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean platformSupported(AnnotatedElement element) {
-        return platformSupported(GraalAccess.toAnnotated(element));
+        return platformSupported(GuestAccess.get().toAnnotated(element));
     }
 
     @Override

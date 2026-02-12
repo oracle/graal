@@ -45,7 +45,7 @@ import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -108,7 +108,7 @@ final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport imp
                  * Eventually, `getCurrentLayerStatic*Fields` need to change to JavaConstant
                  * (GR-72049, GR-72050).
                  */
-                GraalAccess.getOriginalSnippetReflection().forObject(primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields());
+                GuestAccess.get().getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields());
             case PRIOR_LAYER ->
                 primitive ? HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticPrimitiveFields()
                                 : HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticObjectFields();

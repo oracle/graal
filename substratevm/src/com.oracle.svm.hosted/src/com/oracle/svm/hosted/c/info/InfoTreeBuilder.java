@@ -68,7 +68,7 @@ import com.oracle.svm.hosted.cenum.CEnumCallWrapperMethod;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.bytecode.BridgeMethodUtils;
@@ -106,7 +106,7 @@ public class InfoTreeBuilder {
             name = nameBuilder.toString();
         }
         this.nativeCodeInfo = new NativeCodeInfo(name, codeCtx.getDirectives(), isBuiltin);
-        originalProviders = GraalAccess.getOriginalProviders();
+        originalProviders = GuestAccess.get().getProviders();
     }
 
     public NativeCodeInfo construct() {

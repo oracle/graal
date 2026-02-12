@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -59,6 +59,7 @@ public class CalendarFeature implements InternalFeature {
     private static void initializeCalendarSystem(InternalFeatureAccess access) {
         ResolvedJavaType calendarSystem = access.findTypeByName("sun.util.calendar.CalendarSystem");
         var forName = JVMCIReflectionUtil.getUniqueDeclaredMethod(access.getMetaAccess(), calendarSystem, "forName", String.class);
-        GraalAccess.getVMAccess().invoke(OriginalMethodProvider.getOriginalMethod(forName), null, GraalAccess.getOriginalSnippetReflection().forObject("julian"));
+        GuestAccess guestAccess = GuestAccess.get();
+        guestAccess.invoke(OriginalMethodProvider.getOriginalMethod(forName), null, guestAccess.getSnippetReflection().forObject("julian"));
     }
 }

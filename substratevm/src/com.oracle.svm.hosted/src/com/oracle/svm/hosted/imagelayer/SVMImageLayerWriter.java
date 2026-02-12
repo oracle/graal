@@ -173,7 +173,7 @@ import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -957,8 +957,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 default -> throw new IllegalArgumentException("Unsupported kind: " + componentKind);
             }
         } else {
-            assert GraalAccess.lookupType(componentKind.toJavaClass()).equals(GraalAccess.lookupType(array.getClass()).getComponentType()) : "%s != %s"
-                            .formatted(GraalAccess.lookupType(componentKind.toJavaClass()), GraalAccess.lookupType(array.getClass()).getComponentType());
+            GuestAccess access = GuestAccess.get();
+            assert access.lookupType(componentKind.toJavaClass()).equals(access.lookupType(array.getClass()).getComponentType()) : "%s != %s"
+                            .formatted(access.lookupType(componentKind.toJavaClass()), access.lookupType(array.getClass()).getComponentType());
             switch (array) {
                 case boolean[] a -> persistArray(a, builder::initZ, (b, i) -> b.set(i, a[i]));
                 case byte[] a -> persistArray(a, builder::initB, (b, i) -> b.set(i, a[i]));

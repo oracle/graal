@@ -112,7 +112,7 @@ import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -215,7 +215,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void register(AccessCondition condition, boolean preserved, Class<?> clazz) {
         abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "reflection"));
-        registerClass(condition, QUERIED, GraalAccess.lookupType(clazz), preserved);
+        registerClass(condition, QUERIED, GuestAccess.get().lookupType(clazz), preserved);
     }
 
     private void registerAllClasses(AnalysisType type, boolean preserved) {
@@ -253,7 +253,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerUnsafeAllocation(AccessCondition condition, boolean preserved, Class<?> clazz) {
         abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "unsafe allocation"));
-        registerUnsafeAllocation(condition, preserved, GraalAccess.lookupType(clazz));
+        registerUnsafeAllocation(condition, preserved, GuestAccess.get().lookupType(clazz));
     }
 
     private void registerUnsafeAllocation(AccessCondition condition, boolean preserved, ResolvedJavaType type) {
@@ -390,7 +390,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void register(AccessCondition condition, boolean preserved, Executable reflectExecutable) {
         abortIfSealed();
         Objects.requireNonNull(reflectExecutable, () -> nullErrorMessage("executable", "reflection"));
-        ResolvedJavaMethod method = GraalAccess.lookupMethod(reflectExecutable);
+        ResolvedJavaMethod method = GuestAccess.get().lookupMethod(reflectExecutable);
         /*
          * Without hiding methods, the declaring class of the method has to be registered to allow
          * individual queries at run-time.
@@ -530,7 +530,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field reflectField) {
         abortIfSealed();
         Objects.requireNonNull(reflectField, () -> nullErrorMessage("field", "reflection"));
-        ResolvedJavaField field = GraalAccess.lookupField(reflectField);
+        ResolvedJavaField field = GuestAccess.get().lookupField(reflectField);
         /*
          * Without hiding fields, the declaring class of the field has to be registered to allow
          * individual queries at run-time.
@@ -560,7 +560,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "reflection"));
         runConditionalTask(condition, _ -> {
-            AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(GraalAccess.lookupType(clazz));
+            AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(GuestAccess.get().lookupType(clazz));
             if (analysisType == null) {
                 return;
             }
@@ -573,7 +573,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "reflection"));
         runConditionalTask(condition, _ -> {
-            AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(GraalAccess.lookupType(clazz));
+            AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(GuestAccess.get().lookupType(clazz));
             if (analysisType == null) {
                 return;
             }
@@ -670,7 +670,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerFieldLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String fieldName) {
         runConditionalTask(condition, (cnd) -> {
             try {
-                ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(true, GraalAccess.lookupType(declaringClass), fieldName);
+                ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(true, GuestAccess.get().lookupType(declaringClass), fieldName);
                 if (field != null) {
                     registerField(cnd, ACCESSED, preserved, field);
                 }
@@ -1008,7 +1008,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private static final ResolvedJavaType AnnotationTypeMismatchExceptionProxy = GraalAccess.lookupType(ReflectionUtil.lookupClass("sun.reflect.annotation.AnnotationTypeMismatchExceptionProxy"));
+    private static final ResolvedJavaType AnnotationTypeMismatchExceptionProxy;
+
+    static {
+        Class<?> cls = ReflectionUtil.lookupClass("sun.reflect.annotation.AnnotationTypeMismatchExceptionProxy");
+        AnnotationTypeMismatchExceptionProxy = GuestAccess.get().lookupType(cls);
+    }
 
     private void visitTypesForMemberValue(Object memberValue, Consumer<ResolvedJavaType> typeConsumer) {
         switch (memberValue) {
@@ -1018,13 +1023,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
             case ResolvedJavaType type -> typeConsumer.accept(type);
             case EnumElement el -> typeConsumer.accept(el.enumType);
-            case String _ -> typeConsumer.accept(GraalAccess.lookupType(String.class));
+            case String _ -> typeConsumer.accept(GuestAccess.get().lookupType(String.class));
             case List<?> list -> {
                 for (Object element : list) {
                     visitTypesForMemberValue(element, typeConsumer);
                 }
             }
-            case MissingType _ -> typeConsumer.accept(GraalAccess.lookupType(TypeNotPresentExceptionProxy.class));
+            case MissingType _ -> typeConsumer.accept(GuestAccess.get().lookupType(TypeNotPresentExceptionProxy.class));
             case ElementTypeMismatch _ -> typeConsumer.accept(AnnotationTypeMismatchExceptionProxy);
             case AnnotationFormatError _, Number _, Boolean _, Character _ -> {
             }
@@ -1054,7 +1059,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         /*
          * Exception proxies are stored as-is in the image heap
          */
-        if (GraalAccess.lookupType(ExceptionProxy.class).isAssignableFrom(type)) {
+        if (GuestAccess.get().lookupType(ExceptionProxy.class).isAssignableFrom(type)) {
             /*
              * The image heap scanning does not see the actual instances, so we need to be
              * conservative and assume fields can have any value.
@@ -1208,7 +1213,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerHeapDynamicHub(Object object, ScanReason reason) {
         Class<?> clazz = ((DynamicHub) object).getHostedJavaClass();
-        registerClass(unconditional(), NONE, GraalAccess.lookupType(clazz), false);
+        registerClass(unconditional(), NONE, GuestAccess.get().lookupType(clazz), false);
     }
 
     @Override
@@ -1225,7 +1230,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void registerHeapReflectionField(Field reflectField, ScanReason reason) {
-        registerField(unconditional(), NONE, false, GraalAccess.lookupField(reflectField));
+        registerField(unconditional(), NONE, false, GuestAccess.get().lookupField(reflectField));
     }
 
     @Override
@@ -1239,7 +1244,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              */
             return;
         }
-        registerMethod(unconditional(), NONE, false, GraalAccess.lookupMethod(reflectExecutable));
+        registerMethod(unconditional(), NONE, false, GuestAccess.get().lookupMethod(reflectExecutable));
     }
 
     @Override
@@ -1379,7 +1384,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     public static class TestBackdoor {
         public static void registerField(ReflectionDataBuilder reflectionDataBuilder, ConfigurationMemberAccessibility accessibility, Field field) {
-            reflectionDataBuilder.registerField(unconditional(), accessibility, false, GraalAccess.lookupField(field));
+            reflectionDataBuilder.registerField(unconditional(), accessibility, false, GuestAccess.get().lookupField(field));
         }
     }
 
@@ -1454,7 +1459,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         public static TypeResult<ResolvedJavaType> typeForName(String typeName) {
             try {
-                return TypeResult.forType(typeName, GraalAccess.lookupType(Class.forName(typeName, false, ClassLoader.getSystemClassLoader())));
+                Class<?> cls = Class.forName(typeName, false, ClassLoader.getSystemClassLoader());
+                return TypeResult.forType(typeName, GuestAccess.get().lookupType(cls));
             } catch (Throwable e) {
                 return TypeResult.forException(typeName, e);
             }

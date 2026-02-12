@@ -106,7 +106,7 @@ import com.oracle.svm.hosted.CommonPoolUncaughtExceptionHandler;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.StringUtil;
@@ -1596,7 +1596,7 @@ public class NativeImage {
             // Remove modules that we already have built-in
             applicationModules.keySet().removeAll(getBuiltInModules());
 
-            String selectEspressoGuest = "-D" + GraalAccess.NAME_PROPERTY + "=espresso";
+            String selectEspressoGuest = "-D" + GuestAccess.NAME_PROPERTY + "=espresso";
             if (!javaArgs.contains(selectEspressoGuest)) {
                 /*
                  * When using HostVMAccess, the NativeImageClassLoader delegates to

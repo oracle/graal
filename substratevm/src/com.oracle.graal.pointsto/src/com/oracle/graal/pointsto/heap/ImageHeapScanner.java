@@ -54,12 +54,13 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -113,8 +114,9 @@ public abstract class ImageHeapScanner {
         constantReflection = aConstantReflection;
         hostedValuesProvider = aHostedValuesProvider;
         scanningObserver = aScanningObserver;
-        hostedConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
-        hostedSnippetReflection = GraalAccess.getOriginalProviders().getSnippetReflection();
+        Providers providers = GuestAccess.get().getProviders();
+        hostedConstantReflection = providers.getConstantReflection();
+        hostedSnippetReflection = providers.getSnippetReflection();
         stringType = metaAccess.lookupJavaType(String.class);
         enumType = metaAccess.lookupJavaType(Enum.class);
         hashCodeMethod = OriginalMethodProvider.getOriginalMethod(JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess.lookupJavaType(Object.class), "hashCode"));
@@ -330,7 +332,7 @@ public abstract class ImageHeapScanner {
          * Access the constant type after the replacement. Some constants may have types that should
          * not be reachable at run time and thus are replaced.
          */
-        AnalysisType type = universe.lookup(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(constant));
+        AnalysisType type = universe.lookup(GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(constant));
 
         if (type.isArray()) {
             Integer length = hostedValuesProvider.readArrayLength(constant);
@@ -483,7 +485,7 @@ public abstract class ImageHeapScanner {
      * the hash field.
      */
     private void forceHashCodeComputation(JavaConstant constant) {
-        GraalAccess.getVMAccess().invoke(hashCodeMethod, constant);
+        GuestAccess.get().invoke(hashCodeMethod, constant);
     }
 
     JavaConstant onFieldValueReachable(AnalysisField field, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {

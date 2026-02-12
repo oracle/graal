@@ -90,7 +90,7 @@ import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport.WrappedFieldVal
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestTypes;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -1048,8 +1048,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
-        ResolvedJavaType targetType = GraalAccess.lookupType(targetClass);
-        ResolvedJavaType transformedValueAllowedType = GraalAccess.lookupType(getTargetClass(annotatedField.getType()));
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType targetType = access.lookupType(targetClass);
+        Class<?> cls = getTargetClass(annotatedField.getType());
+        ResolvedJavaType transformedValueAllowedType = access.lookupType(cls);
 
         JVMCIFieldValueTransformer newTransformer = switch (kind) {
             case None, Manual -> null;

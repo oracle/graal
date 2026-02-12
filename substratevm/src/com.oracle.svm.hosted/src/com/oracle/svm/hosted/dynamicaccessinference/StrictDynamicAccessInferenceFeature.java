@@ -63,7 +63,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
@@ -145,7 +145,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
     public void afterRegistration(AfterRegistrationAccess access) {
         FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
         applicationClassLoader = accessImpl.getApplicationClassLoader();
-        ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GraalAccess.getOriginalProviders(), applicationClassLoader);
+        ConstantExpressionAnalyzer analyzer = new ConstantExpressionAnalyzer(GuestAccess.get().getProviders(), applicationClassLoader);
         registry = new ConstantExpressionRegistry(analyzer);
         ImageSingletons.add(ConstantExpressionRegistry.class, registry);
     }

@@ -81,7 +81,7 @@ import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.thread.VMThreadLocalCollector;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.OriginalMethodProvider;
@@ -118,20 +118,20 @@ public class SVMImageLayerSnapshotUtil {
 
     public static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
 
-    static final ResolvedJavaType DYNAMIC_HUB = GraalAccess.lookupType(DynamicHub.class);
+    static final ResolvedJavaType DYNAMIC_HUB = GuestAccess.get().lookupType(DynamicHub.class);
     static final ResolvedJavaField COMPANION = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB, "companion");
     static final ResolvedJavaField NAME = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB, "name");
     static final ResolvedJavaField COMPONENT_TYPE = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB, "componentType");
 
-    static final ResolvedJavaType DYNAMIC_HUB_COMPANION = GraalAccess.lookupType(DynamicHubCompanion.class);
+    static final ResolvedJavaType DYNAMIC_HUB_COMPANION = GuestAccess.get().lookupType(DynamicHubCompanion.class);
     static final ResolvedJavaField CLASS_INITIALIZATION_INFO = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "classInitializationInfo");
     static final ResolvedJavaField SUPER_HUB = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "superHub");
     static final ResolvedJavaField INTERFACES_ENCODING = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "interfacesEncoding");
     static final ResolvedJavaField ENUM_CONSTANTS_REFERENCE = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "enumConstantsReference");
     static final ResolvedJavaField ARRAY_HUB = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "arrayHub");
 
-    static final ResolvedJavaType STRING = GraalAccess.lookupType(String.class);
-    static final ResolvedJavaType ENUM = GraalAccess.lookupType(Enum.class);
+    static final ResolvedJavaType STRING = GuestAccess.get().lookupType(String.class);
+    static final ResolvedJavaType ENUM = GuestAccess.get().lookupType(Enum.class);
 
     protected static final Set<ResolvedJavaField> DYNAMIC_HUB_RELINKED_FIELDS = Set.of(COMPANION, NAME, COMPONENT_TYPE);
     protected static final Set<ResolvedJavaField> DYNAMIC_HUB_COMPANION_RELINKED_FIELDS = Set.of(CLASS_INITIALIZATION_INFO, SUPER_HUB, ARRAY_HUB);
@@ -182,7 +182,7 @@ public class SVMImageLayerSnapshotUtil {
          * GR-73295: Make the parameter {@link ResolvedJavaType} once the {@link ObjectCopier} is
          * migrated to JVMCI reflection.
          */
-        ResolvedJavaType type = GraalAccess.lookupType(clazz);
+        ResolvedJavaType type = GuestAccess.get().lookupType(clazz);
         String packageName = JVMCIReflectionUtil.getPackageName(type);
         if (!shouldScanPackage(packageName)) {
             return List.of();
@@ -204,11 +204,12 @@ public class SVMImageLayerSnapshotUtil {
     protected Set<URI> getBuilderLocations() {
         try {
             Class<?> vmFeatureClass = ImageSingletons.lookup(VMFeature.class).getClass();
-            URI svmURI = GraalAccess.getVMAccess().getCodeSourceLocation(GraalAccess.lookupType(VMFeature.class)).toURI();
+            GuestAccess access = GuestAccess.get();
+            URI svmURI = access.getCodeSourceLocation(access.lookupType(VMFeature.class)).toURI();
             if (vmFeatureClass == VMFeature.class) {
                 return Set.of(svmURI);
             } else {
-                return Set.of(svmURI, GraalAccess.getVMAccess().getCodeSourceLocation(GraalAccess.lookupType(vmFeatureClass)).toURI());
+                return Set.of(svmURI, access.getCodeSourceLocation(access.lookupType(vmFeatureClass)).toURI());
             }
         } catch (URISyntaxException e) {
             throw VMError.shouldNotReachHere("Error when trying to get SVM URI", e);
@@ -874,13 +875,13 @@ public class SVMImageLayerSnapshotUtil {
     }
 
     private static void makeStaticFieldIds(ObjectCopier.Encoder encoder, ObjectCopier.ObjectPath objectPath, Object object) {
-        ResolvedJavaField staticField = GraalAccess.lookupField(encoder.getExternalValues().get(object));
+        ResolvedJavaField staticField = GuestAccess.get().lookupField(encoder.getExternalValues().get(object));
         encoder.makeStringId(staticField.getDeclaringClass().toJavaName(), objectPath);
         encoder.makeStringId(staticField.getName(), objectPath);
     }
 
     private static void writeStaticField(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object object) throws IOException {
-        ResolvedJavaField staticField = GraalAccess.lookupField(encoder.getExternalValues().get(object));
+        ResolvedJavaField staticField = GuestAccess.get().lookupField(encoder.getExternalValues().get(object));
         encoder.writeString(stream, staticField.getDeclaringClass().toJavaName());
         encoder.writeString(stream, staticField.getName());
     }

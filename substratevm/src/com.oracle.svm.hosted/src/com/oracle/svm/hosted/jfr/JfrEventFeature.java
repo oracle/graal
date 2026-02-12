@@ -49,7 +49,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
@@ -77,11 +77,11 @@ public class JfrEventFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(Throwable.class), "jfrTracing"));
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(FileInputStream.class), "jfrTracing"));
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(FileOutputStream.class), "jfrTracing"));
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(FileChannelImpl.class), "jfrTracing"));
-        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(RandomAccessFile.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(Throwable.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(FileInputStream.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(FileOutputStream.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(FileChannelImpl.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(RandomAccessFile.class), "jfrTracing"));
     }
 
     @Override
