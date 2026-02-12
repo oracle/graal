@@ -27,9 +27,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
@@ -62,59 +59,51 @@ public class ThrowableInterop extends EspressoInterop {
     public static boolean hasExceptionCause(StaticObject object) {
         object.checkNotForeign();
         Meta meta = object.getKlass().getMeta();
-        Method resolvedMessageMethod = object.getKlass().lookupMethod(Names.getCause, Signatures.Throwable);
-        if (resolvedMessageMethod == meta.java_lang_Throwable_getCause) {
-            // not overridden, then we can trust the field value
-            StaticObject guestCause = meta.java_lang_Throwable_cause.getObject(object);
-            return StaticObject.notNull(guestCause) && guestCause != object;
-        } else if (resolvedMessageMethod.isInlinableGetter()) {
-            // only call the method for a 'has' interop message if it's simple
-            StaticObject guestCause = (StaticObject) resolvedMessageMethod.invokeDirect(object);
-            return StaticObject.notNull(guestCause) && guestCause != object;
-        } else {
-            /*
-             * not a simple method, so we might end up returning guest null for
-             * 'getExceptionMessage' which is OK in this case
-             */
-            return true;
-        }
+        /*
+         * Note that this might cause side effects, contradicting the contract of
+         * `hasExceptionCause`. However, there's no way to both satisfy this and still ensure that
+         * `hasExceptionCause` is true iff `getExceptionCause` returns a proper exception object. We
+         * could be pessimistic and only return causes for exceptions which don't override
+         * `getCause` but that causes usability issues.
+         */
+        StaticObject cause = (StaticObject) meta.java_lang_Throwable_getCause.invokeDirectVirtual(object);
+        return StaticObject.notNull(cause);
     }
 
     @ExportMessage
     public static Object getExceptionCause(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
-        if (!hasExceptionCause(object)) {
+        Meta meta = object.getKlass().getMeta();
+        StaticObject cause = (StaticObject) meta.java_lang_Throwable_getCause.invokeDirectVirtual(object);
+        if (StaticObject.isNull(cause)) {
             throw UnsupportedMessageException.create();
         }
-        return object.getKlass().lookupMethod(Names.getCause, Signatures.Throwable).invokeDirect(object);
+        return cause;
     }
 
     @ExportMessage
     public static boolean hasExceptionMessage(StaticObject object) {
         object.checkNotForeign();
         Meta meta = object.getKlass().getMeta();
-        Method resolvedMessageMethod = object.getKlass().lookupMethod(Names.getMessage, Signatures.String);
-        if (resolvedMessageMethod == meta.java_lang_Throwable_getMessage) {
-            // not overridden, then we can trust the field value
-            return StaticObject.notNull(meta.java_lang_Throwable_detailMessage.getObject(object));
-        } else if (resolvedMessageMethod.isInlinableGetter()) {
-            // only call the method for a 'has' interop message if it's simple
-            return StaticObject.notNull((StaticObject) resolvedMessageMethod.invokeDirect(object));
-        } else {
-            /*
-             * not a simple method, so we might end up returning guest null for
-             * 'getExceptionMessage' which is OK in this case
-             */
-            return true;
-        }
+        /*
+         * Note that this might cause side effects, contradicting the contract of
+         * `hasExceptionMessage`. However, there's no way to both satisfy this and still ensure that
+         * `hasExceptionMessage` is true iff `getExceptionMessage` returns a proper exception
+         * object. We could be pessimistic and only return messages for exceptions which don't
+         * override `getMessage` but that causes usability issues.
+         */
+        StaticObject cause = (StaticObject) meta.java_lang_Throwable_getMessage.invokeDirectVirtual(object);
+        return StaticObject.notNull(cause);
     }
 
     @ExportMessage
     public static Object getExceptionMessage(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
-        if (!hasExceptionMessage(object)) {
+        Meta meta = object.getKlass().getMeta();
+        StaticObject message = (StaticObject) meta.java_lang_Throwable_getMessage.invokeDirectVirtual(object);
+        if (StaticObject.isNull(message)) {
             throw UnsupportedMessageException.create();
         }
-        return object.getKlass().lookupMethod(Names.getMessage, Signatures.String).invokeDirect(object);
+        return message;
     }
 }
