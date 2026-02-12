@@ -62,9 +62,9 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -114,7 +114,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
         final JavaKind kind;
 
         boolean updated;
-        Object updatedValue;
+        JavaConstant updatedValue;
 
         UpdatableFieldStatus(UpdatableField fieldInfo, int heapBaseRelativeOffset, JavaKind kind) {
             this.fieldInfo = fieldInfo;
@@ -143,7 +143,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         if (extensionLayer) {
             FeatureImpl.BeforeImageWriteAccessImpl config = (FeatureImpl.BeforeImageWriteAccessImpl) access;
-            generateUpdatePatchArray(config.getImage().getHeap(), config.getHostedUniverse().getSnippetReflection());
+            generateUpdatePatchArray(config.getImage().getHeap());
         }
     }
 
@@ -165,7 +165,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
      * Records a field which has been updated. This field must have been marked via
      * {@link #markUpdatableField} in a prior layer.
      */
-    void updateField(ImageHeapConstant receiver, AnalysisField field, Object value) {
+    void updateField(ImageHeapConstant receiver, AnalysisField field, JavaConstant value) {
         assert extensionLayer && !sealed : "Updates can only been performed in extension layers";
         int receiverId = ImageHeapConstant.getConstantID(receiver);
         int fieldId = field.getId();
@@ -189,7 +189,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
 
         for (var info : updateInfoMap.values()) {
             if (patchFilter(info)) {
-                ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(info.updatedValue);
+                ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getBigBang().getUniverse().getHeapScanner().getImageHeapConstant(info.updatedValue);
                 heap.addConstant(singletonConstant, false, addReason);
             }
         }
@@ -294,7 +294,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
      * In addition, within the Image Layer Section we immediately store before the array the total
      * array size as a long and the header size as an int value.
      */
-    private void generateUpdatePatchArray(NativeImageHeap heap, SnippetReflectionProvider snippetReflection) {
+    private void generateUpdatePatchArray(NativeImageHeap heap) {
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         int shift = ImageSingletons.lookup(CompressEncoding.class).getShift();
         int heapBeginOffset = Heap.getHeap().getImageHeapOffsetInAddressSpace();
@@ -315,16 +315,16 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
              */
             buffer.putInt(value.heapBaseRelativeOffset - heapBeginOffset);
             switch (value.kind) {
-                case Boolean -> buffer.put((byte) (((Boolean) value.updatedValue) ? 1 : 0));
-                case Byte -> buffer.put((Byte) value.updatedValue);
-                case Int -> buffer.putInt((Integer) value.updatedValue);
-                case Long -> buffer.putLong((Long) value.updatedValue);
+                case Boolean -> buffer.put((byte) ((value.updatedValue.asBoolean() ? 1 : 0)));
+                case Byte -> buffer.put((byte) value.updatedValue.asInt());
+                case Int -> buffer.putInt(value.updatedValue.asInt());
+                case Long -> buffer.putLong(value.updatedValue.asLong());
                 case Object -> {
                     int encodedValue;
                     if (value.updatedValue == null) {
                         encodedValue = 0;
                     } else {
-                        var newValue = (ImageHeapConstant) snippetReflection.forObject(value.updatedValue);
+                        var newValue = (ImageHeapConstant) heap.aUniverse.getHeapScanner().getImageHeapConstant(value.updatedValue);
                         var objectInfo = heap.getConstantInfo(newValue);
                         long heapBaseRelativeOffset = objectInfo.getOffset();
                         encodedValue = NumUtil.safeToInt(heapBaseRelativeOffset) >>> shift;

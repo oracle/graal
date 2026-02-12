@@ -44,7 +44,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layered.LayeredFieldValue;
-import com.oracle.svm.core.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
@@ -55,11 +54,13 @@ import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -193,18 +194,18 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
                     updatableValue.receiver = loader.getConstant(updatableValue.receiverId);
                 }
                 if (updatableValue.receiver != null) {
-                    var result = updatableValue.transformer.updateAndGetResult(updatableValue.receiver);
-                    if (result != null) {
+                    var state = updatableValue.transformer.updateAndGetResult(updatableValue.receiver);
+                    if (!state.isUnresolved()) {
                         /*
                          * As part of updating process we must record the field update and also, if
                          * during analysis, ensure the object is scanned.
                          */
-                        VMError.guarantee(!result.updatable(), "Currently values can only be updated once.");
+                        VMError.guarantee(!state.isUpdatable(), "Currently values can only be updated once.");
                         updatableValue.updated = true;
-                        var newValue = result.value();
+                        var newValue = state.getResultValue();
                         getFieldUpdater().updateField(updatableValue.receiver, updatableValue.transformer.aField, newValue);
                         if (access != null) {
-                            access.rescanObject(newValue, reason);
+                            access.getUniverse().getHeapScanner().doScan(newValue, reason);
                         }
                         updated = true;
                     }
@@ -226,7 +227,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
 
     private LayeredFieldValueTransformerImpl createTransformer(AnalysisField aField, LayeredFieldValue layeredFieldValue, Set<Integer> delayedValueReceivers) {
         return fieldToLayeredTransformer.computeIfAbsent(aField, _ -> {
-            var transformer = ReflectionUtil.newInstance(layeredFieldValue.transformer());
+            var transformer = JVMCIReflectionUtil.newInstance(GraalAccess.lookupType(layeredFieldValue.transformer()));
             return new LayeredFieldValueTransformerImpl(aField, transformer, delayedValueReceivers);
         });
     }

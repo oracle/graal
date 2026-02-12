@@ -32,13 +32,13 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Similar to {@link FieldValueTransformerWithAvailability}, except now also the value of the
+ * Similar to {@link JVMCIFieldValueTransformerWithAvailability}, except now also the value of the
  * receiver is taken into consideration when deciding whether a value is available or not. This
  * allows availability to be decided at a finer granularity (i.e. for a given field, only some
  * values may be available at a given moment). For static fields, the receiver is always null.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public abstract class FieldValueTransformerWithReceiverBasedAvailability implements FieldValueTransformerWithAvailability {
+public abstract class JVMCIFieldValueTransformerWithReceiverBasedAvailability implements JVMCIFieldValueTransformerWithAvailability {
 
     @Override
     public final boolean isAvailable() {

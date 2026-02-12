@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 
 /**
  * Denotes a field which requires a {@link LayeredFieldValueTransformer} when building layered

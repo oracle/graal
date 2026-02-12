@@ -156,9 +156,6 @@ final class EnumSwitchFeature implements InternalFeature {
         boolean methodSafeForExecution = graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
 
         Boolean existingValue = methodsSafeForExecution.put(new AnalysisMethodKey(method.getId(), method.getMethodVariantKey().toString()), methodSafeForExecution);
-        if (!(existingValue == null || SubstrateCompilationDirectives.isDeoptTarget(method))) {
-            System.out.println("f");
-        }
         assert existingValue == null || SubstrateCompilationDirectives.isDeoptTarget(method) : "Method parsed twice: " + method.format("%H.%n(%p)");
     }
 

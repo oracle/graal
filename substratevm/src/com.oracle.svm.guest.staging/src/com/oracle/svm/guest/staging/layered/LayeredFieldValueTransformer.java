@@ -22,14 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layered;
-
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
-import com.oracle.svm.core.util.VMError;
+package com.oracle.svm.guest.staging.layered;
 
 /**
  * Layered Images specific field value transformer. This transformer, in addition to the behavior of
- * {@link FieldValueTransformerWithReceiverBasedAvailability}, also allows for the value to be
+ * {@code JVMCIFieldValueTransformerWithReceiverBasedAvailability}, also allows for the value to be
  * updated in a later layer.
  * <p>
  * Before a given receiver is installed in the image heap, {@link #isValueAvailable} and
@@ -73,7 +70,8 @@ public abstract class LayeredFieldValueTransformer<T> {
      * called for receivers which were installed in a prior layer.
      */
     public boolean isUpdateAvailable(@SuppressWarnings("unused") T receiver) {
-        throw VMError.shouldNotReachHere("isUpdateAvailable not implemented");
+        /* GR-73355: Replace Error with VMError once VMError is migrated. */
+        throw new Error("isUpdateAvailable not implemented");
     }
 
     /**
@@ -81,6 +79,7 @@ public abstract class LayeredFieldValueTransformer<T> {
      * were installed in a prior layer.
      */
     public Result update(@SuppressWarnings("unused") T receiver) {
-        throw VMError.shouldNotReachHere("update not implemented");
+        /* GR-73355: Replace Error with VMError once VMError is migrated. */
+        throw new Error("update not implemented");
     }
 }
