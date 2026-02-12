@@ -1135,15 +1135,13 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
             pos = writeAttrForm(DwarfForm.DW_FORM_flag, buffer, pos);
             pos = writeAttrType(DwarfAttribute.DW_AT_signature, buffer, pos);
             pos = writeAttrForm(DwarfForm.DW_FORM_ref_sig8, buffer, pos);
-            if (abbrevCode == AbbrevCode.CLASS_LAYOUT_CU) {
-                pos = writeAttrType(DwarfAttribute.DW_AT_decl_file, buffer, pos);
-                pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
-                /*-
-                 * At present we definitely don't have a line number for the class itself.
-                   pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
-                   pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
-                */
-            }
+            /*
+             * Note: We don't include DW_AT_decl_file here because CLASS_LAYOUT_CU entries
+             * may appear in CLASS_UNIT_1 compilation units which don't have a line table
+             * (stmt_list). File indices are only valid when there's an associated line table.
+             * Also, we don't have line numbers for the class itself, so file-only info
+             * provides limited debugging value.
+             */
         } else {
             pos = writeAttrType(DwarfAttribute.DW_AT_byte_size, buffer, pos);
             pos = writeAttrForm(DwarfForm.DW_FORM_data2, buffer, pos);
