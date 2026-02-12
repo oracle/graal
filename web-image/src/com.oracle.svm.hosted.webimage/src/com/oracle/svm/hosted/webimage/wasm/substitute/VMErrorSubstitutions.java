@@ -31,13 +31,14 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.webimage.substitute.system.Target_java_lang_Throwable_Web;
 
@@ -83,7 +84,7 @@ public class VMErrorSubstitutions {
 @TargetClass(VMError.class)
 @Platforms(WebImageWasmLMPlatform.class)
 @SuppressWarnings("unused")
-final class Target_com_oracle_svm_core_util_VMError_Web {
+final class Target_com_oracle_svm_core_shared_VMError_Web {
 
     /*
      * These substitutions let the svm print the real message. The original VMError methods throw a
@@ -149,4 +150,12 @@ final class Target_com_oracle_svm_core_util_VMError_Web {
     private static RuntimeException unsupportedFeature(String msg) {
         throw new Error("UNSUPPORTED FEATURE: " + msg);
     }
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition);
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition, String msg);
 }

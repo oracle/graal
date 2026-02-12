@@ -48,13 +48,14 @@ import org.graalvm.nativeimage.ProcessProperties;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
 import com.oracle.svm.webimage.functionintrinsics.JSInternalErrors;
@@ -105,7 +106,7 @@ final class Target_java_util_TimeZone_Web {
 @TargetClass(com.oracle.svm.shared.util.VMError.class)
 @Platforms(WebImageJSPlatform.class)
 @SuppressWarnings("unused")
-final class Target_com_oracle_svm_core_util_VMError_Web {
+final class Target_com_oracle_svm_core_shared_VMError_Web {
 
     /*
      * m These substitutions let the svm print the real message. The original VMError methods throw
@@ -160,6 +161,14 @@ final class Target_com_oracle_svm_core_util_VMError_Web {
     private static RuntimeException unsupportedFeature(String msg) {
         throw new Error("UNSUPPORTED FEATURE: " + msg);
     }
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition);
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition, String msg);
 }
 
 @TargetClass(className = "jdk.internal.misc.Unsafe")
