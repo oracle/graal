@@ -20,7 +20,7 @@ Here you will find instructions on how to build a custom GraalVM Community Editi
 
 GraalVM Community Edition (CE) is an open-source project based on OpenJDK.
 The base package includes:
-- SubstrateVM (See below for more details.)
+- SubstrateVM
 - Graal JIT compiler
 - Truffle framework
 
@@ -84,7 +84,7 @@ However, we recommend building it yourself to ensure full control and compatibil
     HEAD detached at jvmci-25.1-b14
     ```
 
-3. Build a JVMCI-enabled JDK. First configure the build and then build the image with `make`:
+4. Build a JVMCI-enabled JDK. First configure the build and then build the image with `make`:
     ```bash
     bash configure
     ```
@@ -94,7 +94,7 @@ However, we recommend building it yourself to ensure full control and compatibil
     As a result, you get the `graal-builder-jdk` image in the  _build/your-platform/images/_ directory.
     The contents of `graal-builder-jdk` follow the standard `$JAVA_HOME` layout. Note, however, that on macOS it does not include the `/Contents/Home` directory structure required for JDKs on that platform.
 
-4. Point the `JAVA_HOME` environment variable to the newly built image:
+5. Point the `JAVA_HOME` environment variable to the newly built image:
     ```bash
     export JAVA_HOME="/path/to/labs-openjdk/build/your-platform/images/graal-builder-jdk"
     ```
@@ -122,8 +122,8 @@ However, we recommend building it yourself to ensure full control and compatibil
     ```
     Since additional processing may occur during archiving, you should use the uncompressed archive.
 
-    > Note:
-    By default, build artifacts are placed inside the source repository. To avoid cluttering the repository with build artifacts, you can set the `MX_ALT_OUTPUT_ROOT` environment variable. For example:
+    > Note: By default, build artifacts are placed inside the source repository.
+    To keep the repository clean, you can set the `MX_ALT_OUTPUT_ROOT` environment variable to redirect the output to an alternative location. For example:
     ```bash
     export MX_ALT_OUTPUT_ROOT=/path/to/alternative/build-directory
     ```
@@ -143,15 +143,22 @@ It is developed and maintained by the Graal team, publicly available on [Github]
 
 Some Graal projects contain only one suite, while others contain multiple suites.
 
-#### How do you check how many suites a Graal project repository contains?
-Search for files defining a suite named "suite.py" in the root directory, using `mx` or `find`:
+### What are "suite" dependencies, and how do they work?
+
+In the GraalVM ecosystem, **suite dependencies** refer to related components that are required for a project to build successfully.
+For example, if you are working in the [GraalJS directory](https://github.com/oracle/graaljs/tree/master/graal-js), running the command:
 ```bash
 mx suites
 ```
-```bash
-find . -type d -maxdepth 2 -name "mx\.*"
+will output something like this:
 ```
-You should see several suites.
+graal-js
+regex
+truffle
+sdk
+```
+This output shows that `graal-js` depends on the `regex`, `truffle`, and `sdk` suites, which are part of the main Graal repository.
+Each project repository contains a _suite.py_ file that defines its build dependencies.
 
 #### What is a primary suite?
 
@@ -163,10 +170,17 @@ mx -p ../graal/compiler
 ```
 from the [graal-js](https://github.com/oracle/graaljs/tree/master/graal-js) directory uses the compiler suite as the primary suite.
 
-### Can I point `JAVA_HOME` to the `graal-builder-jdk` at build time instead of hardcoding it in the system configuration?
+### Can I create IDE configurations for GraalVM projects using `mx`?
 
-Yes, `mx` supports the `--java-home` option.
-Pass `--java-home=<path to build/<platform>/images/graal-builder-jdk/>` when invoking `mx`.
+Yes, you can use `mx` to generate IDE configurations for various platforms.
+The following commands are available:
+
+* For IntelliJ: `mx intellijinit`
+* For Eclipse: `mx eclipseinit`
+* For NetBeans: `mx netbeansinit`
+
+These commands automatically configure the IDE with the project's dependencies (referred to as "suite" dependencies in `mx` terminology).
+Note that for the IDE to correctly resolve the dependencies, the Graal repository must be checked out in a sibling directory to your working repository.
 
 ### Can more components be added to the build?
 
@@ -183,6 +197,11 @@ mx --env ce sforceimports
 ```
 
 Find examples and learn more in the [Dynamic Imports documentation](https://github.com/graalvm/mx/blob/master/docs/dynamic-imports.md).
+
+### Can I point `JAVA_HOME` to the `graal-builder-jdk` at build time instead of hardcoding it in the system configuration?
+
+Yes, `mx` supports the `--java-home` option.
+Pass `--java-home=<path to build/<platform>/images/graal-builder-jdk/>` when invoking `mx`.
 
 ### Can I see the expected result before building?
 
