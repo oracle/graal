@@ -22,6 +22,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -278,6 +279,21 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             }
 
             bindNodeResult(node, val, afterIdx);
+
+            if (!lin.stamp(NodeView.DEFAULT).isIntegerStamp()) {
+                String nestedArrayId = nodeId(lin);
+                AliasSet nestedArrayAliases = AliasSet.of();
+
+                for (AccessPath base : bases.paths()) {
+                    AccessPath nestedPath = idxTransform.apply(base);
+                    nestedArrayAliases = nestedArrayAliases.union(AliasSet.of(nestedPath));
+                }
+
+                if (!nestedArrayAliases.isEmpty()) {
+                    afterIdx.bindTempSetByName(nestedArrayId, nestedArrayAliases);
+                }
+            }
+
             post = afterIdx;
         } else if (node instanceof ArrayLengthNode aln) {
             AbstractMemory afterArr = evalNode(aln.array(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
@@ -297,12 +313,41 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                     } else {
                         bindNodeResult(node, lenIv, afterArr);
                     }
-                } else {
+                }
+                else if (arr instanceof LoadIndexedNode) {
+                    AliasSet nestedArrays = accessBaseSetForNodeEval(arr, afterArr);
+                    if (!nestedArrays.isEmpty()) {
+                        IntInterval arrayLenInterval = new IntInterval();
+                        arrayLenInterval.setToBot();
+                        for (AccessPath nestedPath : nestedArrays.paths()) {
+                            IntInterval pathLen = afterArr.readFrom(AliasSet.of(nestedPath), path -> path);
+                            if (pathLen != null && !pathLen.isBot()) {
+                                arrayLenInterval.joinWith(pathLen);
+                            }
+                        }
+                        if (!arrayLenInterval.isBot()) {
+                            bindNodeResult(aln, arrayLenInterval, afterArr);
+                        } else {
+                            IntInterval len = new IntInterval(0, IntInterval.POS_INF);
+                            bindNodeResult(node, len, afterArr);
+                        }
+                        post = afterArr;
+                    } else {
+                        IntInterval len = new IntInterval(0, IntInterval.POS_INF);
+                        bindNodeResult(node, len, afterArr);
+                        post = afterArr;
+                    }
+                }
+                else {
+                    // Standard fallback for unknown array sources
                     IntInterval len = new IntInterval(0, IntInterval.POS_INF);
                     bindNodeResult(node, len, afterArr);
+                    post = afterArr;
                 }
-                post = afterArr;
             }
+            IntInterval len = new IntInterval(0, IntInterval.POS_INF);
+            bindNodeResult(node, len, afterArr);
+            post = afterArr;
         } else if (node instanceof NewInstanceNode nii) {
             String aid = "alloc" + Integer.toHexString(System.identityHashCode(nii));
             AccessPath root = AccessPath.forAllocSite(aid);
@@ -314,7 +359,8 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             IntInterval size = getNodeResultInterval(nan.length(), post);
             bindNodeResult(node, size, post);
 
-        } else if (node instanceof Invoke inv) {
+        } else if (node instanceof
+                Invoke inv) {
             var invokeLogger = AbstractInterpretationLogger.getInstance();
             invokeLogger.log("[InvokeEval] Enter invoke node: " + inv + ", targetMethod=" + (inv.callTarget() != null ? inv.callTarget().targetMethod() : "<null>") +
                     ", preMemory=" + post, LoggerVerbosity.DEBUG);
@@ -375,7 +421,8 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 top.setToTop();
                 bindNodeResult(inv.asNode(), top, post);
             }
-        } else if (node instanceof ReturnNode rn) {
+        } else if (node instanceof
+                ReturnNode rn) {
             if (rn.result() != null) {
                 AbstractMemory after = evalNode(rn.result(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
                 IntInterval v = getNodeResultInterval(rn.result(), after);
@@ -383,14 +430,16 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 post.bindLocalByName("ret", AccessPath.forLocal("ret"));
                 post.writeStore(AccessPath.forLocal("ret"), v);
             }
-        } else if (node instanceof AbstractMergeNode merge) {
+        } else if (node instanceof
+                AbstractMergeNode merge) {
             Set<Node> evalStack = new HashSet<>();
             for (Node usage : merge.usages()) {
                 if (usage instanceof PhiNode phi) {
                     post.joinWith(evalNode(phi, post, abstractState, invokeCallBack, evalStack, iteratorContext));
                 }
             }
-        } else if (node instanceof IfNode ifNode) {
+        } else if (node instanceof
+                IfNode ifNode) {
             Node cond = ifNode.condition();
             post = evalNode(cond, post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
             IntInterval ix = getNodeResultInterval(cond, post);
@@ -540,7 +589,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 return mem;
             }
 
-//            logger.log("  PhiNode not found in state, evaluating conservatively", LoggerVerbosity.DEBUG);
         }
         boolean isLoopHeader = (merge instanceof LoopBeginNode);
         boolean isFirstVisit = false;
@@ -549,7 +597,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             isFirstVisit = iteratorContext.isFirstVisit(merge);
         }
 
-//        logger.log("Evaluating PhiNode: " + phi + " (loop header: " + isLoopHeader + ", first visit: " + isFirstVisit + ")", LoggerVerbosity.DEBUG);
         IntInterval acc = new IntInterval();
         acc.setToBot();
 
@@ -557,13 +604,11 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         for (int i = 0; i < numInputs; i++) {
             Node input = phi.valueAt(i);
             if (isLoopHeader && isFirstVisit && i == numInputs - 1) {
-//                logger.log("  Input[" + i + "]: " + input + " = SKIPPED (back-edge on first iteration)", LoggerVerbosity.DEBUG);
                 continue;
             }
 
             IntInterval v;
             if (isLoopHeader && !isFirstVisit && i == numInputs - 1) {
-//                logger.log("    Evaluating back-edge with originalIn: " + originalIn, LoggerVerbosity.DEBUG);
                 AbstractMemory mergePost = abstractState.getPostCondition(merge);
                 if (mergePost != null) {
                     v = evalBackEdgeValue(input, mergePost);
@@ -578,9 +623,82 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
             acc.joinWith(v);
         }
+
+        if (isLoopHeader && !isFirstVisit) {
+            IntInterval narrowed = narrowPhiWithLoopBounds(phi, acc, merge, originalIn);
+            if (narrowed != null) {
+                logger.log("  PhiNode narrowed using loop bounds: " + narrowed, LoggerVerbosity.DEBUG);
+                acc = narrowed;
+            }
+        }
+
         bindNodeResult(phi, acc, mem);
         logger.log("  PhiNode result: " + acc, LoggerVerbosity.DEBUG);
         return mem;
+    }
+
+    private IntInterval narrowPhiWithLoopBounds(PhiNode phi, IntInterval current, AbstractMergeNode merge, AbstractMemory mem) {
+        if (current.isBot() || current.isTop()) {
+            return null;
+        }
+
+        // Look for loop exit conditions that compare this phi with an upper bound
+        for (Node usage : phi.usages()) {
+            if (usage instanceof IntegerLessThanNode lessThan) {
+                Node x = lessThan.getX();
+                Node y = lessThan.getY();
+
+                // Check if phi is compared with array length or another bound
+                if (x == phi || (x instanceof ValueProxy vp && vp.getOriginalNode() == phi)) {
+                    // phi < y, so phi upper bound is y - 1
+                    IntInterval yInterval = getNodeResultInterval(y, mem);
+                    if (yInterval != null && !yInterval.isTop() && !yInterval.isBot() && !yInterval.isUpperInfinite()) {
+                        long upperBound = yInterval.getUpper() - 1;
+                        if (!current.isUpperInfinite() && current.getUpper() > upperBound) {
+                            IntInterval narrowed = current.copyOf();
+                            narrowed.setUpper(upperBound);
+                            return narrowed;
+                        } else if (current.isUpperInfinite()) {
+                            IntInterval narrowed = current.copyOf();
+                            narrowed.setUpper(upperBound);
+                            return narrowed;
+                        }
+                    }
+                } else if (y == phi || (y instanceof ValueProxy vp && vp.getOriginalNode() == phi)) {
+                    // x < phi, so phi lower bound is x + 1
+                    IntInterval xInterval = getNodeResultInterval(x, mem);
+                    if (xInterval != null && !xInterval.isTop() && !xInterval.isBot() && !xInterval.isLowerInfinite()) {
+                        long lowerBound = xInterval.getLower() + 1;
+                        if (!current.isLowerInfinite() && current.getLower() < lowerBound) {
+                            IntInterval narrowed = current.copyOf();
+                            narrowed.setLower(lowerBound);
+                            return narrowed;
+                        }
+                    }
+                }
+            } else if (usage instanceof IntegerBelowNode below) {
+                Node x = below.getX();
+                Node y = below.getY();
+
+                // For unsigned comparison: phi |<| y means phi < y (unsigned)
+                if (x == phi || (x instanceof ValueProxy vp && vp.getOriginalNode() == phi)) {
+                    IntInterval yInterval = getNodeResultInterval(y, mem);
+                    if (yInterval != null && !yInterval.isTop() && !yInterval.isBot() && !yInterval.isUpperInfinite()) {
+                        // Ensure we're in non-negative range for unsigned comparison
+                        if (!current.isLowerInfinite() && current.getLower() >= 0) {
+                            long upperBound = yInterval.getUpper() - 1;
+                            if (upperBound >= 0) {
+                                IntInterval narrowed = current.copyOf();
+                                narrowed.setUpper(Math.min(narrowed.getUpper(), upperBound));
+                                return narrowed;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     private boolean isArrayLengthOfParamOrPiParam(Node node) {
@@ -778,13 +896,11 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         } else if (s.isConstantValue() && s.getLower() >= 0 && s.getLower() <= 63) {
             long sh = s.getLower();
             long div = 1L << sh;
-            // For non-negative x, >>> equals arithmetic >>
             if (!x.isLowerInfinite() && x.getLower() >= 0) {
                 long lo = x.getLower() / div;
                 long hi = x.getUpper() / div;
                 res = new IntInterval(lo, hi);
             } else {
-                // Negative inputs to >>> produce large positives; over-approximate with Top
                 res.setToTop();
             }
         } else {
@@ -817,6 +933,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 if (len >= 0) {
                     IntInterval sizeIv = new IntInterval(len, len);
                     bindNodeResult(node, sizeIv, mem);
+                    mem.writeStoreStrong(root, sizeIv);
                 }
             }
         }
@@ -830,6 +947,16 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         if (base == null) {
             refined.setToTop();
         }
+
+        Node obj = piNode.object();
+        if (obj != null) {
+            String objId = nodeId(obj);
+            AliasSet objAliases = mem.lookupTempSetByName(objId);
+            if (objAliases != null && !objAliases.isEmpty()) {
+                mem.bindTempSetByName(nodeId(piNode), objAliases);
+            }
+        }
+
         Stamp s = piNode.piStamp();
         if (s instanceof IntegerStamp integerStamp && !refined.isBot() && !refined.isTop()) {
             if (integerStamp.isStrictlyPositive()) {
@@ -956,9 +1083,27 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         if (!visited.add(n)) {
             return null;
         }
-        // TODO: we will have to handle PiNode more in-depth here
-        if (n instanceof NewArrayNode na) return na;
-        if (n instanceof ValueProxy vp) return resolveNewArray(vp.getOriginalNode(), visited, depth + 1);
+
+        switch (n) {
+            case NewArrayNode na -> {
+                return na;
+            }
+            case PiNode piNode -> {
+                return resolveNewArray(piNode.object(), visited, depth + 1);
+            }
+            case ValueProxy vp -> {
+                return resolveNewArray(vp.getOriginalNode(), visited, depth + 1);
+            }
+            case AllocatedObjectNode aon -> {
+                if (aon.getVirtualObject() instanceof VirtualArrayNode) {
+                    return null;
+                }
+            }
+            default -> {
+            }
+        }
+
+        // Handle PhiNode (join of multiple array sources)
         if (n instanceof PhiNode phi) {
             NewArrayNode candidate = null;
             for (int i = 0; i < phi.valueCount(); i++) {
@@ -973,6 +1118,11 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             }
             return candidate;
         }
+
+        if (n instanceof LoadIndexedNode) {
+            return null;
+        }
+
         return null;
     }
 }

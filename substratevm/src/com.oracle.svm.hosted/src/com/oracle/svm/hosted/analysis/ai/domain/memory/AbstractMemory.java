@@ -483,4 +483,24 @@ public class AbstractMemory implements AbstractDomain<AbstractMemory> {
     public boolean hasStoreEntry(AccessPath p) {
         return store.containsKey(p);
     }
+
+    public void bindTempSetByName(String nestedArrayId, AliasSet nestedArrayAliases) {
+        Objects.requireNonNull(nestedArrayId);
+        Objects.requireNonNull(nestedArrayAliases);
+        Var tempVar = Var.temp(nestedArrayId);
+
+        if (nestedArrayAliases.isEmpty()) {
+            env.remove(tempVar);
+            envMulti.remove(tempVar);
+            return;
+        }
+
+        if (nestedArrayAliases.isSingleton()) {
+            AccessPath singlePath = nestedArrayAliases.paths().iterator().next();
+            bindTempByName(nestedArrayId, singlePath);
+            envMulti.remove(tempVar);
+        } else {
+            bindVarToMany(tempVar, nestedArrayAliases.paths());
+        }
+    }
 }

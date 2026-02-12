@@ -28,16 +28,22 @@ public class AbstractInterpretationEngine {
     private final AnalyzerManager analyzerManager;
     private final List<AnalysisMethod> rootMethods;
     private final List<AnalysisMethod> invokedMethods;
-    private final AnalysisMethod analysisRoot;
+    private AnalysisMethod mainMethod;
 
     public AbstractInterpretationEngine(AnalyzerManager analyzerManager, AnalysisMethod mainEntryPoint, Inflation bb, DebugContext debug) {
         var analysisServices = AbstractInterpretationServices.getInstance(bb, debug);
         this.analyzerManager = analyzerManager;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
-        // The mainEntryPoint is not required per-se, but we may need it for some debugging purposes, such as analyzing only from it
-        // this.analysisRoot = analysisServices.getMainMethod(mainEntryPoint).orElse(null);
-        this.analysisRoot = mainEntryPoint;
         this.invokedMethods = analysisServices.getInvokedMethods();
+
+        // The mainEntryPoint is not required, but we may need it for some debugging purposes, such as analyzing only from it
+        this.mainMethod = null;
+//        for (AnalysisMethod m : invokedMethods) {
+//            if (m.getName().endsWith("main")) {
+//                this.mainMethod = m;
+//                break;
+//            }
+//        }
     }
 
     public void executeAbstractInterpretation() {
@@ -58,7 +64,7 @@ public class AbstractInterpretationEngine {
             executeIntraProceduralAnalysis(intraProceduralAnalyzer);
             return;
         }
-        throw new RuntimeException("The provided absint analyzer is neither an Intra nor Inter procedural analyzer");
+        throw new RuntimeException("The provided abstract interpretation analyzer is neither an Intra nor Inter procedural analyzer");
     }
 
     private void executeIntraProceduralAnalysis(IntraProceduralAnalyzer<?> analyzer) {
@@ -66,7 +72,7 @@ public class AbstractInterpretationEngine {
         IntraAnalyzerMode mode = analyzer.getAnalyzerMode();
         if (mode == IntraAnalyzerMode.ANALYZE_MAIN_ENTRYPOINT_ONLY) {
             logger.log("Running intraprocedural analyzer on the main entry point only", LoggerVerbosity.INFO);
-            analyzer.runAnalysis(analysisRoot);
+            analyzer.runAnalysis(mainMethod);
             return;
         }
 
@@ -80,7 +86,7 @@ public class AbstractInterpretationEngine {
 
         if (mode == InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT) {
             logger.log("Running interprocedural analyzer from the main entry point only", LoggerVerbosity.INFO);
-            analyzer.runAnalysis(analysisRoot);
+            analyzer.runAnalysis(mainMethod);
             var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();
             var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
             analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
@@ -99,8 +105,8 @@ public class AbstractInterpretationEngine {
 
         // debugging purposes only additionally run the root manually if it wasn't found bt the interproc analysis
         // todo: think how to make this more parallel
-        if (analysisRoot != null && !methodGraphCache.containsKey(analysisRoot)) {
-            analyzer.runAnalysis(analysisRoot);
+        if (mainMethod != null && !methodGraphCache.containsKey(mainMethod)) {
+            analyzer.runAnalysis(mainMethod);
         }
         analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
     }

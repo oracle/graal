@@ -108,9 +108,6 @@ public class AIFOptions {
     @Option(help = "Number of worker threads for parallel analysis. -1 uses available processors.", type = OptionType.Expert)
     public static final OptionKey<Integer> AnalysisThreadCount = new OptionKey<>(-1);
 
-    @Option(help = "Enable narrowing on conditional edges (if-then-else) to improve precision.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> EnableConditionalNarrowing = new OptionKey<>(true);
-
     @Option(help = "Enable early summary creation for recursive methods.", type = OptionType.Expert)
     public static final OptionKey<Boolean> EnableEarlySummaries = new OptionKey<>(true);
 

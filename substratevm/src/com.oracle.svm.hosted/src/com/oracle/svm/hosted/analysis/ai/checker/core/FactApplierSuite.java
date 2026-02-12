@@ -78,11 +78,6 @@ public final class FactApplierSuite {
         boolean shouldDump = shouldDumpToIGV(method, graph);
         String methodName = method.format("%H.%n");
 
-        if (shouldDump) {
-            dumpGraph(graph, "Before phase Abstract Interpretation", methodName);
-        }
-
-        // Run all appliers
         ApplierResult total = ApplierResult.empty();
         for (FactApplier applier : appliers) {
             if (!applier.shouldApply()) {
@@ -97,24 +92,23 @@ public final class FactApplierSuite {
             }
 
             if (shouldDump && r.anyOptimizations()) {
-                dumpGraph(graph, "After Abstract Interpretation applier - %s", applier.getDescription());
+                dumpGraph(graph, applier.getDescription());
             }
         }
 
         return total;
     }
 
-    private void dumpGraph(StructuredGraph graph, String format, Object... args) {
+    private void dumpGraph(StructuredGraph graph, Object... args) {
         DebugContext debug = AbstractInterpretationServices.getInstance().getDebug();
 
         try (DebugContext.Scope _ = debug.scope("GraalAF", graph)) {
-            debug.dump(DebugContext.BASIC_LEVEL, graph, format, args);
+            debug.dump(DebugContext.BASIC_LEVEL, graph, "After Abstract Interpretation applier - %s", args);
         } catch (Throwable e) {
             AbstractInterpretationLogger.getInstance().log(
                 "Failed to dump graph: " + e.getMessage(),
                 com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity.CHECKER_WARN
             );
         }
-
     }
 }

@@ -85,25 +85,4 @@ public final class AbstractInterpretationServices {
                 .stream()
                 .filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
     }
-
-    public Optional<AnalysisMethod> getMainMethod(AnalysisMethod mainEntryPoint) {
-        return findInvokeWithName(mainEntryPoint, "doRun")
-                .flatMap(m -> findInvokeWithName(m, "runCore0"))
-                .flatMap(m -> findInvokeWithName(m, "invokeMain"))
-                .flatMap(m -> findInvokeWithName(m, "main"));
-    }
-
-    private Optional<AnalysisMethod> findInvokeWithName(AnalysisMethod root, String name) {
-        if (root == null) {
-            return Optional.empty();
-        }
-
-        for (var invokeInfo : root.getInvokes()) {
-            System.out.println("root: " + root + " invoke: " + invokeInfo.getTargetMethod().getName());
-            if (invokeInfo.getTargetMethod().getName().equals(name)) {
-                return Optional.of(invokeInfo.getTargetMethod());
-            }
-        }
-        return Optional.empty();
-    }
 }

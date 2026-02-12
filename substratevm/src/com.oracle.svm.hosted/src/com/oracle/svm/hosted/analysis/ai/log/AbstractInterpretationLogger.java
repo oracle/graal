@@ -268,6 +268,11 @@ public final class AbstractInterpretationLogger {
     }
 
     public void logFacts(List<Fact> facts) {
+        if (facts.isEmpty()) {
+            log("No facts", LoggerVerbosity.INFO);
+            return;
+        }
+
         log("Aggregated facts produced by checkers:", LoggerVerbosity.FACT);
         for (Fact fact : facts) {
             logFact(fact);
