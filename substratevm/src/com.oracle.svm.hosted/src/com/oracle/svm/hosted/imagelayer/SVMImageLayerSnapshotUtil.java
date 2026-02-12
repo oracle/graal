@@ -49,9 +49,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
-import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -83,7 +81,10 @@ import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.thread.VMThreadLocalCollector;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -94,8 +95,12 @@ import jdk.graal.compiler.nodes.NodeClassMap;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.graal.compiler.util.ObjectCopierInputStream;
 import jdk.graal.compiler.util.ObjectCopierOutputStream;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SVMImageLayerSnapshotUtil {
 
@@ -113,21 +118,26 @@ public class SVMImageLayerSnapshotUtil {
 
     public static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
 
-    static final Field companion = ReflectionUtil.lookupField(DynamicHub.class, "companion");
-    static final Field name = ReflectionUtil.lookupField(DynamicHub.class, "name");
-    static final Field componentType = ReflectionUtil.lookupField(DynamicHub.class, "componentType");
+    static final ResolvedJavaType DYNAMIC_HUB = GraalAccess.lookupType(DynamicHub.class);
+    static final ResolvedJavaField COMPANION = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB, "companion");
+    static final ResolvedJavaField NAME = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB, "name");
+    static final ResolvedJavaField COMPONENT_TYPE = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB, "componentType");
 
-    static final Field classInitializationInfo = ReflectionUtil.lookupField(DynamicHubCompanion.class, "classInitializationInfo");
-    static final Field superHub = ReflectionUtil.lookupField(DynamicHubCompanion.class, "superHub");
-    static final Field interfacesEncoding = ReflectionUtil.lookupField(DynamicHubCompanion.class, "interfacesEncoding");
-    static final Field enumConstantsReference = ReflectionUtil.lookupField(DynamicHubCompanion.class, "enumConstantsReference");
-    static final Field arrayHub = ReflectionUtil.lookupField(DynamicHubCompanion.class, "arrayHub");
+    static final ResolvedJavaType DYNAMIC_HUB_COMPANION = GraalAccess.lookupType(DynamicHubCompanion.class);
+    static final ResolvedJavaField CLASS_INITIALIZATION_INFO = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "classInitializationInfo");
+    static final ResolvedJavaField SUPER_HUB = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "superHub");
+    static final ResolvedJavaField INTERFACES_ENCODING = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "interfacesEncoding");
+    static final ResolvedJavaField ENUM_CONSTANTS_REFERENCE = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "enumConstantsReference");
+    static final ResolvedJavaField ARRAY_HUB = JVMCIReflectionUtil.getUniqueDeclaredField(DYNAMIC_HUB_COMPANION, "arrayHub");
 
-    protected static final Set<Field> dynamicHubRelinkedFields = Set.of(companion, name, componentType);
-    protected static final Set<Field> dynamicHubCompanionRelinkedFields = Set.of(classInitializationInfo, superHub, arrayHub);
+    static final ResolvedJavaType STRING = GraalAccess.lookupType(String.class);
+    static final ResolvedJavaType ENUM = GraalAccess.lookupType(Enum.class);
 
-    private static final Class<?> sourceRoots = ReflectionUtil.lookupClass("com.oracle.svm.hosted.image.sources.SourceCache$SourceRoots");
-    private static final Class<?> completableFuture = ReflectionUtil.lookupClass("com.oracle.svm.core.jdk.CompletableFutureFieldHolder");
+    protected static final Set<ResolvedJavaField> DYNAMIC_HUB_RELINKED_FIELDS = Set.of(COMPANION, NAME, COMPONENT_TYPE);
+    protected static final Set<ResolvedJavaField> DYNAMIC_HUB_COMPANION_RELINKED_FIELDS = Set.of(CLASS_INITIALIZATION_INFO, SUPER_HUB, ARRAY_HUB);
+
+    private static final Class<?> SOURCE_ROOTS = ReflectionUtil.lookupClass("com.oracle.svm.hosted.image.sources.SourceCache$SourceRoots");
+    private static final Class<?> COMPLETABLE_FUTURE = ReflectionUtil.lookupClass("com.oracle.svm.core.jdk.CompletableFutureFieldHolder");
 
     /**
      * This map stores the field indexes that should be relinked using the hosted value of a
@@ -168,7 +178,12 @@ public class SVMImageLayerSnapshotUtil {
     }
 
     public List<Field> getStaticFinalObjectFields(Class<?> clazz) {
-        String packageName = clazz.getPackageName();
+        /*
+         * GR-73295: Make the parameter {@link ResolvedJavaType} once the {@link ObjectCopier} is
+         * migrated to JVMCI reflection.
+         */
+        ResolvedJavaType type = GraalAccess.lookupType(clazz);
+        String packageName = JVMCIReflectionUtil.getPackageName(type);
         if (!shouldScanPackage(packageName)) {
             return List.of();
         }
@@ -178,7 +193,7 @@ public class SVMImageLayerSnapshotUtil {
         }
 
         /* The ObjectCopier needs to access the static fields by reflection */
-        Module module = clazz.getModule();
+        ResolvedJavaModule module = JVMCIReflectionUtil.getModule(type);
         if (module.getName() != null) {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, module.getName(), packageName);
         }
@@ -189,11 +204,11 @@ public class SVMImageLayerSnapshotUtil {
     protected Set<URI> getBuilderLocations() {
         try {
             Class<?> vmFeatureClass = ImageSingletons.lookup(VMFeature.class).getClass();
-            URI svmURI = VMFeature.class.getProtectionDomain().getCodeSource().getLocation().toURI();
+            URI svmURI = GraalAccess.getVMAccess().getCodeSourceLocation(GraalAccess.lookupType(VMFeature.class)).toURI();
             if (vmFeatureClass == VMFeature.class) {
                 return Set.of(svmURI);
             } else {
-                return Set.of(svmURI, vmFeatureClass.getProtectionDomain().getCodeSource().getLocation().toURI());
+                return Set.of(svmURI, GraalAccess.getVMAccess().getCodeSourceLocation(GraalAccess.lookupType(vmFeatureClass)).toURI());
             }
         } catch (URISyntaxException e) {
             throw VMError.shouldNotReachHere("Error when trying to get SVM URI", e);
@@ -207,20 +222,19 @@ public class SVMImageLayerSnapshotUtil {
 
     private static boolean shouldScanClass(Class<?> clazz) {
         /* This class should not be scanned because it needs to be initialized after the analysis */
-        return !clazz.equals(sourceRoots) && !clazz.equals(completableFuture);
+        return !clazz.equals(SOURCE_ROOTS) && !clazz.equals(COMPLETABLE_FUTURE);
     }
 
     /**
      * Get all the field indexes that should be relinked using the hosted value of a constant from
      * the given type.
      */
-    public Set<Integer> getRelinkedFields(AnalysisType type, AnalysisMetaAccess metaAccess) {
+    public Set<Integer> getRelinkedFields(AnalysisType type, AnalysisUniverse universe) {
         Set<Integer> result = fieldsToRelink.computeIfAbsent(type, _ -> {
-            Class<?> clazz = type.getJavaClass();
-            if (clazz == Class.class) {
-                return getRelinkedFields(type, dynamicHubRelinkedFields, metaAccess);
-            } else if (clazz == DynamicHubCompanion.class) {
-                return getRelinkedFields(type, dynamicHubCompanionRelinkedFields, metaAccess);
+            if (type.equals(universe.lookup(DYNAMIC_HUB))) {
+                return getRelinkedFields(type, DYNAMIC_HUB_RELINKED_FIELDS, universe);
+            } else if (type.equals(universe.lookup(DYNAMIC_HUB_COMPANION))) {
+                return getRelinkedFields(type, DYNAMIC_HUB_COMPANION_RELINKED_FIELDS, universe);
             }
             return null;
         });
@@ -230,9 +244,9 @@ public class SVMImageLayerSnapshotUtil {
         return result;
     }
 
-    private static Set<Integer> getRelinkedFields(AnalysisType type, Set<Field> typeRelinkedFieldsSet, AnalysisMetaAccess metaAccess) {
+    private static Set<Integer> getRelinkedFields(AnalysisType type, Set<ResolvedJavaField> typeRelinkedFieldsSet, AnalysisUniverse universe) {
         type.getInstanceFields(true);
-        return typeRelinkedFieldsSet.stream().map(metaAccess::lookupJavaField).map(AnalysisField::getPosition).collect(Collectors.toSet());
+        return typeRelinkedFieldsSet.stream().map(universe::lookup).map(AnalysisField::getPosition).collect(Collectors.toSet());
     }
 
     public SVMGraphEncoder getGraphEncoder(NodeClassMap nodeClassMap) {
@@ -242,12 +256,12 @@ public class SVMImageLayerSnapshotUtil {
     public AbstractSVMGraphDecoder getGraphHostedToAnalysisElementsDecoder(SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider,
                     NodeClassMap nodeClassMap) {
 
-        return new SVMGraphHostedToAnalysisElementsDecoder(EncodedGraph.class.getClassLoader(), imageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
+        return new SVMGraphHostedToAnalysisElementsDecoder(EncodedGraph.class, imageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
     }
 
     public AbstractSVMGraphDecoder getGraphDecoder(SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod,
                     SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
-        return new SVMGraphDecoder(EncodedGraph.class.getClassLoader(), imageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
+        return new SVMGraphDecoder(EncodedGraph.class, imageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
     }
 
     /**
@@ -270,12 +284,12 @@ public class SVMImageLayerSnapshotUtil {
         if (isProxyType(type)) {
             return javaName;
         }
-        return addModuleName(javaName, type.getJavaClass().getModule().getName());
+        return addModuleName(javaName, JVMCIReflectionUtil.getModule(type).getName());
     }
 
     public String getMethodDescriptor(AnalysisMethod method) {
         AnalysisType declaringClass = method.getDeclaringClass();
-        String moduleName = declaringClass.getJavaClass().getModule().getName();
+        String moduleName = JVMCIReflectionUtil.getModule(declaringClass).getName();
         if (declaringClass.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
             return getGeneratedSerializationName(declaringClass) + ":" + method.getName();
         }
@@ -283,10 +297,10 @@ public class SVMImageLayerSnapshotUtil {
             AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
             return addModuleName(targetConstructor.getDeclaringClass().toJavaName(true) + getQualifiedName(method), moduleName);
         }
-        if (method.wrapped instanceof IncompatibleClassChangeFallbackMethod) {
-            Executable originalMethod = method.getJavaMethod();
+        if (method.wrapped instanceof IncompatibleClassChangeFallbackMethod fallbackMethod) {
+            ResolvedJavaMethod originalMethod = fallbackMethod.getOriginal();
             if (originalMethod != null) {
-                return addModuleName(method.getQualifiedName() + " " + method.getJavaMethod().toString(), moduleName);
+                return addModuleName(method.getQualifiedName() + " " + getResolvedJavaMethodQualifiedName(originalMethod), moduleName);
             }
         }
         if (!(method.wrapped instanceof HotSpotResolvedJavaMethod)) {
@@ -337,7 +351,11 @@ public class SVMImageLayerSnapshotUtil {
     }
 
     private static String getWrappedQualifiedName(AnalysisMethod method) {
-        return method.wrapped.format("%R %H.%n(%P)");
+        return getResolvedJavaMethodQualifiedName(method.wrapped);
+    }
+
+    private static String getResolvedJavaMethodQualifiedName(ResolvedJavaMethod method) {
+        return method.format("%R %H.%n(%P)");
     }
 
     public static void forcePersistConstant(ImageHeapConstant imageHeapConstant) {
@@ -393,9 +411,9 @@ public class SVMImageLayerSnapshotUtil {
         private final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
 
         @SuppressWarnings("this-escape")
-        public AbstractSVMGraphDecoder(ClassLoader classLoader, SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider,
+        public AbstractSVMGraphDecoder(Class<?> clazz, SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider,
                         NodeClassMap nodeClassMap) {
-            super(classLoader);
+            super(clazz);
             this.imageLayerBuildingSupport = imageLayerLoader.getImageLayerBuildingSupport();
             addBuiltin(new ImageHeapConstantBuiltIn(imageLayerLoader));
             addBuiltin(new AnalysisTypeBuiltIn(imageLayerLoader));
@@ -423,9 +441,9 @@ public class SVMImageLayerSnapshotUtil {
 
     public static class SVMGraphHostedToAnalysisElementsDecoder extends AbstractSVMGraphDecoder {
         @SuppressWarnings("this-escape")
-        public SVMGraphHostedToAnalysisElementsDecoder(ClassLoader classLoader, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod,
+        public SVMGraphHostedToAnalysisElementsDecoder(Class<?> clazz, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod,
                         SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
-            super(classLoader, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
+            super(clazz, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
             addBuiltin(new HostedToAnalysisTypeDecoderBuiltIn(svmImageLayerLoader));
             addBuiltin(new HostedToAnalysisMethodDecoderBuiltIn(svmImageLayerLoader));
         }
@@ -433,9 +451,9 @@ public class SVMImageLayerSnapshotUtil {
 
     public static class SVMGraphDecoder extends AbstractSVMGraphDecoder {
         @SuppressWarnings("this-escape")
-        public SVMGraphDecoder(ClassLoader classLoader, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod,
+        public SVMGraphDecoder(Class<?> clazz, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod,
                         SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
-            super(classLoader, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
+            super(clazz, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
             addBuiltin(new HostedTypeBuiltIn(svmImageLayerLoader));
             addBuiltin(new HostedMethodBuiltIn(svmImageLayerLoader));
         }
@@ -856,14 +874,14 @@ public class SVMImageLayerSnapshotUtil {
     }
 
     private static void makeStaticFieldIds(ObjectCopier.Encoder encoder, ObjectCopier.ObjectPath objectPath, Object object) {
-        Field staticField = encoder.getExternalValues().get(object);
-        encoder.makeStringId(staticField.getDeclaringClass().getName(), objectPath);
+        ResolvedJavaField staticField = GraalAccess.lookupField(encoder.getExternalValues().get(object));
+        encoder.makeStringId(staticField.getDeclaringClass().toJavaName(), objectPath);
         encoder.makeStringId(staticField.getName(), objectPath);
     }
 
     private static void writeStaticField(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object object) throws IOException {
-        Field staticField = encoder.getExternalValues().get(object);
-        encoder.writeString(stream, staticField.getDeclaringClass().getName());
+        ResolvedJavaField staticField = GraalAccess.lookupField(encoder.getExternalValues().get(object));
+        encoder.writeString(stream, staticField.getDeclaringClass().toJavaName());
         encoder.writeString(stream, staticField.getName());
     }
 

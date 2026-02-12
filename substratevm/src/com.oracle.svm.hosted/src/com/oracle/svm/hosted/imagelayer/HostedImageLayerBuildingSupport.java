@@ -78,6 +78,7 @@ import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsContainer;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSupport {
@@ -174,6 +175,18 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
     public Class<?> lookupClass(boolean optional, String className) {
         TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className);
+        if (!typeResult.isPresent()) {
+            if (optional) {
+                return null;
+            } else {
+                throw AnalysisError.shouldNotReachHere("Class not found: " + className);
+            }
+        }
+        return typeResult.get();
+    }
+
+    public ResolvedJavaType lookupType(boolean optional, String className) {
+        TypeResult<ResolvedJavaType> typeResult = imageClassLoader.findType(className);
         if (!typeResult.isPresent()) {
             if (optional) {
                 return null;
