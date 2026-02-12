@@ -4,10 +4,10 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
 
 ## Version 25.1.0
 
-* Implemented the [exception handling](https://github.com/WebAssembly/exception-handling) proposal. This feature can be enabled with the experimental option `wasm.Exceptions=true`.
-* Implemented the [typed function references](https://github.com/WebAssembly/function-references) proposal. This feature can be enabled with the experimental option `wasm.TypedFunctionReferences=true`.
+* Implemented the [exception handling](https://github.com/WebAssembly/exception-handling) proposal. This feature is enabled by default and can be disabled with the experimental option `wasm.Exceptions=false`.
+* Implemented the [typed function references](https://github.com/WebAssembly/function-references) proposal. This feature is enabled by default and can be disabled with the experimental option `wasm.TypedFunctionReferences=false`.
 * Enabled the standardized features [Extended Constant Expressions](https://github.com/WebAssembly/extended-const/blob/master/proposals/extended-const/Overview.md), [Multiple Memories](https://github.com/WebAssembly/multi-memory/blob/master/proposals/multi-memory/Overview.md), and [Relaxed SIMD](https://github.com/WebAssembly/relaxed-simd/tree/main/proposals/relaxed-simd) by default.
-* Implemented the [GC proposal](https://github.com/WebAssembly/gc) proposal. This feature can be enabled with the experimental option `wasm.GC=true`.
+* Implemented the [GC proposal](https://github.com/WebAssembly/gc) proposal. This feature is enabled by default and can be disabled with the experimental option `wasm.GC=false`.
 
 ## Version 25.0.0
 

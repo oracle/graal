@@ -201,6 +201,16 @@ Users can override the defaults to experiment with upcoming features or opt out 
 * `--wasm.Threads`: Enable support for the [threading feature](https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md), letting WebAssembly modules use new instructions for atomic memory access.
   Defaults to `false`.
 
+* `--wasm.Exceptions`: Enable support for the [exception handling feature](https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md), letting WebAssembly modules use new instructions for catching and throwing exceptions.
+  Defaults to `true`.
+
+* `--wasm.TypedFunctionReferences`: Enable support for the [typed function references feature](https://github.com/WebAssembly/function-references/blob/master/proposals/function-references/Overview.md), letting WebAssembly produce and consume (call) function references.
+  Defaults to `true`.
+
+* `--wasm.GC`: Enable support for the [garbage collection extension](https://github.com/WebAssembly/gc/blob/main/proposals/gc/Overview.md), letting WebAssembly modules use new reference types and instructions for dealing with garbage-collected references and data types.
+  Defaults to `true`.
+
+
 ## Using the GraalWasm Launcher
 
 GraalWasm standalones provide the `wasm` launcher, which you can use to execute programs compiled as WebAssembly binary modules.
