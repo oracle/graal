@@ -39,9 +39,14 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jvmti.headers.JvmtiInterface;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public final class JvmtiFunctionTable {
     /**
      * A table with function pointers to all JVMTI entry points (see {@link JvmtiFunctions}). This

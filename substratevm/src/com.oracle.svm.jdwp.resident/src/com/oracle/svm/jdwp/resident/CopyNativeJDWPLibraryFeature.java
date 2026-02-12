@@ -30,15 +30,19 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
-
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 /**
  * Copies {@code lib:svmjdwp} from the GraalVM native libraries, if it exists, to the native-image
@@ -53,6 +57,7 @@ import com.oracle.svm.shared.option.HostedOptionKey;
  * {@code lib:svmjdwp} with JDWP support, otherwise it gets overwritten.</strong>
  */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 final class CopyNativeJDWPLibraryFeature implements InternalFeature {
 
     public static class Options {

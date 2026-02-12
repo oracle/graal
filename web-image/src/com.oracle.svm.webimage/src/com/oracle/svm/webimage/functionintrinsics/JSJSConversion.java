@@ -30,6 +30,10 @@ import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSValue;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
@@ -38,6 +42,7 @@ import com.oracle.svm.webimage.platform.WebImageJSPlatform;
  */
 @AutomaticallyRegisteredImageSingleton(JSConversion.class)
 @Platforms(WebImageJSPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class JSJSConversion extends JSConversion {
     /**
      * Associates the given Java object with the given JS value.

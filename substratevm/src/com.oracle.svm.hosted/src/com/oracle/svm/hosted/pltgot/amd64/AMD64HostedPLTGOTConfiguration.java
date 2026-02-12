@@ -30,6 +30,10 @@ import com.oracle.svm.core.pltgot.amd64.AMD64ExitMethodAddressResolutionOp;
 import com.oracle.svm.core.pltgot.amd64.AMD64MethodAddressResolutionDispatcher;
 import com.oracle.svm.hosted.pltgot.HostedPLTGOTConfiguration;
 import com.oracle.svm.hosted.pltgot.PLTStubGenerator;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -37,6 +41,7 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public final class AMD64HostedPLTGOTConfiguration extends HostedPLTGOTConfiguration {
 
     @Override

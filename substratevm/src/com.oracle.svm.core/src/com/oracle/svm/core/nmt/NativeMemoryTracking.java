@@ -35,16 +35,20 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
 
 /**
  * This class implements native memory tracking (NMT). There are two components to NMT: tracking
@@ -60,6 +64,7 @@ import org.graalvm.word.impl.Word;
  * exactly the size committed/uncommitted. In Hotspot, this assumption is not made, and an internal
  * model of virtual memory is maintained.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class NativeMemoryTracking {
     private static final UnsignedWord ALIGNMENT = Word.unsigned(16);
     private static final int MAGIC = 0xF0F1F2F3;

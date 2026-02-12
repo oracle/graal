@@ -24,8 +24,13 @@
  */
 package com.oracle.svm.core.graal;
 
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
 import jdk.graal.compiler.hotspot.EconomyCompilerConfigurationFactory;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class EconomyGraalConfiguration extends GraalConfiguration {
 
     private static final String COMPILER_CONFIGURATION_NAME = EconomyCompilerConfigurationFactory.NAME;

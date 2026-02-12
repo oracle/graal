@@ -69,6 +69,9 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.OSCommittedMemoryProvider;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.graph.Node;
@@ -76,6 +79,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class GenScavengeGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -146,11 +150,11 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
-            ImageSingletons.add(CommittedMemoryProvider.class, createCommittedMemoryProvider());
-        }
-
         if (ImageLayerBuildingSupport.firstImageBuild()) {
+            if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
+                ImageSingletons.add(CommittedMemoryProvider.class, createCommittedMemoryProvider());
+            }
+
             // If building libgraal, set system property showing gc algorithm
             SystemPropertiesSupport.singleton().setLibGraalRuntimeProperty("gc", Heap.getHeap().getGC().getName());
         }

@@ -41,12 +41,19 @@ import com.oracle.svm.core.attach.AttachApiSupport;
 import com.oracle.svm.core.attach.AttachListenerThread;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.jdk.management.Target_jdk_internal_vm_VMSupport;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
 /** The attach mechanism on Linux and macOS uses a UNIX domain socket for communication. */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class PosixAttachApiSupport implements AttachApiSupport {
     private final ReentrantLock lock = new ReentrantLock();
     private final AtomicBoolean shutdownRequested = new AtomicBoolean();
@@ -205,6 +212,7 @@ public class PosixAttachApiSupport implements AttachApiSupport {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 class PosixAttachApiFeature extends AttachApiFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

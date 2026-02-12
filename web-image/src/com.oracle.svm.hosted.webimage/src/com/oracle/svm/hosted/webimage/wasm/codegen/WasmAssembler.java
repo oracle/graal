@@ -43,13 +43,17 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.DebugOptions;
@@ -399,6 +403,7 @@ public abstract class WasmAssembler {
      * Note: {@code wat2wasm} does not currently implement some Wasm proposals. It currently only
      * works in the WasmLM backend.
      */
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
     public static class Wat2Wasm extends WasmAssembler {
 
         protected Wat2Wasm(Path tempDirectory) {
@@ -459,6 +464,7 @@ public abstract class WasmAssembler {
      *
      * @see BinaryenCompat
      */
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
     public static class Binaryen extends WasmAssembler {
 
         protected Binaryen(Path tempDirectory) {

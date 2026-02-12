@@ -24,17 +24,22 @@
  */
 package com.oracle.svm.interpreter;
 
-import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
-
-import jdk.graal.compiler.api.replacements.Fold;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
+import jdk.graal.compiler.api.replacements.Fold;
+
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class InterpreterMethodPointerHolder {
     @Fold
     public static InterpreterMethodPointerHolder singleton() {

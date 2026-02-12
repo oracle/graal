@@ -47,6 +47,11 @@ import com.oracle.svm.core.jfr.JfrArgumentParser.FlightRecorderOptionsArgument;
 import com.oracle.svm.core.jfr.JfrArgumentParser.JfrArgument;
 import com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents;
 import com.oracle.svm.core.jfr.events.EveryChunkNativePeriodicEvents;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -60,6 +65,7 @@ import jdk.jfr.internal.Repository;
 /**
  * Called during VM startup and teardown. Also triggers the JFR argument parsing.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class JfrManager {
 
     @Platforms(Platform.HOSTED_ONLY.class) //

@@ -78,6 +78,7 @@ import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.Digest;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class ClassPredefinitionFeature implements InternalFeature {
     private final Map<String, PredefinedClass> nameToRecord = new HashMap<>();
     private boolean sealed = false;

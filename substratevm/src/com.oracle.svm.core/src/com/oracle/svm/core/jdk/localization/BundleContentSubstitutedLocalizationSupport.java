@@ -43,6 +43,11 @@ import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -63,6 +68,7 @@ import sun.util.resources.ParallelListResourceBundle;
  * @see BundleSerializationUtils
  * @see SubstituteLoadLookup
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class BundleContentSubstitutedLocalizationSupport extends LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)//

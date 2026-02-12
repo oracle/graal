@@ -35,6 +35,10 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
@@ -43,6 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 // TODO(GR-35288): Implement proper JNI call support.
 @AutomaticallyRegisteredFeature
 @Platforms({WebImageWasmLMPlatform.class, WebImageWasmGCPlatform.class})
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WasmJNICallWrapperFeature implements InternalFeature {
     @Override
     public void duringSetup(Feature.DuringSetupAccess access) {

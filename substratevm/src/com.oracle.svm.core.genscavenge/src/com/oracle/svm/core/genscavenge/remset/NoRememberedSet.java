@@ -45,6 +45,11 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.gc.BarrierSet;
@@ -56,6 +61,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Without a remembered set, the GC won't be able to collect the young and the old generation
  * independently.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public final class NoRememberedSet implements RememberedSet {
     @Override
     public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {

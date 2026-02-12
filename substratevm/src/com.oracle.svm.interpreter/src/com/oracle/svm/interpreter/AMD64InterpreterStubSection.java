@@ -38,10 +38,14 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.amd64.SubstrateAMD64Backend;
 import com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
@@ -50,6 +54,7 @@ import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class AMD64InterpreterStubSection extends InterpreterStubSection {
     public AMD64InterpreterStubSection() {
         this.target = ConfigurationValues.getTarget();

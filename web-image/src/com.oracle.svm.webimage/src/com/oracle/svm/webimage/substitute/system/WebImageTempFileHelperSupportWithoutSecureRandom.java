@@ -28,6 +28,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = InitialLayerOnly.class, other = Disallowed.class)
 public class WebImageTempFileHelperSupportWithoutSecureRandom extends WebImageTempFileHelperSupport {
 
     @Override

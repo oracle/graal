@@ -33,6 +33,10 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.MethodPointerRelocationProvider;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
  * Emits method pointer relocations in the image object file that take PLT/GOT into account.
@@ -40,6 +44,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
  * For methods invoked through PLT/GOT, unless overridden explicitly, emits relocations that point
  * to the generated PLT stub.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class PLTGOTPointerRelocationProvider extends MethodPointerRelocationProvider {
 
     private final Predicate<SharedMethod> shouldMarkRelocationToPLTStub;

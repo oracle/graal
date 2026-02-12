@@ -53,6 +53,11 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.UserSystemProperty;
 import com.oracle.svm.core.jdk.runtimeinit.FileSystemProviderRunTimeInitSupport;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
@@ -64,6 +69,7 @@ import jdk.internal.util.StaticProperty;
  * image {@linkplain FileSystemProvidersInitializedAtBuildTime build time}. Run-time initialization
  * related functionality can be found in {@link FileSystemProviderRunTimeInitSupport}.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public final class FileSystemProviderBuildTimeInitSupport {
 
     public static class Options {
@@ -127,6 +133,7 @@ public final class FileSystemProviderBuildTimeInitSupport {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 final class FileSystemProviderBuildTimeInitFeature implements InternalFeature {
 
     @Override

@@ -38,9 +38,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.collections.EconomicSet;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -54,10 +52,7 @@ import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.HostedConfiguration;
@@ -95,6 +90,10 @@ import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCCodeCache;
 import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCCompileQueue;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCCodeGen;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -106,6 +105,7 @@ import jdk.graal.compiler.options.OptionValues;
  *
  * It serves as an abstraction of important policies for Web Image.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageHostedConfiguration extends HostedConfiguration {
 
     public static void setDefaultIfEmpty() {

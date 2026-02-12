@@ -39,6 +39,9 @@ import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -49,6 +52,7 @@ import jdk.vm.ci.meta.JavaKind;
  * This feature is used to contain functionality needed when a Graal compiler is included in a
  * native-image. This is used by RuntimeCompilation but not LibGraalFeature.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class GraalCompilerFeature implements InternalFeature {
 
     public static final class IsEnabled implements BooleanSupplier {

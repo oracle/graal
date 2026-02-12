@@ -38,6 +38,9 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -46,6 +49,7 @@ import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.JavaConstant;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class ClassLoaderFeature implements InternalFeature {
 
     private static final String APP_KEY_NAME = "ClassLoader#App";

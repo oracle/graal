@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.interpreter.debug;
 
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.Interpreter;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -33,6 +37,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Allows the {@link Interpreter} to run without any debugger hooks.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 final class DummyDebuggerEventsImpl implements DebuggerEvents {
     @Override
     public void setEventEnabled(Thread thread, EventKind eventKind, boolean enable) {

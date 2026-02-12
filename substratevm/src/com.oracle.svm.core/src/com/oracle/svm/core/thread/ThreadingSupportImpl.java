@@ -31,8 +31,13 @@ import org.graalvm.nativeimage.impl.ThreadingSupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredImageSingleton(ThreadingSupport.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class ThreadingSupportImpl implements ThreadingSupport {
     private static final String ENABLE_SUPPORT_OPTION = SubstrateOptionsParser.commandArgument(RecurringCallbackSupport.ConcealedOptions.SupportRecurringCallback, "+");
 

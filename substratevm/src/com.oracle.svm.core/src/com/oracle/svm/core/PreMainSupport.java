@@ -46,6 +46,11 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.ModuleNative;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.HostedModuleSupport;
@@ -81,6 +86,7 @@ import com.oracle.svm.util.HostedModuleSupport;
  * As a last resort, it is also possible to substitute a premain method with a native image-specific
  * version.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = Disallowed.class)
 public class PreMainSupport {
 
     private static final String PREMAIN_OPTION_PREFIX = "-XXpremain:";

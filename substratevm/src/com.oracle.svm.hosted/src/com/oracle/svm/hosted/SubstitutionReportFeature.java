@@ -41,6 +41,10 @@ import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.options.Option;
@@ -68,6 +72,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /// - original: the original element being substituted
 /// - annotated: the annotated replacement element
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class SubstitutionReportFeature implements InternalFeature {
 
     static class Options {

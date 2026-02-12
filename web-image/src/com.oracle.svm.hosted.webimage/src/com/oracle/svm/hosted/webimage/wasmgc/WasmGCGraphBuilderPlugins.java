@@ -28,6 +28,10 @@ package com.oracle.svm.hosted.webimage.wasmgc;
 import com.oracle.svm.hosted.webimage.JSGraphBuilderPlugins;
 import com.oracle.svm.hosted.webimage.wasm.WasmLMGraphBuilderPlugins;
 import com.oracle.svm.hosted.webimage.wasmgc.snippets.WasmGCAllocationSnippets;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.NotNode;
@@ -42,6 +46,7 @@ import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WasmGCGraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
     public void registerPlugins(GraphBuilderConfiguration.Plugins plugins, OptionValues options) {

@@ -32,13 +32,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.hosted.FeatureImpl.AfterAbstractImageCreationAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
-import com.oracle.svm.hosted.image.NativeImage;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -50,15 +43,26 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.GOTHeapSupport;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
-import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.AfterAbstractImageCreationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.image.MethodPointerRelocationProvider;
+import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.pltgot.aarch64.AArch64HostedPLTGOTConfiguration;
 import com.oracle.svm.hosted.pltgot.amd64.AMD64HostedPLTGOTConfiguration;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -119,6 +123,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
  * depending on the workload for the default configuration.
  * </ul>
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class PLTGOTFeature implements InternalFeature {
 
     private RelocatableBuffer gotBuffer;
