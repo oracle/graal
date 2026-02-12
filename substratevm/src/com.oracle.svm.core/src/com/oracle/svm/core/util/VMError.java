@@ -27,8 +27,6 @@ package com.oracle.svm.core.util;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
-
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -109,14 +107,16 @@ public final class VMError {
         throw shouldNotReachHere(msgShouldNotReachHereUnsupportedPlatform);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    // The following is done via substitutions:
+    // @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition) {
         if (!condition) {
             throw shouldNotReachHere("guarantee failed");
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    // The following is done via substitutions:
+    // @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition, String msg) {
         if (!condition) {
             throw shouldNotReachHere(msg);

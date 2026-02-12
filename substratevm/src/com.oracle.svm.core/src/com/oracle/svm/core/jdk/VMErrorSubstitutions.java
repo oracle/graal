@@ -34,6 +34,8 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -120,6 +122,16 @@ final class Target_com_oracle_svm_core_util_VMError {
     private static RuntimeException unsupportedFeature(String msg) {
         throw new UnsupportedFeatureError(msg);
     }
+
+    @Alias
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition);
+
+    @Alias
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition, String msg);
 }
 
 /** Dummy class to have a class with the file's name. */
