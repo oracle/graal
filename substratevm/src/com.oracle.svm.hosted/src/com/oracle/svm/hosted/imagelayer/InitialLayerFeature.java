@@ -41,7 +41,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestTypes;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
@@ -94,7 +94,7 @@ public class InitialLayerFeature implements InternalFeature {
     }
 
     private static ResolvedJavaType getProxyClass(ResolvedJavaType uninterruptibleType) {
-        VMAccess vmAccess = GraalAccess.get();
+        VMAccess vmAccess = GuestAccess.get();
         MetaAccessProvider metaAccess = vmAccess.getProviders().getMetaAccess();
         ConstantReflectionProvider constantReflection = vmAccess.getProviders().getConstantReflection();
 

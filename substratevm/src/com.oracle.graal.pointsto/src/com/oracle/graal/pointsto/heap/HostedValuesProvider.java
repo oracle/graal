@@ -28,7 +28,7 @@ import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -52,15 +52,15 @@ public class HostedValuesProvider {
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
         field.beforeFieldValueAccess();
-        return interceptHosted(GraalAccess.get().getProviders().getConstantReflection().readFieldValue(field.wrapped, receiver));
+        return interceptHosted(GuestAccess.get().getProviders().getConstantReflection().readFieldValue(field.wrapped, receiver));
     }
 
     public Integer readArrayLength(JavaConstant array) {
-        return GraalAccess.get().getProviders().getConstantReflection().readArrayLength(array);
+        return GuestAccess.get().getProviders().getConstantReflection().readArrayLength(array);
     }
 
     public JavaConstant readArrayElement(JavaConstant array, int index) {
-        return GraalAccess.get().getProviders().getConstantReflection().readArrayElement(array, index);
+        return GuestAccess.get().getProviders().getConstantReflection().readArrayElement(array, index);
     }
 
     /**
@@ -90,11 +90,11 @@ public class HostedValuesProvider {
     }
 
     public JavaConstant forObject(Object object) {
-        return GraalAccess.get().getSnippetReflection().forObject(object);
+        return GuestAccess.get().getSnippetReflection().forObject(object);
     }
 
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        return GraalAccess.get().getSnippetReflection().asObject(type, constant);
+        return GuestAccess.get().getSnippetReflection().asObject(type, constant);
     }
 
     /** Hook to allow subclasses to intercept hosted constants. */

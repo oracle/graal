@@ -33,7 +33,7 @@ import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
@@ -68,7 +68,7 @@ public class LambdaParser {
     }
 
     public static List<Class<?>> getLambdaClassesInMethod(Method capturingMethod, List<Class<?>> implementedInterfaces) {
-        ResolvedJavaMethod method = GraalAccess.get().getProviders().getMetaAccess().lookupJavaMethod(capturingMethod);
+        ResolvedJavaMethod method = GuestAccess.get().getProviders().getMetaAccess().lookupJavaMethod(capturingMethod);
         StructuredGraph graph = createMethodGraph(method, new OptionValues(OptionValues.newOptionMap()));
         NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
         List<Class<?>> lambdaClasses = new ArrayList<>();
@@ -88,9 +88,9 @@ public class LambdaParser {
     public static StructuredGraph createMethodGraph(ResolvedJavaMethod method, OptionValues options) {
         GraphBuilderPhase lambdaParserPhase = new LambdaParser.LambdaGraphBuilderPhase();
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getName());
-        DebugContext debug = new DebugContext.Builder(options, new GraalDebugHandlersFactory(GraalAccess.get().getSnippetReflection())).description(description).build();
+        DebugContext debug = new DebugContext.Builder(options, new GraalDebugHandlersFactory(GuestAccess.get().getSnippetReflection())).description(description).build();
 
-        HighTierContext context = new HighTierContext(GraalAccess.get().getProviders(), null, OptimisticOptimizations.NONE);
+        HighTierContext context = new HighTierContext(GuestAccess.get().getProviders(), null, OptimisticOptimizations.NONE);
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
                         .method(method)
                         .recordInlinedMethods(false)
@@ -126,7 +126,7 @@ public class LambdaParser {
     }
 
     private static Class<?> getLambdaClassFromMemberField(Constant constant) {
-        Providers providers = GraalAccess.get().getProviders();
+        Providers providers = GuestAccess.get().getProviders();
         ResolvedJavaType constantType = providers.getMetaAccess().lookupJavaType((JavaConstant) constant);
 
         if (constantType == null) {
@@ -163,7 +163,7 @@ public class LambdaParser {
         private static GraphBuilderConfiguration buildLambdaParserConfig() {
             GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
             plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
-            plugins.prependNodePlugin(new MethodHandlePlugin(GraalAccess.get().getProviders().getConstantReflection().getMethodHandleAccess(), false));
+            plugins.prependNodePlugin(new MethodHandlePlugin(GuestAccess.get().getProviders().getConstantReflection().getMethodHandleAccess(), false));
             return GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
         }
 

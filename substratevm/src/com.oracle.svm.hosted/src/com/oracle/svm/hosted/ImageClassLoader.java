@@ -50,7 +50,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -181,7 +181,7 @@ public final class ImageClassLoader {
     private boolean isInPlatform(Annotated element) {
         try {
             AnnotationValue av = classLoaderSupport.annotationExtractor.getAnnotationValue(element, Platforms.class);
-            return av == null || NativeImageGenerator.includedIn(GraalAccess.get().lookupType(platform.getClass()), av.getList("value", ResolvedJavaType.class));
+            return av == null || NativeImageGenerator.includedIn(GuestAccess.get().lookupType(platform.getClass()), av.getList("value", ResolvedJavaType.class));
         } catch (LinkageError t) {
             handleClassLoadingError(t, "getting @Platforms annotation value for %s", element);
             return false;
@@ -315,7 +315,7 @@ public final class ImageClassLoader {
         AnnotationValue av = classLoaderSupport.annotationExtractor.getAnnotationValue(element, Platforms.class);
         if (av != null) {
             List<ResolvedJavaType> platforms = av.getList("value", ResolvedJavaType.class);
-            GraalAccess access = GraalAccess.get();
+            GuestAccess access = GuestAccess.get();
             if (platforms.contains(access.lookupType(Platform.HOSTED_ONLY.class))) {
                 return PlatformSupportResult.HOSTED;
             } else if (!NativeImageGenerator.includedIn(access.lookupType(thePlatform.getClass()), platforms)) {
@@ -437,7 +437,7 @@ public final class ImageClassLoader {
 
     public static ResolvedJavaType typeForPrimitive(String name) {
         Class<?> c = forPrimitive(name);
-        return c == null ? null : GraalAccess.get().lookupType(c);
+        return c == null ? null : GuestAccess.get().lookupType(c);
     }
 
     public ResolvedJavaType typeForName(String className) throws ClassNotFoundException {
@@ -490,7 +490,7 @@ public final class ImageClassLoader {
     }
 
     public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {
-        ResolvedJavaType baseType = GraalAccess.get().lookupType(baseClass);
+        ResolvedJavaType baseType = GuestAccess.get().lookupType(baseClass);
         ArrayList<ResolvedJavaType> subtypes = new ArrayList<>();
         addSubclasses(applicationTypes, baseType, subtypes);
         if (includeHostedOnly) {

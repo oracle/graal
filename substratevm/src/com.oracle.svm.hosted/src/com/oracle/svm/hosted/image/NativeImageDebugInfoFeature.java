@@ -72,7 +72,7 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -100,9 +100,9 @@ class NativeImageDebugInfoFeature implements InternalFeature {
      * during analysis, but still reachable through the SubstrateDebugTypeEntrySupport singleton.
      */
     public static final Set<ResolvedJavaField> foreignTypeEntryFields = Set.of(
-                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(TypeEntry.class), "typeName"),
-                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(TypeEntry.class), "typeSignature"),
-                    JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.get().lookupType(ForeignStructTypeEntry.class), "typedefName"));
+                    JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(TypeEntry.class), "typeName"),
+                    JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(TypeEntry.class), "typeSignature"),
+                    JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(ForeignStructTypeEntry.class), "typedefName"));
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -261,7 +261,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         try (Timer.StopTimer _ = timer.start()) {
             var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
             var image = accessImpl.getImage();
-            var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.get().getSnippetReflection())).build();
+            var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GuestAccess.get().getSnippetReflection())).build();
             DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getMetaAccess(),
                             accessImpl.getRuntimeConfiguration());
             var objectFile = image.getObjectFile();

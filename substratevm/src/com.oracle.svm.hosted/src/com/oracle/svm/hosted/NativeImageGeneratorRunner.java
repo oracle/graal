@@ -79,7 +79,7 @@ import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.AnnotatedObjectAccess;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -315,7 +315,7 @@ public class NativeImageGeneratorRunner {
     }
 
     private static VMAccess getVmAccess(String[] classpath, String[] modulepath, HostedOptionParser parser) {
-        VMAccess.Builder builder = GraalAccess.getVmAccessBuilder();
+        VMAccess.Builder builder = GuestAccess.getVmAccessBuilder();
         builder.classPath(List.of(classpath));
         builder.modulePath(List.of(modulepath));
 
@@ -362,7 +362,7 @@ public class NativeImageGeneratorRunner {
         NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
         HostedOptionParser parser = nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
         VMAccess vmAccess = getVmAccess(classpath, modulepath, parser);
-        GraalAccess.plantConfiguration(vmAccess);
+        GuestAccess.plantConfiguration(vmAccess);
         nativeImageClassLoaderSupport.setupLibGraalClassLoader();
         /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
         for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {
@@ -476,7 +476,7 @@ public class NativeImageGeneratorRunner {
     }
 
     private static boolean isValidArchitecture() {
-        final Architecture originalTargetArch = GraalAccess.get().getTarget().arch;
+        final Architecture originalTargetArch = GuestAccess.get().getTarget().arch;
         return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64 || originalTargetArch instanceof RISCV64;
     }
 
@@ -553,7 +553,7 @@ public class NativeImageGeneratorRunner {
                                         SubstrateOptionsParser.commandArgument(SubstrateOptions.Method, "<method-name>"));
                     }
                     ResolvedJavaMethod mainEntryMethod;
-                    GraalAccess access = GraalAccess.get();
+                    GuestAccess access = GuestAccess.get();
                     try {
                         ResolvedJavaType buildTimeSupport = access.lookupType("com.oracle.svm.guest.hosted.BuildTimeSupport");
                         ResolvedJavaMethod getMainClassFromModule = access.lookupMethod(buildTimeSupport, "getMainEntryPointMethod",
@@ -674,7 +674,7 @@ public class NativeImageGeneratorRunner {
 
     public static boolean verifyValidJavaVersionAndPlatform() {
         if (!isValidArchitecture()) {
-            reportToolUserError("Runs on AMD64, AArch64 and RISCV64 only. Detected architecture: " + ClassUtil.getUnqualifiedName(GraalAccess.get().getTarget().arch.getClass()));
+            reportToolUserError("Runs on AMD64, AArch64 and RISCV64 only. Detected architecture: " + ClassUtil.getUnqualifiedName(GuestAccess.get().getTarget().arch.getClass()));
         }
         if (!isValidOperatingSystem()) {
             reportToolUserError("Runs on Linux, Mac OS X and Windows only. Detected OS: " + System.getProperty("os.name"));

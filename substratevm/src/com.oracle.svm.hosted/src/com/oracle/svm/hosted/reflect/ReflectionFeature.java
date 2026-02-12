@@ -95,7 +95,7 @@ import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -393,7 +393,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
          * These transformers have to be registered before registering methods below which causes
          * the analysis to already see SubstrateMethodAccessor.vtableIndex.
          */
-        ResolvedJavaType substrateMethodAccessorType = GraalAccess.get().lookupType(SubstrateMethodAccessor.class);
+        ResolvedJavaType substrateMethodAccessorType = GuestAccess.get().lookupType(SubstrateMethodAccessor.class);
         analysisAccess.registerFieldValueTransformer(JVMCIReflectionUtil.getUniqueDeclaredField(substrateMethodAccessorType, "vtableIndex"), new ComputeVTableIndex());
         analysisAccess.registerFieldValueTransformer(JVMCIReflectionUtil.getUniqueDeclaredField(substrateMethodAccessorType, "interfaceTypeID"), new ComputeInterfaceTypeID());
 

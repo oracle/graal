@@ -129,7 +129,7 @@ import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.shaded.org.capnproto.StructList;
 import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -163,10 +163,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SVMImageLayerLoader extends ImageLayerLoader {
-    private static final ResolvedJavaType SVM_IMAGE_LAYER_LOADER = GraalAccess.get().lookupType(SVMImageLayerLoader.class);
+    private static final ResolvedJavaType SVM_IMAGE_LAYER_LOADER = GuestAccess.get().lookupType(SVMImageLayerLoader.class);
     private static final ResolvedJavaMethod CHECK_STRING_METHOD = JVMCIReflectionUtil.getUniqueDeclaredMethod(SVM_IMAGE_LAYER_LOADER, "checkString", STRING);
     private static final ResolvedJavaMethod INTERN_METHOD = JVMCIReflectionUtil.getUniqueDeclaredMethod(STRING, "intern");
-    private static final ResolvedJavaMethod VALUE_OF_METHOD = JVMCIReflectionUtil.getUniqueDeclaredMethod(ENUM, "valueOf", GraalAccess.get().lookupType(Class.class), STRING);
+    private static final ResolvedJavaMethod VALUE_OF_METHOD = JVMCIReflectionUtil.getUniqueDeclaredMethod(ENUM, "valueOf", GuestAccess.get().lookupType(Class.class), STRING);
 
     private final boolean useSharedLayerGraphs;
     private final SVMImageLayerSnapshotUtil imageLayerSnapshotUtil;
@@ -352,7 +352,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         } else if (relinking.isStringConstant()) {
             String value = relinking.getStringConstant().getValue().toString();
             JavaConstant constant = getStringConstant(value);
-            constant = GraalAccess.get().invoke(INTERN_METHOD, constant);
+            constant = GuestAccess.get().invoke(INTERN_METHOD, constant);
             injectIdentityHashCode(constant, identityHashCode);
             stringToConstant.put(constant, id);
         } else if (relinking.isEnumConstant()) {
@@ -364,7 +364,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private static JavaConstant getStringConstant(String value) {
-        return GraalAccess.get().asGuestString(value);
+        return GuestAccess.get().asGuestString(value);
     }
 
     public void cleanupAfterCompilation() {
@@ -589,7 +589,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             case "void" -> void.class;
             default -> null;
         };
-        return type == null ? null : GraalAccess.get().lookupType(type);
+        return type == null ? null : GuestAccess.get().lookupType(type);
     }
 
     private BaseLayerType getBaseLayerType(int tid) {
@@ -606,7 +606,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             String sourceFileName = td.hasSourceFileName() ? td.getSourceFileName().toString() : null;
             ResolvedJavaType enclosingType = getResolvedJavaTypeForBaseLayerId(td.getEnclosingTypeId());
             ResolvedJavaType componentType = getResolvedJavaTypeForBaseLayerId(td.getComponentTypeId());
-            ResolvedJavaType objectType = GraalAccess.get().lookupType(Object.class);
+            ResolvedJavaType objectType = GuestAccess.get().lookupType(Object.class);
             AnnotationValue[] annotations = getAnnotations(td.getAnnotationList());
 
             return new BaseLayerType(className, tid, td.getModifiers(), td.getIsInterface(), td.getIsEnum(), td.getIsRecord(), td.getIsInitialized(), td.getIsLinked(), sourceFileName,
@@ -1388,7 +1388,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             ConstantReflectionProvider constantReflectionProvider = universe.getBigbang().getConstantReflectionProvider();
             return hasValueForType((AnalysisType) constantReflectionProvider.asJavaType(javaConstant));
         } else if (STRING.isInstance(javaConstant)) {
-            return stringToConstant.containsKey(javaConstant) && GraalAccess.get().invoke(CHECK_STRING_METHOD, null, javaConstant).asBoolean();
+            return stringToConstant.containsKey(javaConstant) && GuestAccess.get().invoke(CHECK_STRING_METHOD, null, javaConstant).asBoolean();
         } else if (ENUM.isInstance(javaConstant)) {
             return enumToConstant.containsKey(javaConstant);
         } else {
@@ -1760,7 +1760,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             if (stringConstant.hasValue()) {
                 String value = stringConstant.getValue().toString();
                 JavaConstant stringValue = getStringConstant(value);
-                return GraalAccess.get().invoke(INTERN_METHOD, stringValue);
+                return GuestAccess.get().invoke(INTERN_METHOD, stringValue);
             }
         } else if (universe.getBigbang().getMetaAccess().lookupJavaType(Enum.class).isAssignableFrom(analysisType)) {
             assert relinking.isEnumConstant();
@@ -1777,7 +1777,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     private JavaConstant getEnumValue(Text.Reader className, Text.Reader name) {
         ResolvedJavaType enumType = imageLayerBuildingSupport.lookupType(false, className.toString());
-        return GraalAccess.get().invoke(VALUE_OF_METHOD, null, getClassConstant(enumType), getStringConstant(name.toString()));
+        return GuestAccess.get().invoke(VALUE_OF_METHOD, null, getClassConstant(enumType), getStringConstant(name.toString()));
     }
 
     private EnumElement getEnumElement(Text.Reader className, Text.Reader name) {
@@ -1860,7 +1860,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private static JavaConstant getClassConstant(ResolvedJavaType type) {
-        return GraalAccess.get().getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(type));
+        return GuestAccess.get().getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(type));
     }
 
     private static void injectIdentityHashCode(JavaConstant constant, Integer identityHashCode) {
@@ -1868,7 +1868,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return;
         }
 
-        ConstantReflectionProvider constantReflection = GraalAccess.get().getProviders().getConstantReflection();
+        ConstantReflectionProvider constantReflection = GuestAccess.get().getProviders().getConstantReflection();
         int actualHashCode = constantReflection.makeIdentityHashCode(constant, identityHashCode);
         if (actualHashCode != identityHashCode) {
             if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogHashCodeInjectionFailure.getValue()) {

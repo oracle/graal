@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.annotation.Annotated;
 /// obtained from this object must not be stored in static fields. Such values will be
 /// stale/invalid when the guest context is discarded.
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class GraalAccess implements VMAccess {
+public final class GuestAccess implements VMAccess {
 
     private final VMAccess delegate;
 
@@ -92,7 +92,7 @@ public final class GraalAccess implements VMAccess {
     private final SnippetReflectionProvider snippetReflection;
 
     /// The singleton initialized by [#plantConfiguration(VMAccess)].
-    private static GraalAccess singleton;
+    private static GuestAccess singleton;
 
     /**
      * Guards against multiple calls to {@link #plantConfiguration(VMAccess)}. The value is a stack
@@ -100,7 +100,7 @@ public final class GraalAccess implements VMAccess {
      */
     private static volatile String providersInit;
 
-    private GraalAccess(VMAccess delegate) {
+    private GuestAccess(VMAccess delegate) {
         this.delegate = delegate;
         Providers providers = delegate.getProviders();
         this.metaAccess = providers.getMetaAccess();
@@ -194,7 +194,7 @@ public final class GraalAccess implements VMAccess {
     }
 
     /**
-     * Initializes the {@link GraalAccess} singleton based on {@code vmAccess}.
+     * Initializes the {@link GuestAccess} singleton based on {@code vmAccess}.
      * <p>
      * If {@code vmAccess != null}, this method must be called before calling {@link #get()} and it
      * can only be called once to ensure the whole system uses a stable configuration.
@@ -203,7 +203,7 @@ public final class GraalAccess implements VMAccess {
      * conveys the fact that this initialization is done "from the side" where as ideally it should
      * be done in the static initializer of this class.
      *
-     * @param access the {@link VMAccess} value to use for configuring {@link GraalAccess}. If
+     * @param access the {@link VMAccess} value to use for configuring {@link GuestAccess}. If
      *            {@code null}, then {@link #getVmAccessBuilder()} is used to create an instance
      *            that reflects the host configuration.
      */
@@ -215,9 +215,9 @@ public final class GraalAccess implements VMAccess {
             if (cp != null) {
                 builder.classPath(Arrays.asList(cp.split(File.pathSeparator)));
             }
-            singleton = new GraalAccess(builder.build());
+            singleton = new GuestAccess(builder.build());
         } else {
-            singleton = new GraalAccess(access);
+            singleton = new GuestAccess(access);
         }
         StringWriter sw = new StringWriter();
         new Exception("providers previously planted here:").printStackTrace(new PrintWriter(sw));
@@ -239,13 +239,13 @@ public final class GraalAccess implements VMAccess {
     }
 
     /**
-     * Gets the singleton {@link GraalAccess} value. If an externally configured {@link VMAccess} is
+     * Gets the singleton {@link GuestAccess} value. If an externally configured {@link VMAccess} is
      * being used, then it must be {@linkplain #plantConfiguration(VMAccess) set} prior to the first
      * call to this method.
      */
-    public static GraalAccess get() {
+    public static GuestAccess get() {
         if (providersInit == null) {
-            synchronized (GraalAccess.class) {
+            synchronized (GuestAccess.class) {
                 if (providersInit == null) {
                     plantConfiguration(null);
                 }

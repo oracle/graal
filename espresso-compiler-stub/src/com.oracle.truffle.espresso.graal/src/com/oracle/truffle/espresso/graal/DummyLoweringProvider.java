@@ -43,8 +43,8 @@ import jdk.vm.ci.meta.JavaKind;
  * com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport} while parsing methods and
  * canonicalizing graphs. This dummy version tries to provide as neutral answers as possible.
  * <p>
- * See also {@code com.oracle.graal.pointsto.util.GraalAccess} for how the native image generator
- * accesses the "host" providers.
+ * See also {@code com.oracle.svm.util.GuestAccess} for how the native image generator accesses the
+ * "host" providers.
  */
 public final class DummyLoweringProvider implements LoweringProvider {
     private final TargetDescription target;

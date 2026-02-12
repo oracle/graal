@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.substitute;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -39,6 +39,6 @@ public record FromAliasFieldValueTransformer(ResolvedJavaField aliasField) imple
     @Override
     public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
         aliasField.getDeclaringClass().initialize();
-        return GraalAccess.get().getProviders().getConstantReflection().readFieldValue(aliasField, null);
+        return GuestAccess.get().getProviders().getConstantReflection().readFieldValue(aliasField, null);
     }
 }

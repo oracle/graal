@@ -85,7 +85,7 @@ import com.oracle.svm.hosted.reflect.RecordUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -180,7 +180,7 @@ public class SerializationFeature implements InternalFeature {
          * configuration file for serialization. In order to find all the lambdas from a class, we
          * parse all the methods of the given class and find all the lambdas in them.
          */
-        MetaAccessProvider metaAccess = GraalAccess.get().getProviders().getMetaAccess();
+        MetaAccessProvider metaAccess = GuestAccess.get().getProviders().getMetaAccess();
         capturingClasses.parallelStream()
                         .map(metaAccess::lookupJavaType)
                         .flatMap(LambdaParser::allExecutablesDeclaredInClass)

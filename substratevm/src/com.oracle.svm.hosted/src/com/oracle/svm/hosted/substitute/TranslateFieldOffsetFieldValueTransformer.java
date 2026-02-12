@@ -33,7 +33,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -55,7 +55,7 @@ public record TranslateFieldOffsetFieldValueTransformer(ResolvedJavaField origin
     }
 
     static JavaConstant translateFieldOffset(ResolvedJavaField original, JavaConstant receiver, ResolvedJavaType tclass) {
-        long searchOffset = GraalAccess.get().getProviders().getConstantReflection().readFieldValue(original, receiver).asLong();
+        long searchOffset = GuestAccess.get().getProviders().getConstantReflection().readFieldValue(original, receiver).asLong();
         /* Search the declared fields for a field with a matching offset. */
         for (ResolvedJavaField f : tclass.getInstanceFields(false)) {
             long fieldOffset = f.getOffset();

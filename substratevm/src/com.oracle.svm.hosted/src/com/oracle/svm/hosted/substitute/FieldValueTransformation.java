@@ -38,7 +38,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -131,7 +131,7 @@ public class FieldValueTransformation {
          */
         ResolvedJavaType actualType = getActualType(newValue);
         VMError.guarantee(actualType != null);
-        if (actualType.equals(GraalAccess.get().lookupType(JavaConstantWrapper.class))) {
+        if (actualType.equals(GuestAccess.get().lookupType(JavaConstantWrapper.class))) {
             throw UserError.abort("Field value transformer %s returned %s value instead of returning the JavaConstant directly.",
                             fieldValueTransformer.getClass().getName(), JavaConstantWrapper.class.getSimpleName(), JVMCIReflectionUtil.getTypeName(transformedValueAllowedType), field.format("%H.%n"));
         }
@@ -146,7 +146,7 @@ public class FieldValueTransformation {
      * constant.
      */
     private static ResolvedJavaType getActualType(JavaConstant newValue) {
-        GraalAccess access = GraalAccess.get();
+        GuestAccess access = GuestAccess.get();
         if (newValue.getJavaKind().isPrimitive()) {
             VMError.guarantee(newValue.getJavaKind().isPrimitive());
             return access.lookupType(newValue.getJavaKind().toJavaClass());
@@ -161,14 +161,14 @@ public class FieldValueTransformation {
         if (transformedValueAllowedType.isPrimitive() && !newValue.getJavaKind().isPrimitive()) {
             if (fieldValueTransformer instanceof FieldValueTransformer || fieldValueTransformer instanceof FieldValueInterceptionSupport.WrappedFieldValueTransformer) {
                 /* Legacy transformer that needs to return boxed values. Try to unbox. */
-                JavaConstant unboxed = GraalAccess.get().getProviders().getConstantReflection().unboxPrimitive(newValue);
+                JavaConstant unboxed = GuestAccess.get().getProviders().getConstantReflection().unboxPrimitive(newValue);
                 if (unboxed != null) {
                     return unboxed;
                 }
             }
             throw VMError.shouldNotReachHere("Type %s is primitive but new value not %s (transformer: %s)",
                             JVMCIReflectionUtil.getTypeName(transformedValueAllowedType),
-                            JVMCIReflectionUtil.getTypeName(GraalAccess.get().getProviders().getMetaAccess().lookupJavaType(newValue)),
+                            JVMCIReflectionUtil.getTypeName(GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(newValue)),
                             ClassUtil.getUnqualifiedName(fieldValueTransformer.getClass()));
         }
         return newValue;
@@ -179,7 +179,7 @@ public class FieldValueTransformation {
         if (oField == null) {
             return JavaConstant.NULL_POINTER;
         }
-        JavaConstant originalValueConstant = GraalAccess.get().getProviders().getConstantReflection().readFieldValue(oField, receiver);
+        JavaConstant originalValueConstant = GuestAccess.get().getProviders().getConstantReflection().readFieldValue(oField, receiver);
         if (originalValueConstant == null) {
             /*
              * The class is still uninitialized, so static fields cannot be read. Or it is an

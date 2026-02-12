@@ -79,7 +79,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -418,7 +418,7 @@ public class PointsToStats {
     }
 
     private static long getObjectSize(Object object) {
-        Providers providers = GraalAccess.get().getProviders();
+        Providers providers = GuestAccess.get().getProviders();
         return providers.getMetaAccess().getMemorySize(providers.getSnippetReflection().forObject(object));
     }
 

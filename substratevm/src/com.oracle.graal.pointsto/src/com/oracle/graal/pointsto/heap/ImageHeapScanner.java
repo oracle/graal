@@ -54,7 +54,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -114,7 +114,7 @@ public abstract class ImageHeapScanner {
         constantReflection = aConstantReflection;
         hostedValuesProvider = aHostedValuesProvider;
         scanningObserver = aScanningObserver;
-        Providers providers = GraalAccess.get().getProviders();
+        Providers providers = GuestAccess.get().getProviders();
         hostedConstantReflection = providers.getConstantReflection();
         hostedSnippetReflection = providers.getSnippetReflection();
         stringType = metaAccess.lookupJavaType(String.class);
@@ -332,7 +332,7 @@ public abstract class ImageHeapScanner {
          * Access the constant type after the replacement. Some constants may have types that should
          * not be reachable at run time and thus are replaced.
          */
-        AnalysisType type = universe.lookup(GraalAccess.get().getProviders().getMetaAccess().lookupJavaType(constant));
+        AnalysisType type = universe.lookup(GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(constant));
 
         if (type.isArray()) {
             Integer length = hostedValuesProvider.readArrayLength(constant);
@@ -485,7 +485,7 @@ public abstract class ImageHeapScanner {
      * the hash field.
      */
     private void forceHashCodeComputation(JavaConstant constant) {
-        GraalAccess.get().invoke(hashCodeMethod, constant);
+        GuestAccess.get().invoke(hashCodeMethod, constant);
     }
 
     JavaConstant onFieldValueReachable(AnalysisField field, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {

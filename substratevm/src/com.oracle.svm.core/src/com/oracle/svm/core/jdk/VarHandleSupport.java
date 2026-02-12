@@ -37,7 +37,7 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -71,7 +71,7 @@ abstract class VarHandleFieldOffsetComputer implements JVMCIFieldValueTransforme
 
     @Override
     public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
-        ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(GraalAccess.get().getProviders(), receiver, true);
+        ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(GuestAccess.get().getProviders(), receiver, true);
         int offset = field.getOffset();
         if (offset <= 0) {
             throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + field);
@@ -118,7 +118,7 @@ class VarHandleStaticBaseComputer implements JVMCIFieldValueTransformerWithAvail
 
     @Override
     public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
-        ResolvedJavaField varHandleField = VarHandleSupport.singleton().findVarHandleField(GraalAccess.get().getProviders(), receiver, false);
+        ResolvedJavaField varHandleField = VarHandleSupport.singleton().findVarHandleField(GuestAccess.get().getProviders(), receiver, false);
         StaticFieldsSupport.StaticFieldValidator.checkFieldOffsetAllowed(varHandleField);
         return StaticFieldsSupport.getStaticFieldBaseTransformation(varHandleField);
     }

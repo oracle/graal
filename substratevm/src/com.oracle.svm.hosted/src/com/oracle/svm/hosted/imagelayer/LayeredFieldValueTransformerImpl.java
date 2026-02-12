@@ -38,7 +38,7 @@ import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithA
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -55,14 +55,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * contained with {@link TransformedValueState}.
  */
 public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformerWithReceiverBasedAvailability {
-    private static final ResolvedJavaType OBJECT = GraalAccess.get().lookupType(Object.class);
-    private static final ResolvedJavaType LAYERED_FIELD_VALUE_TRANSFORMER = GraalAccess.get().lookupType(LayeredFieldValueTransformer.class);
+    private static final ResolvedJavaType OBJECT = GuestAccess.get().lookupType(Object.class);
+    private static final ResolvedJavaType LAYERED_FIELD_VALUE_TRANSFORMER = GuestAccess.get().lookupType(LayeredFieldValueTransformer.class);
     private static final ResolvedJavaMethod IS_VALUE_AVAILABLE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "isValueAvailable", OBJECT);
     private static final ResolvedJavaMethod IS_UPDATE_AVAILABLE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "isUpdateAvailable", OBJECT);
     private static final ResolvedJavaMethod TRANSFORM = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "transform", OBJECT);
     private static final ResolvedJavaMethod UPDATE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "update", OBJECT);
 
-    private static final ResolvedJavaType LAYERED_FIELD_VALUE_TRANSFORMER_RESULT = GraalAccess.get().lookupType(LayeredFieldValueTransformer.Result.class);
+    private static final ResolvedJavaType LAYERED_FIELD_VALUE_TRANSFORMER_RESULT = GuestAccess.get().lookupType(LayeredFieldValueTransformer.Result.class);
     private static final ResolvedJavaMethod VALUE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER_RESULT, "value");
     private static final ResolvedJavaMethod UPDATABLE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER_RESULT, "updatable");
 
@@ -218,9 +218,9 @@ public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformer
             if (isUnresolved()) {
                 boolean transformAvailable;
                 if (useUpdate) {
-                    transformAvailable = GraalAccess.get().invoke(IS_UPDATE_AVAILABLE, layerTransformer, receiver).asBoolean();
+                    transformAvailable = GuestAccess.get().invoke(IS_UPDATE_AVAILABLE, layerTransformer, receiver).asBoolean();
                 } else {
-                    transformAvailable = GraalAccess.get().invoke(IS_VALUE_AVAILABLE, layerTransformer, receiver).asBoolean();
+                    transformAvailable = GuestAccess.get().invoke(IS_VALUE_AVAILABLE, layerTransformer, receiver).asBoolean();
                 }
                 if (transformAvailable) {
                     doTransform();
@@ -232,9 +232,9 @@ public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformer
             if (isUnresolved()) {
                 JavaConstant resultConstant;
                 if (useUpdate) {
-                    resultConstant = GraalAccess.get().invoke(UPDATE, layerTransformer, receiver);
+                    resultConstant = GuestAccess.get().invoke(UPDATE, layerTransformer, receiver);
                 } else {
-                    resultConstant = GraalAccess.get().invoke(TRANSFORM, layerTransformer, receiver);
+                    resultConstant = GuestAccess.get().invoke(TRANSFORM, layerTransformer, receiver);
                 }
                 transformerResultValue = getResultValue(resultConstant);
                 transformerResultUpdatable = getResultUpdatable(resultConstant);
@@ -242,11 +242,11 @@ public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformer
         }
 
         private JavaConstant getResultValue(JavaConstant resultConstant) {
-            return GraalAccess.get().invoke(VALUE, resultConstant);
+            return GuestAccess.get().invoke(VALUE, resultConstant);
         }
 
         private boolean getResultUpdatable(JavaConstant resultConstant) {
-            return GraalAccess.get().invoke(UPDATABLE, resultConstant).asBoolean();
+            return GuestAccess.get().invoke(UPDATABLE, resultConstant).asBoolean();
         }
 
         public boolean isUnresolved() {

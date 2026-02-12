@@ -55,7 +55,7 @@ import com.oracle.svm.graal.isolated.IsolatedGraalUtils;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
@@ -270,7 +270,7 @@ public class SubstrateGraalUtils {
         JavaConstant hostedConstant = heapConstant.getHostedObject();
         VMError.guarantee(hostedConstant.getJavaKind().isObject() && !hostedConstant.isDefaultForKind() && !(hostedConstant instanceof ImageHeapConstant),
                         "Expected to find host object JavaConstant, found %s", hostedConstant);
-        Object hostedObject = GraalAccess.get().getSnippetReflection().asObject(Object.class, hostedConstant);
+        Object hostedObject = GuestAccess.get().getSnippetReflection().asObject(Object.class, hostedConstant);
         return SubstrateObjectConstant.forObject(hostedObject, constantReflection.identityHashCode(heapConstant));
     }
 
@@ -282,7 +282,7 @@ public class SubstrateGraalUtils {
      */
     public static JavaConstant runtimeToHosted(JavaConstant constant, ImageHeapScanner scanner) {
         if (constant instanceof SubstrateObjectConstant) {
-            JavaConstant hostedConstant = GraalAccess.get().getSnippetReflection().forObject(SubstrateObjectConstant.asObject(constant));
+            JavaConstant hostedConstant = GuestAccess.get().getSnippetReflection().forObject(SubstrateObjectConstant.asObject(constant));
             return scanner.getImageHeapConstant(hostedConstant);
         }
         return constant;

@@ -173,7 +173,7 @@ import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -957,7 +957,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 default -> throw new IllegalArgumentException("Unsupported kind: " + componentKind);
             }
         } else {
-            GraalAccess access = GraalAccess.get();
+            GuestAccess access = GuestAccess.get();
             assert access.lookupType(componentKind.toJavaClass()).equals(access.lookupType(array.getClass()).getComponentType()) : "%s != %s"
                             .formatted(access.lookupType(componentKind.toJavaClass()), access.lookupType(array.getClass()).getComponentType());
             switch (array) {

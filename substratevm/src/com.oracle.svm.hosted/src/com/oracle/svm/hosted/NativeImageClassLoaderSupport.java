@@ -109,7 +109,7 @@ import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -424,7 +424,7 @@ public final class NativeImageClassLoaderSupport {
             for (String fqn : loader.getClassModuleMap().keySet()) {
                 try {
                     var clazz = ((ClassLoader) loader).loadClass(fqn);
-                    imageClassLoader.registerType(GraalAccess.get().lookupType(clazz));
+                    imageClassLoader.registerType(GuestAccess.get().lookupType(clazz));
                 } catch (ClassNotFoundException e) {
                     throw GraalError.shouldNotReachHere(e, loader + " could not load class " + fqn);
                 }

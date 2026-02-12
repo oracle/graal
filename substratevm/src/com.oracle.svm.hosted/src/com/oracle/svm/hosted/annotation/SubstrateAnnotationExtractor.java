@@ -36,7 +36,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.AnnotatedObjectAccess;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -57,7 +57,7 @@ public class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implemen
     @Override
     public <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly) {
         try {
-            return getAnnotation(GraalAccess.get().toAnnotated(element), annotationType, declaredOnly);
+            return getAnnotation(GuestAccess.get().toAnnotated(element), annotationType, declaredOnly);
         } catch (LinkageError | AnnotationFormatError e) {
             /*
              * Returning null essentially means that the element doesn't declare the annotationType,
@@ -72,7 +72,7 @@ public class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implemen
     @Override
     public boolean hasAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType) {
         try {
-            return hasAnnotation(GraalAccess.get().toAnnotated(element), annotationType);
+            return hasAnnotation(GuestAccess.get().toAnnotated(element), annotationType);
         } catch (LinkageError | AnnotationFormatError e) {
             /*
              * Returning false essentially means that the element doesn't declare the
@@ -87,7 +87,7 @@ public class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implemen
     @SuppressWarnings("unchecked")
     @Override
     public Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
-        return getAnnotationValues(GraalAccess.get().toAnnotated(element), false).values().stream() //
+        return getAnnotationValues(GuestAccess.get().toAnnotated(element), false).values().stream() //
                         .map(AnnotationValue::getAnnotationType) //
                         .map(OriginalClassProvider::getJavaClass) //
                         .filter(Objects::nonNull) //

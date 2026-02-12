@@ -52,7 +52,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CodeUtil;
@@ -219,7 +219,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
         if (array instanceof ImageHeapPrimitiveArray heapArray) {
             /* Unaligned accesses are only allowed for primitive arrays. */
-            MetaAccessProvider originalMetaAccess = GraalAccess.get().getProviders().getMetaAccess();
+            MetaAccessProvider originalMetaAccess = GuestAccess.get().getProviders().getMetaAccess();
             JavaKind arrayKind = JavaKind.fromJavaClass(heapArray.getType().getComponentType().getJavaClass());
             long hostedBaseOffset = originalMetaAccess.getArrayBaseOffset(arrayKind);
             long hostedIndexScale = originalMetaAccess.getArrayIndexScale(arrayKind);

@@ -58,7 +58,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
@@ -340,7 +340,7 @@ public class MethodHandleFeature implements InternalFeature {
             access.registerAsRoot(classDataMethod, true, "This can be accessed by generated code when crema is enabled");
 
             // BoundMethodHandle(MethodType, LambdaForm)
-            VMAccess vmAccess = GraalAccess.get();
+            VMAccess vmAccess = GuestAccess.get();
             AnalysisType boundMHType = metaAccess.getUniverse().lookup(vmAccess.lookupBootClassLoaderType("java.lang.invoke.BoundMethodHandle"));
             AnalysisType methodTypeType = metaAccess.getUniverse().lookup(vmAccess.lookupBootClassLoaderType("java.lang.invoke.MethodType"));
             AnalysisType lambdaFormType = metaAccess.getUniverse().lookup(vmAccess.lookupBootClassLoaderType("java.lang.invoke.LambdaForm"));

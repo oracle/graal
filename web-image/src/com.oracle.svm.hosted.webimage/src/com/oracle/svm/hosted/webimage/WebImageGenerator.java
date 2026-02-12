@@ -73,7 +73,7 @@ import com.oracle.svm.hosted.webimage.logging.visualization.VisualizationSupport
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.annotation.WasmStartFunction;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmWebImage;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.webimage.platform.WebImagePlatformConfigurationProvider;
 import com.oracle.svm.webimage.wasm.types.WasmUtil;
@@ -179,7 +179,7 @@ public class WebImageGenerator extends NativeImageGenerator {
 
     @Override
     protected void registerEntryPoints(Map<ResolvedJavaMethod, CEntryPointData> entryPoints) {
-        GraalAccess access = GraalAccess.get();
+        GuestAccess access = GuestAccess.get();
         if (WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASM || WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASMGC) {
             List<Method> startFunctions = loader.findAnnotatedMethods(WasmStartFunction.class);
             GraalError.guarantee(startFunctions.size() <= 1, "Only a single start function must exist: %s", startFunctions);
@@ -250,7 +250,7 @@ public class WebImageGenerator extends NativeImageGenerator {
 
     @Override
     protected SubstrateTargetDescription createTarget() {
-        Architecture architecture = GraalAccess.get().getTarget().arch;
+        Architecture architecture = GuestAccess.get().getTarget().arch;
         return new SubstrateTargetDescription(architecture, false, 16, 0, null);
     }
 }

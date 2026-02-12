@@ -25,7 +25,7 @@
 package com.oracle.svm.core.fieldvaluetransformer;
 
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
@@ -44,7 +44,7 @@ public final class NewEmptyArrayFieldValueTransformer implements JVMCIFieldValue
         if (originalValue.isNull()) {
             return JavaConstant.NULL_POINTER;
         }
-        Providers originalProviders = GraalAccess.get().getProviders();
+        Providers originalProviders = GuestAccess.get().getProviders();
         MetaAccessProvider metaAccess = originalProviders.getMetaAccess();
         Integer originalLength = originalProviders.getConstantReflection().readArrayLength(originalValue);
         VMError.guarantee(originalLength != null, "Original value is not an array or the array length is not known");

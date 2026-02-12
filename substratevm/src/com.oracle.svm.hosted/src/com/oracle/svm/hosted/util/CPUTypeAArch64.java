@@ -44,7 +44,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
@@ -69,7 +69,7 @@ public enum CPUTypeAArch64 implements CPUType {
 
     private static CPUFeature[] getNativeOrEmpty() {
         CPUFeature[] empty = new CPUFeature[0];
-        if (GraalAccess.get().getTarget().arch instanceof AArch64 arch) {
+        if (GuestAccess.get().getTarget().arch instanceof AArch64 arch) {
             return arch.getFeatures().toArray(empty);
         } else {
             return empty;

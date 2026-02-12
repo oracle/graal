@@ -63,7 +63,7 @@ import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -128,7 +128,7 @@ public final class FieldValueInterceptionSupport {
      * per field, if there is already a transformation in place, a {@link UserError} is reported.
      */
     public void registerLegacyFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
-        registerLegacyFieldValueTransformer(GraalAccess.get().getProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
+        registerLegacyFieldValueTransformer(GuestAccess.get().getProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
     }
 
     /**
@@ -413,7 +413,7 @@ public final class FieldValueInterceptionSupport {
             if (oField == null) {
                 throw VMError.shouldNotReachHere("Cannot read value of field that has no host value: " + field.format("%H.%n"));
             }
-            value = GraalAccess.get().getProviders().getConstantReflection().readFieldValue(oField, receiver);
+            value = GuestAccess.get().getProviders().getConstantReflection().readFieldValue(oField, receiver);
         }
 
         return interceptValue(field, value);

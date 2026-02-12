@@ -38,7 +38,7 @@ import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -61,7 +61,7 @@ public final class CEntryPointData {
     /**
      * @see CEntryPointOptions#nameTransformation()
      */
-    public static final ResolvedJavaType DEFAULT_NAME_TRANSFORMATION = GraalAccess.get().lookupType(DefaultNameTransformation.class);
+    public static final ResolvedJavaType DEFAULT_NAME_TRANSFORMATION = GuestAccess.get().lookupType(DefaultNameTransformation.class);
 
     /**
      * @see CEntryPoint#builtin()
@@ -71,24 +71,24 @@ public final class CEntryPointData {
     /**
      * @see CEntryPointOptions#prologue()
      */
-    public static final ResolvedJavaType AUTOMATIC_PROLOGUE = GraalAccess.get().lookupType(CEntryPointOptions.AutomaticPrologue.class);
-    public static final ResolvedJavaType NO_PROLOGUE = GraalAccess.get().lookupType(CEntryPointOptions.NoPrologue.class);
+    public static final ResolvedJavaType AUTOMATIC_PROLOGUE = GuestAccess.get().lookupType(CEntryPointOptions.AutomaticPrologue.class);
+    public static final ResolvedJavaType NO_PROLOGUE = GuestAccess.get().lookupType(CEntryPointOptions.NoPrologue.class);
 
     /**
      * @see CEntryPointOptions#prologueBailout()
      */
-    public static final ResolvedJavaType AUTOMATIC_PROLOGUE_BAILOUT = GraalAccess.get().lookupType(CEntryPointOptions.AutomaticPrologueBailout.class);
+    public static final ResolvedJavaType AUTOMATIC_PROLOGUE_BAILOUT = GuestAccess.get().lookupType(CEntryPointOptions.AutomaticPrologueBailout.class);
 
     /**
      * @see CEntryPointOptions#epilogue()
      */
-    public static final ResolvedJavaType DEFAULT_EPILOGUE = GraalAccess.get().lookupType(CEntryPointSetup.LeaveEpilogue.class);
-    public static final ResolvedJavaType NO_EPILOGUE = GraalAccess.get().lookupType(CEntryPointOptions.NoEpilogue.class);
+    public static final ResolvedJavaType DEFAULT_EPILOGUE = GuestAccess.get().lookupType(CEntryPointSetup.LeaveEpilogue.class);
+    public static final ResolvedJavaType NO_EPILOGUE = GuestAccess.get().lookupType(CEntryPointOptions.NoEpilogue.class);
 
     /**
      * @see CEntryPoint#exceptionHandler()
      */
-    public static final ResolvedJavaType FATAL_EXCEPTION_HANDLER = GraalAccess.get().lookupType(CEntryPoint.FatalExceptionHandler.class);
+    public static final ResolvedJavaType FATAL_EXCEPTION_HANDLER = GuestAccess.get().lookupType(CEntryPoint.FatalExceptionHandler.class);
 
     public static CEntryPointData create(ResolvedJavaMethod method, String name) {
         CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.from(AnnotationUtil.getAnnotationValue(method, CEntryPoint.class));
@@ -175,7 +175,7 @@ public final class CEntryPointData {
             String symbolName = !providedName.isEmpty() ? providedName : alternativeNameSupplier.get();
             if (nameTransformation != null) {
                 try {
-                    GraalAccess h = GraalAccess.get();
+                    GuestAccess h = GuestAccess.get();
                     symbolName = h.asHostString(h.callFunction(nameTransformation, h.asGuestString(symbolName)));
                 } catch (Exception e) {
                     throw VMError.shouldNotReachHere(e);

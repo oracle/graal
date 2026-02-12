@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.vmaccess.VMAccess;
@@ -64,7 +64,7 @@ public interface FieldValueTransformerWithAvailability extends FieldValueTransfo
      * field value transformers will be executed via {@link VMAccess}.
      */
     static JavaConstant transformAndConvert(FieldValueTransformer fieldValueTransformer, JavaConstant receiver, JavaConstant originalValue) {
-        SnippetReflectionProvider originalSnippetReflection = GraalAccess.get().getSnippetReflection();
+        SnippetReflectionProvider originalSnippetReflection = GuestAccess.get().getSnippetReflection();
         VMError.guarantee(originalValue != null, "Original value should not be `null`. Use `JavaConstant.NULL_POINTER`.");
         VMError.guarantee(receiver == null || !receiver.isNull(), "Receiver should not be a boxed `null` (`JavaConstant.isNull()`) for static fields. Use `null`instead");
         Object reflectionReceiver = toObject(receiver);
@@ -84,7 +84,7 @@ public interface FieldValueTransformerWithAvailability extends FieldValueTransfo
             return null;
         }
         if (javaConstant.getJavaKind().isObject()) {
-            SnippetReflectionProvider originalSnippetReflection = GraalAccess.get().getSnippetReflection();
+            SnippetReflectionProvider originalSnippetReflection = GuestAccess.get().getSnippetReflection();
             return originalSnippetReflection.asObject(Object.class, javaConstant);
         }
         return javaConstant.asBoxedPrimitive();

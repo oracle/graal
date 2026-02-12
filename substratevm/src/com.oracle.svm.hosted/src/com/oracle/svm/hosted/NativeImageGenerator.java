@@ -269,7 +269,7 @@ import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -482,7 +482,7 @@ public class NativeImageGenerator {
             if (NativeImageOptions.RuntimeCheckedCPUFeatures.hasBeenSet()) {
                 runtimeCheckedFeatures.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.RuntimeCheckedCPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
             } else {
-                Architecture arch = GraalAccess.get().getTarget().arch;
+                Architecture arch = GuestAccess.get().getTarget().arch;
                 var disabledFeatures = RuntimeCPUFeatureCheck.getDefaultDisabledFeatures(arch);
                 for (Enum<?> feature : RuntimeCPUFeatureCheck.getSupportedFeatures(arch)) {
                     if (!disabledFeatures.contains(feature)) {
@@ -596,7 +596,7 @@ public class NativeImageGenerator {
 
         OptionValues options = HostedOptionValues.singleton();
 
-        try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.get().getSnippetReflection())).build();
+        try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GuestAccess.get().getSnippetReflection())).build();
                         DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(options, entryPoints, javaMainSupport, imageName, harnessSubstitutions, debug);
 
@@ -980,7 +980,7 @@ public class NativeImageGenerator {
                     ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
                 }
 
-                Providers originalProviders = GraalAccess.get().getProviders();
+                Providers originalProviders = GuestAccess.get().getProviders();
                 MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
 
                 ClassLoaderSupportImpl classLoaderSupport = new ClassLoaderSupportImpl(loader.classLoaderSupport);
@@ -1495,7 +1495,7 @@ public class NativeImageGenerator {
                 throw UserError.abort("Entry point method %s.%s is not static. Add a static modifier to the method.", m.format("%H.%n"));
             }
             CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.from(AnnotationUtil.getAnnotationValue(m, CEntryPoint.class));
-            if (GraalAccess.get().callBooleanSupplier(cEntryPoint.include())) {
+            if (GuestAccess.get().callBooleanSupplier(cEntryPoint.include())) {
                 entryPoints.put(m, CEntryPointData.create(m));
             }
         }

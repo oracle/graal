@@ -334,7 +334,7 @@ public final class JVMCIReflectionUtil {
      * primitive type or void.
      */
     public static ResolvedJavaPackage getPackage(ResolvedJavaType type) {
-        return GraalAccess.get().getPackage(OriginalClassProvider.getOriginalType(type));
+        return GuestAccess.get().getPackage(OriginalClassProvider.getOriginalType(type));
     }
 
     /**
@@ -375,7 +375,7 @@ public final class JVMCIReflectionUtil {
     }
 
     public static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {
-        return GraalAccess.get().getModule(OriginalClassProvider.getOriginalType(declaringClass));
+        return GuestAccess.get().getModule(OriginalClassProvider.getOriginalType(declaringClass));
     }
 
     /**
@@ -384,7 +384,7 @@ public final class JVMCIReflectionUtil {
      * @return the location (URL), or {@code null} if no URL was supplied during construction.
      */
     public static URL getOrigin(ResolvedJavaType type) {
-        return GraalAccess.get().getCodeSourceLocation(OriginalClassProvider.getOriginalType(type));
+        return GuestAccess.get().getCodeSourceLocation(OriginalClassProvider.getOriginalType(type));
     }
 
     /**
@@ -406,14 +406,14 @@ public final class JVMCIReflectionUtil {
      * {@code jdk.internal.loader.BootLoader#packages()}.
      */
     public static Stream<ResolvedJavaPackage> bootLoaderPackages() {
-        return GraalAccess.get().bootLoaderPackages();
+        return GuestAccess.get().bootLoaderPackages();
     }
 
     /**
      * Returns the boot layer. See {@link java.lang.ModuleLayer#boot()}.
      */
     public static ResolvedJavaModuleLayer bootModuleLayer() {
-        return GraalAccess.get().bootModuleLayer();
+        return GuestAccess.get().bootModuleLayer();
     }
 
     /**
@@ -436,7 +436,7 @@ public final class JVMCIReflectionUtil {
         if (receiver.isNull()) {
             throw new NullPointerException();
         }
-        GraalAccess access = GraalAccess.get();
+        GuestAccess access = GuestAccess.get();
         MetaAccessProvider metaAccess = access.getProviders().getMetaAccess();
         ResolvedJavaType declaringClass = metaAccess.lookupJavaType(receiver);
         ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(false, declaringClass, fieldName);
@@ -458,7 +458,7 @@ public final class JVMCIReflectionUtil {
         if (!field.isStatic()) {
             throw new IllegalArgumentException(fieldName + " is not static");
         }
-        return GraalAccess.get().getProviders().getConstantReflection().readFieldValue(field, null);
+        return GuestAccess.get().getProviders().getConstantReflection().readFieldValue(field, null);
     }
 
     /**
@@ -466,7 +466,7 @@ public final class JVMCIReflectionUtil {
      */
     public static JavaConstant newInstance(ResolvedJavaType type) {
         ResolvedJavaMethod ctor = getDeclaredConstructor(false, type);
-        return GraalAccess.get().invoke(ctor, null);
+        return GuestAccess.get().invoke(ctor, null);
     }
 
     /**
@@ -477,7 +477,7 @@ public final class JVMCIReflectionUtil {
     public static JavaConstant newArrayInstance(ResolvedJavaType componentType, int length) {
         JavaConstant[] elements = new JavaConstant[length];
         Arrays.fill(elements, JavaConstant.defaultForKind(componentType.getJavaKind()));
-        return GraalAccess.get().asArrayConstant(componentType, elements);
+        return GuestAccess.get().asArrayConstant(componentType, elements);
     }
 
     /**
@@ -488,7 +488,7 @@ public final class JVMCIReflectionUtil {
      *         {@link Class#getResourceAsStream(String)} returned {@code null}.
      */
     public static byte[] getResource(ResolvedJavaType type, String name) {
-        GraalAccess access = GraalAccess.get();
+        GuestAccess access = GuestAccess.get();
         Providers providers = access.getProviders();
         ConstantReflectionProvider constantReflection = providers.getConstantReflection();
         MetaAccessProvider metaAccess = providers.getMetaAccess();

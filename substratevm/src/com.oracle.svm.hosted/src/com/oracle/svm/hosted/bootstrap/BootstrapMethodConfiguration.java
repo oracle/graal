@@ -45,7 +45,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -69,7 +69,7 @@ public class BootstrapMethodConfiguration implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        MetaAccessProvider metaAccess = GraalAccess.get().getProviders().getMetaAccess();
+        MetaAccessProvider metaAccess = GuestAccess.get().getProviders().getMetaAccess();
         /*
          * Bootstrap method used for Lambdas. Executing this method at run time implies defining
          * hidden class at run time, which is unsupported.

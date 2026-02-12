@@ -76,7 +76,7 @@ public class AnnotatedObjectAccess {
         Inherited inherited = annotationType.getAnnotation(Inherited.class);
         // Checkstyle: disallow direct annotation access
         Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
-        return annotationValues.get(GraalAccess.get().lookupType(annotationType));
+        return annotationValues.get(GuestAccess.get().lookupType(annotationType));
     }
 
     /**
@@ -97,7 +97,7 @@ public class AnnotatedObjectAccess {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static AnnotationValue toAnnotationValue(Annotation annotation) {
         Class<?> cls = annotation.annotationType();
-        ResolvedJavaType type = GraalAccess.get().lookupType(cls);
+        ResolvedJavaType type = GuestAccess.get().lookupType(cls);
         Map<String, Object> values = AnnotationSupport.memberValues(annotation);
         Map.Entry<String, Object>[] elements = new Map.Entry[values.size()];
         int i = 0;
@@ -125,7 +125,7 @@ public class AnnotatedObjectAccess {
      * @return the JVMCI representation of the same value
      */
     private static Object toAnnotationValueElement(Object aElement) {
-        final GraalAccess access = GraalAccess.get();
+        final GuestAccess access = GuestAccess.get();
         return switch (aElement) {
             case Enum<?> ev -> new EnumElement(access.lookupType(aElement.getClass()), ev.name());
             case Class<?> cls -> access.lookupType(cls);
@@ -278,7 +278,7 @@ public class AnnotatedObjectAccess {
     @SuppressWarnings("unchecked")
     protected <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType, boolean declaredOnly) {
         Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, declaredOnly);
-        AnnotationValue annotation = annotationValues.get(GraalAccess.get().lookupType(annotationType));
+        AnnotationValue annotation = annotationValues.get(GuestAccess.get().lookupType(annotationType));
         if (annotation != null) {
             return toAnnotation(annotation, annotationType);
         }
@@ -304,7 +304,7 @@ public class AnnotatedObjectAccess {
             // Checkstyle: allow direct annotation access
             Inherited inherited = annotationType.getAnnotation(Inherited.class);
             // Checkstyle: disallow direct annotation access
-            return getAnnotationValues(element, inherited == null).containsKey(GraalAccess.get().lookupType(annotationType));
+            return getAnnotationValues(element, inherited == null).containsKey(GuestAccess.get().lookupType(annotationType));
         } catch (LinkageError e) {
             /*
              * Returning false essentially means that the element doesn't declare the
@@ -410,7 +410,7 @@ public class AnnotatedObjectAccess {
      * error}.
      */
     private static ResolvedJavaType getAnnotationFormatErrorType() {
-        return GraalAccess.get().lookupType(Void.TYPE);
+        return GuestAccess.get().lookupType(Void.TYPE);
     }
 
     /**

@@ -90,7 +90,7 @@ import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport.WrappedFieldVal
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestTypes;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -1048,7 +1048,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
-        GraalAccess access = GraalAccess.get();
+        GuestAccess access = GuestAccess.get();
         ResolvedJavaType targetType = access.lookupType(targetClass);
         Class<?> cls = getTargetClass(annotatedField.getType());
         ResolvedJavaType transformedValueAllowedType = access.lookupType(cls);

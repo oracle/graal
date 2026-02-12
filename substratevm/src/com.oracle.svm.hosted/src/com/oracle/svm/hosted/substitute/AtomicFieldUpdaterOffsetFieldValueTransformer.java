@@ -31,7 +31,7 @@ import java.lang.reflect.Modifier;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -58,7 +58,7 @@ public record AtomicFieldUpdaterOffsetFieldValueTransformer(ResolvedJavaField or
          * cached offset in this atomic updater object.
          */
         ResolvedJavaField tclassField = findField(original.getDeclaringClass(), "tclass");
-        ConstantReflectionProvider constantReflection = GraalAccess.get().getProviders().getConstantReflection();
+        ConstantReflectionProvider constantReflection = GuestAccess.get().getProviders().getConstantReflection();
         ResolvedJavaType tclass = constantReflection.asJavaType(constantReflection.readFieldValue(tclassField, receiver));
 
         return TranslateFieldOffsetFieldValueTransformer.translateFieldOffset(original, receiver, tclass);
