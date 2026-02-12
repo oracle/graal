@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,6 +89,7 @@ public class Isolates {
      * explicitly or implicitly shared between the isolates of the process (for example, because
      * they have a single native state that does not distinguish between isolates).
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isCurrentFirst() {
         VMError.guarantee(isolateId >= 0);
         return isolateId == 0;
@@ -142,8 +143,7 @@ public class Isolates {
     }
 
     /**
-     * Gets an identifier for the current isolate that is guaranteed to be unique for the first
-     * {@code 2^64 - 1} isolates in the process.
+     * Gets an identifier for the current isolate that is guaranteed to be unique and non-negative.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long getIsolateId() {
