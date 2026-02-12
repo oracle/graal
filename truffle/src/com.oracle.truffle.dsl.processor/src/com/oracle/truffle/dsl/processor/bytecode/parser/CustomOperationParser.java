@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.parser;
 
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEqualsAny;
@@ -55,7 +54,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -87,11 +85,10 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationK
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel.Operator;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
-import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
@@ -240,7 +237,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             }
         }
 
-        List<SpecializationSignature> signatures = parseSignatures(specializations, customOperation, constantOperands);
+        List<Signature> signatures = parseSpecializationSignatures(specializations, customOperation, constantOperands);
         if (customOperation.hasErrors()) {
             return customOperation;
         }
@@ -305,7 +302,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                                 "@%s.startOffset is not supported for variadic return specifications. It is supported for variadic operands only.",
                                 getSimpleName(types.Variadic));
             }
-            if (!ElementUtils.typeEquals(signature.returnType, context.getType(Object[].class))) {
+            if (!ElementUtils.typeEquals(signature.returnType(), context.getType(Object[].class))) {
                 customOperation.addError(variadicReturn, null,
                                 "@%s annotated operations must return Object[] for all specializations.",
                                 getSimpleName(types.Variadic));
@@ -318,21 +315,24 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return customOperation;
         }
 
-        operation.isVariadic = signature.isVariadic || isShortCircuit();
-        operation.variadicOffset = signature.variadicOffset;
-        operation.isVoid = signature.isVoid;
+        operation.isVariadic = signature.isVariadic() || isShortCircuit();
+        operation.variadicOffset = signature.variadicOffset();
+        operation.isVoid = signature.isVoid();
 
-        List<List<String>> dynamicOperandNames = collectDynamicOperandNames(signatures, signature);
-        DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[signature.dynamicOperandCount];
-        for (int i = 0; i < dynamicOperands.length; i++) {
-            dynamicOperands[i] = new DynamicOperandModel(dynamicOperandNames.get(i), false, signature.isVariadicParameter(i));
+        DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[signature.dynamicOperandCount()];
+        for (Operand dynamicOperand : signature.dynamicOperands()) {
+            dynamicOperands[dynamicOperand.dynamicIndex()] = new DynamicOperandModel(List.of(dynamicOperand.name()), false, signature.isVariadicOperand(dynamicOperand));
         }
         operation.dynamicOperands = dynamicOperands;
 
         produceConstantOperandWarnings(customOperation, signature, mirror);
+
         List<String> constantOperandBeforeNames = mergeConstantOperandNames(customOperation, constantOperands.before(), signatures, 0);
         List<String> constantOperandAfterNames = mergeConstantOperandNames(customOperation, constantOperands.after(), signatures,
-                        signature.constantOperandsBeforeCount + signature.dynamicOperandCount);
+                        constantOperands.before().size() + signature.dynamicOperandCount());
+        operation.constantOperandBeforeNames = constantOperandBeforeNames;
+        operation.constantOperandAfterNames = constantOperandAfterNames;
+
         operation.constantOperandBeforeNames = constantOperandBeforeNames;
         operation.constantOperandAfterNames = constantOperandAfterNames;
         operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), constantOperandBeforeNames);
@@ -448,15 +448,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
     }
 
-    private static List<List<String>> collectDynamicOperandNames(List<SpecializationSignature> signatures, Signature signature) {
-        List<List<String>> result = new ArrayList<>();
-        for (int i = 0; i < signature.dynamicOperandCount; i++) {
-            result.add(getDynamicOperandNames(signatures, signature.constantOperandsBeforeCount + i));
-        }
-        return result;
-    }
-
-    private static List<String> mergeConstantOperandNames(CustomOperationModel customOperation, List<ConstantOperandModel> constantOperands, List<SpecializationSignature> signatures,
+    private static List<String> mergeConstantOperandNames(CustomOperationModel customOperation, List<ConstantOperandModel> constantOperands, List<Signature> signatures,
                     int operandOffset) {
         List<String> result = new ArrayList<>();
         for (int i = 0; i < constantOperands.size(); i++) {
@@ -485,21 +477,13 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     }
 
-    private static List<String> getDynamicOperandNames(List<SpecializationSignature> signatures, int operandIndex) {
-        LinkedHashSet<String> result = new LinkedHashSet<>();
-        for (SpecializationSignature signature : signatures) {
-            result.add(signature.operandNames().get(operandIndex));
-        }
-        return new ArrayList<>(result);
-    }
-
-    private static List<String> getConstantOperandNames(List<SpecializationSignature> signatures, ConstantOperandModel constantOperand, int operandIndex) {
+    private static List<String> getConstantOperandNames(List<Signature> signatures, ConstantOperandModel constantOperand, int operandIndex) {
         if (!constantOperand.name().isEmpty()) {
             return List.of(constantOperand.name());
         }
         LinkedHashSet<String> result = new LinkedHashSet<>();
-        for (SpecializationSignature signature : signatures) {
-            result.add(signature.operandNames().get(operandIndex));
+        for (Signature signature : signatures) {
+            result.add(signature.operands().get(operandIndex).name());
         }
         return new ArrayList<>(result);
     }
@@ -513,7 +497,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return;
         }
 
-        if (polymorphicSignature.dynamicOperandCount == 0 && constantOperand.specifyAtEnd() != null) {
+        if (polymorphicSignature.dynamicOperandCount() == 0 && constantOperand.specifyAtEnd() != null) {
             customOperation.addWarning(constantOperand.mirror(),
                             ElementUtils.getAnnotationValue(constantOperand.mirror(), "specifyAtEnd"),
                             "The specifyAtEnd attribute is unnecessary. This operation does not take any dynamic operands, so all operands will be provided to a single emit%s method.",
@@ -522,8 +506,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private void validateInstrumentationSignature(CustomOperationModel customOperation, Signature signature) {
-        if (signature.isVoid ^ signature.dynamicOperandCount == 0) {
-            if (signature.isVoid) {
+        if (signature.isVoid() ^ signature.dynamicOperandCount() == 0) {
+            if (signature.isVoid()) {
                 customOperation.addError(String.format("An @%s operation cannot be void and also specify a dynamic operand. " +
                                 "Instrumentations must have transparent stack effects. " + //
                                 "Change the return type or remove the dynamic operand to resolve this.",
@@ -534,12 +518,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                                 "Use void as the return type or specify a single dynamic operand value to resolve this.",
                                 getSimpleName(types.Instrumentation)));
             }
-        } else if (signature.dynamicOperandCount > 1) {
+        } else if (signature.dynamicOperandCount() > 1) {
             customOperation.addError(String.format("An @%s operation cannot have more than one dynamic operand. " +
                             "Instrumentations must have transparent stack effects. " + //
                             "Remove the additional operands to resolve this.",
                             getSimpleName(types.Instrumentation)));
-        } else if (signature.isVariadic) {
+        } else if (signature.isVariadic()) {
             customOperation.addError(String.format("An @%s operation cannot use @%s for its dynamic operand. " +
                             "Instrumentations must have transparent stack effects. " + //
                             "Remove the variadic annotation to resolve this.",
@@ -549,20 +533,20 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private void validateYieldSignature(CustomOperationModel customOperation, Signature signature) {
-        if (signature.isVoid) {
+        if (signature.isVoid()) {
             customOperation.addError("A @%s cannot be void. It must return a value, which becomes the result yielded to the caller.", getSimpleName(types.Yield));
         }
-        if (signature.dynamicOperandCount > 1) {
+        if (signature.dynamicOperandCount() > 1) {
             customOperation.addError("A @%s must take zero or one dynamic operands.", getSimpleName(types.Yield));
         }
     }
 
     private void validatePrologSignature(CustomOperationModel customOperation, Signature signature) {
-        if (signature.dynamicOperandCount > 0) {
+        if (signature.dynamicOperandCount() > 0) {
             customOperation.addError(String.format("A @%s operation cannot have any dynamic operands. " +
                             "Remove the operands to resolve this.",
                             getSimpleName(types.Prolog)));
-        } else if (!signature.isVoid) {
+        } else if (!signature.isVoid()) {
             customOperation.addError(String.format("A @%s operation cannot have a return value. " +
                             "Use void as the return type.",
                             getSimpleName(types.Prolog)));
@@ -570,11 +554,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private void validateEpilogReturnSignature(CustomOperationModel customOperation, Signature signature) {
-        if (signature.dynamicOperandCount != 1) {
+        if (signature.dynamicOperandCount() != 1) {
             customOperation.addError(String.format("An @%s operation must have exactly one dynamic operand for the returned value. " +
                             "Update all specializations to take one operand to resolve this.",
                             getSimpleName(types.EpilogReturn)));
-        } else if (signature.isVoid) {
+        } else if (signature.isVoid()) {
             customOperation.addError(String.format("An @%s operation must have a return value. " +
                             "The result is returned from the root node instead of the original return value. " +
                             "Update all specializations to return a value to resolve this.",
@@ -583,8 +567,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     }
 
-    private void validateEpilogExceptionalSignature(CustomOperationModel customOperation, Signature signature, List<ExecutableElement> specializations, List<SpecializationSignature> signatures) {
-        if (signature.dynamicOperandCount != 1) {
+    private void validateEpilogExceptionalSignature(CustomOperationModel customOperation, Signature signature, List<ExecutableElement> specializations, List<Signature> signatures) {
+        if (signature.dynamicOperandCount() != 1) {
             customOperation.addError(String.format("An @%s operation must have exactly one dynamic operand for the exception. " +
                             "Update all specializations to take one operand to resolve this.",
                             getSimpleName(types.EpilogExceptional)));
@@ -592,8 +576,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         for (int i = 0; i < signatures.size(); i++) {
-            Signature individualSignature = signatures.get(i).signature();
-            TypeMirror argType = individualSignature.operandTypes.get(0);
+            Signature individualSignature = signatures.get(i);
+            TypeMirror argType = individualSignature.operandTypes().get(0);
             if (!isAssignable(argType, types.AbstractTruffleException)) {
                 customOperation.addError(String.format("The operand type for %s must be %s or a subclass.",
                                 specializations.get(i).getSimpleName(),
@@ -604,7 +588,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return;
         }
 
-        if (!signature.isVoid) {
+        if (!signature.isVoid()) {
             customOperation.addError(String.format("An @%s operation cannot have a return value. " +
                             "Use void as the return type.",
                             getSimpleName(types.EpilogExceptional)));
@@ -652,7 +636,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         OperationModel operation = customOperation.operation;
         operation.isVariadic = true;
         operation.isVoid = false;
-        operation.setDynamicOperands(new DynamicOperandModel(List.of("value"), false, false));
+        operation.setDynamicOperands(new DynamicOperandModel(List.of("condition"), false, false));
 
         /*
          * NB: This creates a new operation for the boolean converter (or reuses one if such an
@@ -697,7 +681,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         Signature sig = result.operation.instruction.signature;
-        if (!returnsBoolean || sig.dynamicOperandCount != 1 || sig.isVariadic) {
+        if (!returnsBoolean || sig.dynamicOperandCount() != 1 || sig.isVariadic()) {
             parent.addError(mirror, ElementUtils.getAnnotationValue(mirror, "booleanConverter"),
                             "Specializations for boolean converter %s must only take one dynamic operand and return boolean.", getSimpleName(typeElement));
             return null;
@@ -828,7 +812,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             Boolean specifyAtEnd = ElementUtils.getAnnotationValue(Boolean.class, constantOperandMirror, "specifyAtEnd", false);
             int dimensions = ElementUtils.getAnnotationValue(Integer.class, constantOperandMirror, "dimensions");
             ConstantOperandModel constantOperand = new ConstantOperandModel(type, kind, operandName, javadoc, specifyAtEnd, dimensions, constantOperandMirror);
-
             if (ElementUtils.isAssignable(type, types.Node) && !ElementUtils.isAssignable(type, types.RootNode)) {
                 // It is probably a bug if the user tries to define a constant Node. It will not be
                 // adopted, and if the root node splits it will not be duplicated.
@@ -930,31 +913,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return nodeType;
     }
 
-    /**
-     * Adds annotations, methods, etc. to the {@link generatedNode} so that the desired code will be
-     * generated by {@link FlatNodeGenFactory} during code generation.
-     */
-    private void addCustomInstructionNodeMembers(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature) {
-        if (shouldGenerateUncached(customOperation)) {
-            generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
-        }
-        generatedNode.addAll(createExecuteMethods(customOperation, signature));
-
-        /*
-         * Add @NodeChildren to this node for each argument to the operation. These get used by
-         * FlatNodeGenFactory to synthesize specialization logic. Since we directly execute the
-         * children, we remove the fields afterwards.
-         */
-        CodeAnnotationMirror nodeChildrenAnnotation = new CodeAnnotationMirror(types.NodeChildren);
-        nodeChildrenAnnotation.setElementValue("value",
-                        new CodeAnnotationValue(createNodeChildAnnotations(customOperation, signature).stream().map(CodeAnnotationValue::new).collect(Collectors.toList())));
-        generatedNode.addAnnotationMirror(nodeChildrenAnnotation);
-
-        if (parent.enableSpecializationIntrospection) {
-            generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
-        }
-    }
-
     private boolean isShortCircuit() {
         return ElementUtils.typeEquals(annotationType, context.getTypes().ShortCircuitOperation);
     }
@@ -967,91 +925,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return ElementUtils.typeEquals(annotationType, context.getTypes().Operation);
     }
 
-    private List<AnnotationMirror> createNodeChildAnnotations(CustomOperationModel customOperation, Signature signature) {
-        List<AnnotationMirror> result = new ArrayList<>();
-
-        OperationModel operation = customOperation.operation;
-        List<ConstantOperandModel> before = operation.constantOperands.before();
-        for (int i = 0; i < before.size(); i++) {
-            result.add(createNodeChildAnnotation(operation.getConstantOperandBeforeName(i), before.get(i).type()));
-        }
-        for (int i = 0; i < signature.dynamicOperandCount; i++) {
-            result.add(createNodeChildAnnotation("child" + i, signature.getDynamicOperandType(i)));
-        }
-        List<ConstantOperandModel> after = operation.constantOperands.after();
-        for (int i = 0; i < after.size(); i++) {
-            result.add(createNodeChildAnnotation(operation.getConstantOperandAfterName(i), after.get(i).type()));
-        }
-
-        return result;
-    }
-
-    private CodeAnnotationMirror createNodeChildAnnotation(String name, TypeMirror regularReturn, TypeMirror... unexpectedReturns) {
-        CodeAnnotationMirror mir = new CodeAnnotationMirror(types.NodeChild);
-        mir.setElementValue("value", new CodeAnnotationValue(name));
-        mir.setElementValue("type", new CodeAnnotationValue(createNodeChildType(regularReturn, unexpectedReturns).asType()));
-        return mir;
-    }
-
-    private CodeTypeElement createNodeChildType(TypeMirror regularReturn, TypeMirror... unexpectedReturns) {
-        CodeTypeElement c = new CodeTypeElement(Set.of(PUBLIC, ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement(""), "C");
-        c.setSuperClass(types.Node);
-
-        c.add(createNodeChildExecute("execute", regularReturn, false));
-        for (TypeMirror ty : unexpectedReturns) {
-            c.add(createNodeChildExecute("execute" + firstLetterUpperCase(getSimpleName(ty)), ty, true));
-        }
-
-        return c;
-    }
-
-    private CodeExecutableElement createNodeChildExecute(String name, TypeMirror returnType, boolean withUnexpected) {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, ABSTRACT), returnType, name);
-        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-
-        if (withUnexpected) {
-            ex.addThrownType(types.UnexpectedResultException);
-        }
-
-        return ex;
-    }
-
-    private List<CodeExecutableElement> createExecuteMethods(CustomOperationModel customOperation, Signature signature) {
-        List<CodeExecutableElement> result = new ArrayList<>();
-
-        result.add(createExecuteMethod(customOperation, signature, "executeObject", signature.returnType, false, false));
-
-        if (parent.enableUncachedInterpreter) {
-            result.add(createExecuteMethod(customOperation, signature, "executeUncached", signature.returnType, false, true));
-        }
-
-        return result;
-    }
-
-    private CodeExecutableElement createExecuteMethod(CustomOperationModel customOperation, Signature signature, String name, TypeMirror type, boolean withUnexpected, boolean uncached) {
+    private CodeExecutableElement createExecuteMethod(Signature signature, String name, TypeMirror type) {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, ABSTRACT), type, name);
-        if (withUnexpected) {
-            ex.addThrownType(types.UnexpectedResultException);
-        }
-
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-
-        if (uncached) {
-            OperationModel operation = customOperation.operation;
-            List<ConstantOperandModel> before = operation.constantOperands.before();
-            for (int i = 0; i < before.size(); i++) {
-                ex.addParameter(new CodeVariableElement(before.get(i).type(), operation.getConstantOperandBeforeName(i)));
-            }
-            for (int i = 0; i < signature.dynamicOperandCount; i++) {
-                ex.addParameter(new CodeVariableElement(signature.getDynamicOperandType(i), "child" + i + "Value"));
-            }
-            List<ConstantOperandModel> after = operation.constantOperands.after();
-            for (int i = 0; i < after.size(); i++) {
-                ex.addParameter(new CodeVariableElement(after.get(i).type(), operation.getConstantOperandAfterName(i)));
-            }
-
+        for (Operand operand : signature.operands()) {
+            ex.addParameter(new CodeVariableElement(operand.type(), operand.name()));
         }
-
         return ex;
     }
 
@@ -1065,21 +944,28 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     private void createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
                     String operationName) {
 
+        TypeMirror objectType = context.getType(Object.class);
+
         /*
          * We erase all specialized types. Without boxing elimination we cannot specialize any of
-         * the signature types in the instruction. If we introduce the notion of static types in the
-         * future we might be able to use more of the type information.
+         * the signature types in the instruction. Unless types are implicitly casted we keep static
+         * types intact so we can produce more efficient code.
          */
-        Signature erasedSignature = signature;
-        for (int i = 0; i < erasedSignature.getDynamicOperandTypes().size(); i++) {
-            TypeMirror targetType;
-            if (erasedSignature.isVariadicParameter(i)) {
-                targetType = context.getType(Object[].class);
+        Signature erasedSignature = new Signature(signature, signature.operands().stream().map((operand) -> {
+            if (operand.isDynamic()) {
+                if (signature.isVariadicOperand(operand)) {
+                    TypeMirror objectArray = context.getType(Object[].class);
+                    return operand.withType(objectArray, objectArray);
+                } else if (parent.typeSystem != null && parent.typeSystem.hasImplicitSourceTypes(operand.staticType())) {
+                    // explicitly erase static type for implicit source types
+                    return operand.withType(objectType, objectType);
+                } else {
+                    return operand.withType(objectType, operand.staticType());
+                }
             } else {
-                targetType = context.getType(Object.class);
+                return operand;
             }
-            erasedSignature = erasedSignature.specializeDynamicOperandType(i, targetType);
-        }
+        }).toList());
 
         String instructionName = "c." + operationName;
         InstructionModel instr;
@@ -1112,6 +998,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             // Index of continuation root node.
             instr.addImmediate(ImmediateKind.CONSTANT, "location");
         }
+
+        if (customOperation.isEpilogExceptional()) {
+            instr.finalizeModel();
+        }
     }
 
     /**
@@ -1132,7 +1022,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         // Add members to the generated node so that the proper node specification is parsed.
-        addCustomInstructionNodeMembers(customOperation, generatedNode, signature);
+        if (shouldGenerateUncached(customOperation)) {
+            generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
+        }
+        if (parent.enableSpecializationIntrospection) {
+            generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
+        }
+
+        // add dummy abstract execute method
+        generatedNode.add(createExecuteMethod(signature, "executeObject", signature.returnType()));
 
         NodeData result;
         try {
@@ -1177,8 +1075,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      * Parses each specialization to a signature. Returns the list of signatures, or null if any of
      * them had errors.
      */
-    public static List<SpecializationSignature> parseSignatures(List<ExecutableElement> specializations, MessageContainer customOperation, ConstantOperandsModel constantOperands) {
-        List<SpecializationSignature> signatures = new ArrayList<>(specializations.size());
+    public static List<Signature> parseSpecializationSignatures(List<ExecutableElement> specializations, MessageContainer customOperation, ConstantOperandsModel constantOperands) {
+        List<Signature> signatures = new ArrayList<>(specializations.size());
         SpecializationSignatureParser parser = new SpecializationSignatureParser(ProcessorContext.getInstance());
         for (ExecutableElement specialization : specializations) {
             signatures.add(parser.parse(specialization, customOperation, constantOperands));

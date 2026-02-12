@@ -672,6 +672,10 @@ public class FlatNodeGenFactory {
     }
 
     public CodeTypeElement create(CodeTypeElement clazz) {
+        return create(clazz, true);
+    }
+
+    public CodeTypeElement create(CodeTypeElement clazz, boolean generateUncached) {
         TypeMirror genericReturnType = node.getPolymorphicExecutable().getReturnType();
 
         List<ExecutableTypeData> executableTypes = filterExecutableTypes(node.getExecutableTypes(), node.getReachableSpecializations());
@@ -713,7 +717,6 @@ public class FlatNodeGenFactory {
 
         if (node.isGenerateCached()) {
             if (primaryNode) {
-
                 for (NodeChildData child : node.getChildren()) {
                     clazz.addOptional(createAccessChildMethod(child, false));
                 }
@@ -951,7 +954,7 @@ public class FlatNodeGenFactory {
             clazz.add(specializationClass);
         }
 
-        if (node.isUncachable() && node.isGenerateUncached()) {
+        if (node.isUncachable() && node.isGenerateUncached() && generateUncached) {
             CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", node.getTemplateType().asType());
             uncached.getEnclosedElements().addAll(createUncachedFields());
             uncached.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
@@ -2548,7 +2551,7 @@ public class FlatNodeGenFactory {
         return compatible;
     }
 
-    public CodeExecutableElement createExecuteMethod(CodeTypeElement clazz, CodeExecutableElement baseMethod,
+    public CodeExecutableElement emitExecuteMethod(CodeTypeElement clazz, CodeExecutableElement baseMethod,
                     List<SpecializationData> specializations, boolean skipStateChecks) {
         int signatureSize = node.getPolymorphicExecutable().getSignatureParameters().size();
         ExecutableTypeData type = new ExecutableTypeData(node, baseMethod, signatureSize, List.of(node.getFrameType()), false, true);
@@ -2565,6 +2568,30 @@ public class FlatNodeGenFactory {
         SpecializationGroup group = SpecializationGroup.create(specializations);
         frameState.setSkipStateChecks(skipStateChecks);
         builder.tree(createFastPath(builder, specializations, group, type, frameState));
+
+        if (!group.hasFallthrough() && skipStateChecks) {
+            boolean removeUnexpectedResult = true;
+            for (SpecializationData specialization : specializations) {
+                SpecializationData overload = specialization.lookupBoxingOverload(type);
+                if (overload != null && overload.hasUnexpectedResultRewrite()) {
+                    removeUnexpectedResult = false;
+                    break;
+                }
+                if (specialization.hasUnexpectedResultRewrite()) {
+                    removeUnexpectedResult = false;
+                    break;
+                }
+                if (!specialization.getExceptions().isEmpty()) {
+                    removeUnexpectedResult = false;
+                    break;
+                }
+            }
+
+            if (removeUnexpectedResult) {
+                removeThrownException(method, types.UnexpectedResultException);
+            }
+        }
+
         return method;
     }
 
@@ -2623,6 +2650,12 @@ public class FlatNodeGenFactory {
             parameterTypes.add(parameter.getType());
         }
         ExecutableTypeData forType = new ExecutableTypeData(node, returnType, "uncached", null, parameterTypes);
+        return createUncachedExecute(forType);
+    }
+
+    public CodeExecutableElement createUncachedExecute(CodeExecutableElement baseMethod) {
+        int signatureSize = node.getPolymorphicExecutable().getSignatureParameters().size();
+        ExecutableTypeData forType = new ExecutableTypeData(node, baseMethod, signatureSize, List.of(node.getFrameType()), false, true);
         return createUncachedExecute(forType);
     }
 
@@ -4000,18 +4033,22 @@ public class FlatNodeGenFactory {
             executable.addParameter(arg);
         }
 
-        DeclaredType unexpectedResult = types.UnexpectedResultException;
+        removeThrownException(executable, types.UnexpectedResultException);
+
+        if (needsUnexpectedResultException(executedType)) {
+            executable.getThrownTypes().add(types.UnexpectedResultException);
+        }
+
+        return executable;
+    }
+
+    private static void removeThrownException(CodeExecutableElement executable, DeclaredType unexpectedResult) {
         Iterator<TypeMirror> thrownTypes = executable.getThrownTypes().iterator();
         while (thrownTypes.hasNext()) {
             if (typeEquals(unexpectedResult, thrownTypes.next())) {
                 thrownTypes.remove();
             }
         }
-        if (needsUnexpectedResultException(executedType)) {
-            executable.getThrownTypes().add(unexpectedResult);
-        }
-
-        return executable;
     }
 
     private void renameOriginalParameters(ExecutableTypeData executedType, CodeExecutableElement executable, FrameState frameState) {
@@ -7281,10 +7318,12 @@ public class FlatNodeGenFactory {
 
         NodeExecutionData execution = node.getChildExecutions().get(signatureIndex);
         CodeTreeBuilder castBuilder = prepareBuilder.create();
+        TypeMirror sourceType = value.getTypeMirror();
 
-        List<ImplicitCastData> sourceTypes = typeSystem.lookupByTargetType(targetType);
+        List<ImplicitCastData> implicitCasts = typeSystem.lookupByTargetType(targetType);
+        List<TypeMirror> sourceTypes = List.copyOf(typeSystem.lookupSourceTypes(targetType));
         CodeTree valueReference = value.createReference();
-        if (sourceTypes.isEmpty()) {
+        if (implicitCasts.isEmpty()) {
             checkBuilder.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, valueReference));
             castBuilder.tree(TypeSystemCodeGenerator.cast(typeSystem, targetType, valueReference));
         } else {
@@ -7295,14 +7334,55 @@ public class FlatNodeGenFactory {
             }
 
             if (specializationExecution.isFastPath() || specializationExecution.isGuardFallback() || specializationExecution.isUncached()) {
+                ImplicitCastData singleCast = null;
+                for (ImplicitCastData cast : implicitCasts) {
+                    if (ElementUtils.typeEquals(cast.getSourceType(), sourceType)) {
+                        if (singleCast != null) {
+                            throw new AssertionError("A concrete type must directly select an implicit cast.");
+                        }
+                        singleCast = cast;
+                    }
+                }
                 CodeTree implicitState;
                 if (specializationExecution.isGuardFallback() || specializationExecution.isUncached()) {
                     implicitState = null;
                 } else {
-                    implicitState = multiState.createExtractInteger(frameState, StateQuery.create(ImplicitCastState.class, typeGuard));
+                    StateQuery query = StateQuery.create(ImplicitCastState.class, typeGuard);
+                    BitSet set = multiState.findSet(query);
+                    /*
+                     * There is a special case within the bytecode dsl where it is expected that the
+                     * state is not loaded for quickened variants. This indicates that the state
+                     * does not need to be checked in such a case.
+                     */
+                    if (set.isLoaded(frameState)) {
+                        implicitState = multiState.createExtractInteger(frameState, StateQuery.create(ImplicitCastState.class, typeGuard));
+                    } else {
+                        implicitState = null;
+                    }
                 }
-                checkBuilder.tree(TypeSystemCodeGenerator.implicitCheckFlat(typeSystem, targetType, valueReference, implicitState));
-                castBuilder.tree(TypeSystemCodeGenerator.implicitCastFlat(typeSystem, targetType, valueReference, implicitState));
+
+                if (singleCast != null || ElementUtils.typeEquals(sourceType, targetType)) {
+
+                    /*
+                     * Depending on the source type the target type implicit cast can be known. We
+                     * can then directly invoke it without a check.
+                     */
+                    if (implicitState != null) {
+                        int castIndex = sourceTypes.indexOf(sourceType);
+                        checkBuilder.string("((").tree(implicitState).string(") & 0b" + Integer.toBinaryString(1 << castIndex) + ") != 0");
+                    }
+
+                    if (singleCast != null) {
+                        castBuilder.startStaticCall(singleCast.getMethod());
+                        castBuilder.tree(valueReference);
+                        castBuilder.end();
+                    } else {
+                        castBuilder.tree(valueReference);
+                    }
+                } else {
+                    checkBuilder.tree(TypeSystemCodeGenerator.implicitCheckFlat(typeSystem, targetType, valueReference, implicitState));
+                    castBuilder.tree(TypeSystemCodeGenerator.implicitCastFlat(typeSystem, targetType, valueReference, implicitState));
+                }
             } else {
                 Parameter parameter = parameters.get(0);
                 String implicitStateName = createImplicitTypeStateLocalName(parameter);

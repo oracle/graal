@@ -90,7 +90,7 @@ public class OptimizationDecisionsModel {
             if (this.types == null) {
                 parameterTypes = null;
                 for (SpecializationData specializationData : specializationModels) {
-                    List<TypeMirror> specializationTypes = operationModel.getSpecializationSignature(specializationData).signature().getDynamicOperandTypes();
+                    List<TypeMirror> specializationTypes = operationModel.getSpecializationSignature(specializationData).dynamicOperandTypes();
                     if (parameterTypes == null) {
                         parameterTypes = new ArrayList<>(specializationTypes);
                     } else {

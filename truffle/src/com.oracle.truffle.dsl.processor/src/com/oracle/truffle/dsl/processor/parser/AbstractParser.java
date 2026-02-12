@@ -49,6 +49,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.CompileErrorException;
@@ -165,6 +166,14 @@ public abstract class AbstractParser<M extends MessageContainer> {
 
     public List<DeclaredType> getTypeDelegatedAnnotationTypes() {
         return Collections.emptyList();
+    }
+
+    protected final TypeMirror type(Class<?> c) {
+        return context.getType(c);
+    }
+
+    protected final DeclaredType declaredType(Class<?> t) {
+        return context.getDeclaredType(t);
     }
 
 }

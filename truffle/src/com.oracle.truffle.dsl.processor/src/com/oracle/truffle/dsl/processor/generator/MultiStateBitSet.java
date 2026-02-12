@@ -82,15 +82,6 @@ public final class MultiStateBitSet extends MultiBitSet {
         }
     }
 
-    <T> BitSet findSet(StateQuery query) {
-        for (BitSet state : all) {
-            if (state.contains(query)) {
-                return state;
-            }
-        }
-        return null;
-    }
-
     <T> BitSet findSet(Class<? extends State<T>> clazz, T param) {
         return findSet(StateQuery.create(clazz, param));
     }

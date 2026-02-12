@@ -277,7 +277,7 @@ meth public java.util.List<java.lang.String> readResourceLines(java.nio.file.Pat
 meth public void unpackResourceFiles(java.nio.file.Path,java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
 meth public void unpackResourceFiles(java.nio.file.Path,java.nio.file.Path,java.nio.file.Path,java.util.function.Predicate<java.nio.file.Path>) throws java.io.IOException
 supr java.lang.Object
-hfds contextPreinitializationCheck,owner,resourceClass
+hfds contextPreinitializationCheck,forNativeImageBuild,owner,resourceClass
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.InternalResource$Id
  outer com.oracle.truffle.api.InternalResource
@@ -1068,6 +1068,12 @@ meth public abstract void setLong(com.oracle.truffle.api.frame.Frame,int,long)
 meth public abstract void setObject(com.oracle.truffle.api.frame.Frame,int,java.lang.Object)
 meth public final java.lang.Object getValue(com.oracle.truffle.api.frame.Frame,int)
 meth public final java.lang.Object requireObject(com.oracle.truffle.api.frame.Frame,int)
+meth public final void setBooleanOrObject(com.oracle.truffle.api.frame.Frame,int,java.lang.Object)
+meth public final void setByteOrObject(com.oracle.truffle.api.frame.Frame,int,java.lang.Object)
+meth public final void setDoubleOrObject(com.oracle.truffle.api.frame.Frame,int,java.lang.Object)
+meth public final void setFloatOrObject(com.oracle.truffle.api.frame.Frame,int,java.lang.Object)
+meth public final void setIntOrObject(com.oracle.truffle.api.frame.Frame,int,java.lang.Object)
+meth public final void setLongOrObject(com.oracle.truffle.api.frame.Frame,int,java.lang.Object)
 supr java.lang.Object
 
 CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstance

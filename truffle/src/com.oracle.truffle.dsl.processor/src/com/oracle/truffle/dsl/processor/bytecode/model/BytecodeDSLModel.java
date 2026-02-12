@@ -68,6 +68,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
 import com.oracle.truffle.dsl.processor.generator.NodeState;
@@ -288,12 +289,50 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return providedTagsSet.contains(ElementUtils.getUniqueIdentifier(tagClass));
     }
 
-    public Signature signature(Class<?> returnType, Class<?>... argumentTypes) {
-        TypeMirror[] arguments = new TypeMirror[argumentTypes.length];
-        for (int i = 0; i < arguments.length; i++) {
-            arguments[i] = context.getType(argumentTypes[i]);
+    public Signature signature(Class<?> returnType) {
+        return signature(returnType, List.of(), List.of());
+    }
+
+    public Signature signature(Class<?> returnType, String name, Class<?> type, Class<?> staticType) {
+        return signature(returnType, List.of(name), List.of(staticType), type);
+    }
+
+    public Signature signature(Class<?> returnType, String name1, Class<?> type1, Class<?> staticType1, String name2, Class<?> type2, Class<?> staticType2) {
+        return signature(returnType, List.of(name1, name2), List.of(staticType1, staticType2), type1, type2);
+    }
+
+    public Signature signature(Class<?> returnType, List<String> names, List<Class<?>> staticTypes, Class<?>... argumentTypes) {
+        return signature(returnType, names, resolveTypes(staticTypes), resolveTypes(List.of(argumentTypes)));
+    }
+
+    private List<TypeMirror> resolveTypes(List<Class<?>> classes) {
+        List<TypeMirror> resolvedTypes = new ArrayList<>(classes.size());
+        for (Class<?> c : classes) {
+            resolvedTypes.add(context.getType(c));
         }
-        return new Signature(context.getType(returnType), List.of(arguments));
+        return resolvedTypes;
+    }
+
+    public Signature signature(TypeMirror returnType, String name1, TypeMirror type1, TypeMirror staticType1) {
+        return signature(returnType, List.of(name1), List.of(staticType1), List.of(type1));
+    }
+
+    public Signature signature(TypeMirror returnType, String name1, TypeMirror type1, TypeMirror staticType1, String name2, TypeMirror type2, TypeMirror staticType2) {
+        return signature(returnType, List.of(name1, name2), List.of(staticType1, staticType2), List.of(type1, type2));
+    }
+
+    public Signature signature(Class<?> returnType, List<String> names, List<TypeMirror> staticTypes, List<TypeMirror> argumentTypes) {
+        return signature(context.getType(returnType), names, staticTypes, argumentTypes);
+    }
+
+    public Signature signature(TypeMirror returnType, List<String> names, List<TypeMirror> staticTypes, List<TypeMirror> argumentTypes) {
+        Operand[] operands = new Operand[argumentTypes.size()];
+        for (int i = 0; i < operands.length; i++) {
+            TypeMirror dynamicType = argumentTypes.get(i);
+            TypeMirror staticType = staticTypes.get(i);
+            operands[i] = new Operand(dynamicType, staticType, names.get(i), i, i, null);
+        }
+        return new Signature(returnType, List.of(operands));
     }
 
     public TypeMirror findProvidedTag(TypeMirror searchTag) {
@@ -499,14 +538,20 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
          * ensures that each path branching to the "end" leaves a single value on the stack.
          */
         Class<?>[] argumentTypes;
+        List<String> names;
+        List<Class<?>> staticTypes;
         if (shortCircuitModel.producesBoolean()) {
             // Consume the boolean value.
-            argumentTypes = new Class<?>[]{boolean.class};
+            argumentTypes = new Class<?>[]{Object.class};
+            names = List.of("condition");
+            staticTypes = List.of(boolean.class);
         } else {
             // Consume the boolean value and pop the DUP'd original value.
-            argumentTypes = new Class<?>[]{Object.class, boolean.class};
+            argumentTypes = new Class<?>[]{Object.class, Object.class};
+            names = List.of("value", "condition");
+            staticTypes = List.of(Object.class, boolean.class);
         }
-        Signature signature = signature(void.class, argumentTypes);
+        Signature signature = signature(void.class, names, staticTypes, argumentTypes);
         InstructionModel instr = instruction(InstructionKind.CUSTOM_SHORT_CIRCUIT, name, signature);
         instr.shortCircuitModel = shortCircuitModel;
 
@@ -581,6 +626,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
 
         this.instructions = newInstructions;
+        for (InstructionModel instr : getInstructions()) {
+            instr.finalizeModel();
+        }
         if (enableInstructionRewriting) {
             this.instructionRewriterModel = createRewriterModel();
         }
@@ -751,5 +799,13 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             this.instructions.put(instr.name, instr);
         }
 
+    }
+
+    public final TypeMirror type(Class<?> c) {
+        return context.getType(c);
+    }
+
+    public final DeclaredType declaredType(Class<?> t) {
+        return context.getDeclaredType(t);
     }
 }

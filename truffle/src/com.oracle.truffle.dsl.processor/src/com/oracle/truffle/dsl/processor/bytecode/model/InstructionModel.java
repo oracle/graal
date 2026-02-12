@@ -50,7 +50,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
-import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
@@ -130,6 +130,7 @@ public final class InstructionModel implements PrettyPrintable {
             }
             return false;
         }
+
     }
 
     public enum ImmediateWidth {
@@ -290,11 +291,15 @@ public final class InstructionModel implements PrettyPrintable {
     public List<InstructionModel> subInstructions;
     public final List<InstructionModel> quickenedInstructions = new ArrayList<>();
 
-    public List<SpecializationData> filteredSpecializations;
+    private List<SpecializationData> filteredSpecializations;
 
     public final InstructionModel quickeningBase;
 
     public enum QuickeningKind {
+        /**
+         * Not a quickening.
+         */
+        BASE,
         /**
          * Implements a specialized version of the base instruction. Typically this is a type
          * specialization but it need not be.
@@ -309,7 +314,17 @@ public final class InstructionModel implements PrettyPrintable {
          * Implements a generic version of the base instruction. This instruction acts as a sink to
          * prevent the base instruction from re-quickening to a specialized case.
          */
-        GENERIC,
+        GENERIC;
+
+        public boolean isSpecialized() {
+            switch (this) {
+                case SPECIALIZED:
+                case SPECIALIZED_UNBOXED:
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 
     public final QuickeningKind quickeningKind;
@@ -338,6 +353,9 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public final List<InstructionModel> shortCircuitInstructions = new ArrayList<>();
 
+    private Signature customSpecializationSignature;
+    private boolean finalized;
+
     /*
      * Main constructor for instructions.
      */
@@ -347,7 +365,7 @@ public final class InstructionModel implements PrettyPrintable {
         this.signature = signature;
         this.quickeningName = null;
         this.quickeningBase = null;
-        this.quickeningKind = null;
+        this.quickeningKind = QuickeningKind.BASE;
         this.specializedType = null;
         this.checked = false;
     }
@@ -375,6 +393,36 @@ public final class InstructionModel implements PrettyPrintable {
         base.quickenedInstructions.add(this);
     }
 
+    public void finalizeModel() {
+        if (nodeData != null) {
+            this.customSpecializationSignature = operation.getSpecializationSignature(getSpecializations());
+        }
+        this.finalized = true;
+    }
+
+    public void setFilteredSpecializations(List<SpecializationData> specializations) {
+        if (finalized) {
+            throw new IllegalStateException("Specializations cannot be set after parsing.");
+        }
+        this.filteredSpecializations = specializations;
+    }
+
+    public List<SpecializationData> getFilteredSpecializations() {
+        return filteredSpecializations;
+    }
+
+    public boolean isYield() {
+        if (operation == null) {
+            return false;
+        }
+        switch (operation.kind) {
+            case YIELD:
+            case CUSTOM_YIELD:
+                return true;
+        }
+        return false;
+    }
+
     public boolean isShortCircuitConverter() {
         return !shortCircuitInstructions.isEmpty();
     }
@@ -390,8 +438,26 @@ public final class InstructionModel implements PrettyPrintable {
         return epilogReturn.operation.instruction == this;
     }
 
-    public SpecializationSignature getSpecializationSignature() {
-        return operation.getSpecializationSignature(filteredSpecializations);
+    public boolean hasBoxingOverloadForType(TypeMirror type) {
+        for (SpecializationData s : getSpecializations()) {
+            for (SpecializationData overload : s.getBoxingOverloads()) {
+                if (ElementUtils.typeEquals(overload.getReturnType().getType(), type)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public List<SpecializationData> getSpecializations() {
+        return getFilteredSpecializations() == null ? nodeData.getReachableSpecializations() : getFilteredSpecializations();
+    }
+
+    public Signature getCustomSpecializationSignature() {
+        if (customSpecializationSignature == null) {
+            throw new UnsupportedOperationException("Specialization signature only exists for custom operations atm.");
+        }
+        return customSpecializationSignature;
     }
 
     public boolean isEpilogExceptional() {
@@ -476,15 +542,12 @@ public final class InstructionModel implements PrettyPrintable {
 
         if (getQuickeningRoot().hasQuickenings()) {
             String quickenKind;
-            if (quickeningBase == null) {
-                quickenKind = "base";
-            } else {
-                quickenKind = switch (quickeningKind) {
-                    case GENERIC -> "generic";
-                    case SPECIALIZED -> "specialized";
-                    case SPECIALIZED_UNBOXED -> "return-type";
-                };
-            }
+            quickenKind = switch (quickeningKind) {
+                case BASE -> "base";
+                case GENERIC -> "generic";
+                case SPECIALIZED -> "specialized";
+                case SPECIALIZED_UNBOXED -> "return-type";
+            };
             printer.field("quicken-kind", quickenKind);
         }
 
@@ -520,19 +583,28 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public boolean isControlFlow() {
+    /**
+     * Returns <code>true</code> if this instruction has no stack effects. This is different to
+     * having {@link InstructionModel#getStackEffect()} being zero in that the return value is not
+     * popped and pushed from the stack. Void instructions with zero operands are automatically
+     * transparent.
+     */
+    public boolean isTransparent() {
+        if (signature.isVoid() && signature.dynamicOperandCount() == 0) {
+            return true;
+        }
         switch (kind) {
             case BRANCH:
             case BRANCH_BACKWARD:
-            case BRANCH_FALSE:
-            case RETURN:
-            case YIELD:
-            case THROW:
-            case CUSTOM_SHORT_CIRCUIT:
+            case TAG_ENTER:
+            case TAG_LEAVE:
+            case TAG_LEAVE_VOID:
+            case TAG_YIELD:
+            case TAG_YIELD_NULL:
+            case TAG_RESUME:
+            case TRACE_INSTRUCTION:
             case INVALIDATE:
                 return true;
-            case CUSTOM:
-                return operation.kind == OperationKind.CUSTOM_YIELD;
             default:
                 return false;
         }
@@ -659,8 +731,8 @@ public final class InstructionModel implements PrettyPrintable {
 
     public SpecializationData resolveSingleSpecialization() {
         List<SpecializationData> specializations = null;
-        if (this.filteredSpecializations != null) {
-            specializations = this.filteredSpecializations;
+        if (this.getFilteredSpecializations() != null) {
+            specializations = this.getFilteredSpecializations();
         } else if (this.nodeData != null) {
             specializations = this.nodeData.getReachableSpecializations();
         }
@@ -729,18 +801,21 @@ public final class InstructionModel implements PrettyPrintable {
      * Whether the instruction or any of its quickenings needs a child bci immediate in order to
      * perform boxing elimination of the given operand.
      */
-    public boolean needsChildBciForBoxingElimination(BytecodeDSLModel model, int valueIndex) {
+    public boolean needsChildBciForBoxingElimination(BytecodeDSLModel model, Operand signatureOperand) {
+        if (!signatureOperand.isDynamic()) {
+            return false;
+        }
         if (!model.usesBoxingElimination()) {
             return false;
         }
-        if (signature.isVariadicParameter(valueIndex)) {
+        if (signature.isVariadicOperand(signatureOperand)) {
             return false;
         }
-        if (model.isBoxingEliminated(signature.getDynamicOperandType(valueIndex))) {
+        if (model.isBoxingEliminated(signatureOperand.type())) {
             return true;
         }
         for (InstructionModel quickenedInstruction : quickenedInstructions) {
-            if (quickenedInstruction.needsChildBciForBoxingElimination(model, valueIndex)) {
+            if (quickenedInstruction.needsChildBciForBoxingElimination(model, quickenedInstruction.signature.operands().get(signatureOperand.index()))) {
                 return true;
             }
         }
@@ -820,11 +895,37 @@ public final class InstructionModel implements PrettyPrintable {
         return true;
     }
 
-    public int getStackEffect() {
+    public boolean hasVariableStackEffect() {
         return switch (kind) {
-            case LOAD_VARIADIC, CREATE_VARIADIC -> throw new IllegalArgumentException("Variadic instruction " + this + " does not have a fixed stack effect.");
-            default -> (signature.isVoid ? 0 : 1) - signature.dynamicOperandCount;
+            case LOAD_VARIADIC, CREATE_VARIADIC -> true;
+            default -> false;
         };
+    }
+
+    public int getStackEffect() {
+        if (hasVariableStackEffect()) {
+            throw new IllegalArgumentException("Variadic instruction " + this + " does not have a fixed stack effect.");
+        }
+        return (signature.isVoid() ? 0 : 1) - signature.dynamicOperandCount();
+    }
+
+    public boolean isQuickeningRoot() {
+        return hasQuickenings() && quickeningBase == null;
+    }
+
+    public boolean isInliningCutoff() {
+        switch (this.kind) {
+            case TAG_ENTER:
+            case TAG_LEAVE:
+            case TAG_LEAVE_VOID:
+            case TAG_YIELD:
+            case TAG_YIELD_NULL:
+            case TAG_RESUME:
+            case TRACE_INSTRUCTION:
+                return true;
+
+        }
+        return false;
     }
 
 }

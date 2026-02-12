@@ -112,6 +112,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationA
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.SourceSectionKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -1290,7 +1291,7 @@ final class BuilderElement extends AbstractElement {
         } else if (operation.isCustom()) {
             result.append(" -> ");
             result.append(ElementUtils.getSimpleName(
-                            operation.instruction.signature.returnType));
+                            operation.instruction.signature.returnType()));
         } else {
             result.append(" -> Object");
         }
@@ -3330,7 +3331,7 @@ final class BuilderElement extends AbstractElement {
             case BRANCH -> buildEmitBranch(b, operation);
             case LOAD_EXCEPTION -> buildEmitLoadException(b, operation);
             case CUSTOM_YIELD -> {
-                if (operation.instruction.signature.dynamicOperandCount != 0) {
+                if (operation.instruction.signature.dynamicOperandCount() != 0) {
                     throw new AssertionError("expected custom yield to have 0 dynamic operands: " + operation.instruction);
                 }
 
@@ -3474,7 +3475,7 @@ final class BuilderElement extends AbstractElement {
         }
 
         if (operation.isVariadic) {
-            b.declaration(type(int.class), "variadicCount", "operation.childCount - " + (operation.instruction.signature.dynamicOperandCount - 1));
+            b.declaration(type(int.class), "variadicCount", "operation.childCount - " + (operation.instruction.signature.dynamicOperandCount() - 1));
 
             b.startIf().string(operationStack.read(operation, operationFields.variadicCountPatchIndex), " != -1").end().startBlock();
             b.statement(BytecodeRootNodeElement.writeInt("state.bc", operationStack.read(operation, operationFields.variadicCountPatchIndex), "variadicCount"));
@@ -3659,7 +3660,7 @@ final class BuilderElement extends AbstractElement {
                 // Before emitting a variadic instruction, we need to emit instructions
                 // to merge all
                 // of the operands on the stack into one array.
-                if (op.instruction.signature.dynamicOperandCount == 1) {
+                if (op.instruction.signature.dynamicOperandCount() == 1) {
                     // only argument is variadic
                     b.startDeclaration(type(int.class), "patchIndex").startCall("doEmitVariadicBeforeChild");
                     if (model.maximumVariadicOffset > 0) {
@@ -3672,12 +3673,12 @@ final class BuilderElement extends AbstractElement {
                     b.tree(operationStack.write(op, operationFields.variadicCountPatchIndex, "patchIndex"));
                     b.end();
                 } else {
-                    b.startIf().string("childIndex >= " + (op.instruction.signature.dynamicOperandCount - 1)).end().startBlock();
+                    b.startIf().string("childIndex >= " + (op.instruction.signature.dynamicOperandCount() - 1)).end().startBlock();
                     b.startDeclaration(type(int.class), "patchIndex").startCall("doEmitVariadicBeforeChild");
                     if (model.maximumVariadicOffset > 0) {
                         b.string(op.variadicOffset);
                     }
-                    b.string("childIndex - " + (op.instruction.signature.dynamicOperandCount - 1));
+                    b.string("childIndex - " + (op.instruction.signature.dynamicOperandCount() - 1));
                     b.end().end();
                     b.startIf().string("patchIndex != -1").end().startBlock();
                     b.tree(operationStack.write(op, operationFields.variadicCountPatchIndex, "patchIndex"));
@@ -4010,10 +4011,11 @@ final class BuilderElement extends AbstractElement {
                 case CUSTOM_INSTRUMENTATION:
                     int immediateIndex = 0;
                     boolean elseIf = false;
-                    for (int valueIndex = 0; valueIndex < op.instruction.signature.dynamicOperandCount; valueIndex++) {
-                        if (op.instruction.needsChildBciForBoxingElimination(model, valueIndex)) {
+
+                    for (Operand operand : op.instruction.signature.dynamicOperands()) {
+                        if (op.instruction.needsChildBciForBoxingElimination(model, operand)) {
                             elseIf = b.startIf(elseIf);
-                            b.string("childIndex == " + valueIndex).end().startBlock();
+                            b.string("childIndex == " + operand.dynamicIndex()).end().startBlock();
 
                             int index = immediateIndex++;
                             b.tree(operationStack.write(op, operationFields.getChildBci(index, false), "childBci"));
@@ -4022,8 +4024,8 @@ final class BuilderElement extends AbstractElement {
                     }
 
                     if (op.isVariadic && model.hasVariadicReturn) {
-                        if (op.instruction.signature.dynamicOperandCount > 1) {
-                            b.startIf().string("childIndex > ").string(op.instruction.signature.dynamicOperandCount - 2).end().startBlock();
+                        if (op.instruction.signature.dynamicOperandCount() > 1) {
+                            b.startIf().string("childIndex > ").string(op.instruction.signature.dynamicOperandCount() - 2).end().startBlock();
                         }
 
                         b.startIf().string("isVariadicReturn(operationCode)").end().startBlock();
@@ -4036,8 +4038,8 @@ final class BuilderElement extends AbstractElement {
                                         "variadicReturnIndices.length * 2").end().end();
                         b.tree(operationStack.write(op, operationFields.variadicReturnIndices, "variadicReturnIndices"));
                         b.end();
-                        if (op.instruction.signature.dynamicOperandCount > 1) {
-                            b.statement("variadicReturnIndices[numVariadicReturnIndices] = childIndex - " + (op.instruction.signature.dynamicOperandCount - 1));
+                        if (op.instruction.signature.dynamicOperandCount() > 1) {
+                            b.statement("variadicReturnIndices[numVariadicReturnIndices] = childIndex - " + (op.instruction.signature.dynamicOperandCount() - 1));
                         } else {
                             b.statement("variadicReturnIndices[numVariadicReturnIndices] = childIndex");
                         }
@@ -4045,7 +4047,7 @@ final class BuilderElement extends AbstractElement {
 
                         b.end(); // if isVariadicReturn
 
-                        if (op.instruction.signature.dynamicOperandCount > 1) {
+                        if (op.instruction.signature.dynamicOperandCount() > 1) {
                             b.end();
                         }
                     }

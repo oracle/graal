@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,8 +53,8 @@
  * <p>
  *
  * <p>
- * See <a href="http://www.graalvm.org/docs/graalvm-as-a-platform/embed/">graalvm.org</a> for more
- * examples on how to use this API.
+ * See <a href="https://www.graalvm.org/latest/reference-manual/embed-languages/">graalvm.org</a>
+ * for more examples on how to use this API.
  *
  * @see org.graalvm.polyglot.Context For an overview over the features the polyglot API provides.
  * @since 19.0
