@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.shared.util;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -225,7 +225,7 @@ public final class VMError {
      * @param args arguments to process
      * @return a copy of {@code args} with certain values converted to strings as described above
      */
-    static Object[] formatArguments(Object... args) {
+    public static Object[] formatArguments(Object... args) {
         Object[] newArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
             Object arg = args[i];
