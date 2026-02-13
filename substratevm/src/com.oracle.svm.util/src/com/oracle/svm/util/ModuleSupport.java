@@ -56,6 +56,8 @@ public final class ModuleSupport {
                     "org.graalvm.nativeimage",
                     "org.graalvm.nativeimage.base",
                     "org.graalvm.nativeimage.builder",
+                    "org.graalvm.nativeimage.guest.staging",
+                    "org.graalvm.nativeimage.shared",
                     "org.graalvm.truffle.compiler",
                     "org.graalvm.word");
 
