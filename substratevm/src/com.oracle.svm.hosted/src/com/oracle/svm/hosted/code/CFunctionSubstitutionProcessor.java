@@ -46,7 +46,7 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         ResolvedJavaMethod wrapper = method;
         if (method.isNative() && AnnotationUtil.isAnnotationPresent(method, CFunction.class)) {
-            if (AnnotationUtil.isAnnotationPresent(method, GuestTypes.Uninterruptible)) {
+            if (AnnotationUtil.isAnnotationPresent(method, GuestTypes.get().Uninterruptible)) {
                 throw VMError.shouldNotReachHere("Native method '%s' incorrectly annotated with @Uninterruptible. Please use @CFunction(transition = NO_TRANSITION) instead.",
                                 method.format("%H.%n(%p)"));
             }

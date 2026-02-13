@@ -461,7 +461,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         ResolvedJavaType prologueClass = entryPointData.getPrologue();
         if (prologueClass.equals(CEntryPointData.NO_PROLOGUE)) {
             UserError.guarantee(isUninterruptible(targetMethod), "%s.%s is allowed only for methods annotated with @%s: %s",
-                            CEntryPointOptions.class.getSimpleName(), NoPrologue.class.getSimpleName(), GuestTypes.Uninterruptible.toJavaName(false), targetMethod);
+                            CEntryPointOptions.class.getSimpleName(), NoPrologue.class.getSimpleName(), GuestTypes.get().Uninterruptible.toJavaName(false), targetMethod);
             return null;
         }
 
@@ -494,7 +494,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
     private static InvokeWithExceptionNode createInvokeStaticWithFatalExceptionHandler(SubstrateGraphKit kit, AnalysisMethod method, ValueNode... args) {
         UserError.guarantee(isUninterruptible(method), "The method %s must be annotated with @%s as it is used for a prologue, epilogue, or bailout.",
-                        GuestTypes.Uninterruptible.toJavaName(false), method);
+                        GuestTypes.get().Uninterruptible.toJavaName(false), method);
 
         /* Generate the call. */
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(method, InvokeKind.Static, kit.getFrameState(), kit.bci(), args);
@@ -601,7 +601,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         AnalysisType handler = kit.getMetaAccess().getUniverse().lookup(entryPointData.getExceptionHandler());
         AnalysisMethod[] handlerMethods = handler.getDeclaredMethods(false);
         UserError.guarantee(handlerMethods.length == 1 && handlerMethods[0].isStatic(), "Exception handler class must declare exactly one static method: %s -> %s", targetMethod, handler);
-        UserError.guarantee(isUninterruptible(handlerMethods[0]), "Exception handler method must be annotated with @%s: %s", GuestTypes.Uninterruptible.toJavaName(false), handlerMethods[0]);
+        UserError.guarantee(isUninterruptible(handlerMethods[0]), "Exception handler method must be annotated with @%s: %s", GuestTypes.get().Uninterruptible.toJavaName(false), handlerMethods[0]);
 
         List<AnalysisType> handlerParameterTypes = handlerMethods[0].toParameterList();
         UserError.guarantee(handlerParameterTypes.size() == 1 && handlerParameterTypes.getFirst().isAssignableFrom(throwable),
@@ -667,7 +667,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         ResolvedJavaType epilogueClass = entryPointData.getEpilogue();
         if (epilogueClass.equals(CEntryPointData.NO_EPILOGUE)) {
             UserError.guarantee(isUninterruptible(targetMethod), "%s.%s is allowed only for methods annotated with @%s: %s",
-                            CEntryPointOptions.class.getSimpleName(), NoEpilogue.class.getSimpleName(), GuestTypes.Uninterruptible.toJavaName(false), targetMethod);
+                            CEntryPointOptions.class.getSimpleName(), NoEpilogue.class.getSimpleName(), GuestTypes.get().Uninterruptible.toJavaName(false), targetMethod);
             return;
         }
 

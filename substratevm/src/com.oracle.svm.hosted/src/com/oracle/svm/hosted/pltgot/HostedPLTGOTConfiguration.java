@@ -73,13 +73,13 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
         if (AnnotationUtil.isAnnotationPresent(method, StubCallingConvention.class)) {
             return false;
         }
-        if (AnnotationUtil.isAnnotationPresent(method, GuestTypes.Uninterruptible)) {
+        if (AnnotationUtil.isAnnotationPresent(method, GuestTypes.get().Uninterruptible)) {
             return false;
         }
         if (AnnotationUtil.isAnnotationPresent(method, SubstrateForeignCallTarget.class)) {
             return false;
         }
-        if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), GuestTypes.InternalVMMethod)) {
+        if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), GuestTypes.get().InternalVMMethod)) {
             return false;
         }
         ExplicitCallingConvention ecc = AnnotationUtil.getAnnotation(method, ExplicitCallingConvention.class);

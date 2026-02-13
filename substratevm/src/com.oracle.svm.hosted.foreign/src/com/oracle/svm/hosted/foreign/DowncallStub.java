@@ -106,7 +106,7 @@ class DowncallStub extends NonBytecodeMethod {
     }
 
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = List.of(
-                    newAnnotationValue(GuestTypes.Uninterruptible,
+                    newAnnotationValue(GuestTypes.get().Uninterruptible,
                                     "reason", "See DowncallStub.getInjectedAnnotations.",
                                     "calleeMustBe", false));
 

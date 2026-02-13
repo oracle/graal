@@ -60,7 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
-                    newAnnotationValue(GuestTypes.Uninterruptible,
+                    newAnnotationValue(GuestTypes.get().Uninterruptible,
                                     "reason", CALLED_FROM_UNINTERRUPTIBLE_CODE,
                                     "mayBeInlined", true));
 

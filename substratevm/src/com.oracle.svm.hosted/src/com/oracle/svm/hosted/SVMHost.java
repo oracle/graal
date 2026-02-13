@@ -621,7 +621,7 @@ public class SVMHost extends HostVM {
         boolean isRecord = javaClass.isRecord();
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
         boolean isSealed = javaClass.isSealed();
-        boolean isVMInternal = AnnotationUtil.isAnnotationPresent(type, GuestTypes.InternalVMMethod);
+        boolean isVMInternal = AnnotationUtil.isAnnotationPresent(type, GuestTypes.get().InternalVMMethod);
         boolean isLambdaFormHidden = AnnotationUtil.isAnnotationPresent(type, LambdaFormHiddenMethod.class);
         boolean isLinked = type.isLinked();
 

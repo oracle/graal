@@ -44,14 +44,23 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class GuestTypes {
 
-    public static final ResolvedJavaType java_lang_Class = lookupType(Class.class);
-    public static final ResolvedJavaType java_lang_reflect_Proxy = lookupType(Proxy.class);
-    public static final ResolvedJavaType jdk_internal_loader_ClassLoaders = lookupType(ClassLoaders.class);
+    private static final GuestTypes INSTANCE = new GuestTypes();
 
-    public static final ResolvedJavaType Uninterruptible = lookupType("com.oracle.svm.guest.staging.Uninterruptible");
-    public static final ResolvedJavaType CFunction = lookupType(CFunction.class);
-    public static final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
-    public static final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
+    public static GuestTypes get() {
+        return INSTANCE;
+    }
+
+    private GuestTypes() {
+    }
+
+    public final ResolvedJavaType java_lang_Class = lookupType(Class.class);
+    public final ResolvedJavaType java_lang_reflect_Proxy = lookupType(Proxy.class);
+    public final ResolvedJavaType jdk_internal_loader_ClassLoaders = lookupType(ClassLoaders.class);
+
+    public final ResolvedJavaType Uninterruptible = lookupType("com.oracle.svm.guest.staging.Uninterruptible");
+    public final ResolvedJavaType CFunction = lookupType(CFunction.class);
+    public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
+    public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
 
     private static ResolvedJavaType lookupType(Class<?> clazz) {
         ResolvedJavaType type = GuestAccess.get().lookupType(clazz);
@@ -69,8 +78,4 @@ public final class GuestTypes {
         }
         return type;
     }
-
-    private GuestTypes() {
-    }
-
 }

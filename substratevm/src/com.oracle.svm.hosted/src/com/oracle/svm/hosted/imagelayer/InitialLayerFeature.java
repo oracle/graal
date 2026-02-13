@@ -80,9 +80,9 @@ public class InitialLayerFeature implements InternalFeature {
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class), PINNED_TO_INITIAL_LAYER);
 
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
-        access.getUniverse().lookup(GuestTypes.Uninterruptible).registerAsReachable("Core type");
+        access.getUniverse().lookup(GuestTypes.get().Uninterruptible).registerAsReachable("Core type");
         metaAccess.lookupJavaType(UninterruptibleUtils.class).registerAsReachable("Core type");
-        access.getUniverse().lookup(getProxyClass(GuestTypes.Uninterruptible)).registerAsInstantiated("Core type");
+        access.getUniverse().lookup(getProxyClass(GuestTypes.get().Uninterruptible)).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.ExceptionWrapper.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(UnmanagedMemory.class).registerAsReachable("Core type");
@@ -99,12 +99,12 @@ public class InitialLayerFeature implements InternalFeature {
         MetaAccessProvider metaAccess = vmAccess.getProviders().getMetaAccess();
         ConstantReflectionProvider constantReflection = vmAccess.getProviders().getConstantReflection();
 
-        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestTypes.java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class, Class[].class);
-        ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestTypes.jdk_internal_loader_ClassLoaders, "appClassLoader");
+        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestTypes.get().java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class, Class[].class);
+        ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestTypes.get().jdk_internal_loader_ClassLoaders, "appClassLoader");
 
         JavaConstant appClassLoader = vmAccess.invoke(appClassLoaderMethod, null);
         JavaConstant uninterruptible = constantReflection.asJavaClass(uninterruptibleType);
-        JavaConstant interfaces = vmAccess.asArrayConstant(GuestTypes.java_lang_Class, uninterruptible);
+        JavaConstant interfaces = vmAccess.asArrayConstant(GuestTypes.get().java_lang_Class, uninterruptible);
 
         JavaConstant proxyClass = vmAccess.invoke(getProxyClassMethod, null, appClassLoader, interfaces);
         return constantReflection.asJavaType(proxyClass);
