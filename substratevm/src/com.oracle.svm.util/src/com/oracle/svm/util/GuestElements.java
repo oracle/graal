@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.util.Objects;
@@ -35,7 +36,6 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.vmaccess.VMAccess;
-import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -58,12 +58,17 @@ public final class GuestElements {
     }
 
     public final ResolvedJavaType java_lang_Class = lookupType(Class.class);
-    public final ResolvedJavaType java_lang_reflect_Proxy = lookupType(Proxy.class);
-    public final ResolvedJavaType jdk_internal_loader_ClassLoaders = lookupType(ClassLoaders.class);
+    public final ResolvedJavaMethod java_lang_Class_getResourceAsStream = lookupMethod(java_lang_Class, "getResourceAsStream", String.class);
 
     public final ResolvedJavaType java_lang_reflect_Field = lookupType(Field.class);
     public final ResolvedJavaMethod java_lang_reflect_Field_setAccessible = lookupMethod(java_lang_reflect_Field, "setAccessible", boolean.class);
     public final ResolvedJavaMethod java_lang_reflect_Field_set = lookupMethod(java_lang_reflect_Field, "set", Object.class, Object.class);
+
+    public final ResolvedJavaType java_lang_reflect_Proxy = lookupType(Proxy.class);
+    public final ResolvedJavaType jdk_internal_loader_ClassLoaders = lookupType("jdk.internal.loader.ClassLoaders");
+
+    public final ResolvedJavaType java_io_InputStream = lookupType(InputStream.class);
+    public final ResolvedJavaMethod java_io_Input_Stream_readAllBytesMethod = lookupMethod(java_io_InputStream, "readAllBytes");
 
     public final ResolvedJavaType Uninterruptible = lookupType("com.oracle.svm.guest.staging.Uninterruptible");
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);

@@ -492,21 +492,17 @@ public final class JVMCIReflectionUtil {
         GuestAccess access = GuestAccess.get();
         Providers providers = access.getProviders();
         ConstantReflectionProvider constantReflection = providers.getConstantReflection();
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
 
         JavaConstant classConstant = constantReflection.asJavaClass(OriginalClassProvider.getOriginalType(type));
         JavaConstant nameConstant = constantReflection.forString(name);
 
-        ResolvedJavaMethod getResourceAsStreamMethod = getUniqueDeclaredMethod(metaAccess, Class.class, "getResourceAsStream", String.class);
-        ResolvedJavaMethod readAllBytesMethod = getUniqueDeclaredMethod(metaAccess, InputStream.class, "readAllBytes");
-
-        JavaConstant streamConstant = access.invoke(getResourceAsStreamMethod, classConstant, nameConstant);
+        JavaConstant streamConstant = access.invoke(GuestElements.get().java_lang_Class_getResourceAsStream, classConstant, nameConstant);
 
         if (streamConstant.isNull()) {
             return null;
         }
 
-        JavaConstant bytesConstant = access.invoke(readAllBytesMethod, streamConstant);
+        JavaConstant bytesConstant = access.invoke(GuestElements.get().java_io_Input_Stream_readAllBytesMethod, streamConstant);
 
         return access.getSnippetReflection().asObject(byte[].class, bytesConstant);
     }
