@@ -28,7 +28,18 @@ suite = {
       {
         "name" : "sdk",
         "subdir": True
-      }
+      },
+      # dynamic import for the 'barista' bench suite
+      {
+        "name": "barista",
+        "subdir": False,
+        "version": "0.6.5",
+        "foreign": True, # barista is not an mx suite
+        "dynamic": True,
+        "urls": [
+          {"url": "https://github.com/barista-benchmarks/barista.git", "kind" : "git"},
+        ],
+      },
     ]
   },
 

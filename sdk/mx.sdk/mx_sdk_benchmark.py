@@ -3465,6 +3465,10 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             else:
                 mx.abort(f"{e}\nInstalling 'barista' failed!")
 
+    def _ensure_necessary_benchmark_files_exist(self):
+        """Checks if the necessary benchmark files exist, generating them if they don't."""
+        self._ensure_jar_exists(self.benchmarkName())
+
     def _ensure_jar_exists(self, benchmark: str):
         """Checks if the benchmark JAR exists and generates it if it doesn't."""
         jar_path = self._get_jar_path(benchmark)
@@ -3512,7 +3516,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
     def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         with SingleBenchmarkManager(self):
-            self._ensure_jar_exists(self.benchmarkName())
+            self._ensure_necessary_benchmark_files_exist()
             return super().run(benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
