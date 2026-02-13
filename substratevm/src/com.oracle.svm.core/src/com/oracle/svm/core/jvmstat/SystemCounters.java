@@ -26,6 +26,7 @@ package com.oracle.svm.core.jvmstat;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,7 +35,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.attach.AttachApiSupport;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -42,6 +42,7 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationListener;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.sun.management.OperatingSystemMXBean;
 
 /**
@@ -203,7 +204,7 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
 
     private static String getJavaCommand() {
         JavaMainWrapper.JavaMainSupport support = ImageSingletons.lookup(JavaMainWrapper.JavaMainSupport.class);
-        return support.getJavaCommand();
+        return Objects.requireNonNullElse(support.getJavaCommand(), "");
     }
 
     private static String getVmArgs() {
