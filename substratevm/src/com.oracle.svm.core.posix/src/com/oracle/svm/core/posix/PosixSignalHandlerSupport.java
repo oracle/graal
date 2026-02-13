@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.DEFAULT_HANDLER;
 import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.DISPATCH_HANDLER;
 import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.ERROR_HANDLER;
 import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.IGNORE_HANDLER;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.HashMap;
 import java.util.List;
@@ -50,7 +50,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -69,7 +68,6 @@ import com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
-import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.posix.headers.Signal.SignalEnum;
@@ -82,6 +80,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -207,7 +206,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
             throw new IllegalArgumentException("Java signal handler mechanism is already used by another isolate.");
         } else {
             int errno = LibC.errno();
-            Log.log().string("CSunMiscSignal.open() failed.").string("  errno: ").signed(errno).string("  ").string(Errno.strerror(errno)).newline();
+            Log.log().string("CSunMiscSignal.open() failed.").string("  errno: ").signed(errno).string("  ").string(PosixUtils.strerror(errno)).newline();
             throw VMError.shouldNotReachHere("CSunMiscSignal.open() failed.");
         }
     }
