@@ -35,22 +35,25 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.internal.loader.ClassLoaders;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * This class contains common {@linkplain ResolvedJavaType guest types} used throughout the code
- * base. They are statically looked up via the {@code lookup*Type} methods from {@link VMAccess}.
+ * This class contains common guest elements ({@link ResolvedJavaType}, {@link ResolvedJavaMethod},
+ * {@link ResolvedJavaField}) used throughout the code base. They are looked up via the
+ * {@code lookup*} methods from {@link VMAccess}.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class GuestTypes {
+public final class GuestElements {
 
-    private static final GuestTypes INSTANCE = new GuestTypes();
+    private static final GuestElements INSTANCE = new GuestElements();
 
-    public static GuestTypes get() {
+    public static GuestElements get() {
         return INSTANCE;
     }
 
-    private GuestTypes() {
+    private GuestElements() {
     }
 
     public final ResolvedJavaType java_lang_Class = lookupType(Class.class);

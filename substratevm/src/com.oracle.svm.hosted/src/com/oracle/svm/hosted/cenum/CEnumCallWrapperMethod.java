@@ -44,7 +44,7 @@ import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GuestTypes;
+import com.oracle.svm.util.GuestElements;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.DebugContext;
@@ -60,7 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
-                    newAnnotationValue(GuestTypes.get().Uninterruptible,
+                    newAnnotationValue(GuestElements.get().Uninterruptible,
                                     "reason", CALLED_FROM_UNINTERRUPTIBLE_CODE,
                                     "mayBeInlined", true));
 

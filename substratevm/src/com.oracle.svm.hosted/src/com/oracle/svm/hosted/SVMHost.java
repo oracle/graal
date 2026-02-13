@@ -147,7 +147,7 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
-import com.oracle.svm.util.GuestTypes;
+import com.oracle.svm.util.GuestElements;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -621,7 +621,7 @@ public class SVMHost extends HostVM {
         boolean isRecord = javaClass.isRecord();
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
         boolean isSealed = javaClass.isSealed();
-        boolean isVMInternal = AnnotationUtil.isAnnotationPresent(type, GuestTypes.get().InternalVMMethod);
+        boolean isVMInternal = AnnotationUtil.isAnnotationPresent(type, GuestElements.get().InternalVMMethod);
         boolean isLambdaFormHidden = AnnotationUtil.isAnnotationPresent(type, LambdaFormHiddenMethod.class);
         boolean isLinked = type.isLinked();
 
