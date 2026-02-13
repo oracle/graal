@@ -957,7 +957,7 @@ public class CompilationResult {
                 infopoints.add(new ImplicitExceptionDispatch(dispatch.pcOffset + offset, dispatch.dispatchOffset, dispatch.debugInfo));
             } else {
                 GraalError.guarantee(infoPoint.getClass() == Infopoint.class, "Unsupported Infopoint type %s", infoPoint.getClass());
-                infopoints.add(new Infopoint(infoPoint.pcOffset, infoPoint.debugInfo, infoPoint.reason));
+                infopoints.add(new Infopoint(infoPoint.pcOffset + offset, infoPoint.debugInfo, infoPoint.reason));
             }
         }
         for (int i = watermarkAtCodeStart.dataPatchesSize; i < watermarkAtCodeEnd.dataPatchesSize; i++) {
