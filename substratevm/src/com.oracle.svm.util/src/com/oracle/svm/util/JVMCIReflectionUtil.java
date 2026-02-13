@@ -25,6 +25,7 @@
 package com.oracle.svm.util;
 
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.Arrays;
@@ -509,5 +510,31 @@ public final class JVMCIReflectionUtil {
         JavaConstant bytesConstant = access.invoke(readAllBytesMethod, streamConstant);
 
         return access.getSnippetReflection().asObject(byte[].class, bytesConstant);
+    }
+
+    /**
+     * @see ReflectionUtil#writeField
+     */
+    public static void writeField(ResolvedJavaType declaringType, String fieldName, JavaConstant receiver, JavaConstant value) {
+        GuestAccess access = GuestAccess.get();
+        ConstantReflectionProvider constantReflection = access.getProviders().getConstantReflection();
+        MetaAccessProvider metaAccess = access.getProviders().getMetaAccess();
+
+        ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(declaringType, fieldName);
+        JavaConstant fieldConstant = access.asFieldConstant(field);
+
+        ResolvedJavaMethod fieldSetAccessibleMethod = getUniqueDeclaredMethod(metaAccess, Field.class, "setAccessible", boolean.class);
+        ResolvedJavaMethod fieldSetMethod = getUniqueDeclaredMethod(metaAccess, Field.class, "set", Object.class, Object.class);
+
+        access.invoke(fieldSetAccessibleMethod, fieldConstant, JavaConstant.forBoolean(true));
+        JavaConstant boxedValue = value.getJavaKind().isPrimitive() ? constantReflection.boxPrimitive(value) : value;
+        access.invoke(fieldSetMethod, fieldConstant, receiver, boxedValue);
+    }
+
+    /**
+     * @see ReflectionUtil#writeStaticField
+     */
+    public static void writeStaticField(ResolvedJavaType declaringType, String fieldName, JavaConstant value) {
+        writeField(declaringType, fieldName, JavaConstant.NULL_POINTER, value);
     }
 }
