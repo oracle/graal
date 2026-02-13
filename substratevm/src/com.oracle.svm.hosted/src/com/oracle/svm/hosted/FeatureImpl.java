@@ -352,6 +352,12 @@ public class FeatureImpl {
             getUniverse().getHeapScanner().rescanRoot(field, reason);
         }
 
+        public void rescanRoot(ResolvedJavaField field, ScanReason reason) {
+            VMError.guarantee(!(field instanceof OriginalFieldProvider),
+                            "The ResolvedJavaField %s must be the original (Host VM) field. You can use OriginalFieldProvider.getOriginalField() to retrieve that", field);
+            getUniverse().getHeapScanner().rescanRoot(field, reason);
+        }
+
         public Field findField(String declaringClassName, String fieldName) {
             return findField(imageClassLoader.findClassOrFail(declaringClassName), fieldName);
         }
