@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.util.Objects;
 
@@ -60,6 +61,10 @@ public final class GuestElements {
     public final ResolvedJavaType java_lang_reflect_Proxy = lookupType(Proxy.class);
     public final ResolvedJavaType jdk_internal_loader_ClassLoaders = lookupType(ClassLoaders.class);
 
+    public final ResolvedJavaType java_lang_reflect_Field = lookupType(Field.class);
+    public final ResolvedJavaMethod java_lang_reflect_Field_setAccessible = lookupMethod(java_lang_reflect_Field, "setAccessible", boolean.class);
+    public final ResolvedJavaMethod java_lang_reflect_Field_set = lookupMethod(java_lang_reflect_Field, "set", Object.class, Object.class);
+
     public final ResolvedJavaType Uninterruptible = lookupType("com.oracle.svm.guest.staging.Uninterruptible");
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
@@ -80,5 +85,13 @@ public final class GuestElements {
             throw new GraalError("Unable to find type for class name " + className);
         }
         return type;
+    }
+
+    private static ResolvedJavaMethod lookupMethod(ResolvedJavaType type, String name, Class<?>... parameterTypes) {
+        var method = JVMCIReflectionUtil.getUniqueDeclaredMethod(GuestAccess.get().getProviders().getMetaAccess(), type, name, parameterTypes);
+        if (method == null) {
+            throw new GraalError("Unable to find type for class " + type.toClassName());
+        }
+        return method;
     }
 }
