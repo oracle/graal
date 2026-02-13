@@ -24,14 +24,14 @@
  * questions.
  */
 
-package com.oracle.svm.util;
-
-import org.graalvm.collections.UnmodifiableEconomicSet;
+package com.oracle.svm.shared.util;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+
+import org.graalvm.collections.UnmodifiableEconomicSet;
 
 /**
  * This is an interruptible wrapper around some of the {@link String} methods that we usually use to

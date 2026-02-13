@@ -42,8 +42,8 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.EnumMultiOptionKey;
 import jdk.graal.compiler.options.OptionDescriptor;

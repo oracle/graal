@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
@@ -46,10 +47,9 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport.NativeLibrary;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.util.StringUtil;
+import com.oracle.svm.shared.util.StringUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
 
 /** Loads/Unloads JVMTI agents that are located in shared object files. */
 public class JvmtiAgents {

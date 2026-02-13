@@ -39,7 +39,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.util.StringUtil;
+import com.oracle.svm.shared.util.StringUtil;
 
 /**
  * The normal option validation cannot be used for {@link SubstrateOptions#SupportedGCs} as that

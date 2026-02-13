@@ -106,10 +106,10 @@ import com.oracle.svm.hosted.CommonPoolUncaughtExceptionHandler;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
+import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.OptionKey;
 import jdk.internal.jimage.ImageReader;
