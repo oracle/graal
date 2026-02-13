@@ -34,7 +34,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Similar to {@link Log} but can be used from {@link Uninterruptible} code. Unlike {@link Log},

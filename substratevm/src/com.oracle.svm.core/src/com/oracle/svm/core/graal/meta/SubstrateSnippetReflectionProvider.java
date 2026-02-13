@@ -31,7 +31,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

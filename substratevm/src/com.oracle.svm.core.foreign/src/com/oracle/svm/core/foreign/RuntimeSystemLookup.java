@@ -44,7 +44,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.BasedOnJDKClass;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.foreign.Utils;
 import org.graalvm.word.impl.Word;

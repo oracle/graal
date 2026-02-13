@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.code.CallingConvention;

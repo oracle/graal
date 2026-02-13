@@ -51,7 +51,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.Option;
 

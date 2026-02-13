@@ -29,7 +29,7 @@ import java.lang.invoke.MethodHandle;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public final class MethodHandleInterpreterUtils {
     private MethodHandleInterpreterUtils() {

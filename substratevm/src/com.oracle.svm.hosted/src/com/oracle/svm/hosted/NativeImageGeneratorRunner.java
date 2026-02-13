@@ -72,7 +72,7 @@ import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;

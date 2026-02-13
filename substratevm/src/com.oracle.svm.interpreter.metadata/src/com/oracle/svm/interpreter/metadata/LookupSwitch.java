@@ -26,7 +26,7 @@ package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.interpreter.metadata.Bytecodes.LOOKUPSWITCH;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A utility for processing {@link Bytecodes#LOOKUPSWITCH} bytecodes.

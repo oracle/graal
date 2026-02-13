@@ -30,7 +30,7 @@ import java.nio.file.Path;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.VMRuntime;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 import com.oracle.svm.interpreter.metadata.serialization.Serializers;

@@ -68,7 +68,7 @@ import com.oracle.svm.core.nodes.foreign.ScopedMethodNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.SharedArenaSupport;

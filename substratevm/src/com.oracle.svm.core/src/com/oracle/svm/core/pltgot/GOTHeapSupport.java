@@ -41,7 +41,7 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;

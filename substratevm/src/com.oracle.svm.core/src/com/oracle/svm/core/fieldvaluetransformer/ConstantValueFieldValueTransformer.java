@@ -25,7 +25,7 @@
 package com.oracle.svm.core.fieldvaluetransformer;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 
 import jdk.vm.ci.meta.JavaConstant;

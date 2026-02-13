@@ -50,7 +50,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.Counter;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;

@@ -52,7 +52,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
 

@@ -36,8 +36,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointerForCallerSensitiveAdapter;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.reflect.MethodAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

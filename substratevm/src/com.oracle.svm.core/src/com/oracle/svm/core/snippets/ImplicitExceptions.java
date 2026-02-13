@@ -38,9 +38,9 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * This class contains support methods to throw implicit exceptions according to the specification

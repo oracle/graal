@@ -58,7 +58,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
 import com.oracle.svm.hosted.c.NativeCodeContext;
 import com.oracle.svm.hosted.c.NativeLibraries;

@@ -50,7 +50,7 @@ import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.lambda.LambdaParser;
 import com.oracle.svm.util.ClassUtil;

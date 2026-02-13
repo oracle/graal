@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Type;
@@ -38,7 +38,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.AnnotatedWrapper;

@@ -37,7 +37,7 @@ import com.oracle.svm.core.c.enums.CEnumRuntimeData;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;

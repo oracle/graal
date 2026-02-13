@@ -57,7 +57,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.ByteArrayReader;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;

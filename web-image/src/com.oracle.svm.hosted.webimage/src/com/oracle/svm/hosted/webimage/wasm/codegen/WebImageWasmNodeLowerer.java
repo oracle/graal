@@ -43,7 +43,7 @@ import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSNodeLowerer;
 import com.oracle.svm.hosted.webimage.wasm.WasmImports;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;

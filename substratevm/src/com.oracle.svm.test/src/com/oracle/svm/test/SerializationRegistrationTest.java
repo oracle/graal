@@ -34,7 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeSerialization;
 import org.junit.Assert;

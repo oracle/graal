@@ -53,7 +53,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.layered.LayeredFieldValue;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.analysis.FieldValueComputer;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerImpl;

@@ -37,7 +37,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 @TargetClass(java.util.concurrent.CompletableFuture.class)
 final class Target_java_util_concurrent_CompletableFuture {

@@ -46,7 +46,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDKUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 

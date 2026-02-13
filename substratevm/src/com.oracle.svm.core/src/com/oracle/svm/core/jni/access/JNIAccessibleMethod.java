@@ -39,7 +39,7 @@ import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.graal.nodes.LoadMethodByIndexNode;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jni.CallVariant;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;

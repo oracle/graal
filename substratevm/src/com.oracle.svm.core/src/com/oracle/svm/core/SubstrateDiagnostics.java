@@ -102,7 +102,7 @@ import com.oracle.svm.core.util.AbstractImageHeapList;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.ImageHeapList;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;

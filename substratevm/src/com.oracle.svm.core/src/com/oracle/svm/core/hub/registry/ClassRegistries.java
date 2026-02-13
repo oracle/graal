@@ -45,7 +45,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.JavaVersion;
 import com.oracle.svm.espresso.classfile.ParsingContext;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;

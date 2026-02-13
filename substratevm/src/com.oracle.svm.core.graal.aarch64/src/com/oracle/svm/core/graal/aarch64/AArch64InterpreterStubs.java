@@ -60,7 +60,7 @@ import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.PreparedArgumentType;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.Label;

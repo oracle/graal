@@ -37,7 +37,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.Constant;

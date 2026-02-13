@@ -40,7 +40,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 

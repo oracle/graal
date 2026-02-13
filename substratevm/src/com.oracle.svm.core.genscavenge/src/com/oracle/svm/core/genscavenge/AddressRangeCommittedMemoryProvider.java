@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
-import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.shared.util.VMError.guarantee;
 import static org.graalvm.word.impl.Word.nullPointer;
 import static org.graalvm.word.impl.Word.unsigned;
 
@@ -73,7 +73,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.impl.Word;

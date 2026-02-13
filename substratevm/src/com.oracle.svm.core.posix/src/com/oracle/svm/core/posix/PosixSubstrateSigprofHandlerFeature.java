@@ -49,7 +49,7 @@ import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * This feature is part of POSIX-based signal handling (see {@link PosixSubstrateSigprofHandler} as

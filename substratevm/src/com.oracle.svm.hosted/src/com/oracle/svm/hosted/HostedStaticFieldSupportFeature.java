@@ -40,7 +40,7 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.meta.HostedField;

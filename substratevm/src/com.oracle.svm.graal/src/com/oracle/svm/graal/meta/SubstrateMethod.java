@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.graal.meta;
 
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
+import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -57,7 +57,7 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.util.AnnotationUtil;
 

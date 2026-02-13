@@ -41,7 +41,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.util.LogUtils;

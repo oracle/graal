@@ -25,7 +25,7 @@
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
 import static com.oracle.svm.common.meta.MethodVariant.ORIGINAL_METHOD;
-import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.shared.util.VMError.guarantee;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
@@ -84,7 +84,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;

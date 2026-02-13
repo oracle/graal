@@ -31,7 +31,7 @@ import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
 import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.code.CompiledCode;

@@ -178,7 +178,7 @@ import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;
 import com.oracle.svm.core.util.LayeredImageHeapMapStore;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.BuildArtifactsExporter.BuildArtifactsImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;

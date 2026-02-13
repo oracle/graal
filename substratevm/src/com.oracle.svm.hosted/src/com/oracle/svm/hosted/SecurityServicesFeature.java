@@ -105,7 +105,7 @@ import com.oracle.svm.core.jdk.SecuritySubstitutions;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;

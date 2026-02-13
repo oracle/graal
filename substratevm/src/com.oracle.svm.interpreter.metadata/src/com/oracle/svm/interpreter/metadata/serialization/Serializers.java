@@ -42,7 +42,7 @@ import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
 import com.oracle.svm.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;

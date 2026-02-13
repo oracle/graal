@@ -29,7 +29,7 @@ import java.io.IOException;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 @TargetClass(className = "sun.nio.ch.Net", onlyWith = NonWindowsOS.class)
 final class Target_sun_nio_ch_Net {

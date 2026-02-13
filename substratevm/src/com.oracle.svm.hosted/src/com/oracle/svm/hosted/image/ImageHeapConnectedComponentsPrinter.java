@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.util.ByteFormattingUtil;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectReachabilityGroup;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectReachabilityInfo;

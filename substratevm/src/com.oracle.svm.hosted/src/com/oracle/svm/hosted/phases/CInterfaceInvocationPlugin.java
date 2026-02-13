@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.Arrays;
 
@@ -47,7 +47,7 @@ import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
 import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.c.CInterfaceError;
 import com.oracle.svm.hosted.c.CInterfaceWrapper;
 import com.oracle.svm.hosted.c.NativeLibraries;

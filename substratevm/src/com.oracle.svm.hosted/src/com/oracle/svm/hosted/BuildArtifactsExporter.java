@@ -43,7 +43,7 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.util.json.JsonWriter;

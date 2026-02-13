@@ -36,7 +36,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;

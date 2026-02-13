@@ -39,7 +39,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;

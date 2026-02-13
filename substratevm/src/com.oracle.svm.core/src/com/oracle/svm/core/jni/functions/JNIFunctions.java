@@ -124,7 +124,7 @@ import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.ArrayUtil;
 import com.oracle.svm.core.util.Utf8;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;

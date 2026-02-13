@@ -54,7 +54,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
 

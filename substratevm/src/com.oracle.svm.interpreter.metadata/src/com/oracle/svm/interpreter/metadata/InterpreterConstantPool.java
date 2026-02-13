@@ -41,7 +41,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;

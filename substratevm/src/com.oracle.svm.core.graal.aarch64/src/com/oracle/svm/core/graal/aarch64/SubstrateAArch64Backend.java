@@ -27,7 +27,7 @@ package com.oracle.svm.core.graal.aarch64;
 import static com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig.fp;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 import static jdk.graal.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.graal.compiler.lir.LIRValueUtil.asConstantValue;
@@ -84,7 +84,7 @@ import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;

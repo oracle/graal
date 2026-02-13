@@ -56,7 +56,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -67,6 +66,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;

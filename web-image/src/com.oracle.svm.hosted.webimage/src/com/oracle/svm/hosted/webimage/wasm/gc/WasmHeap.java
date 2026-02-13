@@ -53,7 +53,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.ReplacementsUtil;

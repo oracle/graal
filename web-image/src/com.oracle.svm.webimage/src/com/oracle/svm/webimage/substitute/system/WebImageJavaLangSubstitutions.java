@@ -55,7 +55,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
 import com.oracle.svm.webimage.functionintrinsics.JSInternalErrors;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
@@ -102,7 +102,7 @@ final class Target_java_util_TimeZone_Web {
     }
 }
 
-@TargetClass(com.oracle.svm.core.util.VMError.class)
+@TargetClass(com.oracle.svm.shared.util.VMError.class)
 @Platforms(WebImageJSPlatform.class)
 @SuppressWarnings("unused")
 final class Target_com_oracle_svm_core_util_VMError_Web {

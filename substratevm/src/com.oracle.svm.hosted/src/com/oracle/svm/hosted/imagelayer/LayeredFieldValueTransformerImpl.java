@@ -36,8 +36,8 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 

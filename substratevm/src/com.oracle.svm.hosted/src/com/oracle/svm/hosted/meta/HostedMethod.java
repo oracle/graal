@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
+import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.reflect.Type;
 import java.util.Collection;
@@ -58,7 +58,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;

@@ -61,7 +61,7 @@ import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;

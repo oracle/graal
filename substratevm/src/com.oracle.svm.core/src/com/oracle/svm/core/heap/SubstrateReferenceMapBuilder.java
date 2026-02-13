@@ -25,7 +25,7 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.debug.GraalError;

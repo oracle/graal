@@ -36,7 +36,7 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A utility class for managing the JVMTI agent's isolate. The JVMTI agent uses a single isolate

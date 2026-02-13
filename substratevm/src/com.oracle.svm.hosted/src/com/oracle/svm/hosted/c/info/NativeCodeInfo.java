@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.c.info;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereAtRuntime;
 
 import org.graalvm.nativeimage.c.CContext;
 

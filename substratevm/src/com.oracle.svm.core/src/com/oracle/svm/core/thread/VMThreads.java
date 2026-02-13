@@ -74,8 +74,8 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;

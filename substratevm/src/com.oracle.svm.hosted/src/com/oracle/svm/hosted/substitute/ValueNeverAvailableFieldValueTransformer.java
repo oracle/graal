@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.substitute;
 
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;

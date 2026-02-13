@@ -38,7 +38,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.JavaKind;

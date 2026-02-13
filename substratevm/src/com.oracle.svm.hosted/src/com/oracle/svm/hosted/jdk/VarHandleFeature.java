@@ -44,7 +44,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.VarHandleSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;

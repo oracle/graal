@@ -72,7 +72,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 
 import jdk.graal.compiler.graphio.GraphOutput;

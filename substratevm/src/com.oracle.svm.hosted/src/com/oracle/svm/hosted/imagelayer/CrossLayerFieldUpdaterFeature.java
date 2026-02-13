@@ -46,7 +46,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -60,6 +59,7 @@ import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;

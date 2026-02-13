@@ -48,7 +48,7 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;

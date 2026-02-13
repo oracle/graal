@@ -36,7 +36,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * The methods in this class are stand-ins for the JNI entrypoints of a Crema-loaded application

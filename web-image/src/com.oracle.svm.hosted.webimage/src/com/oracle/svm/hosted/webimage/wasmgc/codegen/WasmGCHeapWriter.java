@@ -49,7 +49,7 @@ import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;

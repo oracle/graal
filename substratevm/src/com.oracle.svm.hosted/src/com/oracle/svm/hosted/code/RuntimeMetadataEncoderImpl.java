@@ -93,7 +93,7 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.ByteArrayReader;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.RuntimeMetadataEncoder;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;

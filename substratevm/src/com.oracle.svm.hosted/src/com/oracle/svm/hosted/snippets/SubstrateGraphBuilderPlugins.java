@@ -91,7 +91,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;

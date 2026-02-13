@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.EmbeddedResourcesInfo.SourceAndOrigin;
 import com.oracle.svm.util.LogUtils;
 

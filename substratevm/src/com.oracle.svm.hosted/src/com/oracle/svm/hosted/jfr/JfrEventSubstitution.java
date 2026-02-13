@@ -36,7 +36,7 @@ import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.MetadataRepository;

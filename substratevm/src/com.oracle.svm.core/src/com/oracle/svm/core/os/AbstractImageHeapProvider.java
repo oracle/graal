@@ -47,7 +47,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     private static final CGlobalData<WordPointer> CACHED_RESERVED_IMAGE_HEAP_SIZE = CGlobalDataFactory.createWord();

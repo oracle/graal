@@ -73,7 +73,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;

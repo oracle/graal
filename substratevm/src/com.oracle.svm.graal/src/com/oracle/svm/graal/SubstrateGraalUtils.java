@@ -25,7 +25,7 @@
 package com.oracle.svm.graal;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.io.PrintStream;
 import java.util.EnumMap;
@@ -50,7 +50,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.isolated.IsolatedGraalUtils;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;

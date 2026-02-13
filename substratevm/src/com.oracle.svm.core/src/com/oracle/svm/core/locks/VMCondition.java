@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A condition that has minimal requirements on Java code. The implementation does not perform

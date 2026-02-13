@@ -74,13 +74,13 @@ import com.oracle.svm.core.posix.headers.Signal.SignalEnum;
 import com.oracle.svm.core.posix.headers.Signal.sigset_tPointer;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 

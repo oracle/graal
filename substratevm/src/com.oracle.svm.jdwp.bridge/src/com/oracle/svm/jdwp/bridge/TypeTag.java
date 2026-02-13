@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.jdwp.bridge;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 

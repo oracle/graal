@@ -73,7 +73,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
 

@@ -53,7 +53,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 

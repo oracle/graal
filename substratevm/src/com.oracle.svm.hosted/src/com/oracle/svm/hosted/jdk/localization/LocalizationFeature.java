@@ -78,7 +78,7 @@ import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;

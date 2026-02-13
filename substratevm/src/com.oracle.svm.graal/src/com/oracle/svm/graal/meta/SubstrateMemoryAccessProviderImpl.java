@@ -34,7 +34,7 @@ import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;

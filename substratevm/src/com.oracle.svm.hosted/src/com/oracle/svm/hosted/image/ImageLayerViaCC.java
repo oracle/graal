@@ -31,7 +31,7 @@ import java.util.List;
 
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;

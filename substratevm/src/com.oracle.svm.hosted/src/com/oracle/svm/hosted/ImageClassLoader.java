@@ -49,7 +49,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;

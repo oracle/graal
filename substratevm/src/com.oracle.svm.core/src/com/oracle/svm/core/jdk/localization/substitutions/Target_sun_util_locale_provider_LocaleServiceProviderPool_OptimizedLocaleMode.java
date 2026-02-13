@@ -34,7 +34,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import sun.util.locale.provider.LocaleServiceProviderPool;
 

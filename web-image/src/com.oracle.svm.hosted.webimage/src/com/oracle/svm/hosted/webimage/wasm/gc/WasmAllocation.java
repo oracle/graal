@@ -55,7 +55,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;

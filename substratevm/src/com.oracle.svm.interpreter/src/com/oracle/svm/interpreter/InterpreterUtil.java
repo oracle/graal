@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 
 public class InterpreterUtil {

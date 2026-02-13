@@ -70,7 +70,7 @@ import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 
 /**

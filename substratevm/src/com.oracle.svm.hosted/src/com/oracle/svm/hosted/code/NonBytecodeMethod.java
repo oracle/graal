@@ -28,7 +28,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.OriginalMethodProvider;

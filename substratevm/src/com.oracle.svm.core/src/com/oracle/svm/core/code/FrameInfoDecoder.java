@@ -42,7 +42,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.NonmovableByteArrayTypeReader;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.util.TypeConversion;

@@ -38,7 +38,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;

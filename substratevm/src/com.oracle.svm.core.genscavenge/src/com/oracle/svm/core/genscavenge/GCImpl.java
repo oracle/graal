@@ -113,7 +113,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.impl.Word;

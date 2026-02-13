@@ -55,7 +55,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;

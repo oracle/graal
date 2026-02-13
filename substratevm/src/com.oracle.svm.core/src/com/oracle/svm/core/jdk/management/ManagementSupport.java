@@ -67,7 +67,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.util.HostModuleUtil;

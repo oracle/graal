@@ -60,7 +60,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.util.SignatureUtil;
 import jdk.vm.ci.meta.JavaType;

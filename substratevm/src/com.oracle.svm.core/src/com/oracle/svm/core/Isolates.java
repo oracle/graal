@@ -42,7 +42,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 

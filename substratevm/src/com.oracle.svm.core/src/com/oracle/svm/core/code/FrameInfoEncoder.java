@@ -58,7 +58,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.LIRKind;

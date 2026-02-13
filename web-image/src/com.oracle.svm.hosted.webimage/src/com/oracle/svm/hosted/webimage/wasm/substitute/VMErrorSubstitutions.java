@@ -35,8 +35,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import com.oracle.svm.webimage.substitute.system.Target_java_lang_Throwable_Web;
@@ -80,7 +80,7 @@ public class VMErrorSubstitutions {
 
 }
 
-@TargetClass(com.oracle.svm.core.util.VMError.class)
+@TargetClass(VMError.class)
 @Platforms(WebImageWasmLMPlatform.class)
 @SuppressWarnings("unused")
 final class Target_com_oracle_svm_core_util_VMError_Web {

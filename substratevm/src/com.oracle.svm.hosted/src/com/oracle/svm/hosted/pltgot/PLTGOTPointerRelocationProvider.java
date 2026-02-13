@@ -30,7 +30,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.MethodPointerRelocationProvider;
 import com.oracle.svm.hosted.meta.HostedMethod;
 

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.util;
 
+import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 

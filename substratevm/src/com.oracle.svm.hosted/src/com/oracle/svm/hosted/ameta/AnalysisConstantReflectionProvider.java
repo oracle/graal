@@ -47,7 +47,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.classinitialization.TypeReachedProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;

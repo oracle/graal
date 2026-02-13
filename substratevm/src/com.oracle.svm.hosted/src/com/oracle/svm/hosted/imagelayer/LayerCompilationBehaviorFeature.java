@@ -29,7 +29,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
 

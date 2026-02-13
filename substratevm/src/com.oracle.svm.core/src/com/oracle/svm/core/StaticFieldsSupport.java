@@ -50,7 +50,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;

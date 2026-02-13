@@ -40,7 +40,7 @@ import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.word.impl.Word;

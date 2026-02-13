@@ -79,7 +79,7 @@ import com.oracle.svm.core.fieldvaluetransformer.StaticFieldBaseFieldValueTransf
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;

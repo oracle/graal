@@ -38,7 +38,6 @@ import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -50,6 +49,7 @@ import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaKind;

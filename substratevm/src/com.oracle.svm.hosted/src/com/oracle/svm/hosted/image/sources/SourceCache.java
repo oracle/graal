@@ -47,7 +47,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.LogUtils;

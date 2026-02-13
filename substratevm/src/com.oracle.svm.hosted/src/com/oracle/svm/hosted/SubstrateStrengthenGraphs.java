@@ -40,7 +40,7 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;

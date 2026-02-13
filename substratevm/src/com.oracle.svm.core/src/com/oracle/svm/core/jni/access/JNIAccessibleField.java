@@ -30,17 +30,17 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
 

@@ -40,7 +40,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.options.Option;

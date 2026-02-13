@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Set of predicates used to control activation of substitutions (depending on method

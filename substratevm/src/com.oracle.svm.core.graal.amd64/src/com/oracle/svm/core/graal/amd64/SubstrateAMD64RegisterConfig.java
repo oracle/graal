@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 import static jdk.vm.ci.amd64.AMD64.k0;
 import static jdk.vm.ci.amd64.AMD64.k1;
 import static jdk.vm.ci.amd64.AMD64.k2;
@@ -84,7 +84,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.vm.ci.amd64.AMD64;

@@ -95,7 +95,7 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.ExitStatus;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.driver.launcher.ContainerSupport;

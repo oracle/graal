@@ -36,13 +36,13 @@ import org.graalvm.nativeimage.c.constant.CEnumValue;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestTypes;
 

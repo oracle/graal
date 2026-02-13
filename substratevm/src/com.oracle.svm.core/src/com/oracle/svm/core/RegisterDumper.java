@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 
 public interface RegisterDumper {

@@ -51,7 +51,6 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -72,6 +71,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.singletons.traits.SingletonTraitsSupplier;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;

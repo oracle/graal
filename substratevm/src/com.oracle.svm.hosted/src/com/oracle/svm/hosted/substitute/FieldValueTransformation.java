@@ -35,7 +35,7 @@ import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.GuestAccess;

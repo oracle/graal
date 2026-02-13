@@ -41,7 +41,7 @@ import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTimer;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A safepoint check compares the value of the thread-local {@link SafepointCheckCounter} to 0. If

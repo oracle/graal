@@ -35,7 +35,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 

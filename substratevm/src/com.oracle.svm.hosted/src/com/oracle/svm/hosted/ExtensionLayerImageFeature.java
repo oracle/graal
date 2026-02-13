@@ -41,7 +41,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;

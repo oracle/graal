@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 
 import java.util.Collections;
 import java.util.List;

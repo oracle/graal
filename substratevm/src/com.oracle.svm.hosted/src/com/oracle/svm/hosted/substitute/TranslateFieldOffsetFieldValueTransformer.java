@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -32,7 +32,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.meta.JavaConstant;

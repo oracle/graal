@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
@@ -51,7 +51,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.api.replacements.Snippet;

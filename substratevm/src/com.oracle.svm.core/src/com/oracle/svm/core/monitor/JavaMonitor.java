@@ -41,7 +41,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.BasedOnJDKClass;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 

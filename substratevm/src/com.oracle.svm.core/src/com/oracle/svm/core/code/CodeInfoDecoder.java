@@ -26,7 +26,7 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -46,7 +46,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.util.TypeConversion;

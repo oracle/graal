@@ -56,7 +56,7 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;

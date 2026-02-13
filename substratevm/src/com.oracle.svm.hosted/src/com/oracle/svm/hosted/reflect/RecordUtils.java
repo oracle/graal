@@ -30,7 +30,7 @@ import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public final class RecordUtils {
 

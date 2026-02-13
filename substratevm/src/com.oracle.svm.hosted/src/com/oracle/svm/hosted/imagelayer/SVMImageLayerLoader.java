@@ -92,7 +92,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;

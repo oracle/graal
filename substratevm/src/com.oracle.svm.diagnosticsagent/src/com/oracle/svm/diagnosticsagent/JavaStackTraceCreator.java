@@ -39,7 +39,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
 import com.oracle.svm.jvmtiagentbase.Support;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;

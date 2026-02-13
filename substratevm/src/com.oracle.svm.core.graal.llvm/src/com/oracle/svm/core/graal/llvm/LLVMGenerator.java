@@ -82,7 +82,7 @@ import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;

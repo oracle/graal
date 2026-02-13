@@ -38,7 +38,7 @@ import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
 

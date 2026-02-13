@@ -25,8 +25,8 @@
 package com.oracle.svm.core.methodhandles;
 
 import static com.oracle.svm.core.invoke.MethodHandleUtils.getResolvedMember;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
@@ -59,7 +59,7 @@ import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.UnsafeFieldUtil;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;

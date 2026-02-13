@@ -44,7 +44,7 @@ import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.internal.misc.Unsafe;

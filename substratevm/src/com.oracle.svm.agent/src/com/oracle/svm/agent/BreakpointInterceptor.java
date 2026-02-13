@@ -25,7 +25,7 @@
 package com.oracle.svm.agent;
 
 import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
-import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.shared.util.VMError.guarantee;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -95,7 +95,7 @@ import com.oracle.svm.core.jni.headers.JNINativeMethod;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.jvmtiagentbase.AgentIsolate;
 import com.oracle.svm.jvmtiagentbase.ConstantPoolTool;
 import com.oracle.svm.jvmtiagentbase.ConstantPoolTool.MethodReference;

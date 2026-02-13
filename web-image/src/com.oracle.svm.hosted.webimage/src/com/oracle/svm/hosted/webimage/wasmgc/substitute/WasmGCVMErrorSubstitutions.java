@@ -31,7 +31,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.UnsupportedFeatureError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.debug.WasmDebug;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
@@ -55,7 +55,7 @@ public class WasmGCVMErrorSubstitutions {
     }
 }
 
-@TargetClass(com.oracle.svm.core.util.VMError.class)
+@TargetClass(VMError.class)
 @Platforms(WebImageWasmGCPlatform.class)
 @SuppressWarnings("unused")
 final class Target_com_oracle_svm_core_util_VMError_Web {

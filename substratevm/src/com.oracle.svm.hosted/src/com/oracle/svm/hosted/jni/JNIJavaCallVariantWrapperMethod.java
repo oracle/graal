@@ -44,7 +44,7 @@ import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
 import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;

@@ -33,7 +33,7 @@ import java.lang.reflect.RecordComponent;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public final class ReflectionObjectFactory {
     public static final int FIELD_OFFSET_NONE = 0;

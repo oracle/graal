@@ -88,7 +88,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.imagelayer.ImageLayerSectionFeature;
 import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 

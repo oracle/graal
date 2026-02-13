@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
@@ -78,7 +78,7 @@ import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.config.DynamicHubLayout;

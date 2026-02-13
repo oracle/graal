@@ -47,7 +47,7 @@ import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.darwin.DarwinStat;
 import com.oracle.svm.core.posix.headers.linux.LinuxStat;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 

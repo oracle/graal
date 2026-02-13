@@ -61,7 +61,7 @@ import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;

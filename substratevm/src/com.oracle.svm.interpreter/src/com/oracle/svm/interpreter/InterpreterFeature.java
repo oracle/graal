@@ -57,7 +57,7 @@ import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;

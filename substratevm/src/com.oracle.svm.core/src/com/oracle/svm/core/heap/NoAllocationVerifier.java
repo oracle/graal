@@ -29,7 +29,7 @@ import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Open an instance of this class to prevent the current thread from allocating objects in the Java

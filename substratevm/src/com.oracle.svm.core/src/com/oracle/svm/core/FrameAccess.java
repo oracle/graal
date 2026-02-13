@@ -42,7 +42,7 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.type.Stamp;

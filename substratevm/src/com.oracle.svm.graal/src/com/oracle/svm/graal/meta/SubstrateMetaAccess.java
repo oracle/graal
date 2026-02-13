@@ -25,7 +25,7 @@
 package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.config.ConfigurationValues.getObjectLayout;
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;

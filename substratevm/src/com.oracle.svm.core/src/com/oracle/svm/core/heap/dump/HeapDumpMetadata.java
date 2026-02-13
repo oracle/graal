@@ -62,7 +62,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.core.util.coder.ByteStream;
 import com.oracle.svm.core.util.coder.ByteStreamAccess;
 import com.oracle.svm.core.util.coder.NativeCoder;

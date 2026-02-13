@@ -115,7 +115,7 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;

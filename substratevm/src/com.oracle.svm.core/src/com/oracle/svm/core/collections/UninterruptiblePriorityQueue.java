@@ -30,7 +30,7 @@ import java.util.PriorityQueue;
 
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.util.BasedOnJDKClass;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * An uninterruptible priority queue, based on the corresponding JDK class. Uses the object identity

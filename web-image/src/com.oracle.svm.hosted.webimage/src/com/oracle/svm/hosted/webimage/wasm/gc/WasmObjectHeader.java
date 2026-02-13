@@ -39,7 +39,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapObject;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;

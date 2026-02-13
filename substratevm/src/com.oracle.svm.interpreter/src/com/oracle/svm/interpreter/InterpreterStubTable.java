@@ -31,7 +31,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;

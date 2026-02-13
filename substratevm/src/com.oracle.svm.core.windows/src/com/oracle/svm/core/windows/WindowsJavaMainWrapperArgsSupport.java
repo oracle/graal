@@ -34,7 +34,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
 import org.graalvm.word.impl.Word;

@@ -55,7 +55,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.UnreachableNode;
 import org.graalvm.word.impl.Word;

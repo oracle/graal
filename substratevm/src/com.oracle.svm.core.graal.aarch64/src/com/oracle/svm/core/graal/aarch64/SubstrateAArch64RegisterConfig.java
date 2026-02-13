@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 import static jdk.vm.ci.aarch64.AArch64.allRegisters;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
@@ -81,7 +81,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.aarch64.AArch64;

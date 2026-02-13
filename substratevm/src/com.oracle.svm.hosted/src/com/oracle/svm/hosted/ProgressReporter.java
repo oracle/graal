@@ -92,7 +92,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;

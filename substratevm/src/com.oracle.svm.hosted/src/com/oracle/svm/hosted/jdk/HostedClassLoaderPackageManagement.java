@@ -43,7 +43,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.PriorLayerMarker;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.BootLoaderSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
@@ -55,6 +54,7 @@ import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;

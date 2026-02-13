@@ -41,7 +41,7 @@ import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.ObjectFile.Symbol;
 import com.oracle.objectfile.SymbolTable;
 import com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile.LLVMSection;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public class LLVMSymtab extends LLVMSection implements SymbolTable {
 

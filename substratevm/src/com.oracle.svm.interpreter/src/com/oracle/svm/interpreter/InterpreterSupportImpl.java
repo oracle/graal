@@ -45,7 +45,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;

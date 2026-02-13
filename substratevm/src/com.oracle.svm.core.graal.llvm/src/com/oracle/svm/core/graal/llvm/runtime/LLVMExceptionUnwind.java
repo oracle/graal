@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm.runtime;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
 import java.util.function.BooleanSupplier;

@@ -33,7 +33,7 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class ClassInstanceReplacer<S, T> implements Function<Object, Object> {

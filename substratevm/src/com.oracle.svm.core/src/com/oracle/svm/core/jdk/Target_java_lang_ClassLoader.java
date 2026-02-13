@@ -53,7 +53,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.java.LambdaUtils;

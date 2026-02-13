@@ -29,7 +29,7 @@ import static com.oracle.svm.core.graal.nodes.WriteCodeBaseNode.writeCurrentVMCo
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
@@ -108,7 +108,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 

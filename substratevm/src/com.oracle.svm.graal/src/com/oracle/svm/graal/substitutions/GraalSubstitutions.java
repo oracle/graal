@@ -59,7 +59,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;

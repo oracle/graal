@@ -32,7 +32,7 @@ import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.graph.Node;

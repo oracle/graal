@@ -42,7 +42,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {

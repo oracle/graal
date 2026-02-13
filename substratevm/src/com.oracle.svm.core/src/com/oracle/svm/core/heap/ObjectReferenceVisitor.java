@@ -29,7 +29,7 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Visitor for object references in Java heap objects, Java stack frames, or off-heap data

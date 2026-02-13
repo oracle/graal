@@ -41,7 +41,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.aarch64.SubstrateAArch64Backend;
 import com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;

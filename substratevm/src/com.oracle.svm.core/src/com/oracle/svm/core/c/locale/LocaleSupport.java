@@ -41,7 +41,6 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.UserSystemProperty;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
@@ -52,6 +51,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;

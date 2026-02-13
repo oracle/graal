@@ -51,7 +51,7 @@ import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverse;

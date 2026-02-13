@@ -49,7 +49,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton({SubstrateSegfaultHandler.class, PosixSubstrateSegfaultHandler.class})
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)

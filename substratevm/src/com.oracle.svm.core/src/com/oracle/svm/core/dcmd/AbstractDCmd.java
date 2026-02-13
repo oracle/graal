@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /* Abstract base class for diagnostic commands. */
 public abstract class AbstractDCmd implements DCmd {
