@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub.registry;
 
+import static com.oracle.svm.espresso.classfile.Constants.ACC_PUBLIC;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -41,16 +43,20 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
+import com.oracle.svm.core.jdk.ModuleNative;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_Reflection;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ClassfileParser;
 import com.oracle.svm.espresso.classfile.ClassfileStream;
 import com.oracle.svm.espresso.classfile.ParserException;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -248,22 +254,115 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         if (Modifier.isFinal(superClass.getModifiers())) {
             throw new IncompatibleClassChangeError("Class " + parsed.getType() + " is a subclass of final class " + superKlassType);
         }
-        // GR-62339: Perform super class and interfaces access checks
-
         checkNotHybrid(parsed);
 
-        // GR-62339
-        Module module;
         ClassLoader classLoader = getClassLoader();
-        if (classLoader == null) {
-            module = bootLoader.getUnnamedModule();
-        } else {
-            module = classLoader.getUnnamedModule();
-        }
+        ByteSequence pkgString = TypeSymbols.getRuntimePackage(type);
+        Module module = findModule(pkgString);
 
         String externalName = getExternalName(parsed, info);
+        verifySuperAccesses(
+                        // Access checks use null as bootloader
+                        getClassLoader(),
+                        pkgString, module,
+                        superClass, superInterfaces,
+                        superKlassType, superInterfacesTypes,
+                        externalName);
+
         DynamicHub hub = CremaSupport.singleton().createHub(parsed, info, typeID, externalName, module, classLoader, superClass, superInterfaces);
         return DynamicHub.toClass(hub);
+    }
+
+    private Module findModule(ByteSequence pkgString) {
+        ClassLoader classLoader = getClassLoader();
+        Module module = ModuleNative.findModule(classLoader, pkgString.toString().replace('/', '.'));
+        if (module == null) {
+            if (classLoader == null) {
+                return bootLoader.getUnnamedModule();
+            } else {
+                return classLoader.getUnnamedModule();
+            }
+        }
+        return module;
+    }
+
+    private static void verifySuperAccesses(ClassLoader loader,
+                    ByteSequence pkgName,
+                    Module module,
+                    Class<?> superClass, Class<?>[] superInterfaces,
+                    Symbol<Type> superClassSymbol, Symbol<Type>[] superInterfacesSymbols,
+                    String externalName) {
+        if (!checkAccess(loader, pkgName, module, superClassSymbol, superClass)) {
+            throw new IllegalAccessError(moduleAndLoaderDetails(loader, module, externalName, superClass, "superclass"));
+        }
+        for (int i = 0; i < superInterfaces.length; i++) {
+            Class<?> intf = superInterfaces[i];
+            Symbol<Type> intfSymbol = superInterfacesSymbols[i];
+            if (!checkAccess(loader, pkgName, module, intfSymbol, intf)) {
+                throw new IllegalAccessError(moduleAndLoaderDetails(loader, module, externalName, intf, "superinterface"));
+            }
+        }
+    }
+
+    public static String moduleAndLoaderDetails(ClassLoader loader, Module module, String definingClassName, Class<?> superType, String superKind) {
+        final String are = " are ";
+        final String is = " is ";
+        StringBuilder sb = new StringBuilder().append("class ").append(definingClassName).append(" cannot access its ").append(superKind).append(" ").append(superType.getName());
+        sb.append(" (");
+        if (superType.getModule() == module) {
+            sb.append(definingClassName);
+            sb.append(" and ");
+            classInModuleOfLoader(superType.getName(), are, module, loader, sb);
+        } else {
+            classInModuleOfLoader(definingClassName, is, module, loader, sb);
+            sb.append("; ");
+            classInModuleOfLoader(superType.getName(), is, superType.getModule(), superType.getClassLoader(), sb);
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
+    public static void classInModuleOfLoader(String className, String beConjugation, Module module, ClassLoader loader, StringBuilder sb) {
+        sb.append(className);
+        sb.append(beConjugation);
+        sb.append("in ");
+        if (module.isNamed()) {
+            sb.append("module ").append(module.getName());
+        } else {
+            sb.append("unnamed module");
+        }
+        sb.append(" of loader ");
+        sb.append(loaderDesc(loader));
+    }
+
+    private static String loaderDesc(ClassLoader loader) {
+        if (loader == bootLoader || loader == null) {
+            return "bootstrap";
+        }
+        return loader.getName() != null ? loader.getName() : loader.getClass().getName();
+    }
+
+    private static boolean checkAccess(ClassLoader loader, ByteSequence pkgName, Module clsModule, Symbol<Type> superTypeSymbol, Class<?> superType) {
+        if (loader == superType.getClassLoader() &&
+                        pkgName.equals(TypeSymbols.getRuntimePackage(superTypeSymbol))) {
+            // Same package: trivial success.
+            return true;
+        }
+        if (!isPublic(superType)) {
+            // Only public types can be accessed outside of package
+            return false;
+        }
+        // Establish readability
+        if (!clsModule.canRead(superType.getModule())) {
+            return false;
+        }
+        // Ensures super's module exports super's package to the module we are defining our
+        // class to.
+        return Target_jdk_internal_reflect_Reflection.verifyModuleAccess(clsModule, superType);
+    }
+
+    private static boolean isPublic(Class<?> superType) {
+        return (superType.getModifiers() & ACC_PUBLIC) != 0;
     }
 
     private static void checkNotHybrid(ParserKlass parsed) {

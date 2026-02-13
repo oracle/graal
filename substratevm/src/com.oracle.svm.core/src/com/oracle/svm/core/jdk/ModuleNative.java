@@ -256,6 +256,11 @@ public final class ModuleNative {
                         .findFirst().orElse(null);
     }
 
+    public static Module findModule(ClassLoader loader, String pkgName) {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        return SubstrateUtil.cast(getModuleContainingPackage(loader, pkgName), Module.class);
+    }
+
     public static boolean bootLayerContainsModule(String name) {
         return ModuleLayer.boot().modules().stream().anyMatch(m -> getName(m).equals(name));
     }
