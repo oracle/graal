@@ -24,7 +24,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -106,7 +105,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
             BasicBlock<?> block = lir.getBlockById(blockId);
             ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
 
-            List<Variable> newVars = new LinkedList<>();
+            List<Variable> newVars = new ArrayList<>();
             constOverwriteProc.setVariableList(newVars);
 
             RAVInstruction.Base previousInstr = null;

@@ -9,6 +9,7 @@ import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -163,7 +164,7 @@ public class FromPredecessorsResolver {
         var locationMap = new HashMap<BasicBlock<?>, Map<Variable, VariableLocations>>();
 
         var defVariableToLocations = new HashMap<Variable, VariableLocations>();
-        var defBlockVariablesToPropagate = new LinkedList<Variable>();
+        var defBlockVariablesToPropagate = new ArrayList<Variable>();
         for (int i = 0; i < labelInstr.dests.count; i++) {
             var register = labelInstr.dests.curr[i];
             var variable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
@@ -244,7 +245,7 @@ public class FromPredecessorsResolver {
                 }
             }
 
-            var variablesToBePropagated = new LinkedList<Variable>();
+            var variablesToBePropagated = new ArrayList<Variable>();
             var iterator = variablesToPropagate.iterator();
             while (iterator.hasNext()) {
                 var variable = LIRValueUtil.asVariable(iterator.next());
