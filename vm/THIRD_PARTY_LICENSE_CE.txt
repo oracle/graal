@@ -1669,7 +1669,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-ASM 9.7.1
+ASM 9.8
 
 https://gitlab.ow2.org/asm/asm/blob/master/LICENSE.txt
 
