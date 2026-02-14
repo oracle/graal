@@ -102,7 +102,7 @@ class FromUsageResolver {
                 // looking for any changes to the target register that could highlight
                 // different register is supposed to be used, in case of reload/spill combo or
                 // register move. If we are wrong about the target register then, it will
-                // get thrown out in the verification stage. TODO: maybe try to use multiple usages to be sure?
+                // get thrown out in the verification stage.
                 switch (instruction) {
                     case RAVInstruction.VirtualMove move -> {
                         if (move.location.equals(location) && !move.variableOrConstant.equals(variable)) {

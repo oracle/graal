@@ -29,7 +29,7 @@ public class CircularDefinitionError extends RAVError {
 
             operandString.append(variable.toString());
             if (location != null) {
-                operandString.append(" -> ").append(location.toString());
+                operandString.append(" -> ").append(location);
             } else {
                 operandString.append(" -> ?");
             }

@@ -24,6 +24,7 @@ public class ValueNotInRegisterException extends RAVException {
 
     static String getErrorMessage(LIRInstruction instruction, BasicBlock<?> block, Value variable, Value location, AllocationState state) {
         var messageBuilder = new StringBuilder();
+        // @formatter:off
         messageBuilder
                 .append("Value ")
                 .append(variable)
@@ -34,6 +35,7 @@ public class ValueNotInRegisterException extends RAVException {
                 .append(" in ")
                 .append(block)
                 .append(" actual state is ");
+        // @formatter:on
 
         if (state instanceof ConflictedAllocationState confState) {
             var confStates = confState.getConflictedStates();

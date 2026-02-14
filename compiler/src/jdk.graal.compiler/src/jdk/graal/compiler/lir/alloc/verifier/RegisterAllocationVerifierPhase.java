@@ -44,7 +44,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         public static final OptionKey<String> RAFilter = new OptionKey<>(null);
     }
 
-    private RegisterAllocationVerifierPhaseState state;
+    private final RegisterAllocationVerifierPhaseState state;
 
     public RegisterAllocationVerifierPhase(RegisterAllocationVerifierPhaseState state) {
         this.state = state;

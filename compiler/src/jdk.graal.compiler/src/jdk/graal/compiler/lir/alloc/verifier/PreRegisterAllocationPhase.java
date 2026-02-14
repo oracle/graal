@@ -37,10 +37,10 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
     }
 
     public static class ConstantOverrideValueProcedure implements ValueProcedure {
-        private LIR lir;
+        private final LIR lir;
         private List<Variable> variables;
-        private Map<Variable, ConstantValue> constantValueMap;
-        private Method nextVariableMethod;
+        private final Map<Variable, ConstantValue> constantValueMap;
+        private final Method nextVariableMethod;
 
         public ConstantOverrideValueProcedure(LIR lir, Map<Variable, ConstantValue> constantValueMap) {
             this.lir = lir;
