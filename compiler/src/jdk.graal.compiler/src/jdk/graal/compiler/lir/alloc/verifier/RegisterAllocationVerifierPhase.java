@@ -15,6 +15,8 @@ import jdk.graal.compiler.options.EnumOptionKey;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -22,8 +24,6 @@ import jdk.vm.ci.code.TargetDescription;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -91,8 +91,8 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         var lir = lirGenRes.getLIR();
         var preallocMap = state.getInstructionMap(lirGenRes);
 
-        Map<Variable, RAVInstruction.Op> definedVariables = new HashMap<>();
-        Set<LIRInstruction> presentInstructions = new HashSet<>();
+        Map<Variable, RAVInstruction.Op> definedVariables = new EconomicHashMap<>();
+        Set<LIRInstruction> presentInstructions = new EconomicHashSet<>();
         for (var blockId : lir.getBlocks()) {
             BasicBlock<?> block = lir.getBlockById(blockId);
             ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);

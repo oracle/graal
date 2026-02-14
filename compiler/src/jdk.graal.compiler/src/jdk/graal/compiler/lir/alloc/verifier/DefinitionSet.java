@@ -1,11 +1,11 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.lir.LIRValueUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,13 +14,13 @@ public class DefinitionSet {
     protected Map<String, Value> valueMap;
 
     public DefinitionSet() {
-        this.internalSet = new HashSet<>();
-        this.valueMap = new HashMap<>();
+        this.internalSet = new EconomicHashSet<>();
+        this.valueMap = new EconomicHashMap<>();
     }
 
     public DefinitionSet(DefinitionSet defSet) {
-        this.internalSet = new HashSet<>(defSet.internalSet);
-        this.valueMap = new HashMap<>(defSet.valueMap);
+        this.internalSet = new EconomicHashSet<>(defSet.internalSet);
+        this.valueMap = new EconomicHashMap<>(defSet.valueMap);
     }
 
     public void add(Value value) {

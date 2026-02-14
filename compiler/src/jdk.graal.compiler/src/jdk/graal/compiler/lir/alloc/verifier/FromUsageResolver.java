@@ -2,16 +2,15 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.Value;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -30,12 +29,12 @@ class FromUsageResolver {
         public BasicBlock<?> block;
         public PathEntry previous;
 
-        public PathEntry(BasicBlock<?> block) {
+        PathEntry(BasicBlock<?> block) {
             this.block = block;
             this.previous = null;
         }
 
-        public PathEntry(BasicBlock<?> block, PathEntry previous) {
+        PathEntry(BasicBlock<?> block, PathEntry previous) {
             this.block = block;
             this.previous = previous;
         }
@@ -46,10 +45,15 @@ class FromUsageResolver {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
+            if (this == o) {
+                return true;
+            }
 
             if (o instanceof PathEntry le && le.block.equals(this.block)) {
-                if (le.previous == null) return this.previous == null;
+                if (le.previous == null) {
+                    return this.previous == null;
+                }
+
                 return le.previous.block.equals(this.previous.block);
             }
 
@@ -71,14 +75,15 @@ class FromUsageResolver {
         this.lir = lir;
         this.blockInstructions = blockInstructions;
 
-        this.labelMap = new HashMap<>();
-        this.variableRegisterMap = new HashMap<>();
-        this.usageAliasMap = new HashMap<>();
+        this.labelMap = new EconomicHashMap<>();
+        this.variableRegisterMap = new EconomicHashMap<>();
+        this.usageAliasMap = new EconomicHashMap<>();
     }
 
     private Value getLocationFromUsage(PathEntry path, BasicBlock<?> defBlock, RAVInstruction.Base usageInstruction, Value location, Variable variable) {
         boolean reachedUsage = false;
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: Iterates over linked list using PathEntry nodes
+            // Either we get an assertion about path being null or reaching def block - which always happens
             assert path != null;
 
             var block = path.block;
@@ -129,9 +134,8 @@ class FromUsageResolver {
             // @formatter:off
             Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap,
             Variable variable, Value location,
-            PathEntry path, RAVInstruction.Base useInstruction)
+            PathEntry path, RAVInstruction.Base useInstruction) {
             // @formatter:on
-    {
         var variableLabelInstr = this.labelMap.get(variable);
         if (variableLabelInstr == null) {
             return;
@@ -211,9 +215,9 @@ class FromUsageResolver {
         Queue<PathEntry> worklist = new LinkedList<>();
         worklist.add(new PathEntry(this.lir.getControlFlowGraph().getStartBlock()));
 
-        Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap = new HashMap<>();
+        Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap = new EconomicHashMap<>();
 
-        Set<PathEntry> visited = new HashSet<>(); // Ignore already visited combinations.
+        Set<PathEntry> visited = new EconomicHashSet<>(); // Ignore already visited combinations.
         while (!worklist.isEmpty()) {
             var entry = worklist.poll();
             if (visited.contains(entry)) {

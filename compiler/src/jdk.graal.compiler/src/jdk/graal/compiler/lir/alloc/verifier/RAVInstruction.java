@@ -47,23 +47,6 @@ public class RAVInstruction {
         }
     }
 
-    private static class GetCountProcedure implements InstructionValueProcedure {
-        protected int count = 0;
-
-        public int getCount() {
-            int count = this.count;
-            // Reset the count and go again for different argument type
-            this.count = 0;
-            return count;
-        }
-
-        @Override
-        public Value doValue(LIRInstruction instruction, Value value, LIRInstruction.OperandMode mode, EnumSet<LIRInstruction.OperandFlag> flags) {
-            count++;
-            return value;
-        }
-    }
-
     public static class ValueArrayPair {
         protected Value[] orig;
         protected Value[] curr;
@@ -167,6 +150,23 @@ public class RAVInstruction {
 
         public JavaKind[] kinds;
         public ValueArrayPair stateValues;
+
+        private final class GetCountProcedure implements InstructionValueProcedure {
+            private int count = 0;
+
+            public int getCount() {
+                int count = this.count;
+                // Reset the count and go again for different argument type
+                this.count = 0;
+                return count;
+            }
+
+            @Override
+            public Value doValue(LIRInstruction instruction, Value value, LIRInstruction.OperandMode mode, EnumSet<LIRInstruction.OperandFlag> flags) {
+                count++;
+                return value;
+            }
+        }
 
         public Op(LIRInstruction instruction) {
             super(instruction);

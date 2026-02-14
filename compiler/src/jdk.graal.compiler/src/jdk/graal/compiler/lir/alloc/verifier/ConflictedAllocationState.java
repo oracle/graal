@@ -1,14 +1,15 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.util.EconomicHashSet;
+
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 
 public class ConflictedAllocationState extends AllocationState {
     protected Set<ValueAllocationState> conflictedStates;
 
     public ConflictedAllocationState() {
-        this.conflictedStates = new HashSet<>();
+        this.conflictedStates = new EconomicHashSet<>();
     }
 
     public ConflictedAllocationState(ValueAllocationState state1, ValueAllocationState state2) {
@@ -18,7 +19,7 @@ public class ConflictedAllocationState extends AllocationState {
     }
 
     private ConflictedAllocationState(Set<ValueAllocationState> conflictedStates) {
-        this.conflictedStates = new HashSet<>(conflictedStates);
+        this.conflictedStates = new EconomicHashSet<>(conflictedStates);
     }
 
     public void addConflictedValue(ValueAllocationState state) {

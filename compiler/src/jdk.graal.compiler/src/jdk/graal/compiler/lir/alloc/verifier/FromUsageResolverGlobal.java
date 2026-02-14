@@ -6,11 +6,11 @@ import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.Value;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -35,18 +35,18 @@ class FromUsageResolverGlobal {
     public BlockMap<BlockUsage> blockUsageMap; // Entry blocks!
     public List<BasicBlock<?>> endBlocks;
 
-    class BlockUsage {
+    final class BlockUsage {
         private final DefinitionSet reached;
         private final Map<Variable, Value> locations;
 
         private BlockUsage() {
             this.reached = new DefinitionSet();
-            this.locations = new HashMap<>();
+            this.locations = new EconomicHashMap<>();
         }
 
         private BlockUsage(BlockUsage blockDefs) {
             this.reached = new DefinitionSet(blockDefs.reached);
-            this.locations = new HashMap<>(blockDefs.locations);
+            this.locations = new EconomicHashMap<>(blockDefs.locations);
         }
 
         private BlockUsage merge(BlockUsage other) {
@@ -76,13 +76,13 @@ class FromUsageResolverGlobal {
         this.lir = lir;
         this.blockInstructions = blockInstructions;
 
-        this.labelMap = new HashMap<>();
-        this.defined = new HashMap<>();
-        this.reached = new HashMap<>();
-        this.firstUsages = new HashMap<>();
-        this.initialLocations = new HashMap<>();
-        this.aliasMap = new HashMap<>();
-        this.aliasBlockMap = new HashMap<>();
+        this.labelMap = new EconomicHashMap<>();
+        this.defined = new EconomicHashMap<>();
+        this.reached = new EconomicHashMap<>();
+        this.firstUsages = new EconomicHashMap<>();
+        this.initialLocations = new EconomicHashMap<>();
+        this.aliasMap = new EconomicHashMap<>();
+        this.aliasBlockMap = new EconomicHashMap<>();
         this.endBlocks = new ArrayList<>();
 
         this.blockUsageMap = new BlockMap<>(lir.getControlFlowGraph());
@@ -108,7 +108,8 @@ class FromUsageResolverGlobal {
             var instructions = blockInstructions.get(block);
             for (var instruction : instructions.reversed()) {
                 switch (instruction) {
-                    case RAVInstruction.VirtualMove ignored -> {}
+                    case RAVInstruction.VirtualMove ignored -> {
+                    }
                     case RAVInstruction.Move move -> handleMove(usage, move.from, move.to);
                     case RAVInstruction.Op op -> {
                         if (op.lirInstruction instanceof StandardOp.LabelOp) {
@@ -159,7 +160,7 @@ class FromUsageResolverGlobal {
         worklist.add(startBlock);
 
         // Calculate what is defined when + usages
-        Set<BasicBlock<?>> visited = new HashSet<>();
+        Set<BasicBlock<?>> visited = new EconomicHashSet<>();
         while (!worklist.isEmpty()) {
             var block = worklist.remove();
             if (visited.contains(block)) {
@@ -235,7 +236,7 @@ class FromUsageResolverGlobal {
                 reached.put(variable, false);
 
                 if (!firstUsages.containsKey(op)) {
-                    firstUsages.put(op, new HashSet<>());
+                    firstUsages.put(op, new EconomicHashSet<>());
                 }
 
                 firstUsages.get(op).add(variable);

@@ -14,6 +14,7 @@ import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -23,7 +24,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -98,7 +98,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
 
         var preallocMap = state.createInstructionMap(lirGenRes);
         LIR lir = lirGenRes.getLIR();
-        Map<Variable, ConstantValue> constantValueMap = new HashMap<>();
+        Map<Variable, ConstantValue> constantValueMap = new EconomicHashMap<>();
         var constOverwriteProc = new ConstantOverrideValueProcedure(lir, constantValueMap);
 
         for (var blockId : lir.getBlocks()) {

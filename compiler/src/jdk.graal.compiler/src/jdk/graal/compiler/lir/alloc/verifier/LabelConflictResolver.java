@@ -4,11 +4,11 @@ import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.Value;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,9 +22,9 @@ public class LabelConflictResolver implements ConflictResolver {
     protected Map<Variable, Set<Value>> expandedRules;
 
     public LabelConflictResolver() {
-        this.labelMap = new HashMap<>();
-        this.rules = new HashMap<>();
-        this.expandedRules = new HashMap<>();
+        this.labelMap = new EconomicHashMap<>();
+        this.rules = new EconomicHashMap<>();
+        this.expandedRules = new EconomicHashMap<>();
     }
 
     @Override
@@ -66,7 +66,7 @@ public class LabelConflictResolver implements ConflictResolver {
                 }
 
                 var labelVariable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
-                Set<Value> resolutions = new HashSet<>();
+                Set<Value> resolutions = new EconomicHashSet<>();
 
                 for (int j = 0; j < block.getPredecessorCount(); j++) {
                     var pred = block.getPredecessorAt(j);
@@ -106,7 +106,7 @@ public class LabelConflictResolver implements ConflictResolver {
                 }
             }
 
-            expandedRules.put(variable, new HashSet<>(sources));
+            expandedRules.put(variable, new EconomicHashSet<>(sources));
         }
     }
 

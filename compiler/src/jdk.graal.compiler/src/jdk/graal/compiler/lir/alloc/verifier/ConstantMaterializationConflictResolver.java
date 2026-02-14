@@ -8,11 +8,11 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,8 +22,8 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     protected Set<Variable> canRematerializeToStack;
 
     public ConstantMaterializationConflictResolver() {
-        this.constantVariableMap = new HashMap<>();
-        this.canRematerializeToStack = new HashSet<>();
+        this.constantVariableMap = new EconomicHashMap<>();
+        this.canRematerializeToStack = new EconomicHashSet<>();
     }
 
     @Override

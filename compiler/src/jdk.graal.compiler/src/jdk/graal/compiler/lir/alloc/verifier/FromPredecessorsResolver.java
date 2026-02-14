@@ -6,12 +6,12 @@ import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -111,14 +111,14 @@ public class FromPredecessorsResolver {
         protected Set<String> internalList;
         protected Map<String, Value> valueMap;
 
-        public VariableLocations() {
-            this.internalList = new HashSet<>();
-            this.valueMap = new HashMap<>();
+        VariableLocations() {
+            this.internalList = new EconomicHashSet<>();
+            this.valueMap = new EconomicHashMap<>();
         }
 
-        public VariableLocations(VariableLocations other) {
-            this.internalList = new HashSet<>(other.internalList);
-            this.valueMap = new HashMap<>(other.valueMap);
+        VariableLocations(VariableLocations other) {
+            this.internalList = new EconomicHashSet<>(other.internalList);
+            this.valueMap = new EconomicHashMap<>(other.valueMap);
         }
 
         public void add(Value location) {
@@ -160,10 +160,10 @@ public class FromPredecessorsResolver {
         var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(defBlock).getFirst();
 
         // Definition block needs to have this set.
-        var propagateMap = new HashMap<BasicBlock<?>, List<Variable>>();
-        var locationMap = new HashMap<BasicBlock<?>, Map<Variable, VariableLocations>>();
+        var propagateMap = new EconomicHashMap<BasicBlock<?>, List<Variable>>();
+        var locationMap = new EconomicHashMap<BasicBlock<?>, Map<Variable, VariableLocations>>();
 
-        var defVariableToLocations = new HashMap<Variable, VariableLocations>();
+        var defVariableToLocations = new EconomicHashMap<Variable, VariableLocations>();
         var defBlockVariablesToPropagate = new ArrayList<Variable>();
         for (int i = 0; i < labelInstr.dests.count; i++) {
             var register = labelInstr.dests.curr[i];
@@ -177,7 +177,7 @@ public class FromPredecessorsResolver {
         }
 
         Queue<BasicBlock<?>> worklist = new LinkedList<>();
-        Set<BasicBlock<?>> processed = new HashSet<>();
+        Set<BasicBlock<?>> processed = new EconomicHashSet<>();
         worklist.add(defBlock);
         propagateMap.put(defBlock, defBlockVariablesToPropagate);
         locationMap.put(defBlock, defVariableToLocations);
@@ -302,7 +302,7 @@ public class FromPredecessorsResolver {
                     continue;
                 }
 
-                Map<Variable, VariableLocations> newLoc = new HashMap<>();
+                Map<Variable, VariableLocations> newLoc = new EconomicHashMap<>();
                 var itToBePropagated = variablesToBePropagated.iterator();
                 while (itToBePropagated.hasNext()) {
                     var variable = LIRValueUtil.asVariable(itToBePropagated.next());

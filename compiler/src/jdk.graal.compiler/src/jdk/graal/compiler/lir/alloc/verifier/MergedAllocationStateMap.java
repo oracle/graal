@@ -1,13 +1,13 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
+import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,20 +40,20 @@ public class MergedAllocationStateMap {
     protected RegisterAllocationConfig registerAllocationConfig;
 
     public MergedAllocationStateMap(RegisterAllocationConfig registerAllocationConfig) {
-        valueMap = new HashMap<>();
-        internalMap = new HashMap<>();
-        locationTimings = new HashMap<>();
-        prioritizedLocations = new HashMap<>();
+        valueMap = new EconomicHashMap<>();
+        internalMap = new EconomicHashMap<>();
+        locationTimings = new EconomicHashMap<>();
+        prioritizedLocations = new EconomicHashMap<>();
         time = 0;
 
         this.registerAllocationConfig = registerAllocationConfig;
     }
 
     public MergedAllocationStateMap(MergedAllocationStateMap other) {
-        valueMap = new HashMap<>(other.valueMap);
-        internalMap = new HashMap<>(other.internalMap);
-        locationTimings = new HashMap<>(other.locationTimings);
-        prioritizedLocations = new HashMap<>(other.prioritizedLocations);
+        valueMap = new EconomicHashMap<>(other.valueMap);
+        internalMap = new EconomicHashMap<>(other.internalMap);
+        locationTimings = new EconomicHashMap<>(other.locationTimings);
+        prioritizedLocations = new EconomicHashMap<>(other.prioritizedLocations);
         time = other.time + 1;
 
         registerAllocationConfig = other.registerAllocationConfig;
@@ -132,7 +132,7 @@ public class MergedAllocationStateMap {
     }
 
     public Set<Value> getValueLocations(Value value) {
-        Set<Value> locations = new HashSet<>();
+        Set<Value> locations = new EconomicHashSet<>();
         for (var entry : this.internalMap.entrySet()) {
             if (entry.getValue() instanceof ValueAllocationState valState) {
                 if (valState.getValue().equals(value)) {
