@@ -3,7 +3,6 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.List;
 

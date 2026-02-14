@@ -9,7 +9,6 @@ import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
@@ -49,6 +48,13 @@ public class MergedBlockVerifierState {
         return values;
     }
 
+    // TODO: reconsider the merging/meeting logic
+    // It might make sense to only keep certain states if it is certain to be defined / have a value present
+    // If a new value was defined in one branch in a certain register and other branches do not have anything in this
+    // register, then the value could not be defined at merging block and if used later it could be verified as valid
+    // but it is not.
+    // If overwritten in one branch but block before branching also has a certain value here
+    // it would just be marked as unknown / conflicted -> Only care if value after merge is ValueAllocatedState!
     public boolean meetWith(MergedBlockVerifierState other) {
         return this.values.mergeWith(other.getValues());
     }

@@ -99,24 +99,14 @@ class FromUsageResolver {
                 // register move. If we are wrong about the target register then, it will
                 // get thrown out in the verification stage. TODO: maybe try to use multiple usages to be sure?
                 switch (instruction) {
-                    case RAVInstruction.Spill spill -> {
-                        if (spill.to.equals(location)) {
-                            location = spill.from;
+                    case RAVInstruction.VirtualMove move -> {
+                        if (move.location.equals(location) && !move.variableOrConstant.equals(variable)) {
+                            throw new TargetLocationOverwrittenException(move, block);
                         }
                     }
                     case RAVInstruction.Move move -> {
                         if (move.to.equals(location)) {
                             location = move.from;
-                        }
-                    }
-                    case RAVInstruction.Reload reload -> {
-                        if (reload.to.equals(location)) {
-                            location = reload.from;
-                        }
-                    }
-                    case RAVInstruction.VirtualMove move -> {
-                        if (move.location.equals(location) && !move.variableOrConstant.equals(variable)) {
-                            throw new TargetLocationOverwrittenException(move, block);
                         }
                     }
                     // For Op, if there is a redefinition, we let the later stages handle that
