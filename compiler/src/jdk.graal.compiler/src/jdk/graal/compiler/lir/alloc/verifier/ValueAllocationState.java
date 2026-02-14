@@ -2,7 +2,6 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
-import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.vm.ci.code.RegisterValue;
@@ -11,9 +10,9 @@ import jdk.vm.ci.meta.Value;
 
 public class ValueAllocationState extends AllocationState implements Cloneable {
     protected Value value;
-    protected LIRInstruction source;
+    protected RAVInstruction.Base source;
 
-    public ValueAllocationState(Value value, LIRInstruction source) {
+    public ValueAllocationState(Value value, RAVInstruction.Base source) {
         if (value instanceof RegisterValue || LIRValueUtil.isVariable(value) || value instanceof ConstantValue || value instanceof StackSlot || value instanceof VirtualStackSlot || Value.ILLEGAL.equals(value)) {
             // StackSlot, RegisterValue is present in start block in label as predefined argument
             // VirtualStackSlot is used for RESTORE_REGISTERS and SAVE_REGISTERS
@@ -34,6 +33,10 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
 
     public Value getValue() {
         return value;
+    }
+
+    public RAVInstruction.Base getSource() {
+        return source;
     }
 
     public AllocationState meet(AllocationState other) {

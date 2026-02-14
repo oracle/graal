@@ -132,7 +132,7 @@ public class LabelConflictResolver implements ConflictResolver {
             return null;
         }
 
-        return new ValueAllocationState(target, labelMap.get(target).getLIRInstruction());
+        return new ValueAllocationState(target, labelMap.get(target));
     }
 
     @Override
@@ -146,6 +146,6 @@ public class LabelConflictResolver implements ConflictResolver {
             return null;
         }
 
-        return new ValueAllocationState(target, labelMap.get(target).getLIRInstruction());
+        return new ValueAllocationState(target, labelMap.get(target));
     }
 }

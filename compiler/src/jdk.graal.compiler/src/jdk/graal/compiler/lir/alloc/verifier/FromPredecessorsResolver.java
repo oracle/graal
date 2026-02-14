@@ -256,7 +256,7 @@ public class FromPredecessorsResolver {
                 variablesToBePropagated.add(variable);
                 for (var location : locations) {
                     if (state != null) {
-                        state.values.put(location, new ValueAllocationState(variable, labelInstr.lirInstruction));
+                        state.values.put(location, new ValueAllocationState(variable, labelInstr));
                     }
                 }
             }
@@ -307,7 +307,7 @@ public class FromPredecessorsResolver {
                     var variable = LIRValueUtil.asVariable(itToBePropagated.next());
                     var locations = variableToLocations.get(variable);
                     for (var location : locations) {
-                        succEntryState.values.put(location, new ValueAllocationState(variable, labelInstr.lirInstruction));
+                        succEntryState.values.put(location, new ValueAllocationState(variable, labelInstr));
                     }
 
                     newLoc.put(variable, new VariableLocations(locations));

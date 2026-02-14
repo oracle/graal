@@ -281,9 +281,9 @@ public class MergedBlockVerifierState {
             if (location.equals(variable)) {
                 // Only check register validity if it was changed by the register allocator
                 // for example: rbp is used as input to start block and forbidden to be used by the allocator
-                this.values.putWithoutRegCheck(location, new ValueAllocationState(variable, op.lirInstruction));
+                this.values.putWithoutRegCheck(location, new ValueAllocationState(variable, op));
             } else {
-                this.values.put(location, new ValueAllocationState(variable, op.lirInstruction));
+                this.values.put(location, new ValueAllocationState(variable, op));
             }
         }
 
@@ -301,7 +301,7 @@ public class MergedBlockVerifierState {
 
     protected void updateWithVirtualMove(RAVInstruction.VirtualMove virtMove) {
         if (virtMove.location instanceof RegisterValue) {
-            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove.lirInstruction));
+            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove));
         } else if (LIRValueUtil.isVariable(virtMove.location)) {
             // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
             // Move before allocation
@@ -309,10 +309,10 @@ public class MergedBlockVerifierState {
             // TestCase: BoxingTest.boxBoolean
             var locations = this.values.getValueLocations(virtMove.variableOrConstant);
             for (var location : locations) {
-                this.values.put(location, new ValueAllocationState(virtMove.location, virtMove.lirInstruction));
+                this.values.put(location, new ValueAllocationState(virtMove.location, virtMove));
             }
         } else {
-            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove.lirInstruction));
+            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove));
         }
     }
 }
