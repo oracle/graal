@@ -54,7 +54,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
-        if (state.shouldBeVerified(lirGenRes)) {
+        if (!state.shouldBeVerified(lirGenRes)) {
             // Filter for compilation unit substring to run verification only on
             // certain methods, cannot use MethodFilter here because I cannot
             // access JavaMethod here.

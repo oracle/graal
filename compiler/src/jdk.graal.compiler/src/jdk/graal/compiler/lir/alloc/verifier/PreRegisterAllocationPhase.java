@@ -93,7 +93,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
-        if (state.shouldBeVerified(lirGenRes)) {
+        if (!state.shouldBeVerified(lirGenRes)) {
             return;
         }
 
