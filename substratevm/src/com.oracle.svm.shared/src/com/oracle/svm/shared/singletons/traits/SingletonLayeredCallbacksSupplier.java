@@ -30,5 +30,5 @@ package com.oracle.svm.shared.singletons.traits;
  * information.
  */
 public abstract class SingletonLayeredCallbacksSupplier {
-    public abstract SingletonTrait getLayeredCallbacksTrait();
+    public abstract LayeredCallbacksSingletonTrait getLayeredCallbacksTrait();
 }

@@ -37,14 +37,13 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
 
@@ -136,7 +135,7 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
         private static final String CPU_FEATURE_ENUM_TO_STRUCT_OFFSETS = "cpuFeatureEnumToStructOffsets";
 
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<CPUFeatureAccessImpl>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, CPUFeatureAccessImpl singleton) {
@@ -169,7 +168,7 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
                                     Arrays.toString(previousLayerCpuFeatureEnumToStructOffsets), Arrays.toString(singleton.cpuFeatureEnumToStructOffsets));
                 }
             };
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+            return new LayeredCallbacksSingletonTrait(action);
         }
 
         private static List<String> getCPUFeaturesList(CPUFeatureAccessImpl cpuFeatureAccess) {

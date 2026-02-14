@@ -29,5 +29,5 @@ package com.oracle.svm.shared.singletons.traits;
  * {@link SingletonTraits} and {@link SingletonTraitKind#ACCESS} for more information.
  */
 public abstract sealed class SingletonAccessSupplier permits BuiltinTraits.BuildtimeAccessOnly, BuiltinTraits.RuntimeAccessOnly, BuiltinTraits.AllAccess {
-    public abstract SingletonTrait getAccessTrait();
+    public abstract AccessSingletonTrait getAccessTrait();
 }

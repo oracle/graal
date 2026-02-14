@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,51 @@
  */
 package com.oracle.svm.shared.singletons.traits;
 
+import java.util.Objects;
+
 import com.oracle.svm.shared.singletons.Invariants;
 
 /**
  * Describes a facet of a singleton's behavior. See {@link SingletonTraits} and
  * {@link SingletonTraitKind} for more details.
  */
-public record SingletonTrait(SingletonTraitKind kind, Object metadata) {
+public abstract class SingletonTrait<T> {
 
-    public static final SingletonTrait[] EMPTY_ARRAY = new SingletonTrait[0];
+    public static final SingletonTrait<?>[] EMPTY_ARRAY = new SingletonTrait<?>[0];
 
-    public SingletonTrait {
-        /*
-         * Guarantee the metadata for this trait is of the expected kind.
-         */
+    private final SingletonTraitKind kind;
+    private final T metadata;
+
+    public SingletonTrait(SingletonTraitKind kind, T metadata) {
+        /* Guarantee the metadata for this trait is of the expected kind. */
         Invariants.guarantee(kind.getMetadataClass().isInstance(metadata), "Unexpected metadata kind.");
+        this.kind = kind;
+        this.metadata = metadata;
+    }
+
+    public SingletonTraitKind kind() {
+        return kind;
+    }
+
+    public T metadata() {
+        return metadata;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof SingletonTrait<?> that) {
+            return kind == that.kind && Objects.equals(metadata, that.metadata);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(kind, metadata);
+    }
+
+    @Override
+    public String toString() {
+        return "SingletonTrait[" + "kind=" + kind + ", " + "metadata=" + metadata + ']';
     }
 }

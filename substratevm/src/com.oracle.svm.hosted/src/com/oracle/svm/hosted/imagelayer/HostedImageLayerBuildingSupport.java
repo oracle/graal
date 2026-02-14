@@ -52,11 +52,6 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -69,6 +64,12 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
 import com.oracle.svm.shaded.org.capnproto.Serialize;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.TypeResult;
 
@@ -100,7 +101,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      * associate additional traits with a singleton. Currently this is exclusively set in
      * {@link #initialize}.
      */
-    private final Function<Class<?>, SingletonTrait[]> singletonTraitInjector;
+    private final Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector;
     /**
      * Optional suboption of the {@link LayeredImageOptions#LayerCreate} option. If the
      * `LayerCreate` option is specified inside a `native-image.properties` file and this suboption
@@ -114,7 +115,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private HostedImageLayerBuildingSupport(ImageClassLoader imageClassLoader,
                     Reader snapshot, List<FileChannel> graphsChannels,
                     boolean buildingImageLayer, boolean buildingInitialLayer, boolean buildingApplicationLayer,
-                    WriteLayerArchiveSupport writeLayerArchiveSupport, LoadLayerArchiveSupport loadLayerArchiveSupport, Function<Class<?>, SingletonTrait[]> singletonTraitInjector) {
+                    WriteLayerArchiveSupport writeLayerArchiveSupport, LoadLayerArchiveSupport loadLayerArchiveSupport, Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector) {
         super(buildingImageLayer, buildingInitialLayer, buildingApplicationLayer);
         this.imageClassLoader = imageClassLoader;
         this.snapshot = snapshot;
@@ -197,7 +198,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return typeResult.get();
     }
 
-    public Function<Class<?>, SingletonTrait[]> getSingletonTraitInjector() {
+    public Function<Class<?>, SingletonTrait<?>[]> getSingletonTraitInjector() {
         return singletonTraitInjector;
     }
 
@@ -387,10 +388,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
 
-        Function<Class<?>, SingletonTrait[]> singletonTraitInjector = null;
+        Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector = null;
         if (buildingImageLayer) {
             var applicationLayerOnlySingletons = LayeredImageOptions.ApplicationLayerOnlySingletons.getValue(values);
-            SingletonTrait[] appLayerOnly = new SingletonTrait[]{SingletonLayeredInstallationKind.APP_LAYER_ONLY};
+            LayeredInstallationKindSingletonTrait[] appLayerOnly = new LayeredInstallationKindSingletonTrait[]{SingletonLayeredInstallationKind.APP_LAYER_ONLY};
             singletonTraitInjector = (key) -> {
                 if (applicationLayerOnlySingletons.contains(key.getName())) {
                     return appLayerOnly;
