@@ -22,15 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
+package com.oracle.svm.shared.singletons.traits;
+
+import com.oracle.svm.shared.singletons.Invariants;
+import com.oracle.svm.shared.singletons.SingletonAccessFlags;
 
 /**
- * Represents a supplier of the {@link SingletonTraitKind#LAYERED_INSTALLATION_KIND}
- * {@link SingletonTrait}. See {@link SingletonTraits} and
- * {@link SingletonTraitKind#LAYERED_INSTALLATION_KIND} for more information.
+ * Metadata associated with the {@link SingletonTraitKind#ACCESS} trait. Describes when this
+ * singleton can be accessed (e.g., during the native image generator process and/or from within the
+ * generated code at runtime).
  */
-// Checkstyle: stop
-public abstract sealed class SingletonLayeredInstallationKindSupplier permits SingletonLayeredInstallationKind.UnavailableAtRuntime, SingletonLayeredInstallationKind.InitialLayerOnly, SingletonLayeredInstallationKind.ApplicationLayerOnly, SingletonLayeredInstallationKind.MultiLayer, SingletonLayeredInstallationKind.Duplicable {
-// Checkstyle: resume
-    public abstract SingletonTrait getLayeredInstallationKindTrait();
+public class SingletonAccess {
+    interface Supplier {
+        SingletonAccessFlags getAccessFlags();
+    }
+
+    public static SingletonAccessFlags getAccess(SingletonTrait trait) {
+        Invariants.guarantee(trait.kind() == SingletonTraitKind.ACCESS, "Unexpected trait kind.");
+        return ((Supplier) trait.metadata()).getAccessFlags();
+    }
 }

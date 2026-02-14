@@ -22,23 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
-
-import com.oracle.svm.core.layeredimagesingleton.SingletonAccessFlags;
-import com.oracle.svm.core.util.VMError;
+package com.oracle.svm.shared.singletons.traits;
 
 /**
- * Metadata associated with the {@link SingletonTraitKind#ACCESS} trait. Describes when this
- * singleton can be accessed (e.g., during the native image generator process and/or from within the
- * generated code at runtime).
+ * Represents a supplier of the {@link SingletonTraitKind#ACCESS} {@link SingletonTrait}. See
+ * {@link SingletonTraits} and {@link SingletonTraitKind#ACCESS} for more information.
  */
-public class SingletonAccess {
-    interface Supplier {
-        SingletonAccessFlags getAccessFlags();
-    }
-
-    public static SingletonAccessFlags getAccess(SingletonTrait trait) {
-        VMError.guarantee(trait.kind() == SingletonTraitKind.ACCESS);
-        return ((Supplier) trait.metadata()).getAccessFlags();
-    }
+public abstract sealed class SingletonAccessSupplier permits BuiltinTraits.BuildtimeAccessOnly, BuiltinTraits.RuntimeAccessOnly, BuiltinTraits.AllAccess {
+    public abstract SingletonTrait getAccessTrait();
 }

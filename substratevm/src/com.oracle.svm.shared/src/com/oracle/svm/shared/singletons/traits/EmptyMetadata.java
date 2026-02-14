@@ -22,22 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
-
-import com.oracle.svm.core.util.VMError;
+package com.oracle.svm.shared.singletons.traits;
 
 /**
- * Describes a facet of a singleton's behavior. See {@link SingletonTraits} and
- * {@link SingletonTraitKind} for more details.
+ * This metadata class is used for {@link SingletonTrait}s which need to store no additional
+ * content.
  */
-public record SingletonTrait(SingletonTraitKind kind, Object metadata) {
+final class EmptyMetadata {
+    static final EmptyMetadata EMPTY = new EmptyMetadata();
 
-    public static final SingletonTrait[] EMPTY_ARRAY = new SingletonTrait[0];
-
-    public SingletonTrait {
-        /*
-         * Guarantee the metadata for this trait is of the expected kind.
-         */
-        VMError.guarantee(kind.getMetadataClass().isInstance(metadata));
+    private EmptyMetadata() {
     }
 }

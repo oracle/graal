@@ -149,9 +149,9 @@ public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProc
                             import org.graalvm.nativeimage.ImageSingletons;
 
                             import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-                            import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-                            import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-                            import com.oracle.svm.core.traits.SingletonTraits;%3$s
+                            import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+                            import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+                            import com.oracle.svm.shared.singletons.traits.SingletonTraits;%3$s
 
                             @AutomaticallyRegisteredFeature%4$s
                             @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)

@@ -22,13 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
+package com.oracle.svm.shared.singletons.traits;
+
+import com.oracle.svm.shared.singletons.Invariants;
 
 /**
- * Represents a supplier of the {@link SingletonTraitKind#LAYERED_CALLBACKS} {@link SingletonTrait}.
- * See {@link SingletonTraits} and {@link SingletonTraitKind#LAYERED_CALLBACKS} for more
- * information.
+ * Describes a facet of a singleton's behavior. See {@link SingletonTraits} and
+ * {@link SingletonTraitKind} for more details.
  */
-public abstract class SingletonLayeredCallbacksSupplier {
-    public abstract SingletonTrait getLayeredCallbacksTrait();
+public record SingletonTrait(SingletonTraitKind kind, Object metadata) {
+
+    public static final SingletonTrait[] EMPTY_ARRAY = new SingletonTrait[0];
+
+    public SingletonTrait {
+        /*
+         * Guarantee the metadata for this trait is of the expected kind.
+         */
+        Invariants.guarantee(kind.getMetadataClass().isInstance(metadata), "Unexpected metadata kind.");
+    }
 }

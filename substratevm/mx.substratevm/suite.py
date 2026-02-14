@@ -1995,6 +1995,10 @@ suite = {
                             org.graalvm.nativeimage.guest.staging,
                             org.graalvm.nativeimage.foreign,
                             org.graalvm.truffle.runtime.svm""",
+                    """com.oracle.svm.shared.singletons to
+                            org.graalvm.nativeimage.builder""",
+                    """com.oracle.svm.shared.singletons.traits to
+                            org.graalvm.nativeimage.builder""",
                 ],
                 "opens" : [],
                 "requires": [

@@ -22,21 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.shared.singletons;
 
-import java.util.List;
+/**
+ * Flags used to determine how the native image generator can access the image singleton.
+ */
+public enum SingletonAccessFlags {
+    /**
+     * This singleton can only be accessed at runtime.
+     */
+    RUNTIME_ACCESS_ONLY,
+    /**
+     * This singleton can only be accessed at buildtime.
+     */
+    BUILDTIME_ACCESS_ONLY,
 
-public interface ImageSingletonLoader {
-
-    List<Boolean> readBoolList(String keyName);
-
-    int readInt(String keyName);
-
-    List<Integer> readIntList(String keyName);
-
-    long readLong(String keyName);
-
-    String readString(String keyName);
-
-    List<String> readStringList(String keyName);
+    /**
+     * This singleton can be accessed from both buildtime and runtime.
+     */
+    ALL_ACCESS
 }

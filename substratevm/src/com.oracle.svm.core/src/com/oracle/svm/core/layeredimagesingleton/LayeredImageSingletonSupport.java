@@ -27,14 +27,15 @@ package com.oracle.svm.core.layeredimagesingleton;
 import java.util.Collection;
 import java.util.Set;
 
+import com.oracle.svm.shared.singletons.SingletonAccessFlags;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InstallationKind;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 
 import jdk.vm.ci.meta.JavaConstant;
 
