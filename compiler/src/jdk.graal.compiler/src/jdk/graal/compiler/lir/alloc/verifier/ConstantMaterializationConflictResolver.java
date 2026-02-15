@@ -4,7 +4,6 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
-import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.util.EconomicHashMap;
@@ -40,11 +39,6 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         if (instruction instanceof RAVInstruction.Op op && op.lirInstruction.isLoadConstantOp()) {
             var loadConstantOp = StandardOp.LoadConstantOp.asLoadConstantOp(op.lirInstruction);
 
-            // TODO: Handle moves for canRematerializeToStack
-            // MOVE vstack:1, const // v1
-            // MOVE rax, vstack:1
-            // USE v1
-
             if (!op.dests.orig[0].isVariable()) {
                 return;
             }
@@ -64,10 +58,10 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         var confStates = conflictedState.getConflictedStates();
 
         RAVariable variable = null;
-        RAValue constantValue = null;
+        ValueAllocationState constantState = null;
 
-        for (var states : confStates) {
-            var value = states.getRAValue();
+        for (var state : confStates) {
+            var value = state.getRAValue();
             if (value.isVariable()) {
                 if (variable != null && !variable.equals(value)) {
                     return null;
@@ -75,15 +69,15 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
 
                 variable = value.asVariable();
             } else if (value.getValue() instanceof ConstantValue) {
-                if (constantValue != null && !constantValue.equals(value)) {
+                if (constantState != null && !constantState.getRAValue().equals(value)) {
                     return null;
                 }
 
-                constantValue = value;
+                constantState = state;
             }
         }
 
-        if (!target.equals(variable) || constantValue == null) {
+        if (!target.equals(variable) || constantState == null) {
             return null;
         }
 
@@ -91,11 +85,11 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
             return null;
         }
 
-        if (!this.constantVariableMap.get(variable).equals(constantValue)) {
+        if (!this.constantVariableMap.get(variable).equals(constantState.getValue())) {
             return null;
         }
 
-        if (isRematerializedToWrongLocation(variable, location)) {
+        if (isRematerializedToWrongLocation(variable, constantState)) {
             throw new RAVException("Variable " + variable + " cannot be rematerialized to stack location " + location);
         }
 
@@ -113,7 +107,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
                 return null;
             }
 
-            if (isRematerializedToWrongLocation(variable, location)) {
+            if (isRematerializedToWrongLocation(variable, valueState)) {
                 throw new RAVException("Variable " + variable + " cannot be rematerialized to stack location " + location);
             }
 
@@ -123,11 +117,18 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         return null;
     }
 
-    protected boolean isRematerializedToWrongLocation(RAVariable variable, RAValue raLocation) {
-        var location = raLocation.getValue();
-        if (location instanceof StackSlot || location instanceof VirtualStackSlot) {
-            return !canRematerializeToStack.contains(variable);
+    protected boolean isRematerializedToWrongLocation(RAVariable variable, ValueAllocationState state) {
+        if (canRematerializeToStack.contains(variable)) {
+            return false;
         }
-        return false;
+
+        // Cannot be rematerialized to stack
+        var source = state.getSource();
+        if (source instanceof RAVInstruction.ValueMove move) {
+            var location = move.location.getValue();
+            return location instanceof StackSlot || location instanceof VirtualStackSlot;
+        } else {
+            throw new IllegalStateException();
+        }
     }
 }

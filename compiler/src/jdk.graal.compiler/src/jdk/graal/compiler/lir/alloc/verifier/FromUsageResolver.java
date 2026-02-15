@@ -4,12 +4,9 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
-import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
-import jdk.vm.ci.meta.Value;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -104,12 +101,12 @@ class FromUsageResolver {
                 // register move. If we are wrong about the target register then, it will
                 // get thrown out in the verification stage.
                 switch (instruction) {
-                    case RAVInstruction.VirtualMove move -> {
+                    case RAVInstruction.ValueMove move -> {
                         if (move.location.equals(location) && !move.variableOrConstant.equals(variable)) {
                             throw new TargetLocationOverwrittenException(move, block);
                         }
                     }
-                    case RAVInstruction.Move move -> {
+                    case RAVInstruction.LocationMove move -> {
                         if (move.to.equals(location)) {
                             location = move.from;
                         }
@@ -238,7 +235,7 @@ class FromUsageResolver {
 
             for (var instruction : instructions) {
                 switch (instruction) {
-                    case RAVInstruction.VirtualMove move -> {
+                    case RAVInstruction.ValueMove move -> {
                         this.tryMappingVariable(labelToBlockMap, move.variableOrConstant, move.location, entry, instruction);
                     }
                     case RAVInstruction.Op op -> {

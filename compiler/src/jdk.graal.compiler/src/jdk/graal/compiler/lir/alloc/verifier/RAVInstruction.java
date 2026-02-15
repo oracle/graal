@@ -15,12 +15,10 @@ import java.util.List;
 public class RAVInstruction {
     public static class Base {
         protected LIRInstruction lirInstruction;
-        protected List<VirtualMove> virtualMoveList;
-        protected List<VirtualMove> speculativeMoveList;
+        protected List<ValueMove> virtualMoveList;
+        protected List<ValueMove> speculativeMoveList;
 
         public Base(LIRInstruction lirInstruction) {
-            // We do not actually need the original instruction here,
-            // but is useful to have when debugging.
             this.lirInstruction = lirInstruction;
             this.virtualMoveList = new LinkedList<>();
             this.speculativeMoveList = new LinkedList<>();
@@ -30,19 +28,19 @@ public class RAVInstruction {
             return lirInstruction;
         }
 
-        public void addVirtualMove(VirtualMove virtualMove) {
+        public void addVirtualMove(ValueMove virtualMove) {
             this.virtualMoveList.add(virtualMove);
         }
 
-        public List<VirtualMove> getVirtualMoveList() {
+        public List<ValueMove> getVirtualMoveList() {
             return virtualMoveList;
         }
 
-        public void addSpeculativeMove(VirtualMove virtualMove) {
-            this.speculativeMoveList.add(virtualMove);
+        public void addSpeculativeMove(ValueMove speculativeMove) {
+            this.speculativeMoveList.add(speculativeMove);
         }
 
-        public List<VirtualMove> getSpeculativeMoveList() {
+        public List<ValueMove> getSpeculativeMoveList() {
             return speculativeMoveList;
         }
     }
@@ -204,11 +202,11 @@ public class RAVInstruction {
         }
     }
 
-    public static class Move extends Base {
+    public static class LocationMove extends Base {
         public RAValue from;
         public RAValue to;
 
-        public Move(LIRInstruction instr, Value from, Value to) {
+        public LocationMove(LIRInstruction instr, Value from, Value to) {
             super(instr);
             this.from = RAValue.create(from);
             this.to = RAValue.create(to);
@@ -219,7 +217,7 @@ public class RAVInstruction {
         }
     }
 
-    public static class RegMove extends Move {
+    public static class RegMove extends LocationMove {
         // public RegisterValue from;
         // public RegisterValue to;
         public RAValue from;
@@ -238,7 +236,7 @@ public class RAVInstruction {
 
     // StackMove class to handle STACKMOVE instruction, temporary for now
     // before I decide how all Moves should be handled + all possible combinations.
-    public static class StackMove extends Move {
+    public static class StackMove extends LocationMove {
         public RAValue from;
         public RAValue to;
 
@@ -257,7 +255,7 @@ public class RAVInstruction {
         }
     }
 
-    public static class Reload extends Move {
+    public static class Reload extends LocationMove {
         public RAValue from;
         public RAValue to;
 
@@ -272,7 +270,7 @@ public class RAVInstruction {
         }
     }
 
-    public static class Spill extends Move {
+    public static class Spill extends LocationMove {
         public RAValue from;
         public RAValue to;
 
@@ -287,12 +285,12 @@ public class RAVInstruction {
         }
     }
 
-    public static class VirtualMove extends Move {
+    public static class ValueMove extends Base {
         public RAValue variableOrConstant;
-        public RAValue location;
+        public RAValue location; // Can also be another variable!
 
-        public VirtualMove(LIRInstruction instr, Value variableOrConstant, Value location) {
-            super(instr, variableOrConstant, location);
+        public ValueMove(LIRInstruction instr, Value variableOrConstant, Value location) {
+            super(instr);
             this.variableOrConstant = RAValue.create(variableOrConstant);
             this.location = RAValue.create(location);
         }

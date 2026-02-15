@@ -3,7 +3,6 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
-import jdk.vm.ci.meta.Value;
 
 import java.util.List;
 import java.util.Set;

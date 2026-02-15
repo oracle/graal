@@ -4,16 +4,16 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 
 @SuppressWarnings("serial")
 public class TargetLocationOverwrittenException extends RAVException {
-    public RAVInstruction.VirtualMove virtualMove;
+    public RAVInstruction.ValueMove valueMove;
     public BasicBlock<?> block;
 
-    public TargetLocationOverwrittenException(RAVInstruction.VirtualMove move, BasicBlock<?> block) {
+    public TargetLocationOverwrittenException(RAVInstruction.ValueMove move, BasicBlock<?> block) {
         super(getErrorMessage(move, block));
-        this.virtualMove = move;
+        this.valueMove = move;
         this.block = block;
     }
 
-    static String getErrorMessage(RAVInstruction.VirtualMove move, BasicBlock<?> block) {
+    static String getErrorMessage(RAVInstruction.ValueMove move, BasicBlock<?> block) {
         return "Target location " + move.location + " was overwritten by " + move.lirInstruction + " in " + block;
     }
 }

@@ -130,7 +130,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                     var location = valueMov.getInput();
                     var variable = LIRValueUtil.asVariable(valueMov.getResult());
 
-                    var virtualMove = new RAVInstruction.VirtualMove(instruction, variable, location);
+                    var virtualMove = new RAVInstruction.ValueMove(instruction, variable, location);
                     previousInstr.addVirtualMove(virtualMove);
                     continue; // No need to store virtual move here, it is stored into previous instruction.
                 }
@@ -148,7 +148,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                     var variable = LIRValueUtil.asVariable(valueMov.getInput());
                     var register = valueMov.getResult();
 
-                    var virtualMove = new RAVInstruction.VirtualMove(instruction, variable, register);
+                    var virtualMove = new RAVInstruction.ValueMove(instruction, variable, register);
                     previousInstr.addSpeculativeMove(virtualMove);
                 }
 

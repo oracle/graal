@@ -2,7 +2,6 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.vm.ci.meta.Value;
 
 @SuppressWarnings("serial")
 public class ValueNotInRegisterException extends RAVException {

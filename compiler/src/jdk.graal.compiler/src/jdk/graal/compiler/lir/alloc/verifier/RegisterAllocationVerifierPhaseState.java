@@ -31,8 +31,9 @@ public class RegisterAllocationVerifierPhaseState {
     }
 
     public Map<LIRInstruction, RAVInstruction.Base> createInstructionMap(LIRGenerationResult lirGenRes) {
-        this.verifierInstructions.put(lirGenRes, new IdentityHashMap<>());
-        return this.verifierInstructions.get(lirGenRes);
+        var idMap = new IdentityHashMap<LIRInstruction, RAVInstruction.Base>();
+        this.verifierInstructions.put(lirGenRes, idMap);
+        return idMap;
     }
 
     public Map<LIRInstruction, RAVInstruction.Base> getInstructionMap(LIRGenerationResult lirGenRes) {

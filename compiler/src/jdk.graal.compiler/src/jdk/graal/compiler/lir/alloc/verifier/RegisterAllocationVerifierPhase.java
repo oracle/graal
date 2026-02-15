@@ -5,9 +5,7 @@ import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
@@ -187,8 +185,8 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                 var result = constatLoad.getResult(); // Can be RegisterValue or VirtualStackSlot
 
                 // This isn't really a virtual move, but it currently acts the same, so we keep it,
-                // we take constants as variables. TODO: maybe remove virtual move altogether for Move(reg, var/constant)
-                return new RAVInstruction.VirtualMove(instruction, new ConstantValue(result.getValueKind(), constant), result);
+                // we take constants as variables.
+                return new RAVInstruction.ValueMove(instruction, new ConstantValue(result.getValueKind(), constant), result);
             }
 
             return null;

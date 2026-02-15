@@ -3,16 +3,11 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
-import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.meta.Value;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -154,11 +149,11 @@ public class FromPredecessorsResolver {
                 RAValue toLocation;
 
                 switch (instruction) {
-                    case RAVInstruction.VirtualMove virtMove -> {
+                    case RAVInstruction.ValueMove virtMove -> {
                         toLocation = virtMove.location;
                         fromLocation = null;
                     }
-                    case RAVInstruction.Move move -> {
+                    case RAVInstruction.LocationMove move -> {
                         fromLocation = move.from;
                         toLocation = move.to;
                     }

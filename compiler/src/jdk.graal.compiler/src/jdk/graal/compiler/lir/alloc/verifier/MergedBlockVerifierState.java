@@ -6,11 +6,9 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.ConstantValue;
-import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 public class MergedBlockVerifierState {
@@ -185,7 +183,7 @@ public class MergedBlockVerifierState {
             }
 
             if (value.isIllegal()) {
-                continue; // TODO: remove IllegalValues from these arrays.
+                continue;
             }
 
             for (int j = 0; j < instruction.temp.count; j++) {
@@ -257,8 +255,8 @@ public class MergedBlockVerifierState {
     public void update(RAVInstruction.Base instruction, BasicBlock<?> block) {
         switch (instruction) {
             case RAVInstruction.Op op -> this.updateWithOp(op, block);
-            case RAVInstruction.VirtualMove virtMove -> this.updateWithVirtualMove(virtMove);
-            case RAVInstruction.Move move -> this.values.putClone(move.to, this.values.get(move.from));
+            case RAVInstruction.ValueMove virtMove -> this.updateWithVirtualMove(virtMove);
+            case RAVInstruction.LocationMove move -> this.values.putClone(move.to, this.values.get(move.from));
             default -> throw GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
         }
     }
@@ -303,13 +301,12 @@ public class MergedBlockVerifierState {
         }
     }
 
-    protected void updateWithVirtualMove(RAVInstruction.VirtualMove virtMove) {
+    protected void updateWithVirtualMove(RAVInstruction.ValueMove virtMove) {
         if (virtMove.location.getValue() instanceof RegisterValue) {
             this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove));
         } else if (virtMove.location.isVariable()) {
             // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
             // Move before allocation
-            // TODO: maybe handle this better than VirtualMove with location as Variable
             // TestCase: BoxingTest.boxBoolean
             var locations = this.values.getValueLocations(virtMove.variableOrConstant);
             for (var location : locations) {
