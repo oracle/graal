@@ -32,13 +32,11 @@ import com.oracle.svm.shared.singletons.SingletonAccessFlags;
  * singleton can be accessed (e.g., during the native image generator process and/or from within the
  * generated code at runtime).
  */
-public class SingletonAccess {
-    public interface Supplier {
-        SingletonAccessFlags getAccessFlags();
-    }
+public interface SingletonAccess {
+    SingletonAccessFlags getAccessFlags();
 
     public static SingletonAccessFlags getAccess(SingletonTrait<?> trait) {
         Invariants.guarantee(trait.kind() == SingletonTraitKind.ACCESS, "Unexpected trait kind.");
-        return ((Supplier) trait.metadata()).getAccessFlags();
+        return ((SingletonAccess) trait.metadata()).getAccessFlags();
     }
 }

@@ -28,9 +28,9 @@ package com.oracle.svm.shared.singletons.traits;
  * A singleton with this trait has specific access restrictions, e.g., it can be accessed during the
  * native image generator process and/or from within the generated code at runtime.
  */
-public final class AccessSingletonTrait extends SingletonTrait<SingletonAccess.Supplier> {
+public final class AccessSingletonTrait extends SingletonTrait<SingletonAccess> {
 
-    public AccessSingletonTrait(SingletonAccess.Supplier accessSupplier) {
+    public AccessSingletonTrait(SingletonAccess accessSupplier) {
         super(SingletonTraitKind.ACCESS, accessSupplier);
     }
 }
