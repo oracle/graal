@@ -40,8 +40,8 @@ public abstract class SingletonTrait<T> {
     private final T metadata;
 
     public SingletonTrait(SingletonTraitKind kind, T metadata) {
-        /* Guarantee the metadata for this trait is of the expected kind. */
-        Invariants.guarantee(kind.getMetadataClass().isInstance(metadata), "Unexpected metadata kind.");
+        /* Guarantee that the trait class matches that of the kind. */
+        Invariants.guarantee(kind.traitClass() == this.getClass(), "Unexpected trait class.");
         this.kind = kind;
         this.metadata = metadata;
     }
