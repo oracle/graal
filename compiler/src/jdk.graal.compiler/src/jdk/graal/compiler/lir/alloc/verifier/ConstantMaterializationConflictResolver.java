@@ -6,20 +6,18 @@ import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.Value;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class ConstantMaterializationConflictResolver implements ConflictResolver {
-    protected Map<Variable, ConstantValue> constantVariableMap;
-    protected Set<Variable> canRematerializeToStack;
+    protected Map<RAVariable, ConstantValue> constantVariableMap;
+    protected Set<RAVariable> canRematerializeToStack;
 
     public ConstantMaterializationConflictResolver() {
         this.constantVariableMap = new EconomicHashMap<>();
@@ -47,12 +45,12 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
             // MOVE rax, vstack:1
             // USE v1
 
-            if (!LIRValueUtil.isVariable(op.dests.orig[0])) {
+            if (!op.dests.orig[0].isVariable()) {
                 return;
             }
 
-            var variable = LIRValueUtil.asVariable(op.dests.orig[0]);
-            var constantValue = new ConstantValue(variable.getValueKind(), loadConstantOp.getConstant());
+            var variable = op.dests.orig[0].asVariable();
+            var constantValue = new ConstantValue(variable.getValue().getValueKind(), loadConstantOp.getConstant());
 
             constantVariableMap.put(variable, constantValue);
             if (loadConstantOp.canRematerializeToStack()) {
@@ -62,26 +60,26 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     }
 
     @Override
-    public ValueAllocationState resolveConflictedState(Variable target, ConflictedAllocationState conflictedState, Value location) {
+    public ValueAllocationState resolveConflictedState(RAVariable target, ConflictedAllocationState conflictedState, RAValue location) {
         var confStates = conflictedState.getConflictedStates();
 
-        Variable variable = null;
-        ConstantValue constantValue = null;
+        RAVariable variable = null;
+        RAValue constantValue = null;
 
         for (var states : confStates) {
-            var value = states.getValue();
-            if (LIRValueUtil.isVariable(value)) {
+            var value = states.getRAValue();
+            if (value.isVariable()) {
                 if (variable != null && !variable.equals(value)) {
                     return null;
                 }
 
-                variable = LIRValueUtil.asVariable(value);
-            } else if (value instanceof ConstantValue constValue) {
-                if (constantValue != null && !constantValue.equals(constValue)) {
+                variable = value.asVariable();
+            } else if (value.getValue() instanceof ConstantValue) {
+                if (constantValue != null && !constantValue.equals(value)) {
                     return null;
                 }
 
-                constantValue = constValue;
+                constantValue = value;
             }
         }
 
@@ -105,12 +103,12 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     }
 
     @Override
-    public ValueAllocationState resolveValueState(Variable variable, ValueAllocationState valueState, Value location) {
+    public ValueAllocationState resolveValueState(RAVariable variable, ValueAllocationState valueState, RAValue location) {
         if (!this.constantVariableMap.containsKey(variable)) {
             return null;
         }
 
-        if (valueState.getValue() instanceof ConstantValue constant) {
+        if (valueState.getRAValue().getValue() instanceof ConstantValue constant) {
             if (!this.constantVariableMap.get(variable).equals(constant)) {
                 return null;
             }
@@ -125,7 +123,8 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         return null;
     }
 
-    protected boolean isRematerializedToWrongLocation(Variable variable, Value location) {
+    protected boolean isRematerializedToWrongLocation(RAVariable variable, RAValue raLocation) {
+        var location = raLocation.getValue();
         if (location instanceof StackSlot || location instanceof VirtualStackSlot) {
             return !canRematerializeToStack.contains(variable);
         }

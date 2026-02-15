@@ -8,19 +8,19 @@ import java.util.List;
 
 @SuppressWarnings("serial")
 public class CircularDefinitionError extends RAVError {
-    public CircularDefinitionError(BasicBlock<?> defBlock, BasicBlock<?> predecessor, RAVInstruction.Op label, List<Variable> beingPropagated) {
+    public CircularDefinitionError(BasicBlock<?> defBlock, BasicBlock<?> predecessor, RAVInstruction.Op label, List<RAVariable> beingPropagated) {
         super(getErrorMessage(defBlock, predecessor, label, beingPropagated));
     }
 
-    static String getErrorMessage(BasicBlock<?> defBlock, BasicBlock<?> predecessor, RAVInstruction.Op label, List<Variable> beingPropagated) {
+    static String getErrorMessage(BasicBlock<?> defBlock, BasicBlock<?> predecessor, RAVInstruction.Op label, List<RAVariable> beingPropagated) {
         StringBuilder operandString = new StringBuilder("[");
         var values = label.dests;
         for (int i = 0; i < values.count; i++) {
-            if (!LIRValueUtil.isVariable(values.orig[i])) {
+            if (!values.orig[i].isVariable()) {
                 continue; // Avoid fatal error
             }
 
-            var variable = LIRValueUtil.asVariable(values.orig[i]);
+            var variable = values.orig[i].asVariable();
             if (!beingPropagated.contains(variable)) {
                 continue;
             }

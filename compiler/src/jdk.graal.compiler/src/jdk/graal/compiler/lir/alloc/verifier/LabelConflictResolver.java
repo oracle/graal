@@ -2,11 +2,8 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
-import jdk.graal.compiler.lir.LIRValueUtil;
-import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
-import jdk.vm.ci.meta.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,9 +14,9 @@ public class LabelConflictResolver implements ConflictResolver {
     protected LIR lir;
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
-    protected Map<Variable, RAVInstruction.Op> labelMap;
-    protected Map<Variable, Set<Value>> rules;
-    protected Map<Variable, Set<Value>> expandedRules;
+    protected Map<RAVariable, RAVInstruction.Op> labelMap;
+    protected Map<RAVariable, Set<RAValue>> rules;
+    protected Map<RAVariable, Set<RAValue>> expandedRules;
 
     public LabelConflictResolver() {
         this.labelMap = new EconomicHashMap<>();
@@ -44,12 +41,12 @@ public class LabelConflictResolver implements ConflictResolver {
             var labelInstr = (RAVInstruction.Op) instructions.getFirst();
 
             for (int i = 0; i < labelInstr.dests.count; i++) {
-                if (!LIRValueUtil.isVariable(labelInstr.dests.orig[i])) {
+                if (!labelInstr.dests.orig[i].isVariable()) {
                     continue;
                 }
 
-                var labelVariable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
-                labelMap.put(labelVariable, labelInstr);
+                var labelVariable = labelInstr.dests.orig[i];
+                labelMap.put(labelVariable.asVariable(), labelInstr);
             }
         }
     }
@@ -61,12 +58,12 @@ public class LabelConflictResolver implements ConflictResolver {
             var labelInstr = (RAVInstruction.Op) instructions.getFirst();
 
             for (int i = 0; i < labelInstr.dests.count; i++) {
-                if (!LIRValueUtil.isVariable(labelInstr.dests.orig[i])) {
+                if (!labelInstr.dests.orig[i].isVariable()) {
                     continue;
                 }
 
-                var labelVariable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
-                Set<Value> resolutions = new EconomicHashSet<>();
+                var labelVariable = labelInstr.dests.orig[i].asVariable();
+                Set<RAValue> resolutions = new EconomicHashSet<>();
 
                 for (int j = 0; j < block.getPredecessorCount(); j++) {
                     var pred = block.getPredecessorAt(j);
@@ -83,17 +80,17 @@ public class LabelConflictResolver implements ConflictResolver {
 
     protected void expandRules() {
         for (var entry : rules.entrySet()) {
-            var variable = LIRValueUtil.asVariable(entry.getKey());
+            var variable = entry.getKey();
 
-            ArrayList<Value> sources = new ArrayList<>(entry.getValue());
+            ArrayList<RAValue> sources = new ArrayList<>(entry.getValue());
             int sourceCount = sources.size();
             for (int i = 0; i < sourceCount; i++) {
                 var source = sources.get(i);
-                if (!LIRValueUtil.isVariable(source)) {
+                if (!source.isVariable()) {
                     continue;
                 }
 
-                var sourceVariable = LIRValueUtil.asVariable(source);
+                var sourceVariable = source.asVariable();
                 if (rules.containsKey(sourceVariable)) {
                     for (var newSource : rules.get(sourceVariable)) {
                         if (sources.contains(newSource)) {
@@ -110,9 +107,9 @@ public class LabelConflictResolver implements ConflictResolver {
         }
     }
 
-    protected boolean isSubsetOfValues(Set<Value> superset, Set<ValueAllocationState> subset) {
+    protected boolean isSubsetOfValues(Set<RAValue> superset, Set<ValueAllocationState> subset) {
         for (var v : subset) {
-            if (!superset.contains(v.getValue())) {
+            if (!superset.contains(v.getRAValue())) {
                 return false;
             }
         }
@@ -120,7 +117,7 @@ public class LabelConflictResolver implements ConflictResolver {
     }
 
     @Override
-    public ValueAllocationState resolveConflictedState(Variable target, ConflictedAllocationState conflictedState, Value location) {
+    public ValueAllocationState resolveConflictedState(RAVariable target, ConflictedAllocationState conflictedState, RAValue location) {
         if (!this.expandedRules.containsKey(target)) {
             return null;
         }
@@ -136,13 +133,13 @@ public class LabelConflictResolver implements ConflictResolver {
     }
 
     @Override
-    public ValueAllocationState resolveValueState(Variable target, ValueAllocationState valueState, Value location) {
+    public ValueAllocationState resolveValueState(RAVariable target, ValueAllocationState valueState, RAValue location) {
         if (!this.expandedRules.containsKey(target)) {
             return null;
         }
 
         var ruleSet = this.expandedRules.get(target);
-        if (!ruleSet.contains(valueState.getValue())) {
+        if (!ruleSet.contains(valueState.getRAValue())) {
             return null;
         }
 

@@ -21,9 +21,9 @@ class FromUsageResolver {
     protected LIR lir;
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
-    public Map<Variable, RAVInstruction.Op> labelMap;
-    public Map<Variable, Value> variableRegisterMap;
-    public Map<Variable, Variable> usageAliasMap;
+    public Map<RAVariable, RAVInstruction.Op> labelMap;
+    public Map<RAVariable, RAValue> variableRegisterMap;
+    public Map<RAVariable, RAVariable> usageAliasMap;
 
     class PathEntry {
         public BasicBlock<?> block;
@@ -80,7 +80,7 @@ class FromUsageResolver {
         this.usageAliasMap = new EconomicHashMap<>();
     }
 
-    private Value getLocationFromUsage(PathEntry path, BasicBlock<?> defBlock, RAVInstruction.Base usageInstruction, Value location, Variable variable) {
+    private RAValue getLocationFromUsage(PathEntry path, BasicBlock<?> defBlock, RAVInstruction.Base usageInstruction, RAValue location, RAValue variable) {
         boolean reachedUsage = false;
         while (true) { // TERMINATION ARGUMENT: Iterates over linked list using PathEntry nodes
             // Either we get an assertion about path being null or reaching def block - which always happens
@@ -133,7 +133,7 @@ class FromUsageResolver {
     private void mapLabelVariableFromUsage(
             // @formatter:off
             Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap,
-            Variable variable, Value location,
+            RAVariable variable, RAValue location,
             PathEntry path, RAVInstruction.Base useInstruction) {
             // @formatter:on
         var variableLabelInstr = this.labelMap.get(variable);
@@ -162,12 +162,12 @@ class FromUsageResolver {
         }
 
         for (var aliasEntry : this.usageAliasMap.entrySet()) {
-            var originalVariable = LIRValueUtil.asVariable(aliasEntry.getValue());
+            var originalVariable = aliasEntry.getValue();
             if (!originalVariable.equals(variable)) {
                 continue;
             }
 
-            var aliasVariable = LIRValueUtil.asVariable(aliasEntry.getKey());
+            var aliasVariable = aliasEntry.getKey();
             var aliasLabelInstr = this.labelMap.get(aliasVariable);
             if (aliasLabelInstr == null) {
                 continue;
@@ -193,19 +193,19 @@ class FromUsageResolver {
 
     private void tryMappingVariable(
             // @formatter:off
-            Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap, Value variable,
-            Value location, PathEntry path, RAVInstruction.Base useInstruction
+            Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap, RAValue raVariable,
+            RAValue raLocation, PathEntry path, RAVInstruction.Base useInstruction
             // @formatter:on
     ) {
-        if (!LIRValueUtil.isVariable(variable)) {
+        if (!raVariable.isVariable()) {
             return;
         }
 
-        if (LIRValueUtil.isVariable(location) || location instanceof ConstantValue) {
+        if (raLocation.isVariable() || raLocation.getValue() instanceof ConstantValue) {
             return;
         }
 
-        this.mapLabelVariableFromUsage(labelToBlockMap, LIRValueUtil.asVariable(variable), location, path, useInstruction);
+        this.mapLabelVariableFromUsage(labelToBlockMap, raVariable.asVariable(), raLocation, path, useInstruction);
     }
 
     /**
@@ -230,7 +230,7 @@ class FromUsageResolver {
             var labelInstr = (RAVInstruction.Op) instructions.getFirst();
             for (int i = 0; i < labelInstr.dests.count; i++) {
                 if (labelInstr.dests.curr[i] == null) {
-                    Variable variable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
+                    RAVariable variable = labelInstr.dests.orig[i].asVariable();
                     this.labelMap.put(variable, labelInstr);
                     labelToBlockMap.put(labelInstr, block);
                 }
@@ -248,13 +248,13 @@ class FromUsageResolver {
                             // so in-case an alias was defined after that happened, it's not resolved and will fail.
                             var label = (RAVInstruction.Op) this.blockInstructions.get(block.getSuccessorAt(0)).getFirst();
                             for (int i = 0; i < op.alive.count; i++) {
-                                if (!LIRValueUtil.isVariable(op.alive.orig[i])) {
+                                if (!op.alive.orig[i].isVariable()) {
                                     continue;
                                 }
 
-                                var variable = LIRValueUtil.asVariable(op.alive.orig[i]);
+                                var variable = op.alive.orig[i].asVariable();
                                 if (this.labelMap.get(variable) != null) {
-                                    this.usageAliasMap.put(variable, LIRValueUtil.asVariable(label.dests.orig[i]));
+                                    this.usageAliasMap.put(variable, label.dests.orig[i].asVariable());
                                 }
                             }
 

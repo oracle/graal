@@ -100,7 +100,7 @@ public class MergedBlockVerifierState {
             }
 
             if (state.isConflicted()) {
-                var variable = LIRValueUtil.asVariable(orig);
+                var variable = orig.asVariable();
                 var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
 
                 if (phiResolution == PhiResolution.FromConflicts && resolvedState == null) {
@@ -120,12 +120,12 @@ public class MergedBlockVerifierState {
                 }
 
                 if (!valAllocState.value.equals(orig)) {
-                    if (orig instanceof CastValue castValue && valAllocState.value.equals(castValue.underlyingValue())) {
+                    if (orig.getValue() instanceof CastValue castValue && valAllocState.value.getValue().equals(castValue.underlyingValue())) {
                         continue; // They aren't equal here because of the CastValue, so if they are equal afterwards, we skip next part.
                     }
 
-                    if (valAllocState.value instanceof ConstantValue) {
-                        var variable = LIRValueUtil.asVariable(orig);
+                    if (valAllocState.value.getValue() instanceof ConstantValue) {
+                        var variable = orig.asVariable();
                         var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState, curr);
                         if (resolvedState != null) {
                             this.values.put(curr, resolvedState);
@@ -133,8 +133,8 @@ public class MergedBlockVerifierState {
                         }
                     }
 
-                    if (phiResolution == PhiResolution.FromConflicts && LIRValueUtil.isVariable(orig)) {
-                        var variable = LIRValueUtil.asVariable(orig);
+                    if (phiResolution == PhiResolution.FromConflicts && orig.isVariable()) {
+                        var variable = orig.asVariable();
                         var resolvedState = labelConflictResolver.resolveValueState(variable, valAllocState, curr);
                         if (resolvedState != null) {
                             this.values.put(curr, resolvedState);
@@ -152,31 +152,25 @@ public class MergedBlockVerifierState {
         }
     }
 
-    protected boolean kindsEqual(Value orig, Value curr) {
-        var origKind = orig.getValueKind();
-        var currKind = curr.getValueKind();
+    protected boolean kindsEqual(RAValue orig, RAValue curr) {
+        var origKind = orig.getValue().getValueKind();
+        var currKind = curr.getValue().getValueKind();
 
-        if (currKind.equals(origKind)) {
-            return true;
+        if (origKind instanceof LIRKindWithCast castKind) {
+            origKind = castKind.getActualKind();
         }
 
-        if (origKind instanceof LIRKindWithCast || currKind instanceof LIRKindWithCast) {
-            // TestCase: BoxingTest.boxShort
-            // MOV (x: [v11|QWORD[.] + 12], y: reinterpret: v0|DWORD as: WORD) size: WORD
-            // MOV (x: [rax|QWORD[.] + 12], y: r10|WORD(DWORD)) size: WORD
-            return origKind.getPlatformKind().equals(currKind.getPlatformKind());
+        if (currKind instanceof LIRKindWithCast castKind) {
+            currKind = castKind.getActualKind();
         }
 
-        // TODO: maybe we should also look at the type before cast
-        // LIRKindWithCast.getActualKind()
-        // CastValue.underlyingValue().getValueKind()
-        return false;
+        return currKind.equals(origKind);
     }
 
-    protected boolean kindsEqualFromState(Value orig, Value fromState) {
-        ValueKind<?> origKind = orig.getValueKind();
-        ValueKind<?> currKind = fromState.getValueKind();
-        if (orig instanceof CastValue castOrig) {
+    protected boolean kindsEqualFromState(RAValue orig, RAValue fromState) {
+        ValueKind<?> origKind = orig.getValue().getValueKind();
+        ValueKind<?> currKind = fromState.getValue().getValueKind();
+        if (orig.getValue() instanceof CastValue castOrig) {
             origKind = castOrig.underlyingValue().getValueKind();
         }
 
@@ -185,8 +179,12 @@ public class MergedBlockVerifierState {
 
     protected void checkAliveConstraint(RAVInstruction.Op instruction, BasicBlock<?> block) {
         for (int i = 0; i < instruction.alive.count; i++) {
-            Value value = instruction.alive.curr[i];
-            if (Value.ILLEGAL.equals(value)) {
+            RAValue value = instruction.alive.curr[i];
+            if (value == null) {
+                continue;
+            }
+
+            if (value.isIllegal()) {
                 continue; // TODO: remove IllegalValues from these arrays.
             }
 
@@ -227,7 +225,7 @@ public class MergedBlockVerifierState {
                 var curr = op.stateValues.curr[i];
 
                 var state = this.values.get(curr);
-                if (state instanceof ValueAllocationState valueAllocationState && valueAllocationState.getValue().equals(orig)) {
+                if (state instanceof ValueAllocationState valueAllocationState && valueAllocationState.getRAValue().equals(orig)) {
                     continue;
                 }
 
@@ -267,7 +265,7 @@ public class MergedBlockVerifierState {
 
     protected void updateWithOp(RAVInstruction.Op op, BasicBlock<?> block) {
         for (int i = 0; i < op.dests.count; i++) {
-            if (Value.ILLEGAL.equals(op.dests.orig[i])) {
+            if (op.dests.orig[i].isIllegal()) {
                 continue; // Safe to ignore, when destination is illegal value, not when used.
             }
 
@@ -281,8 +279,8 @@ public class MergedBlockVerifierState {
                 continue;
             }
 
-            Value location = op.dests.curr[i];
-            Value variable = op.dests.orig[i];
+            RAValue location = op.dests.curr[i];
+            RAValue variable = op.dests.orig[i];
 
             if (location.equals(variable)) {
                 // Only check register validity if it was changed by the register allocator
@@ -295,20 +293,20 @@ public class MergedBlockVerifierState {
 
         for (int i = 0; i < op.temp.count; i++) {
             var value = op.temp.curr[i];
-            if (Value.ILLEGAL.equals(value)) {
+            if (value.isIllegal()) {
                 continue;
             }
 
             // We cannot believe the contents of registers used as temp, thus we need to reset.
-            Value location = op.temp.curr[i];
+            RAValue location = op.temp.curr[i];
             this.values.put(location, UnknownAllocationState.INSTANCE);
         }
     }
 
     protected void updateWithVirtualMove(RAVInstruction.VirtualMove virtMove) {
-        if (virtMove.location instanceof RegisterValue) {
+        if (virtMove.location.getValue() instanceof RegisterValue) {
             this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove));
-        } else if (LIRValueUtil.isVariable(virtMove.location)) {
+        } else if (virtMove.location.isVariable()) {
             // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
             // Move before allocation
             // TODO: maybe handle this better than VirtualMove with location as Variable

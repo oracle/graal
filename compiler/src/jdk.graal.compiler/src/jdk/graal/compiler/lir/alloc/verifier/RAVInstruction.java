@@ -48,14 +48,14 @@ public class RAVInstruction {
     }
 
     public static class ValueArrayPair {
-        protected Value[] orig;
-        protected Value[] curr;
+        protected RAValue[] orig;
+        protected RAValue[] curr;
         protected int count;
 
         public ValueArrayPair(int count) {
             this.count = count;
-            this.curr = new Value[count];
-            this.orig = new Value[count];
+            this.curr = new RAValue[count];
+            this.orig = new RAValue[count];
         }
 
         public InstructionValueProcedure copyOriginalProc = new InstructionValueProcedure() {
@@ -80,12 +80,12 @@ public class RAVInstruction {
             }
         };
 
-        public Value getCurrent(int index) {
+        public RAValue getCurrent(int index) {
             assert index < this.count : "Index out of bounds";
             return this.curr[index];
         }
 
-        public Value getOrig(int index) {
+        public RAValue getOrig(int index) {
             assert index < this.count : "Index out of bounds";
             return this.orig[index];
         }
@@ -98,12 +98,12 @@ public class RAVInstruction {
                 return;
             }
 
-            this.curr[index] = value;
+            this.curr[index] = RAValue.create(value);
         }
 
         public void addOrig(int index, Value value) {
             assert index < this.orig.length : "Index out of bounds";
-            this.orig[index] = value;
+            this.orig[index] = RAValue.create(value);
         }
 
         /**
@@ -205,13 +205,13 @@ public class RAVInstruction {
     }
 
     public static class Move extends Base {
-        public Value from;
-        public Value to;
+        public RAValue from;
+        public RAValue to;
 
         public Move(LIRInstruction instr, Value from, Value to) {
             super(instr);
-            this.from = from;
-            this.to = to;
+            this.from = RAValue.create(from);
+            this.to = RAValue.create(to);
         }
 
         public String toString() {
@@ -220,13 +220,15 @@ public class RAVInstruction {
     }
 
     public static class RegMove extends Move {
-        public RegisterValue from;
-        public RegisterValue to;
+        // public RegisterValue from;
+        // public RegisterValue to;
+        public RAValue from;
+        public RAValue to;
 
         public RegMove(LIRInstruction instr, RegisterValue from, RegisterValue to) {
             super(instr, from, to);
-            this.from = from;
-            this.to = to;
+            this.from = RAValue.create(from);
+            this.to = RAValue.create(to);
         }
 
         public String toString() {
@@ -237,8 +239,8 @@ public class RAVInstruction {
     // StackMove class to handle STACKMOVE instruction, temporary for now
     // before I decide how all Moves should be handled + all possible combinations.
     public static class StackMove extends Move {
-        public Value from;
-        public Value to;
+        public RAValue from;
+        public RAValue to;
 
         public StackMove(LIRInstruction instr, Value from, Value to) {
             super(instr, from, to);
@@ -246,8 +248,8 @@ public class RAVInstruction {
             assert from instanceof StackSlot || from instanceof VirtualStackSlot : "StackMove needs to receive instanceof StackSlot or VirtualStackSlot";
             assert to instanceof StackSlot || to instanceof VirtualStackSlot : "StackMove needs to receive instanceof StackSlot or VirtualStackSlot";
 
-            this.from = from;
-            this.to = to;
+            this.from = RAValue.create(from);
+            this.to = RAValue.create(to);
         }
 
         public String toString() {
@@ -256,13 +258,13 @@ public class RAVInstruction {
     }
 
     public static class Reload extends Move {
-        public Value from;
-        public RegisterValue to;
+        public RAValue from;
+        public RAValue to;
 
         public Reload(LIRInstruction instr, RegisterValue to, Value from) {
             super(instr, from, to);
-            this.from = from;
-            this.to = to;
+            this.from = RAValue.create(from);
+            this.to = RAValue.create(to);
         }
 
         public String toString() {
@@ -271,13 +273,13 @@ public class RAVInstruction {
     }
 
     public static class Spill extends Move {
-        public Value to;
-        public RegisterValue from;
+        public RAValue from;
+        public RAValue to;
 
         public Spill(LIRInstruction instr, Value to, RegisterValue from) {
             super(instr, from, to);
-            this.to = to;
-            this.from = from;
+            this.from = RAValue.create(from);
+            this.to = RAValue.create(to);
         }
 
         public String toString() {
@@ -286,13 +288,13 @@ public class RAVInstruction {
     }
 
     public static class VirtualMove extends Move {
-        public Value variableOrConstant;
-        public Value location;
+        public RAValue variableOrConstant;
+        public RAValue location;
 
         public VirtualMove(LIRInstruction instr, Value variableOrConstant, Value location) {
             super(instr, variableOrConstant, location);
-            this.variableOrConstant = variableOrConstant;
-            this.location = location;
+            this.variableOrConstant = RAValue.create(variableOrConstant);
+            this.location = RAValue.create(location);
         }
 
         public String toString() {

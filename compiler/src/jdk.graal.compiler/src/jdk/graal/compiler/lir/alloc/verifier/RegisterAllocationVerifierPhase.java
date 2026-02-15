@@ -91,7 +91,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         var lir = lirGenRes.getLIR();
         var preallocMap = state.getInstructionMap(lirGenRes);
 
-        Map<Variable, RAVInstruction.Op> definedVariables = new EconomicHashMap<>();
+        Map<RAVariable, RAVInstruction.Op> definedVariables = new EconomicHashMap<>();
         Set<LIRInstruction> presentInstructions = new EconomicHashSet<>();
         for (var blockId : lir.getBlocks()) {
             BasicBlock<?> block = lir.getBlockById(blockId);
@@ -103,8 +103,8 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                 var rAVInstr = preallocMap.get(instruction);
                 if (rAVInstr instanceof RAVInstruction.Op op) {
                     for (int i = 0; i < op.dests.count; i++) {
-                        if (LIRValueUtil.isVariable(op.dests.orig[i])) {
-                            var variable = LIRValueUtil.asVariable(op.dests.orig[i]);
+                        if (op.dests.orig[i].isVariable()) {
+                            var variable = op.dests.orig[i].asVariable();
                             definedVariables.put(variable, op);
                         }
                     }
@@ -148,8 +148,8 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                             continue;
                         }
 
-                        if (!LIRValueUtil.isVariable(speculativeMove.location) && LIRValueUtil.isVariable(speculativeMove.variableOrConstant)) {
-                            var variable = LIRValueUtil.asVariable(speculativeMove.variableOrConstant);
+                        if (!speculativeMove.location.isVariable() && speculativeMove.variableOrConstant.isVariable()) {
+                            var variable = speculativeMove.variableOrConstant.asVariable();
                             if (definedVariables.containsKey(variable)) {
                                 continue;
                             }

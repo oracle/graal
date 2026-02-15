@@ -3,10 +3,7 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.meta.Value;
 
 import java.util.Map;
 import java.util.Set;
@@ -22,9 +19,8 @@ public class MergedAllocationStateMap {
      * for location indices, we have a getValueKeyString which
      * does what we need.
      */
-    protected Map<String, Value> valueMap;
-    protected Map<String, AllocationState> internalMap;
-    protected Map<String, Integer> locationTimings;
+    protected Map<RAValue, AllocationState> internalMap;
+    protected Map<RAValue, Integer> locationTimings;
     /**
      * Prioritized locations are ones made by the register allocator itself.
      * <p>
@@ -34,13 +30,12 @@ public class MergedAllocationStateMap {
      * <p>
      * If there's multiple, then time should make the difference.
      */
-    protected Map<String, Boolean> prioritizedLocations;
+    protected Map<RAValue, Boolean> prioritizedLocations;
     protected int time;
 
     protected RegisterAllocationConfig registerAllocationConfig;
 
     public MergedAllocationStateMap(RegisterAllocationConfig registerAllocationConfig) {
-        valueMap = new EconomicHashMap<>();
         internalMap = new EconomicHashMap<>();
         locationTimings = new EconomicHashMap<>();
         prioritizedLocations = new EconomicHashMap<>();
@@ -50,7 +45,6 @@ public class MergedAllocationStateMap {
     }
 
     public MergedAllocationStateMap(MergedAllocationStateMap other) {
-        valueMap = new EconomicHashMap<>(other.valueMap);
         internalMap = new EconomicHashMap<>(other.internalMap);
         locationTimings = new EconomicHashMap<>(other.locationTimings);
         prioritizedLocations = new EconomicHashMap<>(other.prioritizedLocations);
@@ -59,49 +53,38 @@ public class MergedAllocationStateMap {
         registerAllocationConfig = other.registerAllocationConfig;
     }
 
-    public AllocationState get(Value key) {
+    public AllocationState get(RAValue key) {
         return this.get(key, AllocationState.getDefault());
     }
 
-    public AllocationState get(Value key, AllocationState defaultValue) {
-        String keyString = this.getValueKeyString(key);
-        var state = internalMap.get(keyString);
+    public AllocationState get(RAValue key, AllocationState defaultValue) {
+        var state = internalMap.get(key);
         if (state == null) {
             return defaultValue;
         }
         return state;
     }
 
-    public AllocationState get(Register register) {
-        return this.get(register.asValue());
-    }
-
-    public void putAsPrioritized(Value key, AllocationState value) {
+    public void putAsPrioritized(RAValue key, AllocationState value) {
         this.put(key, value);
-        this.prioritizedLocations.put(this.getValueKeyString(key), true);
+        this.prioritizedLocations.put(key, true);
     }
 
-    public void put(Register reg, AllocationState value) {
-        this.put(reg.asValue(), value);
-    }
-
-    public void put(Value key, AllocationState state) {
+    public void put(RAValue key, AllocationState state) {
         this.checkRegisterDestinationValidity(key);
         putWithoutRegCheck(key, state);
     }
 
-    public void putWithoutRegCheck(Value key, AllocationState state) {
-        String keyString = this.getValueKeyString(key);
-        locationTimings.put(keyString, time++);
-        internalMap.put(keyString, state);
-        valueMap.put(keyString, key);
+    public void putWithoutRegCheck(RAValue key, AllocationState state) {
+        locationTimings.put(key, time++);
+        internalMap.put(key, state);
 
-        if (prioritizedLocations.containsKey(keyString)) {
-            prioritizedLocations.put(keyString, false);
+        if (prioritizedLocations.containsKey(key)) {
+            prioritizedLocations.put(key, false);
         }
     }
 
-    public void putClone(Value key, AllocationState value) {
+    public void putClone(RAValue key, AllocationState value) {
         if (value.isUnknown()) {
             this.put(key, value);
             return;
@@ -110,35 +93,27 @@ public class MergedAllocationStateMap {
         this.put(key, value.clone());
     }
 
-    public void putClone(Register reg, AllocationState value) {
-        this.put(reg.asValue(), value.clone());
-    }
-
-    public void putCloneAsPrioritized(Value key, AllocationState value) {
+    public void putCloneAsPrioritized(RAValue key, AllocationState value) {
         this.putClone(key, value);
-        this.prioritizedLocations.put(this.getValueKeyString(key), true);
+        this.prioritizedLocations.put(key, true);
     }
 
-    public boolean isPrioritized(Value key) {
-        String keyString = this.getValueKeyString(key);
-        return prioritizedLocations.containsKey(keyString);
+    public boolean isPrioritized(RAValue key) {
+        return prioritizedLocations.containsKey(key);
     }
 
-    public int getKeyTime(Value key) {
-        String keyString = this.getValueKeyString(key);
-        var time = locationTimings.get(keyString);
-        assert time != null : "Time for key " + keyString + " not present.";
+    public int getKeyTime(RAValue key) {
+        var time = locationTimings.get(key);
+        assert time != null : "Time for key " + key + " not present.";
         return time;
     }
 
-    public Set<Value> getValueLocations(Value value) {
-        Set<Value> locations = new EconomicHashSet<>();
+    public Set<RAValue> getValueLocations(RAValue value) {
+        Set<RAValue> locations = new EconomicHashSet<>();
         for (var entry : this.internalMap.entrySet()) {
             if (entry.getValue() instanceof ValueAllocationState valState) {
-                if (valState.getValue().equals(value)) {
-                    var location = this.valueMap.get(entry.getKey());
-                    assert location != null : "Value not present in ValueMap: " + entry.getKey();
-                    locations.add(location);
+                if (valState.getRAValue().equals(value)) {
+                    locations.add(entry.getKey());
                 }
             }
         }
@@ -151,7 +126,7 @@ public class MergedAllocationStateMap {
             if (!this.internalMap.containsKey(entry.getKey())) {
                 changed = true;
 
-                this.putWithoutRegCheck(source.valueMap.get(entry.getKey()), UnknownAllocationState.INSTANCE);
+                this.putWithoutRegCheck(entry.getKey(), UnknownAllocationState.INSTANCE);
             }
 
             var currentValue = this.internalMap.get(entry.getKey());
@@ -160,23 +135,14 @@ public class MergedAllocationStateMap {
                 changed = true;
             }
 
-            this.putWithoutRegCheck(source.valueMap.get(entry.getKey()), result);
+            this.putWithoutRegCheck(entry.getKey(), result);
         }
 
         return changed;
     }
 
-    protected String getValueKeyString(Value value) {
-        if (value instanceof RegisterValue regValue) {
-            return regValue.getRegister().toString();
-        }
-
-        assert !Value.ILLEGAL.equals(value) : "Cannot use ILLEGAL as key in AllocationStateMap";
-
-        return value.toString();
-    }
-
-    protected void checkRegisterDestinationValidity(Value location) {
+    protected void checkRegisterDestinationValidity(RAValue raLocation) {
+        var location = raLocation.getValue();
         if (!ValueUtil.isRegister(location)) {
             return;
         }

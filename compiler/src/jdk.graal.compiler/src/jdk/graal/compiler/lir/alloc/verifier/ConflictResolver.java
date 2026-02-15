@@ -10,7 +10,7 @@ import java.util.List;
 public interface ConflictResolver {
     void prepare(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions);
 
-    ValueAllocationState resolveValueState(Variable target, ValueAllocationState valueState, Value location);
+    ValueAllocationState resolveValueState(RAVariable target, ValueAllocationState valueState, RAValue location);
 
-    ValueAllocationState resolveConflictedState(Variable target, ConflictedAllocationState conflictedState, Value location);
+    ValueAllocationState resolveConflictedState(RAVariable target, ConflictedAllocationState conflictedState, RAValue location);
 }

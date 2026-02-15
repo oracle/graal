@@ -9,13 +9,13 @@ public class AliveConstraintViolationException extends RAVException {
     public LIRInstruction instruction;
     public BasicBlock<?> block;
 
-    public AliveConstraintViolationException(LIRInstruction instruction, BasicBlock<?> block, Value location, boolean asDest) {
+    public AliveConstraintViolationException(LIRInstruction instruction, BasicBlock<?> block, RAValue location, boolean asDest) {
         super(AliveConstraintViolationException.getErrorMessage(instruction, block, location, asDest));
         this.instruction = instruction;
         this.block = block;
     }
 
-    static String getErrorMessage(LIRInstruction instruction, BasicBlock<?> block, Value location, boolean asDest) {
+    static String getErrorMessage(LIRInstruction instruction, BasicBlock<?> block, RAValue location, boolean asDest) {
         if (asDest) {
             return "Location " + location + " used as both alive and output in " + instruction + " in block" + block;
         }

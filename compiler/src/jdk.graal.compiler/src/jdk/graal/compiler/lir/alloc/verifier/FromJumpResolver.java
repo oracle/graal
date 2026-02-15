@@ -22,7 +22,7 @@ public class FromJumpResolver {
     public void resolvePhi(BasicBlock<?> block) {
         var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(block).getFirst();
         for (int i = 0; i < labelInstr.dests.count; i++) {
-            Set<Value> locations = null;
+            Set<RAValue> locations = null;
             for (int j = 0; j < block.getPredecessorCount(); j++) {
                 var pred = block.getPredecessorAt(j);
                 var state = this.blockStates.get(pred);
@@ -46,7 +46,7 @@ public class FromJumpResolver {
                 continue;
             }
 
-            Value location = null;
+            RAValue location = null;
             if (locations.size() != 1) {
                 if (locations.isEmpty()) {
                     return;
@@ -54,7 +54,7 @@ public class FromJumpResolver {
 
                 for (int j = 0; j < block.getPredecessorCount(); j++) {
                     int time = -1;
-                    Value blockReg = null;
+                    RAValue blockReg = null;
                     for (var loc : locations) {
                         var pred = block.getPredecessorAt(j);
                         var state = this.blockStates.get(pred);

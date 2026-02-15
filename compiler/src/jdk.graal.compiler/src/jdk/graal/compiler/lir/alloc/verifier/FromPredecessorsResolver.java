@@ -46,7 +46,7 @@ public class FromPredecessorsResolver {
      */
     public boolean resolvePhiFromPredecessors(BasicBlock<?> block, RAVInstruction.Op labelInstr) {
         for (int i = 0; i < labelInstr.dests.count; i++) {
-            Set<Value> locations = null;
+            Set<RAValue> locations = null;
             for (int j = 0; j < block.getPredecessorCount(); j++) {
                 var pred = block.getPredecessorAt(j);
                 var state = this.blockStates.get(pred);
@@ -62,7 +62,7 @@ public class FromPredecessorsResolver {
                 locations.retainAll(varLoc);
             }
 
-            Value location = null;
+            RAValue location = null;
             if (locations.size() != 1) {
                 if (locations.isEmpty()) {
                     return false;
@@ -70,7 +70,7 @@ public class FromPredecessorsResolver {
 
                 for (int j = 0; j < block.getPredecessorCount(); j++) {
                     int time = -1;
-                    Value blockReg = null;
+                    RAValue blockReg = null;
                     for (var loc : locations) {
                         var pred = block.getPredecessorAt(j);
                         var state = this.blockStates.get(pred);
@@ -107,71 +107,22 @@ public class FromPredecessorsResolver {
         return true;
     }
 
-    class VariableLocations implements Iterable<Value> {
-        protected Set<String> internalList;
-        protected Map<String, Value> valueMap;
-
-        VariableLocations() {
-            this.internalList = new EconomicHashSet<>();
-            this.valueMap = new EconomicHashMap<>();
-        }
-
-        VariableLocations(VariableLocations other) {
-            this.internalList = new EconomicHashSet<>(other.internalList);
-            this.valueMap = new EconomicHashMap<>(other.valueMap);
-        }
-
-        public void add(Value location) {
-            var locString = getValueKeyString(location);
-            internalList.add(locString);
-            valueMap.put(locString, location);
-        }
-
-        public void remove(Value location) {
-            var locString = getValueKeyString(location);
-            internalList.remove(locString);
-            valueMap.remove(locString);
-        }
-
-        public boolean isEmpty() {
-            return internalList.isEmpty();
-        }
-
-        public boolean contains(Value location) {
-            var locString = getValueKeyString(location);
-            return valueMap.containsKey(locString);
-        }
-
-        protected String getValueKeyString(Value value) {
-            if (value instanceof RegisterValue regValue) {
-                return regValue.getRegister().toString();
-            }
-
-            return value.toString();
-        }
-
-        @Override
-        public Iterator<Value> iterator() {
-            return internalList.stream().map(valueMap::get).iterator();
-        }
-    }
-
     public void propagateLabelChangeFromPredecessors(BasicBlock<?> defBlock) {
         var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(defBlock).getFirst();
 
         // Definition block needs to have this set.
-        var propagateMap = new EconomicHashMap<BasicBlock<?>, List<Variable>>();
-        var locationMap = new EconomicHashMap<BasicBlock<?>, Map<Variable, VariableLocations>>();
+        var propagateMap = new EconomicHashMap<BasicBlock<?>, List<RAVariable>>();
+        var locationMap = new EconomicHashMap<BasicBlock<?>, Map<RAVariable, Set<RAValue>>>();
 
-        var defVariableToLocations = new EconomicHashMap<Variable, VariableLocations>();
-        var defBlockVariablesToPropagate = new ArrayList<Variable>();
+        var defVariableToLocations = new EconomicHashMap<RAVariable, Set<RAValue>>();
+        var defBlockVariablesToPropagate = new ArrayList<RAVariable>();
         for (int i = 0; i < labelInstr.dests.count; i++) {
             var register = labelInstr.dests.curr[i];
-            var variable = LIRValueUtil.asVariable(labelInstr.dests.orig[i]);
+            var variable = labelInstr.dests.orig[i].asVariable();
 
             defBlockVariablesToPropagate.add(variable);
 
-            var variableLocationList = new VariableLocations();
+            var variableLocationList = new EconomicHashSet<RAValue>();
             variableLocationList.add(register);
             defVariableToLocations.put(variable, variableLocationList);
         }
@@ -199,8 +150,8 @@ public class FromPredecessorsResolver {
                     continue;
                 }
 
-                Value fromLocation;
-                Value toLocation;
+                RAValue fromLocation;
+                RAValue toLocation;
 
                 switch (instruction) {
                     case RAVInstruction.VirtualMove virtMove -> {
@@ -220,7 +171,7 @@ public class FromPredecessorsResolver {
 
                             var itToPropagate = variablesToPropagate.iterator();
                             while (itToPropagate.hasNext()) {
-                                var variable = LIRValueUtil.asVariable(itToPropagate.next());
+                                var variable = itToPropagate.next();
                                 var locations = variableToLocations.get(variable);
                                 locations.remove(location);
                             }
@@ -235,7 +186,7 @@ public class FromPredecessorsResolver {
 
                 var itToPropagate = variablesToPropagate.iterator();
                 while (itToPropagate.hasNext()) {
-                    var variable = LIRValueUtil.asVariable(itToPropagate.next());
+                    var variable = itToPropagate.next();
                     var locations = variableToLocations.get(variable);
                     if (fromLocation != null && locations.contains(fromLocation)) {
                         locations.add(toLocation);
@@ -245,10 +196,10 @@ public class FromPredecessorsResolver {
                 }
             }
 
-            var variablesToBePropagated = new ArrayList<Variable>();
+            var variablesToBePropagated = new ArrayList<RAVariable>();
             var iterator = variablesToPropagate.iterator();
             while (iterator.hasNext()) {
-                var variable = LIRValueUtil.asVariable(iterator.next());
+                var variable = iterator.next();
                 var locations = variableToLocations.get(variable);
                 if (locations.isEmpty()) {
                     continue;
@@ -280,7 +231,7 @@ public class FromPredecessorsResolver {
                     // entry state for B0 to include v0, which is defined by B0.
 
                     for (int j = 0; j < labelInstr.dests.count; j++) {
-                        var variable = LIRValueUtil.asVariable(labelInstr.dests.orig[j]);
+                        var variable = labelInstr.dests.orig[j];
 
                         if (!variablesToPropagate.contains(variable)) {
                             continue;
@@ -302,16 +253,16 @@ public class FromPredecessorsResolver {
                     continue;
                 }
 
-                Map<Variable, VariableLocations> newLoc = new EconomicHashMap<>();
+                Map<RAVariable, Set<RAValue>> newLoc = new EconomicHashMap<>();
                 var itToBePropagated = variablesToBePropagated.iterator();
                 while (itToBePropagated.hasNext()) {
-                    var variable = LIRValueUtil.asVariable(itToBePropagated.next());
+                    var variable = itToBePropagated.next();
                     var locations = variableToLocations.get(variable);
                     for (var location : locations) {
                         succEntryState.values.put(location, new ValueAllocationState(variable, labelInstr));
                     }
 
-                    newLoc.put(variable, new VariableLocations(locations));
+                    newLoc.put(variable, new EconomicHashSet<>(locations));
                 }
 
                 locationMap.put(succ, newLoc);

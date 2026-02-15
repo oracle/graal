@@ -6,11 +6,11 @@ import jdk.vm.ci.meta.Value;
 
 @SuppressWarnings("serial")
 public class MissingLocationError extends RAVError {
-    public MissingLocationError(LIRInstruction instruction, BasicBlock<?> block, Value variable) {
+    public MissingLocationError(LIRInstruction instruction, BasicBlock<?> block, RAValue variable) {
         super(MissingLocationError.getMessage(instruction, block, variable));
     }
 
-    static String getMessage(LIRInstruction instruction, BasicBlock<?> block, Value variable) {
+    static String getMessage(LIRInstruction instruction, BasicBlock<?> block, RAValue variable) {
         return "Variable " + variable + " is missing a location in " + instruction + " in block " + block;
     }
 }

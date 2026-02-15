@@ -8,11 +8,11 @@ import jdk.vm.ci.meta.Value;
 public class ValueNotInRegisterException extends RAVException {
     public LIRInstruction instruction;
     public BasicBlock<?> block;
-    public Value variable; // Can be a constant or other symbolic value
-    public Value location; // Can be StackSlot, RegisterValue or memory
+    public RAValue variable; // Can be a constant or other symbolic value
+    public RAValue location; // Can be StackSlot, RegisterValue or memory
     public AllocationState state;
 
-    public ValueNotInRegisterException(LIRInstruction instruction, BasicBlock<?> block, Value variable, Value location, AllocationState state) {
+    public ValueNotInRegisterException(LIRInstruction instruction, BasicBlock<?> block, RAValue variable, RAValue location, AllocationState state) {
         super(ValueNotInRegisterException.getErrorMessage(instruction, block, variable, location, state));
 
         this.instruction = instruction;
@@ -22,7 +22,7 @@ public class ValueNotInRegisterException extends RAVException {
         this.state = state;
     }
 
-    static String getErrorMessage(LIRInstruction instruction, BasicBlock<?> block, Value variable, Value location, AllocationState state) {
+    static String getErrorMessage(LIRInstruction instruction, BasicBlock<?> block, RAValue variable, RAValue location, AllocationState state) {
         var messageBuilder = new StringBuilder();
         // @formatter:off
         messageBuilder
@@ -42,7 +42,7 @@ public class ValueNotInRegisterException extends RAVException {
 
             messageBuilder.append("\n");
             for (var conflictedState : confStates) {
-                messageBuilder.append(" - ").append(conflictedState.getValue()).append(" from ").append(conflictedState.source).append("\n");
+                messageBuilder.append(" - ").append(conflictedState.getRAValue()).append(" from ").append(conflictedState.source).append("\n");
             }
         } else {
             messageBuilder.append(state);

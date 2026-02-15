@@ -9,10 +9,11 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
 
 public class ValueAllocationState extends AllocationState implements Cloneable {
-    protected Value value;
+    protected RAValue value;
     protected RAVInstruction.Base source;
 
-    public ValueAllocationState(Value value, RAVInstruction.Base source) {
+    public ValueAllocationState(RAValue raValue, RAVInstruction.Base source) {
+        var value = raValue.getValue();
         if (value instanceof RegisterValue || LIRValueUtil.isVariable(value) || value instanceof ConstantValue || value instanceof StackSlot || value instanceof VirtualStackSlot || Value.ILLEGAL.equals(value)) {
             // StackSlot, RegisterValue is present in start block in label as predefined argument
             // VirtualStackSlot is used for RESTORE_REGISTERS and SAVE_REGISTERS
@@ -20,7 +21,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
 
             // We use variables as symbols for register validation
             // but real registers can also be used as that, in some cases.
-            this.value = value;
+            this.value = raValue;
             this.source = source;
         } else {
             throw GraalError.shouldNotReachHere("Invalid type of value used " + value);
@@ -28,10 +29,14 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
     }
 
     public ValueAllocationState(ValueAllocationState other) {
-        this.value = other.getValue();
+        this.value = other.getRAValue();
     }
 
     public Value getValue() {
+        return value.getValue();
+    }
+
+    public RAValue getRAValue() {
         return value;
     }
 
@@ -49,7 +54,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
         }
 
         var otherValueAllocState = (ValueAllocationState) other;
-        if (!this.value.equals(otherValueAllocState.getValue())) {
+        if (!this.value.equals(otherValueAllocState.getRAValue())) {
             return new ConflictedAllocationState(this, otherValueAllocState);
         }
 
@@ -58,7 +63,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
 
     @Override
     public boolean equals(AllocationState other) {
-        return other instanceof ValueAllocationState otherVal && this.value.equals(otherVal.getValue());
+        return other instanceof ValueAllocationState otherVal && this.value.equals(otherVal.getRAValue());
     }
 
     @Override
