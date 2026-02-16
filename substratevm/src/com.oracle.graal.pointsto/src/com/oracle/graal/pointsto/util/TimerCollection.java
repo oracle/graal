@@ -24,15 +24,17 @@
  */
 package com.oracle.graal.pointsto.util;
 
-import com.oracle.graal.pointsto.reports.StatisticsPrinter;
-import com.oracle.svm.util.ImageBuildStatistics;
-import jdk.graal.compiler.debug.GraalError;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.reports.StatisticsPrinter;
+import com.oracle.svm.util.ImageBuildStatistics;
+
+import jdk.graal.compiler.debug.GraalError;
 
 public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrinter {
 
@@ -102,7 +104,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         Iterator<Timer> it = this.timers.values().iterator();
         while (it.hasNext()) {
             Timer timer = it.next();
-            StatisticsPrinter.print(out, timer.getName() + "_time", ((int) timer.getTotalTime()));
+            StatisticsPrinter.print(out, timer.getName() + "_time", ((int) timer.getTotalTimeMs()));
             if (it.hasNext()) {
                 StatisticsPrinter.print(out, timer.getName() + "_memory", timer.getTotalMemory());
             } else {
