@@ -25,6 +25,17 @@
  */
 package com.oracle.svm.common.option;
 
+/// Support for parsing a raw string into an option name and an optional description of its origin.
+/// It assists simple provenance tracking across option parsing layers. The origin, if present,
+/// is separated from the name by `@`. Examples:
+///
+/// | string                                          | option name          | origin                    |
+/// |-------------------------------------------------|----------------------|---------------------------|
+/// | "IncludeResources@native-image.properties"      | "IncludeResources"   | "native-image.properties" |
+/// | "EnableVMInspection"                            | "EnableVMInspection" | null                      |
+/// | "@native-image.properties"                      | ""                   | "native-image.properties" |
+/// | "EnableVMInspection@"                           | "EnableVMInspection" | ""                        |
+/// | "@"                                             | ""                   | ""                        |
 public final class LocatableOption {
 
     public final String name;
