@@ -380,6 +380,11 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
             if (guestException == null || guestException.isNull()) {
                 throw e;
             }
+            /*
+             * `guestException` might be a handle to the exception carrier (`EspressoException`) but
+             * we want a handle to the exception object (`StaticObject` of guest type `Throwable`)
+             */
+            guestException = access.invokeJVMCIHelper("getExceptionObject", guestException);
             throw new InvocationException(new EspressoExternalObjectConstant(access, guestException), e);
         }
         if (isConstructor()) {

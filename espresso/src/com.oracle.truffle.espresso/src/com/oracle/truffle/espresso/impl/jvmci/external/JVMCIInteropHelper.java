@@ -68,6 +68,7 @@ import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.continuations.Target_org_graalvm_continuations_IdentityHashCodes;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -125,6 +126,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.GET_REFLECT_FIELD,
                         InvokeMember.GET_REFLECT_EXECUTABLE,
                         InvokeMember.READ_OBJECT_ARRAY_ELEMENT,
+                        InvokeMember.GET_EXCEPTION_OBJECT,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -189,6 +191,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String GET_REFLECT_FIELD = "getReflectField";
         static final String GET_REFLECT_EXECUTABLE = "getReflectExecutable";
         static final String READ_OBJECT_ARRAY_ELEMENT = "readObjectArrayElement";
+        static final String GET_EXCEPTION_OBJECT = "getExceptionObject";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -1071,6 +1074,31 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 return StaticObject.NULL;
             }
             return method;
+        }
+
+        @Specialization(guards = "GET_EXCEPTION_OBJECT.equals(member)")
+        static Object getExceptionObject(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 1) {
+                arityError.enter(node);
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (arguments[0] instanceof EspressoException exception) {
+                return exception.getGuestException();
+            }
+            if (arguments[0] instanceof StaticObject exception) {
+                Meta meta = EspressoContext.get(node).getMeta();
+                if (!InterpreterToVM.instanceOf(exception, meta.java_lang_Throwable)) {
+                    typeError.enter(node);
+                    throw UnsupportedTypeException.create(arguments, "Expected an guest object of type Throwable");
+                }
+                return exception;
+            }
+            typeError.enter(node);
+            throw UnsupportedTypeException.create(arguments, "Expected an EspressoException or a guest object of type Throwable");
         }
 
         @Fallback
