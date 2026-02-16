@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -100,7 +100,7 @@ public class CVLineRecordBuilder {
             lineRecord.addNewFile(fileId);
         }
 
-        /* Add line record. */
+        /* Add line record. Address is relative to start of function. */
         int lineLoAddr = (int) (range.getLo() - compiledEntry.primary().getLo());
         int line = Math.max(range.getLine(), 1);
         debug("  processRange:   addNewLine: 0x%05x-0x%05x %s", lineLoAddr, range.getHi() - compiledEntry.primary().getLo(), line);

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_QUADWORD;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_SHORT;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ULONG;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_USHORT;
+
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 abstract class CVUtil {

@@ -31,6 +31,7 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+
 import jdk.graal.compiler.debug.DebugContext;
 import org.graalvm.collections.EconomicSet;
 
@@ -70,6 +71,12 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
         cvDebugInfo.setDebugContext(debugContext);
         if (debugContext.areScopesEnabled()) {
             debug = true;
+        }
+    }
+
+    protected void warn(String format, Object... args) {
+        if (debug) {
+            getDebugContext().logv(DebugContext.BASIC_LEVEL, format, args);
         }
     }
 
