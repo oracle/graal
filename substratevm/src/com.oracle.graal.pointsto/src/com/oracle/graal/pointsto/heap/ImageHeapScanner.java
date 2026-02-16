@@ -706,14 +706,33 @@ public abstract class ImageHeapScanner {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
             if (type.isReachable()) {
                 AnalysisField field = metaAccess.lookupJavaField(reflectionField);
-                JavaConstant fieldValue = readHostedFieldValue(field, null).get();
-                TypeData typeData = field.getDeclaringClass().getOrComputeData();
-                AnalysisFuture<JavaConstant> fieldTask = patchStaticField(typeData, field, fieldValue, rescanReason, null);
-                if (field.isRead() || field.isFolded()) {
-                    rescanCollectionElements(fieldTask.ensureDone(), new FieldScan(field, null, rescanReason));
-                }
+                rescanRootImpl(field, rescanReason);
             }
         });
+    }
+
+    /**
+     * Trigger rescanning of a root field.
+     * 
+     * @see #rescanRoot(Field, ScanReason)
+     */
+    public void rescanRoot(ResolvedJavaField hostField, ScanReason rescanReason) {
+        maybeRunInExecutor(unused -> {
+            AnalysisType type = universe.lookup(hostField.getDeclaringClass());
+            if (type.isReachable()) {
+                AnalysisField field = universe.lookup(hostField);
+                rescanRootImpl(field, rescanReason);
+            }
+        });
+    }
+
+    private void rescanRootImpl(AnalysisField field, ScanReason rescanReason) {
+        JavaConstant fieldValue = readHostedFieldValue(field, null).get();
+        TypeData typeData = field.getDeclaringClass().getOrComputeData();
+        AnalysisFuture<JavaConstant> fieldTask = patchStaticField(typeData, field, fieldValue, rescanReason, null);
+        if (field.isRead() || field.isFolded()) {
+            rescanCollectionElements(fieldTask.ensureDone(), new FieldScan(field, null, rescanReason));
+        }
     }
 
     public void rescanField(Object receiver, Field reflectionField, ScanReason reason) {
