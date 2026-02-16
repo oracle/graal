@@ -22,69 +22,73 @@
  */
 package com.oracle.truffle.espresso.libs.libzip.impl;
 
+import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.libs.LibsMeta;
-import com.oracle.truffle.espresso.libs.libzip.LibZip;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.libs.libzip.PureJavaLibZipFilter;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
-@EspressoSubstitutions(group = LibZip.class)
+import sun.misc.Unsafe;
+
+// Does not belong to the LibZip group as we use those substitution outside EspressoLibs
+@EspressoSubstitutions(group = Substitution.class)
 public final class Target_java_util_zip_CRC32 {
-    private static CRC32 getHostCRC32(StaticObject crc, LibsMeta libsMeta, Meta meta) {
-        if (StaticObject.isNull(crc)) {
-            throw meta.throwNullPointerException();
-        }
-        Object hostCRC = libsMeta.java_util_zip_CRC32_0value.getHiddenObject(crc);
-        assert hostCRC != null;
-        return (CRC32) hostCRC;
-    }
+    private static final Unsafe UNSAFE = UnsafeAccess.get();
+    private static final long CRC_FIELD_OFFSET;
 
-    @Substitution(languageFilter = PureJavaLibZipFilter.class)
-    public static void init(@JavaType(CRC32.class) StaticObject crc,
-                    @Inject LibsMeta libsMeta) {
-        libsMeta.java_util_zip_CRC32_0value.setHiddenObject(crc, new CRC32());
-    }
-
-    @Substitution(languageFilter = PureJavaLibZipFilter.class)
-    public static void update0(@JavaType(CRC32.class) StaticObject crc, int b,
-                    @Inject LibsMeta libsMeta, @Inject Meta meta) {
+    static {
         try {
-            getHostCRC32(crc, libsMeta, meta).update(b);
-        } catch (IndexOutOfBoundsException e) {
-            meta.throwExceptionWithMessage(meta.java_lang_IndexOutOfBoundsException, e.getMessage());
+            CRC_FIELD_OFFSET = UNSAFE.objectFieldOffset(java.util.zip.CRC32.class.getDeclaredField("crc"));
+        } catch (NoSuchFieldException e) {
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
+    private static void putCRC(int newCRC, CRC32 hostCRC) {
+        UNSAFE.putInt(hostCRC, CRC_FIELD_OFFSET, newCRC);
+    }
+
     @Substitution(languageFilter = PureJavaLibZipFilter.class)
-    public static void updateBytes0(@JavaType(CRC32.class) StaticObject crc, @JavaType(byte[].class) StaticObject b, int off, int len,
-                    @Inject LibsMeta libsMeta, @Inject EspressoLanguage lang, @Inject Meta meta) {
-        if (StaticObject.isNull(b)) {
-            throw meta.throwNullPointerException();
-        }
-        assert b.isArray();
+    public static int update(int crc, int b) {
+        CRC32 hostCRC = new CRC32();
+        putCRC(crc, hostCRC);
+        hostCRC.update(b);
+        // internally crc is always an int so the cast should be safe
+        return (int) hostCRC.getValue();
+    }
+
+    @Substitution(languageFilter = PureJavaLibZipFilter.class)
+    public static int updateBytes0(int crc, @JavaType(byte[].class) StaticObject b, int off, int len,
+                    @Inject EspressoLanguage language) {
+        CRC32 hostCRC = new CRC32();
+        putCRC(crc, hostCRC);
+        hostCRC.update(b.unwrap(language), off, len);
+        // internally crc is always an int so the cast should be safe
+        return (int) hostCRC.getValue();
+    }
+
+    @Substitution(languageFilter = PureJavaLibZipFilter.class)
+    public static int updateByteBuffer0(int crc, long bufAddress, int off, int len,
+                    @Inject NativeAccess nativeAccess, @Inject Meta meta) {
+        CRC32 hostCRC = new CRC32();
+        putCRC(crc, hostCRC);
         try {
-            getHostCRC32(crc, libsMeta, meta).update(b.unwrap(lang), off, len);
-        } catch (IndexOutOfBoundsException e) {
-            meta.throwExceptionWithMessage(meta.java_lang_IndexOutOfBoundsException, e.getMessage());
+            ByteBuffer byteBuffer = nativeAccess.nativeMemory().wrapNativeMemory(bufAddress + off, len);
+            hostCRC.update(byteBuffer);
+            // internally crc is always an int so the cast should be safe
+            return (int) hostCRC.getValue();
+        } catch (NativeMemory.IllegalMemoryAccessException e) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid memory access: bufAddress and len refer to memory outside the allocated region");
         }
-    }
-
-    @Substitution(languageFilter = PureJavaLibZipFilter.class)
-    public static long getValue0(@JavaType(CRC32.class) StaticObject crc,
-                    @Inject LibsMeta libsMeta, @Inject Meta meta) {
-        return getHostCRC32(crc, libsMeta, meta).getValue();
-    }
-
-    @Substitution(languageFilter = PureJavaLibZipFilter.class)
-    public static void reset0(@JavaType(CRC32.class) StaticObject crc,
-                    @Inject LibsMeta libsMeta, @Inject Meta meta) {
-        getHostCRC32(crc, libsMeta, meta).reset();
     }
 }

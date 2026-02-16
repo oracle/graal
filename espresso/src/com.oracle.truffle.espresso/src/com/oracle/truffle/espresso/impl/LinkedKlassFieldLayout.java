@@ -277,9 +277,7 @@ final class LinkedKlassFieldLayout {
                         entry(Types.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream,
                                         new HiddenField(Names.HIDDEN_hostReference, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)),
                         entry(Types.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator,
-                                        new HiddenField(Names.HIDDEN_hostReference, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)),
-                        entry(Types.java_util_zip_CRC32,
-                                        new HiddenField(Names.HIDDEN_value, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)));
+                                        new HiddenField(Names.HIDDEN_hostReference, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)));
 
         private static Map.Entry<Symbol<Type>, HiddenField[]> entry(Symbol<Type> declaringClass, HiddenField... fields) {
             return Map.entry(declaringClass, fields);

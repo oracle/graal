@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.libs;
 
 import static com.oracle.truffle.api.CompilerDirectives.inInterpreter;
 import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate;
-import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.ALL;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -34,7 +33,6 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.DiffVersionLoadHelper;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
@@ -50,10 +48,6 @@ public final class LibsMeta implements ContextAccess {
     public final ObjectKlass sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator;
     public final Field sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_0hostReference;
     public final Method sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_init;
-
-    // libzip
-    public final ObjectKlass java_util_zip_CRC32;
-    public final Field java_util_zip_CRC32_0value;
 
     // libjava
     public final ObjectKlass java_lang_ProcessHandleImpl$Info;
@@ -102,9 +96,6 @@ public final class LibsMeta implements ContextAccess {
                         EspressoSymbols.Names.HIDDEN_hostReference);
         sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_0hostReference = sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator.requireHiddenField(
                         EspressoSymbols.Names.HIDDEN_hostReference);
-        // libzip
-        java_util_zip_CRC32 = knownKlass(EspressoSymbols.Types.java_util_zip_CRC32);
-        java_util_zip_CRC32_0value = diff().field(ALL, EspressoSymbols.Names.HIDDEN_value, EspressoSymbols.Types._int).maybeHiddenfield(java_util_zip_CRC32);
 
         // libjava
         java_lang_ProcessHandleImpl$Info = knownKlass(EspressoSymbols.Types.java_lang_ProcessHandleImpl$Info);
@@ -156,10 +147,6 @@ public final class LibsMeta implements ContextAccess {
 
     public ObjectKlass knownKlass(Symbol<Type> type) {
         return meta.knownKlass(type);
-    }
-
-    private DiffVersionLoadHelper diff() {
-        return new DiffVersionLoadHelper(meta);
     }
 
     public final class LibNetMeta {
