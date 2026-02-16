@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,8 @@
 
 package com.oracle.svm.hosted.webimage.util;
 
-import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -209,10 +207,8 @@ public class ReflectUtil {
     public static Set<AnalysisMethod> findBaseMethodsOfJSAnnotated(AnalysisMetaAccess metaAccess, ImageClassLoader imageClassLoader) {
         Set<AnalysisMethod> methods = new HashSet<>();
 
-        List<Method> annotatedMethods = imageClassLoader.findAnnotatedMethods(JS.class);
-
-        for (Method annotatedMethod : annotatedMethods) {
-            AnalysisMethod aMethod = metaAccess.lookupJavaMethod(annotatedMethod);
+        for (ResolvedJavaMethod annotatedMethod : imageClassLoader.findAnnotatedResolvedJavaMethods(JS.class)) {
+            AnalysisMethod aMethod = metaAccess.getUniverse().lookup(annotatedMethod);
             findBaseMethods(aMethod, aMethod.getDeclaringClass(), methods);
         }
 

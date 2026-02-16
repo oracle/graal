@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +23,6 @@
  * questions.
  */
 package com.oracle.svm.hosted.webimage.codegen.long64;
-
-import java.lang.reflect.Method;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -101,7 +99,7 @@ public class Long64Lowerer {
      * Maps arithmetic operations to methods of {@link Long64}.
      *
      * @param n either a {@link ArithmeticOperation} or a {@link IntegerDivRemNode}
-     * @return a {@link Method} of {@link Long64}
+     * @return a {@link HostedMethod} of {@link Long64}
      */
     public static HostedMethod methodForArithmeticOperation(ValueNode n) {
         ArithmeticOpTable.Op op;

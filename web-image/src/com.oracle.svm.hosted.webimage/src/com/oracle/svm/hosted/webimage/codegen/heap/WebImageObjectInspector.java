@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,12 +93,13 @@ public class WebImageObjectInspector extends ObjectInspector {
 
         assert !isFrozen() : "Object inspector already frozen";
 
-        HostedType type = providers.getMetaAccess().lookupJavaType(c);
+        HostedMetaAccess metaAccess = providers.getMetaAccess();
+        HostedType type = metaAccess.lookupJavaType(c);
 
         ObjectDefinition odef;
         if (type.isArray()) {
             odef = new ArrayType<>(c, type.getComponentType(), reason);
-        } else if (type.getJavaClass() == String.class) {
+        } else if (type.equals(metaAccess.lookupJavaType(String.class))) {
             String strValue = providers.getSnippetReflection().asObject(String.class, c);
             odef = new StringType(c, strValue, reason);
         } else {

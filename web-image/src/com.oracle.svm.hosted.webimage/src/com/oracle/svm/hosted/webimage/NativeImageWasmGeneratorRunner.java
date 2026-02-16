@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,12 +56,14 @@ import com.oracle.svm.hosted.webimage.util.BenchmarkLogger;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmLMJavaMainSupport;
 import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCJavaMainSupport;
 import com.oracle.svm.util.AnnotatedObjectAccess;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.WebImageJSJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJavaMainSupport;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -211,16 +213,13 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
         };
     }
 
-    protected static Method getLibraryEntyPointMethod(ImageClassLoader classLoader) {
-        try {
-            return switch (WebImageOptions.getBackend(classLoader)) {
-                case JS -> WebImageJavaMainSupport.class.getDeclaredMethod("initializeLibrary", String[].class);
-                case WASM -> WebImageWasmLMJavaMainSupport.class.getDeclaredMethod("initializeLibrary", int.class, CIntPointer.class, CShortPointer.class);
-                case WASMGC -> WebImageWasmGCJavaMainSupport.class.getDeclaredMethod("initializeLibrary", String[].class);
-            };
-        } catch (NoSuchMethodException e) {
-            throw GraalError.shouldNotReachHere(e, "Could not reflectively lookup internal library entry point.");
-        }
+    protected static ResolvedJavaMethod getLibraryEntyPointMethod(ImageClassLoader classLoader) {
+        MetaAccessProvider meta = GuestAccess.get().getProviders().getMetaAccess();
+        return switch (WebImageOptions.getBackend(classLoader)) {
+            case JS -> JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, WebImageJavaMainSupport.class, "initializeLibrary", String[].class);
+            case WASM -> JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, WebImageWasmLMJavaMainSupport.class, "initializeLibrary", int.class, CIntPointer.class, CShortPointer.class);
+            case WASMGC -> JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, WebImageWasmGCJavaMainSupport.class, "initializeLibrary", String[].class);
+        };
     }
 
     @Override

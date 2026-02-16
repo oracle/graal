@@ -26,8 +26,6 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.SHOULD_NOT_REACH_HERE;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -388,28 +386,13 @@ public class JSCodeGenTool extends CodeGenTool {
     }
 
     @Override
-    public void genFieldName(Field field) {
-        genFieldName(getProviders().getMetaAccess().lookupJavaField(field));
-    }
-
-    @Override
     public void genTypeName(ResolvedJavaType type) {
         codeBuffer.emitText(getJSProviders().typeControl().requestTypeName(type));
     }
 
     @Override
-    public void genTypeName(Class<?> type) {
-        genTypeName(getProviders().getMetaAccess().lookupJavaType(type));
-    }
-
-    @Override
     public void genMethodName(ResolvedJavaMethod method) {
         codeBuffer.emitText(getJSProviders().typeControl().requestMethodName(method));
-    }
-
-    @Override
-    public void genMethodName(Method method) {
-        genMethodName(getProviders().getMetaAccess().lookupJavaMethod(method));
     }
 
     @Override

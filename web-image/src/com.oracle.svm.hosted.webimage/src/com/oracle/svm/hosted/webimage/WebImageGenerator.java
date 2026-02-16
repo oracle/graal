@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,6 @@ import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.ANALY
 import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.HOSTED_METHODS;
 import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.HOSTED_TYPES;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 
@@ -74,7 +72,6 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.annotation.WasmStartFunction;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmWebImage;
 import com.oracle.svm.util.GuestAccess;
-import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.webimage.platform.WebImagePlatformConfigurationProvider;
 import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
@@ -84,8 +81,10 @@ import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class WebImageGenerator extends NativeImageGenerator {
     public static final String UNIVERSE_BUILD_SCOPE_NAME = "Universe-Build";
@@ -96,7 +95,7 @@ public class WebImageGenerator extends NativeImageGenerator {
     /**
      * This method becomes the main entry point for non-executable images (e.g. shared libraries).
      */
-    private final Method libraryInit;
+    private final ResolvedJavaMethod libraryInit;
 
     private AbstractImage.NativeImageKind imageKind;
 
@@ -152,13 +151,11 @@ public class WebImageGenerator extends NativeImageGenerator {
          * For executable images, use the main entry point as provided by native image. Otherwise,
          * pass on the library initialization code as the main entry point.
          */
-        Method method = k.isExecutable ? (Method) OriginalMethodProvider.getJavaMethod(mainEntryPoint.method()) : libraryInit;
-        HostedMethod mainEntryPointMethod = hMetaAccess.lookupJavaMethod(method);
+        ResolvedJavaMethod method = k.isExecutable ? mainEntryPoint.method() : libraryInit;
+        HostedMethod mainEntryPointMethod = hUniverse.lookup(aUniverse.lookup(method));
         this.image = switch (WebImageOptions.getBackend()) {
-            // For now the WasmGC backend does not require its own specialized WebImage subclass and
-            // WasmWebImage has linear-memory specific code
-            case JS -> new WebImage(k, hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
-            case WASM, WASMGC -> new WasmWebImage(k, hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
+            case JS -> new WebImage(k, this.hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
+            case WASM, WASMGC -> new WasmWebImage(k, this.hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
         };
     }
 
@@ -179,24 +176,24 @@ public class WebImageGenerator extends NativeImageGenerator {
 
     @Override
     protected void registerEntryPoints(Map<ResolvedJavaMethod, CEntryPointData> entryPoints) {
-        GuestAccess access = GuestAccess.get();
         if (WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASM || WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASMGC) {
-            List<Method> startFunctions = loader.findAnnotatedMethods(WasmStartFunction.class);
+            List<ResolvedJavaMethod> startFunctions = loader.findAnnotatedResolvedJavaMethods(WasmStartFunction.class);
             GraalError.guarantee(startFunctions.size() <= 1, "Only a single start function must exist: %s", startFunctions);
 
             if (!startFunctions.isEmpty()) {
-                Method startFunction = startFunctions.getFirst();
-                GraalError.guarantee(Modifier.isStatic(startFunction.getModifiers()), "Start function %s.%s is not static.", startFunction.getDeclaringClass().getName(), startFunction.getName());
+                ResolvedJavaMethod startFunction = startFunctions.getFirst();
+                GraalError.guarantee(startFunction.isStatic(), "Start function %s.%s is not static.", startFunction.getDeclaringClass().toJavaName(), startFunction.getName());
 
-                GraalError.guarantee(startFunction.getParameterCount() == 0 && startFunction.getReturnType() == void.class, "Start function %s.%s must not have arguments or a return value.",
-                                startFunction.getDeclaringClass().getName(), startFunction.getName());
+                GraalError.guarantee(startFunction.getSignature().getParameterCount(false) == 0 && startFunction.getSignature().getReturnKind() == JavaKind.Void,
+                                "Start function %s.%s must not have arguments or a return value.",
+                                startFunction.getDeclaringClass().toJavaName(), startFunction.getName());
 
-                entryPoints.put(access.lookupMethod(startFunction), null);
+                entryPoints.put(startFunction, null);
             }
 
-            for (Method m : loader.findAnnotatedMethods(WasmExport.class)) {
-                GraalError.guarantee(Modifier.isStatic(m.getModifiers()), "Exported method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().getName(), m.getName());
-                entryPoints.put(access.lookupMethod(m), null);
+            for (ResolvedJavaMethod m : loader.findAnnotatedResolvedJavaMethods(WasmExport.class)) {
+                GraalError.guarantee(m.isStatic(), "Exported method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().toJavaName(), m.getName());
+                entryPoints.put(m, null);
             }
         }
 
@@ -205,13 +202,13 @@ public class WebImageGenerator extends NativeImageGenerator {
              * For non-executable images (shared libraries), the library initialization code needs
              * to be an entry point.
              */
-            entryPoints.put(access.lookupMethod(libraryInit), null);
+            entryPoints.put(libraryInit, null);
         }
 
-        for (Class<?> c : loader.findAnnotatedClasses(JS.Export.class, false)) {
-            for (Method m : c.getDeclaredMethods()) {
-                if (Modifier.isAbstract(m.getModifiers())) {
-                    entryPoints.put(access.lookupMethod(m), null);
+        for (ResolvedJavaType c : loader.findAnnotatedResolvedJavaTypes(JS.Export.class, false)) {
+            for (ResolvedJavaMethod m : c.getDeclaredMethods()) {
+                if (m.isAbstract()) {
+                    entryPoints.put(m, null);
                 }
             }
         }

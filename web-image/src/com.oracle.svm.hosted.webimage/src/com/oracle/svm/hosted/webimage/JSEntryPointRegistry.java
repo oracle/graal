@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
+import com.oracle.svm.util.GuestAccess;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 /**
  * Collects entry points specified in entry point configuration files.
  *
@@ -44,7 +48,7 @@ import org.graalvm.nativeimage.impl.ReflectionRegistry;
  * particular, conditional configuration is not supported and query specification is ignored.
  */
 public class JSEntryPointRegistry implements ReflectionRegistry {
-    public final Set<Executable> entryPoints = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    public final Set<ResolvedJavaMethod> entryPoints = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @Override
     public void register(AccessCondition condition, boolean preserved, Class<?> clazz) {
@@ -56,7 +60,7 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
         if (!AccessCondition.unconditional().equals(condition)) {
             System.out.println("Conditional specification in entry points configuration is not supported and is ignored");
         }
-        entryPoints.add(method);
+        entryPoints.add(GuestAccess.get().lookupMethod(method));
     }
 
     @Override

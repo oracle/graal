@@ -33,11 +33,14 @@ import java.util.Set;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.webimage.hightiercodegen.Emitter;
 import com.oracle.svm.webimage.type.TypeControl;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Lowers tweaks and modifications to the normal runtime.
@@ -49,17 +52,18 @@ public class RuntimeModificationLowerer {
      *
      * @see #assignToRuntimeHubs
      */
-    private static final Set<Class<?>> COMPULSORY_RUNTIME_HUBS = new HashSet<>();
+    private static final Set<ResolvedJavaType> COMPULSORY_RUNTIME_HUBS = new HashSet<>();
 
     static {
+        GuestAccess access = GuestAccess.get();
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive() && kind != JavaKind.Void) {
-                COMPULSORY_RUNTIME_HUBS.add(kind.toBoxedJavaClass());
+                COMPULSORY_RUNTIME_HUBS.add(access.lookupType(kind.toBoxedJavaClass()));
             }
         }
-        COMPULSORY_RUNTIME_HUBS.add(Class.class);
-        COMPULSORY_RUNTIME_HUBS.add(String.class);
-        COMPULSORY_RUNTIME_HUBS.add(BigInteger.class);
+        COMPULSORY_RUNTIME_HUBS.add(access.lookupType(Class.class));
+        COMPULSORY_RUNTIME_HUBS.add(access.lookupType(String.class));
+        COMPULSORY_RUNTIME_HUBS.add(access.lookupType(BigInteger.class));
     }
 
     public void lower(JSCodeGenTool tool) {
@@ -106,9 +110,9 @@ public class RuntimeModificationLowerer {
         tool.genComment("Create an index between class names and hubs in the image.");
         for (HostedType type : typeControl.emittedTypes()) {
             assignJsClassToHub(tool, typeControl, type);
-            if (COMPULSORY_RUNTIME_HUBS.contains(type.getJavaClass())) {
+            if (COMPULSORY_RUNTIME_HUBS.contains(OriginalClassProvider.getOriginalType(type))) {
                 // Only classes necessary for coercion are emitted.
-                assignToRuntimeHubs(tool, typeControl, type, type.getJavaClass().getName());
+                assignToRuntimeHubs(tool, typeControl, type, type.toClassName());
             }
         }
     }

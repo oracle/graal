@@ -198,7 +198,7 @@ public class WasmGCHeapWriter {
             StringBuilder sb = new StringBuilder();
             sb.append('[');
 
-            sb.append(getInfo().getClazz().getJavaClass()).append(", ");
+            sb.append(getInfo().getClazz().toJavaName()).append(", ");
 
             if (isEmbedded()) {
                 sb.append("embedded, ");

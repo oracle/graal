@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.webimage.thirdparty;
 
-import java.lang.reflect.Method;
-
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -36,6 +34,7 @@ import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 import net.java.html.js.JavaScriptBody;
 
@@ -122,8 +121,8 @@ public class JavaScriptBodyIntrinsification {
     }
 
     static void findJSMethods(FeatureImpl.DuringAnalysisAccessImpl access) {
-        for (Method m : access.findAnnotatedMethods(JavaScriptBody.class)) {
-            AnalysisMethod aMethod = access.getMetaAccess().lookupJavaMethod(m);
+        for (ResolvedJavaMethod m : access.getImageClassLoader().findAnnotatedResolvedJavaMethods(JavaScriptBody.class)) {
+            AnalysisMethod aMethod = access.getUniverse().lookup(m);
             JSBodyStubMethod stubMethod = (JSBodyStubMethod) aMethod.getWrapped();
             JSBody.JSCode jsCode = stubMethod.getJsCode();
 
