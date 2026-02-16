@@ -43,12 +43,13 @@ final class GroovyIndyInterfaceFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return access.findClassByName("org.codehaus.groovy.vmplugin.v7.IndyInterface") != null;
+        return access.findClassByName("org.codehaus.groovy.vmplugin.v8.IndyInterface") != null ||
+                access.findClassByName("org.codehaus.groovy.vmplugin.v7.IndyInterface") != null;
     }
 }
 
-@TargetClass(className = "org.codehaus.groovy.vmplugin.v7.IndyInterface", onlyWith = com.oracle.svm.polyglot.groovy.GroovyIndyInterfaceFeature.IsEnabled.class)
-final class Target_org_codehaus_groovy_vmplugin_v7_IndyInterface_invalidateSwitchPoints {
+@TargetClass(className = "org.codehaus.groovy.vmplugin.v8.IndyInterface", onlyWith = com.oracle.svm.polyglot.groovy.GroovyIndyInterfaceFeature.IsEnabled.class)
+final class Target_org_codehaus_groovy_vmplugin_v8_IndyInterface_invalidateSwitchPoints {
     @Substitute
     protected static void invalidateSwitchPoints() {
         throw new Error("IndyInterface.invalidateSwitchPoints() is not supported.");
