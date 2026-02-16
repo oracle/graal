@@ -1612,9 +1612,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj,
-                fieldId,
-                JNIPrimitiveType.OBJECT, false);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIObjectHandle result = JNIFunctions.GetObjectField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1626,9 +1624,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj,
-                fieldId,
-                JNIPrimitiveType.BOOLEAN, false);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         boolean result = JNIFunctions.GetBooleanField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1640,9 +1636,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj,
-                fieldId,
-                JNIPrimitiveType.BYTE, false);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         byte result = JNIFunctions.GetByteField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1654,9 +1648,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj,
-                fieldId,
-                JNIPrimitiveType.SHORT, false);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         short result = JNIFunctions.GetShortField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1668,9 +1660,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj,
-                fieldId,
-                JNIPrimitiveType.SHORT, false);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         char result = JNIFunctions.GetCharField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1682,9 +1672,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj,
-                fieldId,
-                JNIPrimitiveType.SHORT, false);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         int result = JNIFunctions.GetIntField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1696,9 +1684,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj,
-                fieldId,
-                JNIPrimitiveType.LONG, false);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         long result = JNIFunctions.GetLongField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1710,9 +1696,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj,
-                fieldId,
-                JNIPrimitiveType.FLOAT, false);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         float result = JNIFunctions.GetFloatField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1724,9 +1708,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj,
-                fieldId,
-                JNIPrimitiveType.DOUBLE, false);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         double result = JNIFunctions.GetDoubleField(env, obj, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1740,7 +1722,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.OBJECT, false);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIObjectHandle result = JNIFunctions.GetStaticObjectField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1753,7 +1735,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.OBJECT, false);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         boolean result = JNIFunctions.GetStaticBooleanField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1766,7 +1748,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.BYTE, false);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         byte result = JNIFunctions.GetStaticByteField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1779,7 +1761,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.SHORT, false);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         short result = JNIFunctions.GetStaticShortField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1792,7 +1774,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.CHAR, false);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         char result = JNIFunctions.GetStaticCharField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1805,7 +1787,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.INT, false);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         int result = JNIFunctions.GetStaticIntField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1818,7 +1800,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.LONG, false);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         long result = JNIFunctions.GetStaticLongField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1831,7 +1813,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.FLOAT, false);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         float result = JNIFunctions.GetStaticFloatField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1844,7 +1826,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.DOUBLE, false);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         double result = JNIFunctions.GetStaticDoubleField(env, clazz, fieldId);
         JNIValidation.functionExit();
         return result;
@@ -1856,7 +1838,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.OBJECT, true);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIFunctions.SetObjectField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1867,7 +1849,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.BOOLEAN, true);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIFunctions.SetBooleanField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1878,7 +1860,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.BYTE, true);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIFunctions.SetByteField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1889,7 +1871,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.SHORT, true);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIFunctions.SetShortField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1900,7 +1882,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.CHAR, true);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIFunctions.SetCharField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1911,7 +1893,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.INT, true);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIFunctions.SetIntField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1922,7 +1904,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.LONG, true);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIFunctions.SetLongField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1933,7 +1915,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.FLOAT, true);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIFunctions.SetFloatField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1944,7 +1926,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateJNIEnv(env);
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
-        JNIValidation.validateInstanceField(obj, fieldId, JNIPrimitiveType.DOUBLE, true);
+        JNIValidation.validateInstanceFieldID(obj, fieldId);
         JNIFunctions.SetDoubleField(env, obj, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1956,7 +1938,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.OBJECT, true);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIFunctions.SetStaticObjectField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1968,7 +1950,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.BOOLEAN, true);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIFunctions.SetStaticBooleanField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1980,7 +1962,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.BYTE, true);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIFunctions.SetStaticByteField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -1992,7 +1974,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.SHORT, true);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIFunctions.SetStaticShortField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -2004,7 +1986,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.CHAR, true);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIFunctions.SetStaticCharField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -2017,7 +1999,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.INT, true);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIFunctions.SetStaticIntField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -2029,7 +2011,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.LONG, true);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIFunctions.SetStaticLongField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -2041,7 +2023,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.FLOAT, true);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIFunctions.SetStaticFloatField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -2053,7 +2035,7 @@ public final class ValidatedJNIFunctions {
         JNIValidation.validateThread();
         JNIValidation.functionEnter();
         JNIValidation.validateClass(clazz, false);
-        JNIValidation.validateStaticField(clazz, fieldId, JNIPrimitiveType.DOUBLE, true);
+        JNIValidation.validateStaticFieldID(clazz, fieldId);
         JNIFunctions.SetStaticDoubleField(env, clazz, fieldId, value);
         JNIValidation.functionExit();
     }
@@ -2222,7 +2204,6 @@ public final class ValidatedJNIFunctions {
     }
 
     enum JNIPrimitiveType {
-        OBJECT,
         BOOLEAN,
         BYTE,
         CHAR,
@@ -2238,11 +2219,19 @@ public final class ValidatedJNIFunctions {
         private static final String JVM_SIGNATURE_ENDCLASS = ";";
         private static final int JNI_COMMIT = 1;
         private static final int JNI_ABORT = 2;
-        static void validateJNIEnv(JNIEnvironment env) {
+        static int validateJNIEnv(JNIEnvironment env) {
             if (env.isNull()) {
                 failFatally("JNIEnv is null");
             }
+            IsolateThread thread = (IsolateThread) env;
+            VMError.guarantee(CurrentIsolate.getCurrentThread() == thread, "Threads must match for the call below");
+            if (!VMThreads.singleton().verifyIsCurrentThread(thread) || !VMThreads.isAttached(thread)) {
+                throw VMError.shouldNotReachHere("A call from native code to Java code provided the wrong JNI environment or the wrong IsolateThread. " +
+                        "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
+            }
+            return CEntryPointErrors.NO_ERROR;
         }
+
         static void validateThread() {
             IsolateThread thread = CurrentIsolate.getCurrentThread();
             if (!VMThreads.singleton().verifyIsCurrentThread(thread) || !VMThreads.isAttached(thread)) {
@@ -2250,6 +2239,7 @@ public final class ValidatedJNIFunctions {
                         "The JNI environment / IsolateThread is a thread-local data structure and must not be shared between threads.");
             }
         }
+
         static void functionEnter() {}
         static void functionEnterExceptionAllowed() {}
         static void functionEnterCritical() {}
@@ -2257,9 +2247,7 @@ public final class ValidatedJNIFunctions {
         static void functionExit() {}
 
         static void validateObject(JNIObjectHandle obj) {
-            if (obj.equal(Word.nullPointer())) {
-                failFatally("Object handle is null");
-            }
+            if (obj.equal(Word.nullPointer())) return;
             if (!validateHandle(obj)) failFatally("Bad ref to jni");
         }
 
@@ -2291,8 +2279,15 @@ public final class ValidatedJNIFunctions {
 
         static void validateThrowableClass(JNIObjectHandle clazz) {
             if (clazz.equal(Word.nullPointer())) failFatally("Class is not allowed to be Null");
+
             Object o = JNIObjectHandles.getObject(clazz);
-            if (!(o instanceof Class<?>) || !Throwable.class.isAssignableFrom((Class<?>) o)) failFatally("Class is not a Throwable Class");
+            if (!(o instanceof Class<?>)) {
+                return;
+            }
+
+            if (!Throwable.class.isAssignableFrom((Class<?>) o)) {
+                failFatally("Class is not a Throwable subtype");
+            }
         }
 
         static void validateCall(JNIObjectHandle clazz, JNIMethodId method) {
@@ -2304,37 +2299,26 @@ public final class ValidatedJNIFunctions {
             }
         }
 
-        static void validateStaticField(JNIObjectHandle clazz, JNIFieldId field, JNIPrimitiveType expectedType, boolean isSetter) {
+        static void validateStaticFieldID(JNIObjectHandle clazz, JNIFieldId field) {
             if (clazz.equal(Word.nullPointer())) {
                 failFatally("Static field access on null class");
             }
-
+            validateClass(clazz, false);
             if (field.isNull()) {
                 failFatally("Static field ID is null");
             }
-
-            validateClass(clazz, false);
-
-            if (expectedType == null) {
-                failFatally("Expected field type is null");
-            }
         }
 
-        static void validateInstanceField(JNIObjectHandle obj, JNIFieldId field, JNIPrimitiveType expectedType, boolean isSetter) {
+        static void validateInstanceFieldID(JNIObjectHandle obj, JNIFieldId field) {
             if (obj.equal(Word.nullPointer())) {
                 failFatally("Instance field access on null object");
             }
-
+            validateJNIObjectHandle(obj);
             if (field.isNull()) {
                 failFatally("Instance field ID is null");
             }
-
-            validateJNIObjectHandle(obj);
-
-            if (expectedType == null) {
-                failFatally("Expected field type is null");
-            }
         }
+
         static void validateString(JNIObjectHandle str) {
             if (str.equal(Word.nullPointer())) {
                 failFatally("String handle is null");
