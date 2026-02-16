@@ -80,19 +80,23 @@ public class PosixUtils {
         SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
     }
 
-    /** Return the error string for the last error, or a default message. */
-    public static String lastErrorString(String defaultMsg) {
+    public static String strerrorErrno() {
         int errno = LibC.errno();
-        return errorString(errno, defaultMsg);
+        return strerror(errno);
     }
 
-    /** Return the error string for the given error number, or a default message. */
-    public static String errorString(int errno, String defaultMsg) {
-        String result = "";
-        if (errno != 0) {
-            result = CTypeConversion.toJavaString(Errno.strerror(errno));
+    public static String strerror(int errno) {
+        UnsignedWord size = Word.unsigned(1024);
+        CCharPointer buf = NullableNativeMemory.malloc(size, NmtCategory.Internal);
+        if (buf.isNull()) {
+            return "[could not allocate memory for error string]";
         }
-        return result.length() != 0 ? result : defaultMsg;
+        try {
+            CCharPointer cstr = Errno.strerror_r(errno, buf, size);
+            return CTypeConversion.toJavaString(cstr);
+        } finally {
+            NullableNativeMemory.free(buf);
+        }
     }
 
     public static int getpid() {
