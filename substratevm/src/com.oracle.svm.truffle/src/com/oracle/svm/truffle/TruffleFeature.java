@@ -183,6 +183,7 @@ import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.host.HostInliningPhase;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.nodes.TruffleEarlyEscapeAnchorNode;
 import jdk.graal.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -387,6 +388,9 @@ public class TruffleFeature implements InternalFeature {
         // register thread local foreign poll as compiled otherwise the stub won't work
         config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true,
                         "Truffle thread local foreign poll, registered in " + TruffleFeature.class);
+
+        // required for TrufflEarlyEscapeAnalysisPhase which is run after analysis
+        config.registerAsUnsafeAllocated(TruffleEarlyEscapeAnchorNode.class);
 
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.preinitializeTruffleCompiler();

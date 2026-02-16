@@ -27,8 +27,14 @@ package jdk.graal.compiler.truffle.test;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.EarlyEscapeAnalysis;
 import com.oracle.truffle.api.CompilerDirectives.EarlyInline;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
+
+import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 
 public class EarlyEscapeAnalysisTest extends PartialEvaluationTest {
 
@@ -95,6 +101,56 @@ public class EarlyEscapeAnalysisTest extends PartialEvaluationTest {
             this.value = value;
         }
 
+    }
+
+    @Test
+    public void testEarlyEscapeAnalysisExplodeLoops() {
+        var graph = partialEval(earlyEscapeAnalysisExplodeLoopsRoot());
+
+        int virtualInstanceCount = 0;
+        for (var vi : graph.getNodes(VirtualInstanceNode.TYPE)) {
+            if (vi.type().toJavaName().equals(TestEscape.class.getName())) {
+                virtualInstanceCount++;
+            }
+        }
+        assert virtualInstanceCount == 1 : "Expected exactly one virtual instanceof of type " + TestEscape.class.getSimpleName() + ". Found " + virtualInstanceCount;
+    }
+
+    private static RootNode earlyEscapeAnalysisExplodeLoopsRoot() {
+        return new RootNode(null) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return testMergeExplode();
+            }
+
+            @EarlyEscapeAnalysis
+            @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
+            private static int testMergeExplode() {
+                int[] states = new int[]{0, 1, 1, 1};
+                int result = 0;
+
+                TestEscape v = new TestEscape(42);
+
+                for (int state : states) {
+                    switch (state) {
+                        case 0:
+                            result += boundary(v.value);
+                            break;
+                        case 1:
+                            result -= boundary(v.value);
+                            break;
+                    }
+                }
+
+                return result;
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            private static int boundary(int val) {
+                return val;
+            }
+        };
     }
 
 }
