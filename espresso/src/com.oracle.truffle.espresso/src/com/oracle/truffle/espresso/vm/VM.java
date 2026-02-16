@@ -2229,8 +2229,66 @@ public final class VM extends NativeEnv {
 
     // region Library support
 
-    private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Lib = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, LibraryReference> handle2Lib = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Sym = new ConcurrentHashMap<>();
+
+    /**
+     * A reference to a library equipped with a reference-count to avoid forgetting about this
+     * library until {@link #JVM_UnloadLibrary} has been called as many times as
+     * {@link #JVM_LoadLibrary}.
+     */
+    private static final class LibraryReference {
+        private static final int PERMANENT_COUNT = -32;
+        final @Pointer TruffleObject library;
+        private int refCount;
+
+        private LibraryReference(TruffleObject library, int initialCount) {
+            this.library = library;
+            this.refCount = initialCount;
+        }
+
+        private static LibraryReference createRefCounted(@Pointer TruffleObject library) {
+            return new LibraryReference(library, 1);
+        }
+
+        private static LibraryReference createPermanent(@Pointer TruffleObject library) {
+            return new LibraryReference(library, PERMANENT_COUNT);
+        }
+
+        /**
+         * Returns true is this is a special library reference that doesn't need to be unloaded.
+         */
+        public boolean isPermanent() {
+            return refCount == PERMANENT_COUNT;
+        }
+
+        private void incrementRefCount() {
+            /*
+             * This doesn't need synchronization or atomics because it is called inside
+             * handle2Lib.compute
+             */
+            if (isPermanent()) {
+                return;
+            }
+            assert refCount > 0;
+            refCount++;
+        }
+
+        /**
+         * Returns true if the reference count has reached 0.
+         */
+        private boolean decrementRefCount() {
+            /*
+             * This doesn't need synchronization or atomics because it is called inside
+             * handle2Lib.compute
+             */
+            if (isPermanent()) {
+                return false;
+            }
+            assert refCount > 0;
+            return --refCount <= 0;
+        }
+    }
 
     private static final AtomicLong libraryHandles = new AtomicLong(1);
     private static final AtomicLong symbolHandles = new AtomicLong(1);
@@ -2271,7 +2329,6 @@ public final class VM extends NativeEnv {
         // be fixed, it might be garbage if the used base lib has a mismatching signature,
         // so we recompute its value instead on our side.
         boolean throwException = !hasDynamicLoaderCache();
-
         try {
             String name = NativeUtils.interopPointerToString(namePtr, getNativeAccess().nativeMemory());
             return JVM_LoadLibrary(name, throwException);
@@ -2288,7 +2345,6 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public @Pointer TruffleObject JVM_LoadLibrary(String name, boolean throwException) {
         getLogger().fine(() -> String.format("JVM_LoadLibrary(%s, %s)", name, throwException));
-
         TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
         if (lib == null) {
             if (throwException) {
@@ -2298,7 +2354,14 @@ public final class VM extends NativeEnv {
             return RawPointer.create(0);
         }
         long handle = getLibraryHandle(lib);
-        handle2Lib.put(handle, lib);
+        handle2Lib.compute(handle, (h, ref) -> {
+            if (ref != null) {
+                ref.incrementRefCount();
+                return ref;
+            } else {
+                return LibraryReference.createRefCounted(lib);
+            }
+        });
         getLogger().fine(() -> String.format("JVM_LoadLibrary: Successfully loaded '%s' with handle %x", name, handle));
         return RawPointer.create(handle);
     }
@@ -2339,12 +2402,27 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public void JVM_UnloadLibrary(@Pointer TruffleObject libraryPtr) {
         long nativeLibraryPtr = NativeUtils.interopAsPointer(libraryPtr);
-        TruffleObject library = handle2Lib.get(nativeLibraryPtr);
-        if (library == null) {
-            getLogger().severe("JVM_UnloadLibrary with unknown library (not loaded through JVM_LoadLibrary?): " + libraryPtr + " / " + Long.toHexString(nativeLibraryPtr));
-        } else {
-            getNativeAccess().unloadLibrary(library);
-            handle2Lib.remove(nativeLibraryPtr);
+        TruffleObject[] toUnloadBox = new TruffleObject[1];
+        handle2Lib.compute(nativeLibraryPtr, (h, ref) -> {
+            if (ref == null) {
+                getLogger().severe("JVM_UnloadLibrary with unknown library (not loaded through JVM_LoadLibrary?): " + libraryPtr + " / " + Long.toHexString(nativeLibraryPtr));
+                return null;
+            }
+            if (!ref.isPermanent()) {
+                /*
+                 * Regardless of whether we remove the entry from `handle2Lib`, we need to call
+                 * unloadLibrary which is also managing its own ref-count.
+                 */
+                toUnloadBox[0] = ref.library;
+            }
+            if (ref.decrementRefCount()) {
+                return null;
+            } else {
+                return ref;
+            }
+        });
+        if (toUnloadBox[0] != null) {
+            getNativeAccess().unloadLibrary(toUnloadBox[0]);
         }
     }
 
@@ -2364,16 +2442,19 @@ public final class VM extends NativeEnv {
 
     @TruffleBoundary
     public long findLibraryEntry(long nativePtr, String name) {
-        TruffleObject library = handle2Lib.get(nativePtr);
-        if (library == null) {
+        LibraryReference ref = handle2Lib.get(nativePtr);
+        TruffleObject library;
+        if (ref != null) {
+            library = ref.library;
+        } else {
             if (nativePtr == rtldDefaultValue || nativePtr == processHandleValue) {
                 library = getNativeAccess().loadDefaultLibrary();
                 if (library == null) {
                     getLogger().warning("JVM_FindLibraryEntry from default/global namespace is not supported: " + name);
                     return 0;
                 }
-                TruffleObject previous = handle2Lib.putIfAbsent(nativePtr, library);
-                library = previous == null ? library : previous;
+                LibraryReference previousRef = handle2Lib.putIfAbsent(nativePtr, LibraryReference.createPermanent(library));
+                library = previousRef == null ? library : previousRef.library;
             } else {
                 getLogger().warning("JVM_FindLibraryEntry with unknown handle (" + nativePtr + " / " + Long.toHexString(nativePtr) + "): " + name);
                 return 0;
