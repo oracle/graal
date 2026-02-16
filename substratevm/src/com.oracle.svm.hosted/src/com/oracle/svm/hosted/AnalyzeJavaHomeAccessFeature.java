@@ -37,10 +37,9 @@ import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.LogUtils;
 
@@ -86,8 +85,8 @@ public class AnalyzeJavaHomeAccessFeature implements InternalFeature {
         private static final String JAVA_HOME_USAGE_LOCATIONS = "javaHomeUsageLocations";
 
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<AnalyzeJavaHomeAccessFeature>() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<AnalyzeJavaHomeAccessFeature>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, AnalyzeJavaHomeAccessFeature singleton) {
                     writer.writeInt(JAVA_HOME_USED, singleton.javaHomeUsed ? 1 : 0);

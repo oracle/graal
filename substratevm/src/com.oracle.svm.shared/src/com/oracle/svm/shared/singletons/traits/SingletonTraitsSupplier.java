@@ -30,5 +30,5 @@ package com.oracle.svm.shared.singletons.traits;
  */
 public abstract class SingletonTraitsSupplier {
 
-    public abstract SingletonTrait getTrait();
+    public abstract SingletonTrait<EmptyMetadata> getTrait();
 }

@@ -47,18 +47,17 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layered.LayeredFieldValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.image.NativeImageHeap;
-import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -275,8 +274,8 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
 
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredFieldValueTransformerSupport>() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<LayeredFieldValueTransformerSupport>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredFieldValueTransformerSupport singleton) {
                     var fieldsWithUpdatableValues = singleton.fieldToLayeredTransformer.entrySet().stream()

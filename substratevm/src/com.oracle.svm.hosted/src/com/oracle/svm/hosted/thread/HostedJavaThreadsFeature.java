@@ -37,21 +37,20 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.singletons.ImageSingletonLoader;
-import com.oracle.svm.shared.singletons.ImageSingletonWriter;
-import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaThreadsFeature;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -277,7 +276,7 @@ class HostedJavaThreadsMetadata {
 
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             SingletonLayeredCallbacks<HostedJavaThreadsMetadata> action = new SingletonLayeredCallbacks<>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, HostedJavaThreadsMetadata singleton) {
@@ -289,7 +288,7 @@ class HostedJavaThreadsMetadata {
                     return SingletonInstantiator.class;
                 }
             };
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+            return new LayeredCallbacksSingletonTrait(action);
         }
     }
 

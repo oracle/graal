@@ -28,7 +28,7 @@ package com.oracle.svm.shared.singletons.traits;
  * This metadata class is used for {@link SingletonTrait}s which need to store no additional
  * content.
  */
-final class EmptyMetadata {
+public final class EmptyMetadata {
     static final EmptyMetadata EMPTY = new EmptyMetadata();
 
     private EmptyMetadata() {

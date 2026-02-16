@@ -31,31 +31,30 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.UserSystemProperty;
+import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;
-import org.graalvm.word.impl.Word;
 
 /**
  * The locale is a process-wide setting. This class uses {@link LocaleCHelper C code} to initialize
@@ -215,7 +214,7 @@ public class LocaleSupport {
 
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<LocaleSupport>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LocaleSupport singleton) {
@@ -235,7 +234,7 @@ public class LocaleSupport {
                     return localeData == null ? "null" : localeData.toString();
                 }
             };
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+            return new LayeredCallbacksSingletonTrait(action);
         }
     }
 }

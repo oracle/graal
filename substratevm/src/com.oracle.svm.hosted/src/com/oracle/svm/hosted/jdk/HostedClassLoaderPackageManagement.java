@@ -42,20 +42,19 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.PriorLayerMarker;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
-import com.oracle.svm.shared.singletons.ImageSingletonLoader;
-import com.oracle.svm.shared.singletons.ImageSingletonWriter;
-import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.BootLoaderSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -312,8 +311,8 @@ public class HostedClassLoaderPackageManagement {
 
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<HostedClassLoaderPackageManagement>() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<HostedClassLoaderPackageManagement>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, HostedClassLoaderPackageManagement singleton) {
                     return singleton.preparePersist(writer);

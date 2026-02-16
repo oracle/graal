@@ -39,11 +39,11 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -66,23 +66,23 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.shared.singletons.ImageSingletonLoader;
-import com.oracle.svm.shared.singletons.ImageSingletonWriter;
-import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.code.CompilationResult;
@@ -108,7 +108,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.word.impl.Word;
 
 public class CodeInfoEncoder {
 
@@ -932,8 +931,8 @@ class MethodTableFirstIDTracker {
 
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<MethodTableFirstIDTracker>() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<MethodTableFirstIDTracker>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, MethodTableFirstIDTracker singleton) {
                     int nextStartingId = singleton.nextStartingId;

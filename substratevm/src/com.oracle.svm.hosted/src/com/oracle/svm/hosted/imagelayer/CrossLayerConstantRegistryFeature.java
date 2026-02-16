@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -45,22 +44,22 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.PriorLayerMarker;
+import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
+import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
+import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
-import com.oracle.svm.hosted.image.NativeImageHeap;
-import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -470,8 +469,8 @@ class ImageLayerIdTrackingSingleton {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
 
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<ImageLayerIdTrackingSingleton>() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<ImageLayerIdTrackingSingleton>() {
                 private static String futureKeyPatchKey(String key) {
                     return String.format("futureOffsetPatches:%s", key);
                 }

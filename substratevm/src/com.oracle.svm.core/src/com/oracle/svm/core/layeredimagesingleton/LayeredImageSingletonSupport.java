@@ -27,11 +27,11 @@ package com.oracle.svm.core.layeredimagesingleton;
 import java.util.Collection;
 import java.util.Set;
 
-import com.oracle.svm.shared.singletons.SingletonAccessFlags;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.shared.singletons.SingletonAccessFlags;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTrait;
@@ -65,5 +65,5 @@ public interface LayeredImageSingletonSupport {
     /**
      * @return trait associated with this key if it exists, or else {@code null}.
      */
-    SingletonTrait getTraitForUninstalledSingleton(Class<?> key, SingletonTraitKind kind);
+    SingletonTrait<?> getTraitForUninstalledSingleton(Class<?> key, SingletonTraitKind kind);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,13 @@
  */
 package com.oracle.svm.shared.singletons.traits;
 
-import com.oracle.svm.shared.singletons.Invariants;
-import com.oracle.svm.shared.singletons.SingletonAccessFlags;
-
 /**
- * Metadata associated with the {@link SingletonTraitKind#ACCESS} trait. Describes when this
- * singleton can be accessed (e.g., during the native image generator process and/or from within the
- * generated code at runtime).
+ * This trait declares layered-specific runtime access, e.g., which layer-specific singleton will be
+ * available at runtime: initial layer only, app layer only, multilayer or unavailable.
  */
-public class SingletonAccess {
-    public interface Supplier {
-        SingletonAccessFlags getAccessFlags();
-    }
+public final class LayeredInstallationKindSingletonTrait extends SingletonTrait<SingletonLayeredInstallationKind> {
 
-    public static SingletonAccessFlags getAccess(SingletonTrait<?> trait) {
-        Invariants.guarantee(trait.kind() == SingletonTraitKind.ACCESS, "Unexpected trait kind.");
-        return ((Supplier) trait.metadata()).getAccessFlags();
+    public LayeredInstallationKindSingletonTrait(SingletonLayeredInstallationKind installationKind) {
+        super(SingletonTraitKind.LAYERED_INSTALLATION_KIND, installationKind);
     }
 }

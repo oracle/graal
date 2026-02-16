@@ -33,23 +33,22 @@ import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -357,7 +356,7 @@ public final class ObjectLayout {
 
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<ObjectLayout>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ObjectLayout singleton) {
@@ -379,7 +378,7 @@ public final class ObjectLayout {
                                     priorValues, currentValues);
                 }
             };
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+            return new LayeredCallbacksSingletonTrait(action);
         }
     }
 }

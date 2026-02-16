@@ -37,16 +37,18 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.singletons.ImageSingletonLoader;
-import com.oracle.svm.shared.singletons.LayeredPersistFlags;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ImageSingletonsSupportImpl.SingletonInfo;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonKey;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonObject;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTrait;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -81,7 +83,7 @@ public class SVMImageLayerSingletonLoader {
         return new ImageSingletonLoaderImpl(keyStore, snapshot);
     }
 
-    public Map<Object, EconomicSet<Class<?>>> loadImageSingletons(Function<SingletonTrait[], Object> forbiddenObjectCreator) {
+    public Map<Object, EconomicSet<Class<?>>> loadImageSingletons(Function<SingletonTrait<?>[], SingletonInfo> forbiddenObjectCreator) {
         ArrayList<Object> singletonObjects = new ArrayList<>(snapshot.getSingletonObjects().size());
         Map<Class<?>, Integer> initialLayerKeyToIdMap = new HashMap<>();
         Map<Class<?>, Integer> singletonKeyToKeyStoreIdMap = new HashMap<>();
@@ -109,7 +111,7 @@ public class SVMImageLayerSingletonLoader {
         }
 
         Map<Object, EconomicSet<Class<?>>> singletonInitializationMap = new HashMap<>();
-        SingletonTrait[] initialLayerOnly = new SingletonTrait[]{SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY};
+        LayeredInstallationKindSingletonTrait[] initialLayerOnly = new LayeredInstallationKindSingletonTrait[]{SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY};
         for (ImageSingletonKey.Reader entry : snapshot.getSingletonKeys()) {
             String className = entry.getKeyClassName().toString();
             LayeredPersistFlags persistFlags = LayeredPersistFlags.values()[entry.getPersistFlag()];
@@ -124,7 +126,7 @@ public class SVMImageLayerSingletonLoader {
                 assert singletonObjId == SVMImageLayerSnapshotUtil.UNDEFINED_SINGLETON_OBJ_ID : "Unrestored image singleton should not be linked to an object";
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
 
-                Object forbiddenObject;
+                SingletonInfo forbiddenObject;
                 if (entry.getIsInitialLayerOnly()) {
                     int constantId = entry.getConstantId();
                     initialLayerKeyToIdMap.put(clazz, constantId);

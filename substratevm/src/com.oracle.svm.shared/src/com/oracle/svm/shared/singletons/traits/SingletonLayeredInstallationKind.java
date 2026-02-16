@@ -135,57 +135,57 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
         Invariants.guarantee(kind.metadataClass.isInstance(metadata), "Unexpected metadat kind.");
     }
 
-    public static InstallationKind getInstallationKind(SingletonTrait trait) {
+    public static InstallationKind getInstallationKind(SingletonTrait<?> trait) {
         Invariants.guarantee(trait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND, "Unexpected trait kind.");
         return ((SingletonLayeredInstallationKind) trait.metadata()).kind;
     }
 
-    static final SingletonTrait UNAVAILABLE_AT_RUNTIME_TRAIT = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+    static final LayeredInstallationKindSingletonTrait UNAVAILABLE_AT_RUNTIME_TRAIT = new LayeredInstallationKindSingletonTrait(
                     new SingletonLayeredInstallationKind(InstallationKind.UNAVAILABLE_AT_RUNTIME, EmptyMetadata.EMPTY));
 
     public static final class UnavailableAtRuntime extends SingletonLayeredInstallationKindSupplier {
         @Override
-        public SingletonTrait getLayeredInstallationKindTrait() {
+        public LayeredInstallationKindSingletonTrait getLayeredInstallationKindTrait() {
             return UNAVAILABLE_AT_RUNTIME_TRAIT;
         }
     }
 
-    public static final SingletonTrait INITIAL_LAYER_ONLY = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+    public static final LayeredInstallationKindSingletonTrait INITIAL_LAYER_ONLY = new LayeredInstallationKindSingletonTrait(
                     new SingletonLayeredInstallationKind(InstallationKind.INITIAL_LAYER_ONLY, EmptyMetadata.EMPTY));
 
     public static final class InitialLayerOnly extends SingletonLayeredInstallationKindSupplier {
         @Override
-        public SingletonTrait getLayeredInstallationKindTrait() {
+        public LayeredInstallationKindSingletonTrait getLayeredInstallationKindTrait() {
             return INITIAL_LAYER_ONLY;
         }
     }
 
-    public static final SingletonTrait APP_LAYER_ONLY = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+    public static final LayeredInstallationKindSingletonTrait APP_LAYER_ONLY = new LayeredInstallationKindSingletonTrait(
                     new SingletonLayeredInstallationKind(InstallationKind.APP_LAYER_ONLY, EmptyMetadata.EMPTY));
 
     public static final class ApplicationLayerOnly extends SingletonLayeredInstallationKindSupplier {
         @Override
-        public SingletonTrait getLayeredInstallationKindTrait() {
+        public LayeredInstallationKindSingletonTrait getLayeredInstallationKindTrait() {
             return APP_LAYER_ONLY;
         }
     }
 
-    public static final SingletonTrait MULTI_LAYER = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+    public static final LayeredInstallationKindSingletonTrait MULTI_LAYER = new LayeredInstallationKindSingletonTrait(
                     new SingletonLayeredInstallationKind(InstallationKind.MULTI_LAYER, EmptyMetadata.EMPTY));
 
     public static final class MultiLayer extends SingletonLayeredInstallationKindSupplier {
         @Override
-        public SingletonTrait getLayeredInstallationKindTrait() {
+        public LayeredInstallationKindSingletonTrait getLayeredInstallationKindTrait() {
             return MULTI_LAYER;
         }
     }
 
-    public static final SingletonTrait DUPLICABLE_TRAIT = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+    public static final LayeredInstallationKindSingletonTrait DUPLICABLE_TRAIT = new LayeredInstallationKindSingletonTrait(
                     new SingletonLayeredInstallationKind(InstallationKind.DUPLICABLE, EmptyMetadata.EMPTY));
 
     public static final class Duplicable extends SingletonLayeredInstallationKindSupplier {
         @Override
-        public SingletonTrait getLayeredInstallationKindTrait() {
+        public LayeredInstallationKindSingletonTrait getLayeredInstallationKindTrait() {
             return DUPLICABLE_TRAIT;
         }
     }

@@ -36,16 +36,15 @@ import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -171,8 +170,8 @@ public final class KnownOffsets {
 
         static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
             @Override
-            public SingletonTrait getLayeredCallbacksTrait() {
-                return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<PriorKnownOffsets>() {
+            public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+                return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<PriorKnownOffsets>() {
                     @Override
                     public LayeredPersistFlags doPersist(ImageSingletonWriter writer, PriorKnownOffsets singleton) {
                         writer.writeIntList("priorValues", Arrays.stream(singleton.priorValues).boxed().toList());

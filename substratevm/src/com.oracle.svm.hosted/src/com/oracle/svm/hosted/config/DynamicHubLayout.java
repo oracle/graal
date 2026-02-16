@@ -37,20 +37,19 @@ import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.singletons.ImageSingletonLoader;
-import com.oracle.svm.shared.singletons.ImageSingletonWriter;
-import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaKind;
@@ -200,7 +199,7 @@ public class DynamicHubLayout {
         public static final String V_TABLE_OFFSET = "vTableOffset";
 
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<DynamicHubLayout>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, DynamicHubLayout singleton) {
@@ -230,7 +229,7 @@ public class DynamicHubLayout {
                     singleton.previousLayerVTableOffset = loader.readInt(V_TABLE_OFFSET);
                 }
             };
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+            return new LayeredCallbacksSingletonTrait(action);
         }
     }
 }

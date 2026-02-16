@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,13 @@
  */
 package com.oracle.svm.shared.singletons.traits;
 
-import com.oracle.svm.shared.singletons.Invariants;
-import com.oracle.svm.shared.singletons.SingletonAccessFlags;
-
 /**
- * Metadata associated with the {@link SingletonTraitKind#ACCESS} trait. Describes when this
- * singleton can be accessed (e.g., during the native image generator process and/or from within the
- * generated code at runtime).
+ * A singleton with this trait has specific access restrictions, e.g., it can be accessed during the
+ * native image generator process and/or from within the generated code at runtime.
  */
-public class SingletonAccess {
-    public interface Supplier {
-        SingletonAccessFlags getAccessFlags();
-    }
+public final class AccessSingletonTrait extends SingletonTrait<SingletonAccess.Supplier> {
 
-    public static SingletonAccessFlags getAccess(SingletonTrait<?> trait) {
-        Invariants.guarantee(trait.kind() == SingletonTraitKind.ACCESS, "Unexpected trait kind.");
-        return ((Supplier) trait.metadata()).getAccessFlags();
+    public AccessSingletonTrait(SingletonAccess.Supplier accessSupplier) {
+        super(SingletonTraitKind.ACCESS, accessSupplier);
     }
 }

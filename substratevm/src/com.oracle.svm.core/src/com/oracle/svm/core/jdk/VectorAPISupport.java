@@ -39,11 +39,10 @@ import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
@@ -144,7 +143,7 @@ public final class VectorAPISupport {
         private static final String MAX_VECTOR_BYTES = "maxVectorBytes";
 
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<VectorAPISupport>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, VectorAPISupport singleton) {
@@ -160,7 +159,7 @@ public final class VectorAPISupport {
                                     previousLayerMaxVectorBytes, singleton.maxVectorBytes);
                 }
             };
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+            return new LayeredCallbacksSingletonTrait(action);
         }
     }
 }

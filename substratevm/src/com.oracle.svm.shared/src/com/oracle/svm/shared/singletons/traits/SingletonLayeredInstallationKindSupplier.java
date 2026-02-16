@@ -24,13 +24,17 @@
  */
 package com.oracle.svm.shared.singletons.traits;
 
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.UnavailableAtRuntime;
+
 /**
  * Represents a supplier of the {@link SingletonTraitKind#LAYERED_INSTALLATION_KIND}
  * {@link SingletonTrait}. See {@link SingletonTraits} and
  * {@link SingletonTraitKind#LAYERED_INSTALLATION_KIND} for more information.
  */
-// Checkstyle: stop
-public abstract sealed class SingletonLayeredInstallationKindSupplier permits SingletonLayeredInstallationKind.UnavailableAtRuntime, SingletonLayeredInstallationKind.InitialLayerOnly, SingletonLayeredInstallationKind.ApplicationLayerOnly, SingletonLayeredInstallationKind.MultiLayer, SingletonLayeredInstallationKind.Duplicable {
-// Checkstyle: resume
-    public abstract SingletonTrait getLayeredInstallationKindTrait();
+public abstract sealed class SingletonLayeredInstallationKindSupplier permits UnavailableAtRuntime, InitialLayerOnly, ApplicationLayerOnly, MultiLayer, Duplicable {
+    public abstract LayeredInstallationKindSingletonTrait getLayeredInstallationKindTrait();
 }

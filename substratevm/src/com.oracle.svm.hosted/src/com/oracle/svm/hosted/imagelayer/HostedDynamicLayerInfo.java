@@ -48,21 +48,20 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.singletons.ImageSingletonLoader;
-import com.oracle.svm.shared.singletons.ImageSingletonWriter;
-import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedMethodNameFactory.MethodNameInfo;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredImageSingleton(value = DynamicImageLayerInfo.class, onlyWith = BuildingImageLayerPredicate.class)
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedDynamicLayerInfo.LayeredCallbacks.class)
@@ -225,8 +224,8 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
 
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<HostedDynamicLayerInfo>() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<HostedDynamicLayerInfo>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, HostedDynamicLayerInfo singleton) {
                     /*

@@ -73,21 +73,20 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.metadata.MetadataTracer;
+import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
-import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.ImageHeapMap;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.GlobUtils;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.NativeImageResourcePathRepresentation;
@@ -751,8 +750,8 @@ public final class Resources {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
 
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<Resources>() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<Resources>() {
 
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Resources singleton) {

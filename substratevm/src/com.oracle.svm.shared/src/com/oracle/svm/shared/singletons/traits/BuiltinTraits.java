@@ -36,12 +36,11 @@ public class BuiltinTraits {
     /**
      * Trait indicating this singleton should only be accessed from code executed at runtime.
      */
-    public static final SingletonTrait RUNTIME_ONLY = new SingletonTrait(SingletonTraitKind.ACCESS,
-                    (SingletonAccess.Supplier) () -> SingletonAccessFlags.RUNTIME_ACCESS_ONLY);
+    public static final AccessSingletonTrait RUNTIME_ONLY = new AccessSingletonTrait(() -> SingletonAccessFlags.RUNTIME_ACCESS_ONLY);
 
     public static final class RuntimeAccessOnly extends SingletonAccessSupplier {
         @Override
-        public SingletonTrait getAccessTrait() {
+        public AccessSingletonTrait getAccessTrait() {
             return RUNTIME_ONLY;
         }
     }
@@ -50,12 +49,11 @@ public class BuiltinTraits {
      * Trait indicating this singleton should only be accessed from the native image generator
      * process and not at runtime.
      */
-    public static final SingletonTrait BUILDTIME_ONLY = new SingletonTrait(SingletonTraitKind.ACCESS,
-                    (SingletonAccess.Supplier) () -> SingletonAccessFlags.BUILDTIME_ACCESS_ONLY);
+    public static final AccessSingletonTrait BUILDTIME_ONLY = new AccessSingletonTrait(() -> SingletonAccessFlags.BUILDTIME_ACCESS_ONLY);
 
     public static final class BuildtimeAccessOnly extends SingletonAccessSupplier {
         @Override
-        public SingletonTrait getAccessTrait() {
+        public AccessSingletonTrait getAccessTrait() {
             return BUILDTIME_ONLY;
         }
     }
@@ -64,12 +62,11 @@ public class BuiltinTraits {
      * Trait indicating this singleton can be freely accessed both from the native image generator
      * process and at runtime.
      */
-    public static final SingletonTrait ALL_ACCESS = new SingletonTrait(SingletonTraitKind.ACCESS,
-                    (SingletonAccess.Supplier) () -> SingletonAccessFlags.ALL_ACCESS);
+    public static final AccessSingletonTrait ALL_ACCESS = new AccessSingletonTrait(() -> SingletonAccessFlags.ALL_ACCESS);
 
     public static final class AllAccess extends SingletonAccessSupplier {
         @Override
-        public SingletonTrait getAccessTrait() {
+        public AccessSingletonTrait getAccessTrait() {
             return ALL_ACCESS;
         }
     }
@@ -77,7 +74,7 @@ public class BuiltinTraits {
     /**
      * Trait indicating this singleton has no special callbacks needed during layered builds.
      */
-    public static final SingletonTrait NO_LAYERED_CALLBACKS = new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
+    public static final LayeredCallbacksSingletonTrait NO_LAYERED_CALLBACKS = new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<>() {
         @Override
         public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
             return LayeredPersistFlags.NOTHING;
@@ -86,7 +83,7 @@ public class BuiltinTraits {
 
     public static class NoLayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             return NO_LAYERED_CALLBACKS;
         }
     }
@@ -96,7 +93,7 @@ public class BuiltinTraits {
      * be linked to this key in a subsequent image layer. This limits the singleton to being
      * installed in a single layer.
      */
-    public static final SingletonTrait SINGLE_LAYER = new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
+    public static final LayeredCallbacksSingletonTrait SINGLE_LAYER = new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<>() {
         @Override
         public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
             return LayeredPersistFlags.FORBIDDEN;
@@ -105,7 +102,7 @@ public class BuiltinTraits {
 
     public static class SingleLayer extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             return SINGLE_LAYER;
         }
     }
@@ -114,20 +111,20 @@ public class BuiltinTraits {
      * Trait indicating this singleton is not yet fully compatible with layered images. See
      * {@link SingletonTraitKind#PARTIALLY_LAYER_AWARE} for more information.
      */
-    public static final SingletonTrait PARTIALLY_LAYER_AWARE = new SingletonTrait(SingletonTraitKind.PARTIALLY_LAYER_AWARE, EmptyMetadata.EMPTY);
+    public static final PartiallyLayerAwareSingletonTrait PARTIALLY_LAYER_AWARE = new PartiallyLayerAwareSingletonTrait();
 
     public static class PartiallyLayerAware extends SingletonTraitsSupplier {
         @Override
-        public SingletonTrait getTrait() {
+        public SingletonTrait<EmptyMetadata> getTrait() {
             return PARTIALLY_LAYER_AWARE;
         }
     }
 
-    public static final SingletonTrait DISALLOWED_TRAIT = new SingletonTrait(SingletonTraitKind.DISALLOWED, EmptyMetadata.EMPTY);
+    public static final DisallowedSingletonTrait DISALLOWED_TRAIT = new DisallowedSingletonTrait();
 
     public static final class Disallowed extends SingletonTraitsSupplier {
         @Override
-        public SingletonTrait getTrait() {
+        public SingletonTrait<EmptyMetadata> getTrait() {
             return DISALLOWED_TRAIT;
         }
     }

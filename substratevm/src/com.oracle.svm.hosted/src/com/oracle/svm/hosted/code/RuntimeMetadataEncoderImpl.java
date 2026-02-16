@@ -89,20 +89,9 @@ import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.singletons.ImageSingletonLoader;
-import com.oracle.svm.shared.singletons.ImageSingletonWriter;
-import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
@@ -118,6 +107,16 @@ import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -1332,8 +1331,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             }
 
             @Override
-            public SingletonTrait getLayeredCallbacksTrait() {
-                return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredRuntimeMetadataSingleton>() {
+            public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+                return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<LayeredRuntimeMetadataSingleton>() {
 
                     @Override
                     public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredRuntimeMetadataSingleton singleton) {
