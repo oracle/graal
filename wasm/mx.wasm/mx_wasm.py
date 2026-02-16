@@ -102,7 +102,6 @@ def libwasmvm_dynamic_build_args():
     image_build_args = []
     if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() >= mx.VersionSpec("25"):
         image_build_args.extend([
-            '-H:MaxRuntimeCompileMethods=850',
             '-H:+UnlockExperimentalVMOptions',
             '-H:+VectorAPISupport',
             '--add-modules=jdk.incubator.vector',

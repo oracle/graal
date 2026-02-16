@@ -334,7 +334,6 @@ mx_polybench.register_polybench_language(mx_suite=_suite, language="wasm", distr
 
 def wasm_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags) -> None:
     extra_image_build_arguments = ["-Dnative-image.benchmark.extra-image-build-argument=" + arg for arg in [
-            '-H:MaxRuntimeCompileMethods=850',
             '-H:+UnlockExperimentalVMOptions',
             '-H:+VectorAPISupport',
             '--add-modules=jdk.incubator.vector']]
