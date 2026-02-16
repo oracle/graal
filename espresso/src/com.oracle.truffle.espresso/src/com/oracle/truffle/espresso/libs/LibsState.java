@@ -29,17 +29,13 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.zip.Inflater;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.io.Throw;
-import com.oracle.truffle.espresso.jni.StrongHandles;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -53,8 +49,6 @@ import com.oracle.truffle.espresso.vm.Management;
 public class LibsState {
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, LibsState.class);
 
-    private final StrongHandles<Inflater> handle2Inflater = new StrongHandles<>();
-
     private final EspressoContext context;
 
     public final LibsStateNet net;
@@ -66,28 +60,6 @@ public class LibsState {
 
     public static TruffleLogger getLogger() {
         return logger;
-    }
-
-    public long handlifyInflater(Inflater i) {
-        return handle2Inflater.handlify(i);
-    }
-
-    public void cleanInflater(long handle) {
-        handle2Inflater.freeHandle(handle);
-    }
-
-    public Inflater getInflater(long handle) {
-        Inflater inflater = handle2Inflater.getObject(handle);
-        if (inflater == null) {
-            throw throwInternalError();
-        }
-        return inflater;
-    }
-
-    @TruffleBoundary
-    private static EspressoException throwInternalError() {
-        Meta meta = EspressoContext.get(null).getMeta();
-        return meta.throwExceptionWithMessage(meta.java_lang_InternalError, "the provided handle doesn't correspond to an Inflater");
     }
 
     public void checkCreateProcessAllowed() {

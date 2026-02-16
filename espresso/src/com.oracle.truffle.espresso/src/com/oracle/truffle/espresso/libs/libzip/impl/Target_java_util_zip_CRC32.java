@@ -27,6 +27,8 @@ import java.util.zip.CRC32;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.libzip.LibZip;
+import com.oracle.truffle.espresso.libs.libzip.PureJavaLibZipFilter;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -35,54 +37,54 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
 
 @EspressoSubstitutions(group = LibZip.class)
 public final class Target_java_util_zip_CRC32 {
-    private static CRC32 getHostCRC32(StaticObject crc, LibsMeta lMeta) {
+    private static CRC32 getHostCRC32(StaticObject crc, LibsMeta libsMeta, Meta meta) {
         if (StaticObject.isNull(crc)) {
-            throw lMeta.getMeta().throwNullPointerException();
+            throw meta.throwNullPointerException();
         }
-        Object hostCRC = lMeta.java_util_zip_CRC32_0value.getHiddenObject(crc);
+        Object hostCRC = libsMeta.java_util_zip_CRC32_0value.getHiddenObject(crc);
         assert hostCRC != null;
         return (CRC32) hostCRC;
     }
 
-    @Substitution
+    @Substitution(languageFilter = PureJavaLibZipFilter.class)
     public static void init(@JavaType(CRC32.class) StaticObject crc,
-                    @Inject LibsMeta lMeta) {
-        lMeta.java_util_zip_CRC32_0value.setHiddenObject(crc, new CRC32());
+                    @Inject LibsMeta libsMeta) {
+        libsMeta.java_util_zip_CRC32_0value.setHiddenObject(crc, new CRC32());
     }
 
-    @Substitution
+    @Substitution(languageFilter = PureJavaLibZipFilter.class)
     public static void update0(@JavaType(CRC32.class) StaticObject crc, int b,
-                    @Inject LibsMeta lMeta) {
+                    @Inject LibsMeta libsMeta, @Inject Meta meta) {
         try {
-            getHostCRC32(crc, lMeta).update(b);
+            getHostCRC32(crc, libsMeta, meta).update(b);
         } catch (IndexOutOfBoundsException e) {
-            lMeta.getMeta().throwExceptionWithMessage(lMeta.getMeta().java_lang_IndexOutOfBoundsException, e.getMessage());
+            meta.throwExceptionWithMessage(meta.java_lang_IndexOutOfBoundsException, e.getMessage());
         }
     }
 
-    @Substitution
+    @Substitution(languageFilter = PureJavaLibZipFilter.class)
     public static void updateBytes0(@JavaType(CRC32.class) StaticObject crc, @JavaType(byte[].class) StaticObject b, int off, int len,
-                    @Inject LibsMeta lMeta, @Inject EspressoLanguage lang) {
+                    @Inject LibsMeta libsMeta, @Inject EspressoLanguage lang, @Inject Meta meta) {
         if (StaticObject.isNull(b)) {
-            throw lMeta.getMeta().throwNullPointerException();
+            throw meta.throwNullPointerException();
         }
         assert b.isArray();
         try {
-            getHostCRC32(crc, lMeta).update(b.unwrap(lang), off, len);
+            getHostCRC32(crc, libsMeta, meta).update(b.unwrap(lang), off, len);
         } catch (IndexOutOfBoundsException e) {
-            lMeta.getMeta().throwExceptionWithMessage(lMeta.getMeta().java_lang_IndexOutOfBoundsException, e.getMessage());
+            meta.throwExceptionWithMessage(meta.java_lang_IndexOutOfBoundsException, e.getMessage());
         }
     }
 
-    @Substitution
+    @Substitution(languageFilter = PureJavaLibZipFilter.class)
     public static long getValue0(@JavaType(CRC32.class) StaticObject crc,
-                    @Inject LibsMeta lMeta) {
-        return getHostCRC32(crc, lMeta).getValue();
+                    @Inject LibsMeta libsMeta, @Inject Meta meta) {
+        return getHostCRC32(crc, libsMeta, meta).getValue();
     }
 
-    @Substitution
+    @Substitution(languageFilter = PureJavaLibZipFilter.class)
     public static void reset0(@JavaType(CRC32.class) StaticObject crc,
-                    @Inject LibsMeta lMeta) {
-        getHostCRC32(crc, lMeta).reset();
+                    @Inject LibsMeta libsMeta, @Inject Meta meta) {
+        getHostCRC32(crc, libsMeta, meta).reset();
     }
 }

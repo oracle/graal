@@ -54,10 +54,6 @@ public final class LibsMeta implements ContextAccess {
     // libzip
     public final ObjectKlass java_util_zip_CRC32;
     public final Field java_util_zip_CRC32_0value;
-    public final ObjectKlass java_util_zip_Inflater;
-    public final Field java_util_zip_Inflater_inputConsumed;
-    public final Field java_util_zip_Inflater_outputConsumed;
-    public final ObjectKlass java_util_zip_DataFormatException;
 
     // libjava
     public final ObjectKlass java_lang_ProcessHandleImpl$Info;
@@ -109,10 +105,6 @@ public final class LibsMeta implements ContextAccess {
         // libzip
         java_util_zip_CRC32 = knownKlass(EspressoSymbols.Types.java_util_zip_CRC32);
         java_util_zip_CRC32_0value = diff().field(ALL, EspressoSymbols.Names.HIDDEN_value, EspressoSymbols.Types._int).maybeHiddenfield(java_util_zip_CRC32);
-        java_util_zip_Inflater = knownKlass(EspressoSymbols.Types.java_util_zip_Inflater);
-        java_util_zip_DataFormatException = knownKlass(EspressoSymbols.Types.java_util_zip_DataFormatException);
-        java_util_zip_Inflater_inputConsumed = java_util_zip_Inflater.requireDeclaredField(EspressoSymbols.Names.inputConsumed, EspressoSymbols.Types._int);
-        java_util_zip_Inflater_outputConsumed = java_util_zip_Inflater.requireDeclaredField(EspressoSymbols.Names.outputConsumed, EspressoSymbols.Types._int);
 
         // libjava
         java_lang_ProcessHandleImpl$Info = knownKlass(EspressoSymbols.Types.java_lang_ProcessHandleImpl$Info);
@@ -243,7 +235,6 @@ public final class LibsMeta implements ContextAccess {
             java_net_InetSocketAddress = knownKlass(EspressoSymbols.Types.java_net_InetSocketAddress);
             java_net_InetSocketAddress_init = java_net_InetSocketAddress.lookupDeclaredMethod(EspressoSymbols.Names._init_, EspressoSymbols.Signatures.java_net_InetSocketAddress_init_signature);
         }
-
     }
 
     public final class LibManagementMeta {
@@ -277,7 +268,6 @@ public final class LibsMeta implements ContextAccess {
                             EspressoSymbols.Types._boolean);
             sun_management_VMManagementImpl_synchronizerUsageSupport = sun_management_VMManagementImpl.requireDeclaredField(EspressoSymbols.Names.synchronizerUsageSupport,
                             EspressoSymbols.Types._boolean);
-
         }
     }
 }
