@@ -598,21 +598,26 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
     dacapo_gate_iterations.update({'fop': 8})
-    for name in dacapo_suite.benchmarkList(bmSuiteArgs):
+    dacapo_benchmarks = dacapo_suite.benchmarkList(bmSuiteArgs)
+    if "jython" in dacapo_benchmarks:
+        # jython is causing transient errors making the output validation fail
+        # GH dacapobench/dacapobench issue #360
+        dacapo_benchmarks.remove("jython")
+    for name in dacapo_benchmarks:
         iterations = dacapo_gate_iterations.get(name, -1)
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark daily workload', tasks, tags=['dacapo_daily'], report=task_report_component) as t:
         if t:
-            for name in dacapo_suite.benchmarkList(bmSuiteArgs):
+            for name in dacapo_benchmarks:
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * dacapo_daily_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark weekly workload', tasks, tags=['dacapo_weekly'], report=task_report_component) as t:
         if t:
-            for name in dacapo_suite.benchmarkList(bmSuiteArgs):
+            for name in dacapo_benchmarks:
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * dacapo_weekly_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
