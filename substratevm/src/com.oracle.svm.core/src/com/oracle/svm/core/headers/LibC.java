@@ -34,12 +34,12 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 
@@ -138,7 +138,7 @@ public class LibC {
     private static boolean isInstalledInInitialLayer() {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             var trait = LayeredImageSingletonSupport.singleton().getTraitForUninstalledSingleton(LibCSupport.class, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
-            return SingletonLayeredInstallationKind.getInstallationKind(trait) == SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY;
+            return ((SingletonLayeredInstallationKind) trait.metadata()).kind() == SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY;
         }
         return false;
     }

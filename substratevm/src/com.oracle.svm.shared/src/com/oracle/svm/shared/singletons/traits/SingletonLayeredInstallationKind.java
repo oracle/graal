@@ -31,8 +31,8 @@ import com.oracle.svm.shared.singletons.MultiLayeredAllowNullEntries;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 
 /**
- * {@link SingletonTrait} which describes how this singleton is installed in layered builds at run
- * time.
+ * Metadata associated with {@link LayeredInstallationKindSingletonTrait} which describes how this
+ * singleton is installed in layered builds at run time.
  */
 public record SingletonLayeredInstallationKind(InstallationKind kind, Object metadata) {
     public enum InstallationKind {
@@ -133,11 +133,6 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
         this.kind = kind;
         this.metadata = metadata;
         Invariants.guarantee(kind.metadataClass.isInstance(metadata), "Unexpected metadat kind.");
-    }
-
-    public static InstallationKind getInstallationKind(SingletonTrait<?> trait) {
-        Invariants.guarantee(trait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND, "Unexpected trait kind.");
-        return ((SingletonLayeredInstallationKind) trait.metadata()).kind;
     }
 
     static final LayeredInstallationKindSingletonTrait UNAVAILABLE_AT_RUNTIME_TRAIT = new LayeredInstallationKindSingletonTrait(
