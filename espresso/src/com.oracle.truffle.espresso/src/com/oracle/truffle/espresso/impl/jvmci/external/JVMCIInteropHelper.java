@@ -994,7 +994,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             if (resolved == null) {
                 return StaticObject.NULL;
             }
-            return resolved;
+            return resolved.identity();
         }
 
         @Specialization(guards = "GET_VTABLE_INDEX_FOR_INTERFACE_METHOD.equals(member)")

@@ -120,7 +120,7 @@ public abstract class AbstractEspressoResolvedInstanceType extends EspressoResol
         if (other instanceof AbstractEspressoResolvedInstanceType espressoInstanceType) {
             return isAssignableFrom(espressoInstanceType);
         }
-        if (other instanceof EspressoResolvedArrayType) {
+        if (other instanceof AbstractEspressoResolvedArrayType) {
             if (this.equals(getJavaLangObject())) {
                 return true;
             }

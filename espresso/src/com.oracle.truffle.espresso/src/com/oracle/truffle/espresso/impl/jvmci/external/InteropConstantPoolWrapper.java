@@ -202,7 +202,7 @@ public class InteropConstantPoolWrapper implements TruffleObject {
             if (result == null) {
                 return StaticObject.NULL;
             }
-            return result;
+            return result.identity();
         }
 
         @Specialization(guards = "LOOKUP_RESOLVED_FIELD.equals(member)")
