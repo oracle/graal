@@ -52,7 +52,7 @@ public final class EspressoMethodTableBuilder {
                     ObjectKlass.KlassVersion thisKlass,
                     ObjectKlass.KlassVersion[] transitiveInterfaces,
                     Method.MethodVersion[] declaredMethods,
-                    boolean allowInterfaceResolutionToPrivete) {
+                    boolean allowInterfaceResolutionToPrivate) {
         try {
             if (thisKlass.isInterface()) {
                 return new EspressoTables(
@@ -65,7 +65,7 @@ public final class EspressoMethodTableBuilder {
             tables = VTable.create(
                             new PartialKlass(thisKlass, thisKlass.getSuperKlass(), transitiveInterfaces, declaredMethods),
                             false,
-                            allowInterfaceResolutionToPrivete,
+                            allowInterfaceResolutionToPrivate,
                             true);
             return new EspressoTables(
                             vtable(tables),

@@ -24,12 +24,14 @@ package com.oracle.truffle.espresso.vmaccess;
 
 import java.util.Objects;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType;
 import com.oracle.truffle.espresso.jvmci.meta.ConstantReflectionProviderWithStaticsBase;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType;
 import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedObjectType;
+import com.oracle.truffle.espresso.jvmci.meta.KlassConstant;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
@@ -78,9 +80,14 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
         JavaKind componentKind = objectType.getComponentType().getJavaKind();
         Value v;
         try {
-            v = objectConstant.getValue().getArrayElement(index);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            return null;
+            Value arrayAsValue = objectConstant.getValue();
+            v = componentKind.isPrimitive() ? arrayAsValue.getArrayElement(index) : access.invokeJVMCIHelper("readObjectArrayElement", arrayAsValue, index);
+        } catch (PolyglotException e) {
+            try {
+                throw EspressoExternalVMAccess.throwHostException(e);
+            } catch (IndexOutOfBoundsException ignored) {
+                return null;
+            }
         }
         return asJavaConstant(v, componentKind, access);
     }

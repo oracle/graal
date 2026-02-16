@@ -143,8 +143,17 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
             int endBCI = handler.getMember("endBCI").asInt();
             int handlerBCI = handler.getMember("handlerBCI").asInt();
             int catchTypeCPI = handler.getMember("catchTypeCPI").asInt();
-            String catchTypeName = handler.getMember("catchType").asString();
-            JavaType catchType = getAccess().lookupType(catchTypeName, getDeclaringClass(), false);
+            Value catchTypeName = handler.getMember("catchType");
+            JavaType catchType;
+            if (catchTypeCPI == 0 || catchTypeName.isNull()) {
+                catchType = null;
+            } else {
+                catchType = getAccess().lookupType(catchTypeName.asString(), getDeclaringClass(), false);
+                if (getAccess().java_lang_Throwable.equals(catchType)) {
+                    // For consistency with HotSpotResolvedJavaMethodImpl#getExceptionHandlers
+                    catchType = null;
+                }
+            }
             result[i] = new ExceptionHandler(startBCI, endBCI, handlerBCI, catchTypeCPI, catchType);
         }
         return result;
@@ -157,7 +166,7 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
             line = -2;
         } else {
             LineNumberTable lineNumberTable = getLineNumberTable();
-            if (lineNumberTable == null) {
+            if (lineNumberTable == null || bci < 0) {
                 line = -1;
             } else {
                 line = lineNumberTable.getLineNumber(bci);
@@ -184,6 +193,9 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
             return null;
         }
         int size = Math.toIntExact(rawData.getArraySize() / 2);
+        if (size == 0) {
+            return null;
+        }
         int[] lineNumbers = new int[size];
         int[] bcis = new int[size];
         for (int i = 0; i < size; i++) {
@@ -202,12 +214,12 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
         int size = Math.toIntExact(table.getArraySize());
         Local[] result = new Local[size];
         for (int i = 0; i < size; i++) {
-            Value handler = table.getArrayElement(i);
-            String name = handler.getMember("name").asString();
-            int startBCI = handler.getMember("startBCI").asInt();
-            int endBCI = handler.getMember("endBCI").asInt();
-            int slot = handler.getMember("slot").asInt();
-            String typeName = handler.getMember("catchType").asString();
+            Value local = table.getArrayElement(i);
+            String name = local.getMember("name").asString();
+            int startBCI = local.getMember("startBCI").asInt();
+            int endBCI = local.getMember("endBCI").asInt();
+            int slot = local.getMember("slot").asInt();
+            String typeName = local.getMember("type").asString();
             JavaType type = getAccess().lookupType(typeName, getDeclaringClass(), false);
             result[i] = new Local(name, type, startBCI, endBCI, slot);
         }

@@ -124,6 +124,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.RESOLVE_LINK_TO_TARGET,
                         InvokeMember.GET_REFLECT_FIELD,
                         InvokeMember.GET_REFLECT_EXECUTABLE,
+                        InvokeMember.READ_OBJECT_ARRAY_ELEMENT,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -187,6 +188,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String RESOLVE_LINK_TO_TARGET = "resolveLinkToTarget";
         static final String GET_REFLECT_FIELD = "getReflectField";
         static final String GET_REFLECT_EXECUTABLE = "getReflectExecutable";
+        static final String READ_OBJECT_ARRAY_ELEMENT = "readObjectArrayElement";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -992,7 +994,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             if (resolved == null) {
                 return StaticObject.NULL;
             }
-            return resolved;
+            return resolved.identity();
         }
 
         @Specialization(guards = "GET_VTABLE_INDEX_FOR_INTERFACE_METHOD.equals(member)")
@@ -1128,6 +1130,38 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             }
             typeError.enter(node);
             throw UnsupportedTypeException.create(arguments, "Expected a java.lang.reflect.Executable object");
+        }
+
+        @Specialization(guards = "READ_OBJECT_ARRAY_ELEMENT.equals(member)")
+        static Object readObjectArrayElement(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary intInterop,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError,
+                        @Cached @Shared InlinedBranchProfile indexError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            EspressoLanguage language = EspressoLanguage.get(node);
+            assert language.isExternalJVMCIEnabled();
+            if (arguments.length != 2) {
+                arityError.enter(node);
+                throw ArityException.create(2, 2, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject staticObject && staticObject.isArray())) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an array as first argument");
+            }
+            int index;
+            try {
+                index = intInterop.asInt(arguments[1]);
+            } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an integer as second argument");
+            }
+            if (index < 0 || index >= staticObject.length(language)) {
+                indexError.enter(node);
+                throw EspressoContext.get(node).getMeta().throwArrayIndexOutOfBounds(index, staticObject.length(language));
+            }
+            return staticObject.<StaticObject[]> unwrap(language)[index];
         }
     }
 
