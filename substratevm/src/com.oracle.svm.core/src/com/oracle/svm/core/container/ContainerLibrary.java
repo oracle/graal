@@ -88,6 +88,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.2+4/src/hotspot/share/runtime/globals.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.3+2/src/hotspot/share/utilities/debug.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/debug.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/utilities/permitForbiddenFunctions.hpp")
 public class ContainerLibrary {
     static final int VERSION = 240100;
 
