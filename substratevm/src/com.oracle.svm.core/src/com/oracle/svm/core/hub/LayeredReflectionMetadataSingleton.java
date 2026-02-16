@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,7 +47,6 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
@@ -53,7 +54,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
  * allow registering elements for reflection in extension layers too.
  */
 @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = LayeredReflectionMetadataSingleton.LayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.MultiLayer.class)
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = LayeredReflectionMetadataSingleton.LayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public class LayeredReflectionMetadataSingleton {
     private static final String LAYERED_REFLECTION_METADATA_HUBS = "layered reflection metadata hubs";
     private static final String LAYERED_REFLECTION_METADATA_CLASS_FLAGS = "layered reflection metadata classFlags";

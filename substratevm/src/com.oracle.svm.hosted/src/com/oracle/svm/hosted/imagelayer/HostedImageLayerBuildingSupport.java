@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.APP_LAYER_ONLY_TRAIT;
+
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -67,7 +69,6 @@ import com.oracle.svm.shaded.org.capnproto.Serialize;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.LogUtils;
@@ -391,7 +392,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector = null;
         if (buildingImageLayer) {
             var applicationLayerOnlySingletons = LayeredImageOptions.ApplicationLayerOnlySingletons.getValue(values);
-            LayeredInstallationKindSingletonTrait[] appLayerOnly = new LayeredInstallationKindSingletonTrait[]{SingletonLayeredInstallationKind.APP_LAYER_ONLY};
+            LayeredInstallationKindSingletonTrait[] appLayerOnly = new LayeredInstallationKindSingletonTrait[]{APP_LAYER_ONLY_TRAIT};
             singletonTraitInjector = (key) -> {
                 if (applicationLayerOnlySingletons.contains(key.getName())) {
                     return appLayerOnly;

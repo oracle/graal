@@ -1177,7 +1177,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         Map<Object, SingletonPersistInfo> singletonPersistInfoMap = new IdentityHashMap<>();
         int nextSingletonId = 0;
         int nextKeyStoreId = 0;
-        Set<Object> initialLayerSingletons = LayeredImageSingletonSupport.singleton().getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
+        Set<Object> initialLayerSingletons = LayeredImageSingletonSupport.singleton().getSingletonsWithTrait(SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY);
         for (int i = 0; i < layeredImageSingletons.size(); i++) {
             var singletonEntry = layeredImageSingletons.get(i);
             String key = singletonEntry.getKey().getName();

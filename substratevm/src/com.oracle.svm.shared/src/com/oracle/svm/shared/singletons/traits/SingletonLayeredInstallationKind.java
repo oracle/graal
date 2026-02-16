@@ -26,7 +26,6 @@ package com.oracle.svm.shared.singletons.traits;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.shared.singletons.Invariants;
 import com.oracle.svm.shared.singletons.MultiLayeredAllowNullEntries;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 
@@ -34,109 +33,90 @@ import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
  * Metadata associated with {@link LayeredInstallationKindSingletonTrait} which describes how this
  * singleton is installed in layered builds at run time.
  */
-public record SingletonLayeredInstallationKind(InstallationKind kind, Object metadata) {
-    public enum InstallationKind {
-        /**
-         * This singleton is not installed at run time and compiled code should never refer to it.
-         */
-        UNAVAILABLE_AT_RUNTIME(EmptyMetadata.class),
+public enum SingletonLayeredInstallationKind {
+    /**
+     * This singleton is not installed at run time and compiled code should never refer to it.
+     */
+    UNAVAILABLE_AT_RUNTIME(),
 
-        /**
-         * This singleton can only be installed in the initial layer. All references to this
-         * singleton in all code compiled across all layers refer to the singleton installed in the
-         * base layer.
-         */
-        INITIAL_LAYER_ONLY(EmptyMetadata.class),
+    /**
+     * This singleton can only be installed in the initial layer. All references to this singleton
+     * in all code compiled across all layers refer to the singleton installed in the base layer.
+     */
+    INITIAL_LAYER_ONLY(),
 
-        /**
-         * This singleton can only be installed in the app layer. All references to this singleton
-         * in all code compiled across all layers refer to the singleton installed in the app layer.
-         * <p>
-         * When this trait is linked to a singleton, the singleton's key class is expected to match
-         * the singleton's implementation key. In addition, a singleton with this trait can only be
-         * installed in the application layer. Finally, {@link ImageSingletons#add} must be called
-         * before the analysis phase (i.e. these image singletons cannot be added at a later point).
-         * <p>
-         * Referring to fields of an app layer singleton from a code compiled in a shared layer,
-         * i.e., even before the value of the field can be known, is safe. This is because, instead
-         * of being constant-folded in a shared layer, it is instead implemented via
-         * {@code LoadImageSingletonNode} and lowered into a singleton table read.
-         */
-        APP_LAYER_ONLY(EmptyMetadata.class),
+    /**
+     * This singleton can only be installed in the app layer. All references to this singleton in
+     * all code compiled across all layers refer to the singleton installed in the app layer.
+     * <p>
+     * When this trait is linked to a singleton, the singleton's key class is expected to match the
+     * singleton's implementation key. In addition, a singleton with this trait can only be
+     * installed in the application layer. Finally, {@link ImageSingletons#add} must be called
+     * before the analysis phase (i.e. these image singletons cannot be added at a later point).
+     * <p>
+     * Referring to fields of an app layer singleton from a code compiled in a shared layer, i.e.,
+     * even before the value of the field can be known, is safe. This is because, instead of being
+     * constant-folded in a shared layer, it is instead implemented via
+     * {@code LoadImageSingletonNode} and lowered into a singleton table read.
+     */
+    APP_LAYER_ONLY(),
 
-        /**
-         * A different version of this singleton can be installed in each layer. For these
-         * singletons, {@link ImageSingletons#lookup} should no longer be used. Instead, there is
-         * the method {@link MultiLayeredImageSingleton#getAllLayers} which returns an array with
-         * the image singletons corresponding to this key for all layers. The length of this array
-         * will always be the total number of layers. If a singleton corresponding to this key was
-         * not installed in a given layer (and this is allowed), then the array will contain null
-         * for the given index. See {@link MultiLayeredAllowNullEntries} for more details. Within
-         * the array, the singletons will be arranged so that index [0] corresponds to the singleton
-         * originating from the initial layer and index [length - 1] holds the singleton from the
-         * application layer. See {@code ImageLayerBuildingSupport} for a description of the
-         * different layer names.
-         *
-         * <p>
-         * Calling {@link MultiLayeredImageSingleton#getAllLayers} during a traditional build
-         * requires the singleton to be installed in the build and will return an array of length 1
-         * * containing that singleton.
-         *
-         * <p>
-         * When this trait is linked to a singleton, the singleton's key class is expected to match
-         * the singleton's implementation key. In addition, {@link ImageSingletons#add} must be
-         * called before the analysis phase (i.e. these image singletons cannot be added at a later
-         * point).
-         */
-        MULTI_LAYER(EmptyMetadata.class),
+    /**
+     * A different version of this singleton can be installed in each layer. For these singletons,
+     * {@link ImageSingletons#lookup} should no longer be used. Instead, there is the method
+     * {@link MultiLayeredImageSingleton#getAllLayers} which returns an array with the image
+     * singletons corresponding to this key for all layers. The length of this array will always be
+     * the total number of layers. If a singleton corresponding to this key was not installed in a
+     * given layer (and this is allowed), then the array will contain null for the given index. See
+     * {@link MultiLayeredAllowNullEntries} for more details. Within the array, the singletons will
+     * be arranged so that index [0] corresponds to the singleton originating from the initial layer
+     * and index [length - 1] holds the singleton from the application layer. See
+     * {@code ImageLayerBuildingSupport} for a description of the different layer names.
+     *
+     * <p>
+     * Calling {@link MultiLayeredImageSingleton#getAllLayers} during a traditional build requires
+     * the singleton to be installed in the build and will return an array of length 1 * containing
+     * that singleton.
+     *
+     * <p>
+     * When this trait is linked to a singleton, the singleton's key class is expected to match the
+     * singleton's implementation key. In addition, {@link ImageSingletons#add} must be called
+     * before the analysis phase (i.e. these image singletons cannot be added at a later point).
+     */
+    MULTI_LAYER(),
 
-        /**
-         * Used as a marker to indicate this singleton's behavior should be made layer-aware in the
-         * future.
-         *
-         * <p>
-         * In detail, a duplicable singleton can have multiple instances of the object installed in
-         * the Image Heap (at most one per a layer). The specific instance referred to from a given
-         * piece of code is dependent on the layer in which the code was installed in.
-         *
-         * <p>
-         * It is expected that either the installed objects (1) have no instance fields or (2) have
-         * instance fields which have been made layer-aware through other means (e.g. using a
-         * layered ImageHeapMap).
-         *
-         * <p>
-         * A different version of this singleton can be installed in each layer. If a given layer X
-         * generates compiled code referring to an independent singleton with key K, then it will
-         * refer to the singleton installed in the layer X and the singleton will be installed in
-         * layer X's image heap. If a later layer Y generates compiled code referring to the same
-         * singleton key K, it will not be linked to the same singleton as installed in layer X, but
-         * instead will refer to the singleton installed in layer Y that will be installed in layer
-         * Y's image heap.
-         *
-         * <p>
-         * Note this is a temporary marker and eventually all instances of this trait should be
-         * removed. This trait should only be used when there is not a correctness issue with
-         * installing multiple instances of the singleton. Instead, the trait indicates there is
-         * merely a performance/memory overhead due to having multiple copies of this singleton
-         * installed (via different layers) within the image heap.
-         */
-        DUPLICABLE(EmptyMetadata.class);
+    /**
+     * Used as a marker to indicate this singleton's behavior should be made layer-aware in the
+     * future.
+     *
+     * <p>
+     * In detail, a duplicable singleton can have multiple instances of the object installed in the
+     * Image Heap (at most one per a layer). The specific instance referred to from a given piece of
+     * code is dependent on the layer in which the code was installed in.
+     *
+     * <p>
+     * It is expected that either the installed objects (1) have no instance fields or (2) have
+     * instance fields which have been made layer-aware through other means (e.g. using a layered
+     * ImageHeapMap).
+     *
+     * <p>
+     * A different version of this singleton can be installed in each layer. If a given layer X
+     * generates compiled code referring to an independent singleton with key K, then it will refer
+     * to the singleton installed in the layer X and the singleton will be installed in layer X's
+     * image heap. If a later layer Y generates compiled code referring to the same singleton key K,
+     * it will not be linked to the same singleton as installed in layer X, but instead will refer
+     * to the singleton installed in layer Y that will be installed in layer Y's image heap.
+     *
+     * <p>
+     * Note this is a temporary marker and eventually all instances of this trait should be removed.
+     * This trait should only be used when there is not a correctness issue with installing multiple
+     * instances of the singleton. Instead, the trait indicates there is merely a performance/memory
+     * overhead due to having multiple copies of this singleton installed (via different layers)
+     * within the image heap.
+     */
+    DUPLICABLE();
 
-        InstallationKind(Class<?> metadataClass) {
-            this.metadataClass = metadataClass;
-        }
-
-        private final Class<?> metadataClass;
-    }
-
-    public SingletonLayeredInstallationKind(InstallationKind kind, Object metadata) {
-        this.kind = kind;
-        this.metadata = metadata;
-        Invariants.guarantee(kind.metadataClass.isInstance(metadata), "Unexpected metadat kind.");
-    }
-
-    static final LayeredInstallationKindSingletonTrait UNAVAILABLE_AT_RUNTIME_TRAIT = new LayeredInstallationKindSingletonTrait(
-                    new SingletonLayeredInstallationKind(InstallationKind.UNAVAILABLE_AT_RUNTIME, EmptyMetadata.EMPTY));
+    static final LayeredInstallationKindSingletonTrait UNAVAILABLE_AT_RUNTIME_TRAIT = new LayeredInstallationKindSingletonTrait(UNAVAILABLE_AT_RUNTIME);
 
     public static final class UnavailableAtRuntime extends SingletonLayeredInstallationKindSupplier {
         @Override
@@ -145,38 +125,34 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
         }
     }
 
-    public static final LayeredInstallationKindSingletonTrait INITIAL_LAYER_ONLY = new LayeredInstallationKindSingletonTrait(
-                    new SingletonLayeredInstallationKind(InstallationKind.INITIAL_LAYER_ONLY, EmptyMetadata.EMPTY));
+    public static final LayeredInstallationKindSingletonTrait INITIAL_LAYER_ONLY_TRAIT = new LayeredInstallationKindSingletonTrait(INITIAL_LAYER_ONLY);
 
     public static final class InitialLayerOnly extends SingletonLayeredInstallationKindSupplier {
         @Override
         public LayeredInstallationKindSingletonTrait getLayeredInstallationKindTrait() {
-            return INITIAL_LAYER_ONLY;
+            return INITIAL_LAYER_ONLY_TRAIT;
         }
     }
 
-    public static final LayeredInstallationKindSingletonTrait APP_LAYER_ONLY = new LayeredInstallationKindSingletonTrait(
-                    new SingletonLayeredInstallationKind(InstallationKind.APP_LAYER_ONLY, EmptyMetadata.EMPTY));
+    public static final LayeredInstallationKindSingletonTrait APP_LAYER_ONLY_TRAIT = new LayeredInstallationKindSingletonTrait(APP_LAYER_ONLY);
 
     public static final class ApplicationLayerOnly extends SingletonLayeredInstallationKindSupplier {
         @Override
         public LayeredInstallationKindSingletonTrait getLayeredInstallationKindTrait() {
-            return APP_LAYER_ONLY;
+            return APP_LAYER_ONLY_TRAIT;
         }
     }
 
-    public static final LayeredInstallationKindSingletonTrait MULTI_LAYER = new LayeredInstallationKindSingletonTrait(
-                    new SingletonLayeredInstallationKind(InstallationKind.MULTI_LAYER, EmptyMetadata.EMPTY));
+    public static final LayeredInstallationKindSingletonTrait MULTI_LAYER_TRAIT = new LayeredInstallationKindSingletonTrait(MULTI_LAYER);
 
     public static final class MultiLayer extends SingletonLayeredInstallationKindSupplier {
         @Override
         public LayeredInstallationKindSingletonTrait getLayeredInstallationKindTrait() {
-            return MULTI_LAYER;
+            return MULTI_LAYER_TRAIT;
         }
     }
 
-    public static final LayeredInstallationKindSingletonTrait DUPLICABLE_TRAIT = new LayeredInstallationKindSingletonTrait(
-                    new SingletonLayeredInstallationKind(InstallationKind.DUPLICABLE, EmptyMetadata.EMPTY));
+    public static final LayeredInstallationKindSingletonTrait DUPLICABLE_TRAIT = new LayeredInstallationKindSingletonTrait(DUPLICABLE);
 
     public static final class Duplicable extends SingletonLayeredInstallationKindSupplier {
         @Override

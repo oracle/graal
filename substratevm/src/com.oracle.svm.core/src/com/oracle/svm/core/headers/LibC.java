@@ -138,7 +138,8 @@ public class LibC {
     private static boolean isInstalledInInitialLayer() {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             var trait = LayeredImageSingletonSupport.singleton().getTraitForUninstalledSingleton(LibCSupport.class, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
-            return ((SingletonLayeredInstallationKind) trait.metadata()).kind() == SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY;
+            SingletonLayeredInstallationKind installationKind = (SingletonLayeredInstallationKind) trait.metadata();
+            return installationKind == SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY;
         }
         return false;
     }

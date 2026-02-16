@@ -94,17 +94,17 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
     }
 
     @Override
-    public Set<Object> getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind kind) {
+    public Set<Object> getSingletonsWithTrait(SingletonLayeredInstallationKind kind) {
         return HostedManagement.getAndAssertExists().getSingletonsWithTrait(kind);
     }
 
     @Override
-    public Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind.InstallationKind kind) {
+    public Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind kind) {
         return HostedManagement.getAndAssertExists().getKeysWithTrait(kind);
     }
 
     @Override
-    public void forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind kind) {
+    public void forbidNewTraitInstallations(SingletonLayeredInstallationKind kind) {
         HostedManagement.getAndAssertExists().forbidNewTraitInstallations(kind);
     }
 
@@ -383,7 +383,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
          */
         private final Map<Object, Object> singletonRegistrationCallbackStatus;
 
-        private final EnumSet<SingletonLayeredInstallationKind.InstallationKind> forbiddenInstallationKinds;
+        private final EnumSet<SingletonLayeredInstallationKind> forbiddenInstallationKinds;
         private final boolean layeredBuild;
         private final boolean extensionLayerBuild;
         private final AnnotationExtractor extractor;
@@ -397,7 +397,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor) {
             this.configObjects = new ConcurrentHashMap<>();
             this.singletonToTraitMap = new ConcurrentIdentityHashMap<>();
-            forbiddenInstallationKinds = EnumSet.noneOf(SingletonLayeredInstallationKind.InstallationKind.class);
+            forbiddenInstallationKinds = EnumSet.noneOf(SingletonLayeredInstallationKind.class);
             if (support != null) {
                 this.layeredBuild = support.buildingImageLayer;
                 this.extensionLayerBuild = support.buildingImageLayer && !support.buildingInitialLayer;
@@ -406,10 +406,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 this.singletonRegistrationCallbackStatus = extensionLayerBuild ? new ConcurrentIdentityHashMap<>() : null;
                 if (support.buildingImageLayer) {
                     if (!support.buildingApplicationLayer) {
-                        forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.InstallationKind.APP_LAYER_ONLY);
+                        forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.APP_LAYER_ONLY);
                     }
                     if (!support.buildingInitialLayer) {
-                        forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
+                        forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY);
                     }
                 }
             } else {
@@ -437,9 +437,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 if (layeredBuild) {
                     Optional<LayeredInstallationKindSingletonTrait> trait = traitMap.getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND);
                     trait.ifPresent(t -> {
-                        if (forbiddenInstallationKinds.contains(t.metadata().kind())) {
+                        if (forbiddenInstallationKinds.contains(t.metadata())) {
                             if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
-                                throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", t.metadata().kind(), value);
+                                throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", t.metadata(), value);
                             }
                         }
                     });
@@ -472,7 +472,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
             Optional<LayeredInstallationKindSingletonTrait> installationTrait = traitMap.getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND);
             installationTrait.ifPresent(it -> {
-                switch (it.metadata().kind()) {
+                switch (it.metadata()) {
                     case APP_LAYER_ONLY ->
                         VMError.guarantee(key == value.getClass(), "singleton key %s must match singleton class %s", key, value);
                     case MULTI_LAYER -> {
@@ -555,7 +555,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             }
         }
 
-        private static boolean filterOnKind(SingletonInfo singletonInfo, SingletonLayeredInstallationKind.InstallationKind kind) {
+        private static boolean filterOnKind(SingletonInfo singletonInfo, SingletonLayeredInstallationKind kind) {
             /*
              * We must filter out forbidden objects, as they are not actually installed in this
              * image.
@@ -563,23 +563,23 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             if (singletonInfo.singleton != SINGLETON_INSTALLATION_FORBIDDEN) {
                 Optional<LayeredInstallationKindSingletonTrait> trait = singletonInfo.traitMap().getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND);
                 if (trait.isPresent()) {
-                    return trait.get().metadata().kind() == kind;
+                    return trait.get().metadata() == kind;
                 }
             }
             return false;
         }
 
-        Set<Object> getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind kind) {
+        Set<Object> getSingletonsWithTrait(SingletonLayeredInstallationKind kind) {
             return Collections.unmodifiableSet(configObjects.values().stream().filter(singletonInfo -> filterOnKind(singletonInfo, kind)).map(SingletonInfo::singleton)
                             .collect(Collectors.toCollection(() -> Collections.newSetFromMap(new IdentityHashMap<>()))));
         }
 
-        Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind.InstallationKind kind) {
+        Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind kind) {
             return Collections.unmodifiableSet(configObjects.entrySet().stream().filter(e -> filterOnKind(e.getValue(), kind)).map(Map.Entry::getKey)
                             .collect(Collectors.toCollection(() -> Collections.newSetFromMap(new IdentityHashMap<>()))));
         }
 
-        void forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind kind) {
+        void forbidNewTraitInstallations(SingletonLayeredInstallationKind kind) {
             forbiddenInstallationKinds.add(kind);
         }
 
@@ -616,7 +616,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             if (!allowMultiLayered) {
                 Optional<LayeredInstallationKindSingletonTrait> trait = info.traitMap().getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND);
                 trait.ifPresent(t -> {
-                    if (t.metadata().kind() == SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER) {
+                    if (t.metadata() == SingletonLayeredInstallationKind.MULTI_LAYER) {
                         throw UserError.abort("Forbidden lookup of MultiLayeredImageSingleton. Use LayeredImageSingletonSupport.lookup if really necessary. Key: %s, object %s", key, singleton);
                     }
                 });

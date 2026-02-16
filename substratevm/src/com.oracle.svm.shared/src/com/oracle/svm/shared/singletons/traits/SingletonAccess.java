@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.shared.singletons.traits;
 
-import com.oracle.svm.shared.singletons.Invariants;
 import com.oracle.svm.shared.singletons.SingletonAccessFlags;
 
 /**
@@ -34,9 +33,4 @@ import com.oracle.svm.shared.singletons.SingletonAccessFlags;
  */
 public interface SingletonAccess {
     SingletonAccessFlags getAccessFlags();
-
-    public static SingletonAccessFlags getAccess(SingletonTrait<?> trait) {
-        Invariants.guarantee(trait.kind() == SingletonTraitKind.ACCESS, "Unexpected trait kind.");
-        return ((SingletonAccess) trait.metadata()).getAccessFlags();
-    }
 }

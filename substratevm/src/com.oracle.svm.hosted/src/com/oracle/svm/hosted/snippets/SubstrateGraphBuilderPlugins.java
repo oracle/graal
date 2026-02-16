@@ -101,7 +101,6 @@ import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -1205,8 +1204,8 @@ public class SubstrateGraphBuilderPlugins {
                 if (!result && imageLayer) {
                     var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
                     if (trait != null) {
-                        InstallationKind installationKind = ((SingletonLayeredInstallationKind) trait.metadata()).kind();
-                        if (installationKind == InstallationKind.MULTI_LAYER) {
+                        SingletonLayeredInstallationKind installationKind = (SingletonLayeredInstallationKind) trait.metadata();
+                        if (installationKind == SingletonLayeredInstallationKind.MULTI_LAYER) {
                             /*
                              * The array representation of a MultiLayeredImageSingleton will only be
                              * created in the final layer. However, we assume they exist in all
@@ -1222,7 +1221,7 @@ public class SubstrateGraphBuilderPlugins {
                              * is called, our infrastructure will ensure it is either created in the
                              * application layer or produce a buildtime error.
                              */
-                            if (sharedLayer && installationKind == InstallationKind.APP_LAYER_ONLY) {
+                            if (sharedLayer && installationKind == SingletonLayeredInstallationKind.APP_LAYER_ONLY) {
                                 /*
                                  * Ensure application only image singleton is marked as being
                                  * required to be installed in the application layer.
@@ -1235,7 +1234,7 @@ public class SubstrateGraphBuilderPlugins {
                                  * Initial layer only image singletons are installed in the initial
                                  * layer, but can be accessed from all extension layers.
                                  */
-                                result = installationKind == InstallationKind.INITIAL_LAYER_ONLY;
+                                result = installationKind == SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY;
                             }
                         }
                     }
@@ -1252,8 +1251,8 @@ public class SubstrateGraphBuilderPlugins {
                 if (imageLayer && !ImageSingletons.contains(key)) {
                     var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
                     if (trait != null) {
-                        InstallationKind installationKind = ((SingletonLayeredInstallationKind) trait.metadata()).kind();
-                        if (sharedLayer && installationKind == InstallationKind.APP_LAYER_ONLY) {
+                        SingletonLayeredInstallationKind installationKind = (SingletonLayeredInstallationKind) trait.metadata();
+                        if (sharedLayer && installationKind == SingletonLayeredInstallationKind.APP_LAYER_ONLY) {
                             /*
                              * This singleton is only installed in the application layer heap. All
                              * other layers looks refer to this singleton.
@@ -1261,7 +1260,7 @@ public class SubstrateGraphBuilderPlugins {
                             b.addPush(JavaKind.Object, LoadImageSingletonFactory.loadApplicationOnlyImageSingleton(key, b.getMetaAccess()));
                             return true;
                         }
-                        if (extensionLayer && installationKind == InstallationKind.INITIAL_LAYER_ONLY) {
+                        if (extensionLayer && installationKind == SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY) {
                             /*
                              * This singleton is only installed in the initial layer heap. When
                              * allowed, all other layers lookups refer to this singleton.
