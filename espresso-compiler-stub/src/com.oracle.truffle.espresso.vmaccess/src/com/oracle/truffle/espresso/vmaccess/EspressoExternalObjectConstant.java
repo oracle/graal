@@ -36,6 +36,7 @@ final class EspressoExternalObjectConstant implements JavaConstant {
 
     EspressoExternalObjectConstant(EspressoExternalVMAccess access, org.graalvm.polyglot.Value value) {
         JVMCIError.guarantee(!value.isNull(), "Value must not be null");
+        JVMCIError.guarantee(value.getMetaObject() != null, "Value must have a meta object");
         this.access = access;
         this.value = value;
     }
