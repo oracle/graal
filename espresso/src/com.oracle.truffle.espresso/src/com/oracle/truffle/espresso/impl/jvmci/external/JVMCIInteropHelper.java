@@ -1076,6 +1076,38 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             return method;
         }
 
+        @Specialization(guards = "READ_OBJECT_ARRAY_ELEMENT.equals(member)")
+        static Object readObjectArrayElement(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary intInterop,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError,
+                        @Cached @Shared InlinedBranchProfile indexError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            EspressoLanguage language = EspressoLanguage.get(node);
+            assert language.isExternalJVMCIEnabled();
+            if (arguments.length != 2) {
+                arityError.enter(node);
+                throw ArityException.create(2, 2, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject staticObject && staticObject.isArray())) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an array as first argument");
+            }
+            int index;
+            try {
+                index = intInterop.asInt(arguments[1]);
+            } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an integer as second argument");
+            }
+            if (index < 0 || index >= staticObject.length(language)) {
+                indexError.enter(node);
+                throw EspressoContext.get(node).getMeta().throwArrayIndexOutOfBounds(index, staticObject.length(language));
+            }
+            return staticObject.<StaticObject[]> unwrap(language)[index];
+        }
+
         @Specialization(guards = "GET_EXCEPTION_OBJECT.equals(member)")
         static Object getExceptionObject(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
                         @Bind Node node,
@@ -1158,38 +1190,6 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             }
             typeError.enter(node);
             throw UnsupportedTypeException.create(arguments, "Expected a java.lang.reflect.Executable object");
-        }
-
-        @Specialization(guards = "READ_OBJECT_ARRAY_ELEMENT.equals(member)")
-        static Object readObjectArrayElement(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
-                        @Bind Node node,
-                        @CachedLibrary(limit = "1") @Shared InteropLibrary intInterop,
-                        @Cached @Shared InlinedBranchProfile typeError,
-                        @Cached @Shared InlinedBranchProfile arityError,
-                        @Cached @Shared InlinedBranchProfile indexError) throws ArityException, UnsupportedTypeException {
-            assert receiver != null;
-            EspressoLanguage language = EspressoLanguage.get(node);
-            assert language.isExternalJVMCIEnabled();
-            if (arguments.length != 2) {
-                arityError.enter(node);
-                throw ArityException.create(2, 2, arguments.length);
-            }
-            if (!(arguments[0] instanceof StaticObject staticObject && staticObject.isArray())) {
-                typeError.enter(node);
-                throw UnsupportedTypeException.create(arguments, "Expected an array as first argument");
-            }
-            int index;
-            try {
-                index = intInterop.asInt(arguments[1]);
-            } catch (UnsupportedMessageException e) {
-                typeError.enter(node);
-                throw UnsupportedTypeException.create(arguments, "Expected an integer as second argument");
-            }
-            if (index < 0 || index >= staticObject.length(language)) {
-                indexError.enter(node);
-                throw EspressoContext.get(node).getMeta().throwArrayIndexOutOfBounds(index, staticObject.length(language));
-            }
-            return staticObject.<StaticObject[]> unwrap(language)[index];
         }
     }
 
