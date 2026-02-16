@@ -33,7 +33,10 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.KeysArray;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @ExportLibrary(InteropLibrary.class)
 public final class ExceptionHandlerInteropWrapper implements TruffleObject {
@@ -87,8 +90,12 @@ public final class ExceptionHandlerInteropWrapper implements TruffleObject {
         }
 
         @Specialization(guards = "CATCH_TYPE.equals(member)")
-        static String getCatchType(ExceptionHandlerInteropWrapper receiver, @SuppressWarnings("unused") String member) {
-            return receiver.handler.getCatchType().toString();
+        static Object getCatchType(ExceptionHandlerInteropWrapper receiver, @SuppressWarnings("unused") String member) {
+            Symbol<Type> catchType = receiver.handler.getCatchType();
+            if (catchType == null) {
+                return StaticObject.NULL;
+            }
+            return catchType.toString();
         }
 
         @Fallback

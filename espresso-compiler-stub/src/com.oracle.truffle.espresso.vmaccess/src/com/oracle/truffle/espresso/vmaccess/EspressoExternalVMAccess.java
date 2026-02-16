@@ -114,6 +114,8 @@ final class EspressoExternalVMAccess implements VMAccess {
     final EspressoExternalResolvedJavaMethod java_lang_Module_isOpen_String;
     final EspressoExternalResolvedJavaMethod java_lang_Module_isOpen_String_Module;
     final EspressoExternalResolvedJavaMethod java_lang_Module_getName;
+    // j.l.Throwable
+    final EspressoExternalResolvedInstanceType java_lang_Throwable;
     // j.l.module.ModuleDescriptor
     final EspressoExternalResolvedJavaMethod java_lang_module_ModuleDescriptor_isAutomatic;
     // j.l.NamedPackage
@@ -182,6 +184,8 @@ final class EspressoExternalVMAccess implements VMAccess {
         ResolvedJavaType classType = providers.getMetaAccess().lookupJavaType(Class.class);
         java_lang_Class_forName_String_boolean_ClassLoader = requireMethod(classType, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", providers);
         java_lang_ClassNotFoundException = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(ClassNotFoundException.class);
+
+        java_lang_Throwable = (EspressoExternalResolvedInstanceType) providers.getMetaAccess().lookupJavaType(Throwable.class);
 
         ResolvedJavaType unsafeType = lookupBootClassLoaderType("jdk.internal.misc.Unsafe");
         jdk_internal_misc_Unsafe_allocateInstance_Class = requireMethod(unsafeType, "allocateInstance", "(Ljava/lang/Class;)Ljava/lang/Object;", providers);

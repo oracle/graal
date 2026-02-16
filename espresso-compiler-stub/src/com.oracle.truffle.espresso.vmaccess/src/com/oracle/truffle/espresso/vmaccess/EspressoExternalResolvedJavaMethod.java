@@ -143,8 +143,17 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
             int endBCI = handler.getMember("endBCI").asInt();
             int handlerBCI = handler.getMember("handlerBCI").asInt();
             int catchTypeCPI = handler.getMember("catchTypeCPI").asInt();
-            String catchTypeName = handler.getMember("catchType").asString();
-            JavaType catchType = getAccess().lookupType(catchTypeName, getDeclaringClass(), false);
+            Value catchTypeName = handler.getMember("catchType");
+            JavaType catchType;
+            if (catchTypeCPI == 0 || catchTypeName.isNull()) {
+                catchType = null;
+            } else {
+                catchType = getAccess().lookupType(catchTypeName.asString(), getDeclaringClass(), false);
+                if (getAccess().java_lang_Throwable.equals(catchType)) {
+                    // For consistency with HotSpotResolvedJavaMethodImpl#getExceptionHandlers
+                    catchType = null;
+                }
+            }
             result[i] = new ExceptionHandler(startBCI, endBCI, handlerBCI, catchTypeCPI, catchType);
         }
         return result;
