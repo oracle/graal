@@ -55,10 +55,13 @@ import com.oracle.svm.util.ReflectionUtil;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ContinuationsFeature.LayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 public class ContinuationsFeature implements InternalFeature {
-    private boolean supported;
+    private Boolean supported;
+    private Boolean previousLayerSupported;
 
     public static boolean isSupported() {
-        return ImageSingletons.lookup(ContinuationsFeature.class).supported;
+        ContinuationsFeature feature = ImageSingletons.lookup(ContinuationsFeature.class);
+        VMError.guarantee(feature.supported != null, "Not initialized");
+        return feature.supported;
     }
 
     @Override
@@ -68,7 +71,7 @@ public class ContinuationsFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        boolean previousLayerSupported = supported;
+        VMError.guarantee(supported == null);
 
         /* If continuations are not supported, "virtual" threads are bound to platform threads. */
         if (ContinuationSupport.Options.VMContinuations.getValue()) {
@@ -88,6 +91,7 @@ public class ContinuationsFeature implements InternalFeature {
         } else {
             supported = false;
         }
+        VMError.guarantee(supported != null);
 
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             VMError.guarantee(supported == previousLayerSupported, "The previous layer supported value was %b, but the one from the current layer is %b", previousLayerSupported, supported);
@@ -132,7 +136,8 @@ public class ContinuationsFeature implements InternalFeature {
 
                 @Override
                 public void onSingletonRegistration(ImageSingletonLoader loader, ContinuationsFeature singleton) {
-                    singleton.supported = loader.readInt("supported") == 1;
+                    VMError.guarantee(singleton.previousLayerSupported == null);
+                    singleton.previousLayerSupported = loader.readInt("supported") == 1;
                 }
             };
             return new LayeredCallbacksSingletonTrait(action);
