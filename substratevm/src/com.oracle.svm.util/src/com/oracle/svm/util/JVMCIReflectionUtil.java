@@ -512,13 +512,12 @@ public final class JVMCIReflectionUtil {
      */
     public static void writeField(ResolvedJavaType declaringType, String fieldName, JavaConstant receiver, JavaConstant value) {
         GuestAccess access = GuestAccess.get();
-        ConstantReflectionProvider constantReflection = access.getProviders().getConstantReflection();
 
         ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(declaringType, fieldName);
         JavaConstant fieldConstant = access.asFieldConstant(field);
 
         access.invoke(GuestElements.get().java_lang_reflect_Field_setAccessible, fieldConstant, JavaConstant.forBoolean(true));
-        JavaConstant boxedValue = value.getJavaKind().isPrimitive() ? constantReflection.boxPrimitive(value) : value;
+        JavaConstant boxedValue = value.getJavaKind().isPrimitive() ? access.boxPrimitive(value) : value;
         access.invoke(GuestElements.get().java_lang_reflect_Field_set, fieldConstant, receiver, boxedValue);
     }
 
