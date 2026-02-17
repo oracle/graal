@@ -115,12 +115,12 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
     }
 
     @Override
-    public SingletonTrait<?> getTraitForUninstalledSingleton(Class<?> key, SingletonTraitKind kind) {
+    public <S extends SingletonTrait<?>> S getTraitForUninstalledSingleton(Class<?> key, Class<S> traitClass) {
         SingletonTraitMap map = HostedManagement.getAndAssertExists().getUninstalledSingletonTraitMap(key);
         if (map == null) {
             return null;
         } else {
-            return map.getTrait(kind).orElse(null);
+            return map.getTrait(traitClass).orElse(null);
         }
     }
 
@@ -201,6 +201,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         public <S extends SingletonTrait<?>> Optional<S> getTrait(SingletonTraitKind key) {
             S trait = (S) traitMap.get(key);
             return Optional.ofNullable(trait);
+        }
+
+        public <S extends SingletonTrait<?>> Optional<S> getTrait(Class<S> traitClass) {
+            return getTrait(SingletonTrait.asTraitKind(traitClass));
         }
 
         void seal() {

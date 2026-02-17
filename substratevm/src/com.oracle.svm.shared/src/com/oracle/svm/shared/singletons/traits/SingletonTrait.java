@@ -46,6 +46,23 @@ public abstract class SingletonTrait<T> {
         this.metadata = metadata;
     }
 
+    public static <S extends SingletonTrait<?>> SingletonTraitKind asTraitKind(Class<S> traitClass) {
+        SingletonTraitKind traitKind = null;
+        if (traitClass == LayeredCallbacksSingletonTrait.class) {
+            traitKind = SingletonTraitKind.LAYERED_CALLBACKS;
+        } else if (traitClass == LayeredInstallationKindSingletonTrait.class) {
+            traitKind = SingletonTraitKind.LAYERED_INSTALLATION_KIND;
+        } else if (traitClass == PartiallyLayerAwareSingletonTrait.class) {
+            traitKind = SingletonTraitKind.PARTIALLY_LAYER_AWARE;
+        } else if (traitClass == AccessSingletonTrait.class) {
+            traitKind = SingletonTraitKind.ACCESS;
+        } else if (traitClass == DisallowedSingletonTrait.class) {
+            traitKind = SingletonTraitKind.DISALLOWED;
+        }
+        Invariants.guarantee(Objects.requireNonNull(traitKind).traitClass() == traitClass, "Trait kind doesn't match.");
+        return traitKind;
+    }
+
     public SingletonTraitKind kind() {
         return kind;
     }

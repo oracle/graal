@@ -100,8 +100,8 @@ import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInference
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -1202,9 +1202,9 @@ public class SubstrateGraphBuilderPlugins {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
                 boolean result = ImageSingletons.contains(key);
                 if (!result && imageLayer) {
-                    var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
+                    var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, LayeredInstallationKindSingletonTrait.class);
                     if (trait != null) {
-                        SingletonLayeredInstallationKind installationKind = (SingletonLayeredInstallationKind) trait.metadata();
+                        SingletonLayeredInstallationKind installationKind = trait.metadata();
                         if (installationKind == SingletonLayeredInstallationKind.MULTI_LAYER) {
                             /*
                              * The array representation of a MultiLayeredImageSingleton will only be
@@ -1249,9 +1249,9 @@ public class SubstrateGraphBuilderPlugins {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
 
                 if (imageLayer && !ImageSingletons.contains(key)) {
-                    var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
+                    var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, LayeredInstallationKindSingletonTrait.class);
                     if (trait != null) {
-                        SingletonLayeredInstallationKind installationKind = (SingletonLayeredInstallationKind) trait.metadata();
+                        var installationKind = trait.metadata();
                         if (sharedLayer && installationKind == SingletonLayeredInstallationKind.APP_LAYER_ONLY) {
                             /*
                              * This singleton is only installed in the application layer heap. All

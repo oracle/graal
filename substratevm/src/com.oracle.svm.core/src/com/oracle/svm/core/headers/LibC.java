@@ -40,8 +40,8 @@ import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -137,9 +137,8 @@ public class LibC {
 
     private static boolean isInstalledInInitialLayer() {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-            var trait = LayeredImageSingletonSupport.singleton().getTraitForUninstalledSingleton(LibCSupport.class, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
-            SingletonLayeredInstallationKind installationKind = (SingletonLayeredInstallationKind) trait.metadata();
-            return installationKind == SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY;
+            LayeredInstallationKindSingletonTrait trait = LayeredImageSingletonSupport.singleton().getTraitForUninstalledSingleton(LibCSupport.class, LayeredInstallationKindSingletonTrait.class);
+            return trait.metadata() == SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY;
         }
         return false;
     }
