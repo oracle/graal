@@ -80,16 +80,17 @@ import com.oracle.svm.core.jdk.LayeredModuleSingleton;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.RuntimeClassLoaderValueSupport;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.HostedSubstrateUtil;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AnalysisAccessBase;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.HostedModuleSupport;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -321,9 +322,9 @@ public class ModuleLayerFeature implements InternalFeature {
          * Parse explicitly added modules via --add-modules. This is done early as this information
          * is required when filtering the analysis reachable module set.
          */
-        Set<String> extraModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
+        Set<String> extraModules = HostedModuleSupport.parseModuleSetModifierProperty(HostedModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
         extraModules.addAll(Resources.getIncludedResourcesModules());
-        extraModules.stream().filter(Predicate.not(ModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
+        extraModules.stream().filter(Predicate.not(HostedModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
             Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
             if (module.isEmpty()) {
                 throw VMError.shouldNotReachHere("Explicitly required module " + moduleName + " is not available");
@@ -415,7 +416,7 @@ public class ModuleLayerFeature implements InternalFeature {
         ModuleFinder upgradeModulePath = NativeImageClassLoaderSupport.finderFor("jdk.module.upgrade.path");
         ModuleFinder appModulePath = moduleLayerFeatureUtils.getAppModuleFinder();
         String mainModule = ModuleLayerFeatureUtils.getMainModuleName();
-        Set<String> limitModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
+        Set<String> limitModules = HostedModuleSupport.parseModuleSetModifierProperty(HostedModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
 
         Object systemModules = null;
         ModuleFinder systemModuleFinder;
@@ -464,13 +465,13 @@ public class ModuleLayerFeature implements InternalFeature {
         boolean addAllApplicationModules = false;
         for (String mod : addModules) {
             switch (mod) {
-                case ModuleSupport.MODULE_SET_ALL_DEFAULT:
+                case HostedModuleSupport.MODULE_SET_ALL_DEFAULT:
                     addAllDefaultModules = true;
                     break;
-                case ModuleSupport.MODULE_SET_ALL_SYSTEM:
+                case HostedModuleSupport.MODULE_SET_ALL_SYSTEM:
                     addAllSystemModules = true;
                     break;
-                case ModuleSupport.MODULE_SET_ALL_MODULE_PATH:
+                case HostedModuleSupport.MODULE_SET_ALL_MODULE_PATH:
                     addAllApplicationModules = true;
                     break;
                 default:

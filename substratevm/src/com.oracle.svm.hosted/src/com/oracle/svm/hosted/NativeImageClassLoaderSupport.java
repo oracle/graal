@@ -101,18 +101,18 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.driver.LayerOptionsSupport;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.HostedModuleSupport;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -960,7 +960,7 @@ public final class NativeImageClassLoaderSupport {
                                 .collect(Collectors.toSet());
                 requiresInit.addAll(additionalSystemModules);
 
-                Set<String> explicitlyAddedModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
+                Set<String> explicitlyAddedModules = HostedModuleSupport.parseModuleSetModifierProperty(HostedModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
 
                 for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
                     String moduleName = moduleReference.descriptor().name();
