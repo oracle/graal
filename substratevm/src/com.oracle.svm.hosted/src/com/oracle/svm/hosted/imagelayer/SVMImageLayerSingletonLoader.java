@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY_TRAIT;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,7 +48,6 @@ import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTrait;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -111,7 +112,7 @@ public class SVMImageLayerSingletonLoader {
         }
 
         Map<Object, EconomicSet<Class<?>>> singletonInitializationMap = new HashMap<>();
-        LayeredInstallationKindSingletonTrait[] initialLayerOnly = new LayeredInstallationKindSingletonTrait[]{SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY};
+        LayeredInstallationKindSingletonTrait[] initialLayerOnly = new LayeredInstallationKindSingletonTrait[]{INITIAL_LAYER_ONLY_TRAIT};
         for (ImageSingletonKey.Reader entry : snapshot.getSingletonKeys()) {
             String className = entry.getKeyClassName().toString();
             LayeredPersistFlags persistFlags = LayeredPersistFlags.values()[entry.getPersistFlag()];

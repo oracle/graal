@@ -38,7 +38,7 @@ public enum SingletonTraitKind {
      * In cases where this SingletonTrait is not defined the singleton will have the equivalent
      * behavior as {@link BuiltinTraits#ALL_ACCESS}.
      */
-    ACCESS(SingletonAccess.Supplier.class),
+    ACCESS(AccessSingletonTrait.class),
 
     /**
      * Links to layered-build specific callbacks for this singleton.
@@ -47,7 +47,7 @@ public enum SingletonTraitKind {
      * In cases where this SingletonTrait is not defined then no layered-build specific callbacks
      * will be triggered for this singleton.
      */
-    LAYERED_CALLBACKS(SingletonLayeredCallbacks.class),
+    LAYERED_CALLBACKS(LayeredCallbacksSingletonTrait.class),
 
     /**
      * Describes any special layered-specific behavior associated with this singleton. See
@@ -57,26 +57,26 @@ public enum SingletonTraitKind {
      * In cases where this SingletonTrait is not defined the singleton will have the equivalent
      * behavior as {@link SingletonLayeredInstallationKind.Duplicable}.
      */
-    LAYERED_INSTALLATION_KIND(SingletonLayeredInstallationKind.class),
+    LAYERED_INSTALLATION_KIND(LayeredInstallationKindSingletonTrait.class),
 
     /**
      * Used as a marker to indicate the singleton is not yet fully compatible with layered images.
      */
-    PARTIALLY_LAYER_AWARE(EmptyMetadata.class),
+    PARTIALLY_LAYER_AWARE(PartiallyLayerAwareSingletonTrait.class),
 
     /**
      * Used as a marker to indicate the singleton is not allowed to be used with layered images.
      */
-    DISALLOWED(EmptyMetadata.class);
+    DISALLOWED(DisallowedSingletonTrait.class);
 
-    private final Class<?> metadataClass;
+    private final Class<? extends SingletonTrait<?>> traitClass;
 
-    public Class<?> getMetadataClass() {
-        return metadataClass;
+    SingletonTraitKind(Class<? extends SingletonTrait<?>> traitClass) {
+        this.traitClass = traitClass;
     }
 
-    SingletonTraitKind(Class<?> metadataClass) {
-        this.metadataClass = metadataClass;
+    public Class<? extends SingletonTrait<?>> traitClass() {
+        return traitClass;
     }
 
     /**
@@ -89,5 +89,4 @@ public enum SingletonTraitKind {
             case LAYERED_CALLBACKS, LAYERED_INSTALLATION_KIND, PARTIALLY_LAYER_AWARE, DISALLOWED -> layeredBuild;
         };
     }
-
 }

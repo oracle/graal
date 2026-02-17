@@ -95,24 +95,17 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.shared.singletons.LayeredPersistFlags;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ImageSingletonsSupportImpl;
@@ -172,6 +165,12 @@ import com.oracle.svm.shaded.org.capnproto.StructList;
 import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
@@ -1176,7 +1175,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         Map<Object, SingletonPersistInfo> singletonPersistInfoMap = new IdentityHashMap<>();
         int nextSingletonId = 0;
         int nextKeyStoreId = 0;
-        Set<Object> initialLayerSingletons = LayeredImageSingletonSupport.singleton().getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
+        Set<Object> initialLayerSingletons = LayeredImageSingletonSupport.singleton().getSingletonsWithTrait(SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY);
         for (int i = 0; i < layeredImageSingletons.size(); i++) {
             var singletonEntry = layeredImageSingletons.get(i);
             String key = singletonEntry.getKey().getName();
@@ -1184,8 +1183,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             boolean initialLayerOnly = initialLayerSingletons.contains(singleton);
             if (!singletonPersistInfoMap.containsKey(singleton)) {
                 var writer = new ImageSingletonWriterImpl(snapshotBuilder, hUniverse);
-                var action = (SingletonLayeredCallbacks<?>) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
-                var flags = SubstrateUtil.cast(action, SingletonLayeredCallbacks.class).doPersist(writer, singleton);
+                var trait = singletonEntry.getValue().traitMap().getTrait(LayeredCallbacksSingletonTrait.class);
+                var action = (SingletonLayeredCallbacks<Object>) trait.get().metadata();
+                var flags = action.doPersist(writer, singleton);
                 if (initialLayerOnly) {
                     VMError.guarantee(flags == LayeredPersistFlags.FORBIDDEN, "InitialLayer Singleton's persist action must return %s %s", LayeredPersistFlags.FORBIDDEN,
                                     singleton);

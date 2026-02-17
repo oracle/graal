@@ -32,7 +32,7 @@ import com.oracle.svm.shared.singletons.Invariants;
  * Describes a facet of a singleton's behavior. See {@link SingletonTraits} and
  * {@link SingletonTraitKind} for more details.
  */
-public abstract class SingletonTrait<T> {
+public abstract sealed class SingletonTrait<T> permits AccessSingletonTrait, DisallowedSingletonTrait, LayeredCallbacksSingletonTrait, LayeredInstallationKindSingletonTrait, PartiallyLayerAwareSingletonTrait {
 
     public static final SingletonTrait<?>[] EMPTY_ARRAY = new SingletonTrait<?>[0];
 
@@ -40,10 +40,27 @@ public abstract class SingletonTrait<T> {
     private final T metadata;
 
     public SingletonTrait(SingletonTraitKind kind, T metadata) {
-        /* Guarantee the metadata for this trait is of the expected kind. */
-        Invariants.guarantee(kind.getMetadataClass().isInstance(metadata), "Unexpected metadata kind.");
+        /* Guarantee that the trait class matches that of the kind. */
+        Invariants.guarantee(kind.traitClass() == this.getClass(), "Unexpected trait class.");
         this.kind = kind;
         this.metadata = metadata;
+    }
+
+    public static <S extends SingletonTrait<?>> SingletonTraitKind asTraitKind(Class<S> traitClass) {
+        SingletonTraitKind traitKind = null;
+        if (traitClass == LayeredCallbacksSingletonTrait.class) {
+            traitKind = SingletonTraitKind.LAYERED_CALLBACKS;
+        } else if (traitClass == LayeredInstallationKindSingletonTrait.class) {
+            traitKind = SingletonTraitKind.LAYERED_INSTALLATION_KIND;
+        } else if (traitClass == PartiallyLayerAwareSingletonTrait.class) {
+            traitKind = SingletonTraitKind.PARTIALLY_LAYER_AWARE;
+        } else if (traitClass == AccessSingletonTrait.class) {
+            traitKind = SingletonTraitKind.ACCESS;
+        } else if (traitClass == DisallowedSingletonTrait.class) {
+            traitKind = SingletonTraitKind.DISALLOWED;
+        }
+        Invariants.guarantee(Objects.requireNonNull(traitKind).traitClass() == traitClass, "Trait kind doesn't match.");
+        return traitKind;
     }
 
     public SingletonTraitKind kind() {
