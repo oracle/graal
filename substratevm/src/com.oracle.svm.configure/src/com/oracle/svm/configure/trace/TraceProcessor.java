@@ -45,6 +45,9 @@ public class TraceProcessor extends AbstractProcessor {
     private final ClassLoadingProcessor classLoadingProcessor;
     private final ForeignProcessor foreignProcessor;
 
+    private int warningsCount = 0;
+    private static final int MAX_NUM_WARNINGS_PRINT = 100;
+
     public TraceProcessor(AccessAdvisor accessAdvisor) {
         advisor = accessAdvisor;
         jniProcessor = new JniProcessor(this.advisor);
@@ -82,7 +85,7 @@ public class TraceProcessor extends AbstractProcessor {
                     } else if (event.equals("track_reflection_metadata")) {
                         reflectionProcessor.setTrackReflectionMetadata((boolean) entry.get("track"));
                     } else {
-                        LogUtils.warning("Unknown meta event, ignoring: " + event);
+                        warning("Unknown meta event, ignoring: " + event);
                     }
                     break;
                 }
@@ -102,13 +105,13 @@ public class TraceProcessor extends AbstractProcessor {
                     foreignProcessor.processEntry(entry, configurationSet);
                     break;
                 default:
-                    LogUtils.warning("Unknown tracer, ignoring: " + tracer);
+                    warning("Unknown tracer, ignoring: " + tracer);
                     break;
             }
         } catch (Exception e) {
             StringWriter stackTrace = new StringWriter();
             e.printStackTrace(new PrintWriter(stackTrace));
-            LogUtils.warning("Error processing trace entry " + entry.toString() + ": " + stackTrace);
+            warning("Error processing trace entry " + entry.toString() + ": " + stackTrace);
         }
     }
 
@@ -118,5 +121,17 @@ public class TraceProcessor extends AbstractProcessor {
         jniProcessor.setInLivePhase(live);
         reflectionProcessor.setInLivePhase(live);
         super.setInLivePhase(live);
+    }
+
+    private void warning(String msg) {
+        warningsCount++;
+        if (warningsCount <= MAX_NUM_WARNINGS_PRINT) {
+            LogUtils.warning(msg);
+        }
+        if (warningsCount == MAX_NUM_WARNINGS_PRINT) {
+            LogUtils.warning("********************************************************************");
+            LogUtils.warning("TraceProcessor has printed " + warningsCount + " warnings, further ones are omitted.");
+            LogUtils.warning("********************************************************************");
+        }
     }
 }
