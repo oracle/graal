@@ -311,6 +311,11 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         private final boolean destroysCallerSavedRegisters;
         @Temp({REG, OperandFlag.ILLEGAL}) private Value exceptionTemp;
+
+        /*
+         * Make it explicit that this operation overrides a given register (rax or r10).
+         */
+        @Temp({REG}) private Value targetAddressRegister;
         private final BiConsumer<CompilationResultBuilder, Integer> offsetRecorder;
 
         @Def({REG}) private Value[] multipleResults;
@@ -340,6 +345,8 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             this.javaFrameAnchorTemp = javaFrameAnchorTemp;
             this.destroysCallerSavedRegisters = destroysCallerSavedRegisters;
             this.exceptionTemp = exceptionTemp;
+            this.targetAddress = targetAddress;
+            this.targetAddressRegister = targetAddress;
             this.offsetRecorder = offsetRecorder;
             this.multipleResults = multipleResults;
             this.callingConventionType = callingConventionType;
@@ -1083,10 +1090,17 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         @Override
         protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
+            boolean hasHiddenArgument = callTarget instanceof SubstrateIndirectCallTargetNode substrateIndirectCallTargetNode && substrateIndirectCallTargetNode.getHiddenArgument() != null;
+            boolean isNativeABI = ((SubstrateCallingConventionType) callTarget.callType()).nativeABI();
+
             // The register allocator cannot handle variables at call sites, need a fixed register.
             // Do not use RAX for C calls, it contains the number of XMM registers for varargs.
             // RAX can also be used for the hidden argument (non-native ABI only).
-            AllocatableValue targetAddress = AMD64.r10.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
+            Register targetAddressRegister = AMD64.rax;
+            if (hasHiddenArgument || isNativeABI) {
+                targetAddressRegister = AMD64.r10;
+            }
+            AllocatableValue targetAddress = targetAddressRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
@@ -1100,7 +1114,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             }
 
             Value hiddenArgument = Value.ILLEGAL;
-            if (callTarget instanceof SubstrateIndirectCallTargetNode substrateCallTarget && substrateCallTarget.getHiddenArgument() != null) {
+            if (hasHiddenArgument) {
                 // See SubstrateAMD64NodeLIRBuilder#visitInvokeArguments
                 hiddenArgument = HIDDEN_ARGUMENT_REGISTER.asValue(LIRKind.value(AMD64Kind.QWORD));
             }
