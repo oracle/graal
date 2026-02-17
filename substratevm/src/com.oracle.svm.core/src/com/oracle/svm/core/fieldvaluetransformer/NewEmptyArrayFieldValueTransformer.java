@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;

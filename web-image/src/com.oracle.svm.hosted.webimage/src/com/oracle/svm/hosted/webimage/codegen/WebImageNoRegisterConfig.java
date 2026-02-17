@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.webimage.codegen;
 
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;

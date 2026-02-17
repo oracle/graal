@@ -26,7 +26,7 @@ package com.oracle.svm.truffle;
 
 import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.truffle.TruffleBaseFeature.Options.TruffleInterpreterTailCallThreading;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
@@ -107,7 +107,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.hosted.runtimecompilation.GraalGraphObjectReplacer;
 import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateGraalCompilerSetup;
 import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateRuntimeProviders;

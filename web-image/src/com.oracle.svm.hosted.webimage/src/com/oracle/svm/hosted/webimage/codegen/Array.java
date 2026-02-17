@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage.codegen;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.codegen.type.TypeVtableLowerer;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionDefinition;

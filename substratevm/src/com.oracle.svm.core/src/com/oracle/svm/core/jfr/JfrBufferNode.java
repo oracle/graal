@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * {@link JfrBufferNode}s are added to {@link JfrBufferList}s and may have a longer lifetime than

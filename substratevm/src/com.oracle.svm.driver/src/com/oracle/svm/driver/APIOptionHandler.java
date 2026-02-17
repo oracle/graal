@@ -59,7 +59,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.driver.APIOptionHandler.HostedOptionInfo;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.hosted.FeatureImpl;

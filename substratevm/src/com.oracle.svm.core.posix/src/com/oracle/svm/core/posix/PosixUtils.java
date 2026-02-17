@@ -62,7 +62,7 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 
 public class PosixUtils {

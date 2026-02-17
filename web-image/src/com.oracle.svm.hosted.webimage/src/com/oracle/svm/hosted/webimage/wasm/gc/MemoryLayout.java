@@ -44,7 +44,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmMemoryGrowNode;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmMemorySizeNode;
 import com.oracle.svm.webimage.wasm.types.WasmUtil;

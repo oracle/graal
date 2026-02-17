@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.util.Objects;
 

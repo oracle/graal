@@ -30,8 +30,8 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.reflect.ConstructorAccessor;
 import jdk.internal.reflect.MethodAccessor;

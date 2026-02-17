@@ -1753,7 +1753,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
+                "SVM_SHARED",
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
@@ -1987,13 +1987,22 @@ suite = {
                 "name" : "org.graalvm.nativeimage.shared",
                 "exports" : [
                     """com.oracle.svm.shared.util to
+                            com.oracle.svm.extraimage_enterprise,
+                            com.oracle.svm.jdwp.server,
+                            com.oracle.truffle.enterprise.svm,
+                            org.graalvm.extraimage.builder,
+                            org.graalvm.extraimage.librarysupport,
+                            org.graalvm.nativeimage.agent.diagnostics,
+                            org.graalvm.nativeimage.agent.jvmtibase,
+                            org.graalvm.nativeimage.agent.tracing,
                             org.graalvm.nativeimage.base,
                             org.graalvm.nativeimage.builder,
                             org.graalvm.nativeimage.configure,
                             org.graalvm.nativeimage.driver,
+                            org.graalvm.nativeimage.enterprise.testrunner,
+                            org.graalvm.nativeimage.foreign,
                             org.graalvm.nativeimage.guest,
                             org.graalvm.nativeimage.guest.staging,
-                            org.graalvm.nativeimage.foreign,
                             org.graalvm.truffle.runtime.svm""",
                     """com.oracle.svm.shared.singletons to
                             org.graalvm.nativeimage.builder""",

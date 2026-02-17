@@ -34,7 +34,7 @@ import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;

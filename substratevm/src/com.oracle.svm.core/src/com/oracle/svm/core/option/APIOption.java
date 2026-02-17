@@ -33,7 +33,7 @@ import java.util.function.Function;
 
 import jdk.graal.compiler.options.Option;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * If an {@link Option} is additionally annotated with {@link APIOption} it will be exposed as

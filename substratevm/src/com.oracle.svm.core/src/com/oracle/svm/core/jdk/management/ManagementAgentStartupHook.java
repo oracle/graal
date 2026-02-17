@@ -26,7 +26,7 @@
 
 package com.oracle.svm.core.jdk.management;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public class ManagementAgentStartupHook implements com.oracle.svm.core.jdk.RuntimeSupport.Hook {
 

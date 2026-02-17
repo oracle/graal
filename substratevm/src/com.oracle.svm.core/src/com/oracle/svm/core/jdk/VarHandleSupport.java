@@ -36,7 +36,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.nodes.ValueNode;

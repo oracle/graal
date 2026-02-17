@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -35,7 +35,7 @@ import java.util.Set;
 import jdk.graal.compiler.core.common.NumUtil;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMRelocationIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;

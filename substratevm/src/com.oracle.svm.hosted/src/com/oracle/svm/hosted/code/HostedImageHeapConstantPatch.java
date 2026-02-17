@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.util.ClassUtil;

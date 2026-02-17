@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -41,14 +42,14 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.UnreachableNode;
 
-@TargetClass(com.oracle.svm.core.util.VMError.class)
+@TargetClass(VMError.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
-final class Target_com_oracle_svm_core_util_VMError {
+final class Target_com_oracle_svm_shared_util_VMError {
 
     /*
      * These substitutions let the svm print the real message. The original VMError methods throw a
@@ -120,6 +121,14 @@ final class Target_com_oracle_svm_core_util_VMError {
     private static RuntimeException unsupportedFeature(String msg) {
         throw new UnsupportedFeatureError(msg);
     }
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition);
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition, String msg);
 }
 
 /** Dummy class to have a class with the file's name. */

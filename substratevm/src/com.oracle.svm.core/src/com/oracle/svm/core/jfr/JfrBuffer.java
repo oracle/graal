@@ -32,7 +32,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.struct.PinnedObjectField;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A {@link JfrBuffer} is a block of native memory (either thread-local or global) into which JFR

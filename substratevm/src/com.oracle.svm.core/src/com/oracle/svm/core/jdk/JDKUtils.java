@@ -28,7 +28,7 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public final class JDKUtils {
 

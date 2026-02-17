@@ -28,12 +28,14 @@ package com.oracle.svm.hosted.webimage.wasmgc.substitute;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.UnsupportedFeatureError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.webimage.wasm.debug.WasmDebug;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.webimage.substitute.system.Target_java_lang_Throwable_Web;
 
@@ -55,10 +57,10 @@ public class WasmGCVMErrorSubstitutions {
     }
 }
 
-@TargetClass(com.oracle.svm.core.util.VMError.class)
+@TargetClass(VMError.class)
 @Platforms(WebImageWasmGCPlatform.class)
 @SuppressWarnings("unused")
-final class Target_com_oracle_svm_core_util_VMError_Web {
+final class Target_com_oracle_svm_shared_util_VMError_Web {
 
     @Substitute
     private static RuntimeException shouldNotReachHere(String msg) {
@@ -109,4 +111,12 @@ final class Target_com_oracle_svm_core_util_VMError_Web {
     private static RuntimeException unsupportedFeature(String msg) {
         throw new UnsupportedFeatureError(msg);
     }
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition);
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native void guarantee(boolean condition, String msg);
 }

@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.vm.ci.code.BytecodeFrame;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.methodhandles;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

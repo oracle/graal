@@ -26,7 +26,7 @@ package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.code.Register;

@@ -27,7 +27,7 @@ package com.oracle.svm.interpreter;
 import jdk.graal.compiler.api.replacements.Fold;
 
 import com.oracle.svm.interpreter.metadata.Bytecodes;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 final class ConstantBytecodes {
 

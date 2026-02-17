@@ -29,7 +29,7 @@ import jdk.graal.compiler.debug.GraalError;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public class SubstrateUnsupportedFeatures extends UnsupportedFeatures {
 

@@ -27,9 +27,9 @@ package com.oracle.svm.shared.singletons.traits;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.singletons.Invariants;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.Invariants;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 
 /**

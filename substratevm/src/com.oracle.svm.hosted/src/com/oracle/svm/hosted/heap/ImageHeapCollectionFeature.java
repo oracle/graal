@@ -41,7 +41,7 @@ import com.oracle.svm.core.util.ImageHeapList.HostedImageHeapList;
 import com.oracle.svm.core.util.ImageHeapMap.HostedImageHeapMap;
 import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;
 import com.oracle.svm.core.util.LayeredImageHeapMap;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 @AutomaticallyRegisteredFeature

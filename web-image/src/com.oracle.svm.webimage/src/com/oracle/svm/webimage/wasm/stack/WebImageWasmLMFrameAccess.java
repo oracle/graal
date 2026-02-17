@@ -36,7 +36,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 import org.graalvm.word.impl.Word;
 

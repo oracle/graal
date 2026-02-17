@@ -48,7 +48,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.jdk.localization.bundles.CompressedBundle;
 import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils.SerializedContent;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Class responsible for serialization and compression of resource bundles. Only bundles whose

@@ -42,7 +42,7 @@ import com.oracle.svm.core.attach.AttachListenerThread;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.jdk.management.Target_jdk_internal_vm_VMSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 

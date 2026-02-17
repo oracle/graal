@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.imagelayer.LayerArchiveSupport;
 
 public class LayerOptionsSupport extends IncludeOptionsSupport {

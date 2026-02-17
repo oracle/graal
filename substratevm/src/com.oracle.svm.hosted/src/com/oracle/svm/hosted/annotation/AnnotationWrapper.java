@@ -30,7 +30,7 @@ import java.lang.reflect.AnnotatedElement;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Default implementations for {@link AnnotatedElement} based on the {@link AnnotationExtractor}

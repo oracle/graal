@@ -25,7 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Abstract superclass for classes that represent number sequences, x1, x2, x3, ..., xN, and can

@@ -30,7 +30,7 @@ import java.util.List;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 
 class ChunkedImageHeapAllocator {

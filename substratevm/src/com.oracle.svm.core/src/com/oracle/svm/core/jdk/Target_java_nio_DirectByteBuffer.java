@@ -31,7 +31,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.Target_jdk_internal_ref_Cleaner;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 @TargetClass(className = "java.nio.DirectByteBuffer")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.2+2/src/java.base/share/classes/java/nio/Direct-X-Buffer.java.template")

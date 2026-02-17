@@ -35,7 +35,7 @@ import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport.AdaptersByClassKey;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import sun.util.locale.provider.LocaleProviderAdapter;
 

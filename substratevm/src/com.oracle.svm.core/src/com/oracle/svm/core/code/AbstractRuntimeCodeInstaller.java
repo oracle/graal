@@ -35,7 +35,7 @@ import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public class AbstractRuntimeCodeInstaller {
     protected Pointer allocateCodeMemory(long size) {

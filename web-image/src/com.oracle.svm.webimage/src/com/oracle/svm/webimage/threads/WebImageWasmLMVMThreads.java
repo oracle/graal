@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)

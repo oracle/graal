@@ -32,7 +32,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Functionality for referring to an image heap object using its isolate-independent location.

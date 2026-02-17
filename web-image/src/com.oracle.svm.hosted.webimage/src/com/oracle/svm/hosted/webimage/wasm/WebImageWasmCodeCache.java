@@ -37,7 +37,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;

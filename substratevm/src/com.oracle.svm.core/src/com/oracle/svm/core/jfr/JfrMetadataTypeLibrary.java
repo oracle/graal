@@ -33,7 +33,7 @@ import jdk.graal.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.internal.MetadataRepository;

@@ -43,7 +43,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.impl.ObjectAccess;

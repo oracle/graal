@@ -46,7 +46,6 @@ import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.ModuleNative;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_Reflection;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ClassfileParser;
 import com.oracle.svm.espresso.classfile.ClassfileStream;
 import com.oracle.svm.espresso.classfile.ParserException;
@@ -58,6 +57,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.loader.ClassLoaders;

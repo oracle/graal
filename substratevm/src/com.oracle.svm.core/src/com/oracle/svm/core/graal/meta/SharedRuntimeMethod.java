@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 

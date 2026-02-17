@@ -34,7 +34,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;

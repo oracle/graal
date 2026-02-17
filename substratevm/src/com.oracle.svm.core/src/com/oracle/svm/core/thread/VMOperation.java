@@ -38,7 +38,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.ExecuteVMOperationEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperationControl.OpInProgress;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Only one thread at a time can execute {@linkplain VMOperation}s (see

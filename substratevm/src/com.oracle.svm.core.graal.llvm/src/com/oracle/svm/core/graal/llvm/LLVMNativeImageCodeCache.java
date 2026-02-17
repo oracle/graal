@@ -29,7 +29,7 @@ import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmCompile;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmLink;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmOptimize;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.nativeLink;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 import static com.oracle.svm.hosted.image.NativeImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 
 import java.io.FileOutputStream;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.meta;
 
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 
 import java.lang.reflect.Modifier;
 import java.util.function.Function;
@@ -42,7 +42,7 @@ import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.vm.ci.meta.JavaConstant;

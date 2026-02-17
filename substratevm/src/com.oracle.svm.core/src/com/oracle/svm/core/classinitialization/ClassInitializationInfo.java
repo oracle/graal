@@ -51,8 +51,8 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

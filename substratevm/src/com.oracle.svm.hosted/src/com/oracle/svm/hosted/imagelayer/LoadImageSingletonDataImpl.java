@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.c;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 import static java.nio.file.FileVisitResult.CONTINUE;
 
 import java.io.File;

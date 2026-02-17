@@ -43,11 +43,11 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.GOTHeapSupport;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

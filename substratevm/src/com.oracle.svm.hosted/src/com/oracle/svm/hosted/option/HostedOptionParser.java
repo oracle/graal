@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.option;
 
 import static com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat.PLUS_MINUS;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.util.ArrayList;
 import java.util.Collections;

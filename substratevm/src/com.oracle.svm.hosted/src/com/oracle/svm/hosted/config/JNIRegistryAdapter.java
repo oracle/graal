@@ -31,7 +31,7 @@ import java.util.List;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 
 public class JNIRegistryAdapter extends RegistryAdapter {

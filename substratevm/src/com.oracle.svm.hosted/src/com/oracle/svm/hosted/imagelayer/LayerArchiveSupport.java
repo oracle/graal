@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
 public class LayerArchiveSupport {

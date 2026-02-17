@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.stack;
 
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;

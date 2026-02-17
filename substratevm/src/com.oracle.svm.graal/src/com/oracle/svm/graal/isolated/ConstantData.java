@@ -34,7 +34,7 @@ import com.oracle.svm.core.graal.isolated.ClientHandle;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateMemoryAccessProviderImpl;
 
 import jdk.vm.ci.meta.Constant;

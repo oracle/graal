@@ -37,7 +37,7 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public abstract class PlatformNativeLibrarySupport {
 

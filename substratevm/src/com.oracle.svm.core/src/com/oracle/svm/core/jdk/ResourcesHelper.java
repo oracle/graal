@@ -34,7 +34,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageInfo;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public class ResourcesHelper {
 

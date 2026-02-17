@@ -29,7 +29,7 @@ import java.util.List;
 
 import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public abstract class AccumulatingLocatableMultiOptionValue<T> extends LocatableMultiOptionValue<T> {
 

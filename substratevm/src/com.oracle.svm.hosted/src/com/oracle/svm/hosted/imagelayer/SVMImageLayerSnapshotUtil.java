@@ -66,7 +66,7 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.VMFeature;
 import com.oracle.svm.hosted.c.AppLayerCGlobalTracking;

@@ -35,9 +35,9 @@ import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.shared.util.VMError;
 
 /** Implementation of and access to {@link Target_jdk_internal_vm_Continuation} internals. */
 @InternalVMMethod

@@ -43,7 +43,7 @@ import org.graalvm.webimage.api.JSUndefined;
 import org.graalvm.webimage.api.JSValue;
 import org.graalvm.webimage.api.ThrownFromJavaScript;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.JSExceptionSupport;
 import com.oracle.svm.webimage.JSNameGenerator;
 import com.oracle.svm.webimage.annotation.JSRawCall;

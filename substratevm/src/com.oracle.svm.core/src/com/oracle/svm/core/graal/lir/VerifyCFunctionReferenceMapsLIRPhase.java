@@ -34,7 +34,7 @@ import com.oracle.svm.core.nodes.CFunctionEpilogueMarker;
 import com.oracle.svm.core.nodes.CFunctionPrologueMarker;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.lir.LIR;

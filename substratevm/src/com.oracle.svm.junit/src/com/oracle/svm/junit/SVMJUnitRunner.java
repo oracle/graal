@@ -47,7 +47,7 @@ import com.oracle.mxtool.junit.MxJUnitWrapper;
 import com.oracle.mxtool.junit.MxJUnitWrapper.MxJUnitConfig;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.options.Option;

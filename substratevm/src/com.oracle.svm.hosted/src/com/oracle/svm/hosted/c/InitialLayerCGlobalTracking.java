@@ -33,7 +33,7 @@ import java.util.function.Supplier;
 
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.imagelayer.CodeLocation;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder;
 

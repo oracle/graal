@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 public abstract class ConditionalConfigurationRegistry {

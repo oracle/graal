@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.c.type.CConst;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.posix.PosixStat.stat;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 // Checkstyle: stop
 

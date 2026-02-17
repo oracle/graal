@@ -30,14 +30,14 @@ import java.util.List;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
 import com.oracle.svm.espresso.classfile.attributes.AttributedElement;
+import com.oracle.svm.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.svm.espresso.classfile.attributes.NestHostAttribute;
 import com.oracle.svm.espresso.classfile.attributes.NestMembersAttribute;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

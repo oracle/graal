@@ -46,7 +46,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.ModuleNative;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
 
 /**

@@ -31,7 +31,7 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 
 /**

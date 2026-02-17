@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.invoke;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.lang.invoke.MethodHandle;
 

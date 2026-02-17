@@ -50,7 +50,7 @@ import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
 import sun.util.resources.OpenListResourceBundle;

@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.svm.core.option.OptionUtils.MacroOptionKind;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
