@@ -25,6 +25,8 @@
  */
 package com.oracle.svm.common.option;
 
+import jdk.graal.compiler.debug.GraalError;
+
 /// Support for parsing a raw string into an option name and an optional description of its origin.
 /// It assists simple provenance tracking across option parsing layers. The origin, if present,
 /// is separated from the name by `@`. Examples:
@@ -33,9 +35,6 @@ package com.oracle.svm.common.option;
 /// |-------------------------------------------------|----------------------|---------------------------|
 /// | "IncludeResources@native-image.properties"      | "IncludeResources"   | "native-image.properties" |
 /// | "EnableVMInspection"                            | "EnableVMInspection" | null                      |
-/// | "@native-image.properties"                      | ""                   | "native-image.properties" |
-/// | "EnableVMInspection@"                           | "EnableVMInspection" | ""                        |
-/// | "@"                                             | ""                   | ""                        |
 public final class LocatableOption {
 
     public final String name;
@@ -49,7 +48,9 @@ public final class LocatableOption {
         int annotationIndex = rawOptionName.indexOf('@');
         if (annotationIndex != -1) {
             name = rawOptionName.substring(0, annotationIndex);
+            GraalError.guarantee(!name.isEmpty(), "LocatableOption requires option name");
             origin = rawOptionName.substring(annotationIndex + 1);
+            GraalError.guarantee(!origin.isEmpty(), "LocatableOption specified with origin annotation requires origin name");
         } else {
             name = rawOptionName;
             origin = null;
@@ -76,6 +77,8 @@ public final class LocatableOption {
         private LocatableOptionValue(Object value, String origin) {
             this.value = value;
             this.origin = origin;
+            GraalError.guarantee(origin == null || !origin.isEmpty(),
+                            "LocatableOptionValue origin needs to be either null or origin name");
         }
 
         @Override
