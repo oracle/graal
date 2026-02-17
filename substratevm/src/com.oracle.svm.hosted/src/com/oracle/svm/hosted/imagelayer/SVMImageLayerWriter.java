@@ -58,7 +58,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -172,7 +171,6 @@ import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
@@ -1185,7 +1183,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             boolean initialLayerOnly = initialLayerSingletons.contains(singleton);
             if (!singletonPersistInfoMap.containsKey(singleton)) {
                 var writer = new ImageSingletonWriterImpl(snapshotBuilder, hUniverse);
-                Optional<LayeredCallbacksSingletonTrait> trait = singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS);
+                var trait = singletonEntry.getValue().traitMap().getTrait(LayeredCallbacksSingletonTrait.class);
                 var action = (SingletonLayeredCallbacks<Object>) trait.get().metadata();
                 var flags = action.doPersist(writer, singleton);
                 if (initialLayerOnly) {
