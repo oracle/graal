@@ -38,7 +38,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -52,6 +51,7 @@ import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
+import com.oracle.svm.core.util.ConcurrentUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
@@ -398,7 +398,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
          * either a {@link Boolean} or {@link Lock} based on whether the callback's execution is
          * still in progress or has completed.
          */
-        private final Map<Object, Object> singletonRegistrationCallbackStatus;
+        private final ConcurrentIdentityHashMap<Object, Object> singletonRegistrationCallbackStatus;
 
         private final EnumSet<SingletonLayeredInstallationKind> forbiddenInstallationKinds;
         private final boolean layeredBuild;
@@ -507,67 +507,19 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             /* Run onSingletonRegistration hook if needed. */
             if (extensionLayerBuild) {
                 if (singletonLoader.hasRegistrationCallback(key)) {
-                    synchronizeRegistrationCallbackExecution(value, new Runnable() {
+                    ConcurrentUtils.synchronizeRunnableExecution(value, new Runnable() {
                         @Override
                         @SuppressWarnings("unchecked")
                         public void run() {
                             Optional<LayeredCallbacksSingletonTrait> trait = traitMap.getTrait(LayeredCallbacksSingletonTrait.class);
                             ((SingletonLayeredCallbacks<Object>) trait.get().metadata()).onSingletonRegistration(singletonLoader.getImageSingletonLoader(key), value);
                         }
-                    });
+                    }, singletonRegistrationCallbackStatus);
                 }
             }
 
             Object prevValue = configObjects.putIfAbsent(key, new SingletonInfo(value, traitMap));
             UserError.guarantee(prevValue == null, "ImageSingletons.add must not overwrite existing key %s%nExisting value: %s%nNew value: %s", key.getTypeName(), prevValue, value);
-        }
-
-        /**
-         * Ensures the provided registrationCallback will execute only once per a singleton.
-         * Regardless of which thread executes the registrationCallback, this method will not return
-         * until the registrationCallback has been executed.
-         */
-        private void synchronizeRegistrationCallbackExecution(Object singleton, Runnable registrationCallback) {
-            while (true) {
-                var status = singletonRegistrationCallbackStatus.get(singleton);
-                if (status == null) {
-                    // create a lock for other threads to wait on
-                    ReentrantLock lock = new ReentrantLock();
-                    lock.lock();
-                    try {
-                        status = singletonRegistrationCallbackStatus.computeIfAbsent(singleton, _ -> lock);
-                        if (status != lock) {
-                            // failed to install lock. Repeat loop.
-                            continue;
-                        }
-
-                        // Run registrationCallback
-                        registrationCallback.run();
-
-                        // the registrationCallback has finished - update its status
-                        var prev = singletonRegistrationCallbackStatus.put(singleton, Boolean.TRUE);
-                        VMError.guarantee(prev == lock);
-                    } finally {
-                        lock.unlock();
-                    }
-                } else if (status instanceof Lock lock) {
-                    lock.lock();
-                    try {
-                        /*
-                         * Once the lock can be acquired we know the registrationCallback has been
-                         * completed and we can proceed.
-                         */
-                        assert singletonRegistrationCallbackStatus.get(singleton) == Boolean.TRUE;
-                    } finally {
-                        lock.unlock();
-                    }
-                } else {
-                    // the registrationCallback has already completed
-                    assert status == Boolean.TRUE;
-                }
-                /* At this point the registrationCallback has executed so it is safe to proceed. */
-                break;
-            }
         }
 
         private static boolean filterOnKind(SingletonInfo singletonInfo, SingletonLayeredInstallationKind kind) {
