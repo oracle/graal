@@ -29,8 +29,8 @@ import java.lang.reflect.Constructor;
 import java.util.Objects;
 
 import com.oracle.svm.hosted.DeadlockWatchdog;
+import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.util.HostedModuleSupport;
-import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**

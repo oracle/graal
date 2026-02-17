@@ -36,8 +36,8 @@ import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.webimage.codegen.LowerableResource;
 import com.oracle.svm.hosted.webimage.codegen.LowerableResources;
 import com.oracle.svm.hosted.webimage.codegen.oop.ClassLowerer;
+import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;

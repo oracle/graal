@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
+package com.oracle.svm.shared.util;
 
 import java.util.Locale;
 import java.util.Objects;

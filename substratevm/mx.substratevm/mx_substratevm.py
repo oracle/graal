@@ -1396,7 +1396,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
         # We do not want to step into class initializer, so initialize everything at build time.
         '--initialize-at-build-time=com.oracle.svm.test.debug.helper',
         # We need access to ModuleSupport
-        '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
+        '--add-exports=org.graalvm.nativeimage.shared/com.oracle.svm.shared.util=ALL-UNNAMED',
         '--features=com.oracle.svm.test.debug.helper.RuntimeCompileDebugInfoTest$RegisterMethodsFeature',
         'com.oracle.svm.test.debug.helper.RuntimeCompileDebugInfoTest',
     ] + svm_experimental_options([
