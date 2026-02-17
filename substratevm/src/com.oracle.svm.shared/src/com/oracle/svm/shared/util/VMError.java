@@ -87,13 +87,15 @@ public final class VMError {
             methodFormat = rjm.getMethod("format", String.class);
             rjf = Class.forName("jdk.vm.ci.meta.ResolvedJavaField");
             fieldFormat = rjf.getMethod("format", String.class);
-        } catch (Throwable t) {
+        } catch (ClassNotFoundException t) {
             rjt = null;
             toJavaName = null;
             rjm = null;
             methodFormat = null;
             rjf = null;
             fieldFormat = null;
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
         }
         ResolvedJavaType = rjt;
         ResolvedJavaMethod = rjm;
@@ -269,6 +271,7 @@ public final class VMError {
      * @param args arguments to process
      * @return a copy of {@code args} with certain values converted to strings as described above
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static Object[] formatArguments(Object... args) {
         if (args == null) {
             return new Object[0];
