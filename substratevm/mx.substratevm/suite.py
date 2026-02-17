@@ -1397,11 +1397,6 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "sdk:COLLECTIONS",
             ],
-            "requiresConcealed" : {
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                ],
-            },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "21+",
             "workingSets": "SVM",

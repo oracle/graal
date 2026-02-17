@@ -24,12 +24,10 @@
  */
 package com.oracle.svm.shared.util;
 
+import java.lang.reflect.Method;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A collection of static methods for error reporting of fatal error. A fatal error leaves the VM in
@@ -60,6 +58,49 @@ public final class VMError {
             super(msg, cause);
         }
 
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static final Class<?> ResolvedJavaType;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static final Class<?> ResolvedJavaMethod;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static final Class<?> ResolvedJavaField;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static final Method ResolvedJavaType_toJavaName;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static final Method ResolvedJavaMethod_format;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static final Method ResolvedJavaField_format;
+
+    static {
+        Class<?> rjt;
+        Class<?> rjm;
+        Class<?> rjf;
+        Method toJavaName;
+        Method methodFormat;
+        Method fieldFormat;
+        try {
+            rjt = Class.forName("jdk.vm.ci.meta.ResolvedJavaType");
+            toJavaName = rjt.getMethod("toJavaName", boolean.class);
+            rjm = Class.forName("jdk.vm.ci.meta.ResolvedJavaMethod");
+            methodFormat = rjm.getMethod("format", String.class);
+            rjf = Class.forName("jdk.vm.ci.meta.ResolvedJavaField");
+            fieldFormat = rjf.getMethod("format", String.class);
+        } catch (Throwable t) {
+            rjt = null;
+            toJavaName = null;
+            rjm = null;
+            methodFormat = null;
+            rjf = null;
+            fieldFormat = null;
+        }
+        ResolvedJavaType = rjt;
+        ResolvedJavaMethod = rjm;
+        ResolvedJavaField = rjf;
+        ResolvedJavaType_toJavaName = toJavaName;
+        ResolvedJavaMethod_format = methodFormat;
+        ResolvedJavaField_format = fieldFormat;
     }
 
     public static final String msgShouldNotReachHere = "should not reach here";
@@ -213,31 +254,45 @@ public final class VMError {
     /**
      * Processes {@code args} to convert selected values to strings.
      * <ul>
-     * <li>A {@link ResolvedJavaType} is converted with {@link ResolvedJavaType#toJavaName}
+     * <li>A {@code ResolvedJavaType} is converted with {@code ResolvedJavaType#toJavaName}
      * {@code (true)}.</li>
-     * <li>A {@link ResolvedJavaMethod} is converted with {@link ResolvedJavaMethod#format}
+     * <li>A {@code ResolvedJavaMethod} is converted with {@code ResolvedJavaMethod#format}
      * {@code ("%H.%n($p)")}.</li>
-     * <li>A {@link ResolvedJavaField} is converted with {@link ResolvedJavaField#format}
+     * <li>A {@code ResolvedJavaField} is converted with {@code ResolvedJavaField#format}
      * {@code ("%H.%n")}.</li>
      * </ul>
      * All other values are copied to the returned array unmodified.
+     *
+     * @implNote This method uses reflection instead of direct references to JVMCI types to avoid a
+     *           source level dependency on JVMCI.
      *
      * @param args arguments to process
      * @return a copy of {@code args} with certain values converted to strings as described above
      */
     public static Object[] formatArguments(Object... args) {
+        if (args == null) {
+            return new Object[0];
+        }
         Object[] newArgs = new Object[args.length];
+
         for (int i = 0; i < args.length; i++) {
             Object arg = args[i];
-            if (arg instanceof ResolvedJavaType) {
-                newArgs[i] = ((ResolvedJavaType) arg).toJavaName(true);
-            } else if (arg instanceof ResolvedJavaMethod) {
-                newArgs[i] = ((ResolvedJavaMethod) arg).format("%H.%n(%p)");
-            } else if (arg instanceof ResolvedJavaField) {
-                newArgs[i] = ((ResolvedJavaField) arg).format("%H.%n");
-            } else {
-                newArgs[i] = arg;
+            if (ResolvedJavaType != null) {
+                /* If ResolvedJavaType is available, all JVMCI classes must be available. */
+                try {
+                    if (ResolvedJavaType.isInstance(arg)) {
+                        arg = ResolvedJavaType_toJavaName.invoke(arg, Boolean.TRUE);
+                    } else if (ResolvedJavaMethod.isInstance(arg)) {
+                        arg = ResolvedJavaMethod_format.invoke(arg, "%H.%n(%p)");
+                    } else if (ResolvedJavaField.isInstance(arg)) {
+                        arg = ResolvedJavaField_format.invoke(arg, "%H.%n");
+                    }
+                } catch (ReflectiveOperationException t) {
+                    // fall through to default case
+                }
             }
+            // default
+            newArgs[i] = arg;
         }
         return newArgs;
     }
