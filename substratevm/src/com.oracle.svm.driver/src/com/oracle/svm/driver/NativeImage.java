@@ -1592,12 +1592,15 @@ public class NativeImage {
         List<Path> localImageModulePath = imagemp.stream().map(substituteModulePath).collect(Collectors.toList());
         Map<String, Path> applicationModules = getModulesFromPath(localImageModulePath);
 
-        if (!applicationModules.isEmpty()) {
-            // Remove modules that we already have built-in
-            applicationModules.keySet().removeAll(getBuiltInModules());
+        String selectEspressoGuest = "-D" + GuestAccess.NAME_PROPERTY + "=espresso";
+        boolean useEspressoGuest = javaArgs.contains(selectEspressoGuest);
 
-            String selectEspressoGuest = "-D" + GuestAccess.NAME_PROPERTY + "=espresso";
-            if (!javaArgs.contains(selectEspressoGuest)) {
+        if (!applicationModules.isEmpty()) {
+
+            if (!useEspressoGuest) {
+                /* Remove modules that we already have built-in */
+                applicationModules.keySet().removeAll(getBuiltInModules());
+
                 /*
                  * When using HostVMAccess, the NativeImageClassLoader delegates to
                  * ClassLoaders#appClassLoader. In that configuration, a module (such as
@@ -1610,35 +1613,44 @@ public class NativeImage {
         }
         List<Path> finalImageModulePath = applicationModules.values().stream().toList();
 
-        /*
-         * Make sure to add all system modules required by the application that might not be part of
-         * the boot module layer of image builder. If we do not do this, the image builder will fail
-         * to create the image-build module layer, as it will attempt to define system modules to
-         * the host VM.
-         */
-        Set<String> implicitlyRequiredSystemModules = getImplicitlyRequiredSystemModules(finalImageModulePath);
-        addModules.addAll(implicitlyRequiredSystemModules);
+        if (!useEspressoGuest) {
+            /*
+             * Make sure to add all system modules required by the application that might not be
+             * part of the boot module layer of image builder. If we do not do this, the image
+             * builder will fail to create the image-build module layer, as it will attempt to
+             * define system modules to the host VM. When running with Espresso Guest Context this
+             * is not needed because the application gets loaded in a VM Context isolated from the
+             * builder VM.
+             */
+            Set<String> implicitlyRequiredSystemModules = getImplicitlyRequiredSystemModules(mp, finalImageModulePath);
+            addModules.addAll(implicitlyRequiredSystemModules);
+        }
 
         if (!addModules.isEmpty()) {
 
             arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
                             String.join(",", addModules));
 
-            List<String> addModulesForBuilderVM = new ArrayList<>();
-            for (String moduleNameInAddModules : addModules) {
-                if (!applicationModules.containsKey(moduleNameInAddModules)) {
-                    /*
-                     * Module names given to native-image --add-modules that are not referring to
-                     * modules that are passed to native-image via -p/--module-path are considered
-                     * to be part of the module-layer that contains the builder itself. Those module
-                     * names need to be passed as --add-modules arguments to the builder VM.
-                     */
-                    addModulesForBuilderVM.add(moduleNameInAddModules);
+            if (!useEspressoGuest) {
+                List<String> addModulesForBuilderVM = new ArrayList<>();
+                for (String moduleNameInAddModules : addModules) {
+                    if (!applicationModules.containsKey(moduleNameInAddModules)) {
+                        /*
+                         * Module names given to native-image --add-modules that are not referring
+                         * to modules that are passed to native-image via -p/--module-path are
+                         * considered to be part of the module-layer that contains the builder
+                         * itself. Those module names need to be passed as --add-modules arguments
+                         * to the builder VM. When running with Espresso Guest Context this is not
+                         * needed because the application gets loaded in a VM Context isolated from
+                         * the builder VM.
+                         */
+                        addModulesForBuilderVM.add(moduleNameInAddModules);
+                    }
                 }
-            }
 
-            if (!addModulesForBuilderVM.isEmpty()) {
-                arguments.add(DefaultOptionHandler.addModulesOption + "=" + String.join(",", addModulesForBuilderVM));
+                if (!addModulesForBuilderVM.isEmpty()) {
+                    arguments.add(DefaultOptionHandler.addModulesOption + "=" + String.join(",", addModulesForBuilderVM));
+                }
             }
         }
 
@@ -1848,16 +1860,38 @@ public class NativeImage {
         return mrefs;
     }
 
-    private Set<String> getImplicitlyRequiredSystemModules(Collection<Path> modulePath) {
-        ModuleFinder finder = ModuleFinder.ofSystem();
-        if (!modulePath.isEmpty()) {
-            ModuleFinder appModuleFinder = ModuleFinder.of(modulePath.toArray(Path[]::new));
-            finder = ModuleFinder.compose(appModuleFinder, finder);
+    private Set<String> getImplicitlyRequiredSystemModules(Collection<Path> builderMP, Collection<Path> imageMP) {
+        if (imageMP.isEmpty()) {
+            return Set.of();
         }
+
+        /* All modules the builder transitively depends on */
+        Set<String> builderRequired = modulePathRequiredModules(builderMP);
+        /*
+         * N.B. without Espresso Guest Context we need to combine builderMP and imageMP because the
+         * loader for imageMP has the loader that loaded builderMP as parent.
+         */
+        Set<Path> combinedMP = Stream.concat(builderMP.stream(), imageMP.stream()).collect(Collectors.toUnmodifiableSet());
+        /* All modules the application transitively depends on */
+        Set<String> imageRequired = modulePathRequiredModules(combinedMP);
+
+        Set<String> remainingImageRequiredBuiltInModules = new HashSet<>(imageRequired); // noEconomicSet(api)
+        /* Only modules not already required by the builder */
+        remainingImageRequiredBuiltInModules.removeAll(builderRequired);
+        /* Only built-in modules not already required by the builder */
+        remainingImageRequiredBuiltInModules.retainAll(getBuiltInModules());
+        return Set.copyOf(remainingImageRequiredBuiltInModules);
+    }
+
+    Set<String> modulePathRequiredModules(Collection<Path> modulePath) {
+
+        ModuleFinder systemFinder = ModuleFinder.ofSystem();
+        ModuleFinder modulePathFinder = ModuleFinder.of(modulePath.toArray(Path[]::new));
+        ModuleFinder finder = ModuleFinder.compose(modulePathFinder, systemFinder);
         Map<String, ModuleReference> modules = finder.findAll().stream()
                         .collect(Collectors.toMap(m -> m.descriptor().name(), m -> m));
 
-        Set<String> applicationModulePathRequiredModules = new HashSet<>(); // noEconomicSet(api)
+        Set<String> modulePathRequiredModules = new HashSet<>(); // noEconomicSet(api)
         Queue<ModuleReference> discoveryQueue = new ArrayDeque<>(modules.values());
 
         while (!discoveryQueue.isEmpty()) {
@@ -1868,15 +1902,15 @@ public class NativeImage {
                             .filter(Objects::nonNull)
                             .toList();
             discoveryQueue.addAll(requiredModuleReferences);
-            applicationModulePathRequiredModules.addAll(requiredModules);
+            modulePathRequiredModules.addAll(requiredModules);
         }
 
-        applicationModulePathRequiredModules.retainAll(getBuiltInModules());
-        return applicationModulePathRequiredModules;
+        return Set.copyOf(modulePathRequiredModules);
     }
 
     private static Set<String> getRequiredModules(ModuleReference mref) {
         return mref.descriptor().requires().stream()
+                        .map(r -> Objects.requireNonNull(r, () -> "ModuleReference " + mref + " requires-Set has null-entries"))
                         .map(ModuleDescriptor.Requires::name)
                         .collect(Collectors.toSet());
     }

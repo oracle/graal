@@ -942,6 +942,7 @@ public final class NativeImageClassLoaderSupport {
                 }, 5, 1, TimeUnit.MINUTES);
 
                 var requiresInit = EconomicSet.create(List.of(
+                                "java.base",
                                 "jdk.internal.vm.ci",
                                 "jdk.graal.compiler",
                                 "com.oracle.graal.graal_enterprise",
