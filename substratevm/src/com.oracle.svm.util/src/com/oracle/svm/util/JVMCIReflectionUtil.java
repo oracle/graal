@@ -496,13 +496,13 @@ public final class JVMCIReflectionUtil {
         JavaConstant classConstant = constantReflection.asJavaClass(OriginalClassProvider.getOriginalType(type));
         JavaConstant nameConstant = constantReflection.forString(name);
 
-        JavaConstant streamConstant = access.invoke(GuestAccess.elements().java_lang_Class_getResourceAsStream, classConstant, nameConstant);
+        JavaConstant streamConstant = access.invoke(access.elems.java_lang_Class_getResourceAsStream, classConstant, nameConstant);
 
         if (streamConstant.isNull()) {
             return null;
         }
 
-        JavaConstant bytesConstant = access.invoke(GuestAccess.elements().java_io_Input_Stream_readAllBytesMethod, streamConstant);
+        JavaConstant bytesConstant = access.invoke(access.elems.java_io_Input_Stream_readAllBytesMethod, streamConstant);
 
         return access.getSnippetReflection().asObject(byte[].class, bytesConstant);
     }
@@ -516,9 +516,9 @@ public final class JVMCIReflectionUtil {
         ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(declaringType, fieldName);
         JavaConstant fieldConstant = access.asFieldConstant(field);
 
-        access.invoke(GuestAccess.elements().java_lang_reflect_Field_setAccessible, fieldConstant, JavaConstant.forBoolean(true));
+        access.invoke(access.elems.java_lang_reflect_Field_setAccessible, fieldConstant, JavaConstant.forBoolean(true));
         JavaConstant boxedValue = value.getJavaKind().isPrimitive() ? access.boxPrimitive(value) : value;
-        access.invoke(GuestAccess.elements().java_lang_reflect_Field_set, fieldConstant, receiver, boxedValue);
+        access.invoke(access.elems.java_lang_reflect_Field_set, fieldConstant, receiver, boxedValue);
     }
 
     /**

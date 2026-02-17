@@ -108,15 +108,16 @@ public class UninterruptibleAnnotationUtils {
             return null;
         }
 
-        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestAccess.elements().Uninterruptible));
+        GuestAccess access = GuestAccess.get();
+        UninterruptibleGuestValue annotation = UninterruptibleGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(access.elems.Uninterruptible));
         if (annotation != null) {
             /* Explicit annotated method. */
             return annotation;
         }
 
-        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestAccess.elements().CFunction));
+        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(access.elems.CFunction));
         InvokeCFunctionPointerGuestValue cFunctionPointerAnnotation = InvokeCFunctionPointerGuestValue
-                        .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(GuestAccess.elements().InvokeCFunctionPointer));
+                        .fromAnnotationValue(AnnotationUtil.getDeclaredAnnotationValues(method).get(access.elems.InvokeCFunctionPointer));
         if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
                         (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
             /*

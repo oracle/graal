@@ -46,7 +46,6 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.ModifiableOptionValues;
-import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -94,19 +93,19 @@ public class InitialLayerFeature implements InternalFeature {
     }
 
     private static ResolvedJavaType getProxyClass(ResolvedJavaType uninterruptibleType) {
-        VMAccess vmAccess = GuestAccess.get();
-        MetaAccessProvider metaAccess = vmAccess.getProviders().getMetaAccess();
-        ConstantReflectionProvider constantReflection = vmAccess.getProviders().getConstantReflection();
+        GuestAccess access = GuestAccess.get();
+        MetaAccessProvider metaAccess = access.getProviders().getMetaAccess();
+        ConstantReflectionProvider constantReflection = access.getProviders().getConstantReflection();
 
-        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestAccess.elements().java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class,
+        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, access.elems.java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class,
                         Class[].class);
-        ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestAccess.elements().jdk_internal_loader_ClassLoaders, "appClassLoader");
+        ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, access.elems.jdk_internal_loader_ClassLoaders, "appClassLoader");
 
-        JavaConstant appClassLoader = vmAccess.invoke(appClassLoaderMethod, null);
+        JavaConstant appClassLoader = access.invoke(appClassLoaderMethod, null);
         JavaConstant uninterruptible = constantReflection.asJavaClass(uninterruptibleType);
-        JavaConstant interfaces = vmAccess.asArrayConstant(GuestAccess.elements().java_lang_Class, uninterruptible);
+        JavaConstant interfaces = access.asArrayConstant(access.elems.java_lang_Class, uninterruptible);
 
-        JavaConstant proxyClass = vmAccess.invoke(getProxyClassMethod, null, appClassLoader, interfaces);
+        JavaConstant proxyClass = access.invoke(getProxyClassMethod, null, appClassLoader, interfaces);
         return constantReflection.asJavaType(proxyClass);
     }
 
