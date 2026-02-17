@@ -113,11 +113,11 @@ public class CaseFoldData {
             case Ruby:
                 return UNICODE_15_1_0_CF_FULL;
             case OracleDB:
-                return UNICODE_15_0_0_ODB_FULL;
+                return UNICODE_17_0_0_ODB_FULL;
             case OracleDBSimple:
-                return UNICODE_15_0_0_ODB_SIMPLE;
+                return UNICODE_17_0_0_ODB_SIMPLE;
             case OracleDBAI:
-                return UNICODE_15_0_0_ODB_AI;
+                return UNICODE_17_0_0_ODB_AI;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
@@ -1457,15 +1457,21 @@ public class CaseFoldData {
                     0x010d50, 0x010d65, INTEGER_OFFSET, 32,
                     0x016ea0, 0x016eb8, INTEGER_OFFSET, 27,
     });
-    private static final CaseFoldTable UNICODE_15_0_0_ODB_FULL = new CaseFoldTable(UNICODE_15_1_0_CF_FULL, new int[]{
+    private static final CaseFoldTable UNICODE_17_0_0_ODB_FULL = new CaseFoldTable(UNICODE_15_1_0_CF_FULL, new int[]{
+                    0x001c89, 0x001c89, ALTERNATING_UL, 0,
                     0x001f88, 0x001f8f, INTEGER_OFFSET, -8,
                     0x001f98, 0x001f9f, INTEGER_OFFSET, -8,
                     0x001fa8, 0x001faf, INTEGER_OFFSET, -8,
                     0x001fbc, 0x001fbc, INTEGER_OFFSET, -9,
                     0x001fcc, 0x001fcc, INTEGER_OFFSET, -9,
                     0x001ffc, 0x001ffc, INTEGER_OFFSET, -9,
+                    0x00a7cb, 0x00a7cb, INTEGER_OFFSET, -42343,
+                    0x00a7cc, 0x00a7da, ALTERNATING_AL, 0,
+                    0x00a7dc, 0x00a7dc, INTEGER_OFFSET, -42561,
+                    0x010d50, 0x010d65, INTEGER_OFFSET, 32,
+                    0x016ea0, 0x016eb8, INTEGER_OFFSET, 27,
     });
-    private static final CaseFoldTable UNICODE_15_0_0_ODB_SIMPLE = new CaseFoldTable(UNICODE_17_0_0_CF_SIMPLE, new int[]{
+    private static final CaseFoldTable UNICODE_17_0_0_ODB_SIMPLE = new CaseFoldTable(UNICODE_17_0_0_CF_SIMPLE, new int[]{
                     0x0000b5, 0x0000b5, INTEGER_OFFSET, 0,
                     0x000130, 0x000130, INTEGER_OFFSET, -199,
                     0x00017f, 0x00017f, INTEGER_OFFSET, 0,
@@ -1489,22 +1495,14 @@ public class CaseFoldData {
                     0x001c86, 0x001c86, INTEGER_OFFSET, 0,
                     0x001c87, 0x001c87, INTEGER_OFFSET, 0,
                     0x001c88, 0x001c88, INTEGER_OFFSET, 0,
-                    0x001c89, 0x001c89, INTEGER_OFFSET, 0,
                     0x001e9b, 0x001e9b, INTEGER_OFFSET, 0,
                     0x001fbe, 0x001fbe, INTEGER_OFFSET, 0,
                     0x001fd3, 0x001fd3, INTEGER_OFFSET, 0,
                     0x001fe3, 0x001fe3, INTEGER_OFFSET, 0,
-                    0x00a7cb, 0x00a7cb, INTEGER_OFFSET, 0,
-                    0x00a7cc, 0x00a7cf, INTEGER_OFFSET, 0,
-                    0x00a7d1, 0x00a7d5, INTEGER_OFFSET, 0,
-                    0x00a7d9, 0x00a7da, INTEGER_OFFSET, 0,
-                    0x00a7dc, 0x00a7dc, INTEGER_OFFSET, 0,
                     0x00ab70, 0x00abbf, INTEGER_OFFSET, 0,
                     0x00fb05, 0x00fb05, INTEGER_OFFSET, 0,
-                    0x010d50, 0x010d65, INTEGER_OFFSET, 0,
-                    0x016ea0, 0x016eb8, INTEGER_OFFSET, 0,
     });
-    private static final CaseFoldTable UNICODE_15_0_0_ODB_AI = new CaseFoldTable(null, new int[]{
+    private static final CaseFoldTable UNICODE_17_0_0_ODB_AI = new CaseFoldTable(null, new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,
                     0x0000a9, 0x0000a9, INTEGER_OFFSET, -70,
                     0x0000aa, 0x0000aa, INTEGER_OFFSET, -73,
