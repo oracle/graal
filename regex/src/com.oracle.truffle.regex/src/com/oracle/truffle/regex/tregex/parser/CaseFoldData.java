@@ -1471,7 +1471,7 @@ public class CaseFoldData {
                     0x010d50, 0x010d65, INTEGER_OFFSET, 32,
                     0x016ea0, 0x016eb8, INTEGER_OFFSET, 27,
     });
-    private static final CaseFoldTable UNICODE_17_0_0_ODB_SIMPLE = new CaseFoldTable(UNICODE_15_1_0_CF_SIMPLE, new int[]{
+    private static final CaseFoldTable UNICODE_17_0_0_ODB_SIMPLE = new CaseFoldTable(UNICODE_17_0_0_CF_SIMPLE, new int[]{
                     0x0000b5, 0x0000b5, INTEGER_OFFSET, 0,
                     0x000130, 0x000130, INTEGER_OFFSET, -199,
                     0x00017f, 0x00017f, INTEGER_OFFSET, 0,
