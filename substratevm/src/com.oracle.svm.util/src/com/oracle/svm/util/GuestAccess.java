@@ -63,6 +63,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -369,6 +370,36 @@ public final class GuestAccess implements VMAccess {
             throw new IllegalArgumentException("Cannot convert guest constant to a %s: %s".formatted(type.getName(), val));
         }
         return res;
+    }
+
+    /**
+     * Boxes a primitive {@link JavaConstant} into its corresponding object wrapper.
+     * <p>
+     * This method takes a primitive {@link JavaConstant} and invokes the corresponding
+     * {@code valueOf} method on the wrapper class to box the primitive value in the guest.
+     * <p>
+     * For example, if the input {@code primitive} is of kind {@link JavaKind#Int}, this method will
+     * invoke {@code Integer.valueOf(primitive.asInt())} to box the integer value.
+     *
+     * @param primitive the primitive {@link JavaConstant} to be boxed
+     * @return a {@link JavaConstant} representing the boxed object
+     * @throws IllegalArgumentException if the kind of {@code primitive} is not a primitive type
+     */
+    public JavaConstant boxPrimitive(JavaConstant primitive) {
+        if (!primitive.getJavaKind().isPrimitive()) {
+            throw new IllegalArgumentException("Not a primitive: " + primitive);
+        }
+        return switch (primitive.getJavaKind()) {
+            case Boolean -> invokeStatic(GuestElements.get().java_lang_Boolean_valueOf, primitive);
+            case Byte -> invokeStatic(GuestElements.get().java_lang_Byte_valueOf, primitive);
+            case Short -> invokeStatic(GuestElements.get().java_lang_Short_valueOf, primitive);
+            case Char -> invokeStatic(GuestElements.get().java_lang_Character_valueOf, primitive);
+            case Int -> invokeStatic(GuestElements.get().java_lang_Integer_valueOf, primitive);
+            case Long -> invokeStatic(GuestElements.get().java_lang_Long_valueOf, primitive);
+            case Float -> invokeStatic(GuestElements.get().java_lang_Float_valueOf, primitive);
+            case Double -> invokeStatic(GuestElements.get().java_lang_Double_valueOf, primitive);
+            default -> throw new IllegalArgumentException("Unsupported primitive kind: " + primitive.getJavaKind());
+        };
     }
 
     /**

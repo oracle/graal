@@ -57,6 +57,30 @@ public final class GuestElements {
     private GuestElements() {
     }
 
+    public final ResolvedJavaType java_lang_Boolean = lookupType(Boolean.class);
+    public final ResolvedJavaMethod java_lang_Boolean_valueOf = lookupMethod(java_lang_Boolean, "valueOf", boolean.class);
+
+    public final ResolvedJavaType java_lang_Byte = lookupType(Byte.class);
+    public final ResolvedJavaMethod java_lang_Byte_valueOf = lookupMethod(java_lang_Byte, "valueOf", byte.class);
+
+    public final ResolvedJavaType java_lang_Character = lookupType(Character.class);
+    public final ResolvedJavaMethod java_lang_Character_valueOf = lookupMethod(java_lang_Character, "valueOf", char.class);
+
+    public final ResolvedJavaType java_lang_Integer = lookupType(Integer.class);
+    public final ResolvedJavaMethod java_lang_Integer_valueOf = lookupMethod(java_lang_Integer, "valueOf", int.class);
+
+    public final ResolvedJavaType java_lang_Short = lookupType(Short.class);
+    public final ResolvedJavaMethod java_lang_Short_valueOf = lookupMethod(java_lang_Short, "valueOf", short.class);
+
+    public final ResolvedJavaType java_lang_Long = lookupType(Long.class);
+    public final ResolvedJavaMethod java_lang_Long_valueOf = lookupMethod(java_lang_Long, "valueOf", long.class);
+
+    public final ResolvedJavaType java_lang_Float = lookupType(Float.class);
+    public final ResolvedJavaMethod java_lang_Float_valueOf = lookupMethod(java_lang_Float, "valueOf", float.class);
+
+    public final ResolvedJavaType java_lang_Double = lookupType(Double.class);
+    public final ResolvedJavaMethod java_lang_Double_valueOf = lookupMethod(java_lang_Double, "valueOf", double.class);
+
     public final ResolvedJavaType java_lang_Class = lookupType(Class.class);
     public final ResolvedJavaMethod java_lang_Class_getResourceAsStream = lookupMethod(java_lang_Class, "getResourceAsStream", String.class);
 
