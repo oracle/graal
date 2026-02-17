@@ -82,13 +82,13 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/utilities/macros.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+23/src/hotspot/share/utilities/ostream.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+23/src/hotspot/share/utilities/ostream.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/utilities/permitForbiddenFunctions.hpp")
 // The following annotations are for files in `src/svm`, which are completely customized for SVM
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/logging/log.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.2+2/src/hotspot/share/memory/allocation.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.2+4/src/hotspot/share/runtime/globals.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.3+2/src/hotspot/share/utilities/debug.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/share/utilities/debug.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/utilities/permitForbiddenFunctions.hpp")
 public class ContainerLibrary {
     static final int VERSION = 240100;
 
