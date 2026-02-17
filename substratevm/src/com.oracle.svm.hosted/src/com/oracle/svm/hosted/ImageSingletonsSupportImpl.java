@@ -33,7 +33,9 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -232,6 +234,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             return getTrait(SingletonTrait.asTraitKind(traitClass));
         }
 
+        public boolean containsTrait(Class<? extends SingletonTrait<?>> traitClass) {
+            return getTrait(traitClass).isPresent();
+        }
+
         SingletonTraitMap seal() {
             sealed = true;
             return this;
@@ -379,11 +385,14 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             singletonDuringImageBuild = null;
         }
 
-        public static void persistSingletonInfo() {
-            var list = singletonDuringImageBuild.configObjects.entrySet().stream().filter(e -> e.getValue().traitMap.getTrait(LayeredCallbacksSingletonTrait.class).isPresent())
+        /**
+         * @return singletons that have a {@link LayeredCallbacksSingletonTrait}. These singletons
+         *         provide a recipe for persisting and loading them in a subsequent layer.
+         */
+        public static List<Entry<Class<?>, SingletonInfo>> getSingletonsToPersist() {
+            return singletonDuringImageBuild.configObjects.entrySet().stream().filter(e -> e.getValue().traitMap.containsTrait(LayeredCallbacksSingletonTrait.class))
                             .sorted(Comparator.comparing(e -> e.getKey().getName()))
                             .toList();
-            HostedImageLayerBuildingSupport.singleton().getWriter().writeImageSingletonInfo(list);
         }
 
         /**
@@ -542,7 +551,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         }
 
         Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind kind) {
-            return Collections.unmodifiableSet(configObjects.entrySet().stream().filter(e -> filterOnKind(e.getValue(), kind)).map(Map.Entry::getKey)
+            return Collections.unmodifiableSet(configObjects.entrySet().stream().filter(e -> filterOnKind(e.getValue(), kind)).map(Entry::getKey)
                             .collect(Collectors.toCollection(() -> Collections.newSetFromMap(new IdentityHashMap<>()))));
         }
 
