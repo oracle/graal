@@ -53,7 +53,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.jdk.VarHandleFeature;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.phases.util.Providers;

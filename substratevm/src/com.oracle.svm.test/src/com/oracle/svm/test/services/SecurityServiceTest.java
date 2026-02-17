@@ -41,7 +41,7 @@ import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.shared.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import sun.security.jca.GetInstance;
 

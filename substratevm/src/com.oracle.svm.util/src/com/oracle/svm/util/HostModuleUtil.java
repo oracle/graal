@@ -26,6 +26,7 @@ package com.oracle.svm.util;
 
 import java.lang.reflect.Method;
 
+import com.oracle.svm.shared.util.ReflectionUtil;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 
 /**

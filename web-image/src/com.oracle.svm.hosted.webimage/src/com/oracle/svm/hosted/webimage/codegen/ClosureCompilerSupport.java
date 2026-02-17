@@ -31,7 +31,7 @@ import java.util.Objects;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.util.HostedModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 /**
  * Interface to run source code through the closure compiler without having to directly reference

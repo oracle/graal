@@ -29,7 +29,7 @@ import java.util.function.Predicate;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 @TargetClass(className = "jdk.internal.platform.CgroupSubsystemFactory", onlyWith = PlatformHasClass.class)
 final class Target_jdk_internal_platform_CgroupSubsystemFactory {

@@ -41,7 +41,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LocaleUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import sun.util.locale.provider.LocaleProviderAdapter;
 

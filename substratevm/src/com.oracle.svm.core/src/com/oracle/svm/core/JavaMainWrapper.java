@@ -90,7 +90,7 @@ import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ModuleSupport.Access;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 @InternalVMMethod
 public class JavaMainWrapper {

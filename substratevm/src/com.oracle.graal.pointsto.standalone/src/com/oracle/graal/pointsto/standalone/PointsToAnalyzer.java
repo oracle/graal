@@ -69,7 +69,7 @@ import com.oracle.graal.pointsto.util.PointsToOptionParser;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.util.GuestAccess;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;

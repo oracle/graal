@@ -25,7 +25,7 @@
 package com.oracle.svm.core.thread;
 
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 public abstract class JavaThreadsFeature implements InternalFeature {
 
