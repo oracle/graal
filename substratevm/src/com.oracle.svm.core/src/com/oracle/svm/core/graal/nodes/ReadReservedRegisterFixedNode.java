@@ -36,6 +36,7 @@ import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.Register;
 
+/** @see ReadReservedRegisterFloatingNode */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class ReadReservedRegisterFixedNode extends FixedWithNextNode implements LIRLowerable {
     public static final NodeClass<ReadReservedRegisterFixedNode> TYPE = NodeClass.create(ReadReservedRegisterFixedNode.class);
