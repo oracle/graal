@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
+package com.oracle.svm.shared.util;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -30,8 +30,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-
-import com.oracle.svm.shared.util.ModuleSupport;
 
 /**
  * This class contains utility methods for commonly used reflection functionality. Note that lookups
@@ -244,8 +242,8 @@ public final class ReflectionUtil {
     /**
      * Helper method to indicate that a certain {@link Class#isAssignableFrom} check is ok, for
      * example because it compares against class literals of SVM implementation classes. In general,
-     * we should not use <em>core reflection</em>, but
-     * {@link jdk.vm.ci.meta.ResolvedJavaType#isAssignableFrom} in hosted code.
+     * we should not use <em>core reflection</em>, but {@code ResolvedJavaType#isAssignableFrom} in
+     * hosted code.
      */
     public static boolean isAssignableFrom(Class<?> clazz, Class<?> other) {
         return clazz.isAssignableFrom(other);

@@ -2012,6 +2012,7 @@ suite = {
                             org.graalvm.nativeimage.guest,
                             org.graalvm.nativeimage.guest.staging,
                             org.graalvm.nativeimage.junitsupport,
+                            org.graalvm.nativeimage.pointsto,
                             org.graalvm.truffle.runtime.svm""",
                     """com.oracle.svm.shared.singletons to
                             org.graalvm.nativeimage.builder""",
