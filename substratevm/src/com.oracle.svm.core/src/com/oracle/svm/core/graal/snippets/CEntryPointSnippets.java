@@ -163,9 +163,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static final SubstrateForeignCallDescriptor FAIL_FATALLY = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "failFatally", HAS_SIDE_EFFECT, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor VERIFY_ISOLATE_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "verifyIsolateThread", HAS_SIDE_EFFECT,
                     LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor INIT_CODE_BASE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "initCodeBase", HAS_SIDE_EFFECT, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = {CREATE_ISOLATE, INITIALIZE_ISOLATE, ATTACH_THREAD, ENSURE_JAVA_THREAD, ENTER_BY_ISOLATE,
-                    DETACH_CURRENT_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED, FAIL_FATALLY, VERIFY_ISOLATE_THREAD};
+                    DETACH_CURRENT_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED, FAIL_FATALLY, VERIFY_ISOLATE_THREAD, INIT_CODE_BASE};
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters);
@@ -186,9 +187,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static native int runtimeCallInitializeIsolate(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native int runtimeCallTearDownIsolate(@ConstantNodeParameter ForeignCallDescriptor descriptor);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
     public static native boolean runtimeCallIsAttached(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
@@ -196,6 +194,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native void runtimeCallFailFatally(@ConstantNodeParameter ForeignCallDescriptor descriptor, int code, CCharPointer message);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    public static native void runtimeCallInitCodeBase(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
     @Fold
     static boolean hasHeapBase() {
@@ -210,8 +211,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
-    @NeverInline("Heap base register is set in caller, prevent reads from floating before that.")
+    /**
+     * Initializes the code base register, which accesses the heap using the heap base register. To
+     * prevent the compiler from moving reads from this method to before the heap base register is
+     * initialized in a caller, this method is a foreign call target that does not get inlined.
+     */
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    @Uninterruptible(reason = "Thread state not yet set up.")
     private static void initCodeBase() {
         CodePointer codeBase;
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
@@ -243,7 +249,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static void initBaseRegisters(PointerBase heapBase) {
         setHeapBase(heapBase);
         if (SubstrateOptions.useRelativeCodePointers()) {
-            initCodeBase();
+            runtimeCallInitCodeBase(INIT_CODE_BASE);
         }
     }
 
@@ -683,7 +689,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int tearDownIsolateSnippet() {
-        return runtimeCallTearDownIsolate(TEAR_DOWN_ISOLATE);
+        return runtimeCall(TEAR_DOWN_ISOLATE);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
