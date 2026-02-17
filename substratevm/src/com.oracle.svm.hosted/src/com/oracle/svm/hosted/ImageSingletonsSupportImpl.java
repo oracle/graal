@@ -323,18 +323,19 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 singletonDuringImageBuild.addSingleton(ImageLayerBuildingSupport.class, new ImageLayerBuildingSupport(false, false, false) {
                 });
             }
+            EconomicSet<Class<?>> loadedSingletonKeys = EconomicSet.emptySet();
             if (support != null && support.getSingletonLoader() != null) {
                 /*
                  * Note eventually this may need to be moved to a later point after the Options
                  * Image Singleton is installed.
                  */
-                singletonDuringImageBuild.installPriorSingletonInfo(support.getSingletonLoader());
-            } else {
-                singletonDuringImageBuild.addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(EconomicSet.emptySet()));
+                /* Document what was installed during loading. */
+                loadedSingletonKeys = singletonDuringImageBuild.getPriorLayerLoadedSingletonKeys(support.getSingletonLoader());
             }
+            singletonDuringImageBuild.addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(loadedSingletonKeys));
         }
 
-        private void installPriorSingletonInfo(SVMImageLayerSingletonLoader info) {
+        private EconomicSet<Class<?>> getPriorLayerLoadedSingletonKeys(SVMImageLayerSingletonLoader singletonLoader) {
             Function<SingletonTrait<?>[], SingletonInfo> forbiddenObjectCreator = (traits) -> {
                 if (traits.length == 0) {
                     return FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS;
@@ -347,14 +348,14 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 traitMap.seal();
                 return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
             };
-            var result = info.loadImageSingletons(forbiddenObjectCreator);
+            var result = singletonLoader.loadImageSingletons(forbiddenObjectCreator);
             EconomicSet<Class<?>> installedKeys = EconomicSet.create();
             for (var entry : result.entrySet()) {
                 Object singletonToInstall = entry.getKey();
                 for (Class<?> key : entry.getValue()) {
                     if (singletonToInstall instanceof SingletonInfo forbiddenSingletonInfo) {
                         assert forbiddenSingletonInfo.singleton == SINGLETON_INSTALLATION_FORBIDDEN : forbiddenSingletonInfo.singleton;
-                        var prev = configObjects.put(key, forbiddenSingletonInfo);
+                        var prev = configObjects.putIfAbsent(key, forbiddenSingletonInfo);
                         VMError.guarantee(prev == null, "Overwriting key %s existing value: %s", key.getTypeName(), prev);
                     } else {
                         addSingleton(key, singletonToInstall);
@@ -362,9 +363,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     installedKeys.add(key);
                 }
             }
-
-            // document what was installed during loading
-            addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(installedKeys));
+            return installedKeys;
         }
 
         public static void clear() {
@@ -378,6 +377,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             HostedImageLayerBuildingSupport.singleton().getWriter().writeImageSingletonInfo(list);
         }
 
+        /**
+         * This is the singleton registry. It contains mappings between singleton classes and the
+         * corresponding singleton info objects.
+         */
         private final Map<Class<?>, SingletonInfo> configObjects;
         private final Map<Object, SingletonTraitMap> singletonToTraitMap;
         /**
@@ -507,9 +510,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             }
 
             Object prevValue = configObjects.putIfAbsent(key, new SingletonInfo(value, traitMap));
-            if (prevValue != null) {
-                throw UserError.abort("ImageSingletons.add must not overwrite existing key %s%nExisting value: %s%nNew value: %s", key.getTypeName(), prevValue, value);
-            }
+            UserError.guarantee(prevValue == null, "ImageSingletons.add must not overwrite existing key %s%nExisting value: %s%nNew value: %s", key.getTypeName(), prevValue, value);
         }
 
         /**
