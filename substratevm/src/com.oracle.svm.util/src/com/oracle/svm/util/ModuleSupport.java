@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.util;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -39,38 +36,7 @@ import jdk.internal.module.Modules;
 
 public final class ModuleSupport {
 
-    public static final String MODULE_SET_ALL_DEFAULT = "ALL-DEFAULT";
-    public static final String MODULE_SET_ALL_SYSTEM = "ALL-SYSTEM";
-    public static final String MODULE_SET_ALL_MODULE_PATH = "ALL-MODULE-PATH";
-    public static final List<String> nonExplicitModules = List.of(MODULE_SET_ALL_DEFAULT, MODULE_SET_ALL_SYSTEM, MODULE_SET_ALL_MODULE_PATH);
-
-    public static final String PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES = "svm.modulesupport.addedModules";
-    public static final String PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES = "svm.modulesupport.limitedModules";
-
-    public static final Set<String> SYSTEM_MODULES = Set.of(
-                    "com.oracle.graal.graal_enterprise",
-                    "com.oracle.svm.svm_enterprise",
-                    "jdk.graal.compiler",
-                    "org.graalvm.nativeimage.libgraal",
-                    "jdk.internal.vm.ci",
-                    "org.graalvm.nativeimage",
-                    "org.graalvm.nativeimage.base",
-                    "org.graalvm.nativeimage.builder",
-                    "org.graalvm.nativeimage.guest.staging",
-                    "org.graalvm.nativeimage.shared",
-                    "org.graalvm.truffle.compiler",
-                    "org.graalvm.word");
-
     private ModuleSupport() {
-    }
-
-    public static Set<String> parseModuleSetModifierProperty(String prop) {
-        Set<String> specifiedModules = new HashSet<>(); // noEconomicSet(streaming)
-        String args = System.getProperty(prop, "");
-        if (!args.isEmpty()) {
-            specifiedModules.addAll(Arrays.asList(args.split(",")));
-        }
-        return specifiedModules;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
