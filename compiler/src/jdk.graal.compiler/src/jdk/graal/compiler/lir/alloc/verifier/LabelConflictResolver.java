@@ -1,5 +1,6 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.util.EconomicHashMap;
@@ -14,11 +15,13 @@ public class LabelConflictResolver implements ConflictResolver {
     protected LIR lir;
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
+    protected Map<RAVariable, BasicBlock<?>> blockMap;
     protected Map<RAVariable, RAVInstruction.Op> labelMap;
     protected Map<RAVariable, Set<RAValue>> rules;
     protected Map<RAVariable, Set<RAValue>> expandedRules;
 
     public LabelConflictResolver() {
+        this.blockMap = new EconomicHashMap<>();
         this.labelMap = new EconomicHashMap<>();
         this.rules = new EconomicHashMap<>();
         this.expandedRules = new EconomicHashMap<>();
@@ -47,6 +50,7 @@ public class LabelConflictResolver implements ConflictResolver {
 
                 var labelVariable = labelInstr.dests.orig[i];
                 labelMap.put(labelVariable.asVariable(), labelInstr);
+                blockMap.put(labelVariable.asVariable(), block);
             }
         }
     }
@@ -129,7 +133,7 @@ public class LabelConflictResolver implements ConflictResolver {
             return null;
         }
 
-        return new ValueAllocationState(target, labelMap.get(target));
+        return new ValueAllocationState(target, labelMap.get(target), blockMap.get(target));
     }
 
     @Override
@@ -143,6 +147,6 @@ public class LabelConflictResolver implements ConflictResolver {
             return null;
         }
 
-        return new ValueAllocationState(target, labelMap.get(target));
+        return new ValueAllocationState(target, labelMap.get(target), blockMap.get(target));
     }
 }

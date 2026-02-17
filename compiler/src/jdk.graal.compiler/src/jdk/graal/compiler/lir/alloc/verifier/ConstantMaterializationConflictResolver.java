@@ -60,8 +60,8 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         RAVariable variable = null;
         ValueAllocationState constantState = null;
 
-        for (var state : confStates) {
-            var value = state.getRAValue();
+        for (var valAllocState : confStates) {
+            var value = valAllocState.getRAValue();
             if (value.isVariable()) {
                 if (variable != null && !variable.equals(value)) {
                     return null;
@@ -73,7 +73,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
                     return null;
                 }
 
-                constantState = state;
+                constantState = valAllocState;
             }
         }
 
@@ -93,7 +93,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
             throw new RAVException("Variable " + variable + " cannot be rematerialized to stack location " + location);
         }
 
-        return new ValueAllocationState(variable, null);
+        return new ValueAllocationState(variable, constantState.getSource(), constantState.block);
     }
 
     @Override
@@ -111,7 +111,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
                 throw new RAVException("Variable " + variable + " cannot be rematerialized to stack location " + location);
             }
 
-            return new ValueAllocationState(variable, valueState.source);
+            return new ValueAllocationState(variable, valueState.getSource(), valueState.getBlock());
         }
 
         return null;

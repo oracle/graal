@@ -10,7 +10,17 @@ public class UnknownAllocationState extends AllocationState {
 
     @Override
     public AllocationState meet(AllocationState other) {
-        return other;
+        if (other.isUnknown()) {
+            return this;
+        }
+
+        if (other instanceof ConflictedAllocationState conflictedState) {
+            var newConfState = new ConflictedAllocationState(conflictedState.conflictedStates);
+            newConfState.addConflictedValue(ValueAllocationState.createIllegal());
+            return newConfState;
+        }
+
+        return new ConflictedAllocationState((ValueAllocationState) other, ValueAllocationState.createIllegal());
     }
 
     @Override

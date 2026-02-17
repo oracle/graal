@@ -203,7 +203,7 @@ public class FromPredecessorsResolver {
                 variablesToBePropagated.add(variable);
                 for (var location : locations) {
                     if (state != null) {
-                        state.values.put(location, new ValueAllocationState(variable, labelInstr));
+                        state.values.put(location, new ValueAllocationState(variable, labelInstr, defBlock));
                     }
                 }
             }
@@ -254,7 +254,7 @@ public class FromPredecessorsResolver {
                     var variable = itToBePropagated.next();
                     var locations = variableToLocations.get(variable);
                     for (var location : locations) {
-                        succEntryState.values.put(location, new ValueAllocationState(variable, labelInstr));
+                        succEntryState.values.put(location, new ValueAllocationState(variable, labelInstr, defBlock));
                     }
 
                     newLoc.put(variable, new EconomicHashSet<>(locations));

@@ -84,7 +84,12 @@ public class MergedBlockVerifierState {
             }
 
             if (orig.equals(curr)) {
-                // In this case nothing has changed so we have nothing to verify
+                // For these cases we do not consider checking state taking the original
+                // register as a symbol, because there's too many cases when this does
+                // not work, for example RETURN with rax tends to contain the actual
+                // generated variable instead of rax symbol, or NEAR_FOREIGN_CALL
+                // keeps its own registers before and after allocation, but those
+                // can also contain different variable symbols.
                 continue;
             }
 
@@ -255,7 +260,7 @@ public class MergedBlockVerifierState {
     public void update(RAVInstruction.Base instruction, BasicBlock<?> block) {
         switch (instruction) {
             case RAVInstruction.Op op -> this.updateWithOp(op, block);
-            case RAVInstruction.ValueMove virtMove -> this.updateWithVirtualMove(virtMove);
+            case RAVInstruction.ValueMove virtMove -> this.updateWithVirtualMove(virtMove, block);
             case RAVInstruction.LocationMove move -> this.values.putClone(move.to, this.values.get(move.from));
             default -> throw GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
         }
@@ -283,9 +288,9 @@ public class MergedBlockVerifierState {
             if (location.equals(variable)) {
                 // Only check register validity if it was changed by the register allocator
                 // for example: rbp is used as input to start block and forbidden to be used by the allocator
-                this.values.putWithoutRegCheck(location, new ValueAllocationState(variable, op));
+                this.values.putWithoutRegCheck(location, new ValueAllocationState(variable, op, block));
             } else {
-                this.values.put(location, new ValueAllocationState(variable, op));
+                this.values.put(location, new ValueAllocationState(variable, op, block));
             }
         }
 
@@ -301,19 +306,19 @@ public class MergedBlockVerifierState {
         }
     }
 
-    protected void updateWithVirtualMove(RAVInstruction.ValueMove virtMove) {
+    protected void updateWithVirtualMove(RAVInstruction.ValueMove virtMove, BasicBlock<?> block) {
         if (virtMove.location.getValue() instanceof RegisterValue) {
-            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove));
+            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove, block));
         } else if (virtMove.location.isVariable()) {
             // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
             // Move before allocation
             // TestCase: BoxingTest.boxBoolean
             var locations = this.values.getValueLocations(virtMove.variableOrConstant);
             for (var location : locations) {
-                this.values.put(location, new ValueAllocationState(virtMove.location, virtMove));
+                this.values.put(location, new ValueAllocationState(virtMove.location, virtMove, block));
             }
         } else {
-            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove));
+            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove, block));
         }
     }
 }

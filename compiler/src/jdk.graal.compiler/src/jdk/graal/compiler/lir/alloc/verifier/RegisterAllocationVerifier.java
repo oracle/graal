@@ -120,20 +120,16 @@ public class RegisterAllocationVerifier {
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 var succ = block.getSuccessorAt(i);
 
-                MergedBlockVerifierState succState;
                 if (this.blockEntryStates.get(succ) == null) {
-                    succState = new MergedBlockVerifierState(registerAllocationConfig, phiResolution, constantMaterializationConflictResolver, labelConflictResolver);
+                    var succState = new MergedBlockVerifierState(state, registerAllocationConfig, phiResolution, constantMaterializationConflictResolver, labelConflictResolver);
 
-                    // Either there's no state because it was not yet processed first part of the condition
-                    // or, we need to reset it because label changed, second part of the condition
-
-                    // Label change will hopefully work for children of children and there won't be need for us
-                    // to reset all the children.
-                    this.blockStates.put(succ, null);
-                } else {
-                    succState = this.blockEntryStates.get(succ);
+                    this.blockEntryStates.put(succ, succState);
+                    worklist.remove(succ);
+                    worklist.add(succ);
+                    continue;
                 }
 
+                var succState = this.blockEntryStates.get(succ);
                 var succLabelOp = (RAVInstruction.Op) this.blockInstructions.get(succ).getFirst();
                 if (succState.meetWith(state) || this.hasMissingRegistersInLabel(succLabelOp)) {
                     // if we resolved a phi, then we also need to process children again,

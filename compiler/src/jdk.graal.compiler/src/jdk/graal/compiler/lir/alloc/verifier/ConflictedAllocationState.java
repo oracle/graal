@@ -18,7 +18,7 @@ public class ConflictedAllocationState extends AllocationState {
         this.conflictedStates.add(state2);
     }
 
-    private ConflictedAllocationState(Set<ValueAllocationState> conflictedStates) {
+    protected ConflictedAllocationState(Set<ValueAllocationState> conflictedStates) {
         this.conflictedStates = new EconomicHashSet<>(conflictedStates);
     }
 
@@ -44,6 +44,10 @@ public class ConflictedAllocationState extends AllocationState {
 
         if (other instanceof ConflictedAllocationState conflictedState) {
             newlyConflictedState.conflictedStates.addAll(conflictedState.conflictedStates);
+        }
+
+        if (other instanceof UnknownAllocationState) {
+            newlyConflictedState.conflictedStates.add(ValueAllocationState.createIllegal());
         }
 
         return newlyConflictedState;
