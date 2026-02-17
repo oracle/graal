@@ -86,14 +86,14 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
         Stressor.execute(THREADS, eventEmitter);
 
         waitUntilTrue(() -> emittedEventsPerType.get() >= EXPECTED_EVENTS_PER_TYPE);
-        waitUntilTrue(() -> classEvents.get() >= EXPECTED_EVENTS_PER_TYPE);
         waitUntilTrue(() -> integerEvents.get() >= EXPECTED_EVENTS_PER_TYPE);
         waitUntilTrue(() -> stringEvents.get() >= EXPECTED_EVENTS_PER_TYPE);
+        waitUntilTrue(() -> classEvents.get() >= EXPECTED_EVENTS_PER_TYPE);
 
         assertEquals(EXPECTED_EVENTS_PER_TYPE, emittedEventsPerType.get());
-        assertEquals(EXPECTED_EVENTS_PER_TYPE, classEvents.get());
         assertEquals(EXPECTED_EVENTS_PER_TYPE, integerEvents.get());
         assertEquals(EXPECTED_EVENTS_PER_TYPE, stringEvents.get());
+        assertEquals(EXPECTED_EVENTS_PER_TYPE, classEvents.get());
 
         stopStream(stream, TestJfrStreamingCount::validateEvents);
     }
