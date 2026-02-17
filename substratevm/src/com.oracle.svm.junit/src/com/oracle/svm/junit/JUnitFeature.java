@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.runner.Description;
 import org.junit.runner.Request;
 
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.shared.util.ModuleSupport;
 
 public final class JUnitFeature implements Feature {
 

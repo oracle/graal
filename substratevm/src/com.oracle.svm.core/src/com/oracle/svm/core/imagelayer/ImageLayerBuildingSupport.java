@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.shared.util.ModuleSupport;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.util.ObjectCopier;

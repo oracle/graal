@@ -35,7 +35,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.dynamicaccessinference.ConstantExpressionRegistry;
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.shared.util.ModuleSupport;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;

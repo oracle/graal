@@ -39,20 +39,20 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.shared.util.ModuleSupport;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.test.debug.CStructTests;
-import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.code.InstalledCode;
-import org.graalvm.word.WordFactory;
 
 class RuntimeCompilations {
 

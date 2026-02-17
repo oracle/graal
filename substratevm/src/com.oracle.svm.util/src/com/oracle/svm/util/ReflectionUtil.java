@@ -31,6 +31,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import com.oracle.svm.shared.util.ModuleSupport;
+
 /**
  * This class contains utility methods for commonly used reflection functionality. Note that lookups
  * will not work on JDK 17 in cases when the field/method is filtered. See
