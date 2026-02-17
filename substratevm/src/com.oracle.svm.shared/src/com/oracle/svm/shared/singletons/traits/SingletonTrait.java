@@ -32,7 +32,7 @@ import com.oracle.svm.shared.singletons.Invariants;
  * Describes a facet of a singleton's behavior. See {@link SingletonTraits} and
  * {@link SingletonTraitKind} for more details.
  */
-public abstract class SingletonTrait<T> {
+public abstract sealed class SingletonTrait<T> permits AccessSingletonTrait, DisallowedSingletonTrait, LayeredCallbacksSingletonTrait, LayeredInstallationKindSingletonTrait, PartiallyLayerAwareSingletonTrait {
 
     public static final SingletonTrait<?>[] EMPTY_ARRAY = new SingletonTrait<?>[0];
 
