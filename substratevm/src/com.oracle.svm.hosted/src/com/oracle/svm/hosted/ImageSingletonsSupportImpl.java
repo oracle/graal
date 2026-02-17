@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.hosted.ImageSingletonsSupportImpl.HostedManagement.SINGLETON_INSTALLATION_FORBIDDEN;
+import static com.oracle.svm.hosted.ImageSingletonsSupportImpl.SingletonInfo.FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -141,6 +144,17 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
      * provides fast lookups on if the singleton has builtime & runtime access permissions.
      */
     public static final class SingletonInfo {
+
+        static final SingletonInfo FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS = new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, SingletonTraitMap.create().seal());
+
+        public static SingletonInfo forbiddenSingletonInfo(SingletonTrait<?>... traits) {
+            if (traits.length == 0) {
+                return FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS;
+            }
+            SingletonTraitMap traitMap = SingletonTraitMap.create(traits).seal();
+            return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
+        }
+
         Object singleton;
         final SingletonTraitMap traitMap;
         final boolean buildtimeAccessAllowed;
@@ -183,6 +197,16 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             this.traitMap = traitMap;
         }
 
+        /** Create a trait map from given traits. */
+        private static SingletonTraitMap create(SingletonTrait<?>... traits) {
+            SingletonTraitMap traitMap = create();
+            for (SingletonTrait<?> trait : traits) {
+                traitMap.addTrait(trait);
+            }
+            return traitMap;
+        }
+
+        /** Create an empty traits map. */
         private static SingletonTraitMap create() {
             return new SingletonTraitMap(new EnumMap<>(SingletonTraitKind.class));
         }
@@ -208,8 +232,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             return getTrait(SingletonTrait.asTraitKind(traitClass));
         }
 
-        void seal() {
+        SingletonTraitMap seal() {
             sealed = true;
+            return this;
         }
 
         /**
@@ -271,14 +296,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
          * a {@link SingletonLayeredCallbacks#doPersist} specified
          * {@link LayeredPersistFlags#FORBIDDEN}.
          */
-        private static final Object SINGLETON_INSTALLATION_FORBIDDEN = new Object();
-        private static final SingletonInfo FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS;
+        static final Object SINGLETON_INSTALLATION_FORBIDDEN = new Object();
 
         static {
             ImageSingletonsSupport.installSupport(new ImageSingletonsSupportImpl());
-            var traitMap = SingletonTraitMap.create();
-            traitMap.seal();
-            FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS = new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
         }
 
         /**
@@ -336,19 +357,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         }
 
         private EconomicSet<Class<?>> getPriorLayerLoadedSingletonKeys(SVMImageLayerSingletonLoader singletonLoader) {
-            Function<SingletonTrait<?>[], SingletonInfo> forbiddenObjectCreator = (traits) -> {
-                if (traits.length == 0) {
-                    return FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS;
-                }
-
-                var traitMap = SingletonTraitMap.create();
-                for (var trait : traits) {
-                    traitMap.addTrait(trait);
-                }
-                traitMap.seal();
-                return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
-            };
-            var result = singletonLoader.loadImageSingletons(forbiddenObjectCreator);
+            var result = singletonLoader.loadImageSingletons();
             EconomicSet<Class<?>> installedKeys = EconomicSet.create();
             for (var entry : result.entrySet()) {
                 Object singletonToInstall = entry.getKey();
@@ -664,10 +673,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                             SingletonLayeredInstallationKindSupplier installationKindSupplier = ReflectionUtil.newInstance(installationKindSupplierClass);
                             LayeredInstallationKindSingletonTrait installationTrait = installationKindSupplier.getLayeredInstallationKindTrait();
                             assert installationTrait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND : installationTrait;
-                            SingletonTraitMap traitMap = SingletonTraitMap.create();
-                            traitMap.addTrait(installationTrait);
-                            traitMap.seal();
-                            return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
+                            return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, SingletonTraitMap.create(installationTrait).seal());
                         }
                     }
                 }
@@ -675,11 +681,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 if (singletonTraitInjector != null) {
                     var traits = singletonTraitInjector.apply(key);
                     if (traits.length != 0) {
-                        SingletonTraitMap traitMap = SingletonTraitMap.create();
-                        for (var trait : traits) {
-                            traitMap.addTrait(trait);
-                        }
-                        traitMap.seal();
+                        SingletonTraitMap traitMap = SingletonTraitMap.create(traits);
                         return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
                     }
                 }
