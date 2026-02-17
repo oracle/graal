@@ -28,7 +28,7 @@ import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
 
 import java.util.List;
 
-import com.oracle.svm.util.GuestElements;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ConstantPool;
@@ -48,7 +48,7 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeMethod {
      * uninterruptible itself.
      */
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
-                    newAnnotationValue(GuestElements.get().Uninterruptible,
+                    newAnnotationValue(GuestAccess.elements().Uninterruptible,
                                     "reason", "Entry point",
                                     "calleeMustBe", false));
 

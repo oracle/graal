@@ -38,11 +38,10 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.GuestAccess;
-import com.oracle.svm.util.GuestElements;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
@@ -80,9 +79,9 @@ public class InitialLayerFeature implements InternalFeature {
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class), PINNED_TO_INITIAL_LAYER);
 
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
-        access.getUniverse().lookup(GuestElements.get().Uninterruptible).registerAsReachable("Core type");
+        access.getUniverse().lookup(GuestAccess.elements().Uninterruptible).registerAsReachable("Core type");
         metaAccess.lookupJavaType(UninterruptibleUtils.class).registerAsReachable("Core type");
-        access.getUniverse().lookup(getProxyClass(GuestElements.get().Uninterruptible)).registerAsInstantiated("Core type");
+        access.getUniverse().lookup(getProxyClass(GuestAccess.elements().Uninterruptible)).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.ExceptionWrapper.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(UnmanagedMemory.class).registerAsReachable("Core type");
@@ -99,13 +98,13 @@ public class InitialLayerFeature implements InternalFeature {
         MetaAccessProvider metaAccess = vmAccess.getProviders().getMetaAccess();
         ConstantReflectionProvider constantReflection = vmAccess.getProviders().getConstantReflection();
 
-        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestElements.get().java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class,
+        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestAccess.elements().java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class,
                         Class[].class);
-        ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestElements.get().jdk_internal_loader_ClassLoaders, "appClassLoader");
+        ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, GuestAccess.elements().jdk_internal_loader_ClassLoaders, "appClassLoader");
 
         JavaConstant appClassLoader = vmAccess.invoke(appClassLoaderMethod, null);
         JavaConstant uninterruptible = constantReflection.asJavaClass(uninterruptibleType);
-        JavaConstant interfaces = vmAccess.asArrayConstant(GuestElements.get().java_lang_Class, uninterruptible);
+        JavaConstant interfaces = vmAccess.asArrayConstant(GuestAccess.elements().java_lang_Class, uninterruptible);
 
         JavaConstant proxyClass = vmAccess.invoke(getProxyClassMethod, null, appClassLoader, interfaces);
         return constantReflection.asJavaType(proxyClass);

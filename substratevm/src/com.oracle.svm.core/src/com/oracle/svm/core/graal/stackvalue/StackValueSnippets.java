@@ -41,7 +41,7 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.util.GuestElements;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -64,7 +64,7 @@ import jdk.graal.compiler.replacements.Snippets;
 
 final class StackValueSnippets extends SubstrateTemplates implements Snippets {
     private static final String EXCEPTION_MESSAGE = "StackValue must not be used in a virtual thread unless the method is annotated @" +
-                    GuestElements.get().Uninterruptible.toJavaName(false) + '.';
+                    GuestAccess.elements().Uninterruptible.toJavaName(false) + '.';
     private static final IllegalThreadStateException CACHED_EXCEPTION = new IllegalThreadStateException(EXCEPTION_MESSAGE + ' ' + ImplicitExceptions.NO_STACK_MSG);
 
     static final SnippetRuntime.SubstrateForeignCallDescriptor THROW_CACHED_EXCEPTION = SnippetRuntime.findForeignCall(StackValueSnippets.class, "throwCachedException", NO_SIDE_EFFECT);

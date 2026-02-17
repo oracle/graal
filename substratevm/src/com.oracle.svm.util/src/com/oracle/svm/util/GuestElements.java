@@ -27,14 +27,12 @@ package com.oracle.svm.util;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
-import java.util.Objects;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,20 +41,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * This class contains common guest elements ({@link ResolvedJavaType}, {@link ResolvedJavaMethod},
  * {@link ResolvedJavaField}) used throughout the code base. They are looked up via the
- * {@code lookup*} methods from {@link VMAccess}.
+ * {@code lookup*} methods from {@link VMAccess}. Use the static {@link GuestAccess#elements()}
+ * method or the {@link GuestAccess#elems} instance field to retrieve an instance of this class.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class GuestElements {
+public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl {
 
-    private static final GuestElements INSTANCE = new GuestElements();
-
-    public static GuestElements get() {
-        return INSTANCE;
-    }
-
-    private GuestElements() {
-    }
-
+    // Checkstyle: stop field name check
     public final ResolvedJavaType java_lang_Boolean = lookupType(Boolean.class);
     public final ResolvedJavaMethod java_lang_Boolean_valueOf = lookupMethod(java_lang_Boolean, "valueOf", boolean.class);
 
@@ -98,29 +89,11 @@ public final class GuestElements {
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
     public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
+    // Checkstyle: resume field name check
 
-    private static ResolvedJavaType lookupType(Class<?> clazz) {
-        ResolvedJavaType type = GuestAccess.get().lookupType(clazz);
-        if (type == null) {
-            throw new GraalError("Unable to find type for class " + clazz.getName());
-        }
-        return type;
-    }
+    protected abstract ResolvedJavaType lookupType(Class<?> clazz);
 
-    private static ResolvedJavaType lookupType(String className) {
-        Objects.requireNonNull(className, "className must not be null");
-        ResolvedJavaType type = GuestAccess.get().lookupType(className);
-        if (type == null) {
-            throw new GraalError("Unable to find type for class name " + className);
-        }
-        return type;
-    }
+    protected abstract ResolvedJavaType lookupType(String className);
 
-    private static ResolvedJavaMethod lookupMethod(ResolvedJavaType type, String name, Class<?>... parameterTypes) {
-        var method = JVMCIReflectionUtil.getUniqueDeclaredMethod(GuestAccess.get().getProviders().getMetaAccess(), type, name, parameterTypes);
-        if (method == null) {
-            throw new GraalError("Unable to find type for class " + type.toClassName());
-        }
-        return method;
-    }
+    protected abstract ResolvedJavaMethod lookupMethod(ResolvedJavaType type, String name, Class<?>... parameterTypes);
 }

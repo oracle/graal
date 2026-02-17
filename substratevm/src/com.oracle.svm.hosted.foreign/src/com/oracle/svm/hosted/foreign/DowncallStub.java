@@ -46,7 +46,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.shared.util.ReflectionUtil;
-import com.oracle.svm.util.GuestElements;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -106,7 +106,7 @@ class DowncallStub extends NonBytecodeMethod {
     }
 
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = List.of(
-                    newAnnotationValue(GuestElements.get().Uninterruptible,
+                    newAnnotationValue(GuestAccess.elements().Uninterruptible,
                                     "reason", "See DowncallStub.getInjectedAnnotations.",
                                     "calleeMustBe", false));
 
