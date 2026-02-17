@@ -25,6 +25,8 @@
 package com.oracle.svm.core.graal.nodes;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.graph.NodeClass;
@@ -36,6 +38,22 @@ import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.Register;
 
+/**
+ * A floating node to read a reserved register, which is more efficient because it allows value
+ * numbering of multiple accesses, including floating nodes that use it as an input. This is safe
+ * without explicit dependencies because reserved registers generally contain the same value
+ * throughout a method's execution.
+ *
+ * However, these floating reads are also used in the methods that initialize reserved registers
+ * when entering an isolate (see {@link CEntryPointSnippets}). We carefully use separate methods and
+ * prevent inlining to avoid that the compiler can move register reads before their writes.
+ *
+ * Also, these nodes must not be used for deoptimization target methods because there is no proxying
+ * at deoptimization entry points for them, so deoptimization would not restore the values.
+ *
+ * @see ReservedRegisters
+ * @see ReadReservedRegisterFixedNode
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class ReadReservedRegisterFloatingNode extends FloatingNode implements LIRLowerable {
     public static final NodeClass<ReadReservedRegisterFloatingNode> TYPE = NodeClass.create(ReadReservedRegisterFloatingNode.class);
