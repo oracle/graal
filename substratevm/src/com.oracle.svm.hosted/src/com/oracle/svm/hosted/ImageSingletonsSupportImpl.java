@@ -50,7 +50,6 @@ import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.SingletonAccessFlags;
 import com.oracle.svm.shared.singletons.traits.AccessSingletonTrait;
@@ -72,7 +71,6 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
-import jdk.vm.ci.meta.JavaConstant;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport implements LayeredImageSingletonSupport {
@@ -100,12 +98,6 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
     @Override
     public Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind kind) {
         return HostedManagement.getAndAssertExists().getKeysWithTrait(kind);
-    }
-
-    @Override
-    public JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key) {
-        var loader = HostedImageLayerBuildingSupport.singleton().getSingletonLoader();
-        return loader.loadInitialLayerOnlyImageSingleton(key);
     }
 
     @Override

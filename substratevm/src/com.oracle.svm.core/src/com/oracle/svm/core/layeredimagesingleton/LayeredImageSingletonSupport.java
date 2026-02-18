@@ -35,8 +35,6 @@ import com.oracle.svm.shared.singletons.SingletonAccessFlags;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTrait;
 
-import jdk.vm.ci.meta.JavaConstant;
-
 @Platforms(Platform.HOSTED_ONLY.class)
 public interface LayeredImageSingletonSupport {
 
@@ -55,8 +53,6 @@ public interface LayeredImageSingletonSupport {
     Set<Object> getSingletonsWithTrait(SingletonLayeredInstallationKind kind);
 
     Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind kind);
-
-    JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key);
 
     /**
      * @return trait associated with this key if it exists, or else {@code null}.
