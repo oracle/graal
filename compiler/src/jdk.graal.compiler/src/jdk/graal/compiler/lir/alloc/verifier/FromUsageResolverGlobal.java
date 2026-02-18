@@ -19,7 +19,7 @@ import java.util.Set;
  * Resolve label variable locations based on their first usage,
  * globally - spanning over all program blocks for every variable.
  */
-class FromUsageResolverGlobal {
+public class FromUsageResolverGlobal {
     protected LIR lir;
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
@@ -108,15 +108,12 @@ class FromUsageResolverGlobal {
             var instructions = blockInstructions.get(block);
             for (var instruction : instructions.reversed()) {
                 switch (instruction) {
-                    case RAVInstruction.VirtualMove ignored -> {
-                    }
-                    case RAVInstruction.Move move -> handleMove(usage, move.from, move.to);
+                    case RAVInstruction.LocationMove move -> handleMove(usage, move.from, move.to);
                     case RAVInstruction.Op op -> {
                         if (op.lirInstruction instanceof StandardOp.LabelOp) {
                             this.resolveLabel(usage, op, block);
                             continue;
                         }
-                        // TODO: decide how to deal with locations being overwritten.
 
                         if (firstUsages.containsKey(op)) {
                             var iterator = firstUsages.get(op).iterator();
@@ -203,6 +200,10 @@ class FromUsageResolverGlobal {
                     // No usage found before this jump
                     var succ = block.getSuccessorAt(0);
                     var succLabel = (RAVInstruction.Op) blockInstructions.get(succ).getFirst();
+                    var alias = succLabel.dests.orig[i].asVariable();
+                    if (alias.equals(variable)) {
+                        continue; // Loop
+                    }
 
                     aliasBlockMap.put(variable, block);
                     aliasMap.put(variable, succLabel.dests.orig[i].asVariable());
