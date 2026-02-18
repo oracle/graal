@@ -29,8 +29,11 @@ import java.util.Map;
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.truffle.nodes.TruffleEarlyEscapeAnchorNode;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -61,5 +64,21 @@ public final class TruffleEarlyEscapeAnalysisPhase extends PartialEscapePhase {
         // we do not respect the PE only option for Truffle because PE depends on escape analysis
         // semantics.
         return true;
+    }
+
+    @Override
+    protected void run(StructuredGraph graph, CoreProviders context) {
+        super.run(graph, context);
+        if (graph.hasNode(VirtualObjectNode.TYPE)) {
+            /*
+             * Anchor VirtualObjectNodes at the start of the graph. This is valid, because
+             * VirtualObjectNodes are leaf nodes without any inputs. Anchoring prevents PE from
+             * repeatedly decoding and adding duplicates during loop explosion. The anchor node is
+             * removed by the canonicalizer after PE, so VirtualObjectNodes can be scheduled freely
+             * during compilation.
+             */
+            TruffleEarlyEscapeAnchorNode anchor = graph.add(new TruffleEarlyEscapeAnchorNode(graph.getNodes(VirtualObjectNode.TYPE)));
+            graph.addAfterFixed(graph.start(), anchor);
+        }
     }
 }
