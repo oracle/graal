@@ -2,6 +2,7 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.util.EconomicHashMap;
@@ -280,7 +281,7 @@ class FromUsageResolverGlobal {
 
             var location = usage.locations.get(variable);
             if (location == null || location.isIllegal()) {
-                throw new IllegalStateException();
+                GraalError.shouldNotReachHere("Location is " + location + " when resolving " + variable + " should not happen.");
             }
 
             label.dests.curr[i] = location;

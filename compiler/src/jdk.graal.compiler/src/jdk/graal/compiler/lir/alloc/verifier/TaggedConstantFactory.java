@@ -1,6 +1,7 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -22,7 +23,7 @@ public class TaggedConstantFactory {
         return switch (constant) {
             case JavaConstant javaConst -> this.createNew(javaConst);
             case DataPointerConstant ptrConst -> this.createNew(ptrConst);
-            default -> throw new IllegalStateException();
+            default -> throw new GraalError("Unhandled constant type");
         };
     }
 

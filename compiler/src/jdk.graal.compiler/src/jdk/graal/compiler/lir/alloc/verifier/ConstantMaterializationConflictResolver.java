@@ -175,7 +175,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
             var location = move.location.getValue();
             return location instanceof StackSlot || location instanceof VirtualStackSlot;
         } else {
-            throw new IllegalStateException();
+            throw new RematerializedConstantSourceMissingError(source, variable);
         }
     }
 }

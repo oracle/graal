@@ -1,5 +1,6 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.options.OptionValues;
@@ -64,7 +65,7 @@ public class RegisterAllocationVerifierPhaseState {
      */
     public Map<LIRInstruction, RAVInstruction.Base> getInstructionMap(LIRGenerationResult lirGenRes) {
         if (!this.verifierInstructions.containsKey(lirGenRes)) {
-            throw new IllegalStateException();
+            GraalError.shouldNotReachHere("PreAlloc phase did not run for " + lirGenRes.getCompilationUnitName());
         }
 
         return this.verifierInstructions.get(lirGenRes);
