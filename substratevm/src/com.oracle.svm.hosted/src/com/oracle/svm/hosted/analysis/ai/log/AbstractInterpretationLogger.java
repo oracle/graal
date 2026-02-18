@@ -1,0 +1,343 @@
+package com.oracle.svm.hosted.analysis.ai.log;
+
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * Represents a logger for abstract interpretation analysis.
+ */
+public final class AbstractInterpretationLogger {
+    private static AbstractInterpretationLogger instance;
+    private PrintWriter fileWriter;
+    private final String logFilePath;
+
+    private LoggerVerbosity fileThreshold;
+    private LoggerVerbosity consoleThreshold;
+    private boolean colorEnabled = true;
+    private boolean consoleEnabled = true;
+    private boolean fileEnabled = true;
+    private boolean isGraphJsonExportEnabled = false;
+    private boolean isGraphIgvDumpEnabled = false;
+
+    private AbstractInterpretationLogger(String customFileName,
+                                         LoggerVerbosity loggerVerbosity) {
+        String fileName;
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        if (customFileName != null && !customFileName.isEmpty()) {
+            fileName = customFileName + "_" + timeStamp + ".log";
+        } else {
+            fileName = "absint_" + timeStamp + ".log";
+        }
+        this.logFilePath = new File(fileName).getAbsolutePath();
+        this.fileThreshold = loggerVerbosity == null ? LoggerVerbosity.INFO : loggerVerbosity;
+        this.consoleThreshold = this.fileThreshold;
+        instance = this;
+    }
+
+    public static AbstractInterpretationLogger getInstance(String customFileName, LoggerVerbosity loggerVerbosity) {
+        if (instance == null) {
+            instance = new AbstractInterpretationLogger(customFileName, loggerVerbosity);
+        }
+        return instance;
+    }
+
+    public static AbstractInterpretationLogger getInstance(String customFileName) {
+        return getInstance(customFileName, LoggerVerbosity.INFO);
+    }
+
+    public static AbstractInterpretationLogger getInstance(LoggerVerbosity loggerVerbosity) {
+        return getInstance(null, loggerVerbosity);
+    }
+
+    public static AbstractInterpretationLogger getInstance() {
+        if (instance == null) {
+            instance = new AbstractInterpretationLogger("GraalAF", LoggerVerbosity.INFO);
+            instance.setConsoleEnabled(false).setFileEnabled(false);
+        }
+        return instance;
+    }
+
+    public AbstractInterpretationLogger setFileThreshold(LoggerVerbosity threshold) {
+        if (threshold != null) this.fileThreshold = threshold;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setConsoleThreshold(LoggerVerbosity threshold) {
+        if (threshold != null) this.consoleThreshold = threshold;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setColorEnabled(boolean enabled) {
+        this.colorEnabled = enabled;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setConsoleEnabled(boolean enabled) {
+        this.consoleEnabled = enabled;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setFileEnabled(boolean enabled) {
+        this.fileEnabled = enabled;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setGraphJsonExportEnabled(boolean enabled) {
+        this.isGraphJsonExportEnabled = enabled;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setGraphIgvDumpEnabled(boolean enabled) {
+        this.isGraphIgvDumpEnabled = enabled;
+        return this;
+    }
+
+    public boolean isGraphIgvDumpEnabled() {
+        return isGraphIgvDumpEnabled;
+    }
+
+    private static class ANSI {
+        public static final String RESET = "\033[0m";
+        public static final String RED = "\033[0;31m";
+        public static final String GREEN = "\033[0;32m";
+        public static final String YELLOW = "\033[0;33m";
+        public static final String BLUE = "\033[0;34m";
+        public static final String PURPLE = "\033[0;35m";
+        public static final String CYAN = "\033[0;36m";
+        public static final String BOLD = "\033[1m";
+    }
+
+    private static String prefixFor(LoggerVerbosity v) {
+        return switch (v) {
+            case CHECKER -> "[CHECKER] ";
+            case CHECKER_ERR -> "[CHECKER_ERR] ";
+            case CHECKER_WARN -> "[CHECKER_WARN] ";
+            case FACT -> "[FACT] ";
+            case SUMMARY -> "[SUMMARY] ";
+            case INFO -> "[INFO] ";
+            case DEBUG -> "[DEBUG] ";
+            case WARN -> "[WARN] ";
+            case SILENT -> "";
+            case ERROR -> "[ERROR] ";
+        };
+    }
+
+    private static String colorFor(LoggerVerbosity v) {
+        return switch (v) {
+            case CHECKER -> ANSI.GREEN;
+            case CHECKER_WARN, WARN -> ANSI.YELLOW;
+            case CHECKER_ERR, ERROR -> ANSI.RED;
+            case FACT -> ANSI.PURPLE;
+            case SUMMARY, DEBUG -> ANSI.BLUE;
+            case INFO -> ANSI.CYAN;
+            case SILENT -> ANSI.RESET;
+        };
+    }
+
+    private synchronized void ensureFileWriter() {
+        if (!fileEnabled || fileThreshold == LoggerVerbosity.SILENT) {
+            return;
+        }
+        if (fileWriter == null) {
+            try {
+                fileWriter = new PrintWriter(new FileWriter(logFilePath, true));
+            } catch (IOException ioe) {
+                fileEnabled = false;
+                System.err.println("[AI-LOGGER] Failed to (re)open log file '" + logFilePath + "': " + ioe.getMessage());
+            }
+        }
+    }
+
+    public synchronized void log(String message, LoggerVerbosity verbosity) {
+        String prefix = prefixFor(verbosity);
+        String ts = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
+        String fileLine = ts + " " + prefix + message;
+
+        // File output with threshold (re-open lazily if closed)
+        if (fileEnabled && fileThreshold != LoggerVerbosity.SILENT && verbosity.compareTo(fileThreshold) <= 0) {
+            ensureFileWriter();
+            if (fileWriter != null) {
+                fileWriter.println(fileLine);
+                fileWriter.flush();
+            }
+        }
+
+        // Console output with threshold
+        if (consoleEnabled && consoleThreshold != LoggerVerbosity.SILENT && verbosity.compareTo(consoleThreshold) <= 0) {
+            String colored = colorEnabled ? (colorFor(verbosity) + prefix + message + ANSI.RESET) : (prefix + message);
+            if (verbosity == LoggerVerbosity.CHECKER_ERR || verbosity == LoggerVerbosity.ERROR) {
+                System.err.println(colored);
+            } else {
+                System.out.println(colored);
+            }
+        }
+    }
+
+    public void printGraph(AnalysisMethod root, ControlFlowGraph graph, GraphTraversalHelper graphTraversalHelper) {
+        if (graph == null) {
+            throw new IllegalArgumentException("ControlFlowGraph is null");
+        }
+
+        log("Graph of AnalysisMethod: " + root, LoggerVerbosity.DEBUG);
+        for (HIRBlock block : graph.getBlocks()) {
+            log(block.toString(), LoggerVerbosity.DEBUG);
+            log("Block predecessors: ", LoggerVerbosity.DEBUG);
+            for (HIRBlock predecessor : graphTraversalHelper.getPredecessors(block)) {
+                log("\t" + predecessor.toString(), LoggerVerbosity.DEBUG);
+            }
+
+            log("Block successors: ", LoggerVerbosity.DEBUG);
+            for (HIRBlock successor : graphTraversalHelper.getSuccessors(block)) {
+                log("\t" + successor.toString(), LoggerVerbosity.DEBUG);
+            }
+
+            for (Node node : block.getNodes()) {
+                log(node.toString(), LoggerVerbosity.DEBUG);
+                log("\tSuccessors: ", LoggerVerbosity.DEBUG);
+                for (Node successor : node.successors()) {
+                    log("\t\t" + successor.toString(), LoggerVerbosity.DEBUG);
+                }
+                log("\tInputs: ", LoggerVerbosity.DEBUG);
+                for (Node input : node.inputs()) {
+                    log("\t\t" + input.toString(), LoggerVerbosity.DEBUG);
+                }
+            }
+        }
+
+        log("The Invokes of the AnalysisMethod: " + root, LoggerVerbosity.DEBUG);
+        for (InvokeInfo invoke : root.getInvokes()) {
+            log("\tInvoke: " + invoke, LoggerVerbosity.DEBUG);
+            for (AnalysisMethod callee : invoke.getOriginalCallees()) {
+                log("\t\tCallee: " + callee, LoggerVerbosity.DEBUG);
+            }
+        }
+    }
+
+    public void printLabelledGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractState<?> abstractState) {
+        assert graph != null;
+        log("Computed post-conditions of method: " + analysisMethod, LoggerVerbosity.INFO);
+        for (Node node : graph.getNodes()) {
+            NodeState<?> nodeState = abstractState.getNodeState(node);
+            log(node + " -> " + nodeState.getPostCondition(), LoggerVerbosity.INFO);
+        }
+    }
+
+    private void logFact(Fact fact) {
+        log(fact.describe(), LoggerVerbosity.FACT);
+    }
+
+    /**
+     * Export a graph to JSON format for sharing and analysis.
+     * This is useful for getting help with abstract interpretation analysis.
+     *
+     * @param cfg        The structured graph to export
+     * @param method     The analysis method
+     * @param outputPath Path to write the JSON file
+     */
+    public void exportGraphToJson(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
+        try {
+            GraphExporter.exportToJson(cfg, method, outputPath);
+            log("Graph exported to JSON: " + outputPath, LoggerVerbosity.INFO);
+        } catch (Exception e) {
+            log("Failed to export graph to JSON: " + e.getMessage(), LoggerVerbosity.CHECKER_WARN);
+        }
+    }
+
+    public void exportGraphToJson(StructuredGraph graph, AnalysisMethod method, String outputPath) {
+        if (isGraphJsonExportEnabled) {
+            exportGraphToJson(new ControlFlowGraphBuilder(graph).build(), method, outputPath);
+        }
+    }
+
+    public void logFacts(List<Fact> facts) {
+        if (facts.isEmpty()) {
+            log("No facts", LoggerVerbosity.INFO);
+            return;
+        }
+
+        log("Aggregated facts produced by checkers:", LoggerVerbosity.FACT);
+        for (Fact fact : facts) {
+            logFact(fact);
+        }
+    }
+
+
+    public static final class IGVDumpSession implements AutoCloseable {
+        private final DebugContext debug;
+        private final StructuredGraph graph;
+        private final String scopeName;
+        private boolean dumpedBefore;
+
+        public IGVDumpSession(DebugContext debug, StructuredGraph graph, String scopeName) throws Throwable {
+            this.debug = debug;
+            this.graph = graph;
+            this.scopeName = scopeName == null ? "GraalAF" : scopeName;
+            this.dumpedBefore = false;
+        }
+
+        public void dumpBeforeSuite(String title) {
+            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "%s - Before %s", scopeName, title);
+            if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "%s - Before %s", scopeName, title);
+                dumpedBefore = true;
+            } else if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
+                debug.dump(DebugContext.INFO_LEVEL, graph, "%s - %s", scopeName, title);
+            }
+        }
+
+        public void dumpApplierSubphase(String applierDescription) {
+            if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "%s - %s", scopeName, applierDescription);
+            } else if (debug.isDumpEnabled(DebugContext.INFO_LEVEL + 1)) {
+                debug.dump(DebugContext.INFO_LEVEL + 1, graph, "%s - After applier %s", scopeName, applierDescription);
+            } else if (debug.isDumpEnabled(DebugContext.ENABLED_LEVEL) && dumpedBefore) {
+                debug.dump(DebugContext.ENABLED_LEVEL, graph, "%s - After applier %s", scopeName, applierDescription);
+            }
+        }
+
+        public void dumpAfterSuite(String title) {
+            if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "%s - After %s", scopeName, title);
+            } else if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
+                debug.dump(DebugContext.INFO_LEVEL, graph, "%s - After %s", scopeName, title);
+            } else if (!dumpedBefore && debug.isDumpEnabled(DebugContext.ENABLED_LEVEL)) {
+                debug.dump(DebugContext.ENABLED_LEVEL, graph, "%s - After %s", scopeName, title);
+            }
+        }
+
+        @Override
+        public void close() {
+            // No scope to close
+        }
+    }
+
+    public synchronized void close() {
+        if (fileWriter != null) {
+            try {
+                fileWriter.flush();
+            } finally {
+                fileWriter.close();
+                fileWriter = null;
+            }
+        }
+    }
+}
+

@@ -24,15 +24,17 @@
  */
 package com.oracle.graal.pointsto.util;
 
-import com.oracle.graal.pointsto.reports.StatisticsPrinter;
-import com.oracle.svm.util.ImageBuildStatistics;
-import jdk.graal.compiler.debug.GraalError;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.reports.StatisticsPrinter;
+import com.oracle.svm.util.ImageBuildStatistics;
+
+import jdk.graal.compiler.debug.GraalError;
 
 public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrinter {
 
@@ -51,6 +53,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         FEATURES("(features)"),
         VERIFY_HEAP("(verify)"),
         ANALYSIS("analysis"),
+        ABSTRACT_INTERPRETATION("abstract_interpretation"),
         UNIVERSE("universe"),
         COMPILE_TOTAL("compile"),
         PARSE("(parse)"),

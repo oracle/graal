@@ -1,0 +1,88 @@
+package com.oracle.svm.hosted.analysis.ai.analysis;
+
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationException;
+import com.oracle.svm.hosted.analysis.ai.stats.AbstractInterpretationStatistics;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+/**
+ * Represents centralized information about utilities needed by the abstract interpretation analysis
+ */
+public final class AbstractInterpretationServices {
+
+    private static AbstractInterpretationServices instance;
+    private final Inflation inflation;
+    private final DebugContext debug;
+    private final AbstractInterpretationStatistics stats = new AbstractInterpretationStatistics();
+    private final Set<AnalysisMethod> touchedMethods = new HashSet<>();
+
+    private AbstractInterpretationServices(Inflation inflation, DebugContext debug) {
+        this.inflation = inflation;
+        this.debug = debug;
+    }
+
+    public static AbstractInterpretationServices getInstance(Inflation inflation, DebugContext debug) {
+        if (instance == null) {
+            instance = new AbstractInterpretationServices(inflation, debug);
+        }
+        return instance;
+    }
+
+    public static AbstractInterpretationServices getInstance() {
+        if (instance == null) {
+            throw new IllegalStateException("AnalysisServices not initialized. Call getInstance(Inflation) first.");
+        }
+        return instance;
+    }
+
+    public AbstractInterpretationStatistics getStats() {
+        return stats;
+    }
+
+    public Inflation getInflation() {
+        return inflation;
+    }
+
+    public DebugContext getDebug() {
+        return debug;
+    }
+
+    public void markMethodTouched(AnalysisMethod method) {
+        if (method != null) {
+            touchedMethods.add(method);
+        }
+    }
+
+    public Set<AnalysisMethod> getTouchedMethods() {
+        return Collections.unmodifiableSet(touchedMethods);
+    }
+
+    public ResolvedJavaType lookUpType(Class<?> clazz) {
+        return inflation.getMetaAccess().lookupJavaType(clazz);
+    }
+
+    public StructuredGraph getGraph(AnalysisMethod method) {
+        DebugContext debug = inflation.getDebug();
+        StructuredGraph graph = method.decodeAnalyzedGraph(debug, null);
+        if (graph == null) {
+            AbstractInterpretationException.analysisMethodGraphNotFound(method);
+        }
+        return graph;
+    }
+
+    public List<AnalysisMethod> getInvokedMethods() {
+        return inflation.getUniverse()
+                .getMethods()
+                .stream()
+                .filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
+    }
+}
