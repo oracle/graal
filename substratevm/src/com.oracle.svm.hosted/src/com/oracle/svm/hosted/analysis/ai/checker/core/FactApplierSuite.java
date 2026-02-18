@@ -99,11 +99,11 @@ public final class FactApplierSuite {
         return total;
     }
 
-    private void dumpGraph(StructuredGraph graph, Object... args) {
+    private void dumpGraph(StructuredGraph graph, String description) {
         DebugContext debug = AbstractInterpretationServices.getInstance().getDebug();
 
         try (DebugContext.Scope _ = debug.scope("GraalAF", graph)) {
-            debug.dump(DebugContext.BASIC_LEVEL, graph, "After Abstract Interpretation applier - %s", args);
+            debug.dump(DebugContext.BASIC_LEVEL, graph, "After Abstract Interpretation applier - %s", description);
         } catch (Throwable e) {
             AbstractInterpretationLogger.getInstance().log(
                 "Failed to dump graph: " + e.getMessage(),
