@@ -36,11 +36,11 @@ import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
 
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.Option;
@@ -437,15 +437,16 @@ public class RecurringCallbackSupport {
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private boolean isCallbackDisabled() {
             /*
-             * When a thread holds the THREAD_MUTEX, safepoint checks are typically either
-             * disallowed or recurring callbacks are explicitly disabled. However, if a thread
-             * acquires the THREAD_MUTEX while in STATUS_IN_NATIVE, it is possible to enter the
-             * safepoint slowpath when doing the transition back to STATUS_IN_JAVA.
+             * When a thread holds the ThreadsLock with write access, safepoint checks are typically
+             * either disallowed or recurring callbacks are explicitly disabled. However, if a
+             * thread acquires the ThreadsLock while in STATUS_IN_NATIVE, it is possible to enter
+             * the safepoint slowpath when doing the transition back to STATUS_IN_JAVA.
              *
              * Recurring callbacks may trigger VM operations such as GCs. So. deadlocks could happen
-             * if we tried to execute a recurring callback while holding the THREAD_MUTEX.
+             * if we tried to execute a recurring callback while holding the ThreadsLock with write
+             * access.
              */
-            return isExecuting || isCallbackTimerSuspended() || VMThreads.THREAD_MUTEX.isOwner();
+            return isExecuting || isCallbackTimerSuspended() || ThreadsLock.hasWriteAccess();
         }
 
         /**

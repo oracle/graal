@@ -207,13 +207,8 @@ public final class CEntryPointNativeFunctions {
         if (result != 0) {
             return result;
         }
-        detachAllThreadsAndTearDownIsolate0();
+        VMThreads.detachAllExternallyStartedThreadsWithoutCleanupForTearDown();
         return CEntryPointActions.leaveTearDownIsolate();
-    }
-
-    @Uninterruptible(reason = UNINTERRUPTIBLE_REASON, calleeMustBe = false)
-    private static void detachAllThreadsAndTearDownIsolate0() {
-        VMThreads.detachAllThreadsExceptCurrentWithoutCleanupForTearDown();
     }
 
     private CEntryPointNativeFunctions() {

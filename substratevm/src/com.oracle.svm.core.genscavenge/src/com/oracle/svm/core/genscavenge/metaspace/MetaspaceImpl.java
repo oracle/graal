@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.OldGeneration;
@@ -48,6 +47,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -128,19 +128,19 @@ public class MetaspaceImpl implements Metaspace {
 
     @Override
     public void walkObjects(ObjectVisitor visitor) {
-        assert VMOperation.isInProgress() : "prevent other threads from manipulating the metaspace";
+        assert VMOperation.isInProgressAtSafepoint() : "prevent other threads from manipulating the metaspace";
         space.walkObjects(visitor);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void walkObjects(UninterruptibleObjectVisitor objectVisitor) {
-        assert VMOperation.isInProgress() : "prevent other threads from manipulating the metaspace";
+        assert VMOperation.isInProgressAtSafepoint() : "prevent other threads from manipulating the metaspace";
         space.walkObjects(objectVisitor);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void walkDirtyObjects(UninterruptibleObjectVisitor objectVisitor, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
-        assert VMOperation.isInProgress() : "prevent other threads from manipulating the metaspace";
+        assert VMOperation.isInProgressAtSafepoint() : "prevent other threads from manipulating the metaspace";
         RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), objectVisitor, refVisitor, clean);
     }
 
