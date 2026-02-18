@@ -318,7 +318,12 @@ public class StaticObject implements TruffleObject, Cloneable {
     public final <T> T unwrap(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
-        return (T) getArray(language);
+        Object array = getArray(language);
+        if (array == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere();
+        }
+        return (T) array;
     }
 
     public final <T> T get(EspressoLanguage language, int index) {
