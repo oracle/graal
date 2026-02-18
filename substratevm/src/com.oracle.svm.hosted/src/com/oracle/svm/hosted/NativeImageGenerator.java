@@ -563,7 +563,8 @@ public class NativeImageGenerator {
             HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
             /* The callbacks need be installed early, before any singleton is registered. */
             var registrationCallback = imageLayerSupport.getSingletonRegistrationCallback();
-            HostedManagement hostedSingletonManagement = new HostedManagement(imageLayerSupport, loader.classLoaderSupport.annotationExtractor, registrationCallback);
+            var validationCallback = imageLayerSupport.getSingletonValidationCallback();
+            HostedManagement hostedSingletonManagement = new HostedManagement(imageLayerSupport, loader.classLoaderSupport.annotationExtractor, registrationCallback, validationCallback);
             HostedManagement.install(hostedSingletonManagement);
             NativeImageGenerator.loadAndInstallLayeredSingletons(imageLayerSupport, hostedSingletonManagement);
 

@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.EnumSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +47,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
-import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
@@ -58,7 +56,6 @@ import com.oracle.svm.shared.singletons.SingletonAccessFlags;
 import com.oracle.svm.shared.singletons.traits.AccessSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.DisallowedSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.EmptyMetadata;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
@@ -103,11 +100,6 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
     @Override
     public Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind kind) {
         return HostedManagement.getAndAssertExists().getKeysWithTrait(kind);
-    }
-
-    @Override
-    public void forbidNewTraitInstallations(SingletonLayeredInstallationKind kind) {
-        HostedManagement.getAndAssertExists().forbidNewTraitInstallations(kind);
     }
 
     @Override
@@ -375,33 +367,26 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         private final Map<Class<?>, SingletonInfo> configObjects;
         private final Map<Object, SingletonTraitMap> singletonToTraitMap;
 
-        private final EnumSet<SingletonLayeredInstallationKind> forbiddenInstallationKinds;
         private final boolean layeredBuild;
         private final AnnotationExtractor extractor;
         private final Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector;
         /** Callback to be executed before the singleton is published in the registry. */
         private final BiConsumer<Class<?>, SingletonInfo> singletonRegistrationCallback;
+        private final BiConsumer<Object, SingletonTraitMap> singletonValidationCallback;
 
         public HostedManagement() {
-            this(null, null, null);
+            this(null, null, null, null);
         }
 
-        public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor, BiConsumer<Class<?>, SingletonInfo> registrationCallback) {
+        public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor, BiConsumer<Class<?>, SingletonInfo> registrationCallback,
+                        BiConsumer<Object, SingletonTraitMap> singletonValidationCallback) {
             this.configObjects = new ConcurrentHashMap<>();
             this.singletonToTraitMap = new ConcurrentIdentityHashMap<>();
-            forbiddenInstallationKinds = EnumSet.noneOf(SingletonLayeredInstallationKind.class);
             this.singletonRegistrationCallback = registrationCallback;
+            this.singletonValidationCallback = singletonValidationCallback;
             if (support != null) {
                 this.layeredBuild = support.buildingImageLayer;
                 this.singletonTraitInjector = support.getSingletonTraitInjector();
-                if (support.buildingImageLayer) {
-                    if (!support.buildingApplicationLayer) {
-                        forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.APP_LAYER_ONLY);
-                    }
-                    if (!support.buildingInitialLayer) {
-                        forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY);
-                    }
-                }
             } else {
                 this.layeredBuild = false;
                 this.singletonTraitInjector = null;
@@ -421,18 +406,8 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             SingletonTraitMap traitMap = singletonToTraitMap.get(value);
             if (traitMap == null) {
                 traitMap = SingletonTraitMap.getAnnotatedTraits(value.getClass(), extractor, layeredBuild);
-                if (layeredBuild) {
-                    var installationTrait = traitMap.getTrait(LayeredInstallationKindSingletonTrait.class);
-                    installationTrait.ifPresent(t -> {
-                        if (forbiddenInstallationKinds.contains(t.metadata())) {
-                            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
-                                throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", t.metadata(), value);
-                            }
-                        }
-                    });
-                    traitMap.getTrait(DisallowedSingletonTrait.class).ifPresent(_ -> {
-                        throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
-                    });
+                if (singletonValidationCallback != null) {
+                    singletonValidationCallback.accept(value, traitMap);
                 }
                 /*
                  * We are adding injected traits after checking for forbidden kinds because they do
@@ -506,10 +481,6 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind kind) {
             return Collections.unmodifiableSet(configObjects.entrySet().stream().filter(e -> filterOnKind(e.getValue(), kind)).map(Entry::getKey)
                             .collect(Collectors.toCollection(() -> Collections.newSetFromMap(new IdentityHashMap<>()))));
-        }
-
-        void forbidNewTraitInstallations(SingletonLayeredInstallationKind kind) {
-            forbiddenInstallationKinds.add(kind);
         }
 
         /**

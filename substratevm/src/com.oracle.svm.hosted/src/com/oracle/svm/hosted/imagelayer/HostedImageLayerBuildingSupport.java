@@ -31,6 +31,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,11 +75,15 @@ import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
 import com.oracle.svm.shaded.org.capnproto.Serialize;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.DisallowedSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.TypeResult;
 
@@ -100,6 +105,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private SVMImageLayerLoader loader;
     private SVMImageLayerWriter writer;
     private SVMImageLayerSingletonLoader singletonLoader;
+    private final EnumSet<SingletonLayeredInstallationKind> forbiddenInstallationKinds;
     private final ImageClassLoader imageClassLoader;
     private final SharedLayerSnapshot.Reader snapshot;
     private final List<FileChannel> graphsChannels;
@@ -132,6 +138,15 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         this.writeLayerArchiveSupport = writeLayerArchiveSupport;
         this.loadLayerArchiveSupport = loadLayerArchiveSupport;
         this.singletonTraitInjector = singletonTraitInjector;
+        this.forbiddenInstallationKinds = EnumSet.noneOf(SingletonLayeredInstallationKind.class);
+        if (buildingImageLayer) {
+            if (!buildingApplicationLayer) {
+                forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.APP_LAYER_ONLY);
+            }
+            if (!buildingInitialLayer) {
+                forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY);
+            }
+        }
     }
 
     public static HostedImageLayerBuildingSupport singleton() {
@@ -238,6 +253,29 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                         }
                     }, singletonRegistrationCallbackStatus);
                 }
+            };
+        }
+        return null;
+    }
+
+    public void forbidNewTraitInstallations(SingletonLayeredInstallationKind kind) {
+        forbiddenInstallationKinds.add(kind);
+    }
+
+    public BiConsumer<Object, ImageSingletonsSupportImpl.SingletonTraitMap> getSingletonValidationCallback() {
+        if (buildingImageLayer) {
+            return (value, traitMap) -> {
+                var installationTrait = traitMap.getTrait(LayeredInstallationKindSingletonTrait.class);
+                installationTrait.ifPresent(t -> {
+                    if (forbiddenInstallationKinds.contains(t.metadata())) {
+                        if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
+                            throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", t.metadata(), value);
+                        }
+                    }
+                });
+                traitMap.getTrait(DisallowedSingletonTrait.class).ifPresent(_ -> {
+                    throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
+                });
             };
         }
         return null;

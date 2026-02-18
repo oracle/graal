@@ -56,8 +56,6 @@ public interface LayeredImageSingletonSupport {
 
     Collection<Class<?>> getKeysWithTrait(SingletonLayeredInstallationKind kind);
 
-    void forbidNewTraitInstallations(SingletonLayeredInstallationKind kind);
-
     JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key);
 
     /**
