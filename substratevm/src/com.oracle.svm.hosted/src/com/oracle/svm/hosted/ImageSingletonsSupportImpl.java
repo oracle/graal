@@ -48,10 +48,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.ConcurrentUtils;
 import com.oracle.svm.core.util.UserError;
@@ -328,38 +326,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         }
 
         public static void install(HostedManagement vmConfig) {
-            install(vmConfig, null);
-        }
-
-        public static void install(HostedManagement vmConfig, HostedImageLayerBuildingSupport support) {
             UserError.guarantee(singletonDuringImageBuild == null, "Only one native image build can run at a time");
             singletonDuringImageBuild = vmConfig;
-
-            if (support != null) {
-                /*
-                 * Note we are intentionally adding this singleton early as build flags may depend
-                 * on it. We also intentionally do not mark this singleton as a LayerImageSingleton
-                 * to prevent circular dependency complications.
-                 */
-                singletonDuringImageBuild.addSingleton(ImageLayerBuildingSupport.class, support);
-            } else {
-                /*
-                 * Create a placeholder ImageLayerBuilding support to indicate this is not a layered
-                 * build.
-                 */
-                singletonDuringImageBuild.addSingleton(ImageLayerBuildingSupport.class, new ImageLayerBuildingSupport(false, false, false) {
-                });
-            }
-            EconomicSet<Class<?>> loadedSingletonKeys = EconomicSet.emptySet();
-            if (support != null && support.getSingletonLoader() != null) {
-                /*
-                 * Document what was installed during loading. Note eventually this may need to be
-                 * moved to a later point after the Options Image Singleton is installed.
-                 */
-                Map<Object, EconomicSet<Class<?>>> priorLayerSingletons = support.getSingletonLoader().loadImageSingletons();
-                loadedSingletonKeys = singletonDuringImageBuild.installSingletons(priorLayerSingletons);
-            }
-            singletonDuringImageBuild.addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(loadedSingletonKeys));
+            // Now the singleton registry is installed and ImageSingletons.add() can be invoked.
         }
 
         /**
@@ -369,7 +338,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
          *            all the keys they should be mapped to.
          * @return all keys for which a singleton was installed.
          */
-        private EconomicSet<Class<?>> installSingletons(Map<Object, EconomicSet<Class<?>>> singletons) {
+        EconomicSet<Class<?>> installSingletons(Map<Object, EconomicSet<Class<?>>> singletons) {
             EconomicSet<Class<?>> installedKeys = EconomicSet.create();
             for (var entry : singletons.entrySet()) {
                 Object singletonToInstall = entry.getKey();
