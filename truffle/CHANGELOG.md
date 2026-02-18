@@ -75,6 +75,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-35913: Added `InteropLibrary#isInternal` to allow interop objects to be marked as internal. Stack trace element objects can be marked internal so they are omitted from stack trace printing.
 * GR-72486: Bytecode DSL: Added support for all source section representations (e.g., line numbers). Builders now define different `beginSourceSection` and `endSourceSection` overloads for each source section representation.
 * GR-71311: `TruffleString.FromNativePointerNode` and `MutableTruffleString.FromNativePointerNode` now also accept boxed long values in place of their native pointer parameters.
+* GR-44312: Added `TruffleString.FromByteArrayWithCompactionUTF32Node` and `TruffleString.FromNativePointerWithCompactionUTF32Node`, to allow creation of UTF-32 strings from existing compacted strings.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.
