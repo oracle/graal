@@ -339,7 +339,7 @@ final class PolyglotExceptionImpl {
             int languageIdLength = 0; // java
             for (Object traceElement : getPolyglotStackTrace()) {
                 PolyglotExceptionFrame frame = (PolyglotExceptionFrame) polyglot.getAPIAccess().getStackFrameReceiver(traceElement);
-                if (!frame.isHostFrame()) {
+                if (!frame.isHostFrame() && frame.languageId != null) {
                     languageIdLength = Math.max(languageIdLength, frame.languageId.length());
                 }
             }

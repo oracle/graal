@@ -128,7 +128,16 @@ final class HostVMAccess implements VMAccess {
             JavaKind parameterKind = signature.getParameterKind(i);
             JavaConstant argument = arguments[i];
             if (parameterKind.isObject()) {
-                unboxedArguments[i] = snippetReflection.asObject(parameterTypes[i], argument);
+                if (argument.isNull()) {
+                    unboxedArguments[i] = null;
+                } else {
+                    unboxedArguments[i] = snippetReflection.asObject(parameterTypes[i], argument);
+                    if (unboxedArguments[i] == null) {
+                        throw new IllegalArgumentException(
+                                        "Illegal argument type: arguments[" + i + "] of type " + providers.getMetaAccess().lookupJavaType(arguments[i]).toClassName() +
+                                                        " could not be converted to a " + parameterTypes[i]);
+                    }
+                }
             } else {
                 assert parameterKind.isPrimitive();
                 unboxedArguments[i] = argument.asBoxedPrimitive();
@@ -144,7 +153,16 @@ final class HostVMAccess implements VMAccess {
                 if (Modifier.isStatic(reflectionMethod.getModifiers())) {
                     unboxedReceiver = null;
                 } else {
-                    unboxedReceiver = snippetReflection.asObject(reflectionMethod.getDeclaringClass(), receiver);
+                    if (receiver.isNull()) {
+                        unboxedReceiver = null;
+                    } else {
+                        unboxedReceiver = snippetReflection.asObject(reflectionMethod.getDeclaringClass(), receiver);
+                        if (unboxedReceiver == null) {
+                            throw new IllegalArgumentException(
+                                            "Illegal argument type: receiver of type " + providers.getMetaAccess().lookupJavaType(receiver).toClassName() +
+                                                            " could not be converted to a " + reflectionMethod.getDeclaringClass());
+                        }
+                    }
                 }
                 JavaKind returnKind = method.getSignature().getReturnKind();
                 Object result = reflectionMethod.invoke(unboxedReceiver, unboxedArguments);
