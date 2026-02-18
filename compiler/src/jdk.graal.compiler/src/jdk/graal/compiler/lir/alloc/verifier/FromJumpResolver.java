@@ -7,6 +7,12 @@ import jdk.graal.compiler.lir.LIR;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Resolve label variable location before we jump to
+ * said block from its predecessors by looking at
+ * their state and finding said variables in their
+ * JumpOp.
+ */
 public class FromJumpResolver {
     public LIR lir;
     public BlockMap<List<RAVInstruction.Base>> blockInstructions;
@@ -18,6 +24,15 @@ public class FromJumpResolver {
         this.blockStates = blockStates;
     }
 
+    /**
+     * Resolve label variables to said block from their state
+     * and their jump variables.
+     * <p>
+     * If multiple locations are chosen, we take the last one
+     * </p>
+     *
+     * @param block Target block
+     */
     public void resolvePhi(BasicBlock<?> block) {
         var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(block).getFirst();
         for (int i = 0; i < labelInstr.dests.count; i++) {
@@ -51,6 +66,8 @@ public class FromJumpResolver {
                     return;
                 }
 
+                // Selects the location that was used most recently,
+                // but it has to be used recently by all the predecessors.
                 for (int j = 0; j < block.getPredecessorCount(); j++) {
                     int time = -1;
                     RAValue blockReg = null;
@@ -79,14 +96,11 @@ public class FromJumpResolver {
                 location = locations.stream().findFirst().get();
             }
 
-            var registerValue = location;
-            // var registerValue = location.asValue(labelInstr.dests.orig[i].getValueKind());
-
-            labelInstr.dests.curr[i] = registerValue;
+            labelInstr.dests.curr[i] = location;
             for (int j = 0; j < block.getPredecessorCount(); j++) {
                 var pred = block.getPredecessorAt(j);
                 var jump = (RAVInstruction.Op) blockInstructions.get(pred).getLast();
-                jump.alive.curr[i] = registerValue;
+                jump.alive.curr[i] = location;
             }
         }
     }

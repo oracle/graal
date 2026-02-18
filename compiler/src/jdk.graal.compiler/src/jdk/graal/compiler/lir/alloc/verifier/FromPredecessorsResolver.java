@@ -14,6 +14,11 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+/**
+ * Resolve label variable locations by cross-referencing
+ * state from its predecessors and settling on a single
+ * location for every variable.
+ */
 public class FromPredecessorsResolver {
     public LIR lir;
     public BlockMap<List<RAVInstruction.Base>> blockInstructions;
@@ -31,7 +36,7 @@ public class FromPredecessorsResolver {
      * Fill in missing variable locations for current block's label instruction and predecessor
      * jump instructions.
      * <p>
-     * We are looking for intersection between locations of individual processors, this should
+     * We are looking for intersection between locations of individual predecessors, this should
      * give us a single register that is used for the phi, and is necessary for jump to verify
      * that contents are alive that that point and for label to define where the result of phi
      * will be held to used in said block.
@@ -63,6 +68,8 @@ public class FromPredecessorsResolver {
                     return false;
                 }
 
+                // Selects the location that was used most recently,
+                // but it has to be used recently by all the predecessors.
                 for (int j = 0; j < block.getPredecessorCount(); j++) {
                     int time = -1;
                     RAValue blockReg = null;
@@ -88,20 +95,26 @@ public class FromPredecessorsResolver {
                 location = locations.stream().findFirst().get();
             }
 
-            var registerValue = location;
-            // var registerValue = location.asValue(labelInstr.dests.orig[i].getValueKind());
-
-            labelInstr.dests.curr[i] = registerValue;
+            labelInstr.dests.curr[i] = location;
             for (int j = 0; j < block.getPredecessorCount(); j++) {
                 var pred = block.getPredecessorAt(j);
                 var jump = (RAVInstruction.Op) blockInstructions.get(pred).getLast();
-                jump.alive.curr[i] = registerValue;
+                jump.alive.curr[i] = location;
             }
         }
 
         return true;
     }
 
+    /**
+     * Propagate newly defined label variable locations to all successors
+     * of said block, this needs to be because successor state still contain
+     * old locations and were already processed.
+     * <p>
+     * TODO: incorporate new meet logic here
+     *
+     * @param defBlock Block defining new variable locations with its label.
+     */
     public void propagateLabelChangeFromPredecessors(BasicBlock<?> defBlock) {
         var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(defBlock).getFirst();
 
@@ -111,7 +124,7 @@ public class FromPredecessorsResolver {
 
         var defVariableToLocations = new EconomicHashMap<RAVariable, Set<RAValue>>();
         var defBlockVariablesToPropagate = new ArrayList<RAVariable>();
-        for (int i = 0; i < labelInstr.dests.count; i++) {
+        for (int i = 0; i < labelInstr.dests.count; i++) { // Init locations to propagate by label variables
             var register = labelInstr.dests.curr[i];
             var variable = labelInstr.dests.orig[i].asVariable();
 
@@ -168,7 +181,7 @@ public class FromPredecessorsResolver {
                             while (itToPropagate.hasNext()) {
                                 var variable = itToPropagate.next();
                                 var locations = variableToLocations.get(variable);
-                                locations.remove(location);
+                                locations.remove(location); // Location overwritten, no need to distribute further.
                             }
                         }
 
@@ -184,7 +197,7 @@ public class FromPredecessorsResolver {
                     var variable = itToPropagate.next();
                     var locations = variableToLocations.get(variable);
                     if (fromLocation != null && locations.contains(fromLocation)) {
-                        locations.add(toLocation);
+                        locations.add(toLocation); // New location to propagate
                     } else if (locations.contains(toLocation)) {
                         locations.remove(toLocation); // Overwritten
                     }
@@ -202,7 +215,7 @@ public class FromPredecessorsResolver {
 
                 variablesToBePropagated.add(variable);
                 for (var location : locations) {
-                    if (state != null) {
+                    if (state != null) { // State of successor blocks also needs to contain these, if it was not overwritten.
                         state.values.put(location, new ValueAllocationState(variable, labelInstr, defBlock));
                     }
                 }
@@ -253,7 +266,7 @@ public class FromPredecessorsResolver {
                 while (itToBePropagated.hasNext()) {
                     var variable = itToBePropagated.next();
                     var locations = variableToLocations.get(variable);
-                    for (var location : locations) {
+                    for (var location : locations) { // Update entry state for new predecessors!
                         succEntryState.values.put(location, new ValueAllocationState(variable, labelInstr, defBlock));
                     }
 

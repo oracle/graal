@@ -1,6 +1,13 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+/**
+ * Default allocation state for all locations,
+ * nothing was yet inserted.
+ */
 public class UnknownAllocationState extends AllocationState {
+    /**
+     * Single instance used for all occurrences of Unknown state.
+     */
     public static UnknownAllocationState INSTANCE = new UnknownAllocationState();
 
     @Override
@@ -8,6 +15,13 @@ public class UnknownAllocationState extends AllocationState {
         return true;
     }
 
+    /**
+     * Meet state from predecessor, if both are unknown then unknown is returned,
+     * otherwise conflict occurs.
+     *
+     * @param other Other state coming from a predecessor edge
+     * @return Unknown if both are, otherwise a conflict
+     */
     @Override
     public AllocationState meet(AllocationState other) {
         if (other.isUnknown()) {

@@ -27,8 +27,18 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Pre-register allocation phase that needs to save information
+ * about variables/constants used in LIR instructions.
+ */
 public class PreRegisterAllocationPhase extends AllocationPhase {
+    /**
+     * Factory to produce tagged constants that act like variables.
+     */
     protected TaggedConstantFactory taggedConstantFactory;
+    /**
+     * Shared state with the verification phase.
+     */
     protected RegisterAllocationVerifierPhaseState state;
 
     public PreRegisterAllocationPhase(RegisterAllocationVerifierPhaseState state) {
@@ -36,6 +46,9 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
         this.state = state;
     }
 
+    /**
+     * Overwrite a constant with a tagged one.
+     */
     public static class ConstantOverrideValueProcedure implements ValueProcedure {
         private final LIR lir;
         private List<Variable> variables;
@@ -90,6 +103,13 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
         }
     };
 
+    /**
+     * Process every block and every instruction to save variables used in them for the verification procedure.
+     *
+     * @param target    Machine architecture
+     * @param lirGenRes LIR generaration result of a method
+     * @param context   Allocation context, used for RegisterAllocationConfig
+     */
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         if (!state.shouldBeVerified(lirGenRes)) {
@@ -204,8 +224,12 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
      * a move instruction that moves a real register value into a variable,
      * which is something that will always get removed from the final allocated
      * IR.
+     * <p>
+     * This information is important to the verification process and needs to
+     * be part of the Verifier IR.
+     * </p>
      *
-     * @param instruction LIRInstruction we are looking at
+     * @param instruction LIR instruction we are looking at
      * @return true, if instruction is a virtual move, otherwise false
      */
     protected boolean isVirtualMove(LIRInstruction instruction) {
@@ -218,6 +242,17 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
         return (input instanceof RegisterValue || input instanceof StackSlot /*|| input instanceof AbstractAddress*/) && LIRValueUtil.isVariable(valueMov.getResult());
     }
 
+    /**
+     * Determines if a move is speculative - it could potentially be
+     * removed, but hold important information to the verification process.
+     * <p>
+     * For example, this happens for a move between two variables and after
+     * allocation locations are equal, making the move redundant.
+     * </p>
+     *
+     * @param instruction LIR instruction we are looking at
+     * @return true, if instruction is a speculative move, otherwise false
+     */
     protected boolean isSpeculativeMove(LIRInstruction instruction) {
         if (!instruction.isValueMoveOp()) {
             return false;

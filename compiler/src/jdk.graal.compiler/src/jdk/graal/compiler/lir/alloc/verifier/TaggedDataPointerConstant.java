@@ -4,6 +4,10 @@ import jdk.graal.compiler.core.common.type.DataPointerConstant;
 
 import java.nio.ByteBuffer;
 
+/**
+ * Data pointer constant acting as a variable (based on its tag)
+ * to make resolving from jump it easier.
+ */
 public class TaggedDataPointerConstant extends DataPointerConstant {
     protected DataPointerConstant constant;
     protected int tag;

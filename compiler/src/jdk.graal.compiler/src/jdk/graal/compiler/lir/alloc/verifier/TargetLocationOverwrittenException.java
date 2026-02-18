@@ -2,6 +2,10 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 
+/**
+ * Target location was overwritten when looking for
+ * label variable locations by their usage.
+ */
 @SuppressWarnings("serial")
 public class TargetLocationOverwrittenException extends RAVException {
     public RAVInstruction.ValueMove valueMove;

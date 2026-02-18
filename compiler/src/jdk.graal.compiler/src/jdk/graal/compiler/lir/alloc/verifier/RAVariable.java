@@ -2,6 +2,14 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.lir.Variable;
 
+/**
+ * Wrapper around Variable to change how indexing
+ * in data structures like Map or Set is done.
+ * <p>
+ * We index only by the Variable index instead of
+ * including the kind as well.
+ * </p>
+ */
 public class RAVariable extends RAValue {
     protected Variable variable;
 

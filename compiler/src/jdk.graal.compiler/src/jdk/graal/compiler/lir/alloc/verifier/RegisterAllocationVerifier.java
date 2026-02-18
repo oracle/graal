@@ -10,20 +10,60 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
+/**
+ * Class encapsulating the whole Register Allocation Verification.
+ * Maintaining entry states for blocks, resolving label variable
+ * locations and checking validity of every location to variable
+ * correspondence.
+ */
 public class RegisterAllocationVerifier {
+    /**
+     * Verifier IR that abstracts LIR instructions
+     * and marks moves inserted by the allocator.
+     */
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
+
+    /**
+     * Current state of said block during processing.
+     */
     protected BlockMap<MergedBlockVerifierState> blockStates;
+
+    /**
+     * State of the block on entry, calculated from its predecessors.
+     */
     protected BlockMap<MergedBlockVerifierState> blockEntryStates;
 
+    /**
+     * LIR necessary for to access the program graph.
+     */
     protected LIR lir;
+
+    /**
+     * Register Allocator config used for validating
+     * if valid register is used by the allocator.
+     */
     protected RegisterAllocationConfig registerAllocationConfig;
+
+    /**
+     * Resolution method used for determining
+     * label variable locations.
+     */
     protected PhiResolution phiResolution;
 
     protected FromPredecessorsResolver fromPredecessorsResolver;
     protected FromJumpResolver fromJumpResolver;
     protected FromUsageResolver fromUsageResolver;
+
+    /**
+     * Resolves locations for label variables by finding
+     * their first usage and walking back to the defining
+     * label.
+     */
     protected FromUsageResolverGlobal fromUsageResolverGlobal;
 
+    /**
+     * Conflict resolver for re-materialized constants.
+     */
     protected ConflictResolver constantMaterializationConflictResolver;
     protected ConflictResolver labelConflictResolver;
 
@@ -47,6 +87,13 @@ public class RegisterAllocationVerifier {
         this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
     }
 
+    /**
+     * Do all predecessors have state defined for this block?
+     * Meaning they were processed by the entry block calculation.
+     *
+     * @param block Block for which we look at predecessors
+     * @return true, if all predecessors of said block have a state defined.
+     */
     private boolean doPrecessorsHaveStates(BasicBlock<?> block) {
         for (int i = 0; i < block.getPredecessorCount(); i++) {
             var pred = block.getPredecessorAt(i);
@@ -57,6 +104,13 @@ public class RegisterAllocationVerifier {
         return true;
     }
 
+    /**
+     * Does this instruction have locations missing
+     * in it's output array pair?
+     *
+     * @param op Operation we are looking at - a label
+     * @return true, if there is at least one missing location, otherwise false.
+     */
     private boolean hasMissingRegistersInLabel(RAVInstruction.Op op) {
         return op.hasMissingDefinitions();
     }
@@ -191,10 +245,7 @@ public class RegisterAllocationVerifier {
     }
 
     /**
-     * Here, use block entries to check if
-     * inputs to instructions are correct.
-     *
-     * @return true, if valid, otherwise false
+     * Verify every instruction input.
      */
     public void verifyInstructionInputs() {
         for (var blockId : this.lir.getBlocks()) {
@@ -214,6 +265,11 @@ public class RegisterAllocationVerifier {
         }
     }
 
+    /**
+     * Verify every instruction and collect every exception that has occurred.
+     *
+     * @param compUnitName Name of this compilation unit, we are verifying
+     */
     public void verifyInstructionsAndCollectErrors(String compUnitName) {
         List<RAVException> exceptions = new ArrayList<>();
         for (var blockId : this.lir.getBlocks()) {
@@ -237,6 +293,11 @@ public class RegisterAllocationVerifier {
         }
     }
 
+    /**
+     * Run the verification process, including label variable
+     * resolution, handling of materialized constants, calculating
+     * entry states for every block.
+     */
     public void run() {
         this.constantMaterializationConflictResolver.prepare(lir, blockInstructions);
         if (this.phiResolution == PhiResolution.FromConflicts) {

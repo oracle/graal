@@ -4,7 +4,23 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
+/**
+ * Wrapper around Value to change how indexing
+ * in data structures like Map or Set is done.
+ * <p>
+ * Register is indexed by its name without the kind.
+ * Variable is indexed by its number index without the kind.
+ * Stack slots and constants remain as is, because the kind
+ * does not mess with indexing.
+ * </p>
+ */
 public class RAValue {
+    /**
+     * Create a new RAValue instance from Value.
+     *
+     * @param value Value we are wrapping
+     * @return Instance of RAValue
+     */
     public static RAValue create(Value value) {
         if (LIRValueUtil.isVariable(value)) {
             return new RAVariable(LIRValueUtil.asVariable(value));
@@ -44,6 +60,13 @@ public class RAValue {
         return this.value.hashCode();
     }
 
+    /**
+     * Equal RegisterValue on it's Register, not Register and kind,
+     * otherwise same as Value.
+     *
+     * @param other The reference object with which to compare.
+     * @return Are said values equal?
+     */
     @Override
     public boolean equals(Object other) {
         if (other instanceof RAValue otherValueWrap) {

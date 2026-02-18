@@ -11,12 +11,21 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ValueKind;
 
+/**
+ * Verification state a block is in.
+ */
 public class MergedBlockVerifierState {
+    /**
+     * Map maintaining mapping between locations and their state.
+     */
     public MergedAllocationStateMap values;
 
     protected PhiResolution phiResolution;
     protected RegisterAllocationConfig registerAllocationConfig;
 
+    /**
+     * Conflict resolver for constant materialization.
+     */
     protected ConflictResolver conflictConstantResolver;
     protected ConflictResolver labelConflictResolver;
 
@@ -46,17 +55,25 @@ public class MergedBlockVerifierState {
         return values;
     }
 
-    // TODO: reconsider the merging/meeting logic
-    // It might make sense to only keep certain states if it is certain to be defined / have a value present
-    // If a new value was defined in one branch in a certain register and other branches do not have anything in this
-    // register, then the value could not be defined at merging block and if used later it could be verified as valid
-    // but it is not.
-    // If overwritten in one branch but block before branching also has a certain value here
-    // it would just be marked as unknown / conflicted -> Only care if value after merge is ValueAllocatedState!
+    /**
+     * Merge states of block and it's predecessor.
+     *
+     * @param other Predecessor of this block
+     * @return Was this state changed?
+     */
     public boolean meetWith(MergedBlockVerifierState other) {
         return this.values.mergeWith(other.getValues());
     }
 
+    /**
+     * Verify the correspondence of original variables used in instructions
+     * are stored in the state of current locations.
+     *
+     * @param values  Array of pairs of current location and original variable.
+     * @param op      Operation this input array of values belongs to
+     * @param block   Block this operation is in
+     * @param labelOp Label of the successor block, in-case resolution was incomplete.
+     */
     protected void checkInputs(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op, BasicBlock<?> block, RAVInstruction.Op labelOp) {
         // Check that incoming values are not unknown or conflicted - these only matter if used
         for (int idx = 0; idx < values.count; idx++) {
@@ -155,6 +172,13 @@ public class MergedBlockVerifierState {
         }
     }
 
+    /**
+     * Are kinds equal even when casting (LIRKindWithCast) is present?
+     *
+     * @param orig Original variable
+     * @param curr Current location
+     * @return Are they equal?
+     */
     protected boolean kindsEqual(RAValue orig, RAValue curr) {
         var origKind = orig.getValue().getValueKind();
         var currKind = curr.getValue().getValueKind();
@@ -170,6 +194,17 @@ public class MergedBlockVerifierState {
         return currKind.equals(origKind);
     }
 
+    /**
+     * Are kinds equal even when CastValue is present?
+     * <p>
+     * We need to ignore the cast value because the currently stored
+     * value will not be cast.
+     * </p>
+     *
+     * @param orig      Original variable
+     * @param fromState Value stored in state of the current location
+     * @return Are they equal?
+     */
     protected boolean kindsEqualFromState(RAValue orig, RAValue fromState) {
         ValueKind<?> origKind = orig.getValue().getValueKind();
         ValueKind<?> currKind = fromState.getValue().getValueKind();
@@ -180,6 +215,14 @@ public class MergedBlockVerifierState {
         return origKind.equals(currKind);
     }
 
+    /**
+     * Check if alive constraint is not being violated,
+     * when one location is supposed to be alive after instruction
+     * is complete, but is used either as an output or a generic input.
+     *
+     * @param instruction Instruction with alive inputs
+     * @param block       Block this instruction is in
+     */
     protected void checkAliveConstraint(RAVInstruction.Op instruction, BasicBlock<?> block) {
         for (int i = 0; i < instruction.alive.count; i++) {
             RAValue value = instruction.alive.curr[i];
@@ -205,6 +248,14 @@ public class MergedBlockVerifierState {
         }
     }
 
+    /**
+     * Check that all instruction arrays of pairs of original variable and current location
+     * check out to the state stored in for this block.
+     *
+     * @param instruction Instruction we are checking
+     * @param block       Block where it is located
+     * @param labelOp     Label of the successor block, in-case resolution failed
+     */
     public void check(RAVInstruction.Base instruction, BasicBlock<?> block, RAVInstruction.Op labelOp) {
         if (instruction instanceof RAVInstruction.Op op) {
             checkInputs(op.uses, op, block, labelOp);
@@ -246,26 +297,55 @@ public class MergedBlockVerifierState {
                 if (!JavaKind.Object.equals(kind)) {
                     continue;
                 }
+                // Maybe check correspondence to JavaKind?
+                // Object -> has ref type in LIRKind?
 
-                // TODO: how to handle object kind?
-                // If the same virtual value is present in the register then there isn't anything to be done
-                // but maybe if it was changed we also maybe want to make sure that there's a pointer (Object) present?
-                // but for that we would need to track that information based on GC instructions
+                var state = this.values.get(curr);
+                if (state.isUnknown() || state.isConflicted()) {
+                    continue;
+                }
+
+                var instr = op.lirInstruction;
+
+                var valueAllocState = (ValueAllocationState) state;
+                var source = valueAllocState.getSource();
+                if (source == null) {
+                    throw new IllegalStateException();
+                }
+
+                var v = valueAllocState.getValue();
+                // How to check type is a reference?
+
+                // Safepoint update -> change refered objects to unknown in-case GC cleared them?
+                // Safepoint check -> check for correspondence to JavaKind
+                // + checking correspondence to state
             }
 
             this.checkAliveConstraint(op, block);
         }
     }
 
+    /**
+     * Update the current state based on outputs of this instruction.
+     *
+     * @param instruction Instruction we update state from
+     * @param block       Block where it is located
+     */
     public void update(RAVInstruction.Base instruction, BasicBlock<?> block) {
         switch (instruction) {
             case RAVInstruction.Op op -> this.updateWithOp(op, block);
-            case RAVInstruction.ValueMove virtMove -> this.updateWithVirtualMove(virtMove, block);
+            case RAVInstruction.ValueMove virtMove -> this.updateWithValueMove(virtMove, block);
             case RAVInstruction.LocationMove move -> this.values.putClone(move.to, this.values.get(move.from));
             default -> throw GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
         }
     }
 
+    /**
+     * Update the state using a generic operation
+     *
+     * @param op    Operation we update state from
+     * @param block Block where it is located
+     */
     protected void updateWithOp(RAVInstruction.Op op, BasicBlock<?> block) {
         for (int i = 0; i < op.dests.count; i++) {
             if (op.dests.orig[i].isIllegal()) {
@@ -306,19 +386,25 @@ public class MergedBlockVerifierState {
         }
     }
 
-    protected void updateWithVirtualMove(RAVInstruction.ValueMove virtMove, BasicBlock<?> block) {
-        if (virtMove.location.getValue() instanceof RegisterValue) {
-            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove, block));
-        } else if (virtMove.location.isVariable()) {
+    /**
+     * Update state with a ValueMove.
+     *
+     * @param valueMove Value move we update state from
+     * @param block     Block where it is located
+     */
+    protected void updateWithValueMove(RAVInstruction.ValueMove valueMove, BasicBlock<?> block) {
+        if (valueMove.location.getValue() instanceof RegisterValue) {
+            this.values.put(valueMove.location, new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
+        } else if (valueMove.location.isVariable()) {
             // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
             // Move before allocation
             // TestCase: BoxingTest.boxBoolean
-            var locations = this.values.getValueLocations(virtMove.variableOrConstant);
+            var locations = this.values.getValueLocations(valueMove.variableOrConstant);
             for (var location : locations) {
-                this.values.put(location, new ValueAllocationState(virtMove.location, virtMove, block));
+                this.values.put(location, new ValueAllocationState(valueMove.location, valueMove, block));
             }
         } else {
-            this.values.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant, virtMove, block));
+            this.values.put(valueMove.location, new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
         }
     }
 }

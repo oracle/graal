@@ -27,6 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Verification phase for Register Allocation
+ */
 public class RegisterAllocationVerifierPhase extends AllocationPhase {
     public static class Options {
         @Option(help = "Verify that register allocation is indeed, correct", type = OptionType.Debug)
@@ -42,10 +45,17 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         public static final OptionKey<String> RAFilter = new OptionKey<>(null);
     }
 
+    /**
+     * Shared phase state
+     */
     private final RegisterAllocationVerifierPhaseState state;
 
     public RegisterAllocationVerifierPhase(RegisterAllocationVerifierPhaseState state) {
         this.state = state;
+    }
+
+    public RegisterAllocationVerifierPhaseState getState() {
+        return state;
     }
 
     @Override
@@ -85,6 +95,13 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         }
     }
 
+    /**
+     * Process instructions after allocation and create the Verifier IR.
+     * Using previously stored instructions from the PreAlloc phase.
+     *
+     * @param lirGenRes LIR generation result of this method
+     * @return Verifier IR
+     */
     protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIRGenerationResult lirGenRes) {
         var lir = lirGenRes.getLIR();
         var preallocMap = state.getInstructionMap(lirGenRes);
@@ -174,7 +191,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
      * Create Register Verifier Instruction that was created by the Register Allocator.
      * Generally speaking, it's always a move instruction, other ones return null.
      *
-     * @param instruction LIRInstruction newly created by Register Allocator
+     * @param instruction LIR Instruction newly created by Register Allocator
      * @return Spill, Reload, Move or null if instruction is not a move
      */
     protected RAVInstruction.Base getRAVMoveInstruction(LIRInstruction instruction) {
@@ -184,8 +201,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                 var constant = constatLoad.getConstant();
                 var result = constatLoad.getResult(); // Can be RegisterValue or VirtualStackSlot
 
-                // This isn't really a virtual move, but it currently acts the same, so we keep it,
-                // we take constants as variables.
+                // Constant materialization result
                 return new RAVInstruction.ValueMove(instruction, new ConstantValue(result.getValueKind(), constant), result);
             }
 

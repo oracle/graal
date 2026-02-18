@@ -4,8 +4,27 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 
 import java.util.List;
 
+/**
+ * Circular definition was created between
+ * a label block and one of its predecessors,
+ * meaning a variable defined in the first block
+ * is being propagated back to it by one of its
+ * predecessors, which is an invalid state.
+ * <p>
+ * Defining block's entry state would contain
+ * the variable it is defining in its label.
+ * </p>
+ */
 @SuppressWarnings("serial")
 public class CircularDefinitionError extends RAVError {
+    /**
+     * Construct a CircularDefinitionError
+     *
+     * @param defBlock        Block where label variables are first defined
+     * @param predecessor     The predecessor block creating the circular definition
+     * @param label           Label defining variables
+     * @param beingPropagated Which variables are being propagated to defBlock from the predecessor
+     */
     public CircularDefinitionError(BasicBlock<?> defBlock, BasicBlock<?> predecessor, RAVInstruction.Op label, List<RAVariable> beingPropagated) {
         super(getErrorMessage(defBlock, predecessor, label, beingPropagated));
     }

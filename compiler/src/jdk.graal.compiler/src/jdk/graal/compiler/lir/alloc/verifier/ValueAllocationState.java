@@ -9,6 +9,10 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
 
+/**
+ * Allocation state holding a single, concrete Value (wrapped with RAValue),
+ * also accompanied by instruction and block where it was created.
+ */
 public class ValueAllocationState extends AllocationState implements Cloneable {
     protected RAValue value;
     protected RAVInstruction.Base source;
@@ -17,6 +21,8 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
     public ValueAllocationState(RAValue raValue, RAVInstruction.Base source, BasicBlock<?> block) {
         var value = raValue.getValue();
         if (value instanceof RegisterValue || LIRValueUtil.isVariable(value) || value instanceof ConstantValue || value instanceof StackSlot || value instanceof VirtualStackSlot || Value.ILLEGAL.equals(value)) {
+            // Here, we make sure that no new value class is used here, without consideration.
+
             // StackSlot, RegisterValue is present in start block in label as predefined argument
             // VirtualStackSlot is used for RESTORE_REGISTERS and SAVE_REGISTERS
             // ConstantValue act as Variable
@@ -37,6 +43,13 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
         this.block = other.getBlock();
     }
 
+    /**
+     * Create an illegal value allocation state, used
+     * as a substitute for Unknown state when creating
+     * a conflict.
+     *
+     * @return instance of ValueAllocationState holding Value.ILLEGAL.
+     */
     public static ValueAllocationState createIllegal() {
         // TODO: pass in the block that created this value
         return new ValueAllocationState(new RAValue(Value.ILLEGAL), null, null);
@@ -58,8 +71,19 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
         return block;
     }
 
+    /**
+     * Meet a state from predecessor block, if it's ValueAllocationState
+     * and contents are equal, then same state is returned, otherwise
+     * a conflict is created between said states.
+     *
+     * @param other Other state coming from a predecessor edge
+     * @return ValueAllocationState if their contents are equal, otherwise ConflictedAllocationState.
+     */
     public AllocationState meet(AllocationState other) {
         if (other.isUnknown()) {
+            // Unknown is coming from different predecessor where this location
+            // is undefined, meaning this value is not always accessible in the successor
+            // and thus conflict is created.
             return new ConflictedAllocationState(createIllegal(), this);
         }
 
@@ -71,7 +95,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
         }
 
         var otherValueAllocState = (ValueAllocationState) other;
-        if (!this.value.equals(otherValueAllocState.getRAValue())) {
+        if (!this.value.equals(otherValueAllocState.getRAValue())) { // Does not take kind into account.
             return new ConflictedAllocationState(this, otherValueAllocState);
         }
 

@@ -14,6 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Resolve conflicts made by the constant materialization process.
+ * <p>
+ * Also checks if the constant can materialize to stack.
+ * </p>
+ */
 public class ConstantMaterializationConflictResolver implements ConflictResolver {
     protected Map<RAVariable, ConstantValue> constantVariableMap;
     protected Set<RAVariable> canRematerializeToStack;
@@ -23,6 +29,12 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         this.canRematerializeToStack = new EconomicHashSet<>();
     }
 
+    /**
+     * Creates a variable to constant mapping.
+     *
+     * @param lir               LIR
+     * @param blockInstructions IR of the Verifier
+     */
     @Override
     public void prepare(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions) {
         for (var blockId : lir.getBlocks()) {
@@ -35,6 +47,12 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         }
     }
 
+    /**
+     * Add variable to constant mapping from instruction contents.
+     *
+     * @param instruction Instruction we are looking at for LoadConstantOp
+     * @param block       Block where instruction is from
+     */
     public void prepareFromInstr(RAVInstruction.Base instruction, BasicBlock<?> block) {
         if (instruction instanceof RAVInstruction.Op op && op.lirInstruction.isLoadConstantOp()) {
             var loadConstantOp = StandardOp.LoadConstantOp.asLoadConstantOp(op.lirInstruction);
@@ -53,6 +71,15 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         }
     }
 
+    /**
+     * Resolve conflict of target variable and the constant it represents
+     * to the ValueAllocationState of the target variable.
+     *
+     * @param target          Variable we are looking to resolve to
+     * @param conflictedState Set of conflicted states
+     * @param location        Location where the valueState is stored
+     * @return target variable stored in ValueAllocationState or null.
+     */
     @Override
     public ValueAllocationState resolveConflictedState(RAVariable target, ConflictedAllocationState conflictedState, RAValue location) {
         var confStates = conflictedState.getConflictedStates();
@@ -96,6 +123,14 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         return new ValueAllocationState(variable, constantState.getSource(), constantState.block);
     }
 
+    /**
+     * Resolve ValueAllocationState of a constant to the target variable.
+     *
+     * @param variable   Variable we are looking to resolve to
+     * @param valueState Current ValueAllocationState instance
+     * @param location   Location where the valueState is stored
+     * @return target variable stored in ValueAllocationState or null.
+     */
     @Override
     public ValueAllocationState resolveValueState(RAVariable variable, ValueAllocationState valueState, RAValue location) {
         if (!this.constantVariableMap.containsKey(variable)) {
@@ -117,6 +152,18 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         return null;
     }
 
+    /**
+     * Check if variable can be rematerialized to said location based on the
+     * original instruction source, stored in ValueAllocationState.
+     *
+     * <p>
+     * Check if variable cannot rematerialize to stack and if it did so.
+     * </p>
+     *
+     * @param variable Target variable
+     * @param state    State it is in
+     * @return Was it rematerialized to wrong location?
+     */
     protected boolean isRematerializedToWrongLocation(RAVariable variable, ValueAllocationState state) {
         if (canRematerializeToStack.contains(variable)) {
             return false;

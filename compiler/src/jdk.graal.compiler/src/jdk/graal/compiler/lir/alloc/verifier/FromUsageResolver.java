@@ -14,6 +14,11 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+/**
+ * Resolve label variable locations by finding their first usage
+ * and going in-reverse back to the label to handle any moves
+ * in-between the label and usage, selecting a single location.
+ */
 class FromUsageResolver {
     protected LIR lir;
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;

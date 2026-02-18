@@ -3,6 +3,10 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Java constant acting as a variable (based on its tag) to
+ * make resolving from jump it easier.
+ */
 public class TaggedJavaConstant implements JavaConstant {
     protected JavaConstant constant;
     protected int tag;

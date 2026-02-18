@@ -2,6 +2,11 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 
+/**
+ * Could not resolve label variable locations
+ * and thus cannot proceed further, an error
+ * caused by the Verifier, non-recoverable.
+ */
 @SuppressWarnings("serial")
 public class LabelNotResolvedError extends RAVError {
     public BasicBlock<?> block;

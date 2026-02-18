@@ -7,6 +7,14 @@ import java.io.PrintStream;
 import java.util.List;
 
 public class VerifierPrinter {
+    /**
+     * Print human-readable representation of the Verifier IR
+     * to an output stream.
+     *
+     * @param out          Output stream
+     * @param lir          LIR
+     * @param instructions Verifier IR
+     */
     public static void print(PrintStream out, LIR lir, BlockMap<List<RAVInstruction.Base>> instructions) {
         for (var blockId : lir.getBlocks()) {
             var block = lir.getBlockById(blockId);

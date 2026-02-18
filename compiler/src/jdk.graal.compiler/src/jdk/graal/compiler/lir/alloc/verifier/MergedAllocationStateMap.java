@@ -8,18 +8,18 @@ import jdk.vm.ci.code.ValueUtil;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Mapping between a location and it's AllocationState.
+ */
 public class MergedAllocationStateMap {
     /**
-     * These are instances of Value we need to keep for getValueLocations,
-     * indexed by their string representation.
-     * <p>
-     * Because Values have their own toString implementation,
-     * that the hash map uses and for some Values we do not
-     * want this (especially due to kinds), which are irrelevant
-     * for location indices, we have a getValueKeyString which
-     * does what we need.
+     * Internal map maintaining the mapping.
      */
     protected Map<RAValue, AllocationState> internalMap;
+    /**
+     * Integer describing when was the value inserted,
+     * the bigger it is, the newer the value is.
+     */
     protected Map<RAValue, Integer> locationTimings;
     /**
      * Prioritized locations are ones made by the register allocator itself.
@@ -31,8 +31,15 @@ public class MergedAllocationStateMap {
      * If there's multiple, then time should make the difference.
      */
     protected Map<RAValue, Boolean> prioritizedLocations;
+    /**
+     * Internal constant for locationTimings.
+     */
     protected int time;
 
+    /**
+     * Register allocation config describing which registers
+     * can be used.
+     */
     protected RegisterAllocationConfig registerAllocationConfig;
 
     public MergedAllocationStateMap(RegisterAllocationConfig registerAllocationConfig) {
@@ -70,11 +77,30 @@ public class MergedAllocationStateMap {
         this.prioritizedLocations.put(key, true);
     }
 
+    /**
+     * Put a new state for location to the map,
+     * while checking if register can be allocated to.
+     *
+     * @param key   Location used
+     * @param state State to store
+     */
     public void put(RAValue key, AllocationState state) {
         this.checkRegisterDestinationValidity(key);
         putWithoutRegCheck(key, state);
     }
 
+    /**
+     * Put a new state for location to the map,
+     * without checking if the register can actually be used.
+     * <p>
+     * This is useful for registers that are used by the abi
+     * in the first label, but can actually never be changed,
+     * like rbp.
+     * </p>
+     *
+     * @param key   Location used
+     * @param state State to store
+     */
     public void putWithoutRegCheck(RAValue key, AllocationState state) {
         locationTimings.put(key, time++);
         internalMap.put(key, state);
@@ -84,13 +110,19 @@ public class MergedAllocationStateMap {
         }
     }
 
-    public void putClone(RAValue key, AllocationState value) {
-        if (value.isUnknown()) {
-            this.put(key, value);
+    /**
+     * Put a copied state to a location, used when merging.
+     *
+     * @param key   Location used
+     * @param state State to store
+     */
+    public void putClone(RAValue key, AllocationState state) {
+        if (state.isUnknown()) {
+            this.put(key, state);
             return;
         }
 
-        this.put(key, value.clone());
+        this.put(key, state.clone());
     }
 
     public void putCloneAsPrioritized(RAValue key, AllocationState value) {
@@ -102,12 +134,24 @@ public class MergedAllocationStateMap {
         return prioritizedLocations.containsKey(key);
     }
 
+    /**
+     * Get time when the location was inserted.
+     *
+     * @param key Location used
+     * @return integer describing the insertion time - bigger = newer.
+     */
     public int getKeyTime(RAValue key) {
         var time = locationTimings.get(key);
         assert time != null : "Time for key " + key + " not present.";
         return time;
     }
 
+    /**
+     * Get set of locations holding this particular variable/constant.
+     *
+     * @param value Symbol we are looking for
+     * @return Set of locations that hold said symbol
+     */
     public Set<RAValue> getValueLocations(RAValue value) {
         Set<RAValue> locations = new EconomicHashSet<>();
         for (var entry : this.internalMap.entrySet()) {
@@ -120,6 +164,13 @@ public class MergedAllocationStateMap {
         return locations;
     }
 
+    /**
+     * Merge two maps together, source is generally
+     * the predecessor to the current block (this state map).
+     *
+     * @param source Predecessor merging to here
+     * @return Was this map changed?
+     */
     public boolean mergeWith(MergedAllocationStateMap source) {
         boolean changed = false;
         for (var entry : source.internalMap.entrySet()) {
@@ -141,6 +192,12 @@ public class MergedAllocationStateMap {
         return changed;
     }
 
+    /**
+     * Check if register can be used by the register allocator.
+     * If not allowed, an exception is thrown.
+     *
+     * @param raLocation Value that could be a register.
+     */
     protected void checkRegisterDestinationValidity(RAValue raLocation) {
         var location = raLocation.getValue();
         if (!ValueUtil.isRegister(location)) {

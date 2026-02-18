@@ -3,6 +3,9 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.lir.LIRInstruction;
 
+/**
+ * Value was not found in the location we needed it in.
+ */
 @SuppressWarnings("serial")
 public class ValueNotInRegisterException extends RAVException {
     public LIRInstruction instruction;
@@ -11,6 +14,15 @@ public class ValueNotInRegisterException extends RAVException {
     public RAValue location; // Can be StackSlot, RegisterValue or memory
     public AllocationState state;
 
+    /**
+     * Construct a ValueNotInRegisterException
+     *
+     * @param instruction Instruction where violation occurred
+     * @param block       Block where violation occurred
+     * @param variable    Target varible we are looking for
+     * @param location    Location where we couldn't find it
+     * @param state       The actual state that the location is in
+     */
     public ValueNotInRegisterException(LIRInstruction instruction, BasicBlock<?> block, RAValue variable, RAValue location, AllocationState state) {
         super(ValueNotInRegisterException.getErrorMessage(instruction, block, variable, location, state));
 

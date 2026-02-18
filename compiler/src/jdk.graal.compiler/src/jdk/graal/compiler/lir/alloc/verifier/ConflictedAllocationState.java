@@ -5,6 +5,12 @@ import jdk.graal.compiler.util.EconomicHashSet;
 import java.util.Arrays;
 import java.util.Set;
 
+/**
+ * Conflicted allocation state - two or more ValueAllocationState instances
+ * have collided and either of them can be stored at said location, needs
+ * to be resolved by either overwriting the location with a new ValueAllocationState instance
+ * or by a ConflictResolver implementation.
+ */
 public class ConflictedAllocationState extends AllocationState {
     protected Set<ValueAllocationState> conflictedStates;
 
@@ -26,6 +32,11 @@ public class ConflictedAllocationState extends AllocationState {
         this.conflictedStates.add(state);
     }
 
+    /**
+     * Get the set of all ValueAllocationState instances conflicting in this state.
+     *
+     * @return Set of ValueAllocationState instances
+     */
     public Set<ValueAllocationState> getConflictedStates() {
         return this.conflictedStates;
     }
@@ -35,6 +46,13 @@ public class ConflictedAllocationState extends AllocationState {
         return true;
     }
 
+    /**
+     * Any state coming here will be added to the conflict set
+     * and create a new ConflictedAllocationState instance.
+     *
+     * @param other Other state coming from a predecessor edge
+     * @return ConflictedAllocationState with predecessor state added up
+     */
     @Override
     public AllocationState meet(AllocationState other) {
         var newlyConflictedState = new ConflictedAllocationState(this.getConflictedStates());
@@ -47,6 +65,11 @@ public class ConflictedAllocationState extends AllocationState {
         }
 
         if (other instanceof UnknownAllocationState) {
+            // Unknown state creates an Illegal ValueAllocationState inside it, because
+            // the unknown state is coming from a different predecessor to the same block,
+            // and it means that this location was not defined there, but it was defined in a
+            // different predecessor block, meaning it's now in a conflicted state, where
+            // it either is defined or it is not - should not be used in further blocks.
             newlyConflictedState.conflictedStates.add(ValueAllocationState.createIllegal());
         }
 
@@ -58,6 +81,15 @@ public class ConflictedAllocationState extends AllocationState {
         return new ConflictedAllocationState(this.conflictedStates);
     }
 
+    /**
+     * We do not compare conflicted state on its contents,
+     * whenever new one would be created as a result, the
+     * set of contents would remain the same, if values
+     * are equal based on RAValue rules.
+     *
+     * @param other Other state we are comparing it to
+     * @return Are both states conflicted?
+     */
     @Override
     public boolean equals(AllocationState other) {
         return other.isConflicted();

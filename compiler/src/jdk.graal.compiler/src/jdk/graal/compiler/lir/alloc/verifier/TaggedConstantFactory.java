@@ -4,6 +4,9 @@ import jdk.graal.compiler.core.common.type.DataPointerConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 
+/**
+ * Factory to create a tagged constant from an existing constant.
+ */
 public class TaggedConstantFactory {
     protected int lastTag;
 
