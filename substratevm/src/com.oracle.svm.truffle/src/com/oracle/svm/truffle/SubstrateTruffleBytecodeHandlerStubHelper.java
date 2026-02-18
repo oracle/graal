@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.truffle;
 
-import static com.oracle.svm.core.deopt.Deoptimizer.StubType.NoDeoptStub;
 import static com.oracle.svm.truffle.SubstrateTruffleBytecodeHandlerStub.unwrap;
-import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
 import java.util.Arrays;
 
@@ -35,20 +33,13 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.deopt.Deoptimizer.DeoptStub;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.host.TruffleKnownHostTypes;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -56,39 +47,23 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This class is used to manage the bytecode handlers stubs for Truffle, providing a way to
  * initialize and retrieve the handlers.
  */
-public final class SubstrateTruffleBytecodeHandlerStubHolder {
-
-    /**
-     * Default handler for Truffle bytecode during threading. This method cannot be invoked
-     * directly; it is intended to be jumped to as a threading target. It assumes that return values
-     * are already in place and will directly return to the caller.
-     */
-    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    @Uninterruptible(reason = "empty stub")
-    @DeoptStub(stubType = NoDeoptStub)
-    static void defaultHandler() {
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static AnalysisMethod getDefaultHandler(MetaAccessProvider metaAccess) {
-        SubstrateForeignCallDescriptor defaultHandlerDescriptor = SnippetRuntime.findForeignCall(SubstrateTruffleBytecodeHandlerStubHolder.class, "defaultHandler", NO_SIDE_EFFECT);
-        return (AnalysisMethod) defaultHandlerDescriptor.findMethod(metaAccess);
-    }
+@Platforms(Platform.HOSTED_ONLY.class) //
+public final class SubstrateTruffleBytecodeHandlerStubHelper {
 
     /**
      * Truffle bytecode handler table. This mapping is used during image building but each handler
      * array will be persisted in the generated image.
      */
-    @Platforms(Platform.HOSTED_ONLY.class) //
     private final EconomicMap<ResolvedJavaMethod, MethodPointer[]> bytecodeHandlers = EconomicMap.create();
 
     /**
      * Initializes and populates the bytecode handler table.
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void initializeBytecodeHandlers(AnalysisMethod defaultHandler, EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers) {
-        GraalError.guarantee(defaultHandler != null, "default handler is null");
-        TruffleHostEnvironment truffleHostEnvironment = TruffleHostEnvironment.get(defaultHandler);
+    public void initializeBytecodeHandlers(EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers) {
+        if (registeredBytecodeHandlers.isEmpty()) {
+            return;
+        }
+        TruffleHostEnvironment truffleHostEnvironment = TruffleHostEnvironment.get(registeredBytecodeHandlers.getKeys().iterator().next());
         if (truffleHostEnvironment == null) {
             // TruffleHostEnvironment is not initialized
             return;
@@ -97,7 +72,6 @@ public final class SubstrateTruffleBytecodeHandlerStubHolder {
         ResolvedJavaType typeBytecodeInterpreterHandler = ((WrappedJavaType) truffleTypes.BytecodeInterpreterHandler).getWrapped();
         ResolvedJavaType typeBytecodeInterpreterHandlerConfig = ((WrappedJavaType) truffleTypes.BytecodeInterpreterHandlerConfig).getWrapped();
 
-        MethodPointer defaultHandlerPointer = new MethodPointer(defaultHandler);
         for (ResolvedJavaMethod handler : registeredBytecodeHandlers.getKeys()) {
             ResolvedJavaMethod stubWrapper = registeredBytecodeHandlers.get(handler);
             ResolvedJavaMethod caller = ((SubstrateTruffleBytecodeHandlerStub) unwrap(stubWrapper)).getCallsite().getEnclosingMethod();
@@ -109,9 +83,19 @@ public final class SubstrateTruffleBytecodeHandlerStubHolder {
                 int maxOpcode = bytecodeInterpreterHandlerConfigAnnotation.getInt("maximumOperationCode");
                 GraalError.guarantee(maxOpcode >= 0 && maxOpcode < Integer.MAX_VALUE, "maximumOperationCode is %d", maxOpcode);
                 handlerTable = new MethodPointer[maxOpcode + 1];
-                // By default, all bytecode handlers point to defaultHandler
+                // By default, all bytecode handlers point to defaultHandler, which is keyed by the
+                // caller in registeredBytecodeHandlers
+                ResolvedJavaMethod defaultHandler = registeredBytecodeHandlers.get(caller);
+                GraalError.guarantee(defaultHandler != null, "default handler is null");
+                MethodPointer defaultHandlerPointer = new MethodPointer(defaultHandler);
+
                 Arrays.fill(handlerTable, defaultHandlerPointer);
                 bytecodeHandlers.put(caller, handlerTable);
+            }
+
+            if (caller.equals(handler)) {
+                // default handler
+                continue;
             }
 
             AnnotationValue annotation = AnnotationValueSupport.getDeclaredAnnotationValue(typeBytecodeInterpreterHandler, handler);
@@ -122,14 +106,12 @@ public final class SubstrateTruffleBytecodeHandlerStubHolder {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public MethodPointer[] getBytecodeHandlers(ResolvedJavaMethod caller) {
         MethodPointer[] handlers = bytecodeHandlers.get(caller);
         GraalError.guarantee(handlers != null, "Bytecode handlers not yet initialized!");
         return handlers;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public Iterable<MethodPointer[]> getAllBytecodeHandlers() {
         return bytecodeHandlers.getValues();
     }

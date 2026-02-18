@@ -198,7 +198,7 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
             AllocatableValue operand = cc.getArgument(i);
             if (operand instanceof RegisterValue registerValue) {
                 emitMove(registerValue, additionalReturnResult);
-                if (returnResult.equals(additionalReturnResult)) {
+                if (returnResult.equals(additionalReturnResult) || registerValue.equals(cc.getReturn())) {
                     // The calling convention uses the same register for both default return result
                     // and this additional return result. Use the copy stored in this register to
                     // avoid redundant move.

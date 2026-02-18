@@ -279,7 +279,11 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + TruffleBaseFeature.class);
 
-    private final SubstrateTruffleBytecodeHandlerStubHolder stubHolder = new SubstrateTruffleBytecodeHandlerStubHolder();
+    private final SubstrateTruffleBytecodeHandlerStubHelper stubHelper = new SubstrateTruffleBytecodeHandlerStubHelper();
+
+    /**
+     * Contains tuples of (handlerMethod, handlerStub) but also (callerMethod, defaultHandlerStub).
+     */
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers = EconomicMap.create();
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
@@ -678,7 +682,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        plugins.appendNodePlugin(new TruffleBytecodeHandlerInvokePlugin(registeredBytecodeHandlers, stubHolder, TruffleInterpreterTailCallThreading.getValue()));
+        plugins.appendNodePlugin(new TruffleBytecodeHandlerInvokePlugin(registeredBytecodeHandlers, stubHelper, TruffleInterpreterTailCallThreading.getValue()));
     }
 
     @Override
@@ -713,11 +717,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         Class<?> frameClass = config.findClassByName("com.oracle.truffle.api.impl.FrameWithoutBoxing");
         config.registerFieldValueTransformer(config.findField(frameClass, "ASSERTIONS_ENABLED"), new AssertionStatusFieldTransformer(frameClass));
         registerInternalResourceFieldValueTransformers(config);
-
-        if (TruffleInterpreterTailCallThreading.getValue()) {
-            config.getBigBang().addRootMethod(SubstrateTruffleBytecodeHandlerStubHolder.getDefaultHandler(config.getMetaAccess()), true,
-                            "Default bytecode handler registered in " + TruffleBaseFeature.class);
-        }
     }
 
     private void registerInternalResourceFieldValueTransformers(BeforeAnalysisAccessImpl config) {
@@ -775,8 +774,8 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         if (TruffleInterpreterTailCallThreading.getValue()) {
             AfterAnalysisAccessImpl config = (AfterAnalysisAccessImpl) access;
-            stubHolder.initializeBytecodeHandlers(SubstrateTruffleBytecodeHandlerStubHolder.getDefaultHandler(config.getMetaAccess()), registeredBytecodeHandlers);
-            for (MethodPointer[] handlers : stubHolder.getAllBytecodeHandlers()) {
+            stubHelper.initializeBytecodeHandlers(registeredBytecodeHandlers);
+            for (MethodPointer[] handlers : stubHelper.getAllBytecodeHandlers()) {
                 config.rescanObject(handlers, scanReason);
             }
         }
@@ -845,7 +844,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     public void beforeCompilation(BeforeCompilationAccess access) {
         if (TruffleInterpreterTailCallThreading.getValue()) {
             // Will be placed at read-only section and disallow overwriting
-            for (MethodPointer[] handlers : stubHolder.getAllBytecodeHandlers()) {
+            for (MethodPointer[] handlers : stubHelper.getAllBytecodeHandlers()) {
                 access.registerAsImmutable(handlers);
             }
         }

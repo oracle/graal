@@ -30,12 +30,12 @@ import static com.oracle.svm.truffle.SubstrateTruffleBytecodeHandlerStub.unwrap;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.svm.common.meta.MethodVariant;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
@@ -62,13 +62,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
 
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers;
-    private final SubstrateTruffleBytecodeHandlerStubHolder stubHolder;
+    private final SubstrateTruffleBytecodeHandlerStubHelper stubHolder;
     private final boolean threadingEnabled;
 
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> nextOpcodeCache = EconomicMap.create();
 
     public TruffleBytecodeHandlerInvokePlugin(EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers,
-                    SubstrateTruffleBytecodeHandlerStubHolder stubHolder, boolean threadingEnabled) {
+                    SubstrateTruffleBytecodeHandlerStubHelper stubHolder, boolean threadingEnabled) {
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
         this.stubHolder = stubHolder;
         this.threadingEnabled = threadingEnabled;
@@ -122,7 +122,7 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
 
         TruffleBytecodeHandlerCallsite callSite = new TruffleBytecodeHandlerCallsite(enclosingMethod, b.bci(), target, truffleTypes);
         SubstrateTruffleBytecodeHandlerStub stub = new SubstrateTruffleBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
-                        callSite, threading, nextOpcode, safepoint);
+                        callSite.getStubName(), callSite, threading, nextOpcode, safepoint, false);
 
         AnalysisUniverse universe = ((AnalysisMetaAccess) b.getMetaAccess()).getUniverse();
         AnalysisMethod stubWrapper = universe.lookup(stub);
@@ -130,7 +130,18 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
 
         synchronized (registeredBytecodeHandlers) {
             registeredBytecodeHandlers.put(target, stubWrapper);
+
+            // Register a default empty stub, keyed by the enclosing method
+            if (threading && !registeredBytecodeHandlers.containsKey(enclosingMethod)) {
+                SubstrateTruffleBytecodeHandlerStub defaultHandlerStub = new SubstrateTruffleBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
+                                "__stub_defaultHandler", callSite, false, null, false, true);
+                stubWrapper = universe.lookup(defaultHandlerStub);
+                universe.getBigbang().addRootMethod(stubWrapper, true, "Default bytecode handler stub");
+
+                registeredBytecodeHandlers.put(enclosingMethod, stubWrapper);
+            }
         }
+
         return false;
     }
 }
