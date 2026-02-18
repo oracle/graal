@@ -369,27 +369,28 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
         private final boolean layeredBuild;
         private final AnnotationExtractor extractor;
-        private final Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector;
         /** Callback to be executed before the singleton is published in the registry. */
         private final BiConsumer<Class<?>, SingletonInfo> singletonRegistrationCallback;
+        /** Callback to be executed before a singleton is registered. */
         private final BiConsumer<Object, SingletonTraitMap> singletonValidationCallback;
+        /** Mechanism to inject additional traits on singleton registration. */
+        private final Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector;
 
         public HostedManagement() {
-            this(null, null, null, null);
+            this(null, null, null, null, null);
         }
 
         public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor, BiConsumer<Class<?>, SingletonInfo> registrationCallback,
-                        BiConsumer<Object, SingletonTraitMap> singletonValidationCallback) {
+                        BiConsumer<Object, SingletonTraitMap> singletonValidationCallback, Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector) {
             this.configObjects = new ConcurrentHashMap<>();
             this.singletonToTraitMap = new ConcurrentIdentityHashMap<>();
             this.singletonRegistrationCallback = registrationCallback;
             this.singletonValidationCallback = singletonValidationCallback;
+            this.singletonTraitInjector = singletonTraitInjector;
             if (support != null) {
                 this.layeredBuild = support.buildingImageLayer;
-                this.singletonTraitInjector = support.getSingletonTraitInjector();
             } else {
                 this.layeredBuild = false;
-                this.singletonTraitInjector = null;
             }
             this.extractor = extractor;
         }
@@ -412,7 +413,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 /*
                  * We are adding injected traits after checking for forbidden kinds because they do
                  * not adhere to the same restrictions (e.g., sometimes a singleton in a shared
-                 * layer will be labelled as ApplicationLayerOnly).
+                 * layer will be labeled as ApplicationLayerOnly).
                  */
                 if (singletonTraitInjector != null) {
                     for (var trait : singletonTraitInjector.apply(key)) {
