@@ -561,7 +561,9 @@ public class NativeImageGenerator {
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue)) {
             var builderTempDir = tempDirectoryProvider.getTemporaryBuildDirectory();
             HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
-            HostedManagement hostedSingletonManagement = new HostedManagement(imageLayerSupport, loader.classLoaderSupport.annotationExtractor);
+            /* The callbacks need be installed early, before any singleton is registered. */
+            var registrationCallback = imageLayerSupport.getSingletonRegistrationCallback();
+            HostedManagement hostedSingletonManagement = new HostedManagement(imageLayerSupport, loader.classLoaderSupport.annotationExtractor, registrationCallback);
             HostedManagement.install(hostedSingletonManagement);
             NativeImageGenerator.loadAndInstallLayeredSingletons(imageLayerSupport, hostedSingletonManagement);
 

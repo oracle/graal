@@ -34,6 +34,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.locks.Lock;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
@@ -55,6 +58,8 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
+import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
+import com.oracle.svm.core.util.ConcurrentUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ImageSingletonsSupportImpl;
@@ -69,7 +74,9 @@ import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
 import com.oracle.svm.shaded.org.capnproto.Serialize;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.LogUtils;
@@ -202,6 +209,38 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
         return typeResult.get();
+    }
+
+    /**
+     * It registers a callback that is executed for each singleton exactly once. Note that a
+     * singleton object can be associated with multiple keys, so it's not enough to synchronize on
+     * the {@link Class} singleton key.
+     * <p>
+     * It uses a map to tracks the status of singletons for which a registration callback needs to
+     * be executed upon installation. The key will always be the singleton object, and the value
+     * will be either a {@link Boolean} or {@link Lock} based on whether the callback's execution is
+     * still in progress or has completed.
+     *
+     * @return a callback to be executed on singleton registration
+     */
+    public BiConsumer<Class<?>, ImageSingletonsSupportImpl.SingletonInfo> getSingletonRegistrationCallback() {
+        boolean extensionLayerBuild = buildingImageLayer && !buildingInitialLayer;
+        if (extensionLayerBuild) {
+            ConcurrentIdentityHashMap<Object, Object> singletonRegistrationCallbackStatus = new ConcurrentIdentityHashMap<>();
+            return (key, info) -> {
+                if (singletonLoader.hasRegistrationCallback(key)) {
+                    ConcurrentUtils.synchronizeRunnableExecution(info.singleton(), new Runnable() {
+                        @Override
+                        @SuppressWarnings("unchecked")
+                        public void run() {
+                            Optional<LayeredCallbacksSingletonTrait> trait = info.traitMap().getTrait(LayeredCallbacksSingletonTrait.class);
+                            ((SingletonLayeredCallbacks<Object>) trait.get().metadata()).onSingletonRegistration(singletonLoader.getImageSingletonLoader(key), info.singleton());
+                        }
+                    }, singletonRegistrationCallbackStatus);
+                }
+            };
+        }
+        return null;
     }
 
     public Function<Class<?>, SingletonTrait<?>[]> getSingletonTraitInjector() {

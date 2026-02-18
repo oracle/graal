@@ -39,7 +39,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -51,10 +51,8 @@ import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
-import com.oracle.svm.core.util.ConcurrentUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.SingletonAccessFlags;
 import com.oracle.svm.shared.singletons.traits.AccessSingletonTrait;
@@ -376,35 +374,26 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
          */
         private final Map<Class<?>, SingletonInfo> configObjects;
         private final Map<Object, SingletonTraitMap> singletonToTraitMap;
-        /**
-         * Tracks the status of singletons for which a registration callback needs to be executed
-         * upon installation. The key will always be the singleton object, and the value will be
-         * either a {@link Boolean} or {@link Lock} based on whether the callback's execution is
-         * still in progress or has completed.
-         */
-        private final ConcurrentIdentityHashMap<Object, Object> singletonRegistrationCallbackStatus;
 
         private final EnumSet<SingletonLayeredInstallationKind> forbiddenInstallationKinds;
         private final boolean layeredBuild;
-        private final boolean extensionLayerBuild;
         private final AnnotationExtractor extractor;
         private final Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector;
-        private final SVMImageLayerSingletonLoader singletonLoader;
+        /** Callback to be executed before the singleton is published in the registry. */
+        private final BiConsumer<Class<?>, SingletonInfo> singletonRegistrationCallback;
 
         public HostedManagement() {
-            this(null, null);
+            this(null, null, null);
         }
 
-        public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor) {
+        public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor, BiConsumer<Class<?>, SingletonInfo> registrationCallback) {
             this.configObjects = new ConcurrentHashMap<>();
             this.singletonToTraitMap = new ConcurrentIdentityHashMap<>();
             forbiddenInstallationKinds = EnumSet.noneOf(SingletonLayeredInstallationKind.class);
+            this.singletonRegistrationCallback = registrationCallback;
             if (support != null) {
                 this.layeredBuild = support.buildingImageLayer;
-                this.extensionLayerBuild = support.buildingImageLayer && !support.buildingInitialLayer;
                 this.singletonTraitInjector = support.getSingletonTraitInjector();
-                this.singletonLoader = support.getSingletonLoader();
-                this.singletonRegistrationCallbackStatus = extensionLayerBuild ? new ConcurrentIdentityHashMap<>() : null;
                 if (support.buildingImageLayer) {
                     if (!support.buildingApplicationLayer) {
                         forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.APP_LAYER_ONLY);
@@ -415,10 +404,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 }
             } else {
                 this.layeredBuild = false;
-                this.extensionLayerBuild = false;
                 this.singletonTraitInjector = null;
-                this.singletonLoader = null;
-                this.singletonRegistrationCallbackStatus = null;
             }
             this.extractor = extractor;
         }
@@ -488,21 +474,13 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 }
             });
 
-            /* Run onSingletonRegistration hook if needed. */
-            if (extensionLayerBuild) {
-                if (singletonLoader.hasRegistrationCallback(key)) {
-                    ConcurrentUtils.synchronizeRunnableExecution(value, new Runnable() {
-                        @Override
-                        @SuppressWarnings("unchecked")
-                        public void run() {
-                            Optional<LayeredCallbacksSingletonTrait> trait = traitMap.getTrait(LayeredCallbacksSingletonTrait.class);
-                            ((SingletonLayeredCallbacks<Object>) trait.get().metadata()).onSingletonRegistration(singletonLoader.getImageSingletonLoader(key), value);
-                        }
-                    }, singletonRegistrationCallbackStatus);
-                }
+            SingletonInfo singletonInfo = new SingletonInfo(value, traitMap);
+            if (singletonRegistrationCallback != null) {
+                /* Run the singleton registration callback before publishing the singleton. */
+                singletonRegistrationCallback.accept(key, singletonInfo);
             }
 
-            Object prevValue = configObjects.putIfAbsent(key, new SingletonInfo(value, traitMap));
+            Object prevValue = configObjects.putIfAbsent(key, singletonInfo);
             UserError.guarantee(prevValue == null, "ImageSingletons.add must not overwrite existing key %s%nExisting value: %s%nNew value: %s", key.getTypeName(), prevValue, value);
         }
 
