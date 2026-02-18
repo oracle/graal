@@ -97,13 +97,13 @@ public class InitialLayerFeature implements InternalFeature {
         MetaAccessProvider metaAccess = access.getProviders().getMetaAccess();
         ConstantReflectionProvider constantReflection = access.getProviders().getConstantReflection();
 
-        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, access.elems.java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class,
+        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, access.elements.java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class,
                         Class[].class);
-        ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, access.elems.jdk_internal_loader_ClassLoaders, "appClassLoader");
+        ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, access.elements.jdk_internal_loader_ClassLoaders, "appClassLoader");
 
         JavaConstant appClassLoader = access.invoke(appClassLoaderMethod, null);
         JavaConstant uninterruptible = constantReflection.asJavaClass(uninterruptibleType);
-        JavaConstant interfaces = access.asArrayConstant(access.elems.java_lang_Class, uninterruptible);
+        JavaConstant interfaces = access.asArrayConstant(access.elements.java_lang_Class, uninterruptible);
 
         JavaConstant proxyClass = access.invoke(getProxyClassMethod, null, appClassLoader, interfaces);
         return constantReflection.asJavaType(proxyClass);

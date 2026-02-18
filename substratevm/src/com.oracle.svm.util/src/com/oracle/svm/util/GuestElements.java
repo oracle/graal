@@ -42,7 +42,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This class contains common guest elements ({@link ResolvedJavaType}, {@link ResolvedJavaMethod},
  * {@link ResolvedJavaField}) used throughout the code base. They are looked up via the
  * {@code lookup*} methods from {@link VMAccess}. Use the static {@link GuestAccess#elements()}
- * method or the {@link GuestAccess#elems} instance field to retrieve an instance of this class.
+ * method or the {@link GuestAccess#elements} instance field to retrieve an instance of this class.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl {

@@ -84,7 +84,7 @@ import jdk.vm.ci.meta.annotation.Annotated;
 public final class GuestAccess implements VMAccess {
 
     private final VMAccess delegate;
-    public final GuestElements elems;
+    public final GuestElements elements;
 
     // Caches
     private final Map<Class<?>, ResolvedJavaType> typeCache = new ConcurrentHashMap<>();
@@ -111,7 +111,7 @@ public final class GuestAccess implements VMAccess {
         this.constantReflection = providers.getConstantReflection();
         this.snippetReflection = providers.getSnippetReflection();
         /* This must be last because it needs a fully initialized GuestAccess instance. */
-        this.elems = new GuestElementsImpl();
+        this.elements = new GuestElementsImpl();
     }
 
     /// Prefix of system properties used to configure guest access.
@@ -296,7 +296,7 @@ public final class GuestAccess implements VMAccess {
     }
 
     public static GuestElements elements() {
-        return get().elems;
+        return get().elements;
     }
 
     /**
@@ -433,14 +433,14 @@ public final class GuestAccess implements VMAccess {
             throw new IllegalArgumentException("Not a primitive: " + primitive);
         }
         return switch (primitive.getJavaKind()) {
-            case Boolean -> invokeStatic(elems.java_lang_Boolean_valueOf, primitive);
-            case Byte -> invokeStatic(elems.java_lang_Byte_valueOf, primitive);
-            case Short -> invokeStatic(elems.java_lang_Short_valueOf, primitive);
-            case Char -> invokeStatic(elems.java_lang_Character_valueOf, primitive);
-            case Int -> invokeStatic(elems.java_lang_Integer_valueOf, primitive);
-            case Long -> invokeStatic(elems.java_lang_Long_valueOf, primitive);
-            case Float -> invokeStatic(elems.java_lang_Float_valueOf, primitive);
-            case Double -> invokeStatic(elems.java_lang_Double_valueOf, primitive);
+            case Boolean -> invokeStatic(elements.java_lang_Boolean_valueOf, primitive);
+            case Byte -> invokeStatic(elements.java_lang_Byte_valueOf, primitive);
+            case Short -> invokeStatic(elements.java_lang_Short_valueOf, primitive);
+            case Char -> invokeStatic(elements.java_lang_Character_valueOf, primitive);
+            case Int -> invokeStatic(elements.java_lang_Integer_valueOf, primitive);
+            case Long -> invokeStatic(elements.java_lang_Long_valueOf, primitive);
+            case Float -> invokeStatic(elements.java_lang_Float_valueOf, primitive);
+            case Double -> invokeStatic(elements.java_lang_Double_valueOf, primitive);
             default -> throw new IllegalArgumentException("Unsupported primitive kind: " + primitive.getJavaKind());
         };
     }
@@ -485,8 +485,8 @@ public final class GuestAccess implements VMAccess {
     }
 
     @Override
-    public JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements) {
-        return delegate.asArrayConstant(componentType, elements);
+    public JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... arrayElements) {
+        return delegate.asArrayConstant(componentType, arrayElements);
     }
 
     @Override
