@@ -34,9 +34,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.impl.BarrieredAccess;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -53,6 +53,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -60,7 +61,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.word.impl.BarrieredAccess;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -169,8 +169,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             monitorTypes.put(DynamicHubCompanion.class, false);
 
             /*
-             * When a thread exits, it locks its own thread mutex and changes its state to
-             * TERMINATED. Without an explict monitor slot, the thread could get parked when
+             * When a thread exits, it synchronizes on its Java Thread object and changes its state
+             * to TERMINATED. Without an explicit monitor slot, the thread could get parked when
              * unlocking its own mutex (because we need to lock the shared monitor map). If the
              * thread gets blocked during unlocking, its thread state would change unexpectedly.
              */

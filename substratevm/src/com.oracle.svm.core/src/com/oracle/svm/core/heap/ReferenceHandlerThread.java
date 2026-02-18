@@ -34,12 +34,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -84,7 +84,7 @@ public final class ReferenceHandlerThread implements Runnable {
     }
 
     @Uninterruptible(reason = "Executed during teardown after VMThreads#threadExit")
-    public static void waitUntilDetached() {
+    public static void waitInNativeUntilDetached() {
         if (!isSupported()) {
             return;
         }

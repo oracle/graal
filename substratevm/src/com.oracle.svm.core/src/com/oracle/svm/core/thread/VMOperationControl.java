@@ -264,7 +264,7 @@ public final class VMOperationControl {
                 // it right away
                 immediateQueues.enqueueAndExecute(operation, data);
             } else {
-                VMThreads.THREAD_MUTEX.guaranteeNotOwner("could result in deadlocks otherwise");
+                VMError.guarantee(ThreadLock.hasNoAccess(), "could result in deadlocks otherwise");
                 VMThreads.SAFEPOINT_MUTEX.guaranteeNotOwner("could result in deadlocks otherwise");
 
                 if (useDedicatedVMOperationThread()) {
@@ -536,13 +536,13 @@ public final class VMOperationControl {
             // Drain the safepoint queues.
             if (!nativeSafepointOperations.isEmpty() || !javaSafepointOperations.isEmpty()) {
                 boolean startedSafepoint = false;
-                boolean lockedThreadMutex = false;
+                boolean acquiredThreadLock = false;
 
                 Safepoint safepoint = Safepoint.singleton();
                 if (!safepoint.isInProgress()) {
                     startedSafepoint = true;
                     String safepointReason = getSafepointReason(nativeSafepointOperations, javaSafepointOperations);
-                    lockedThreadMutex = safepoint.startSafepoint(safepointReason);
+                    acquiredThreadLock = safepoint.startSafepoint(safepointReason);
                 }
 
                 try {
@@ -550,7 +550,7 @@ public final class VMOperationControl {
                     drain(javaSafepointOperations);
                 } finally {
                     if (startedSafepoint) {
-                        safepoint.endSafepoint(lockedThreadMutex);
+                        safepoint.endSafepoint(acquiredThreadLock);
                     }
                 }
             }
