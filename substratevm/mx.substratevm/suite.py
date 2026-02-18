@@ -689,7 +689,9 @@ suite = {
             "dependencies": [
                 "mx:JUNIT_TOOL",
                 "sdk:NATIVEIMAGE",
-                "STANDALONE_POINTSTO"
+                "STANDALONE_POINTSTO",
+                # Dependency required by GuestElements:
+                "SVM_GUEST_STAGING",
             ],
             "requires": [
                 "jdk.unsupported",
@@ -2686,6 +2688,7 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "sdk:NATIVEIMAGE",
                 "STANDALONE_POINTSTO",
+                "SVM_GUEST_STAGING",
             ],
             "testDistribution" : True,
         },
