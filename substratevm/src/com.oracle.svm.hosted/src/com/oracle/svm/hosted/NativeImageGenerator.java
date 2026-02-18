@@ -54,14 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-<<<<<<< ours
-=======
-import com.oracle.svm.common.meta.MethodVariant;
-import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.svm.hosted.analysis.ai.AIFOptions;
 import com.oracle.svm.hosted.analysis.ai.AbstractInterpretationDriver;
-import com.oracle.svm.hosted.reflect.ReflectionFeature;
->>>>>>> theirs
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -87,6 +80,7 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.hosted.analysis.ai.AIFOptions;
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
@@ -604,13 +598,8 @@ public class NativeImageGenerator {
 
         OptionValues options = HostedOptionValues.singleton();
 
-<<<<<<< ours
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GuestAccess.get().getSnippetReflection())).build();
-                        DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
-=======
-        try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
              DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
->>>>>>> theirs
             setupNativeImage(options, entryPoints, javaMainSupport, imageName, harnessSubstitutions, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
