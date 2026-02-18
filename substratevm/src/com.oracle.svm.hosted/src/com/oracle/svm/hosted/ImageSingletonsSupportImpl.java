@@ -353,19 +353,25 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             EconomicSet<Class<?>> loadedSingletonKeys = EconomicSet.emptySet();
             if (support != null && support.getSingletonLoader() != null) {
                 /*
-                 * Note eventually this may need to be moved to a later point after the Options
-                 * Image Singleton is installed.
+                 * Document what was installed during loading. Note eventually this may need to be
+                 * moved to a later point after the Options Image Singleton is installed.
                  */
-                /* Document what was installed during loading. */
-                loadedSingletonKeys = singletonDuringImageBuild.getPriorLayerLoadedSingletonKeys(support.getSingletonLoader());
+                Map<Object, EconomicSet<Class<?>>> priorLayerSingletons = support.getSingletonLoader().loadImageSingletons();
+                loadedSingletonKeys = singletonDuringImageBuild.installSingletons(priorLayerSingletons);
             }
             singletonDuringImageBuild.addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(loadedSingletonKeys));
         }
 
-        private EconomicSet<Class<?>> getPriorLayerLoadedSingletonKeys(SVMImageLayerSingletonLoader singletonLoader) {
-            var result = singletonLoader.loadImageSingletons();
+        /**
+         * Install singletons from the provided map.
+         *
+         * @param singletons mapping from singleton objects or {@link SingletonInfo} placeholders to
+         *            all the keys they should be mapped to.
+         * @return all keys for which a singleton was installed.
+         */
+        private EconomicSet<Class<?>> installSingletons(Map<Object, EconomicSet<Class<?>>> singletons) {
             EconomicSet<Class<?>> installedKeys = EconomicSet.create();
-            for (var entry : result.entrySet()) {
+            for (var entry : singletons.entrySet()) {
                 Object singletonToInstall = entry.getKey();
                 for (Class<?> key : entry.getValue()) {
                     if (singletonToInstall instanceof SingletonInfo forbiddenSingletonInfo) {
