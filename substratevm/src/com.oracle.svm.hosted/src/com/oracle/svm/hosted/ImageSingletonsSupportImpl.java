@@ -377,21 +377,17 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         private final Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector;
 
         public HostedManagement() {
-            this(null, null, null, null, null);
+            this(null, null, null, null, false);
         }
 
-        public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor, BiConsumer<Class<?>, SingletonInfo> registrationCallback,
-                        BiConsumer<Object, SingletonTraitMap> singletonValidationCallback, Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector) {
+        public HostedManagement(AnnotationExtractor extractor, BiConsumer<Class<?>, SingletonInfo> registrationCallback,
+                        BiConsumer<Object, SingletonTraitMap> singletonValidationCallback, Function<Class<?>, SingletonTrait<?>[]> singletonTraitInjector, boolean buildingImageLayer) {
             this.configObjects = new ConcurrentHashMap<>();
             this.singletonToTraitMap = new ConcurrentIdentityHashMap<>();
             this.singletonRegistrationCallback = registrationCallback;
             this.singletonValidationCallback = singletonValidationCallback;
             this.singletonTraitInjector = singletonTraitInjector;
-            if (support != null) {
-                this.layeredBuild = support.buildingImageLayer;
-            } else {
-                this.layeredBuild = false;
-            }
+            this.layeredBuild = buildingImageLayer;
             this.extractor = extractor;
         }
 
