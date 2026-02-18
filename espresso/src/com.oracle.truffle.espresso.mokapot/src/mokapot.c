@@ -2228,12 +2228,10 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **pen
     }
 
     params.version = 4;
-    char ignore_unrecognized_arguments = initArgs->ignoreUnrecognized == JNI_TRUE ? 1 : 0;
-    char exit_on_arg_parse_fail = 0;
-    params._reserved_1 = isolate_argc;
-    params._reserved_2 = isolate_argv;
-    params._reserved_3 = ignore_unrecognized_arguments;
-    params._reserved_4 = exit_on_arg_parse_fail;
+    char ignore_unrecognized_args = initArgs->ignoreUnrecognized == JNI_TRUE ? 1 : 0;
+    params.argc = isolate_argc;
+    params.argv = isolate_argv;
+    params.ignore_unrecognized_args = ignore_unrecognized_args;
 
     if (libjavavm->create_isolate(&params, &isolate, &thread) != 0) {
         if (isolate_argv != NULL) free(isolate_argv);

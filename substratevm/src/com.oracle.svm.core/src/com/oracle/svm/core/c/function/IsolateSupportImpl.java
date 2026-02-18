@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.IsolateSupport;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
@@ -49,7 +50,6 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import org.graalvm.word.impl.Word;
 
 @AutomaticallyRegisteredImageSingleton(IsolateSupport.class)
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
@@ -111,8 +111,8 @@ public final class IsolateSupportImpl implements IsolateSupport {
             params.setAuxiliaryImagePath(auxImagePath.get());
             params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
             params.setVersion(5);
-            params.setIgnoreUnrecognizedArguments(false);
-            params.setExitWhenArgumentParsingFails(false);
+            params.setIgnoreUnrecognizedArgs(false);
+            params.setForJavaMainCall(false);
             params.setArgc(argc);
             params.setArgv(argv);
             params.setIsCompilationIsolate(compilationIsolate);

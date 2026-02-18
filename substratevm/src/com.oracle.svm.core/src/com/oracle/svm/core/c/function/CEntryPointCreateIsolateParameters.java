@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.c.function;
 
-import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -73,36 +72,30 @@ public interface CEntryPointCreateIsolateParameters extends PointerBase {
     @CField("pkey")
     int protectionKey();
 
-    /**
-     * C arguments passed from the C main function into the isolate creation. These fields are not
-     * public API, therefore they are named "reserved" in the C header files, and they are not
-     * listed in the {@link CreateIsolateParameters} Java API to create isolates.
-     */
-
-    @CField("_reserved_1")
+    @CField("argc")
     int getArgc();
 
-    @CField("_reserved_1")
+    @CField("argc")
     void setArgc(int value);
 
-    @CField("_reserved_2")
+    @CField("argv")
     CCharPointerPointer getArgv();
 
-    @CField("_reserved_2")
+    @CField("argv")
     void setArgv(CCharPointerPointer value);
 
     /* fields below: version 4 */
-    @CField("_reserved_3")
-    boolean getIgnoreUnrecognizedArguments();
+    @CField("ignore_unrecognized_args")
+    boolean getIgnoreUnrecognizedArgs();
 
-    @CField("_reserved_3")
-    void setIgnoreUnrecognizedArguments(boolean value);
-
-    @CField("_reserved_4")
-    boolean getExitWhenArgumentParsingFails();
+    @CField("ignore_unrecognized_args")
+    void setIgnoreUnrecognizedArgs(boolean value);
 
     @CField("_reserved_4")
-    void setExitWhenArgumentParsingFails(boolean value);
+    boolean getForJavaMainCall();
+
+    @CField("_reserved_4")
+    void setForJavaMainCall(boolean value);
 
     /* fields below: version 5 */
     @CField("_reserved_5")
