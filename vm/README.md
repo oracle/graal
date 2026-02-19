@@ -97,7 +97,7 @@ You can either download the latest [prebuilt release](https://github.com/graalvm
     ```bash
     export JAVA_HOME="/path/to/labs-openjdk/build/your-platform/images/graal-builder-jdk"
     ```
-    (For more details, see [LabsJDK build instructions](https://github.com/graalvm/labs-openjdk/blob/master/doc/building.md#tldr-instructions-for-the-impatient)).
+    (For more details, see [LabsJDK build instructions](https://github.com/graalvm/labs-openjdk/blob/master/doc/building.md#tldr-instructions-for-the-impatient).)
 
     Now you are all set to build your custom GraalVM distribution.
 
@@ -132,7 +132,7 @@ You can either download the latest [prebuilt release](https://github.com/graalvm
 ### What is `mx`?
 
 `mx` is a CLI tool for building and testing Graal projects.
-It is developed and maintained by the Graal team, publicly available on [Github](https://github.com/graalvm/mx).
+It is developed and maintained by the Graal team, publicly available on [GitHub](https://github.com/graalvm/mx).
 `mx` works with suites. A **suite** is an `mx` construct that defines:
   - what are the dependencies of a project
   - where are the source files
@@ -167,7 +167,7 @@ For example, running:
 ```bash
 mx -p ../graal/compiler
 ```
-from the [graal-js](https://github.com/oracle/graaljs/tree/master/graal-js) directory uses the compiler suite as the primary suite.
+from [graal-js](https://github.com/oracle/graaljs/tree/master/graal-js) uses the compiler suite as the primary suite.
 
 ### Can I create IDE configurations for GraalVM projects using `mx`?
 
@@ -197,7 +197,7 @@ mx --env ce sforceimports
 
 Find examples and learn more in the [Dynamic Imports documentation](https://github.com/graalvm/mx/blob/master/docs/dynamic-imports.md).
 
-### Can I point `JAVA_HOME` to the `graal-builder-jdk` at build time instead of hardcoding it in the system configuration?
+### Can I point JAVA_HOME to the graal-builder-jdk at build time instead of hardcoding it in the system configuration?
 
 Yes, `mx` supports the `--java-home` option.
 Pass `--java-home=<path to build/<platform>/images/graal-builder-jdk/>` when invoking `mx`.
