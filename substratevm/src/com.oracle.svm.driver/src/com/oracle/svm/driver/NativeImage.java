@@ -95,7 +95,6 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.ExitStatus;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.driver.launcher.ContainerSupport;
@@ -107,6 +106,7 @@ import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
 import com.oracle.svm.shared.util.StringUtil;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -1896,6 +1896,10 @@ public class NativeImage {
 
         while (!discoveryQueue.isEmpty()) {
             ModuleReference module = discoveryQueue.poll();
+            if ("java.se".equals(module.descriptor().name())) {
+                /* Skip java.se-module pseudo-dependencies */
+                continue;
+            }
             Set<String> requiredModules = getRequiredModules(module);
             List<ModuleReference> requiredModuleReferences = requiredModules.stream()
                             .map(mn -> modules.getOrDefault(mn, null))
