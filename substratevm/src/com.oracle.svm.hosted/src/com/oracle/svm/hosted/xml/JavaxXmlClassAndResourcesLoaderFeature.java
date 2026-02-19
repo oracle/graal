@@ -33,6 +33,7 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SAXParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SchemaDVFactoryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
+import static com.oracle.svm.hosted.xml.XMLParsersRegistration.XMLCryptoTransformServiceClassesAndResources;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -62,6 +63,10 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
 
         access.registerReachabilityHandler(new TransformerClassesAndResources()::registerConfigs,
                         method(access, "javax.xml.transform.FactoryFinder", "find", Class.class, String.class));
+
+        // TransformService of java.xml.crypto module
+        optionalMethod(access, "com.sun.org.apache.xml.internal.security.utils.I18n", "init", String.class, String.class)
+                        .ifPresent(method -> access.registerReachabilityHandler(new XMLCryptoTransformServiceClassesAndResources()::registerConfigs, method));
 
         access.registerReachabilityHandler(new DOMImplementationRegistryClasses()::registerConfigs,
                         method(access, "org.w3c.dom.bootstrap.DOMImplementationRegistry", "newInstance"));
