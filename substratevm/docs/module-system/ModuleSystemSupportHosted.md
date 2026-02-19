@@ -184,7 +184,7 @@ if [[ "${module_launcher}" == "True" ]]; then
 For native-image `Feature` implementations that are not always used (e.g. because they are only enabled when its related
 option is on) and all other optional code paths in the builder it makes sense to open up packages/classes only
 on-demand. To make this process as painless as possible we have the `access*`-methods in class
-`com.oracle.svm.util.ModuleSupport` that is part of our `org.graalvm.nativeimage.base` module.
+`com.oracle.svm.shared.util.ModuleSupport` that is part of our `org.graalvm.nativeimage.shared` module.
 ```java
 class ModuleSupport {
 

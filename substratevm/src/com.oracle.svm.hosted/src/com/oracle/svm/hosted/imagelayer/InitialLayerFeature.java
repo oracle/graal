@@ -44,7 +44,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestTypes;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.ModifiableOptionValues;
 import jdk.graal.compiler.vmaccess.VMAccess;

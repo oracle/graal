@@ -38,7 +38,7 @@ import java.util.concurrent.ForkJoinWorkerThread;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 /**
  * NativeImageCustomSystemClassLoader is a minimal {@link ClassLoader} that forwards loading of a

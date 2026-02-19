@@ -100,7 +100,7 @@ public class LayeredAnnotationProcessor extends AbstractProcessor {
                             import com.oracle.svm.shared.singletons.traits.SingletonTraits;
                             import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
                             import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
-                            import com.oracle.svm.util.ReflectionUtil;
+                            import com.oracle.svm.shared.util.ReflectionUtil;
 
                             @AutomaticallyRegisteredFeature
                             @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)

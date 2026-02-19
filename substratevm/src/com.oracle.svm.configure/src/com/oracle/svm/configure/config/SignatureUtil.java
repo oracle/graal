@@ -29,7 +29,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.shared.util.ModuleSupport;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;

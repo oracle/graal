@@ -42,7 +42,7 @@ import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicSet;

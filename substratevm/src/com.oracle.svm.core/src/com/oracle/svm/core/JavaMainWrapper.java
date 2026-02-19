@@ -86,11 +86,11 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.ModuleSupport;
+import com.oracle.svm.shared.util.ModuleSupport.Access;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ModuleSupport.Access;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 @InternalVMMethod
 public class JavaMainWrapper {

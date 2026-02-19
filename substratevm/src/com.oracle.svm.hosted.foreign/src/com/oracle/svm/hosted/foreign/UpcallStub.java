@@ -64,7 +64,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestTypes;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.memory.BarrierType;

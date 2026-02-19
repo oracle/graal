@@ -39,6 +39,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
+import com.oracle.svm.shared.util.ModuleSupport;
+
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueType;
 import jdk.graal.compiler.annotation.EnumElement;

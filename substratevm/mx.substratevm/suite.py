@@ -1397,6 +1397,11 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "sdk:COLLECTIONS",
             ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.module",
+                ],
+            },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "21+",
             "workingSets": "SVM",
@@ -1989,6 +1994,9 @@ suite = {
                     """com.oracle.svm.shared.util to
                             com.oracle.svm.extraimage_enterprise,
                             com.oracle.svm.jdwp.server,
+                            com.oracle.svm.svm_enterprise,
+                            com.oracle.svm.svm_enterprise.llvm,
+                            com.oracle.svm_enterprise.ml_dataset,
                             com.oracle.truffle.enterprise.svm,
                             org.graalvm.extraimage.builder,
                             org.graalvm.extraimage.librarysupport,
@@ -2003,6 +2011,8 @@ suite = {
                             org.graalvm.nativeimage.foreign,
                             org.graalvm.nativeimage.guest,
                             org.graalvm.nativeimage.guest.staging,
+                            org.graalvm.nativeimage.junitsupport,
+                            org.graalvm.nativeimage.pointsto,
                             org.graalvm.truffle.runtime.svm""",
                     """com.oracle.svm.shared.singletons to
                             org.graalvm.nativeimage.builder""",

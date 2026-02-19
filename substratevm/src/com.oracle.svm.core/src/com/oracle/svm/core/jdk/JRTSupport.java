@@ -50,7 +50,7 @@ import com.oracle.svm.core.jdk.JRTSupport.JRTDisabled;
 import com.oracle.svm.core.jdk.JRTSupport.JRTEnabled;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;

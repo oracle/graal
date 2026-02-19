@@ -38,7 +38,7 @@ import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.StampFactory;

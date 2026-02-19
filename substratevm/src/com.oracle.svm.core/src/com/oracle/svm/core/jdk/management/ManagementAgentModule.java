@@ -31,7 +31,7 @@ import java.util.function.BooleanSupplier;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 

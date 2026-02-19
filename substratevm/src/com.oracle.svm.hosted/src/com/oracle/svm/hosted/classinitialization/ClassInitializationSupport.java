@@ -58,12 +58,12 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.HostedModuleSupport;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.core.common.ContextClassLoaderScope;
@@ -646,7 +646,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         Set<String> jdkModules = Set.of("java.base", "jdk.management", "java.management", "org.graalvm.collections");
 
         String classModuleName = jClass.getModule().getName();
-        boolean alwaysReachedModule = classModuleName != null && (ModuleSupport.SYSTEM_MODULES.contains(classModuleName) || jdkModules.contains(classModuleName));
+        boolean alwaysReachedModule = classModuleName != null && (HostedModuleSupport.SYSTEM_MODULES.contains(classModuleName) || jdkModules.contains(classModuleName));
         return jClass.isPrimitive() ||
                         jClass.isArray() ||
                         alwaysReachedModule ||

@@ -29,7 +29,7 @@ import java.lang.reflect.Modifier;
 
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.vm.ci.common.JVMCIError;
 

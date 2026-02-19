@@ -26,7 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Method;
 
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.internal.loader.ClassLoaders;
 
