@@ -31,9 +31,10 @@ import com.oracle.svm.shared.util.VMError;
 
 public class ConcurrentUtils {
     /**
-     * Ensures the provided runnable will execute only once per singleton object. Regardless of
-     * which thread executes the runnable, this method will not return until the runnable has been
-     * executed.
+     * Ensures the provided {@link Runnable} will execute only once per singleton object. Regardless
+     * of which thread executes the runnable, this method will not return until the runnable has
+     * been executed. Currently, the implementation ensures that at most one {@link Runnable} is
+     * executed per singleton object at any time.
      * 
      * @param singleton the singleton object to be used as a key in the status map
      * @param runnable the runnable to be executed

@@ -231,9 +231,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      * singleton object can be associated with multiple keys, so it's not enough to synchronize on
      * the {@link Class} singleton key.
      * <p>
-     * It uses a map to tracks the status of singletons for which a registration callback needs to
-     * be executed upon installation. The key will always be the singleton object, and the value
-     * will be either a {@link Boolean} or {@link Lock} based on whether the callback's execution is
+     * It uses a map to track the status of singletons for which a registration callback needs to be
+     * executed upon installation. The key will always be the singleton object, and the value will
+     * be either a {@link Boolean} or {@link Lock} based on whether the callback's execution is
      * still in progress or has completed.
      *
      * @return a callback to be executed on singleton registration
