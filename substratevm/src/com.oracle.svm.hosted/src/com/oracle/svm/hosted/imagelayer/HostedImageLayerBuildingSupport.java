@@ -238,7 +238,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      *
      * @return a callback to be executed on singleton registration
      */
-    public BiConsumer<Class<?>, ImageSingletonsSupportImpl.SingletonInfo> getSingletonRegistrationCallback() {
+    public BiConsumer<Class<?>, ImageSingletonsSupportImpl.SingletonInfo> createSingletonRegistrationCallback() {
         boolean extensionLayerBuild = buildingImageLayer && !buildingInitialLayer;
         if (extensionLayerBuild) {
             ConcurrentIdentityHashMap<Object, Object> singletonRegistrationCallbackStatus = new ConcurrentIdentityHashMap<>();
@@ -262,7 +262,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         forbiddenInstallationKinds.add(kind);
     }
 
-    public BiConsumer<Object, ImageSingletonsSupportImpl.SingletonTraitMap> getSingletonValidationCallback() {
+    public BiConsumer<Object, ImageSingletonsSupportImpl.SingletonTraitMap> createSingletonValidationCallback() {
         if (buildingImageLayer) {
             return (value, traitMap) -> {
                 var installationTrait = traitMap.getTrait(LayeredInstallationKindSingletonTrait.class);

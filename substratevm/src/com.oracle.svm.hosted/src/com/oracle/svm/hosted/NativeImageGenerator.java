@@ -268,14 +268,14 @@ import com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
-import com.oracle.svm.shared.util.ReflectionUtil;
-import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -562,8 +562,8 @@ public class NativeImageGenerator {
             var builderTempDir = tempDirectoryProvider.getTemporaryBuildDirectory();
             HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
             /* The callbacks need be installed early, before any singleton is registered. */
-            var registrationCallback = imageLayerSupport.getSingletonRegistrationCallback();
-            var validationCallback = imageLayerSupport.getSingletonValidationCallback();
+            var registrationCallback = imageLayerSupport.createSingletonRegistrationCallback();
+            var validationCallback = imageLayerSupport.createSingletonValidationCallback();
             var singletonTraitInjector = imageLayerSupport.getSingletonTraitInjector();
             HostedManagement hostedSingletonManagement = new HostedManagement(loader.classLoaderSupport.annotationExtractor,
                             registrationCallback, validationCallback, singletonTraitInjector, imageLayerSupport.buildingImageLayer);
