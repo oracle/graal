@@ -485,6 +485,11 @@ public final class GuestAccess implements VMAccess {
     }
 
     @Override
+    public void writeField(ResolvedJavaField field, JavaConstant receiver, JavaConstant value) {
+        delegate.writeField(OriginalFieldProvider.getOriginalField(field), receiver, value);
+    }
+
+    @Override
     public JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... arrayElements) {
         return delegate.asArrayConstant(componentType, arrayElements);
     }

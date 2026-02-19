@@ -463,6 +463,14 @@ final class EspressoExternalVMAccess implements VMAccess {
     }
 
     @Override
+    public void writeField(ResolvedJavaField field, JavaConstant receiver, JavaConstant value) {
+        if (!(field instanceof EspressoExternalResolvedJavaField espressoField)) {
+            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaField, got " + safeGetClass(field));
+        }
+        throw JVMCIError.unimplemented("writeField");
+    }
+
+    @Override
     public JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements) {
         if (!(componentType.getArrayClass() instanceof EspressoExternalResolvedArrayType arrayType)) {
             throw new IllegalArgumentException("Invalid component type");

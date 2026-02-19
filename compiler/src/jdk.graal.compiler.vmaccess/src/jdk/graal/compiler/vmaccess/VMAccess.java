@@ -101,6 +101,27 @@ public interface VMAccess {
     JavaConstant invoke(ResolvedJavaMethod method, JavaConstant receiver, JavaConstant... args);
 
     /**
+     * Writes a value to a {@link ResolvedJavaField}.
+     *
+     * Note that if the implementation is backed by a {@link Field} object, this call will ensure
+     * it is {@linkplain Field#setAccessible(boolean) accessible} before attempting writing the
+     * field.
+     *
+     * @param field the field to write.
+     * @param receiver the receiver object for an instance field, passed as a {@link JavaConstant}.
+     *            This must be {@code null} for a {@linkplain ResolvedJavaField#isStatic() static}
+     *            field.
+     * @param value the value to be written, passed as a {@link JavaConstant}. Implementations must
+     *            perform the same conversions as in the Java Language Specification's strict
+     *            invocation context (5.3), analogous to {@link #invoke}.
+     * @throws IllegalArgumentException if {@code receiver} is non-null for a static field, if
+     *             {@code receiver} is null for a non-static field, or if {@code value} cannot be
+     *             converted/assigned to the field type
+     * @throws InvocationException if writing the field triggers an exception in the observed VM
+     */
+    void writeField(ResolvedJavaField field, JavaConstant receiver, JavaConstant value);
+
+    /**
      * Creates an array from an array of values.
      *
      * @param componentType the component type for the array to be created
