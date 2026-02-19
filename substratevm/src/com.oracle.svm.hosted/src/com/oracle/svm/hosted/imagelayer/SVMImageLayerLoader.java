@@ -92,7 +92,6 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -128,6 +127,7 @@ import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.shaded.org.capnproto.StructList;
 import com.oracle.svm.shaded.org.capnproto.Text;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -446,14 +446,18 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         }
         if (wrappedType.isSerializationGenerated()) {
             SerializationGenerated.Reader sg = wrappedType.getSerializationGenerated();
-            String rawDeclaringClassName = sg.getRawDeclaringClass().toString();
-            String rawTargetConstructorClassName = sg.getRawTargetConstructor().toString();
-            Class<?> rawDeclaringClass = imageLayerBuildingSupport.lookupClass(false, rawDeclaringClassName);
-            Class<?> rawTargetConstructorClass = imageLayerBuildingSupport.lookupClass(false, rawTargetConstructorClassName);
+            int rawDeclaringClassId = sg.getRawDeclaringClassId();
+            int rawTargetConstructorClassId = sg.getRawTargetConstructorId();
+            AnalysisType rawDeclaringType = getAnalysisTypeForBaseLayerId(rawDeclaringClassId);
+            AnalysisType rawTargetConstructorType = getAnalysisTypeForBaseLayerId(rawTargetConstructorClassId);
+            Class<?> rawDeclaringClass = rawDeclaringType.getJavaClass();
+            Class<?> rawTargetConstructorClass = rawTargetConstructorType.getJavaClass();
             Constructor<?> rawTargetConstructor = ReflectionUtil.lookupConstructor(rawTargetConstructorClass);
             Constructor<?> constructor = ReflectionFactory.getReflectionFactory().newConstructorForSerialization(rawDeclaringClass, rawTargetConstructor);
-            SerializationSupport.currentLayer().addConstructorAccessor(rawDeclaringClass, rawTargetConstructorClass, SerializationFeature.getConstructorAccessor(constructor));
-            Class<?> constructorAccessor = SerializationSupport.getSerializationConstructorAccessor(rawDeclaringClass, rawTargetConstructorClass).getClass();
+            DynamicHub rawDeclaringHub = typeToHub(rawDeclaringType);
+            DynamicHub rawTargetConstructorHub = typeToHub(rawTargetConstructorType);
+            SerializationSupport.currentLayer().addConstructorAccessor(rawDeclaringHub, rawTargetConstructorHub, SerializationFeature.getConstructorAccessor(constructor));
+            Class<?> constructorAccessor = SerializationSupport.getHostedSerializationConstructorAccessor(rawDeclaringHub, rawTargetConstructorHub).getClass();
             metaAccess.lookupJavaType(constructorAccessor);
             return true;
         } else if (wrappedType.isLambda()) {
