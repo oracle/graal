@@ -467,7 +467,7 @@ final class EspressoExternalVMAccess implements VMAccess {
         if (!(field instanceof EspressoExternalResolvedJavaField espressoField)) {
             throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaField, got " + safeGetClass(field));
         }
-        throw JVMCIError.unimplemented("writeField");
+        espressoField.writeValue(receiver, value);
     }
 
     @Override
@@ -614,6 +614,7 @@ final class EspressoExternalVMAccess implements VMAccess {
             case "java.lang.IllegalArgumentException" -> new IllegalArgumentException(message);
             case "java.lang.IndexOutOfBoundsException" -> new IndexOutOfBoundsException(message);
             case "java.lang.InstantiationException" -> new InstantiationException(message);
+            case "java.lang.reflect.InaccessibleObjectException" -> new java.lang.reflect.InaccessibleObjectException(message);
             case "java.lang.NegativeArraySizeException" -> new NegativeArraySizeException(message);
             case "java.lang.NoSuchFieldException" -> new NoSuchFieldException(message);
             case "java.lang.NoSuchMethodException" -> new NoSuchMethodException(message);

@@ -26,6 +26,8 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaField;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
@@ -106,6 +108,50 @@ final class EspressoExternalResolvedJavaField extends AbstractEspressoResolvedJa
 
     public Value readValue(Value receiver) {
         return vmFieldMirror.invokeMember("read", receiver);
+    }
+
+    void writeValue(JavaConstant receiver, JavaConstant value) {
+        if (value == null) {
+            throw new NullPointerException("value");
+        }
+
+        final Value receiverValue;
+        if (isStatic()) {
+            if (receiver != null) {
+                throw new IllegalArgumentException("Static field write requires null receiver");
+            }
+            receiverValue = null;
+        } else {
+            if (receiver == null) {
+                throw new NullPointerException("receiver");
+            }
+            if (receiver.isNull()) {
+                throw new IllegalArgumentException("Receiver is null");
+            }
+            if (!(receiver instanceof EspressoExternalObjectConstant espressoReceiver)) {
+                throw new IllegalArgumentException("Expected an espresso object receiver, got " + receiver.getClass().getName());
+            }
+            receiverValue = espressoReceiver.getValue();
+        }
+
+        JavaKind kind = getJavaKind();
+        final Object boxed;
+        if (kind == JavaKind.Object) {
+            if (value.isNull()) {
+                boxed = null;
+            } else if (value instanceof EspressoExternalObjectConstant objConst) {
+                boxed = objConst.getValue();
+            } else {
+                throw new IllegalArgumentException("Expected an espresso object constant, got " + value.getClass().getName());
+            }
+        } else {
+            if (kind != value.getJavaKind()) {
+                throw new IllegalArgumentException("Expected value kind " + kind + " but got " + value.getJavaKind());
+            }
+            boxed = value.asBoxedPrimitive();
+        }
+
+        getAccess().invokeJVMCIHelper("writeField", vmFieldMirror, receiverValue, boxed);
     }
 
     /**

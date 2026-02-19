@@ -93,7 +93,7 @@ public interface VMAccess {
      * @param args Arguments of types matching the {@linkplain ResolvedJavaMethod#getSignature()
      *            signature} passed as {@link JavaConstant} objects. The arguments are subject to
      *            conversions as described in the Java Language Specifications' strict invocation
-     *            context (5.3).
+     *            context (JLS 5.3).
      * @return the result as a {@link JavaConstant} or null if the method has a void return type.
      * @throws InvocationException if the invoked method throws an exception, it is wrapped in an
      *             {@link InvocationException}.
@@ -113,11 +113,10 @@ public interface VMAccess {
      *            field.
      * @param value the value to be written, passed as a {@link JavaConstant}. Implementations must
      *            perform the same conversions as in the Java Language Specification's strict
-     *            invocation context (5.3), analogous to {@link #invoke}.
+     *            invocation context (JLS 5.3), analogous to {@link #invoke}.
      * @throws IllegalArgumentException if {@code receiver} is non-null for a static field, if
      *             {@code receiver} is null for a non-static field, or if {@code value} cannot be
      *             converted/assigned to the field type
-     * @throws InvocationException if writing the field triggers an exception in the observed VM
      */
     void writeField(ResolvedJavaField field, JavaConstant receiver, JavaConstant value);
 

@@ -127,6 +127,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.GET_REFLECT_EXECUTABLE,
                         InvokeMember.READ_OBJECT_ARRAY_ELEMENT,
                         InvokeMember.GET_EXCEPTION_OBJECT,
+                        InvokeMember.WRITE_FIELD,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -192,6 +193,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String GET_REFLECT_EXECUTABLE = "getReflectExecutable";
         static final String READ_OBJECT_ARRAY_ELEMENT = "readObjectArrayElement";
         static final String GET_EXCEPTION_OBJECT = "getExceptionObject";
+        static final String WRITE_FIELD = "writeField";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -1190,6 +1192,68 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             }
             typeError.enter(node);
             throw UnsupportedTypeException.create(arguments, "Expected a java.lang.reflect.Executable object");
+        }
+
+        @Specialization(guards = "WRITE_FIELD.equals(member)")
+        static Object writeField(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Exclusive InlinedBranchProfile typeError,
+                        @Cached @Exclusive InlinedBranchProfile arityError,
+                        @Cached @Exclusive InlinedConditionProfile isStatic) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 3) {
+                arityError.enter(node);
+                throw ArityException.create(3, 3, arguments.length);
+            }
+            if (!(arguments[0] instanceof Field field)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a com.oracle.truffle.espresso.impl.Field");
+            }
+            StaticObject receiverObj;
+            Object valueObj = arguments[2];
+
+            if (isStatic.profile(node, field.isStatic())) {
+                receiverObj = field.getDeclaringKlass().tryInitializeAndGetStatics();
+            } else {
+                if (arguments[1] instanceof StaticObject so) {
+                    if (!field.getDeclaringKlass().isAssignableFrom(so.getKlass())) {
+                        typeError.enter(node);
+                        throw UnsupportedTypeException.create(arguments, concat("Expected receiver of type ", field.getDeclaringKlass().getJavaName()));
+                    }
+                    receiverObj = so;
+                } else {
+                    typeError.enter(node);
+                    throw UnsupportedTypeException.create(arguments, "Expected a com.oracle.truffle.espresso.runtime.staticobject.StaticObject receiver");
+                }
+            }
+            switch (field.getKind()) {
+                case Boolean -> field.setBoolean(receiverObj, (boolean) valueObj);
+                case Byte -> field.setByte(receiverObj, (byte) valueObj);
+                case Char -> field.setChar(receiverObj, (char) valueObj);
+                case Short -> field.setShort(receiverObj, (short) valueObj);
+                case Int -> field.setInt(receiverObj, (int) valueObj);
+                case Long -> field.setLong(receiverObj, (long) valueObj);
+                case Float -> field.setFloat(receiverObj, (float) valueObj);
+                case Double -> field.setDouble(receiverObj, (double) valueObj);
+                case Object -> {
+                    if (!(valueObj instanceof StaticObject valueStaticObject)) {
+                        typeError.enter(node);
+                        throw UnsupportedTypeException.create(arguments, "Expected a com.oracle.truffle.espresso.runtime.staticobject.StaticObject value");
+                    }
+                    var fieldType = field.resolveTypeKlass();
+                    // interface fields can contain any object
+                    if (!fieldType.isInterface() && !fieldType.isAssignableFrom(valueStaticObject.getKlass())) {
+                        typeError.enter(node);
+                        throw UnsupportedTypeException.create(arguments, concat("Expected object of type ", fieldType.getJavaName()));
+                    }
+                    field.setObject(receiverObj, valueObj);
+                }
+                default -> {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
+                }
+            }
+            return receiverObj;
         }
     }
 
