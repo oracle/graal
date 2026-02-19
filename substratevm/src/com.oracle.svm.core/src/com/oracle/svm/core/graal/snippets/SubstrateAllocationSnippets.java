@@ -388,7 +388,6 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             throw new InstantiationException("Cannot allocate objects of special hybrid types: " + DynamicHub.toClass(hub).getTypeName());
         } else {
             if (hub.canUnsafeInstantiateAsInstanceSlowPath()) {
-                hub.setCanUnsafeAllocate();
                 return hub;
             } else {
                 if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {

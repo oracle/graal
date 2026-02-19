@@ -39,6 +39,7 @@ import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -183,6 +184,12 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
                             recordComponent.getRawTypeAnnotations());
         }
         return result;
+    }
+
+    @Override
+    public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(DynamicHub dynamicHub, int layerNum) {
+        /* Unsafe allocation is always allowed for runtime created classes */
+        throw VMError.intentionallyUnimplemented();
     }
 
     private static Class<?> toClassOrThrow(JavaType javaType, ResolvedJavaType accessingType) {

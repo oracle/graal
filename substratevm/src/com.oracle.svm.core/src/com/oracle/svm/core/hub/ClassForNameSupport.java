@@ -27,14 +27,12 @@ package com.oracle.svm.core.hub;
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
@@ -77,7 +75,6 @@ public final class ClassForNameSupport {
 
     public static final String CLASSES_REGISTERED = "classes registered";
     public static final String CLASSES_REGISTERED_STATES = "classes registered states";
-    public static final String UNSAFE_REGISTERED = "unsafe registered";
     public static final String RESPECTS_CLASS_LOADER = "respects class loader";
 
     public static final class Options {
@@ -126,11 +123,6 @@ public final class ClassForNameSupport {
      * respecting class loaders.
      */
     private final EconomicMap<String, Throwable> knownExceptions;
-    /**
-     * The map used to collect unsafe allocated classes. This map only collects data for the current
-     * layer.
-     */
-    private final EconomicMap<Class<?>, RuntimeDynamicAccessMetadata> unsafeInstantiatedClasses;
 
     /**
      * The map used to collect classes registered in previous layers. The boolean associated to each
@@ -143,19 +135,13 @@ public final class ClassForNameSupport {
     @Platforms(HOSTED_ONLY.class) //
     private final Map<String, Boolean> previousLayerClasses;
 
-    /**
-     * The set used to collect unsafe allocated classes in previous layers.
-     */
-    @Platforms(HOSTED_ONLY.class) //
-    private final Set<String> previousLayerUnsafe;
-
     private static final Object NEGATIVE_QUERY = new Object();
 
     public ClassForNameSupport() {
-        this(Map.of(), Set.of(), respectClassLoader());
+        this(Map.of(), respectClassLoader());
     }
 
-    public ClassForNameSupport(Map<String, Boolean> previousLayerClasses, Set<String> previousLayerUnsafe, boolean respectsClassLoader) {
+    public ClassForNameSupport(Map<String, Boolean> previousLayerClasses, boolean respectsClassLoader) {
         if (respectsClassLoader) {
             knownClasses = null;
             knownClassNames = ImageHeapMap.createNonLayeredMap();
@@ -165,9 +151,7 @@ public final class ClassForNameSupport {
             knownClassNames = null;
             knownExceptions = null;
         }
-        unsafeInstantiatedClasses = ImageHeapMap.createNonLayeredMap();
         this.previousLayerClasses = previousLayerClasses;
-        this.previousLayerUnsafe = previousLayerUnsafe;
     }
 
     @Fold
@@ -293,22 +277,6 @@ public final class ClassForNameSupport {
                 existingMetadata.addCondition(condition);
                 if (!preserved) {
                     existingMetadata.setNotPreserved();
-                }
-            }
-        }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerUnsafeAllocated(AccessCondition condition, Class<?> clazz, boolean preserved) {
-        if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
-            /* Otherwise, UNSAFE.allocateInstance results in InstantiationException */
-            if (!previousLayerUnsafe.contains(clazz.getName())) {
-                var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeDynamicAccessMetadata.createHosted(condition, preserved));
-                if (conditionSet != null) {
-                    conditionSet.addCondition(condition);
-                    if (!preserved) {
-                        conditionSet.setNotPreserved();
-                    }
                 }
             }
         }
@@ -469,17 +437,6 @@ public final class ClassForNameSupport {
         return false;
     }
 
-    public static boolean isUnsafeAllocatedPreserved(Class<?> jClass) {
-        Objects.requireNonNull(jClass);
-        for (var singleton : layeredSingletons()) {
-            RuntimeDynamicAccessMetadata dynamicAccessMetadata = singleton.unsafeInstantiatedClasses.get(jClass);
-            if (dynamicAccessMetadata != null) {
-                return dynamicAccessMetadata.isPreserved();
-            }
-        }
-        return false;
-    }
-
     public static boolean isRegisteredClass(String className) {
         if (!ClassNameSupport.isValidReflectionName(className)) {
             return true;
@@ -530,25 +487,6 @@ public final class ClassForNameSupport {
         return exception;
     }
 
-    /**
-     * Checks whether {@code hub} can be instantiated with {@code Unsafe.allocateInstance}. Note
-     * that arrays can't be instantiated and this function will always return false for array types.
-     */
-    public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
-        Class<?> clazz = DynamicHub.toClass(hub);
-        RuntimeDynamicAccessMetadata dynamicAccessMetadata = null;
-        for (var singleton : layeredSingletons()) {
-            dynamicAccessMetadata = singleton.unsafeInstantiatedClasses.get(clazz);
-            if (dynamicAccessMetadata != null) {
-                break;
-            }
-        }
-        if (dynamicAccessMetadata != null) {
-            return dynamicAccessMetadata.satisfied();
-        }
-        return false;
-    }
-
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
@@ -558,7 +496,6 @@ public final class ClassForNameSupport {
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ClassForNameSupport singleton) {
                     List<String> classNames = new ArrayList<>();
                     List<Boolean> classStates = new ArrayList<>();
-                    EconomicSet<String> unsafeNames = EconomicSet.create(singleton.previousLayerUnsafe);
 
                     var cursor = singleton.knownClasses.getEntries();
                     while (cursor.advance()) {
@@ -579,11 +516,8 @@ public final class ClassForNameSupport {
                         }
                     }
 
-                    singleton.unsafeInstantiatedClasses.getKeys().iterator().forEachRemaining(c -> unsafeNames.add(c.getName()));
-
                     writer.writeStringList(CLASSES_REGISTERED, classNames);
                     writer.writeBoolList(CLASSES_REGISTERED_STATES, classStates);
-                    writer.writeStringList(UNSAFE_REGISTERED, unsafeNames.toList());
                     /*
                      * The option is not accessible when the singleton is loaded, so the boolean
                      * needs to be persisted.
@@ -612,10 +546,9 @@ public final class ClassForNameSupport {
                 previousLayerClasses.put(previousLayerClassKeys.get(i), previousLayerClassStates.get(i));
             }
 
-            Set<String> previousLayerUnsafe = Set.copyOf(loader.readStringList(UNSAFE_REGISTERED));
             boolean respectsClassLoader = loader.readInt(RESPECTS_CLASS_LOADER) == 1;
 
-            return new ClassForNameSupport(Collections.unmodifiableMap(previousLayerClasses), previousLayerUnsafe, respectsClassLoader);
+            return new ClassForNameSupport(Collections.unmodifiableMap(previousLayerClasses), respectsClassLoader);
         }
     }
 }

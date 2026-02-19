@@ -68,6 +68,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -255,15 +256,29 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         registerUnsafeAllocation(condition, preserved, GuestAccess.get().lookupType(clazz));
     }
 
-    private void registerUnsafeAllocation(AccessCondition condition, boolean preserved, ResolvedJavaType type) {
+    /* GR-72061: Add to new JVMCI internal reflection API */
+    public void registerUnsafeAllocation(AccessCondition condition, boolean preserved, ResolvedJavaType type) {
+        if (type.isArray() || type.isInterface() || type.isAbstract()) {
+            return;
+        }
         runConditionalTask(condition, cnd -> {
             AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(type);
             if (analysisType == null) {
                 return;
             }
-            analysisType.registerAsReachable("Is registered for unsafe allocation.");
-            analysisType.registerAsUnsafeAllocated("Is registered via reflection metadata.");
-            classForNameSupport.registerUnsafeAllocated(cnd, analysisType.getJavaClass(), preserved);
+            if (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isTypeUnsafeAllocated(analysisType)) {
+                /* GR-66387: The runtime condition should be combined across layers. */
+                return;
+            }
+            types.compute(analysisType, (_, td) -> {
+                TypeData data = td != null ? td : new TypeData();
+                if (data.unsafeAllocatedDynamicAccess == null) {
+                    analysisType.registerAsReachable("Is registered for unsafe allocation.");
+                    analysisType.registerAsUnsafeAllocated("Is registered through ReflectionDataBuilder");
+                }
+                data.updateUnsafeAllocatedDynamicAccessMetadata(cnd, preserved);
+                return data;
+            });
         });
     }
 
@@ -1209,6 +1224,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return types.get(metaAccess.lookupJavaType(clazz)).isRegisteredAs(QUERIED) ? ClassAccess.getRecordComponents(clazz) : null;
     }
 
+    public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(Class<?> clazz) {
+        return types.get(metaAccess.lookupJavaType(clazz)).unsafeAllocatedDynamicAccess;
+    }
+
     @Override
     public void registerHeapDynamicHub(Object object, ScanReason reason) {
         Class<?> clazz = ((DynamicHub) object).getHostedJavaClass();
@@ -1388,6 +1407,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static final class TypeData extends ElementData {
+        RuntimeDynamicAccessMetadata unsafeAllocatedDynamicAccess = null;
         /*
          * These flags are set to true when a class is not registered for reflection, but its
          * methods or fields are, to ensure that individual queries on the type return the correct
@@ -1403,6 +1423,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          */
         private LinkageError linkageError = null;
         private LinkageError classLookupLinkageError = null;
+
+        void updateUnsafeAllocatedDynamicAccessMetadata(AccessCondition condition, boolean preserved) {
+            if (unsafeAllocatedDynamicAccess == null) {
+                unsafeAllocatedDynamicAccess = RuntimeDynamicAccessMetadata.emptySet(preserved);
+            }
+            updateDynamicAccessMetadata(unsafeAllocatedDynamicAccess, condition, preserved);
+        }
     }
 
     private static class ElementData {
@@ -1427,9 +1454,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (dynamicAccess == null) {
                 dynamicAccess = RuntimeDynamicAccessMetadata.emptySet(preserved);
             }
-            dynamicAccess.addCondition(condition);
+            updateDynamicAccessMetadata(dynamicAccess, condition, preserved);
+        }
+
+        static void updateDynamicAccessMetadata(RuntimeDynamicAccessMetadata metadata, AccessCondition condition, boolean preserved) {
+            metadata.addCondition(condition);
             if (!preserved) {
-                dynamicAccess.setNotPreserved();
+                metadata.setNotPreserved();
             }
         }
 
@@ -1558,6 +1589,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public static class LayeredReflectionDataBuilder {
         public static final String METHODS = "methods";
         public static final String FIELDS = "fields";
+        public static final String UNSAFE_ALLOCATED_TYPES = "unsafe allocated types";
         public static final String REFLECTION_DATA_BUILDER = "reflection data builder";
         /**
          * The methods registered for reflection in the previous layers. The set contains the method
@@ -1569,14 +1601,20 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * ids.
          */
         private final Set<Integer> previousLayerRegisteredFields;
+        /**
+         * The types registered for unsafe allocation in previous layers. The set contains the type
+         * ids.
+         */
+        private final Set<Integer> previousLayerUnsafe;
 
         public LayeredReflectionDataBuilder() {
-            this(Set.of(), Set.of());
+            this(Set.of(), Set.of(), Set.of());
         }
 
-        private LayeredReflectionDataBuilder(Set<Integer> previousLayerRegisteredMethods, Set<Integer> previousLayerRegisteredFields) {
+        private LayeredReflectionDataBuilder(Set<Integer> previousLayerRegisteredMethods, Set<Integer> previousLayerRegisteredFields, Set<Integer> previousLayerUnsafe) {
             this.previousLayerRegisteredMethods = previousLayerRegisteredMethods;
             this.previousLayerRegisteredFields = previousLayerRegisteredFields;
+            this.previousLayerUnsafe = previousLayerUnsafe;
         }
 
         public static LayeredReflectionDataBuilder singleton() {
@@ -1598,6 +1636,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return false;
         }
 
+        public boolean isTypeUnsafeAllocated(AnalysisType analysisType) {
+            return previousLayerUnsafe.contains(analysisType.getId());
+        }
+
         private static String getElementKeyName(String element) {
             return REFLECTION_DATA_BUILDER + " " + element;
         }
@@ -1616,12 +1658,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                         ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
                         persistRegisteredElements(writer, getRegisteredElements(reflectionDataBuilder.methods), AnalysisMethod::getId, METHODS);
                         persistRegisteredElements(writer, getRegisteredElements(reflectionDataBuilder.fields), AnalysisField::getId, FIELDS);
+                        persistRegisteredElements(writer, getRegisteredElements(reflectionDataBuilder.types, d -> d.unsafeAllocatedDynamicAccess != null), AnalysisType::getId, UNSAFE_ALLOCATED_TYPES);
                         return LayeredPersistFlags.CREATE;
                     }
 
-                    private <T extends AnalysisElement> Set<T> getRegisteredElements(Map<T, ElementData> elements) {
+                    private <T extends AnalysisElement, D extends ElementData> Set<T> getRegisteredElements(Map<T, D> elements) {
+                        return getRegisteredElements(elements, d -> d.isRegisteredAs(ACCESSED));
+                    }
+
+                    private <T extends AnalysisElement, D extends ElementData> Set<T> getRegisteredElements(Map<T, D> elements, Predicate<D> filter) {
                         return elements.entrySet().stream()
-                                        .filter(e -> e.getValue().isRegisteredAs(ACCESSED))
+                                        .filter(e -> filter.test(e.getValue()))
                                         .map(Map.Entry::getKey)
                                         .collect(Collectors.toUnmodifiableSet());
                     }
@@ -1644,7 +1691,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 public LayeredReflectionDataBuilder createFromLoader(ImageSingletonLoader loader) {
                     var previousLayerRegisteredMethods = loadRegisteredElements(loader, METHODS);
                     var previousLayerRegisteredFields = loadRegisteredElements(loader, FIELDS);
-                    return new LayeredReflectionDataBuilder(previousLayerRegisteredMethods, previousLayerRegisteredFields);
+                    var previousLayerUnsafe = loadRegisteredElements(loader, UNSAFE_ALLOCATED_TYPES);
+                    return new LayeredReflectionDataBuilder(previousLayerRegisteredMethods, previousLayerRegisteredFields, previousLayerUnsafe);
                 }
             }
         }
