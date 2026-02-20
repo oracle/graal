@@ -324,9 +324,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return false;
     }
 
-    /** Currently layered images are only supported on {@link LINUX_AMD64}. */
+    /** Layered images are supported on Linux AMD64/AARCH64 and Darwin AARCH64. */
     private static boolean supportedPlatform(Platform platform) {
-        return platform instanceof LINUX_AMD64;
+        return platform instanceof LINUX_AMD64 || platform instanceof Platform.LINUX_AARCH64 || platform instanceof Platform.DARWIN_AARCH64;
     }
 
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {

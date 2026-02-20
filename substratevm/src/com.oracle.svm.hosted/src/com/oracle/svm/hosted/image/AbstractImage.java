@@ -57,7 +57,12 @@ public abstract class AbstractImage {
         IMAGE_LAYER(false, true) {
             @Override
             protected String getFilenameSuffix() {
-                return ".so";
+                return switch (ObjectFile.getNativeFormat()) {
+                    case ELF -> ".so";
+                    case MACH_O -> ".dylib";
+                    case PECOFF -> ".dll";
+                    default -> throw new AssertionError("Unreachable");
+                };
             }
         },
         SHARED_LIBRARY(false) {

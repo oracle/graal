@@ -290,7 +290,7 @@ public abstract class CCompilerInvoker {
 
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
     private static class DarwinCCompilerInvoker extends CCompilerInvoker {
 
         DarwinCCompilerInvoker(Path tempDirectory) {

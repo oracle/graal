@@ -47,11 +47,17 @@ public final class AArch64CGlobalDataLoadAddressOp extends AArch64LIRInstruction
     @Def(REG) private AllocatableValue result;
 
     private final CGlobalDataInfo dataInfo;
+    private final int addend;
 
-    AArch64CGlobalDataLoadAddressOp(CGlobalDataInfo dataInfo, AllocatableValue result) {
+    AArch64CGlobalDataLoadAddressOp(CGlobalDataInfo dataInfo, AllocatableValue result, int addend) {
         super(TYPE);
         this.dataInfo = dataInfo;
         this.result = result;
+        this.addend = addend;
+    }
+
+    AArch64CGlobalDataLoadAddressOp(CGlobalDataInfo dataInfo, AllocatableValue result) {
+        this(dataInfo, result, 0);
     }
 
     @Override
@@ -67,6 +73,9 @@ public final class AArch64CGlobalDataLoadAddressOp extends AArch64LIRInstruction
         } else {
             // Data: load its address
             masm.adrpAdd(resultRegister);
+        }
+        if (addend != 0) {
+            masm.add(64, resultRegister, resultRegister, addend);
         }
     }
 }

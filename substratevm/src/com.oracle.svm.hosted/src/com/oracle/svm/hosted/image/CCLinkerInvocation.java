@@ -485,6 +485,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 case STATIC_EXECUTABLE:
                     // checked in the definition of --static
                     throw VMError.shouldNotReachHereUnexpectedInput(imageKind);
+                case IMAGE_LAYER:
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     if (Platform.includedIn(Platform.DARWIN.class)) {
