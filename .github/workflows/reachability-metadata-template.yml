@@ -100,7 +100,7 @@ jobs:
         with:
           repository: oracle/graalvm-reachability-metadata
       - name: Download GraalVM
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7.0.0
         with:
           name: ${{ needs.build-graalvm.outputs.artifact-name }}
       - name: Extract GraalVM build and use it as JAVA_HOME
