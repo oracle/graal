@@ -1896,6 +1896,10 @@ public class NativeImage {
 
         while (!discoveryQueue.isEmpty()) {
             ModuleReference module = discoveryQueue.poll();
+            if ("java.se".equals(module.descriptor().name())) {
+                /* Skip java.se-module pseudo-dependencies */
+                continue;
+            }
             Set<String> requiredModules = getRequiredModules(module);
             List<ModuleReference> requiredModuleReferences = requiredModules.stream()
                             .map(mn -> modules.getOrDefault(mn, null))
