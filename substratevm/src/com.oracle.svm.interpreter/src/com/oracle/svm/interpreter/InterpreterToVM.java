@@ -727,15 +727,9 @@ public final class InterpreterToVM {
         }
     }
 
-    static CFunctionPointer peekAtSVMVTable(Class<?> callTargetClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {
+    static CFunctionPointer peekAtSVMVTable(Class<?> callTargetClass, Class<?> thisClass, int vTableIndex) {
         DynamicHub callTargetHub = DynamicHub.fromClass(callTargetClass);
         DynamicHub thisHub = DynamicHub.fromClass(thisClass);
-
-        /*
-         * invokeinterface can be on a j.l.Object method, otherwise the seedClass must be an
-         * interface.
-         */
-        VMError.guarantee(callTargetHub.isInterface() == isInvokeInterface || callTargetClass == Object.class);
 
         int vtableOffset = DynamicHubUtils.determineDispatchTableOffset(thisHub, callTargetHub, vTableIndex);
         MethodRef vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
@@ -750,7 +744,7 @@ public final class InterpreterToVM {
         return (CFunctionPointer) codePointer;
     }
 
-    private static InterpreterResolvedJavaMethod peekAtInterpreterVTable(Class<?> seedClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {
+    private static InterpreterResolvedJavaMethod peekAtInterpreterVTable(Class<?> seedClass, Class<?> thisClass, int vTableIndex) {
         ResolvedJavaType thisType;
         if (RuntimeClassLoading.isSupported()) {
             thisType = DynamicHub.fromClass(thisClass).getInterpreterType();
@@ -766,12 +760,6 @@ public final class InterpreterToVM {
         VMError.guarantee(vTable != null);
 
         DynamicHub seedHub = DynamicHub.fromClass(seedClass);
-
-        /*
-         * invokeinterface can be on a j.l.Object method, otherwise the seedClass must be an
-         * interface.
-         */
-        VMError.guarantee(seedHub.isInterface() == isInvokeInterface || seedClass == Object.class);
 
         int idx;
         if (SubstrateOptions.useClosedTypeWorldHubLayout() || !seedHub.isInterface()) {
@@ -797,7 +785,7 @@ public final class InterpreterToVM {
     }
 
     public static Object dispatchInvocation(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, boolean isVirtual0, boolean forceStayInInterpreter, boolean preferStayInInterpreter,
-                    boolean isInvokeInterface, boolean quiet)
+                    boolean quiet)
                     throws SemanticJavaException {
         // True if we need to go through the platform ABI, e.g. calling an entry point of a
         // compilation unit.
@@ -889,7 +877,7 @@ public final class InterpreterToVM {
 
             if (callCompiledTarget) {
                 // determine virtual call target via SVM vtable dispatch
-                calleeFtnPtr = peekAtSVMVTable(seedClazz, thisClazz, vtableIndex, isInvokeInterface);
+                calleeFtnPtr = peekAtSVMVTable(seedClazz, thisClazz, vtableIndex);
 
                 if (calleeFtnPtr.equal(InterpreterMethodPointerHolder.getMethodNotCompiledHandler())) {
                     // can happen e.g. due to devirtualization, need to stay in interpreter in
@@ -904,7 +892,7 @@ public final class InterpreterToVM {
             }
 
             /* always resolve the right target method in the interpreter universe */
-            targetMethod = peekAtInterpreterVTable(seedClazz, thisClazz, vtableIndex, isInvokeInterface);
+            targetMethod = peekAtInterpreterVTable(seedClazz, thisClazz, vtableIndex);
         } else if (seedMethod.getVTableIndex() == VTBL_ONE_IMPL) {
             targetMethod = seedMethod.getOneImplementation();
             /* arguments to Log methods might have side-effects */
