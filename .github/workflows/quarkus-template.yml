@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ env:
   DB_PASSWORD: hibernate_orm_test
   DB_USER: hibernate_orm_test
   NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=6g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs -Dquarkus.native.container-build=false"
-  QUARKUS_JAVA_VERSION: 17 # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
   QUARKUS_PATH: ${{ github.workspace }}/quarkus
   NATIVE_IMAGE_OPTIONS: ${{ inputs.NATIVE_IMAGE_OPTIONS }}
 
@@ -59,11 +58,13 @@ name: Weekly Quarkus Tests
 
 permissions: {}
 jobs:
-  build-quarkus-and-graalvm:
+  build-graalvm:
+    uses: ./.github/workflows/build-graalvm.yml
+  build-quarkus:
     permissions:
       contents: read # to fetch code (actions/checkout)
 
-    name: Nightly Quarkus and GraalVM build
+    name: Nightly Quarkus build
     runs-on: ubuntu-22.04
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     outputs:
@@ -71,10 +72,11 @@ jobs:
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
-    - name: Build GraalVM JDK
-      uses: ./.github/actions/build-graalvm
+    - name: Set up JAVA_HOME
+      uses: actions/setup-java@v4
       with:
-        java-version: ${{ env.QUARKUS_JAVA_VERSION }}
+        distribution: 'oracle'
+        java-version: '17' # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
     - name: Get latest Quarkus release
       run: |
         export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
@@ -88,14 +90,6 @@ jobs:
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
         restore-keys: |
           ${{ runner.os }}-maven-
-    - name: Tar GraalVM JDK
-      shell: bash
-      run: tar -czvhf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
-    - name: Persist GraalVM JDK build
-      uses: actions/upload-artifact@v4
-      with:
-        name: graalvm
-        path: graalvm.tgz
     - name: Build Quarkus
       run: |
         cd ${QUARKUS_PATH}
@@ -117,27 +111,26 @@ jobs:
 
   native-tests:
     name: Native Tests - ${{matrix.category}}${{ inputs.NATIVE_IMAGE_OPTIONS && format(' with ''{0}''', inputs.NATIVE_IMAGE_OPTIONS) || '' }}
-    needs: build-quarkus-and-graalvm
+    needs: [build-graalvm, build-quarkus]
     runs-on: ubuntu-latest
-    env:
-      GRAALVM_HOME: ${{ github.workspace }}/graalvm # identical to the one in ./.github/actions/build-graalvm
     # Ignore the following YAML Schema error
     timeout-minutes: ${{matrix.timeout}}
     strategy:
       max-parallel: 8
       fail-fast: false
-      matrix: ${{ fromJson(needs.build-quarkus-and-graalvm.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.build-quarkus.outputs.matrix) }}
     steps:
-      - name: Download GraalVM JDK build
+      - name: Download GraalVM build
         if: startsWith(matrix.os-name, 'ubuntu')
         uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
-          name: graalvm
-          path: .
-      - name: Extract GraalVM JDK build
+          name: ${{ needs.build-graalvm.outputs.artifact-name }}
+      - name: Extract GraalVM build
         if: startsWith(matrix.os-name, 'ubuntu')
         shell: bash
-        run: tar -xzvf graalvm.tgz -C $(dirname ${GRAALVM_HOME})
+        run: |
+          tar -xzf ${{ needs.build-graalvm.outputs.artifact-file-name }} -C ${{ github.workspace }}
+          echo "GRAALVM_HOME=${{ github.workspace }}/${{ needs.build-graalvm.outputs.artifact-name }}" >> ${GITHUB_ENV}
       - name: Get latest Quarkus release
         if: startsWith(matrix.os-name, 'ubuntu')
         run: |

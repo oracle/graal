@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -55,8 +55,15 @@ env:
   PYTHON_VERSION: 3.12.3
 
 jobs:
-  build-graalvm-and-populate-matrix:
-    name: Build GraalVM and populate matrix
+  build-graalvm:
+    uses: ./.github/workflows/build-graalvm.yml
+    if: (github.repository=='oracle/graal')
+    with:
+      native-images: 'native-image,native-image-configure,lib:native-image-agent'
+      components: 'Native Image,Native Image Configure Tool'
+
+  populate-matrix:
+    name: Populate matrix
     runs-on: ubuntu-latest
     if: (github.repository=='oracle/graal')
     outputs:
@@ -64,24 +71,15 @@ jobs:
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
-    - name: Build GraalVM JDK
-      uses: ./.github/actions/build-graalvm
-      with:
-        native-images: 'native-image,native-image-configure,lib:native-image-agent'
-        components: 'Native Image,Native Image Configure Tool'
-        java-version: ${{ env.JAVA_VERSION }}
-    - name: Tar GraalVM JDK
-      shell: bash
-      run: tar -czvhf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
-    - name: Persist GraalVM JDK build
-      uses: actions/upload-artifact@v4
-      with:
-        name: graalvm
-        path: graalvm.tgz
     - name: Setup python
       uses: actions/setup-python@v5
       with:
         python-version: '${{ env.PYTHON_VERSION }}'
+    - name: Set up JAVA_HOME
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'oracle'
+        java-version: '25'
     - name: Populate matrix
       id: set-matrix
       run: python3 ${{ env.LIBRARY_METADATA_PATH }}/build_native_image_layer.py ${{ env.LIBRARY_METADATA_PATH }}/
@@ -90,32 +88,28 @@ jobs:
     name: ${{ matrix.coordinates }}
     runs-on: ubuntu-latest
     env:
-      GRAALVM_HOME: ${{ github.workspace }}/graalvm
+      GRAALVM_HOME: ${{ github.workspace }}/graalvm # identical to the one in ./.github/workflows/build-graalvm
     timeout-minutes: 30
-    needs:  build-graalvm-and-populate-matrix
+    needs:  [build-graalvm, populate-matrix]
     strategy:
       fail-fast: false
       matrix: 
-        coordinates: ${{ fromJson(needs. build-graalvm-and-populate-matrix.outputs.matrix).coordinates }}
+        coordinates: ${{ fromJson(needs.populate-matrix.outputs.matrix).coordinates }}
     steps:
       - name: Checkout oracle/graal
         uses: actions/checkout@v4
-      - name: Download GraalVM JDK build
-        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+      - name: Download GraalVM build
+        uses: actions/download-artifact@v5
         with:
-          name: graalvm
-          path: .
-      - name: Extract GraalVM JDK build
-        run: tar -xzvf graalvm.tgz -C $(dirname ${GRAALVM_HOME})
-      - name: "Setup JAVA_HOME"
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'oracle'
-          java-version: ${{ env.JAVA_VERSION }}
+          name: ${{ needs.build-graalvm.outputs.artifact-name }}
+      - name: Extract GraalVM build
+        run: |
+          tar -xzf ${{ needs.build-graalvm.outputs.artifact-file-name }} -C ${{ github.workspace }}
+          echo "GRAALVM_HOME=${{ github.workspace }}/${{ needs.build-graalvm.outputs.artifact-name }}" >> ${GITHUB_ENV}
       - name: Setup python
         uses: actions/setup-python@v5
         with:
           python-version: '${{ env.PYTHON_VERSION }}'
       - name: Build layer
         run: |
-            python3 ${{ env.LIBRARY_METADATA_PATH }}/build_native_image_layer.py ${{ env.GRAALVM_HOME }}/bin/native-image "${{ matrix.coordinates }}"
+            python3 ${{ env.LIBRARY_METADATA_PATH }}/build_native_image_layer.py $GRAALVM_HOME/bin/native-image "${{ matrix.coordinates }}"

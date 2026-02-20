@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -49,36 +49,24 @@ on:
 
 env:
   REACHABILITY_METADATA_PATH: ${{ github.workspace }}/graalvm-reachability-metadata
-  MINIMUM_METADATA_JAVA_VERSION: 25
   NATIVE_IMAGE_OPTIONS: ${{ inputs.NATIVE_IMAGE_OPTIONS }}
 
 permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  build-graalvm-and-populate-matrix:
-    name: Build GraalVM and populate matrix
+  build-graalvm:
+    uses: ./.github/workflows/build-graalvm.yml
+    with:
+      native-images: 'native-image,native-image-configure,lib:native-image-agent'
+      components: 'Native Image,Native Image Configure Tool'
+  populate-matrix:
+    name: Populate matrix
     runs-on: ubuntu-22.04
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-    - name: Checkout oracle/graal
-      uses: actions/checkout@v4
-    - name: Build GraalVM JDK
-      uses: ./.github/actions/build-graalvm
-      with:
-        native-images: 'native-image,native-image-configure,lib:native-image-agent'
-        components: 'Native Image,Native Image Configure Tool'
-        java-version: ${{ env.MINIMUM_METADATA_JAVA_VERSION }}
-    - name: Tar GraalVM JDK
-      shell: bash
-      run: tar -czvhf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
-    - name: Persist GraalVM JDK build
-      uses: actions/upload-artifact@v4
-      with:
-        name: graalvm
-        path: graalvm.tgz
     - name: Checkout oracle/graalvm-reachability-metadata
       uses: actions/checkout@v4
       with:
@@ -86,6 +74,11 @@ jobs:
         repository: oracle/graalvm-reachability-metadata
         ref: master
         path: ${{ env.REACHABILITY_METADATA_PATH }}
+    - name: Set up JAVA_HOME
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'oracle'
+        java-version: '25'
     - name: "Populate matrix"
       id: set-matrix
       run: |
@@ -95,31 +88,25 @@ jobs:
   test-all-metadata:
     name: ${{ matrix.coordinates }}
     runs-on: ubuntu-latest
-    env:
-      GRAALVM_HOME: ${{ github.workspace }}/graalvm # identical to the one in ./.github/actions/build-graalvm
     timeout-minutes: 20
-    needs: build-graalvm-and-populate-matrix
+    needs: [build-graalvm, populate-matrix]
     strategy:
         fail-fast: false
         matrix:
-          coordinates: ${{fromJson(needs.build-graalvm-and-populate-matrix.outputs.matrix).coordinates}}
+          coordinates: ${{fromJson(needs.populate-matrix.outputs.matrix).coordinates}}
     steps:
       - name: "Checkout oracle/graalvm-reachability-metadata"
         uses: actions/checkout@v4
         with:
           repository: oracle/graalvm-reachability-metadata
-      - name: Download GraalVM JDK build
-        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+      - name: Download GraalVM
+        uses: actions/download-artifact@v5
         with:
-          name: graalvm
-          path: .
-      - name: Extract GraalVM JDK build
-        run: tar -xzvf graalvm.tgz -C $(dirname ${GRAALVM_HOME})
-      - name: "Setup JAVA_HOME"
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'oracle'
-          java-version: ${{ env.MINIMUM_METADATA_JAVA_VERSION }}
+          name: ${{ needs.build-graalvm.outputs.artifact-name }}
+      - name: Extract GraalVM build and use it as JAVA_HOME
+        run: |
+          tar -xzf ${{ needs.build-graalvm.outputs.artifact-file-name }} -C ${{ github.workspace }}
+          echo "JAVA_HOME=${{ github.workspace }}/${{ needs.build-graalvm.outputs.artifact-name }}" >> ${GITHUB_ENV}
       - name: "Pull allowed docker images"
         run: |
           ./gradlew pullAllowedDockerImages --coordinates=${{ matrix.coordinates }}
