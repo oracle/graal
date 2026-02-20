@@ -43,7 +43,6 @@ import com.oracle.truffle.sl.test.SLTestSuiteBytecode;
 @SLTestSuite(value = {"tests"}, testCaseDirectory = SLTestSuiteBytecode.class, options = {//
                 "engine.CompileImmediately", "true",
                 "engine.BackgroundCompilation", "false",
-                "sl.UseBytecode", "true",
 })
 public class SLCompileImmediatelyBytecodeTestSuite {
     /*

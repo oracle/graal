@@ -37,7 +37,6 @@ import com.oracle.truffle.sl.test.SLTestSuite;
                 "engine.SingleTierCompilationThreshold", "20", // enough to transition to cached
                 "engine.MultiTier", "false",
                 "engine.CompileImmediately", "false",
-                "sl.UseBytecode", "true"
 })
 public class SLCompileBytecodeTestSuite {
 

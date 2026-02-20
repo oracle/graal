@@ -396,6 +396,7 @@ def truffle_unittest_task(extra_build_args=None):
     success = False
     try:
         native_unittest(['com.oracle.truffle.sl.test.SLFactorialTest'] + truffle_args(extra_build_args) +[
+                    '-Dpolyglot.engine.AllowExperimentalOptions=true',
                     '-Dpolyglot.engine.CompileImmediately=true',
                     '-Dpolyglot.engine.BackgroundCompilation=false',
                     f'-Dpolyglot.log.file={logfile.name}',

@@ -42,7 +42,8 @@ public class TestMemoryLeaks {
 
     @Test
     public void testRemoteObjectsLeak() throws Exception {
-        InspectorTester tester = InspectorTester.start(false);
+        // The AST and Bytecode DSL interpreters diverge in their approach to scopes.
+        InspectorTester tester = InspectorTester.start(false, false, false, Map.of("sl.UseBytecode", "false"));
         RemoteObjectsHandler remoteObjectsHandler = tester.getInspectorContext().getRemoteObjectsHandler();
         assertEmptyRemoteObjectsMaps(remoteObjectsHandler);
 

@@ -399,6 +399,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
                   f'{P}CompileImmediately=true',
                   f'{P}BackgroundCompilation=false',
                   f'-Dpolyglot.log.file={truffle_log_file}',
+                   '-Dpolyglot.sl.UseBytecode=false', # Bytecode interpreter not ready for immediate compilation
                    '-Ddebug.graal.CompilationWatchDog=true', # helps debug failure
                    '-Dgraalvm.locatorDisabled=true',
                    '-XX:-UseJVMCICompiler',       # Stop compilation timeout being applied to JIT
