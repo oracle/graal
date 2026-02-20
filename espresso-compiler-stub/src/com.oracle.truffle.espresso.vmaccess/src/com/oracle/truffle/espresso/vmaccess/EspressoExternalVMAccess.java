@@ -463,6 +463,14 @@ final class EspressoExternalVMAccess implements VMAccess {
     }
 
     @Override
+    public void writeField(ResolvedJavaField field, JavaConstant receiver, JavaConstant value) {
+        if (!(field instanceof EspressoExternalResolvedJavaField espressoField)) {
+            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaField, got " + safeGetClass(field));
+        }
+        espressoField.writeValue(receiver, value);
+    }
+
+    @Override
     public JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements) {
         if (!(componentType.getArrayClass() instanceof EspressoExternalResolvedArrayType arrayType)) {
             throw new IllegalArgumentException("Invalid component type");
@@ -606,6 +614,7 @@ final class EspressoExternalVMAccess implements VMAccess {
             case "java.lang.IllegalArgumentException" -> new IllegalArgumentException(message);
             case "java.lang.IndexOutOfBoundsException" -> new IndexOutOfBoundsException(message);
             case "java.lang.InstantiationException" -> new InstantiationException(message);
+            case "java.lang.reflect.InaccessibleObjectException" -> new java.lang.reflect.InaccessibleObjectException(message);
             case "java.lang.NegativeArraySizeException" -> new NegativeArraySizeException(message);
             case "java.lang.NoSuchFieldException" -> new NoSuchFieldException(message);
             case "java.lang.NoSuchMethodException" -> new NoSuchMethodException(message);

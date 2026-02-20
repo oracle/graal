@@ -62,9 +62,9 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
-import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestTypes;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -261,7 +261,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
                     newAnnotationValue(ExplicitCallingConvention.class,
                                     "value", SubstrateCallingConventionKind.Custom),
-                    newAnnotationValue(GuestTypes.Uninterruptible,
+                    newAnnotationValue(GuestAccess.elements().Uninterruptible,
                                     "calleeMustBe", false,
                                     "reason", "Directly accesses registers and IsolateThread might not be correctly set up"));
 

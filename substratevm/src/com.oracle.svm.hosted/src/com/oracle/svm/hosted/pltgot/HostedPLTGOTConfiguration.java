@@ -40,7 +40,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GuestTypes;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
@@ -73,13 +73,13 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
         if (AnnotationUtil.isAnnotationPresent(method, StubCallingConvention.class)) {
             return false;
         }
-        if (AnnotationUtil.isAnnotationPresent(method, GuestTypes.Uninterruptible)) {
+        if (AnnotationUtil.isAnnotationPresent(method, GuestAccess.elements().Uninterruptible)) {
             return false;
         }
         if (AnnotationUtil.isAnnotationPresent(method, SubstrateForeignCallTarget.class)) {
             return false;
         }
-        if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), GuestTypes.InternalVMMethod)) {
+        if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), GuestAccess.elements().InternalVMMethod)) {
             return false;
         }
         ExplicitCallingConvention ecc = AnnotationUtil.getAnnotation(method, ExplicitCallingConvention.class);

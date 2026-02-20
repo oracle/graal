@@ -24,12 +24,14 @@
  */
 package jdk.graal.compiler.hostvmaccess;
 
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
@@ -184,16 +186,58 @@ final class HostVMAccess implements VMAccess {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    private static void makeAccessible(Executable executable) {
+    @Override
+    public void writeField(ResolvedJavaField field, JavaConstant receiver, JavaConstant value) {
+        SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
+        Field reflectionField = snippetReflection.originalField(field);
+        makeAccessible(reflectionField);
+        var fieldKind = field.getJavaKind();
+
+        if (Modifier.isStatic(reflectionField.getModifiers())) {
+            if (receiver != null) {
+                throw new IllegalArgumentException("For static fields, the receiver argument must be null");
+            }
+        } else if (receiver == null) {
+            throw new NullPointerException("For instance fields, the receiver argument must not be null");
+        } else if (receiver.isNull()) {
+            throw new IllegalArgumentException("For instance fields, the receiver argument must not represent a null constant");
+        }
+
+        Object unboxedValue;
+        if (fieldKind.isObject()) {
+            unboxedValue = snippetReflection.asObject(reflectionField.getType(), value);
+        } else {
+            assert fieldKind.isPrimitive();
+            if (fieldKind != value.getJavaKind()) {
+                throw new IllegalArgumentException("Expected value kind " + fieldKind + " but got " + value.getJavaKind());
+            }
+            unboxedValue = value.asBoxedPrimitive();
+        }
+
+        Object unboxedReceiver;
+        if (Modifier.isStatic(reflectionField.getModifiers())) {
+            unboxedReceiver = null;
+        } else {
+            unboxedReceiver = snippetReflection.asObject(reflectionField.getDeclaringClass(), receiver);
+        }
+
         try {
-            if (!executable.isAccessible()) {
-                executable.setAccessible(true);
+            reflectionField.set(unboxedReceiver, unboxedValue);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static <T extends AccessibleObject & Member> void makeAccessible(T accessibleMember) {
+        try {
+            if (!accessibleMember.isAccessible()) {
+                accessibleMember.setAccessible(true);
             }
         } catch (InaccessibleObjectException e) {
-            Class<?> declaringClass = executable.getDeclaringClass();
+            Class<?> declaringClass = accessibleMember.getDeclaringClass();
             ModuleSupport.addOpens(HostVMAccess.class.getModule(), declaringClass.getModule(), declaringClass.getPackageName());
-            executable.setAccessible(true);
+            accessibleMember.setAccessible(true);
         }
     }
 

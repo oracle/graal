@@ -93,12 +93,33 @@ public interface VMAccess {
      * @param args Arguments of types matching the {@linkplain ResolvedJavaMethod#getSignature()
      *            signature} passed as {@link JavaConstant} objects. The arguments are subject to
      *            conversions as described in the Java Language Specifications' strict invocation
-     *            context (5.3).
+     *            context (JLS 5.3).
      * @return the result as a {@link JavaConstant} or null if the method has a void return type.
      * @throws InvocationException if the invoked method throws an exception, it is wrapped in an
      *             {@link InvocationException}.
      */
     JavaConstant invoke(ResolvedJavaMethod method, JavaConstant receiver, JavaConstant... args);
+
+    /**
+     * Writes a value to a {@link ResolvedJavaField}.
+     *
+     * Note that if the implementation is backed by a {@link Field} object, this call will ensure it
+     * is {@linkplain Field#setAccessible(boolean) accessible} before attempting writing the field.
+     *
+     * @param field the field to write.
+     * @param receiver the receiver object for an instance field, passed as a {@link JavaConstant}.
+     *            This must be {@code null} for a {@linkplain ResolvedJavaField#isStatic() static}
+     *            field.
+     * @param value the value to be written, passed as a {@link JavaConstant}. Primitive values must
+     *            exactly match the type of the {@code field}. For example, an {@code int} value
+     *            cannot be written to a field of type {@code long}). Implementations must not
+     *            perform widening primitive conversion (JLS 5.1.2). This is in contrast to
+     *            {@link #invoke}.
+     * @throws IllegalArgumentException if {@code receiver} is non-null for a static field, if
+     *             {@code receiver} is null for a non-static field, or if {@code value} cannot be
+     *             assigned to the field type.
+     */
+    void writeField(ResolvedJavaField field, JavaConstant receiver, JavaConstant value);
 
     /**
      * Creates an array from an array of values.
