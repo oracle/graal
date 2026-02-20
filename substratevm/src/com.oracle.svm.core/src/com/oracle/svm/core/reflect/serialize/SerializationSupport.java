@@ -108,6 +108,7 @@ public class SerializationSupport {
     }
 
     private DynamicHub stubConstructorClass;
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private DynamicHub serializedLambdaClass;
 
     public record HostedSerializationLookupKey(DynamicHubKey declaringClassId, DynamicHubKey targetConstructorClassId) {
@@ -133,30 +134,33 @@ public class SerializationSupport {
         constructorAccessors = null;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void setStubConstructor(DynamicHub stubConstructorClass) {
         VMError.guarantee(this.stubConstructorClass == null, "Cannot set stubConstructor again");
         this.stubConstructorClass = stubConstructorClass;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void setSerializedLambdaClass(DynamicHub serializedLambdaClass) {
         VMError.guarantee(this.serializedLambdaClass == null, "Cannot set serializedLambdaClass again");
         this.serializedLambdaClass = serializedLambdaClass;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private DynamicHub getSerializedLambdaClass() {
         return serializedLambdaClass;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setObjectRescanner(Consumer<Object> objectRescanner) {
-        VMError.guarantee(this.serializedLambdaClass == null, "Cannot set objectRescanner again");
+        VMError.guarantee(this.objectRescanner == null, "Cannot set objectRescanner again");
         this.objectRescanner = objectRescanner;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public Object addConstructorAccessor(DynamicHub declaringClass, DynamicHub targetConstructorClass, Object constructorAccessor) {
         VMError.guarantee(constructorAccessor instanceof SubstrateConstructorAccessor, "Not a SubstrateConstructorAccessor: %s", constructorAccessor);
-        VMError.guarantee(!BuildPhaseProvider.isHostedUniverseBuilt());
+        VMError.guarantee(!BuildPhaseProvider.isHostedUniverseBuilt(), "Called too early");
         HostedSerializationLookupKey key = new HostedSerializationLookupKey(new DynamicHubKey(declaringClass), new DynamicHubKey(targetConstructorClass));
         objectRescanner.accept(constructorAccessor);
         synchronized (hostedConstructorAccessors) {
@@ -236,6 +240,8 @@ public class SerializationSupport {
     }
 
     public void replaceHubKeyWithTypeID() {
+        VMError.guarantee(classes == null && hostedClasses != null, "The maps should only be replaced once");
+        VMError.guarantee(constructorAccessors == null && hostedConstructorAccessors != null, "The maps should only be replaced once");
         classes = EconomicMap.create();
         replaceHubKeyWithTypeID(hostedClasses, classes, SerializationSupport::getTypeID);
         hostedClasses = null;
