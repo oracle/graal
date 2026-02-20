@@ -80,7 +80,7 @@ jobs:
       artifact-file-name: ${{ steps.set_outputs.outputs.artifact-file-name }}
     steps:
       - name: Checkout oracle/graal
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up environment variables
         shell: bash
         run: |

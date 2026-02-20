@@ -70,7 +70,7 @@ jobs:
         matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Setup python
       uses: actions/setup-python@v5
       with:
@@ -97,7 +97,7 @@ jobs:
         coordinates: ${{ fromJson(needs.populate-matrix.outputs.matrix).coordinates }}
     steps:
       - name: Checkout oracle/graal
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Download GraalVM build
         uses: actions/download-artifact@v5
         with:

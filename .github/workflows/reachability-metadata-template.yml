@@ -68,7 +68,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
     - name: Checkout oracle/graalvm-reachability-metadata
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         # change the repository and ref test potential fixes
         repository: oracle/graalvm-reachability-metadata
@@ -96,7 +96,7 @@ jobs:
           coordinates: ${{fromJson(needs.populate-matrix.outputs.matrix).coordinates}}
     steps:
       - name: "Checkout oracle/graalvm-reachability-metadata"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: oracle/graalvm-reachability-metadata
       - name: Download GraalVM
