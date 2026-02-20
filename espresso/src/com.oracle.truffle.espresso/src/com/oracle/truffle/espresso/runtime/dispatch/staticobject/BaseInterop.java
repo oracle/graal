@@ -123,7 +123,6 @@ public class BaseInterop {
     @ExportMessage
     public static Object getMetaObject(StaticObject object,
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        object.checkNotForeign();
         if (hasMetaObject(object)) {
             return object.getKlass().mirror();
         }
