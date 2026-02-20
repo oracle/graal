@@ -464,7 +464,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     void beforeAnalysis(Feature.BeforeAnalysisAccess beforeAnalysisAccess) {
         setAnalysisAccess(beforeAnalysisAccess);
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) beforeAnalysisAccess;
-        serializationSupport.setScanObject(object -> accessImpl.rescanObject(object, OtherReason.UNKNOWN));
+        serializationSupport.setObjectRescanner(object -> accessImpl.rescanObject(object, OtherReason.UNKNOWN));
         universe = accessImpl.getUniverse();
         stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
         pendingConstructorRegistrations.forEach(Runnable::run);
