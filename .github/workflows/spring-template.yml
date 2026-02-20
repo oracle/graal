@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -48,25 +48,32 @@ on:
         type: string
 
 env:
+  JAVA_HOME: ${{ github.workspace }}/graalvm # identical to the one in ./.github/workflows/build-graalvm
   SPRING_PETCLINIC_PATH: ${{ github.workspace }}/spring-petclinic
-  SPRING_JAVA_VERSION: 21
   NATIVE_IMAGE_OPTIONS: ${{ inputs.NATIVE_IMAGE_OPTIONS }}
 
 permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  build-graalvm-and-spring:
+  build-graalvm:
+    uses: ./.github/workflows/build-graalvm.yml
+  build-and-test-spring:
     name: Native Tests
+    needs: build-graalvm
     runs-on: ubuntu-22.04
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
-    - name: Build GraalVM JDK
-      uses: ./.github/actions/build-graalvm
+    - name: Download GraalVM
+      uses: actions/download-artifact@v5
       with:
-        java-version: ${{ env.SPRING_JAVA_VERSION }}
+        name: ${{ needs.build-graalvm.outputs.artifact-name }}
+    - name: Extract GraalVM build and use it as JAVA_HOME
+      run: |
+        tar -xzf ${{ needs.build-graalvm.outputs.artifact-file-name }} -C ${{ github.workspace }}
+        echo "JAVA_HOME=${{ github.workspace }}/${{ needs.build-graalvm.outputs.artifact-name }}" >> ${GITHUB_ENV}
     - name: Checkout spring-projects/spring-petclinic
       uses: actions/checkout@v4
       with:
