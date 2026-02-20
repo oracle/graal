@@ -1,0 +1,32 @@
+version: 2
+
+multi-ecosystem-groups:
+  maven-gradle:
+    schedule:
+      interval: 'monthly'
+
+updates:
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    patterns: ['*']
+    schedule:
+      interval: 'monthly'
+
+  - package-ecosystem: 'maven'
+    directories:
+      - '**/*'
+    patterns: ['*']
+    multi-ecosystem-group: 'maven-gradle'
+
+  - package-ecosystem: 'gradle'
+    directories:
+      - '**/*'
+    patterns: ['*']
+    multi-ecosystem-group: 'maven-gradle'
+
+  - package-ecosystem: 'bundler' # Jekyll projects
+    directories:
+      - '**/*'
+    patterns: ['*']
+    schedule:
+      interval: 'monthly'
