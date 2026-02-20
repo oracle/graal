@@ -71,7 +71,7 @@ jobs:
       matrix: ${{ steps.read.outputs.matrix }}
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Set up JAVA_HOME
       uses: actions/setup-java@v5
       with:

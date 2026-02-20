@@ -67,7 +67,7 @@ jobs:
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Download GraalVM build
       uses: actions/download-artifact@v7.0.0
       with:
@@ -83,7 +83,7 @@ jobs:
         cd demo
         ./gradlew nativeTest
     - name: Checkout micronaut-projects/micronaut-core
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         repository: micronaut-projects/micronaut-core
         path: ${{ env.MICRONAUT_CORE_PATH }}

@@ -60,18 +60,18 @@ jobs:
 
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         path: ${{ github.workspace }}/graal
     - name: Checkout oracle/graaljs
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         repository: oracle/graaljs
         sparse-checkout: |
           graal-js
         path: ${{ github.workspace }}/js
     - name: Checkout graalvm/mx
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         repository: graalvm/mx.git
         ref: master
