@@ -14,6 +14,7 @@ You can find most of the documentation sources in the [_docs/_](docs/) directory
 Additional documentation including developer instructions for individual components can be found in corresponding _docs/_ sub-directories.
 The documentation for the Truffle framework, for example, is in [_truffle/docs/_](truffle/docs/).
 This also applies to languages, tools, and other components maintained in [related repositories](#related-repositories).
+Instructions for building GraalVM from source are in [`vm/README.md`](vm/README.md).
 
 ## Get Support
 
