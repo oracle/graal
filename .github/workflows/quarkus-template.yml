@@ -73,7 +73,7 @@ jobs:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
     - name: Set up JAVA_HOME
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'oracle'
         java-version: '17' # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
@@ -152,7 +152,7 @@ jobs:
         if: startsWith(matrix.os-name, 'ubuntu')
         shell: bash
         run: tar -xzf maven-repo.tgz -C ~
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: 'oracle'
           java-version: '17'
