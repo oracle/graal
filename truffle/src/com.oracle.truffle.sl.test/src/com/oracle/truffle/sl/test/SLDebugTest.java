@@ -537,7 +537,7 @@ public class SLDebugTest extends AbstractSLTest {
                         "  return i; \n" +
                         "}\n");
 
-        final Context context = Context.create("sl");
+        final Context context = newContextBuilder("sl").build();
         Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -901,7 +901,7 @@ public class SLDebugTest extends AbstractSLTest {
                         "  return multiply.multiply(n, fac, n - 1);\n" +
                         "}\n");
 
-        Context context = Context.create("sl");
+        Context context = newContextBuilder("sl").build();
         context.eval(stackSource);
         Value fac = context.getBindings("sl").getMember("fac");
         Object multiply = new Multiply();
