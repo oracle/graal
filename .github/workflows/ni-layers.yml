@@ -76,7 +76,7 @@ jobs:
       with:
         python-version: '${{ env.PYTHON_VERSION }}'
     - name: Set up JAVA_HOME
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'oracle'
         java-version: '25'
