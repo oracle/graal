@@ -198,6 +198,9 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
 
     @Override
     public JavaConstant forString(String value) {
+        if (value == null) {
+            return JavaConstant.NULL_POINTER;
+        }
         Value guestString = access.invokeJVMCIHelper("toGuestString", value);
         return new EspressoExternalObjectConstant(access, guestString);
     }
