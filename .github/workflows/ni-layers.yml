@@ -72,7 +72,7 @@ jobs:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
     - name: Setup python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '${{ env.PYTHON_VERSION }}'
     - name: Set up JAVA_HOME
@@ -107,7 +107,7 @@ jobs:
           tar -xzf ${{ needs.build-graalvm.outputs.artifact-file-name }} -C ${{ github.workspace }}
           echo "GRAALVM_HOME=${{ github.workspace }}/${{ needs.build-graalvm.outputs.artifact-name }}" >> ${GITHUB_ENV}
       - name: Setup python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '${{ env.PYTHON_VERSION }}'
       - name: Build layer
