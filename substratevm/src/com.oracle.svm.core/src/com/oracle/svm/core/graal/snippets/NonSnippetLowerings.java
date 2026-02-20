@@ -51,6 +51,7 @@ import com.oracle.svm.core.graal.nodes.LoadMethodByIndexNode;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFloatingNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
@@ -668,13 +669,14 @@ public abstract class NonSnippetLowerings {
 
             ValueNode virtualMethodAddress;
             if (relativeCodePointers) {
-                /*
-                 * GR-64589: this can be a floating read outside of deoptimization target methods,
-                 * but this code has no knowledge of deoptimization (class ReadReservedRegister).
-                 */
-                FixedWithNextNode codeBase = graph.add(new ReadReservedRegisterFixedNode(ReservedRegisters.singleton().getCodeBaseRegister()));
-                graph.addBeforeFixed(prependTo, codeBase);
-
+                ValueNode codeBase;
+                ReservedRegisters rr = ReservedRegisters.singleton();
+                if (rr.mustUseFixedRead(graph)) {
+                    codeBase = graph.add(new ReadReservedRegisterFixedNode(rr.getCodeBaseRegister()));
+                    graph.addBeforeFixed(prependTo, (FixedWithNextNode) codeBase);
+                } else {
+                    codeBase = graph.unique(new ReadReservedRegisterFloatingNode(rr.getCodeBaseRegister()));
+                }
                 virtualMethodAddress = graph.unique(new AddNode(vtableEntry, codeBase));
             } else {
                 virtualMethodAddress = vtableEntry;
