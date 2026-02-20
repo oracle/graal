@@ -208,6 +208,9 @@ final class HostVMAccess implements VMAccess {
             unboxedValue = snippetReflection.asObject(reflectionField.getType(), value);
         } else {
             assert fieldKind.isPrimitive();
+            if (fieldKind != value.getJavaKind()) {
+                throw new IllegalArgumentException("Expected value kind " + fieldKind + " but got " + value.getJavaKind());
+            }
             unboxedValue = value.asBoxedPrimitive();
         }
 

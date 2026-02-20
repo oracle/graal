@@ -111,12 +111,14 @@ public interface VMAccess {
      * @param receiver the receiver object for an instance field, passed as a {@link JavaConstant}.
      *            This must be {@code null} for a {@linkplain ResolvedJavaField#isStatic() static}
      *            field.
-     * @param value the value to be written, passed as a {@link JavaConstant}. Implementations must
-     *            perform the same conversions as in the Java Language Specification's strict
-     *            invocation context (JLS 5.3), analogous to {@link #invoke}.
+     * @param value the value to be written, passed as a {@link JavaConstant}. Primitive values must
+     *            exactly match the type of the {@code field}. For example, an {@code int} value
+     *            cannot be written to a field of type {@code long}). Implementations must not
+     *            perform widening primitive conversion (JLS 5.1.2). This is in contrast to
+     *            {@link #invoke}.
      * @throws IllegalArgumentException if {@code receiver} is non-null for a static field, if
      *             {@code receiver} is null for a non-static field, or if {@code value} cannot be
-     *             converted/assigned to the field type
+     *             assigned to the field type.
      */
     void writeField(ResolvedJavaField field, JavaConstant receiver, JavaConstant value);
 
