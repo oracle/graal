@@ -65,9 +65,9 @@ jobs:
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
     - name: Download GraalVM
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       with:
         name: ${{ needs.build-graalvm.outputs.artifact-name }}
     - name: Extract GraalVM build and use it as JAVA_HOME
@@ -75,7 +75,7 @@ jobs:
         tar -xzf ${{ needs.build-graalvm.outputs.artifact-file-name }} -C ${{ github.workspace }}
         echo "JAVA_HOME=${{ github.workspace }}/${{ needs.build-graalvm.outputs.artifact-name }}" >> ${GITHUB_ENV}
     - name: Checkout spring-projects/spring-petclinic
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       with:
         repository: spring-projects/spring-petclinic
         path: ${{ env.SPRING_PETCLINIC_PATH }}

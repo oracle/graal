@@ -71,9 +71,9 @@ jobs:
       matrix: ${{ steps.read.outputs.matrix }}
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
     - name: Set up JAVA_HOME
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
       with:
         distribution: 'oracle'
         java-version: '17' # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
@@ -84,7 +84,7 @@ jobs:
         curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
         mkdir ${QUARKUS_PATH}
         tar xf quarkus.tgz -C ${QUARKUS_PATH} --strip-components=1
-    - uses: actions/cache@v4
+    - uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306  # v5.0.3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -104,7 +104,7 @@ jobs:
       shell: bash
       run: tar -czvf maven-repo.tgz -C ~ .m2/repository
     - name: Persist Maven Repo
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: maven-repo
         path: maven-repo.tgz
@@ -122,7 +122,7 @@ jobs:
     steps:
       - name: Download GraalVM build
         if: startsWith(matrix.os-name, 'ubuntu')
-        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ${{ needs.build-graalvm.outputs.artifact-name }}
       - name: Extract GraalVM build
@@ -144,7 +144,7 @@ jobs:
         run: ${QUARKUS_PATH}/.github/ci-prerequisites.sh
       - name: Download Maven Repo
         if: startsWith(matrix.os-name, 'ubuntu')
-        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: maven-repo
           path: .
@@ -152,7 +152,7 @@ jobs:
         if: startsWith(matrix.os-name, 'ubuntu')
         shell: bash
         run: tar -xzf maven-repo.tgz -C ~
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
         with:
           distribution: 'oracle'
           java-version: '17'
@@ -169,7 +169,7 @@ jobs:
         shell: bash
         run: find . -type d -name '*-reports' -o -wholename '*/build/reports/tests/functionalTest' | tar -czf test-reports.tgz -T -
       - name: Upload failure Archive (if maven failed)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: failure()
         with:
           name: test-reports-native-${{matrix.category}}

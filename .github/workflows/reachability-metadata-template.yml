@@ -68,14 +68,14 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
     - name: Checkout oracle/graalvm-reachability-metadata
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       with:
         # change the repository and ref test potential fixes
         repository: oracle/graalvm-reachability-metadata
         ref: master
         path: ${{ env.REACHABILITY_METADATA_PATH }}
     - name: Set up JAVA_HOME
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
       with:
         distribution: 'oracle'
         java-version: '25'
@@ -96,11 +96,11 @@ jobs:
           coordinates: ${{fromJson(needs.populate-matrix.outputs.matrix).coordinates}}
     steps:
       - name: "Checkout oracle/graalvm-reachability-metadata"
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: oracle/graalvm-reachability-metadata
       - name: Download GraalVM
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ${{ needs.build-graalvm.outputs.artifact-name }}
       - name: Extract GraalVM build and use it as JAVA_HOME

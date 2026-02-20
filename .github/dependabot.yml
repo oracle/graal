@@ -11,6 +11,10 @@ updates:
     patterns: ['*']
     schedule:
       interval: 'monthly'
+    groups:
+      github-actions-updates:
+        patterns:
+          - '*'
 
   - package-ecosystem: 'maven'
     directories:
@@ -30,3 +34,7 @@ updates:
     patterns: ['*']
     schedule:
       interval: 'monthly'
+    groups:
+      bundler-updates:
+        patterns:
+          - '*'
