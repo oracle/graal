@@ -59,7 +59,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
@@ -81,6 +80,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -201,10 +201,11 @@ public class LoadImageSingletonFeature implements InternalFeature {
         AnalysisMetaAccess metaAccess = universe.getBigbang().getMetaAccess();
         loader = (SVMImageLayerLoader) universe.getImageLayerLoader();
 
-        LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
-        layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY);
-        layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.MULTI_LAYER);
+        HostedImageLayerBuildingSupport layerBuildingSupport = HostedImageLayerBuildingSupport.singleton();
+        layerBuildingSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY);
+        layerBuildingSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.MULTI_LAYER);
 
+        LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             /*
              * We must register all multi layered image singletons within shared layers as embedded.
@@ -275,7 +276,7 @@ public class LoadImageSingletonFeature implements InternalFeature {
                          * as new types cannot be created later.
                          */
                         for (int priorId : getCrossLayerSingletonMappingInfo().getPriorLayerObjectIDs(slotInfo.keyClass())) {
-                            HostedImageLayerBuildingSupport.singleton().getLoader().getOrCreateConstant(priorId);
+                            layerBuildingSupport.getLoader().getOrCreateConstant(priorId);
                         }
                     }
                 }

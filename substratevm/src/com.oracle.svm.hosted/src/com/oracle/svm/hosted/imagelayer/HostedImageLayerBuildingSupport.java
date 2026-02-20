@@ -31,9 +31,13 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.locks.Lock;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
@@ -55,8 +59,11 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
+import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
+import com.oracle.svm.core.util.ConcurrentUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.ImageSingletonsSupportImpl;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
@@ -68,9 +75,15 @@ import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
 import com.oracle.svm.shaded.org.capnproto.Serialize;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.DisallowedSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonTraitKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.TypeResult;
 
@@ -92,6 +105,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     private SVMImageLayerLoader loader;
     private SVMImageLayerWriter writer;
     private SVMImageLayerSingletonLoader singletonLoader;
+    private final EnumSet<SingletonLayeredInstallationKind> forbiddenInstallationKinds;
     private final ImageClassLoader imageClassLoader;
     private final SharedLayerSnapshot.Reader snapshot;
     private final List<FileChannel> graphsChannels;
@@ -124,6 +138,15 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         this.writeLayerArchiveSupport = writeLayerArchiveSupport;
         this.loadLayerArchiveSupport = loadLayerArchiveSupport;
         this.singletonTraitInjector = singletonTraitInjector;
+        this.forbiddenInstallationKinds = EnumSet.noneOf(SingletonLayeredInstallationKind.class);
+        if (buildingImageLayer) {
+            if (!buildingApplicationLayer) {
+                forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.APP_LAYER_ONLY);
+            }
+            if (!buildingInitialLayer) {
+                forbiddenInstallationKinds.add(SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY);
+            }
+        }
     }
 
     public static HostedImageLayerBuildingSupport singleton() {
@@ -162,6 +185,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return writeLayerArchiveSupport;
     }
 
+    public void persistSingletons() {
+        writer.writeImageSingletonInfo(ImageSingletonsSupportImpl.HostedManagement.getSingletonsToPersist());
+    }
+
     public void archiveLayer() {
         writer.dumpFiles();
         writeLayerArchiveSupport.write(imageClassLoader.platform);
@@ -197,6 +224,61 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
         return typeResult.get();
+    }
+
+    /**
+     * It registers a callback that is executed for each singleton exactly once. Note that a
+     * singleton object can be associated with multiple keys, so it's not enough to synchronize on
+     * the {@link Class} singleton key.
+     * <p>
+     * It uses a map to track the status of singletons for which a registration callback needs to be
+     * executed upon installation. The key will always be the singleton object, and the value will
+     * be either a {@link Boolean} or {@link Lock} based on whether the callback's execution is
+     * still in progress or has completed.
+     *
+     * @return a callback to be executed on singleton registration
+     */
+    public BiConsumer<Class<?>, ImageSingletonsSupportImpl.SingletonInfo> createSingletonRegistrationCallback() {
+        boolean extensionLayerBuild = buildingImageLayer && !buildingInitialLayer;
+        if (extensionLayerBuild) {
+            ConcurrentIdentityHashMap<Object, Object> singletonRegistrationCallbackStatus = new ConcurrentIdentityHashMap<>();
+            return (key, info) -> {
+                if (singletonLoader.hasRegistrationCallback(key)) {
+                    ConcurrentUtils.synchronizeRunnableExecution(info.singleton(), new Runnable() {
+                        @Override
+                        @SuppressWarnings("unchecked")
+                        public void run() {
+                            Optional<LayeredCallbacksSingletonTrait> trait = info.traitMap().getTrait(LayeredCallbacksSingletonTrait.class);
+                            ((SingletonLayeredCallbacks<Object>) trait.get().metadata()).onSingletonRegistration(singletonLoader.getImageSingletonLoader(key), info.singleton());
+                        }
+                    }, singletonRegistrationCallbackStatus);
+                }
+            };
+        }
+        return null;
+    }
+
+    public void forbidNewTraitInstallations(SingletonLayeredInstallationKind kind) {
+        forbiddenInstallationKinds.add(kind);
+    }
+
+    public BiConsumer<Object, ImageSingletonsSupportImpl.SingletonTraitMap> createSingletonValidationCallback() {
+        if (buildingImageLayer) {
+            return (value, traitMap) -> {
+                var installationTrait = traitMap.getTrait(LayeredInstallationKindSingletonTrait.class);
+                installationTrait.ifPresent(t -> {
+                    if (forbiddenInstallationKinds.contains(t.metadata())) {
+                        if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
+                            throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", t.metadata(), value);
+                        }
+                    }
+                });
+                traitMap.getTrait(DisallowedSingletonTrait.class).ifPresent(_ -> {
+                    throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
+                });
+            };
+        }
+        return null;
     }
 
     public Function<Class<?>, SingletonTrait<?>[]> getSingletonTraitInjector() {

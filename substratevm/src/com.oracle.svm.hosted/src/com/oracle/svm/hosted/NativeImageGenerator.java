@@ -164,6 +164,7 @@ import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.jdk.ImageKindInfoSingleton;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -178,7 +179,6 @@ import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;
 import com.oracle.svm.core.util.LayeredImageHeapMapStore;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.BuildArtifactsExporter.BuildArtifactsImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
@@ -193,6 +193,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeUniverseBuildingAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.ConcurrentAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
+import com.oracle.svm.hosted.ImageSingletonsSupportImpl.HostedManagement;
 import com.oracle.svm.hosted.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -267,13 +268,14 @@ import com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.StringUtil;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
-import com.oracle.svm.shared.util.ReflectionUtil;
-import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -467,6 +469,26 @@ public class NativeImageGenerator {
         return false;
     }
 
+    private static void loadAndInstallLayeredSingletons(HostedImageLayerBuildingSupport support, HostedManagement hostedSingletonManagement) {
+        /*
+         * Note we are intentionally adding this singleton early as build flags may depend on it. We
+         * also intentionally do not mark this singleton as a LayerImageSingleton to prevent
+         * circular dependency complications.
+         */
+        ImageSingletons.add(ImageLayerBuildingSupport.class, support);
+
+        EconomicSet<Class<?>> loadedSingletonKeys = EconomicSet.emptySet();
+        if (support.getSingletonLoader() != null) {
+            /*
+             * Note eventually this may need to be moved to a later point after the Options Image
+             * Singleton is installed.
+             */
+            loadedSingletonKeys = hostedSingletonManagement.installSingletons(support.getSingletonLoader().loadImageSingletons());
+        }
+        /* Document what was installed during loading. */
+        ImageSingletons.add(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(loadedSingletonKeys));
+    }
+
     protected SubstrateTargetDescription createTarget() {
         return createTarget(loader.platform);
     }
@@ -539,7 +561,14 @@ public class NativeImageGenerator {
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue)) {
             var builderTempDir = tempDirectoryProvider.getTemporaryBuildDirectory();
             HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
-            ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport, loader.classLoaderSupport.annotationExtractor), imageLayerSupport);
+            /* The callbacks need be installed early, before any singleton is registered. */
+            var registrationCallback = imageLayerSupport.createSingletonRegistrationCallback();
+            var validationCallback = imageLayerSupport.createSingletonValidationCallback();
+            var singletonTraitInjector = imageLayerSupport.getSingletonTraitInjector();
+            HostedManagement hostedSingletonManagement = new HostedManagement(loader.classLoaderSupport.annotationExtractor,
+                            registrationCallback, validationCallback, singletonTraitInjector, imageLayerSupport.buildingImageLayer);
+            HostedManagement.install(hostedSingletonManagement);
+            NativeImageGenerator.loadAndInstallLayeredSingletons(imageLayerSupport, hostedSingletonManagement);
 
             setSystemPropertiesForImageLate(k);
 
@@ -793,7 +822,7 @@ public class NativeImageGenerator {
             }
             try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.ARCHIVE_LAYER)) {
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    ImageSingletonsSupportImpl.HostedManagement.persistSingletonInfo();
+                    HostedImageLayerBuildingSupport.singleton().persistSingletons();
                     HostedImageLayerBuildingSupport.singleton().archiveLayer();
                 }
             }

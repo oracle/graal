@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
@@ -48,7 +47,6 @@ import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTrait;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
@@ -84,7 +82,13 @@ public class SVMImageLayerSingletonLoader {
         return new ImageSingletonLoaderImpl(keyStore, snapshot);
     }
 
-    public Map<Object, EconomicSet<Class<?>>> loadImageSingletons(Function<SingletonTrait<?>[], SingletonInfo> forbiddenObjectCreator) {
+    /**
+     * Load singletons installed in previous layers.
+     * 
+     * @return a mapping from singleton objects or {@link SingletonInfo} placeholders to all the
+     *         keys they should be mapped to.
+     */
+    public Map<Object, EconomicSet<Class<?>>> loadImageSingletons() {
         ArrayList<Object> singletonObjects = new ArrayList<>(snapshot.getSingletonObjects().size());
         Map<Class<?>, Integer> initialLayerKeyToIdMap = new HashMap<>();
         Map<Class<?>, Integer> singletonKeyToKeyStoreIdMap = new HashMap<>();
@@ -131,9 +135,9 @@ public class SVMImageLayerSingletonLoader {
                 if (entry.getIsInitialLayerOnly()) {
                     int constantId = entry.getConstantId();
                     initialLayerKeyToIdMap.put(clazz, constantId);
-                    forbiddenObject = forbiddenObjectCreator.apply(initialLayerOnly);
+                    forbiddenObject = SingletonInfo.forbiddenSingletonInfo(initialLayerOnly);
                 } else {
-                    forbiddenObject = forbiddenObjectCreator.apply(SingletonTrait.EMPTY_ARRAY);
+                    forbiddenObject = SingletonInfo.forbiddenSingletonInfo();
                 }
                 singletonInitializationMap.computeIfAbsent(forbiddenObject, _ -> EconomicSet.create());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);

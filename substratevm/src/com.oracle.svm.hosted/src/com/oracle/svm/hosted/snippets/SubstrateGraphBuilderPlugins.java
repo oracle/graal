@@ -89,7 +89,6 @@ import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
@@ -97,11 +96,13 @@ import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -1265,7 +1266,8 @@ public class SubstrateGraphBuilderPlugins {
                              * This singleton is only installed in the initial layer heap. When
                              * allowed, all other layers lookups refer to this singleton.
                              */
-                            JavaConstant initialSingleton = layeredSingletonSupport.getInitialLayerOnlyImageSingleton(key);
+                            var loader = HostedImageLayerBuildingSupport.singleton().getSingletonLoader();
+                            JavaConstant initialSingleton = loader.loadInitialLayerOnlyImageSingleton(key);
                             b.addPush(JavaKind.Object, ConstantNode.forConstant(initialSingleton, b.getMetaAccess(), b.getGraph()));
                             return true;
                         }

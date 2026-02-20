@@ -57,6 +57,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -107,8 +108,7 @@ import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.hosted.ImageSingletonsSupportImpl;
+import com.oracle.svm.hosted.ImageSingletonsSupportImpl.SingletonInfo;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
@@ -171,6 +171,7 @@ import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
@@ -406,9 +407,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         dispatchTableSingleton.releaseHostedMethodArray();
 
         @SuppressWarnings({"unchecked", "cast"})
-        Map.Entry<ImageHeapConstant, ConstantParent>[] constantsToPersist = (Map.Entry<ImageHeapConstant, ConstantParent>[]) constantsMap.entrySet().stream()
+        Entry<ImageHeapConstant, ConstantParent>[] constantsToPersist = (Entry<ImageHeapConstant, ConstantParent>[]) constantsMap.entrySet().stream()
                         .sorted(Comparator.comparingInt(a -> ImageHeapConstant.getConstantID(a.getKey())))
-                        .toArray(Map.Entry[]::new);
+                        .toArray(Entry[]::new);
         Set<Integer> constantsToRelink = new HashSet<>(); // noEconomicSet(streaming)
         initSortedArray(snapshotBuilder::initConstants, constantsToPersist,
                         (entry, bsupplier) -> persistConstant(entry.getKey(), entry.getValue(), bsupplier.get(), constantsToRelink));
@@ -1167,7 +1168,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @SuppressWarnings("unchecked")
-    public void writeImageSingletonInfo(List<Map.Entry<Class<?>, ImageSingletonsSupportImpl.SingletonInfo>> layeredImageSingletons) {
+    public void writeImageSingletonInfo(List<Entry<Class<?>, SingletonInfo>> layeredImageSingletons) {
         /*
          * First write the image singleton keys
          */
