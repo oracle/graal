@@ -333,29 +333,39 @@ mx_polybench.register_polybench_language(mx_suite=_suite, language="wasm", distr
 
 
 def wasm_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags) -> None:
+    extra_image_build_arguments = ["-Dnative-image.benchmark.extra-image-build-argument=" + arg for arg in [
+            '-H:+UnlockExperimentalVMOptions',
+            '-H:+VectorAPISupport',
+            '--add-modules=jdk.incubator.vector']]
+
+    def bench_jvm(args):
+        polybench_run(["--jvm"] + args + ["--vm-args", "--add-modules=jdk.incubator.vector"])
+
+    def bench_native(args, mx_benchmark_args=None):
+        if mx_benchmark_args is None:
+            mx_benchmark_args = []
+        polybench_run(["--native"] + args + extra_image_build_arguments + mx_benchmark_args)
+
+    def bench(args):
+        bench_jvm(args)
+        bench_native(args)
+
     if "gate" in tags:
-        polybench_run(["--jvm", "interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
-        polybench_run(["--native", "interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+        bench(["interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
     if "benchmark" in tags:
-        polybench_run(["--jvm", "interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false"])
-        polybench_run(["--native", "interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false"])
-        polybench_run(["--jvm", "interpreter/*.wasm"])
-        polybench_run(["--native", "interpreter/*.wasm"])
-        polybench_run(["--jvm", "simd/*.wasm", "--vm-args", "--add-modules=jdk.incubator.vector"])
-        polybench_run(["--native", "simd/*.wasm", "--vm-args", "--add-modules=jdk.incubator.vector"])
-        polybench_run(["--jvm", "exceptions/*.wasm", "--experimental-options", "--wasm.Exceptions=true"])
-        polybench_run(["--native", "exceptions/*.wasm", "--experimental-options", "--wasm.Exceptions=true"])
-        polybench_run(["--jvm", "interpreter/*.wasm", "--metric=metaspace-memory"])
-        polybench_run(["--jvm", "interpreter/*.wasm", "--metric=application-memory"])
-        polybench_run(["--jvm", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
-        polybench_run(["--native", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
-        polybench_run(["--jvm", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
-        polybench_run(["--native", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+        bench(["interpreter/*.wasm", "--experimental-options", "--engine.Compilation=false"])
+        bench(["interpreter/*.wasm"])
+        bench(["simd/*.wasm"])
+        bench(["exceptions/*.wasm", "--experimental-options", "--wasm.Exceptions=true"])
+        bench_jvm(["interpreter/*.wasm", "--metric=metaspace-memory"])
+        bench_jvm(["interpreter/*.wasm", "--metric=application-memory"])
+        bench(["interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+        bench(["interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
     if "instructions" in tags:
         assert mx_polybench.is_enterprise()
         fork_count_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "polybench-fork-counts.json")
-        polybench_run(["--native", "interpreter/*.wasm", "--metric=instructions", "--experimental-options", "--engine.Compilation=false",
-                       "--mx-benchmark-args", "--fork-count-file", fork_count_file])
+        bench_native(["interpreter/*.wasm", "--metric=instructions", "--experimental-options", "--engine.Compilation=false"],
+                     ["--mx-benchmark-args", "--fork-count-file", fork_count_file])
 
 
 mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="wasm", languages=["wasm"],
