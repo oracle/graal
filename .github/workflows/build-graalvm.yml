@@ -70,6 +70,22 @@ on:
   # Enable manual dispatch of the workflow
   # see https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
   workflow_dispatch:
+    inputs:
+      dynamic-imports:
+        default: '/substratevm'
+        description: 'Value for mx --dy option'
+        required: true
+        type: string
+      native-images:
+        default: 'native-image'
+        description: 'Value for mx --native-images option'
+        required: true
+        type: string
+      components:
+        default: 'Native Image'
+        description: 'Value for mx --components option'
+        required: true
+        type: string
 
 jobs:
   build_from_source:
