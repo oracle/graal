@@ -422,6 +422,13 @@ def svm_gate_body(args, tasks):
                 image_demo_task(args.extra_image_builder_arguments)
                 helloworld(svm_experimental_options(['-H:+RunMainInNewThread']) + args.extra_image_builder_arguments)
 
+    with Task('image layeredhelloworld', tasks, tags=[GraalTags.helloworld]) as t:
+        if t:
+            # Running layered builds does not work for static builds
+            if '--static' not in args.extra_image_builder_arguments:
+                with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                    layeredhelloworld(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
+
     with Task('terminus helloworld', tasks, tags=[GraalTags.terminus]) as t:
         if t: _run_terminus_gate(args)
 
@@ -437,8 +444,6 @@ def svm_gate_body(args, tasks):
         if t:
             if mx.is_windows():
                 mx.warn('layereddebuginfotest does not work on Windows')
-            elif mx.is_darwin() and platform.machine() == "arm64":
-                mx.warn('layered images do not currently work on ARM macOS')
             # Running debuginfotest with layers does not work for static builds
             elif '--static' not in args.extra_image_builder_arguments:
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -2106,6 +2111,80 @@ def layereddebuginfotest(args, config=None):
         _layereddebuginfotest(native_image, output_path, skip_base_layer, with_isolates_only, a), unmask(parsed.image_args),
         config=config
     )
+
+def _layeredhelloworld(native_image, javac_command, output_path, build_only, args):
+    """Builds a layered native image (base + app layer) and runs it."""
+    mx_util.ensure_dir_exists(output_path)
+
+    # Write and compile Hello.java
+    hello_file = join(output_path, 'Hello.java')
+    with open(hello_file, 'w') as fp:
+        fp.write('public class Hello {\n'
+                 '    public static void main(String[] args) {\n'
+                 '        System.out.println("Hello from layered native-image!");\n'
+                 '    }\n'
+                 '}\n')
+    mx.run(javac_command + [hello_file])
+
+    for key, value in get_java_properties().items():
+        args.append("-D" + key + "=" + value)
+
+    # Both layers must see the same classpath for layer compatibility checks.
+    # Pass -cp to the base layer even though it uses module=java.base, so that
+    # the extension layer's classpath matches the recorded base layer classpath.
+    cp_args = ['-cp', output_path]
+
+    # Build base layer
+    base_layer_name = 'libbase'
+    native_image(args + cp_args + [
+        '-o', join(output_path, base_layer_name),
+    ] + svm_experimental_options([
+        f'-H:LayerCreate={base_layer_name}.nil,module=java.base',
+    ]))
+
+    # Build app layer
+    app_name = 'hello'
+    native_image(args + cp_args + [
+        '-o', join(output_path, app_name),
+        'Hello',
+    ] + svm_experimental_options([
+        f'-H:LayerUse={join(output_path, base_layer_name)}.nil',
+    ]))
+
+    if not build_only:
+        expected_output = [("Hello from layered native-image!" + os.linesep).encode()]
+        actual_output = []
+        def _collector(x):
+            actual_output.append(x.encode())
+        mx.run([join(output_path, app_name)], out=_collector)
+        if actual_output != expected_output:
+            raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
+
+
+@mx.command(suite_name=suite.name, command_name='layeredhelloworld', usage_msg='[options]')
+def layeredhelloworld(args, config=None):
+    """
+    Builds a layered Hello World native image (base layer + app layer) and runs it.
+    Base layer: java.base module
+    App layer: Hello class
+    """
+    parser = ArgumentParser(prog='mx layeredhelloworld')
+    all_args = ['--output-path', '--javac-command', '--build-only']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[join(svmbuild_dir(), "layeredhelloworld")])
+    parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default=mx.get_jdk().javac)
+    parser.add_argument(all_args[2], action='store_true', help='Only build the native image')
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    javac_command = unmask(parsed.javac_command.split())
+    output_path = unmask(parsed.output_path)[0]
+    build_only = parsed.build_only
+    native_image_context_run(
+        lambda native_image, a:
+        _layeredhelloworld(native_image, javac_command, output_path, build_only, a), unmask(parsed.image_args),
+        config=config,
+    )
+
 
 @mx.command(suite_name=suite.name, command_name='debuginfotestshared', usage_msg='[options]')
 def debuginfotestshared(args, config=None):

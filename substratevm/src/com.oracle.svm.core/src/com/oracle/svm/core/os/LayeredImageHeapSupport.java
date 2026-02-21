@@ -33,7 +33,7 @@ import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HE
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.NEXT_SECTION;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.VARIABLY_SIZED_DATA;
 import static com.oracle.svm.core.util.UnsignedUtils.roundUp;
-import static jdk.graal.compiler.word.Word.unsigned;
+import static org.graalvm.word.impl.Word.unsigned;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;

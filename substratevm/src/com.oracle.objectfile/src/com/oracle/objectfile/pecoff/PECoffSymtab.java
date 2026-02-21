@@ -206,7 +206,7 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
         if (symtabStruct != null) {
             return symtabStruct;
         }
-        symtabStruct = new PECoffSymtabStruct();
+        symtabStruct = new PECoffSymtabStruct(((PECoffObjectFile) getOwner()).getSuppressAutoExports());
         entriesToIndex = new HashMap<>();
 
         int i = 0;

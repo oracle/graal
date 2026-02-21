@@ -24,8 +24,15 @@
  * questions.
  */
 
+#ifdef _MSC_VER
+#include <windows.h>
+
+void codeSynchronization_clearCache(long unsigned codeStart, long unsigned codeSize){
+    FlushInstructionCache(GetCurrentProcess(), (LPCVOID)codeStart, (SIZE_T)codeSize);
+}
+#else
 void codeSynchronization_clearCache(long unsigned codeStart, long unsigned codeSize){
     long unsigned  codeEnd = codeStart + codeSize;
     __builtin___clear_cache((char *) codeStart, (char *) codeEnd);
 }
-
+#endif

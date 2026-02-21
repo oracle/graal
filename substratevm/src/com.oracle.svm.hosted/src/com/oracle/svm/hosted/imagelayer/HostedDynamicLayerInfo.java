@@ -188,6 +188,15 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
 
     public void defineSymbolsForPriorLayerMethods(ObjectFile objectFile) {
         assert BuildPhaseProvider.isHeapLayoutFinished();
+        if (objectFile.getFormat() == ObjectFile.Format.PECOFF) {
+            /*
+             * On Windows (PE/COFF), the base layer DLL suppresses auto-exports to stay under the
+             * 65535 export limit. Since method symbols are not exported from the base layer, we
+             * cannot create undefined references to them here. Cross-layer method calls are
+             * resolved at runtime through the code patching mechanism instead.
+             */
+            return;
+        }
         /*
          * In vtables, we can typically reference methods from the initial layer via their known
          * offsets from the code base, without using symbols. Only in some cases, such as

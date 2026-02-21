@@ -324,9 +324,9 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return false;
     }
 
-    /** Layered images are supported on Linux AMD64/AARCH64 and Darwin AARCH64. */
+    /** Layered images are supported on Linux, Darwin, and Windows (AMD64 and AARCH64). */
     private static boolean supportedPlatform(Platform platform) {
-        return platform instanceof LINUX_AMD64 || platform instanceof Platform.LINUX_AARCH64 || platform instanceof Platform.DARWIN_AARCH64;
+        return platform instanceof LINUX_AMD64 || platform instanceof Platform.LINUX_AARCH64 || platform instanceof Platform.DARWIN_AARCH64 || platform instanceof Platform.WINDOWS_AMD64 || platform instanceof Platform.WINDOWS_AARCH64;
     }
 
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {
@@ -437,6 +437,22 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         LoadLayerArchiveSupport archiveSupport = HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport();
         nativeLibs.getLibraryPaths().add(archiveSupport.getSharedLibraryPath().toString());
         String libName = archiveSupport.getSharedLibraryBaseName();
+        if (Platform.includedIn(Platform.WINDOWS.class)) {
+            /*
+             * On Windows, the linker doesn't auto-prepend "lib" like Unix linkers do (-lfoo
+             * finds libfoo.so). Use the full layer name so the linker finds the import library.
+             */
+            libName = LayerArchiveSupport.SHARED_LIB_NAME_PREFIX + libName;
+            /*
+             * The import library (.lib) is not included in the .nil archive — only the DLL is.
+             * Add the directory containing the .nil file as a library path so the linker can
+             * find the import library that was generated alongside the layer file.
+             */
+            Path nilDir = archiveSupport.getLayerFileDirectory();
+            if (nilDir != null) {
+                nativeLibs.getLibraryPaths().add(nilDir.toString());
+            }
+        }
         HostedDynamicLayerInfo.singleton().registerLibName(libName);
         nativeLibs.addDynamicNonJniLibrary(libName);
     }
