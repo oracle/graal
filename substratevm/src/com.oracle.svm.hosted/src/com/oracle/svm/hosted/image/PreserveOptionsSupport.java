@@ -159,22 +159,25 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         }
 
         if (classLoaderSupport.isPreserveAll()) {
-            /* Include all parts of native image that are stripped */
-            AddAllCharsets.update(hostedValues, true);
-            IncludeAllLocales.update(hostedValues, true);
-            AllowJRTFileSystem.update(hostedValues, true);
-
-            /* Should be removed with GR-61365 */
-            var missingJDKProtocols = List.of("http", "https", "ftp", "jar", "mailto", "jrt", "jmod");
-            for (String missingProtocol : missingJDKProtocols) {
-                EnableURLProtocols.update(hostedValues, missingProtocol);
-            }
-
-            AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
+            enableAllJDKFeatures(hostedValues);
 
             /* Allow metadata tracing in preserve all images */
             MetadataTracingSupport.update(hostedValues, true);
         }
+    }
+
+    public static void enableAllJDKFeatures(EconomicMap<OptionKey<?>, Object> hostedValues) {
+        /* Include all parts of native image that are stripped */
+        AddAllCharsets.update(hostedValues, true);
+        IncludeAllLocales.update(hostedValues, true);
+        AllowJRTFileSystem.update(hostedValues, true);
+
+        /* Should be removed with GR-61365 */
+        var missingJDKProtocols = List.of("http", "https", "ftp", "jar", "mailto", "jrt", "jmod");
+        for (String missingProtocol : missingJDKProtocols) {
+            EnableURLProtocols.update(hostedValues, missingProtocol);
+        }
+        AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
     }
 
     private static String getSecurityProvidersCSV() {

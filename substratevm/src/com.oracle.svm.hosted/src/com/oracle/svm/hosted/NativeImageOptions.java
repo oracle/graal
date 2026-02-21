@@ -33,9 +33,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.svm.core.option.OptionOrigin;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -45,10 +47,12 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
+import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
@@ -301,4 +305,45 @@ public class NativeImageOptions {
             }
         }
     };
+
+    @Option(help = """
+                    This mode disables all Native Image features that allow users to diverge from original program semantics.
+                    It disables build-time initialization for classes on the classpath, native-image system properties, user-defined substitutions, and user-defined features, while enabling all future defaults.
+
+                    This mode does not modify key Native Image restrictions related to dynamic access (reachability metadata) and runtime class loading as those are accepted limitations of native image.
+
+                    To overcome restrictions related to dynamic access (reachability metadata) and runtime class loading, and achieve the same semantics behavior as the original program, it is recommended to use this flag with:
+
+                      native-image -H:+CompatibilityMode -H:Preserve=all -H:+RuntimeClassLoading App
+
+                    And run the executable with:
+
+                      ./app -Djava.home=<path-to-java-home> -Djava.class.path=<cp> -Djdk.module.path=<module-path> <args>
+                    """, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> CompatibilityMode = new HostedOptionKey<>(false, NativeImageOptions::validateCompatibilityMode) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            if (!newValue) {
+                throw UserError.abort("CompatibilityMode can not be unset. Please remove " + SubstrateOptionsParser.commandArgument(NativeImageOptions.CompatibilityMode, "-", true, false));
+            }
+
+            FutureDefaultsOptions.FutureDefaults.update(values, "all");
+            PreserveOptionsSupport.enableAllJDKFeatures(values);
+        }
+    };
+
+    private static void validateCompatibilityMode(HostedOptionKey<Boolean> compatibilityMode) {
+        OptionOrigin lastOrigin = compatibilityMode.getLastOrigin();
+        if (lastOrigin != null && !lastOrigin.commandLineLike()) {
+            String optionArgument = SubstrateOptionsParser.commandArgument(NativeImageOptions.CompatibilityMode, "+", true, false);
+            throw UserError.abort("Using %s is only allowed on command line. The option was used from %s", optionArgument, NativeImageOptions.CompatibilityMode.getLastOrigin());
+        }
+    }
+
+    @Fold
+    public static boolean compatibilityMode() {
+        return CompatibilityMode.getValue();
+    }
+
 }

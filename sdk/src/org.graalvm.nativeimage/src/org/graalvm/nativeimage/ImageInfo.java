@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -161,7 +161,7 @@ public final class ImageInfo {
      */
     public static boolean isExecutable() {
         ensureKindAvailable();
-        return PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
+        return PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE.equals(ImageKindHolder.IMAGE_KIND);
     }
 
     /**
@@ -171,13 +171,21 @@ public final class ImageInfo {
      */
     public static boolean isSharedLibrary() {
         ensureKindAvailable();
-        return PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
+        return PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY.equals(ImageKindHolder.IMAGE_KIND);
     }
 
     private static void ensureKindAvailable() {
-        if (inImageCode() && System.getProperty(PROPERTY_IMAGE_KIND_KEY) == null) {
+        if (inImageCode() && ImageKindHolder.IMAGE_KIND == null) {
             throw new UnsupportedOperationException(
                             "The kind of image that is built (executable or shared library) is not available yet because the relevant command line option has not been parsed yet.");
         }
+    }
+
+    /// This class is needed so [#IMAGE_KIND] does not get initialized before the
+    /// [#PROPERTY_IMAGE_KIND_KEY] property is set.
+    /// [ImageInfo] is initialized very early in the build process before the
+    /// [#PROPERTY_IMAGE_KIND_KEY] property is set by the image builder.
+    private static final class ImageKindHolder {
+        static final String IMAGE_KIND = System.getProperty(PROPERTY_IMAGE_KIND_KEY);
     }
 }

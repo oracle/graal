@@ -121,7 +121,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("this-escape")
-    protected SystemPropertiesSupport() {
+    protected SystemPropertiesSupport(boolean compatibilityMode) {
         for (String key : HOSTED_PROPERTIES) {
             String value = System.getProperty(key);
             if (value != null) {
@@ -142,18 +142,9 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty("java.vm.version", vm.version);
 
         initializeProperty("java.class.path", "");
-        initializeProperty("java.endorsed.dirs", "");
-        initializeProperty("java.ext.dirs", "");
+        initializeProperty("jdk.module.path", "");
+
         initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
-
-        initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
-
-        for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
-            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
-        }
-        for (String futureDefault : FutureDefaultsOptions.getRetiredFutureDefaults()) {
-            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
-        }
 
         ArrayList<LazySystemProperty> lazyProperties = new ArrayList<>();
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.NAME, this::userNameValue));
@@ -176,10 +167,8 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_DISPLAY, () -> LocaleSupport.singleton().getLocale().displayVariant()));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_FORMAT, () -> LocaleSupport.singleton().getLocale().formatVariant()));
 
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            lazyProperties.add(new LazySystemProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, () -> ImageKindInfoSingleton.singleton().getImageKindInfoProperty()));
-        } else {
-            initializeProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, System.getProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY));
+        if (!compatibilityMode) {
+            initializeNonStandardProperties(lazyProperties);
         }
 
         String targetName = System.getProperty("svm.targetName");
@@ -205,6 +194,23 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
             assert !currentProperties.containsKey(property.getKey());
 
             lazySystemProperties.put(property.getKey(), property);
+        }
+    }
+
+    private void initializeNonStandardProperties(ArrayList<LazySystemProperty> lazyProperties) {
+        initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
+
+        for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
+            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+        }
+        for (String futureDefault : FutureDefaultsOptions.getRetiredFutureDefaults()) {
+            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+        }
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            lazyProperties.add(new LazySystemProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, () -> ImageKindInfoSingleton.singleton().getImageKindInfoProperty()));
+        } else {
+            initializeProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, System.getProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY));
         }
     }
 
