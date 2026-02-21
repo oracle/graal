@@ -37,6 +37,8 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -158,6 +160,16 @@ public abstract class NativeImage extends AbstractImage {
     private Section rwDataSection;
     private Section heapSection;
 
+    /**
+     * On PE/COFF shared layers, forSymbol CGlobals that reference symbols defined in the extension
+     * layer are unresolved at link time. The MSVC linker with /FORCE:UNRESOLVED sets them to 0 and
+     * the PE loader base-relocates 0 to IMAGE_BASE, which is incorrect. We skip the ADDR64
+     * relocation (leaving the slot as 0) and collect the entries here for a runtime fixup table.
+     */
+    private List<Map.Entry<Integer, String>> unresolvedCGlobalFixups;
+    private Set<Integer> recordedFixupOffsets;
+    private BasicProgbitsSectionImpl cglobalFixupSectionImpl;
+
     public NativeImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, ImageHeapLayoutInfo heapLayout,
                     NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, heapLayout, codeCache, entryPoints, imageClassLoader);
@@ -168,6 +180,19 @@ public abstract class NativeImage extends AbstractImage {
         int pageSize = SubstrateOptions.getPageSize();
         objectFile = ObjectFileFactory.singleton().newObjectFile(pageSize, ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory(), universe.getBigBang());
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
+        if (ImageLayerBuildingSupport.buildingSharedLayer() && objectFile.getFormat() == ObjectFile.Format.PECOFF) {
+            /*
+             * On Windows (PE/COFF), external symbols are normally auto-exported via /EXPORT:
+             * directives in the .drectve section. Shared image layers have >65535 external symbols,
+             * which exceeds the PE/COFF export limit. Suppress auto-exports so that only explicit
+             * /EXPORT: directives on the linker command line are used.
+             *
+             * Extension/application layers (built as EXECUTABLE) keep auto-exports enabled because
+             * the base layer DLL needs to resolve symbols via GetProcAddress at runtime (e.g. the
+             * layer section symbol for NEXT_SECTION patching).
+             */
+            objectFile.setSuppressAutoExports(true);
+        }
         wordSize = FrameAccess.wordSize();
         assert objectFile.getWordSizeInBytes() == wordSize;
         assert objectFile.getPageSize() == heapLayout.getPageSize();
@@ -409,9 +434,112 @@ public abstract class NativeImage extends AbstractImage {
 
     private void defineRelocationForSymbol(String name, long position) {
         objectFile.createUndefinedSymbol(name, true);
+        ObjectFile.Symbol sym = objectFile.getSymbolTable().getSymbol(name);
         ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
         int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + position);
         baseSectionImpl.markRelocationSite(offsetInSection, wordSize == 8 ? RelocationKind.DIRECT_8 : RelocationKind.DIRECT_4, name, 0L);
+        if (objectFile.getFormat() == ObjectFile.Format.PECOFF
+                        && ImageLayerBuildingSupport.buildingSharedLayer()
+                        && !sym.isDefined()) {
+            /*
+             * On PE/COFF shared layers, record undefined symbols for runtime fixup. The ADDR64
+             * relocation is still created (the linker resolves CRT/API symbols via import
+             * libraries). Only truly unresolvable symbols (extension layer forward references) will
+             * have wrong values at runtime; patchForwardReferenceCGlobals() fixes those via
+             * GetProcAddress on the extension EXE module.
+             */
+            if (unresolvedCGlobalFixups == null) {
+                unresolvedCGlobalFixups = new ArrayList<>();
+                recordedFixupOffsets = new HashSet<>();
+            }
+            if (recordedFixupOffsets.add(offsetInSection)) {
+                unresolvedCGlobalFixups.add(Map.entry(offsetInSection, name));
+            }
+        }
+    }
+
+    /**
+     * Populate the PE/COFF CGlobal fixup section with entries for unresolved forSymbol CGlobals.
+     * The fixup table is read at runtime by WindowsImageHeapProvider to resolve forward references
+     * via GetProcAddress.
+     *
+     * <pre>
+     * Layout:
+     *   int32: numEntries
+     *   int32: stringDataOffset (from section start)
+     *   int64[numEntries]: absolute addresses of CGlobal slots (via ADDR64 relocations)
+     *   int32[numEntries]: string offsets (relative to stringDataOffset)
+     *   char[]: null-terminated symbol name strings
+     * </pre>
+     */
+    private void populateCGlobalFixupSection() {
+        int count = unresolvedCGlobalFixups != null ? unresolvedCGlobalFixups.size() : 0;
+
+        if (count == 0) {
+            /* Empty fixup table: just the header with count=0. */
+            byte[] data = new byte[8];
+            ByteBuffer buf = ByteBuffer.wrap(data).order(objectFile.getByteOrder());
+            buf.putInt(0);
+            buf.putInt(0);
+            cglobalFixupSectionImpl.setContent(data);
+            return;
+        }
+
+        /* Encode symbol names as null-terminated ASCII strings. */
+        byte[][] nameBytes = new byte[count][];
+        int totalStringSize = 0;
+        for (int i = 0; i < count; i++) {
+            String name = unresolvedCGlobalFixups.get(i).getValue();
+            nameBytes[i] = (name + "\0").getBytes(StandardCharsets.US_ASCII);
+            totalStringSize += nameBytes[i].length;
+        }
+
+        int headerSize = 8; /* count(4) + stringDataOffset(4) */
+        int slotPtrsSize = count * 8; /* int64 per entry (with ADDR64 relocation) */
+        int nameOffsetsSize = count * 4; /* int32 per entry */
+        int stringDataOffset = headerSize + slotPtrsSize + nameOffsetsSize;
+        int totalSize = stringDataOffset + totalStringSize;
+
+        byte[] data = new byte[totalSize];
+        ByteBuffer buf = ByteBuffer.wrap(data).order(objectFile.getByteOrder());
+
+        /* Header. */
+        buf.putInt(count);
+        buf.putInt(stringDataOffset);
+
+        /* Slot pointer placeholders (filled by ADDR64 relocations). */
+        for (int i = 0; i < count; i++) {
+            buf.putLong(0);
+        }
+
+        /* String offsets. */
+        int currentStringOffset = 0;
+        for (int i = 0; i < count; i++) {
+            buf.putInt(currentStringOffset);
+            currentStringOffset += nameBytes[i].length;
+        }
+
+        /* String data. */
+        for (int i = 0; i < count; i++) {
+            buf.put(nameBytes[i]);
+        }
+
+        cglobalFixupSectionImpl.setContent(data);
+
+        /*
+         * Mark ADDR64 relocations for the slot pointer entries. Each relocation references the
+         * .data section at the CGlobal slot's offset, so the PE loader resolves it to the absolute
+         * runtime address of the slot.
+         */
+        for (int i = 0; i < count; i++) {
+            int offsetInFixupSection = headerSize + i * 8;
+            int slotOffsetInData = unresolvedCGlobalFixups.get(i).getKey();
+            cglobalFixupSectionImpl.markRelocationSite(
+                            offsetInFixupSection,
+                            RelocationKind.DIRECT_8,
+                            rwDataSection.getName(),
+                            slotOffsetInData);
+        }
     }
 
     public static String getTextSectionStartSymbol() {
@@ -466,6 +594,24 @@ public abstract class NativeImage extends AbstractImage {
             objectFile.createDefinedSymbol("__svm_text_end", textSection, textSectionSize, 0, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
             objectFile.createDefinedSymbol(roDataSection.getName(), roDataSection, 0, 0, false, false);
             objectFile.createDefinedSymbol(rwDataSection.getName(), rwDataSection, 0, 0, false, false);
+
+            /*
+             * On PE/COFF, pre-create the CGlobal fixup section so that its symbol
+             * (__svm_cglobal_fixup_table) is defined before writeData() and
+             * markRelocationSitesFromBuffer() run. This is needed in all PE/COFF builds (not just
+             * shared layers) because WindowsImageHeapProvider.CGLOBAL_FIXUP_TABLE unconditionally
+             * references this symbol, and the field must be relinked across layers. In non-shared
+             * builds, the table is empty (count=0). The content is filled after relocation
+             * processing.
+             */
+            if (objectFile.getFormat() == ObjectFile.Format.PECOFF) {
+                cglobalFixupSectionImpl = new BasicProgbitsSectionImpl(new byte[8]);
+                SectionName fixupSectionName = new SectionName.ProgbitsSectionName("svm_fix");
+                Section cglobalFixupSection = objectFile.newProgbitsSection(
+                                fixupSectionName.getFormatDependentName(objectFile.getFormat()),
+                                pageSize, true, false, cglobalFixupSectionImpl);
+                objectFile.createDefinedSymbol("__svm_cglobal_fixup_table", cglobalFixupSection, 0, 0, false, false);
+            }
 
             NativeImageHeapWriter writer = new NativeImageHeapWriter(heap, heapLayout);
             // Write the section contents and record relocations.
@@ -548,6 +694,16 @@ public abstract class NativeImage extends AbstractImage {
             markRelocationSitesFromBuffer(roDataBuffer, roDataImpl);
             markRelocationSitesFromBuffer(rwDataBuffer, rwDataImpl);
             markRelocationSitesFromBuffer(heapSectionBuffer, heapSectionImpl);
+
+            /*
+             * Populate the CGlobal fixup section with entries collected during
+             * markRelocationSitesFromBuffer. Each entry records a CGlobal slot that references an
+             * unresolved symbol, paired with the symbol name for runtime resolution via
+             * GetProcAddress.
+             */
+            if (cglobalFixupSectionImpl != null) {
+                populateCGlobalFixupSection();
+            }
 
             // We print the heap statistics after the heap was successfully written because this
             // could modify objects that will be part of the image heap.
@@ -713,16 +869,61 @@ public abstract class NativeImage extends AbstractImage {
 
             CGlobalDataInfo dataInfo = ref.getDataInfo();
             CGlobalDataImpl<?> data = dataInfo.getData();
-            long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getAddend();
-            assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
-            sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), addend);
-            if (dataInfo.isSymbolReference()) { // create relocation for referenced symbol
-                if (objectFile.getSymbolTable().getSymbol(data.symbolName) == null) {
-                    objectFile.createUndefinedSymbol(data.symbolName, true);
+            ObjectFile.Symbol existingSym = objectFile.getSymbolTable().getSymbol(data.symbolName);
+            if (dataInfo.isSymbolReference() && objectFile.getFormat() == ObjectFile.Format.PECOFF
+                            && ImageLayerBuildingSupport.buildingExtensionLayer()
+                            && (existingSym == null || !existingSym.isDefined())) {
+                /*
+                 * On PE/COFF, ADDR64 relocations against imported DLL symbols resolve to import
+                 * thunks (JMP stubs in .text), not the actual symbol addresses. Using a CGlobalData
+                 * intermediary would store the thunk address, causing cross-layer calls to jump to
+                 * wrong addresses.
+                 *
+                 * Instead, reference the __imp_ prefixed symbol which is the Import Address Table
+                 * (IAT) entry. The movq instruction loads directly from the IAT, which the Windows
+                 * loader fills with the actual symbol address at DLL load time.
+                 *
+                 * The symbol may be null (not yet in the object file's symbol table) because import
+                 * library symbols are resolved at link time, not during object file construction.
+                 * A null or undefined symbol means it's not defined locally and must be imported
+                 * from the base layer DLL.
+                 */
+                String impSymbol = "__imp_" + data.symbolName;
+                if (objectFile.getSymbolTable().getSymbol(impSymbol) == null) {
+                    objectFile.createUndefinedSymbol(impSymbol, true);
                 }
-                ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
-                int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
-                baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, 0L);
+                sectionImpl.markRelocationSite(offset, info.getRelocationKind(), impSymbol, -info.getAddend());
+            } else {
+                long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getAddend();
+                assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
+                sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), addend);
+                if (dataInfo.isSymbolReference()) { // create relocation for referenced symbol
+                    if (objectFile.getSymbolTable().getSymbol(data.symbolName) == null) {
+                        objectFile.createUndefinedSymbol(data.symbolName, true);
+                    }
+                    ObjectFile.Symbol sym = objectFile.getSymbolTable().getSymbol(data.symbolName);
+                    ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
+                    int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
+                    baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, 0L);
+                    if (objectFile.getFormat() == ObjectFile.Format.PECOFF
+                                    && ImageLayerBuildingSupport.buildingSharedLayer()
+                                    && !sym.isDefined()) {
+                        /*
+                         * On PE/COFF shared layers, also record undefined symbols for runtime
+                         * fixup. The ADDR64 relocation is kept (the linker resolves CRT/API symbols
+                         * via import libraries). Only truly unresolvable symbols (extension layer
+                         * forward references) will have wrong values; those are fixed at runtime via
+                         * GetProcAddress on the extension EXE module.
+                         */
+                        if (unresolvedCGlobalFixups == null) {
+                            unresolvedCGlobalFixups = new ArrayList<>();
+                            recordedFixupOffsets = new HashSet<>();
+                        }
+                        if (recordedFixupOffsets.add(offsetInSection)) {
+                            unresolvedCGlobalFixups.add(Map.entry(offsetInSection, data.symbolName));
+                        }
+                    }
+                }
             }
         } else if (target instanceof ConstantReference cr) {
             JavaConstant constant = (JavaConstant) cr.getConstant();

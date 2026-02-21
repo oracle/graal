@@ -1635,7 +1635,7 @@ public final class NativeImageClassLoaderSupport {
                                 .sorted()
                                 .map(d -> d.getBytes(StandardCharsets.UTF_8))
                                 .forEach(db::update);
-                Path path = Path.of(cursor.getKey().getPath());
+                Path path = Path.of(cursor.getKey());
                 String digest = new String(db.digest(), StandardCharsets.UTF_8);
                 aggregatedDigests.add(new PathDigestEntry(type, digest, path));
             }

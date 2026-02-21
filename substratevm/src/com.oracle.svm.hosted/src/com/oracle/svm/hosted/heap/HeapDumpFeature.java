@@ -54,6 +54,7 @@ import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.ByteArrayReader;
@@ -101,9 +102,17 @@ public class HeapDumpFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (ImageLayerBuildingSupport.firstImageBuild()) {
-            HeapDumpSupportImpl heapDumpSupport = new HeapDumpSupportImpl();
-            ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
-            ImageSingletons.add(HeapDumping.class, heapDumpSupport);
+            /*
+             * HeapDumpSupportImpl depends on BufferedFileOperationSupport which requires
+             * RawFileOperationSupport. On platforms without raw file operations (e.g., Windows),
+             * skip installing heap dump support to avoid singleton lookup failures during
+             * layered image builds.
+             */
+            if (RawFileOperationSupport.isPresent()) {
+                HeapDumpSupportImpl heapDumpSupport = new HeapDumpSupportImpl();
+                ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
+                ImageSingletons.add(HeapDumping.class, heapDumpSupport);
+            }
             ImageSingletons.add(HeapDumpMetadata.class, new HeapDumpMetadata());
         }
         ImageSingletons.add(HeapDumpMetadata.HeapDumpEncodedData.class, new HeapDumpMetadata.HeapDumpEncodedData());
@@ -112,7 +121,7 @@ public class HeapDumpFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         /* Heap dumping on signal and on OutOfMemoryError are opt-in features. */
-        if (VMInspectionOptions.hasHeapDumpSupport() && ImageLayerBuildingSupport.firstImageBuild()) {
+        if (VMInspectionOptions.hasHeapDumpSupport() && ImageLayerBuildingSupport.firstImageBuild() && ImageSingletons.contains(HeapDumping.class)) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new HeapDumpStartupHook());
             RuntimeSupport.getRuntimeSupport().addShutdownHook(new HeapDumpShutdownHook());
         }

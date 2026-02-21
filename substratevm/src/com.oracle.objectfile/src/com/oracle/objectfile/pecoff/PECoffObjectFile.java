@@ -72,6 +72,7 @@ public class PECoffObjectFile extends ObjectFile {
     private PECoffSymtab symtab;
     private PECoffDirectiveSection directives;
     private boolean runtimeDebugInfoGeneration;
+    private boolean suppressAutoExports;
 
     @SuppressWarnings("this-escape")
     private PECoffObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
@@ -91,6 +92,19 @@ public class PECoffObjectFile extends ObjectFile {
     @SuppressWarnings("this-escape")
     public PECoffObjectFile(int pageSize) {
         this(pageSize, false);
+    }
+
+    /**
+     * When set, external symbols are NOT automatically exported via /EXPORT: directives in the
+     * .drectve section. This is needed for image layers where the number of external symbols
+     * exceeds the PE/COFF export limit of 65535.
+     */
+    public void setSuppressAutoExports(boolean suppress) {
+        this.suppressAutoExports = suppress;
+    }
+
+    public boolean getSuppressAutoExports() {
+        return suppressAutoExports;
     }
 
     @Override
