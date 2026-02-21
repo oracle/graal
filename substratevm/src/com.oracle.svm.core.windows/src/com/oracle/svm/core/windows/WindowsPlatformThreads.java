@@ -44,8 +44,8 @@ import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
@@ -284,7 +284,7 @@ class WindowsParker extends Parker {
     }
 }
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(ParkerFactory.class)
 class WindowsParkerFactory implements ParkerFactory {
     @Override

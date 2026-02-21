@@ -485,6 +485,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 case STATIC_EXECUTABLE:
                     // checked in the definition of --static
                     throw VMError.shouldNotReachHereUnexpectedInput(imageKind);
+                case IMAGE_LAYER:
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     if (Platform.includedIn(Platform.DARWIN.class)) {
@@ -536,19 +537,44 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             List<String> cmd = new ArrayList<>(compilerCmd);
             setOutputKind(cmd);
 
-            for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
-                cmd.add(staticLibrary.toString());
-            }
+            /*
+             * Note: static libraries are already included as input files by
+             * getLinkerInvocation() via addInputFile(), so they are part of compilerCmd.
+             * Do not add them again here to avoid duplication.
+             */
 
             /* Add linker options. */
             cmd.add("/link");
             cmd.add("/INCREMENTAL:NO");
             cmd.add("/NODEFAULTLIB:LIBCMT");
 
+            if (imageKind == AbstractImage.NativeImageKind.IMAGE_LAYER) {
+                /*
+                 * Image layer DLLs have forward references to symbols defined in the application
+                 * layer (e.g. CGlobalData forSymbol references, delayed method symbols). On
+                 * ELF/Mach-O, these are undefined symbols resolved by the dynamic linker at load
+                 * time. On PE/COFF, we must allow the link to succeed with unresolved externals.
+                 * The application layer will export these symbols and the Windows loader resolves
+                 * them via the import address table at DLL load time.
+                 */
+                cmd.add("/FORCE:UNRESOLVED");
+
+                /*
+                 * With suppressAutoExports, no symbols are auto-exported from image layer DLLs
+                 * (to stay under the PE/COFF 65535 export limit). Explicitly export the code
+                 * section start symbol so that the extension layer can resolve cross-layer method
+                 * calls via the import library.
+                 */
+                cmd.add("/EXPORT:" + NativeImage.getTextSectionStartSymbol());
+            }
+
             /* Use page size alignment to support memory mapping of the image heap. */
             cmd.add("/FILEALIGN:4096");
 
-            /* Put .lib and .exp files in a temp dir as we don't usually need them. */
+            /*
+             * Put .lib and .exp files in a temp dir. For shared libraries and image layers,
+             * NativeImageViaCC copies the .lib to the output directory afterward.
+             */
             cmd.add("/IMPLIB:" + getTempDirectory().resolve(imageName + ".lib"));
 
             if (SubstrateOptions.useDebugInfoGeneration()) {
@@ -576,6 +602,15 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             for (String library : nativeLibs.getLibraries()) {
                 cmd.add(library + ".lib");
             }
+
+            /*
+             * Explicitly link the DLL CRT import library to ensure mainCRTStartup is available.
+             * The /MD flag on cl.exe should add this automatically during compilation, but when
+             * cl.exe is used purely as a linker frontend (no source files, only .obj and .lib),
+             * the default library may not be added. The GraalVM-generated .obj files do not
+             * contain /DEFAULTLIB:msvcrt directives since they are not produced by MSVC.
+             */
+            cmd.add("msvcrt.lib");
 
             // Add required Windows Libraries
             cmd.add("advapi32.lib");

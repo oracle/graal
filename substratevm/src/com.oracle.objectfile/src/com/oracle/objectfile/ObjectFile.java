@@ -236,6 +236,17 @@ public abstract class ObjectFile {
         return getNativeObjectFile(pageSize, true);
     }
 
+    /**
+     * Suppress automatic export of all external symbols. On PE/COFF (Windows), external symbols
+     * are normally auto-exported via /EXPORT: directives in the .drectve section. When building
+     * image layers with many symbols (>65535), this exceeds the PE/COFF export limit. Call this
+     * method to suppress auto-exports; only explicit /export: directives on the linker command
+     * line will be used. No-op on non-PECOFF formats.
+     */
+    public void setSuppressAutoExports(@SuppressWarnings("unused") boolean suppress) {
+        // No-op for non-PECOFF formats (ELF, Mach-O)
+    }
+
     /*
      * Abstract notions of relocation.
      */

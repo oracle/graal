@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
@@ -159,7 +161,17 @@ public final class ImageLayerSectionFeature implements InternalFeature {
             cachedImageHeapRelocations = null;
         }
 
-        ImageSingletons.add(ImageLayerSection.class, new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations));
+        /*
+         * On Windows (PE/COFF), we cannot create forward references to the next layer's section
+         * symbol because the MSVC linker requires all symbols to be resolved at link time. Instead,
+         * we store the symbol name and resolve it at runtime via GetProcAddress.
+         */
+        CGlobalData<CCharPointer> nextLayerSymbolNameData = null;
+        if (ImageLayerBuildingSupport.buildingSharedLayer() && Platform.includedIn(Platform.WINDOWS.class)) {
+            nextLayerSymbolNameData = CGlobalDataFactory.createCString(getLayerName(DynamicImageLayerInfo.singleton().nextLayerNumber));
+        }
+
+        ImageSingletons.add(ImageLayerSection.class, new ImageLayerSectionImpl(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations, nextLayerSymbolNameData));
     }
 
     private static byte[] createWords(int count, WordBase initialValue) {
@@ -234,10 +246,18 @@ public final class ImageLayerSectionFeature implements InternalFeature {
                         layeredSectionData);
 
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-            String nextLayerSymbolName = getLayerName(DynamicImageLayerInfo.singleton().nextLayerNumber);
-            // this symbol will be defined in the next layer's layer section
-            objectFile.createUndefinedSymbol(nextLayerSymbolName, false);
-            layeredSectionData.markRelocationSite(NEXT_SECTION_OFFSET, ObjectFile.RelocationKind.DIRECT_8, nextLayerSymbolName, 0);
+            if (Platform.includedIn(Platform.WINDOWS.class)) {
+                /*
+                 * On PE/COFF, the linker requires all symbols to be resolved at link time, so we
+                 * cannot create a forward reference to the next layer's section. NEXT_SECTION is
+                 * left as zero and patched at runtime via GetProcAddress.
+                 */
+            } else {
+                String nextLayerSymbolName = getLayerName(DynamicImageLayerInfo.singleton().nextLayerNumber);
+                // this symbol will be defined in the next layer's layer section
+                objectFile.createUndefinedSymbol(nextLayerSymbolName, false);
+                layeredSectionData.markRelocationSite(NEXT_SECTION_OFFSET, ObjectFile.RelocationKind.DIRECT_8, nextLayerSymbolName, 0);
+            }
         } else {
             /*
              * Note because we provide a byte buffer initialized to zeros nothing needs to be done.
@@ -360,8 +380,8 @@ public final class ImageLayerSectionFeature implements InternalFeature {
     private static class ImageLayerSectionImpl extends ImageLayerSection {
 
         ImageLayerSectionImpl(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets,
-                        CGlobalData<WordPointer> cachedImageHeapRelocations) {
-            super(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations);
+                        CGlobalData<WordPointer> cachedImageHeapRelocations, CGlobalData<CCharPointer> nextLayerSectionSymbolName) {
+            super(initialSectionStart, cachedImageFDs, cachedImageHeapOffsets, cachedImageHeapRelocations, nextLayerSectionSymbolName);
         }
 
         @Override

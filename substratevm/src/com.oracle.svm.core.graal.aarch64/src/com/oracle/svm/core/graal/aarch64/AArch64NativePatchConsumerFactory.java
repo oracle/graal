@@ -33,7 +33,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
@@ -45,7 +44,7 @@ import jdk.graal.compiler.code.CompilationResult;
 
 @AutomaticallyRegisteredImageSingleton(PatchConsumerFactory.NativePatchConsumerFactory.class)
 @Platforms(Platform.AARCH64.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class AArch64NativePatchConsumerFactory extends PatchConsumerFactory.NativePatchConsumerFactory {
     @Override
     public Consumer<Assembler.CodeAnnotation> newConsumer(CompilationResult compilationResult) {

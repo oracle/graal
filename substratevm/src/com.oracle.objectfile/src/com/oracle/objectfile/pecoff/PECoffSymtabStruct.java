@@ -56,10 +56,19 @@ final class PECoffSymtabStruct {
      */
     private final StringBuilder directives;
 
-    PECoffSymtabStruct() {
+    /**
+     * When true, external symbols are NOT automatically added to the .drectve section as
+     * /EXPORT: directives. Explicit exports must be specified on the linker command line.
+     * This is needed for image layers on Windows where the number of external symbols
+     * can exceed the PE/COFF export limit of 65535.
+     */
+    private boolean suppressAutoExports;
+
+    PECoffSymtabStruct(boolean suppressAutoExports) {
         symbolCount = 0;
         strTabContent = new StringBuilder();
         directives = new StringBuilder();
+        this.suppressAutoExports = suppressAutoExports;
 
         // The first 4 bytes of the string table contain
         // the length of the table (including this length field).
@@ -96,7 +105,7 @@ final class PECoffSymtabStruct {
             sym = new PECoffSymbolStruct(index, type, storageclass, secHdrIndex, offset);
             symbols.add(sym);
             // Only add exports for external class symbols that are defined
-            if (storageclass == IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL && secHdrIndex != -1) {
+            if (!suppressAutoExports && storageclass == IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL && secHdrIndex != -1) {
                 addDirective(name, type);
             }
         }

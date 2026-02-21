@@ -45,10 +45,11 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.core.windows.headers.FileAPI;
@@ -62,7 +63,7 @@ import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import org.graalvm.word.impl.Word;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 
     /* Null-terminated wide-character string constants. */
@@ -401,9 +402,14 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class WindowsSystemPropertiesFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new WindowsSystemPropertiesSupport());

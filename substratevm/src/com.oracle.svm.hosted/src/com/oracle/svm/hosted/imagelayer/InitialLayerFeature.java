@@ -88,7 +88,11 @@ public class InitialLayerFeature implements InternalFeature {
         metaAccess.lookupJavaType(ReflectionUtil.lookupClass("com.oracle.svm.core.hub.DynamicHub$ClassRedefinedCountAccessors")).registerAsReachable("Core type");
         var pthread = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.posix.headers.Pthread$pthread_t");
         if (pthread != null) {
-            metaAccess.lookupJavaType(pthread).registerAsReachable("Core type");
+            try {
+                metaAccess.lookupJavaType(pthread).registerAsReachable("Core type");
+            } catch (com.oracle.graal.pointsto.constraints.UnsupportedPlatformException e) {
+                /* Posix type not available on this platform (e.g., Windows). */
+            }
         }
     }
 

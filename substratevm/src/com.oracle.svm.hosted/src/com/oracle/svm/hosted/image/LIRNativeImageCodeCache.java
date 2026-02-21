@@ -273,6 +273,14 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                             continue;
                         }
 
+                        if (callee.isCompiledInPriorLayer()) {
+                            /*
+                             * Cross-layer calls are resolved via relocations at link/load time,
+                             * not via trampolines in the current layer's code area.
+                             */
+                            continue;
+                        }
+
                         int calleeStart = curOffsetMap.get(callee);
 
                         int maxDistance;

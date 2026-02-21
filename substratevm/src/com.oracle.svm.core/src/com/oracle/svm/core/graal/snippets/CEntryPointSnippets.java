@@ -92,6 +92,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -309,6 +310,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         UnmanagedMemoryUtil.fill((Pointer) arguments, SizeOf.unsigned(IsolateArguments.class), (byte) 0);
         CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getParsedArgsSize());
         arguments.setParsedArgs(parsedArgs);
+
+        /*
+         * On PE/COFF layered builds, forward symbol references in CGlobal data cannot be resolved
+         * at link time. Patch them now, before argument parsing reads any CGlobal values.
+         */
+        ImageHeapProvider.get().resolveForwardSymbolReferences();
 
         IsolateArgumentParser.singleton().parse(parameters, arguments);
 

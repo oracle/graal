@@ -78,6 +78,17 @@ public interface ImageHeapProvider {
     }
 
     /**
+     * Called early during isolate creation, before isolate arguments are parsed. On platforms where
+     * forward symbol references in CGlobal data cannot be resolved at link time (e.g. Windows
+     * PE/COFF layered builds), this method patches the CGlobal slots so that they contain the
+     * correct addresses before any code reads from them.
+     */
+    @Uninterruptible(reason = "Called during early isolate initialization.")
+    default void resolveForwardSymbolReferences() {
+        /* Default: nothing to do. */
+    }
+
+    /**
      * Creates a new instance of the image heap.
      *
      * @param reservedAddressSpace If non-null, this specifies the address of a contiguous block of
