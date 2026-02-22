@@ -60,6 +60,9 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.SerializationConfigurationParser;
@@ -72,11 +75,12 @@ import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.lambda.LambdaParser;
@@ -85,6 +89,7 @@ import com.oracle.svm.hosted.reflect.RecordUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -458,10 +463,16 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     void beforeAnalysis(Feature.BeforeAnalysisAccess beforeAnalysisAccess) {
         setAnalysisAccess(beforeAnalysisAccess);
+        BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) beforeAnalysisAccess;
+        serializationSupport.setObjectRescanner(object -> accessImpl.rescanObject(object, OtherReason.UNKNOWN));
+        universe = accessImpl.getUniverse();
         stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
         pendingConstructorRegistrations.forEach(Runnable::run);
         pendingConstructorRegistrations = null;
-        serializationSupport.setStubConstructor(stubConstructor);
+        AnalysisMetaAccess metaAccess = accessImpl.getMetaAccess();
+        SVMHost hostVM = accessImpl.getHostVM();
+        serializationSupport.setStubConstructor(hostVM.dynamicHub(metaAccess.lookupJavaType(stubConstructor.getDeclaringClass())));
+        serializationSupport.setSerializedLambdaClass(hostVM.dynamicHub(metaAccess.lookupJavaType(DynamicHub.class)));
     }
 
     private static void registerQueriesForInheritableMethod(boolean preserved, Class<?> clazz, String methodName, Class<?>... args) {
@@ -715,7 +726,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         Class<?> targetConstructorClass = targetConstructor.getDeclaringClass();
-        serializationSupport.addConstructorAccessor(serializationTargetClass, targetConstructorClass, getConstructorAccessor(targetConstructor));
+        AnalysisMetaAccess analysisMetaAccess = universe.getBigbang().getMetaAccess();
+        AnalysisType serializationTargetType = analysisMetaAccess.lookupJavaType(serializationTargetClass);
+        AnalysisType targetConstructorType = analysisMetaAccess.lookupJavaType(targetConstructorClass);
+        SVMHost hostVM = (SVMHost) universe.hostVM();
+        serializationSupport.addConstructorAccessor(hostVM.dynamicHub(serializationTargetType), hostVM.dynamicHub(targetConstructorType), getConstructorAccessor(targetConstructor));
         return targetConstructorClass;
     }
 }

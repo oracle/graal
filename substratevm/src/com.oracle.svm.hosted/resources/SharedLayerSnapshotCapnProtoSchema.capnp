@@ -55,8 +55,8 @@ struct PersistedAnalysisType {
   wrappedType :union {
     none @31 :Void; # default
     serializationGenerated :group {
-      rawDeclaringClass @32 :Text;
-      rawTargetConstructor @33 :Text;
+      rawDeclaringClassId @32 :TypeId;
+      rawTargetConstructorId @33 :TypeId;
     }
     lambda :group {
       capturingClass @34 :Text;

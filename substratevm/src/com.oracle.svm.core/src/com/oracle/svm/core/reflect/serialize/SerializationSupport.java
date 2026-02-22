@@ -27,9 +27,9 @@ package com.oracle.svm.core.reflect.serialize;
 
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -44,20 +44,19 @@ import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
-public class SerializationSupport implements SerializationRegistry {
+public class SerializationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static SerializationSupport currentLayer() {
@@ -108,61 +107,65 @@ public class SerializationSupport implements SerializationRegistry {
         }
     }
 
-    private Constructor<?> stubConstructor;
+    private DynamicHub stubConstructorClass;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private DynamicHub serializedLambdaClass;
 
-    public static final class SerializationLookupKey {
-        private final Class<?> declaringClass;
-        private final Class<?> targetConstructorClass;
-
-        private SerializationLookupKey(Class<?> declaringClass, Class<?> targetConstructorClass) {
-            assert declaringClass != null && targetConstructorClass != null;
-            this.declaringClass = declaringClass;
-            this.targetConstructorClass = targetConstructorClass;
-        }
-
-        public Class<?> getDeclaringClass() {
-            return declaringClass;
-        }
-
-        public Class<?> getTargetConstructorClass() {
-            return targetConstructorClass;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            SerializationLookupKey that = (SerializationLookupKey) o;
-            return declaringClass.equals(that.declaringClass) && targetConstructorClass.equals(that.targetConstructorClass);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(declaringClass, targetConstructorClass);
-        }
+    public record HostedSerializationLookupKey(DynamicHubKey declaringClassId, DynamicHubKey targetConstructorClassId) {
     }
 
-    private final EconomicMap<SerializationLookupKey, Object> constructorAccessors;
+    public record SerializationLookupKey(int declaringClassId, int targetConstructorClassId) {
+    }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private EconomicMap<HostedSerializationLookupKey, Object> hostedConstructorAccessors;
+    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", availability = AfterCompilation.class) //
+    private EconomicMap<SerializationLookupKey, Object> constructorAccessors;
+
+    /**
+     * The constructor accessors need to be rescanned manually because the
+     * {@link SerializationSupport#constructorAccessors} map is only available after compilation.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private Consumer<Object> objectRescanner;
+
     public SerializationSupport() {
-        constructorAccessors = ImageHeapMap.create("constructorAccessors");
-    }
-
-    public void setStubConstructor(Constructor<?> stubConstructor) {
-        VMError.guarantee(this.stubConstructor == null, "Cannot reset stubConstructor");
-        this.stubConstructor = stubConstructor;
+        hostedConstructorAccessors = EconomicMap.create();
+        constructorAccessors = null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Object addConstructorAccessor(Class<?> declaringClass, Class<?> targetConstructorClass, Object constructorAccessor) {
+    public void setStubConstructor(DynamicHub stubConstructorClass) {
+        VMError.guarantee(this.stubConstructorClass == null, "Cannot set stubConstructor again");
+        this.stubConstructorClass = stubConstructorClass;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setSerializedLambdaClass(DynamicHub serializedLambdaClass) {
+        VMError.guarantee(this.serializedLambdaClass == null, "Cannot set serializedLambdaClass again");
+        this.serializedLambdaClass = serializedLambdaClass;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private DynamicHub getSerializedLambdaClass() {
+        return serializedLambdaClass;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setObjectRescanner(Consumer<Object> objectRescanner) {
+        VMError.guarantee(this.objectRescanner == null, "Cannot set objectRescanner again");
+        this.objectRescanner = objectRescanner;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Object addConstructorAccessor(DynamicHub declaringClass, DynamicHub targetConstructorClass, Object constructorAccessor) {
         VMError.guarantee(constructorAccessor instanceof SubstrateConstructorAccessor, "Not a SubstrateConstructorAccessor: %s", constructorAccessor);
-        SerializationLookupKey key = new SerializationLookupKey(declaringClass, targetConstructorClass);
-        return constructorAccessors.putIfAbsent(key, constructorAccessor);
+        VMError.guarantee(!BuildPhaseProvider.isHostedUniverseBuilt(), "Called too early");
+        HostedSerializationLookupKey key = new HostedSerializationLookupKey(new DynamicHubKey(declaringClass), new DynamicHubKey(targetConstructorClass));
+        objectRescanner.accept(constructorAccessor);
+        synchronized (hostedConstructorAccessors) {
+            return hostedConstructorAccessors.putIfAbsent(key, constructorAccessor);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -178,7 +181,7 @@ public class SerializationSupport implements SerializationRegistry {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public boolean isGeneratedSerializationClassLoader(ClassLoader classLoader) {
-        var constructorAccessorsCursor = constructorAccessors.getEntries();
+        var constructorAccessorsCursor = hostedConstructorAccessors.getEntries();
         while (constructorAccessorsCursor.advance()) {
             if (constructorAccessorsCursor.getValue().getClass().getClassLoader() == classLoader) {
                 return true;
@@ -189,11 +192,11 @@ public class SerializationSupport implements SerializationRegistry {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public String getClassLoaderSerializationLookupKey(ClassLoader classLoader) {
-        var constructorAccessorsCursor = constructorAccessors.getEntries();
+        var constructorAccessorsCursor = hostedConstructorAccessors.getEntries();
         while (constructorAccessorsCursor.advance()) {
             if (constructorAccessorsCursor.getValue().getClass().getClassLoader() == classLoader) {
                 var key = constructorAccessorsCursor.getKey();
-                return key.declaringClass.getName() + key.targetConstructorClass.getName();
+                return key.declaringClassId + " " + key.targetConstructorClassId;
             }
         }
         throw VMError.shouldNotReachHere("No constructor accessor uses the class loader %s", classLoader);
@@ -216,14 +219,17 @@ public class SerializationSupport implements SerializationRegistry {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private EconomicMap<DynamicHubKey, RuntimeDynamicAccessMetadata> hostedClasses = EconomicMap.create();
     @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", availability = AfterCompilation.class) //
-    private final EconomicMap<Object /* DynamicHubKey or DynamicHub.typeID */, RuntimeDynamicAccessMetadata> classes = EconomicMap.create();
+    private EconomicMap<Integer, RuntimeDynamicAccessMetadata> classes = null;
     private final EconomicMap<String, RuntimeDynamicAccessMetadata> lambdaCapturingClasses = EconomicMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerSerializationTargetClass(AccessCondition cnd, DynamicHub hub, boolean preserved) {
-        synchronized (classes) {
-            var previous = classes.putIfAbsent(BuildPhaseProvider.isHostedUniverseBuilt() ? hub.getTypeID() : new DynamicHubKey(hub), RuntimeDynamicAccessMetadata.createHosted(cnd, preserved));
+        VMError.guarantee(!BuildPhaseProvider.isHostedUniverseBuilt());
+        synchronized (hostedClasses) {
+            var previous = hostedClasses.putIfAbsent(new DynamicHubKey(hub), RuntimeDynamicAccessMetadata.createHosted(cnd, preserved));
             if (previous != null) {
                 previous.addCondition(cnd);
                 if (!preserved) {
@@ -234,16 +240,30 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     public void replaceHubKeyWithTypeID() {
-        EconomicMap<Integer, RuntimeDynamicAccessMetadata> newEntries = EconomicMap.create();
-        var cursor = classes.getEntries();
+        VMError.guarantee(classes == null && hostedClasses != null, "The maps should only be replaced once");
+        VMError.guarantee(constructorAccessors == null && hostedConstructorAccessors != null, "The maps should only be replaced once");
+        classes = EconomicMap.create();
+        replaceHubKeyWithTypeID(hostedClasses, classes, SerializationSupport::getTypeID);
+        hostedClasses = null;
+        constructorAccessors = EconomicMap.create();
+        replaceHubKeyWithTypeID(hostedConstructorAccessors, constructorAccessors, SerializationSupport::replaceSerializationLookupKey);
+        hostedConstructorAccessors = null;
+    }
+
+    private static <T, U, V> void replaceHubKeyWithTypeID(EconomicMap<T, U> hostedMap, EconomicMap<V, U> map, Function<T, V> converter) {
+        var cursor = hostedMap.getEntries();
         while (cursor.advance()) {
-            Object key = cursor.getKey();
-            if (key instanceof DynamicHubKey hubKey) {
-                newEntries.put(hubKey.getTypeID(), cursor.getValue());
-                cursor.remove();
-            }
+            T key = cursor.getKey();
+            map.put(converter.apply(key), cursor.getValue());
         }
-        classes.putAll(newEntries);
+    }
+
+    private static SerializationLookupKey replaceSerializationLookupKey(HostedSerializationLookupKey key) {
+        return new SerializationLookupKey(getTypeID(key.declaringClassId()), getTypeID(key.targetConstructorClassId()));
+    }
+
+    private static int getTypeID(Object classId) {
+        return ((DynamicHubKey) classId).getTypeID();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -261,27 +281,23 @@ public class SerializationSupport implements SerializationRegistry {
         return lambdaCapturingClasses.containsKey(lambdaCapturingClass);
     }
 
-    public static Object getSerializationConstructorAccessor(Class<?> serializationTargetClass, Class<?> targetConstructorClass) {
+    public static Object getRuntimeSerializationConstructorAccessor(Class<?> serializationTargetClass, Class<?> targetConstructorClass) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         Class<?> declaringClass = serializationTargetClass;
 
         if (LambdaUtils.isLambdaClass(declaringClass)) {
             declaringClass = SerializedLambda.class;
         }
 
-        if (SubstrateUtil.HOSTED) {
-            Object constructorAccessor = currentLayer().getSerializationConstructorAccessor0(declaringClass, targetConstructorClass);
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceSerializationType(declaringClass);
+        }
+        for (var singleton : layeredSingletons()) {
+            DynamicHub declaringHub = SubstrateUtil.cast(declaringClass, DynamicHub.class);
+            DynamicHub targetConstructorHub = SubstrateUtil.cast(targetConstructorClass, DynamicHub.class);
+            Object constructorAccessor = singleton.getSerializationConstructorAccessor0(declaringHub, targetConstructorHub, declaringClass.getModifiers());
             if (constructorAccessor != null) {
                 return constructorAccessor;
-            }
-        } else {
-            if (MetadataTracer.enabled()) {
-                MetadataTracer.singleton().traceSerializationType(declaringClass);
-            }
-            for (var singleton : layeredSingletons()) {
-                Object constructorAccessor = singleton.getSerializationConstructorAccessor0(declaringClass, targetConstructorClass);
-                if (constructorAccessor != null) {
-                    return constructorAccessor;
-                }
             }
         }
 
@@ -291,15 +307,35 @@ public class SerializationSupport implements SerializationRegistry {
         return null;
     }
 
-    @Override
-    public Object getSerializationConstructorAccessor0(Class<?> declaringClass, Class<?> rawTargetConstructorClass) {
-        VMError.guarantee(stubConstructor != null, "Called too early, no stub constructor yet.");
-        Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : rawTargetConstructorClass;
-        return constructorAccessors.get(new SerializationLookupKey(declaringClass, targetConstructorClass));
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static Object getHostedSerializationConstructorAccessor(DynamicHub serializationTargetClass, DynamicHub targetConstructorClass) {
+        SerializationSupport serializationSupport = currentLayer();
+        DynamicHub declaringClass = serializationTargetClass;
+
+        if (LambdaUtils.isLambdaClass(declaringClass.getHostedJavaClass())) {
+            declaringClass = serializationSupport.getSerializedLambdaClass();
+        }
+
+        VMError.guarantee(BuildPhaseProvider.isHostedUniverseBuilt(), "Called too early, hosted universe was not built yet.");
+        Object constructorAccessor = serializationSupport.getSerializationConstructorAccessor0(declaringClass, targetConstructorClass, declaringClass.getModifiers());
+        if (constructorAccessor != null) {
+            return constructorAccessor;
+        }
+
+        String targetConstructorClassName = targetConstructorClass.getName();
+        MissingSerializationRegistrationUtils.reportSerialization(declaringClass.getHostedJavaClass(),
+                        "type '" + declaringClass.getTypeName() + "' with target constructor class '" + targetConstructorClassName + "'");
+        return null;
+    }
+
+    public Object getSerializationConstructorAccessor0(DynamicHub declaringHub, DynamicHub rawTargetConstructorHub, int modifiers) {
+        VMError.guarantee(stubConstructorClass != null, "Called too early, no stub constructor yet.");
+        DynamicHub targetConstructorHub = Modifier.isAbstract(modifiers) ? stubConstructorClass : rawTargetConstructorHub;
+        return constructorAccessors.get(new SerializationLookupKey(declaringHub.getTypeID(), targetConstructorHub.getTypeID()));
     }
 
     public static boolean isRegisteredForSerialization(DynamicHub hub) {
-        for (SerializationRegistry singleton : SerializationSupport.layeredSingletons()) {
+        for (SerializationSupport singleton : SerializationSupport.layeredSingletons()) {
             if (singleton.isRegisteredForSerialization0(hub)) {
                 return true;
             }
@@ -307,13 +343,14 @@ public class SerializationSupport implements SerializationRegistry {
         return false;
     }
 
-    @Override
     public boolean isRegisteredForSerialization0(DynamicHub dynamicHub) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         var conditionSet = classes.get(dynamicHub.getTypeID());
         return conditionSet != null && conditionSet.satisfied();
     }
 
     public static boolean isPreservedForSerialization(DynamicHub dynamicHub) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         for (SerializationSupport singleton : SerializationSupport.layeredSingletons()) {
             var conditionSet = singleton.classes.get(dynamicHub.getTypeID());
             if (conditionSet != null) {

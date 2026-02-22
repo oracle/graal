@@ -535,8 +535,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
             WrappedType.SerializationGenerated.Builder b = builder.getWrappedType().initSerializationGenerated();
             var key = SerializationSupport.currentLayer().getKeyFromConstructorAccessorClass(type.getJavaClass());
-            b.setRawDeclaringClass(key.getDeclaringClass().getName());
-            b.setRawTargetConstructor(key.getTargetConstructorClass().getName());
+            b.setRawDeclaringClassId(key.declaringClassId());
+            b.setRawTargetConstructorId(key.targetConstructorClassId());
         } else if (LambdaUtils.isLambdaType(type)) {
             WrappedType.Lambda.Builder b = builder.getWrappedType().initLambda();
             b.setCapturingClass(LambdaUtils.capturingClass(type.toJavaName()));
