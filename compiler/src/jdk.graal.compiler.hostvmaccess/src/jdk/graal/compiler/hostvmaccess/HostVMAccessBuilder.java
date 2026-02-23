@@ -147,6 +147,7 @@ public final class HostVMAccessBuilder implements VMAccess.Builder {
             ModuleSupport.addExports(module, "java.base",
                             "jdk.internal.access",
                             "jdk.internal.loader",
+                            "jdk.internal.misc",
                             "jdk.internal.module");
             ModuleSupport.addExports(module, "jdk.internal.vm.ci",
                             "jdk.vm.ci.meta",

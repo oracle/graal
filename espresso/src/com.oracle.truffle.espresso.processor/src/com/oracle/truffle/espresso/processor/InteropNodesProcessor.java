@@ -315,9 +315,13 @@ public class InteropNodesProcessor extends BaseProcessor {
             AnnotationMirror cachedAnnot = getAnnotation(ve, cached.asType());
             if (cachedAnnot != null) {
                 imports.usesCached();
-                String value = getAnnotationValue(cachedAnnot, "value", String.class);
+                String value = getAnnotationValue(cachedAnnot, "value", String.class, false);
                 // Reuse @Cached annotation
-                declParam.withAnnotation(new AnnotationBuilder(CACHED).withValue("value", value));
+                AnnotationBuilder annotation = new AnnotationBuilder(CACHED);
+                if (value != null) {
+                    annotation.withValue("value", value);
+                }
+                declParam.withAnnotation(annotation);
             }
             AnnotationMirror cachedLibraryAnnot = getAnnotation(ve, cachedLibrary.asType());
             if (cachedLibraryAnnot != null) {
@@ -328,9 +332,13 @@ public class InteropNodesProcessor extends BaseProcessor {
             AnnotationMirror bindAnnot = getAnnotation(ve, bind.asType());
             if (bindAnnot != null) {
                 imports.usesBind();
-                String value = getAnnotationValue(bindAnnot, "value", String.class);
+                String value = getAnnotationValue(bindAnnot, "value", String.class, false);
                 // Reuse @Bind annotation
-                declParam.withAnnotation(new AnnotationBuilder(BIND).withValue("value", value));
+                AnnotationBuilder annotation = new AnnotationBuilder(BIND);
+                if (value != null) {
+                    annotation.withValue("value", value);
+                }
+                declParam.withAnnotation(annotation);
             }
             // Do not reuse @Cached.Shared or @Cached.Exclusive
 

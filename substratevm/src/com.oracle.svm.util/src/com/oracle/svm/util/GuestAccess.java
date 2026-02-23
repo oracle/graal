@@ -561,6 +561,11 @@ public final class GuestAccess implements VMAccess {
     }
 
     @Override
+    public void copyMemory(JavaConstant src, int srcFrom, int srcTo, byte[] dst, int dstFrom) {
+        delegate.copyMemory(src, srcFrom, srcTo, dst, dstFrom);
+    }
+
+    @Override
     public JavaConstant createCallback(Object hostTarget, ResolvedJavaType guestType) {
         return delegate.createCallback(hostTarget, guestType);
     }

@@ -255,6 +255,21 @@ public interface VMAccess {
     URL getCodeSourceLocation(ResolvedJavaType type);
 
     /**
+     * Copies memory from {@code src} in the guest to a destination {@code dst} in the host. The
+     * semantics (e.g., regarding atomicity guarantees) are the same as for
+     * {@code Unsafe#copyMemory}.
+     *
+     * @param src the source {@link JavaConstant} representing a primitive array to copy from
+     * @param srcFrom the starting offset in the source array (inclusive)
+     * @param srcTo the ending offset in the source array (exclusive)
+     * @param dst the destination {@code byte[]} in the host to copy the memory to
+     * @param dstFrom the starting offset in the destination array (inclusive)
+     * @throws IllegalArgumentException if {@code src} does not represent a primitive array or the
+     *             offsets are invalid
+     */
+    void copyMemory(JavaConstant src, int srcFrom, int srcTo, byte[] dst, int dstFrom);
+
+    /**
      * Returns a value that implements the {@code guestType} interface by calling back to
      * {@code hostTarget} through its methods.
      * <p>

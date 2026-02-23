@@ -522,8 +522,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     public static boolean isPrimitiveArray(StaticObject object) {
-        return isBooleanArray(object) || isCharArray(object) || isByteArray(object) || isShortArray(object) || isIntArray(object) || isLongArray(object) || isFloatArray(object) ||
-                        isDoubleArray(object);
+        return object.getKlass() instanceof ArrayKlass arrayKlass && arrayKlass.getComponentType().isPrimitive();
     }
 
     public static boolean isStaticObject(Object object) {

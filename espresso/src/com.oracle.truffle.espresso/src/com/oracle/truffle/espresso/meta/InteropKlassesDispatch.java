@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.meta;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
@@ -37,8 +38,12 @@ import com.oracle.truffle.espresso.runtime.dispatch.staticobject.IteratorInterop
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ListInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.MapEntryInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.MapInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.PrimitiveArrayInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ThrowableInterop;
 
+/**
+ * Resolves Espresso interop dispatch classes and their stable dispatch ids.
+ */
 public class InteropKlassesDispatch {
     public static final int BASE_INTEROP_ID = 0;
     public static final int ESPRESSO_INTEROP_ID = 1;
@@ -51,8 +56,9 @@ public class InteropKlassesDispatch {
     public static final int MAP_INTEROP_ID = 8;
     public static final int THROWABLE_INTEROP_ID = 9;
     public static final int BYTE_BUFFER_INTEROP_ID = 10;
+    public static final int PRIMITIVE_ARRAY_INTEROP_ID = 11;
 
-    public static final int DISPATCH_TOTAL = BYTE_BUFFER_INTEROP_ID + 1;
+    public static final int DISPATCH_TOTAL = PRIMITIVE_ARRAY_INTEROP_ID + 1;
 
     /**
      * Represents all known guest classes with special interop library handling. Each entry in the
@@ -81,12 +87,15 @@ public class InteropKlassesDispatch {
         };
     }
 
+    /**
+     * Resolves the interop dispatch implementation class for a given Espresso {@link Klass}.
+     */
     public Class<?> resolveDispatch(Klass k) {
         Class<?> result = null;
         if (k.isPrimitive()) {
             result = BaseInterop.class;
-        } else if (k.isArray()) {
-            result = EspressoInterop.class;
+        } else if (k instanceof ArrayKlass arrayKlass) {
+            result = arrayKlass.getComponentType().isPrimitive() ? PrimitiveArrayInterop.class : EspressoInterop.class;
         } else {
             // ForeignException is not injected until post system init, meaning we can't
             // put in into the static dispatch pair mappings.
@@ -117,6 +126,9 @@ public class InteropKlassesDispatch {
         return result;
     }
 
+    /**
+     * Maps a dispatch implementation class to its stable numeric identifier.
+     */
     public static int dispatchToId(Class<?> dispatch) {
         if (dispatch == BaseInterop.class) {
             return BASE_INTEROP_ID;
@@ -140,6 +152,8 @@ public class InteropKlassesDispatch {
             return THROWABLE_INTEROP_ID;
         } else if (dispatch == ByteBufferInterop.class) {
             return BYTE_BUFFER_INTEROP_ID;
+        } else if (dispatch == PrimitiveArrayInterop.class) {
+            return PRIMITIVE_ARRAY_INTEROP_ID;
         } else {
             throw EspressoError.shouldNotReachHere();
         }

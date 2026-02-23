@@ -893,6 +893,22 @@ final class EspressoExternalVMAccess implements VMAccess {
     }
 
     @Override
+    public void copyMemory(JavaConstant src, int srcFrom, int srcTo, byte[] dst, int dstFrom) {
+        if (!(src instanceof EspressoExternalObjectConstant objectConstant)) {
+            throw new IllegalArgumentException("Expected an EspressoExternalObjectConstant, got " + safeGetClass(src));
+        }
+        EspressoResolvedObjectType arrayType = objectConstant.getType();
+        if (!(arrayType.isArray() && arrayType.getComponentType().isPrimitive())) {
+            throw new IllegalArgumentException("Source should be a primitive array, got " + arrayType);
+        }
+        try {
+            objectConstant.getValue().readBuffer(srcFrom, dst, dstFrom, srcTo - srcFrom);
+        } catch (IndexOutOfBoundsException e) {
+            throw new IllegalArgumentException("Failed to copy into " + src, e);
+        }
+    }
+
+    @Override
     public JavaConstant createCallback(Object hostTarget, ResolvedJavaType guestType) {
         Objects.requireNonNull(hostTarget);
         if (!(Objects.requireNonNull(guestType) instanceof EspressoExternalResolvedInstanceType espressoGuestType) || !espressoGuestType.isInterface()) {
