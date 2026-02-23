@@ -49,9 +49,13 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
     }
 
     public static EspressoError shouldNotReachHere() {
+        throw shouldNotReachHere("");
+    }
+
+    public static EspressoError shouldNotReachHere(String message) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         Method currentMethod = JavaSubstitution.getCurrentMethod();
-        throw EspressoError.shouldNotReachHere(currentMethod.getDeclaringKlass().getExternalName() + "." + currentMethod.getName() + currentMethod.getRawSignature());
+        throw EspressoError.shouldNotReachHere(message + "in : " + currentMethod.getDeclaringKlass().getExternalName() + "." + currentMethod.getName() + currentMethod.getRawSignature());
     }
 
     private static Method getCurrentMethod() {

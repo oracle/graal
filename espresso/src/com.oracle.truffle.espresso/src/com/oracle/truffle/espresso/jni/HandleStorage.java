@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.jni;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.Arrays;
 import java.util.Objects;
-
-import com.oracle.truffle.api.CompilerDirectives;
 
 public abstract class HandleStorage<T, REF> {
     protected static final int DEFAULT_INITIAL_CAPACITY = 16;
@@ -41,7 +41,10 @@ public abstract class HandleStorage<T, REF> {
         stack = new HandlesStack();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    /**
+     * Generates a handle for the given object. Handles start at 1 and fit an integer.
+     */
+    @TruffleBoundary
     public synchronized long handlify(T object) {
         Objects.requireNonNull(object);
         int handle = findFreeIndex();

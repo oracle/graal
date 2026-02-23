@@ -22,20 +22,33 @@
  */
 package com.oracle.truffle.espresso.libs;
 
+import static com.oracle.truffle.espresso.io.TruffleIO.INVALID_FD;
+
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.channels.CancelledKeyException;
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.io.Throw;
+import com.oracle.truffle.espresso.io.TruffleIO;
+import com.oracle.truffle.espresso.jni.StrongHandles;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -49,6 +62,21 @@ import com.oracle.truffle.espresso.vm.Management;
 public class LibsState {
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, LibsState.class);
 
+    /**
+     * Generates handles for a TruffleSelector to access the host Selector.
+     */
+    private final StrongHandles<Selector> truffleSelectorHandles = new StrongHandles<>();
+
+    /**
+     * Mapping from guestHandle and channelFD to SelectionKey for the TruffleSelector.
+     */
+    private final ConcurrentHashMap<Long, SelectionKey> truffleSelectorSelectionKeys = new ConcurrentHashMap<>();
+
+    /**
+     * Mapping from SelectionKey to id,fd pair for the TruffleSelector.
+     */
+    private final ConcurrentHashMap<SelectionKey, Long> truffleSelectorIdFd = new ConcurrentHashMap<>();
+
     private final EspressoContext context;
 
     public final LibsStateNet net;
@@ -60,6 +88,12 @@ public class LibsState {
 
     public static TruffleLogger getLogger() {
         return logger;
+    }
+
+    @TruffleBoundary
+    private EspressoException throwInternalError(String msg) {
+        Meta meta = context.getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, msg);
     }
 
     public void checkCreateProcessAllowed() {
@@ -88,6 +122,187 @@ public class LibsState {
             throw EspressoError.shouldNotReachHere();
         }
         return management;
+    }
+
+    /**
+     * Opens a host Selector for the guest TruffleSelector and generates a handle for it.
+     *
+     * @return the handle
+     */
+    public long handlifyTruffleSelector() {
+        try {
+            return truffleSelectorHandles.handlify(Selector.open());
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    /**
+     * Used for retrieving the TruffleSelector's host selector associated with the given id.
+     */
+    @TruffleBoundary
+    public Selector selectorGetHostSelector(int selectorId) {
+        Selector selector = truffleSelectorHandles.getObject(selectorId);
+        checkSelector(selector);
+        return selector;
+    }
+
+    public void checkSelector(Selector selector) {
+        if (selector == null || !selector.isOpen()) {
+            throw throwInternalError("The selector associated with the given id is invalid!");
+        }
+    }
+
+    /**
+     * Checks the validity of the {@code ops} for the given {@code selectableChannel}.
+     *
+     * @param selectableChannel the selectableChannel which defines the valid operations
+     * @param ops the int ops to check their validity. Should be one of the flags defined in
+     *            {@link SelectionKey} e.g. {@link SelectionKey#OP_READ}
+     */
+    public void checkValidOps(SelectableChannel selectableChannel, int ops) {
+        if ((~selectableChannel.validOps() & ops) != 0) {
+            throw Throw.throwIOException("operations associated with SelectionKey are not valid", context);
+        }
+    }
+
+    @TruffleBoundary
+    public void selectorPutSelectionKey(int id, int fd, SelectionKey selKey) {
+        long key = ((long) id << 32) | (fd & 0xFFFF_FFFFL);
+        SelectionKey previousSelKey = truffleSelectorSelectionKeys.put(key, selKey);
+        Long previousIdFd = truffleSelectorIdFd.put(selKey, key);
+        // sanity check: SelectionKey <==> (SelectorId,ChannelFD)
+        assert previousSelKey == null || previousSelKey == selKey;
+        assert previousIdFd == null || previousIdFd == key;
+    }
+
+    @TruffleBoundary
+    public SelectionKey selectorGetSelectionKey(int id, int fd) {
+        long key = ((long) id << 32) | (fd & 0xFFFF_FFFFL);
+        return truffleSelectorSelectionKeys.get(key);
+    }
+
+    /**
+     * retrieves the fd associated with the SelectionKey for the TruffleSelector.
+     *
+     * @param key the SelectionKey
+     * @return the fd associated with the key or {@link TruffleIO#INVALID_FD} if not found.
+     */
+    @TruffleBoundary
+    public int selectorSelectionKeyGetFd(SelectionKey key) {
+        Long idFd = truffleSelectorIdFd.get(key);
+        if (idFd == null) {
+            return INVALID_FD;
+        }
+        // extract the fd (the lower 32 bits)
+        return (int) idFd.longValue();
+    }
+
+    /**
+     * Register fd with the selector or sets the interest ops of the corresponding SelectionKey for
+     * the TruffleSelector.
+     */
+    public void selectorRegisterEvents(Selector selector, int selectorId, int fd, int ops, TruffleIO io) {
+        // this is synchronized from outside per guest SelectionKey
+        SelectionKey key = selectorGetSelectionKey(selectorId, fd);
+        if (key != null) {
+            checkValidOps(key.channel(), ops);
+            try {
+                if (key.interestOps() != ops) {
+                    key.interestOps(ops);
+                }
+            } catch (CancelledKeyException e) {
+                throw JavaSubstitution.shouldNotReachHere("CancelledKeyException! This should not happen as canceling and registering a host selection key is synchronized!");
+            }
+        } else {
+            key = io.register(fd, selector, ops);
+            selectorPutSelectionKey(selectorId, fd, key);
+        }
+    }
+
+    /**
+     * Performs the select operation.
+     *
+     * @param selector to call select on.
+     * @param timeout how we should select: {@code timeout == -1} blocks indefinitely,
+     *            {@code timeout == 0} returns immediately and {@code timeout > 0} blocks for the
+     *            given amount of time.
+     * @return number of events that were selected
+     */
+    public int doSelect(Selector selector, long timeout) {
+        try {
+            if (timeout == 0) {
+                return selector.selectNow();
+            } else if (timeout == -1) {
+                return selector.select();
+            } else if (timeout > 0) {
+                return selector.select(timeout);
+            }
+            throw Throw.throwIOException("timeout should be >= -1", context);
+        } catch (IOException e) {
+            throw Throw.throwIOException(e, context);
+        }
+    }
+
+    @TruffleBoundary
+    public void selectorDeregister(int id, int fd) {
+        // this is synchronized from outside per guest SelectionKey
+        long key = ((long) id << 32) | (fd & 0xFFFF_FFFFL);
+        SelectionKey selKey = truffleSelectorSelectionKeys.remove(key);
+        if (selKey != null) {
+            truffleSelectorIdFd.remove(selKey);
+            selKey.cancel();
+        }
+    }
+
+    public void freeSelector(int selectorId) {
+        truffleSelectorHandles.freeHandle(selectorId);
+        cleanAllSelectorEntries(selectorId);
+    }
+
+    private void cleanAllSelectorEntries(int selectorId) {
+        /*
+         * The ConcurrentHashMap gives us a weakly consistent iterator, meaning we might or might
+         * not see updates to the map from other threads. Even though this method is synchronized on
+         * the guest Selector (this), we cannot guarantee that other threads will not act on entries
+         * with keySelectorId == selectorId, as sun.nio.ch.TruffleSelector.setEventOps only
+         * synchronizes per SelectionKey. Below, we argue why such updates will be properly freed to
+         * avoid memory leaks.
+         *
+         * The only way another thread would add an entry to truffleSelectorSelectionKeys with
+         * keySelectorId == selectorId while we are cleaning is if a new channel gets registered
+         * with the relevant Selector via
+         * com.oracle.truffle.espresso.libs.libnio.impl.Target_sun_nio_ch_TruffleSelector.register.
+         * However, such a registration would go through sun.nio.ch.SelectorImpl.register, which
+         * checks both before and after the native registration whether the selector was closed by
+         * reading its volatile closed field. If the selector was closed, the registration will be
+         * natively freed again. Additionally, when reaching this method, we know the closed field
+         * was atomically set to true previously in java.nio.channels.spi.AbstractSelector.close.
+         * Putting it all together, we can guarantee that if another thread adds an entry with
+         * keySelectorId == selectorId to truffleSelectorSelectionKeys while we are cleaning up
+         * below, it will eventually read the closed field, which must have been set to true. Thus,
+         * the thread will trigger a native deregistration where we will free the relevant entry in
+         * com.oracle.truffle.espresso.libs.LibsState.selectorDeregister
+         */
+
+        Iterator<Entry<Long, SelectionKey>> it = truffleSelectorSelectionKeys.entrySet().iterator();
+        while (it.hasNext()) {
+            Entry<Long, SelectionKey> entry = it.next();
+            long key = entry.getKey();
+
+            // Correctly extract the high 32 bits
+            int keySelectorId = (int) (key >>> 32);
+
+            // If selectorId matches, yield all resources of the entry
+            if (keySelectorId == selectorId) {
+                SelectionKey sk = entry.getValue();
+                it.remove();
+                if (sk != null) {
+                    sk.cancel();
+                    truffleSelectorIdFd.remove(sk);
+                }
+            }
+        }
     }
 
     public final class LibsStateNet {
