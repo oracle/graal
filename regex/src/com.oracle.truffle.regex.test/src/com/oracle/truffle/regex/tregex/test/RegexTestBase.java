@@ -219,7 +219,7 @@ public abstract class RegexTestBase {
         test(context, pattern, flags, options(), encoding, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
 
-    static void test(Context ctx, String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, boolean isMatch,
+    public static void test(Context ctx, String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, boolean isMatch,
                     int... captureGroupBoundsAndLastGroup) {
         try {
             Value compiledRegex = compileRegex(ctx, pattern, flags, options, encoding);
