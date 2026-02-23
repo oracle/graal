@@ -2071,6 +2071,9 @@ public class BinaryParser extends BinaryStreamParser {
                         state.addInstruction(aggregateOpcode);
                         break;
                     }
+                    default: {
+                        fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFB 0x%X", aggregateOpcode);
+                    }
                 }
                 break;
             case Instructions.ATOMIC:
