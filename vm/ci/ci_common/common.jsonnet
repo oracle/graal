@@ -96,19 +96,6 @@ local devkits = graal_common.devkits;
   vm_linux_aarch64_ol9: self.common_vm_linux + graal_common.linux_aarch64_ol9,
   vm_ol9_aarch64: self.vm_linux_aarch64_ol9,
 
-  vm_darwin_amd64: self.common_vm_darwin + graal_common.darwin_amd64 + {
-    capabilities+: ['darwin_bigsur', 'ram16gb'],
-    packages+: {
-      gcc: '==4.9.2',
-    },
-    environment+: {
-      # for compatibility with macOS BigSur
-      MACOSX_DEPLOYMENT_TARGET: '11.0',
-    },
-  },
-
-  vm_darwin_amd64_jdkLatest: self.vm_darwin_amd64,
-
   vm_darwin_aarch64: self.common_vm_darwin + graal_common.darwin_aarch64 + {
     capabilities+: ['darwin_bigsur'],
     environment+: {
@@ -171,7 +158,7 @@ local devkits = graal_common.devkits;
           JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-' + java_version],
           ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-' + espresso_java_version],
         } + (
-          if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
+          if (os == 'linux') && (arch == 'amd64') then {
             ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-ee-' + espresso_java_version + '-llvm'],
           } else {
           }
@@ -184,7 +171,7 @@ local devkits = graal_common.devkits;
           if (std.length(espresso_extra_java_version) > 0) then ({
             EXTRA_ESPRESSO_JAVA_HOMES: {pathlist: [graal_common.jdks_data['labsjdk-ee-' + v] for v in espresso_extra_java_version]},
           } + (
-            if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
+            if (os == 'linux') && (arch == 'amd64') then {
               EXTRA_ESPRESSO_LLVM_JAVA_HOMEs:  {pathlist: [graal_common.jdks_data['labsjdk-ee-' + v + '-llvm'] for v in espresso_extra_java_version]},
             } else {
             }
@@ -193,16 +180,12 @@ local devkits = graal_common.devkits;
         )
       };
 
-      if (os == 'windows') then
-        if (arch == 'amd64') then
-          # Windows/AMD64
+      if os == 'windows' && arch == 'amd64' then
           java_deps(edition) + (if (java_version == 'latest') then self.svm_common_windows_amd64("Latest") else self.svm_common_windows_amd64(java_version)) + self.js_windows_common + graal_common.deps.sulong
-        else
-          error 'Unknown windows arch: ' + arch
-      else if (os == 'linux' || os == 'darwin') then
-        java_deps(edition) + self.full_vm_build
+      else if (os == 'darwin' && arch == 'aarch64') || (os == 'linux') then
+          java_deps(edition) + self.full_vm_build
       else
-        error 'Unknown os: ' + os,
+        error 'Unsupported platform: ' + os + '/' + arch,
 
   # for cases where a maven package is not easily accessible
   maven_download_unix: {
@@ -443,7 +426,7 @@ local devkits = graal_common.devkits;
         + [self.mx_cmd_base(os, arch, reduced=false) + ['archive-pd-layouts', self.pd_layouts_archive_name(os + '-' + arch)]]
       ),
 
-    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform='linux-amd64', other_platforms=['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],):: {
+    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform='linux-amd64', other_platforms=['linux-aarch64', 'darwin-aarch64', 'windows-amd64'],):: {
       run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms),
     } + if (self.compose_platform(os, arch) == main_platform) then {
        requireArtifacts+: [
@@ -506,10 +489,7 @@ local devkits = graal_common.devkits;
       else error "arch not found: " + arch
     # darwin
     else if (os == 'darwin') then
-      if (arch == 'amd64') then [
-        ['set-export', 'VM_ENV', '${VM_ENV}-darwin'],
-      ]
-      else if (arch == 'aarch64') then [
+      if (arch == 'aarch64') then [
         # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
         ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
       ]
@@ -561,8 +541,6 @@ local devkits = graal_common.devkits;
   deploy_vm_standalones_javaLatest_linux_amd64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'amd64', 'post-merge', deploy=true) + self.deploy_graalvm_standalones('latest', record_file_sizes=true) + {name: 'post-merge-deploy-vm-standalones-java-latest-linux-amd64', notify_groups:: ["deploy"]},
   # Linux/AARCH64
   deploy_vm_standalones_javaLatest_linux_aarch64: vm.vm_java_Latest + self.full_vm_build + self.linux_deploy + self.vm_base('linux', 'aarch64', 'post-merge', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'post-merge-deploy-vm-standalones-java-latest-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
-  # Darwin/AMD64
-  deploy_vm_standalones_javaLatest_darwin_amd64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'amd64', 'post-merge', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_standalones('latest') + {name: 'post-merge-deploy-vm-standalones-java-latest-darwin-amd64', capabilities+: ["!macmini_late_2014"], notify_groups:: ["deploy"], timelimit: '3:00:00'},
   # Darwin/AARCH64
   deploy_vm_standalones_javaLatest_darwin_aarch64: vm.vm_java_Latest + self.full_vm_build + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'post-merge', deploy=true) + self.deploy_graalvm_standalones('latest') + {name: 'post-merge-deploy-vm-standalones-java-latest-darwin-aarch64', notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
   # Windows/AMD64

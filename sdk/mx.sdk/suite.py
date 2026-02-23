@@ -184,10 +184,6 @@ suite = {
           },
         },
         "darwin" : {
-          "amd64" : {
-            "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "digest" : "sha512:88da0b36e7bdf03b7ec683b7f6c044e7a884b9e1575ae7a82c76eb073278df9fcfe7cac9f2e827cd7312468e9a337572fa93dfb5a16360a634e96154ba121dd4",
-          },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-aarch64.tar.gz"],
             "digest" : "sha512:27ca7c82608e5fb379563ed3d39393e1a6c5c7300d42abb2ad9bdac232c5708511f287f562fa90ef15e069073f533f65ba73c8a9e5c95e7c0f04fdd15e84f65e",
@@ -1353,7 +1349,6 @@ suite = {
       "platforms": [
           "linux-amd64",
           "linux-aarch64",
-          "darwin-amd64",
           "darwin-aarch64",
           "windows-amd64",
           "windows-aarch64",

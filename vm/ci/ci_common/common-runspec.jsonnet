@@ -100,7 +100,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       "amd64": graal_common.linux_amd64_ubuntu + common_vm_linux,
     },
     "darwin": {
-      "amd64": graal_common.darwin_amd64 + common_vm_darwin,
       "aarch64": graal_common.darwin_aarch64 + common_vm_darwin,
     },
     "windows": {
@@ -225,7 +224,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     "vm-base": mx_env + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": post_merge,
       "linux:aarch64:jdk-latest": post_merge + capabilities('!xgene3') + timelimit('1:30:00'),
-      "darwin:amd64:jdk-latest": post_merge,
       "darwin:aarch64:jdk-latest": post_merge + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
       "windows:amd64:jdk-latest": post_merge + timelimit('1:30:00'),
     }),
@@ -239,7 +237,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     if vm.deploy_espress_standalone then platform_spec({
       "linux:amd64:jdk-latest": post_merge,
       "linux:aarch64:jdk-latest": post_merge,
-      "darwin:amd64:jdk-latest": post_merge,
       "darwin:aarch64:jdk-latest": post_merge,
       "windows:amd64:jdk-latest": post_merge,
     }) else {}),

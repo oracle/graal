@@ -118,17 +118,6 @@ suite = {
                         "optional": True,
                     },
                 },
-                "darwin": {
-                    "amd64": {
-                        "digest": "sha512:e4ffea5a9f10a79b33b0981cc5e1ee84aa3200118ec4848b09c04ca882ad45fe8e30a495fcd57f829a2eb79a4e81930bfd137d12601df34b0d289d1883e471b8",
-                        "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7_1-macosx-x86_64.jar"],
-                        "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.macosx.x86_64"
-                    },
-                    "aarch64": {
-                        # GR-34811
-                        "optional": True,
-                    },
-                },
                 "<others>": {
                     "<others>": {
                         "optional": True,
@@ -2069,7 +2058,6 @@ suite = {
             "platformDependent" : True,
             "platforms" : [
                 "linux-amd64",
-                "darwin-amd64",
                 "windows-amd64",
             ],
             "os": {

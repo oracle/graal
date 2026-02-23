@@ -84,7 +84,7 @@ The JDWP debugging support for Native Image aims to:
 1. Expose Native Image through JDWP as-is, maintaining its assumptions and constraints
 2. Incur minimal or no performance overhead when not in use
 3. Add minimal size overhead to the native binary
-4. Be available on all Graal-supported platforms, including Linux, macOS, and Windows, across x64 and AArch64 architectures
+4. Be available on all Graal-supported platforms, including Linux and Windows on x64, and Linux and macOS on AArch64 architecture
 5. Provide a debugging experience similar to HotSpot, without requiring additional steps (e.g., setting permissions, environment variables)
 
 ## Architecture
