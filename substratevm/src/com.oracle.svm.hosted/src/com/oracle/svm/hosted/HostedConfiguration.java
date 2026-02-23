@@ -358,8 +358,12 @@ public class HostedConfiguration {
     }
 
     private static void setMonitorField(HostedUniverse hUniverse, AnalysisType type) {
-        final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(type);
-        hostedInstanceClass.setNeedMonitorField();
+        HostedType hostedType = hUniverse.lookup(type);
+        if (hostedType instanceof HostedInstanceClass hostedInstanceClass) {
+            hostedInstanceClass.setNeedMonitorField();
+        } else {
+            assert false : "Attempted setting of monitor field on a non-instance-class type.";
+        }
     }
 
     public NativeImageCodeCacheFactory newCodeCacheFactory() {
