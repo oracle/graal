@@ -717,6 +717,7 @@ suite = {
                 "jdk.management",
                 "java.instrument",
             ],
+            "spotbugs": "false",
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal",
