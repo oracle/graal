@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
@@ -42,6 +43,8 @@ import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.Value;
 
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
@@ -236,26 +239,14 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         var input = valueMov.getInput();
         var result = valueMov.getResult();
 
-        if (input instanceof VirtualStackSlot stackSlot && result instanceof RegisterValue reg) {
-            return new RAVInstruction.Reload(instruction, reg, stackSlot);
-        } else if (result instanceof VirtualStackSlot stackSlot && input instanceof RegisterValue reg) {
-            return new RAVInstruction.Spill(instruction, stackSlot, reg);
-        } else if (input instanceof RegisterValue reg1 && result instanceof RegisterValue reg2) {
-            return new RAVInstruction.RegMove(instruction, reg1, reg2);
-        } else if (input instanceof StackSlot stackSlot && result instanceof RegisterValue reg) {
-            return new RAVInstruction.Reload(instruction, reg, stackSlot);
-        } else if (input instanceof RegisterValue reg && result instanceof StackSlot stackSlot) {
-            return new RAVInstruction.Spill(instruction, stackSlot, reg);
-        }
-
-        if (input instanceof StackSlot stackSlot1 && result instanceof StackSlot stackSlot2) {
-            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
-        } else if (input instanceof VirtualStackSlot stackSlot1 && result instanceof VirtualStackSlot stackSlot2) {
-            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
-        } else if (input instanceof StackSlot stackSlot1 && result instanceof VirtualStackSlot stackSlot2) {
-            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
-        } else if (input instanceof VirtualStackSlot stackSlot1 && result instanceof StackSlot stackSlot2) {
-            return new RAVInstruction.StackMove(instruction, stackSlot1, stackSlot2);
+        if (LIRValueUtil.isStackSlotValue(input) && ValueUtil.isRegister(result)) {
+            return new RAVInstruction.Reload(instruction, ValueUtil.asRegisterValue(result), input);
+        } else if (LIRValueUtil.isStackSlotValue(result) && ValueUtil.isRegister(input)) {
+            return new RAVInstruction.Spill(instruction, result, ValueUtil.asRegisterValue(input));
+        } else if (ValueUtil.isRegister(input) && ValueUtil.isRegister(result)) {
+            return new RAVInstruction.RegMove(instruction, ValueUtil.asRegisterValue(input), ValueUtil.asRegisterValue(result));
+        } else if (LIRValueUtil.isStackSlotValue(input) && LIRValueUtil.isStackSlotValue(result)) {
+            return new RAVInstruction.StackMove(instruction, input, result);
         }
 
         return null;

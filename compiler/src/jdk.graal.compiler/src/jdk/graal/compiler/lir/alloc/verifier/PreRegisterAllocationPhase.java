@@ -239,7 +239,7 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
 
         var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
         var input = valueMov.getInput();
-        return (input instanceof RegisterValue || input instanceof StackSlot /*|| input instanceof AbstractAddress*/) && LIRValueUtil.isVariable(valueMov.getResult());
+        return (ValueUtil.isRegister(input) || LIRValueUtil.isStackSlotValue(input)) && LIRValueUtil.isVariable(valueMov.getResult());
     }
 
     /**
@@ -260,6 +260,6 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
 
         var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
         var result = valueMov.getResult(); // Result could be variable or register
-        return (result instanceof RegisterValue || LIRValueUtil.isVariable(result)) && LIRValueUtil.isVariable(valueMov.getInput());
+        return (ValueUtil.isRegister(result) || LIRValueUtil.isVariable(result)) && LIRValueUtil.isVariable(valueMov.getInput());
     }
 }

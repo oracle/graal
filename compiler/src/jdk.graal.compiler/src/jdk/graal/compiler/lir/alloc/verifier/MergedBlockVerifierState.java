@@ -30,8 +30,10 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
@@ -163,11 +165,11 @@ public class MergedBlockVerifierState {
                 }
 
                 if (!valAllocState.value.equals(orig)) {
-                    if (orig.getValue() instanceof CastValue castValue && valAllocState.value.getValue().equals(castValue.underlyingValue())) {
+                    if (LIRValueUtil.isCast(orig.getValue()) && valAllocState.value.getValue().equals(LIRValueUtil.uncast(orig.getValue()))) {
                         continue; // They aren't equal here because of the CastValue, so if they are equal afterwards, we skip next part.
                     }
 
-                    if (valAllocState.value.getValue() instanceof ConstantValue) {
+                    if (LIRValueUtil.isConstantValue(valAllocState.value.getValue())) {
                         var variable = orig.asVariable();
                         var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState, curr);
                         if (resolvedState != null) {
@@ -231,8 +233,8 @@ public class MergedBlockVerifierState {
     protected boolean kindsEqualFromState(RAValue orig, RAValue fromState) {
         ValueKind<?> origKind = orig.getValue().getValueKind();
         ValueKind<?> currKind = fromState.getValue().getValueKind();
-        if (orig.getValue() instanceof CastValue castOrig) {
-            origKind = castOrig.underlyingValue().getValueKind();
+        if (LIRValueUtil.isCast(orig.getValue())) {
+            origKind = LIRValueUtil.uncast(orig.getValue()).getValueKind();
         }
 
         return origKind.equals(currKind);
@@ -416,7 +418,7 @@ public class MergedBlockVerifierState {
      * @param block     Block where it is located
      */
     protected void updateWithValueMove(RAVInstruction.ValueMove valueMove, BasicBlock<?> block) {
-        if (valueMove.location.getValue() instanceof RegisterValue) {
+        if (ValueUtil.isRegister(valueMove.location.getValue())) {
             this.values.put(valueMove.location, new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
         } else if (valueMove.location.isVariable()) {
             // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD

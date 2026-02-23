@@ -26,6 +26,7 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -77,8 +78,8 @@ public class RAValue {
 
     @Override
     public int hashCode() {
-        if (this.value instanceof RegisterValue registerValue) {
-            return registerValue.getRegister().hashCode();
+        if (ValueUtil.isRegister(this.value)) {
+            return ValueUtil.asRegisterValue(this.value).getRegister().hashCode();
         }
 
         return this.value.hashCode();
@@ -94,7 +95,9 @@ public class RAValue {
     @Override
     public boolean equals(Object other) {
         if (other instanceof RAValue otherValueWrap) {
-            if (this.value instanceof RegisterValue thisReg && otherValueWrap.value instanceof RegisterValue otherReg) {
+            if (ValueUtil.isRegister(this.value) && ValueUtil.isRegister(otherValueWrap.value)) {
+                var thisReg = ValueUtil.asRegisterValue(this.value);
+                var otherReg = ValueUtil.asRegisterValue(otherValueWrap.value);
                 return thisReg.getRegister().equals(otherReg.getRegister());
             }
 
@@ -106,8 +109,8 @@ public class RAValue {
 
     @Override
     public String toString() {
-        if (value instanceof RegisterValue regValue) {
-            return regValue.getRegister().toString();
+        if (ValueUtil.isRegister(this.value)) {
+            return ValueUtil.asRegisterValue(this.value).getRegister().toString();
         }
 
         return value.toString();

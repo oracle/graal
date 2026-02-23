@@ -118,7 +118,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
                 }
 
                 variable = value.asVariable();
-            } else if (value.getValue() instanceof ConstantValue) {
+            } else if (LIRValueUtil.isConstantValue(value.getValue())) {
                 if (constantState != null && !constantState.getRAValue().equals(value)) {
                     return null;
                 }
@@ -160,8 +160,10 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
             return null;
         }
 
-        if (valueState.getRAValue().getValue() instanceof ConstantValue constant) {
-            if (!this.constantVariableMap.get(variable).equals(constant)) {
+        var stateValue = valueState.getRAValue().getValue();
+        if (LIRValueUtil.isConstantValue(stateValue)) {
+            var constantValue = LIRValueUtil.asConstantValue(stateValue);
+            if (!this.constantVariableMap.get(variable).equals(constantValue)) {
                 return null;
             }
 
@@ -196,7 +198,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         var source = state.getSource();
         if (source instanceof RAVInstruction.ValueMove move) {
             var location = move.location.getValue();
-            return location instanceof StackSlot || location instanceof VirtualStackSlot;
+            return LIRValueUtil.isStackSlotValue(location);
         } else {
             throw new RematerializedConstantSourceMissingError(source, variable);
         }

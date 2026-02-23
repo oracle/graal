@@ -26,11 +26,8 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRValueUtil;
-import jdk.graal.compiler.lir.VirtualStackSlot;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -44,7 +41,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
 
     public ValueAllocationState(RAValue raValue, RAVInstruction.Base source, BasicBlock<?> block) {
         var value = raValue.getValue();
-        if (value instanceof RegisterValue || LIRValueUtil.isVariable(value) || value instanceof ConstantValue || value instanceof StackSlot || value instanceof VirtualStackSlot || Value.ILLEGAL.equals(value)) {
+        if (ValueUtil.isRegister(value) || LIRValueUtil.isVariable(value) || LIRValueUtil.isConstantValue(value) || LIRValueUtil.isStackSlotValue(value) || Value.ILLEGAL.equals(value)) {
             // Here, we make sure that no new value class is used here, without consideration.
 
             // StackSlot, RegisterValue is present in start block in label as predefined argument
