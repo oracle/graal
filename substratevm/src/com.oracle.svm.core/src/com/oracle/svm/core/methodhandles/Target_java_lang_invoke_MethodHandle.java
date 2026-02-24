@@ -229,6 +229,7 @@ final class Util_java_lang_invoke_MethodHandle {
                 return field.get(null);
             } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putField) {
                 checkArgs(args, 2, "putField");
+                convertArgs(args, methodType);
                 Object receiver = args[0];
                 Object value = args[1];
                 FieldAccessor field = asField(memberName, false);
@@ -236,6 +237,7 @@ final class Util_java_lang_invoke_MethodHandle {
                 return null;
             } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putStatic) {
                 checkArgs(args, 1, "putStatic");
+                convertArgs(args, methodType);
                 Object value = args[0];
                 FieldAccessor field = asField(memberName, true);
                 field.set(null, value);
