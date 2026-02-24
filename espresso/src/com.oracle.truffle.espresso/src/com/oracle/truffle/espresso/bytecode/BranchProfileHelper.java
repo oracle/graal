@@ -1,4 +1,31 @@
+/*
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.espresso.bytecode;
+
+import static com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch.getAlignedBci;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LOOKUPSWITCH;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.TABLESWITCH;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.isIfBytecode;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -8,25 +35,18 @@ import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytes;
 
-import static com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch.getAlignedBci;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.LOOKUPSWITCH;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.TABLESWITCH;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.isIfBytecode;
-
 public class BranchProfileHelper {
-    public static final byte[] EMPTY_INFOS = new byte[0];
+    public static final int[] EMPTY_INFOS = new int[0];
 
     /**
      * Creates and initializes branch infos for the given bytecode. Modifies code so that the
      * indices of the branch infos is stored within.
      *
-     * @param bs the bytecode stream of the method to profile the branches of.
      * @param code the bytecode of the method which is modified to store the indices of the branch
      *            infos.
-     * @param originalCode the original bytecode of the method.
      * @return an array with all branch infos (jump/default offsets) and initial profiles.
      */
-    public static byte[] initializeBranchInfos(BytecodeStream bs, byte[] code, byte[] originalCode) {
+    public static int[] initializeBranchInfos(byte[] code) {
         /*
          * Initialize branch and switch profiles with two passes:
          *
@@ -37,41 +57,45 @@ public class BranchProfileHelper {
          * within the mapping array. The profiles for IF* bytecodes are before the profiles of the
          * *SWITCH bytecodes in the array and have to be multiplied by the length of each entry
          * before accessing the profiles. This way we the indices for the IF* bytecodes are
-         * guaranteed to fit inside an unsigned short. Since the variable length of *SWITCH infos,
+         * guaranteed to fit inside an unsigned short. Given the variable length of *SWITCH infos,
          * their indices can directly be used for indexing.
          */
+        BytecodeStream bs = new BytecodeStream(code);
         int curBCI = 0;
         int nrOfIfBytecodes = 0;
-        int nrOfSwitchBytes = 0;
-        while (curBCI < originalCode.length) {
+        int nrOfSwitchInfoSlots = 0;
+
+        while (curBCI < bs.endBCI()) {
             int opCode = bs.opcode(curBCI);
             if (Bytecodes.isIfBytecode(opCode)) {
                 nrOfIfBytecodes++;
             }
             if (opCode == TABLESWITCH || opCode == LOOKUPSWITCH) {
-                nrOfSwitchBytes += (ENTRIES_BEFORE_CASE_PROFILES + BytecodeSwitch.get(opCode).numberOfCases(bs, curBCI)) * BYTES_PER_ENTRY;
+                nrOfSwitchInfoSlots += ENTRIES_BEFORE_CASE_PROFILES + BytecodeSwitch.get(opCode).numberOfCases(bs, curBCI);
             }
             curBCI = bs.nextBCI(curBCI);
         }
 
-        int nrOfBytes = nrOfIfBytecodes * IF_INFO_LENGTH + nrOfSwitchBytes;
-        if (nrOfBytes == 0) {
+        int nrOfSlots = nrOfIfBytecodes * IF_INFO_LENGTH + nrOfSwitchInfoSlots;
+        if (nrOfSlots == 0) {
             return EMPTY_INFOS;
         }
-        byte[] profileInfos = new byte[nrOfBytes];
+        int[] profileInfos = new int[nrOfSlots];
 
         curBCI = 0;
         int ifIndex = 0;
-        // The infos for IF* bytecodes are stored before the ones for *SWITCH bytecodes. This way,
-        // we only need to store the index of the entry and not the absolute offset, as their length
-        // is fixed anyway. This guarantees that the index fits in an unsigned short.
+        /*
+         * The infos for IF* bytecodes are stored before the ones for *SWITCH bytecodes. This way,
+         * we only need to store the index of the entry and not the absolute offset, as their length
+         * is fixed anyway. This guarantees that the index fits in an unsigned short.
+         */
         int switchIndex = nrOfIfBytecodes * IF_INFO_LENGTH;
-        while (curBCI < originalCode.length && (ifIndex < nrOfIfBytecodes || switchIndex < nrOfBytes)) {
+        while (curBCI < bs.endBCI() && (ifIndex < nrOfIfBytecodes || switchIndex < nrOfSlots)) {
             int opCode = bs.opcode(curBCI);
             if (isIfBytecode(opCode)) {
                 // write jump offset to branch infos
                 int jumpOffset = Bytes.beS2(code, curBCI + 1);
-                Bytes.beS2(profileInfos, ifIndex * IF_INFO_LENGTH + JUMP_OFFSET, jumpOffset);
+                profileInfos[ifIndex * IF_INFO_LENGTH + JUMP_OFFSET] = jumpOffset;
 
                 // write branch info index to code
                 Bytes.beU2(code, curBCI + 1, ifIndex);
@@ -82,11 +106,11 @@ public class BranchProfileHelper {
                 BytecodeSwitch switchHelper = BytecodeSwitch.get(opCode);
 
                 // write default offset to switch infos
-                Bytes.beS4(profileInfos, switchIndex, switchHelper.defaultOffset(bs, curBCI));
+                profileInfos[switchIndex + DEFAULT_OFFSET] = switchHelper.defaultOffset(bs, curBCI);
                 // write switch index to code
                 Bytes.beS4(code, getAlignedBci(curBCI), switchIndex);
 
-                switchIndex += (ENTRIES_BEFORE_CASE_PROFILES + switchHelper.numberOfCases(bs, curBCI)) * BYTES_PER_ENTRY;
+                switchIndex += ENTRIES_BEFORE_CASE_PROFILES + switchHelper.numberOfCases(bs, curBCI);
             }
             curBCI = bs.nextBCI(curBCI);
         }
@@ -94,167 +118,178 @@ public class BranchProfileHelper {
         return profileInfos;
     }
 
-    // region IF* profiling
-
-    // The branch infos contain a jump offset (2 bytes) and integer profiles (2 x 4 bytes) for each
-    // IF* opcode. This is the layout per opcode:
-    // S2 jump offset
-    // S4 true hits
-    // S4 false hits
-    public static final int JUMP_OFFSET = 0;
-    private static final int TRUE_OFFSET = 2;
-    private static final int FALSE_OFFSET = 6;
-    public static final int IF_INFO_LENGTH = 10;
+    /*
+     * @formatter:off
+     *
+     * region IF* profiling
+     * 
+     * The branch infos contain a jump offset (an int) and integer profiles (2 x int) for each IF*
+     * opcode. This is the layout per opcode:
+     * int jump offset
+     * int true hits
+     * int false hits
+     *
+     * @formatter:on
+     */
+    private static final int JUMP_OFFSET = 0;
+    private static final int TRUE_OFFSET = 1;
+    private static final int FALSE_OFFSET = 2;
+    private static final int IF_INFO_LENGTH = 3;
 
     private static final int MAX_PROFILE_VALUE = Integer.MAX_VALUE;
 
-    public static boolean profileBranch(BytecodeStream bs, byte[] branchInfos, int curBCI, boolean value) {
-        int index = getBranchInfoIndex(bs, curBCI);
-        int t = getTrueProfile(branchInfos, index);
-        int f = getFalseProfile(branchInfos, index);
-        boolean val = value;
-        if (val) {
-            if (t == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (CompilerDirectives.inInterpreter()) {
-                if (t < MAX_PROFILE_VALUE) {
-                    t++;
-                } else {
-                    f = ((f >>> 1) + (f & 0x1));
-                    t = (MAX_PROFILE_VALUE >>> 1) + 1;
-                    registerFalseProfileHit(branchInfos, index, f);
-                }
-                registerTrueProfileHit(branchInfos, index, t);
-                return val;
-            } else {
-                if (f == 0) {
-                    // Make this branch fold during PE
-                    val = true;
-                }
-            }
-        } else {
-            if (f == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (CompilerDirectives.inInterpreter()) {
-                if (f < MAX_PROFILE_VALUE) {
-                    f++;
-                } else {
-                    t = ((t >>> 1) + (t & 0x1));
-                    f = (MAX_PROFILE_VALUE >>> 1) + 1;
-                    registerTrueProfileHit(branchInfos, index, t);
-                }
-                registerFalseProfileHit(branchInfos, index, f);
-                return val;
-            } else {
-                if (t == 0) {
-                    // Make this branch fold during PE
-                    val = false;
-                }
-            }
+    private static void increaseTrueBranchHit(int[] branchInfos, int baseIndex, int t) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (t < MAX_PROFILE_VALUE) {
+            branchInfos[baseIndex + TRUE_OFFSET] = t + 1;
         }
-        return CompilerDirectives.injectBranchProbability((double) t / ((double) t + (double) f), val);
     }
 
-    public static int readBranchDest(BytecodeStream bs, byte[] branchInfos, int curBci) {
+    private static void increaseFalseBranchHit(int[] branchInfos, int baseIndex, int f) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (f < MAX_PROFILE_VALUE) {
+            branchInfos[baseIndex + FALSE_OFFSET] = f + 1;
+        }
+    }
+
+    @SuppressWarnings("cast")
+    public static boolean profileBranch(BytecodeStream bs, int[] branchInfos, int curBCI, boolean value) {
+        int baseIndex = getBranchInfoBaseIndex(bs, curBCI);
+        int t = getTrueProfile(branchInfos, baseIndex);
+        int f = getFalseProfile(branchInfos, baseIndex);
+        if (CompilerDirectives.inInterpreter()) {
+            if (value) {
+                increaseTrueBranchHit(branchInfos, baseIndex, t);
+            } else {
+                increaseFalseBranchHit(branchInfos, baseIndex, f);
+            }
+            return value;
+        } else {
+            CompilerAsserts.partialEvaluationConstant(t);
+            CompilerAsserts.partialEvaluationConstant(f);
+            if (t + f > 0) {
+                if (t == 0) {
+                    if (value) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        increaseTrueBranchHit(branchInfos, baseIndex, t);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+                if (f == 0) {
+                    if (value) {
+                        return true;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        increaseFalseBranchHit(branchInfos, baseIndex, f);
+                        return false;
+                    }
+                }
+                return CompilerDirectives.injectBranchProbability(((double) t) / ((double) t + (double) f), value);
+            } else {
+                return value;
+            }
+        }
+    }
+
+    public static int readBranchDest(BytecodeStream bs, int[] branchInfos, int curBci) {
         int opcode = bs.opcode(curBci);
         if (Bytecodes.isIfBytecode(opcode)) {
-            int index = getBranchInfoIndex(bs, curBci);
-            return curBci + Bytes.beS2(branchInfos, index + JUMP_OFFSET);
+            int index = getBranchInfoBaseIndex(bs, curBci);
+            return curBci + branchInfos[index + JUMP_OFFSET];
         } else {
             return bs.readBranchDest(curBci);
         }
     }
 
-    private static int getBranchInfoIndex(BytecodeStream bs, int curBCI) {
-        // Since we only store the index of the entry, we have to multiply the index with the length of each entry.
+    private static int getBranchInfoBaseIndex(BytecodeStream bs, int curBCI) {
+        /*
+         * Since we only store the index of the entry, we have to multiply the index with the length
+         * of each entry.
+         */
         return bs.readUShort(curBCI) * IF_INFO_LENGTH;
     }
 
-    private static int getTrueProfile(byte[] branchInfos, int branchInfoIndex) {
-        return Bytes.beS4(branchInfos, branchInfoIndex + TRUE_OFFSET);
+    private static int getTrueProfile(int[] branchInfos, int branchInfoIndex) {
+        return branchInfos[branchInfoIndex + TRUE_OFFSET];
     }
 
-    private static int getFalseProfile(byte[] branchInfos, int branchInfoIndex) {
-        return Bytes.beS4(branchInfos, branchInfoIndex + FALSE_OFFSET);
-    }
-
-    private static void registerTrueProfileHit(byte[] branchInfos, int branchInfoIndex, int val) {
-        Bytes.beS4(branchInfos, branchInfoIndex + TRUE_OFFSET, val);
-    }
-
-    private static void registerFalseProfileHit(byte[] branchInfos, int branchInfoIndex, int val) {
-        Bytes.beS4(branchInfos, branchInfoIndex + FALSE_OFFSET, val);
+    private static int getFalseProfile(int[] branchInfos, int branchInfoIndex) {
+        return branchInfos[branchInfoIndex + FALSE_OFFSET];
     }
 
     // endregion IF* profiling
 
-    // region *SWITCH profiling
+    /*
+     * @formatter:off
+     *
+     * region *SWITCH profiling
+     *
+     * The switch infos contain a default jump offset (int), a default hit counter (int) and hit counters
+     * for each case (an int for each of them). This is the layout per opcode:
+     * int default jump offset
+     * int default hit counter
+     * int case 0 hit counter
+     * int case 1 hit counter
+     * ...
+     *
+     * @formatter:on
+     */
+    private static final int DEFAULT_OFFSET = 0;
+    private static final int DEFAULT_HIT_CASE_INDEX = -1;
+    private static final int ENTRIES_BEFORE_CASE_PROFILES = 2;
 
-    // The switch infos contain a default offset (4 bytes), a default hit counter (4 bytes) and hit
-    // counters for each case (each 4 bytes). This is the layout per opcode:
-    // S4 default offset
-    // S4 default hit counter
-    // S4 case 1 hit counter
-    // S4 ...
-    public static final int DEFAULT_OFFSET = 0;
-    public static final int BYTES_PER_ENTRY = 4;
-    public static final int DEFAULT_HITS_OFFSET = BYTES_PER_ENTRY;
-    public static final int ENTRIES_BEFORE_CASE_PROFILES = 2;
-    public static final int CASE_HITS_OFFSET = BYTES_PER_ENTRY * ENTRIES_BEFORE_CASE_PROFILES;
-
-    public static int getSwitchInfoIndex(BytecodeStream bs, int curBCI) {
+    public static int getSwitchInfoBaseIndex(BytecodeStream bs, int curBCI) {
         // The stored index can directly be used for indexing.
         return bs.readInt(getAlignedBci(curBCI));
     }
 
-    public static void registerProfileHit(byte[] branchInfos, int branchInfoIndex, int nrOfCases, int index) {
-        CompilerAsserts.neverPartOfCompilation();
-        int profileIndex = getProfileIndex(branchInfoIndex, index);
-        int profile = Bytes.beS4(branchInfos, profileIndex);
-
-        if (profile == MAX_PROFILE_VALUE) {
-            halveCounters(branchInfos, branchInfoIndex, nrOfCases);
-        }
-
-        profile = Bytes.beS4(branchInfos, profileIndex);
-        assert profile < MAX_PROFILE_VALUE;
-        Bytes.beS4(branchInfos, profileIndex, profile + 1);
+    private static int getSwitchProfileIndex(int baseIndex, int index) {
+        return baseIndex + ENTRIES_BEFORE_CASE_PROFILES + index;
     }
 
-    public static void registerDefaultHit(byte[] branchInfos, int branchInfoIndex, int nrOfCases) {
-        registerProfileHit(branchInfos, branchInfoIndex, nrOfCases, -1);
+    public static void registerProfileHit(int[] branchInfos, BytecodeStream bs, int curBCI, int index) {
+        CompilerAsserts.neverPartOfCompilation();
+        int baseIndex = getSwitchInfoBaseIndex(bs, curBCI);
+        int profileCounterIndex = getSwitchProfileIndex(baseIndex, index);
+        int profile = branchInfos[profileCounterIndex];
+
+        if (profile < MAX_PROFILE_VALUE) {
+            branchInfos[profileCounterIndex] = profile + 1;
+        }
     }
 
-    public static void halveCounters(byte[] branchInfos, int branchInfoIndex, int nrOfCases) {
-        CompilerAsserts.neverPartOfCompilation();
-        for (int i = -1; i < nrOfCases; i++) {
-            int profile = getProfileHits(branchInfos, branchInfoIndex, i);
-            Bytes.beS4(branchInfos, getProfileIndex(branchInfoIndex, i), (profile >>> 1) + (profile & 1));
-        }
+    public static void registerDefaultHit(int[] branchInfos, BytecodeStream bs, int curBCI) {
+        registerProfileHit(branchInfos, bs, curBCI, DEFAULT_HIT_CASE_INDEX);
     }
 
     public static boolean injectSwitchProfile(int profileHits, long predecessorHits, long totalHits, boolean condition) {
-        boolean val = condition;
-        if (val) {
-            if (profileHits == 0) {
+        CompilerAsserts.partialEvaluationConstant(profileHits);
+        CompilerAsserts.partialEvaluationConstant(totalHits);
+
+        if (totalHits == 0) {
+            return condition;
+        }
+
+        if (profileHits == 0) {
+            if (condition) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (profileHits == totalHits) {
-                // Make this branch fold during PE
-                val = true;
-            }
-        } else {
-            if (profileHits == totalHits) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (profileHits == 0) {
-                // If the profile is 0 there is no need for the calculation below. Additionally, the
-                // predecessor probability may be 1 which could lead to a division by 0 later.
-                return CompilerDirectives.injectBranchProbability(0.0, false);
+                return true;
+            } else {
+                return false;
             }
         }
+
+        if (profileHits == totalHits) {
+            if (condition) {
+                return true;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return false;
+            }
+        }
+
         /*
          * The probabilities gathered by profiling are independent of each other. Since we are
          * injecting probabilities into a cascade of if statements, we need to adjust them. The
@@ -268,44 +303,31 @@ public class BranchProfileHelper {
         double probability = (double) profileHits / Math.max(profileHits, totalHits);
         double predecessorProbability = (double) predecessorHits / Math.max(predecessorHits, totalHits);
         double adjustedProbability = probability / (1 - predecessorProbability);
-        return CompilerDirectives.injectBranchProbability(Math.min(adjustedProbability, 1), val);
+        return CompilerDirectives.injectBranchProbability(Math.min(adjustedProbability, 1), condition);
     }
 
-    private static int getProfileIndex(int branchInfoIndex, int index) {
-        return branchInfoIndex + CASE_HITS_OFFSET + index * BYTES_PER_ENTRY;
+    public static int getProfileHits(int[] branchInfos, BytecodeStream bs, int curBCI, int index) {
+        int baseIndex = getSwitchInfoBaseIndex(bs, curBCI);
+        int profileIndex = getSwitchProfileIndex(baseIndex, index);
+        return branchInfos[profileIndex];
+    }
+
+    public static int getDefaultHits(int[] branchInfos, BytecodeStream bs, int curBCI) {
+        return getProfileHits(branchInfos, bs, curBCI, DEFAULT_HIT_CASE_INDEX);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static long getTotalHits(byte[] branchInfos, int branchInfoIndex, int nrOfCases) {
+    public static long getTotalHits(int[] branchInfos, BytecodeStream bs, int curBCI, int nrOfCases) {
         long totalHits = 0;
-        for (int i = -1; i < nrOfCases; i++) {
-            totalHits += getProfileHits(branchInfos, branchInfoIndex, i);
+        for (int i = DEFAULT_HIT_CASE_INDEX; i < nrOfCases; i++) {
+            totalHits += getProfileHits(branchInfos, bs, curBCI, i);
         }
         return totalHits;
     }
 
-    public static int getDefaultHits(byte[] branchInfos, int branchInfoIndex) {
-        return Bytes.beS4(branchInfos, branchInfoIndex + DEFAULT_HITS_OFFSET);
-    }
-
-    public static int getProfileHits(byte[] branchInfos, int branchInfoIndex, int index) {
-        int profileIndex = getProfileIndex(branchInfoIndex, index);
-        return Bytes.beS4(branchInfos, profileIndex);
-    }
-
-    public static int getTargetBCI(byte[] branchInfos, int curBCI, int branchInfoIndex) {
-        return curBCI + Bytes.beS4(branchInfos, branchInfoIndex + DEFAULT_OFFSET);
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static byte[] copySwitchInfos(byte[] switchInfos, int switchIndex, int nrOfCases) {
-        byte[] copy = new byte[CASE_HITS_OFFSET + nrOfCases * BYTES_PER_ENTRY];
-        // Do not use System.arraycopy here as it messes up compilation in some cases.
-        for (int i = 0; i < copy.length; i++) {
-            copy[i] = switchInfos[switchIndex + i];
-        }
-        CompilerDirectives.ensureVirtualized(copy);
-        return copy;
+    public static int getDefaultTargetBCI(int[] branchInfos, BytecodeStream bs, int curBCI) {
+        int baseIndex = getSwitchInfoBaseIndex(bs, curBCI);
+        return curBCI + branchInfos[baseIndex + DEFAULT_OFFSET];
     }
 
     // endregion *SWITCH profiling
