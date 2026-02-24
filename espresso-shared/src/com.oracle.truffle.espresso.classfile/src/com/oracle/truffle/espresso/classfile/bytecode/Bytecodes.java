@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -633,7 +633,14 @@ public final class Bytecodes {
         // Unlike standard bytecodes, stack effects are determined completely by the node, even if the semantics
         // of patched bytecode is partially or completely known.
         def(QUICK               , "quick"           , "bjj"  ,  0, TRAP | QUICKENED | PRODUCE_FOREIGN | RECEIVE_FOREIGN);
-        def(SLIM_QUICK          , "slimquick"       ,"b"     ,  0, TRAP | QUICKENED | PRODUCE_FOREIGN | RECEIVE_FOREIGN);
+        def(SLIM_QUICK          , "slimquick"       , "b"    ,  0, TRAP | QUICKENED | PRODUCE_FOREIGN | RECEIVE_FOREIGN);
+        /*
+         * Espresso special bytecodes.
+         * They don't have the TRAP flag to avoid out-of-range BCI being collected
+         * for exception stack trace.
+         */
+        def(RETURN_VALUE        , "returnvalue"     , "b"    ,  0, STOP);
+        def(THROW_VALUE         , "throwvalue"      , "b"    ,  0, STOP);
     }
     // @formatter:on
     // Checkstyle: resume

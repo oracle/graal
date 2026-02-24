@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,11 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import static com.oracle.truffle.espresso.bytecode.BranchProfileHelper.*;
+import static com.oracle.truffle.espresso.bytecode.BranchProfileHelper.getDefaultHits;
+import static com.oracle.truffle.espresso.bytecode.BranchProfileHelper.getDefaultTargetBCI;
 import static com.oracle.truffle.espresso.bytecode.BranchProfileHelper.getProfileHits;
+import static com.oracle.truffle.espresso.bytecode.BranchProfileHelper.getTotalHits;
+import static com.oracle.truffle.espresso.bytecode.BranchProfileHelper.initializeBranchInfos;
 import static com.oracle.truffle.espresso.bytecode.BranchProfileHelper.injectSwitchProfile;
 import static com.oracle.truffle.espresso.bytecode.BranchProfileHelper.profileBranch;
 import static com.oracle.truffle.espresso.bytecode.BranchProfileHelper.readBranchDest;
@@ -312,6 +315,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeTableSwitch;
@@ -462,7 +466,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private final int returnValueBci;
     private final int throwValueBci;
 
-    @CompilationFinal(dimensions = 1) private final byte[] branchInfos;
+    @CompilationFinal(dimensions = 1) private final int[] branchInfos;
 
     public BytecodeNode(MethodVersion methodVersion) {
         CompilerAsserts.neverPartOfCompilation();
@@ -488,7 +492,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         ? TRIVIAL_UNINITIALIZED
                         : TRIVIAL_NO;
 
-        this.branchInfos = initializeBranchInfos(bs, code, originalCode);
+        this.branchInfos = initializeBranchInfos(code);
     }
 
     public FrameDescriptor getFrameDescriptor() {
@@ -1208,88 +1212,32 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         continue loop;
                     }
 
-                    case TABLESWITCH:  // fall through
+                    case TABLESWITCH: // fall through
                     case LOOKUPSWITCH: {
-                        // The value is the index of a TABLESWITCH or the key of a LOOKUPSWITCH.
-                        int value = popInt(frame, top - 1);
-                        int branchInfoIndex = getSwitchInfoIndex(bs, curBCI);
-                        BytecodeSwitch switchHelper = BytecodeSwitch.get(curOpcode);
-                        int low = curOpcode == TABLESWITCH
-                                        ? ((BytecodeTableSwitch) switchHelper).lowKey(bs, curBCI)
-                                        : 0;
-                        int high = curOpcode == TABLESWITCH
-                                        ? ((BytecodeTableSwitch) switchHelper).highKey(bs, curBCI)
-                                        : switchHelper.numberOfCases(bs, curBCI) - 1;
-                        int numberOfCases = high - low + 1;
-                        // A LOOKUPSWITCH may have 0 cases, which would result in high < low.
-                        assert numberOfCases == 0 || low <= high;
-
                         if (CompilerDirectives.inInterpreter()) {
-                            if (curOpcode == TABLESWITCH) {
-                                // TABLESWITCH uses direct lookup in interpreter.
-                                int targetBCI;
-                                if (low <= value && value <= high) {
-                                    registerProfileHit(branchInfos, branchInfoIndex, numberOfCases, value - low);
-                                    targetBCI = switchHelper.targetAt(bs, curBCI, value - low);
-                                } else {
-                                    registerDefaultHit(branchInfos, branchInfoIndex, numberOfCases);
-                                    targetBCI = getTargetBCI(branchInfos, curBCI, branchInfoIndex);
-                                }
-                                top += Bytecodes.stackEffectOf(TABLESWITCH);
-                                statementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
-                                curBCI = targetBCI;
-                            } else {
-                                // LOOKUPSWITCH uses binary search in interpreter
-                                while (low <= high) {
-                                    int mid = (low + high) >>> 1;
-                                    int midVal = switchHelper.keyAt(bs, curBCI, mid);
-                                    if (midVal < value) {
-                                        low = mid + 1;
-                                    } else if (midVal > value) {
-                                        high = mid - 1;
-                                    } else {
-                                        // Key found.
-                                        registerProfileHit(branchInfos, branchInfoIndex, numberOfCases, mid);
-                                        int targetBCI = curBCI + switchHelper.offsetAt(bs, curBCI, mid);
-                                        top += Bytecodes.stackEffectOf(LOOKUPSWITCH);
-                                        statementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
-                                        curBCI = targetBCI;
-                                        continue loop;
-                                    }
-                                }
-
-                                // Key not found.
-                                registerDefaultHit(branchInfos, branchInfoIndex, numberOfCases);
-                                int targetBCI = getTargetBCI(branchInfos, curBCI, branchInfoIndex);
-                                top += Bytecodes.stackEffectOf(LOOKUPSWITCH);
-                                statementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
-                                curBCI = targetBCI;
-                            }
+                            int targetBCI = (curOpcode == TABLESWITCH) ? interpretTableSwitch(frame, top, curBCI) : interpretLookupSwitch(frame, top, curBCI);
+                            top += Bytecodes.stackEffectOf(curOpcode);
+                            statementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
+                            curBCI = targetBCI;
                             continue loop;
                         }
 
                         /*
-                         * We create a copy of the profiles so that each succeeding access uses the
-                         * same values. Otherwise, another thread may halve the profiles during
-                         * compilation which could lead to errors when calculating probabilities
-                         * which may result in a failed compilation. It may happen that we read the
-                         * probabilities during a halving sweep of another thread which would lead
-                         * to incorrect probabilities, yet we take this risk here. This array will
-                         * not be allocated in compiled code and is only virtual.
+                         * Start of PE-only code for TABLESWITCH and LOOKUPSWITCH
                          */
-                        byte[] localSwitchInfos = copySwitchInfos(branchInfos, branchInfoIndex, numberOfCases);
-                        long totalHits = getTotalHits(localSwitchInfos, 0, numberOfCases);
+                        int value = popInt(frame, top - 1);
+                        BytecodeSwitch switchHelper = BytecodeSwitch.get(curOpcode);
+                        int numberOfCases = switchHelper.numberOfCases(bs, curBCI);
+
+                        long totalHits = getTotalHits(branchInfos, bs, curBCI, numberOfCases);
                         long predecessorHits = 0;
-                        // i could overflow if high == Integer.MAX_VALUE.
-                        // This loops take that into account.
-                        for (int i = low; i != high + 1; ++i) {
-                            int caseHits = getProfileHits(localSwitchInfos, 0, i - low);
-                            int curVal = curOpcode == TABLESWITCH
-                                            ? i
-                                            : switchHelper.keyAt(bs, curBCI, i - low);
+
+                        for (int i = 0; i < numberOfCases; ++i) {
+                            int caseHits = getProfileHits(branchInfos, bs, curBCI, i);
+                            int curVal = switchHelper.keyAt(bs, curBCI, i);
                             if (injectSwitchProfile(caseHits, predecessorHits, totalHits, curVal == value)) {
                                 // Key found.
-                                int targetBCI = switchHelper.targetAt(bs, curBCI, i - low);
+                                int targetBCI = switchHelper.targetAt(bs, curBCI, i);
                                 top += Bytecodes.stackEffectOf(curOpcode);
                                 statementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                                 curBCI = targetBCI;
@@ -1299,15 +1247,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         }
 
                         // Key not found.
-                        int defaultHits = getDefaultHits(localSwitchInfos, 0);
+                        int defaultHits = getDefaultHits(branchInfos, bs, curBCI);
                         if (injectSwitchProfile(defaultHits, predecessorHits, totalHits, true)) {
-                            int targetBCI = getTargetBCI(branchInfos, curBCI, branchInfoIndex);
+                            int targetBCI = getDefaultTargetBCI(branchInfos, bs, curBCI);
                             top += Bytecodes.stackEffectOf(curOpcode);
                             statementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount, skipLivenessActions);
                             curBCI = targetBCI;
                             continue loop;
                         }
                         break;
+                        /*
+                         * End of PE-only code for TABLESWITCH and LOOKUPSWITCH
+                         */
                     }
 
                     case IRETURN: // fall through
@@ -1967,6 +1918,48 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
         }
         // @formatter:on
+    }
+
+    private int interpretTableSwitch(VirtualFrame frame, int top, int curBCI) {
+        CompilerAsserts.neverPartOfCompilation();
+        int index = popInt(frame, top - 1);
+        BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
+        int low = switchHelper.lowKey(bs, curBCI);
+        int high = switchHelper.highKey(bs, curBCI);
+        assert low <= high;
+
+        if (low <= index && index <= high) {
+            registerProfileHit(branchInfos, bs, curBCI, index - low);
+            return switchHelper.targetAt(bs, curBCI, index - low);
+        } else {
+            registerDefaultHit(branchInfos, bs, curBCI);
+            return getDefaultTargetBCI(branchInfos, bs, curBCI);
+        }
+    }
+
+    private int interpretLookupSwitch(VirtualFrame frame, int top, int curBCI) {
+        CompilerAsserts.neverPartOfCompilation();
+        int key = popInt(frame, top - 1);
+        BytecodeLookupSwitch switchHelper = BytecodeLookupSwitch.INSTANCE;
+        int low = 0;
+        int high = switchHelper.numberOfCases(bs, curBCI) - 1;
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            int midVal = switchHelper.keyAt(bs, curBCI, mid);
+            if (midVal < key) {
+                low = mid + 1;
+            } else if (midVal > key) {
+                high = mid - 1;
+            } else {
+                // Key found.
+                registerProfileHit(branchInfos, bs, curBCI, mid);
+                return switchHelper.targetAt(bs, curBCI, mid);
+            }
+        }
+
+        // Key not found.
+        registerDefaultHit(branchInfos, bs, curBCI);
+        return getDefaultTargetBCI(branchInfos, bs, curBCI);
     }
 
     private void arrayLength(VirtualFrame frame, int top, int curBCI) {
