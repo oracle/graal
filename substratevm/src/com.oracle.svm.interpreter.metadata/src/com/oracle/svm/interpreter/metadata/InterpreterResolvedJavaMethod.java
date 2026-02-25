@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_NATIVE;
@@ -33,6 +32,7 @@ import static com.oracle.svm.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.BREAKPOINT;
 import static com.oracle.svm.interpreter.metadata.CremaMethodAccess.toJVMCI;
 
@@ -53,7 +53,6 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.SubstrateMetadata;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
@@ -62,7 +61,6 @@ import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.JavaVersion;
 import com.oracle.svm.espresso.classfile.ParserMethod;
@@ -73,10 +71,13 @@ import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
+import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
-import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -697,7 +698,11 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     }
 
     @Override
-    public final boolean hasVTableIndex() {
+    public final boolean requiresInterfaceDispatch(InterpreterResolvedJavaType holder) {
+        return hasDispatchIndex() && getDeclaringClass().isInterface();
+    }
+
+    public final boolean hasDispatchIndex() {
         return vtableIndex != VTBL_NO_ENTRY && vtableIndex != VTBL_ONE_IMPL;
     }
 
@@ -910,5 +915,18 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
             }
         }
         return invoker;
+    }
+
+    public CallKind getCallKind() {
+        if (isStatic()) {
+            return CallKind.STATIC;
+        }
+        if (isPrivate() || isFinalFlagSet() || getDeclaringClass().isFinalFlagSet()) {
+            return CallKind.DIRECT;
+        }
+        if (getDeclaringClass().isInterface()) {
+            return CallKind.ITABLE_LOOKUP;
+        }
+        return CallKind.VTABLE_LOOKUP;
     }
 }

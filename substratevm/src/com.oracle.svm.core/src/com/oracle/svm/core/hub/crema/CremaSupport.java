@@ -38,6 +38,7 @@ import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.shared.resolver.CallKind;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -73,7 +74,7 @@ public interface CremaSupport {
      */
     Object allocateInstance(ResolvedJavaType type);
 
-    Object execute(ResolvedJavaMethod targetMethod, Object[] args, boolean isVirtual);
+    Object execute(ResolvedJavaMethod targetMethod, Object[] args, CallKind callKind);
 
     Class<?> toClass(ResolvedJavaType resolvedJavaType);
 

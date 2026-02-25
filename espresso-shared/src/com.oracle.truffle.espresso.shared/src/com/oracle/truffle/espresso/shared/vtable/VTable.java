@@ -188,7 +188,7 @@ public final class VTable {
                         // resolution, prefer inheriting the parent's.
                         if (ma.getDeclaringClass() == parentMethod.getDeclaringClass()) {
                             // Same non-failing method as parent, re-use it.
-                            assert parentMethod.hasVTableIndex();
+                            assert !parentMethod.requiresInterfaceDispatch(parentMethod.getDeclaringClass());
                             vtable.add(parentMethod);
                             continue;
                         }

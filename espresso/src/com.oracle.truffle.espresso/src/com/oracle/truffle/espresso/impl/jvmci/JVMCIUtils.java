@@ -191,13 +191,13 @@ public final class JVMCIUtils {
             if (!declaringKlass.isAssignableFrom(receiverKlass)) {
                 return null;
             }
-            assert method.getITableIndex() >= 0 : method;
+            assert method.isITableIndexInitialized() : method;
             resolved = receiverKlass.itableLookupOrNull(declaringKlass, method.getITableIndex());
             if (resolved != null && !resolved.isPublic()) {
                 return null;
             }
         } else {
-            assert method.getVTableIndex() >= 0 : method;
+            assert method.isVTableIndexInitialized() : method;
             resolved = receiverKlass.vtableLookup(method.getVTableIndex());
         }
         return resolved;

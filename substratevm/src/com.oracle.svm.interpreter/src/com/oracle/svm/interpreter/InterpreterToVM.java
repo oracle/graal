@@ -54,6 +54,7 @@ import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -784,14 +785,14 @@ public final class InterpreterToVM {
         return (int) (iTableStartingOffset - vtableBaseOffset) / vtableEntrySize;
     }
 
-    public static Object dispatchInvocation(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, boolean isVirtual0, boolean forceStayInInterpreter, boolean preferStayInInterpreter,
-                    boolean quiet)
+    public static Object dispatchInvocation(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, CallKind callKind,
+                    boolean forceStayInInterpreter, boolean preferStayInInterpreter, boolean quiet)
                     throws SemanticJavaException {
         // True if we need to go through the platform ABI, e.g. calling an entry point of a
         // compilation unit.
         boolean callCompiledTarget;
 
-        boolean isVirtual = isVirtual0;
+        boolean isVirtual = callKind.hasLookup();
 
         if (forceStayInInterpreter) {
             // Force execution in the interpreter, transitively, for all callees in the call
@@ -806,7 +807,7 @@ public final class InterpreterToVM {
 
         InterpreterResolvedObjectType seedDeclaringClass = seedMethod.getDeclaringClass();
         if (seedMethod.isStatic()) {
-            InterpreterUtil.guarantee(!isVirtual, "no virtual calls for static method %s", seedMethod);
+            InterpreterUtil.guarantee(callKind.isStatic(), "no virtual calls for static method %s", seedMethod);
             ensureClassInitialized(seedDeclaringClass);
         }
 
@@ -834,7 +835,7 @@ public final class InterpreterToVM {
             } else if (seedMethod.getVTableIndex() == VTBL_ONE_IMPL) {
                 callCompiledTarget = seedMethod.getOneImplementation().hasNativeEntryPoint();
             } else if (isVirtual) {
-                if (!seedMethod.hasVTableIndex()) {
+                if (!seedMethod.hasDispatchIndex()) {
                     throw VMError.shouldNotReachHere("cannot do virtual dispatch without vtable index");
                 }
             } else {
@@ -866,7 +867,7 @@ public final class InterpreterToVM {
         }
 
         InterpreterResolvedJavaMethod targetMethod = seedMethod;
-        if (isVirtual && seedMethod.hasVTableIndex()) {
+        if (isVirtual && seedMethod.hasDispatchIndex()) {
             /* vtable dispatch */
 
             VMError.guarantee(seedMethod.hasReceiver());

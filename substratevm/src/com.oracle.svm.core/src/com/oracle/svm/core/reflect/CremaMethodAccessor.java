@@ -27,6 +27,7 @@ package com.oracle.svm.core.reflect;
 import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.util.VMError;
 
@@ -60,7 +61,7 @@ public final class CremaMethodAccessor extends AbstractCremaAccessor implements 
             System.arraycopy(args, 0, finalArgs, 1, args.length);
         }
         try {
-            return CremaSupport.singleton().execute(targetMethod, finalArgs, !targetMethod.isStatic());
+            return CremaSupport.singleton().execute(targetMethod, finalArgs, getCallKind(targetMethod));
         } catch (Throwable t) {
             throw new InvocationTargetException(t);
         }
@@ -70,5 +71,18 @@ public final class CremaMethodAccessor extends AbstractCremaAccessor implements 
     public Object invoke(Object obj, Object[] args, Class<?> caller) throws IllegalArgumentException, InvocationTargetException {
         // (GR-68603) - handle caller sensitive methods
         throw VMError.unimplemented("CremaMethodAccessor#invoke");
+    }
+
+    private static CallKind getCallKind(ResolvedJavaMethod targetMethod) {
+        if (targetMethod.isStatic()) {
+            return CallKind.STATIC;
+        }
+        if (targetMethod.isPrivate() || targetMethod.isFinalFlagSet() || targetMethod.getDeclaringClass().isFinalFlagSet()) {
+            return CallKind.DIRECT;
+        }
+        if (targetMethod.getDeclaringClass().isInterface()) {
+            return CallKind.ITABLE_LOOKUP;
+        }
+        return CallKind.VTABLE_LOOKUP;
     }
 }

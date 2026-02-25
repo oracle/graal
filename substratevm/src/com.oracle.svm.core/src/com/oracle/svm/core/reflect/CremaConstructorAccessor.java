@@ -27,6 +27,7 @@ package com.oracle.svm.core.reflect;
 import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 import jdk.internal.reflect.ConstructorAccessor;
@@ -50,7 +51,7 @@ public final class CremaConstructorAccessor extends AbstractCremaAccessor implem
         finalArgs[0] = newReference;
         System.arraycopy(args, 0, finalArgs, 1, args.length);
         try {
-            CremaSupport.singleton().execute(targetMethod, finalArgs, false);
+            CremaSupport.singleton().execute(targetMethod, finalArgs, CallKind.DIRECT);
         } catch (Throwable t) {
             throw new InvocationTargetException(t);
         }

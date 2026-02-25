@@ -46,6 +46,7 @@ import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.interpreter.DebuggerSupport;
 import com.oracle.svm.interpreter.EspressoFrame;
 import com.oracle.svm.interpreter.InterpreterFrame;
@@ -1919,9 +1920,13 @@ public final class ResidentJDWP implements JDWP {
             return new Result(null, MetadataUtil.requireNonNull(throwable));
         }
 
-        static Result ofInvoke(boolean isVirtual, InterpreterResolvedJavaMethod method, Object... args) {
+        static Result ofInvoke(boolean forceNonVirtual, InterpreterResolvedJavaMethod method, Object... args) {
             try {
-                return fromValue(InterpreterToVM.dispatchInvocation(method, args, isVirtual, false, false, false));
+                CallKind callKind = method.getCallKind();
+                if (forceNonVirtual && callKind.hasLookup()) {
+                    callKind = CallKind.DIRECT;
+                }
+                return fromValue(InterpreterToVM.dispatchInvocation(method, args, callKind, false, false, false));
             } catch (SemanticJavaException e) {
                 return fromThrowable(e.getCause());
             } catch (StackOverflowError | OutOfMemoryError error) {
@@ -2091,8 +2096,7 @@ public final class ResidentJDWP implements JDWP {
         require(!thread.isVirtual(), ErrorCode.ILLEGAL_ARGUMENT, "virtual threads not supported");
 
         Object[] args = prepend(receiver, argsWithoutReceiver);
-        boolean isVirtual = !InvokeOptions.nonVirtual(options);
-        return invokeReply(packet, Result.ofInvoke(isVirtual, method, args), method.getSignature().getReturnKind());
+        return invokeReply(packet, Result.ofInvoke(InvokeOptions.nonVirtual(options), method, args), method.getSignature().getReturnKind());
     }
 
     @Override

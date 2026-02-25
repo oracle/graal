@@ -614,10 +614,10 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             if (target.isPrivate() || target.isFinalFlagSet() || target.getDeclaringKlass().isFinalFlagSet()) {
                 res |= MN_IS_METHOD | (REF_invokeSpecial << MN_REFERENCE_KIND_SHIFT);
             } else if (target.getDeclaringKlass().isJavaLangObject()) {
-                assert target.getVTableIndex() >= 0;
+                assert target.isVTableIndexInitialized();
                 res |= MN_IS_METHOD | (REF_invokeVirtual << MN_REFERENCE_KIND_SHIFT);
             } else {
-                assert target.getITableIndex() >= 0;
+                assert target.isITableIndexInitialized();
                 res |= MN_IS_METHOD | (REF_invokeInterface << MN_REFERENCE_KIND_SHIFT);
             }
         } else if (refKind == REF_invokeVirtual) {

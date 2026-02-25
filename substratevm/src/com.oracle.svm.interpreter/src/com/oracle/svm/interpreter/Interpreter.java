@@ -271,9 +271,11 @@ import java.util.Objects;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
+import com.oracle.svm.espresso.shared.resolver.CallKind;
+import com.oracle.svm.espresso.shared.resolver.CallSiteType;
+import com.oracle.svm.espresso.shared.resolver.ResolvedCall;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.interpreter.debug.EventKind;
@@ -293,6 +295,7 @@ import com.oracle.svm.interpreter.metadata.TableSwitch;
 import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -542,7 +545,7 @@ public final class Interpreter {
                     boolean preferStayInInterpreter = forceStayInInterpreter;
                     traceInvokeBasic(target, indent);
                     try {
-                        yield InterpreterToVM.dispatchInvocation(target, calleeArgs, false, forceStayInInterpreter, preferStayInInterpreter, false);
+                        yield InterpreterToVM.dispatchInvocation(target, calleeArgs, CallKind.DIRECT, forceStayInInterpreter, preferStayInInterpreter, false);
                     } catch (SemanticJavaException e) {
                         throw uncheckedThrow(e.getCause());
                     }
@@ -556,9 +559,7 @@ public final class Interpreter {
                     boolean preferStayInInterpreter = forceStayInInterpreter;
                     traceLinkTo(resolutionSeed, intrinsic, indent);
                     try {
-                        boolean isInvokeInterface = intrinsic == SignaturePolymorphicIntrinsic.LinkToInterface;
-                        boolean isVirtual = isInvokeInterface || intrinsic == SignaturePolymorphicIntrinsic.LinkToVirtual;
-                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, false);
+                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, intrinsic.getCallKind(), forceStayInInterpreter, preferStayInInterpreter, false);
                         yield rebasic(result, signature.getReturnKind());
                     } catch (SemanticJavaException e) {
                         throw uncheckedThrow(e.getCause());
@@ -1420,7 +1421,7 @@ public final class Interpreter {
         int invokeTop = top;
 
         InterpreterResolvedJavaMethod seedMethod;
-        boolean isVirtual = opcode == INVOKEVIRTUAL || opcode == INVOKEINTERFACE;
+        CallKind callKind;
 
         if (opcode == INVOKEDYNAMIC) {
             int fullCPI = BytecodeStream.readCPI4(code, curBCI);
@@ -1483,9 +1484,27 @@ public final class Interpreter {
             }
             EspressoFrame.putObject(callerFrame, top, appendix);
             invokeTop = top + 1;
+            callKind = CallKind.DIRECT;
         } else {
             char cpi = BytecodeStream.readCPI2(code, curBCI);
-            seedMethod = Interpreter.resolveMethod(method, opcode, cpi);
+            InterpreterResolvedJavaMethod symbolicResolution = Interpreter.resolveMethod(method, opcode, cpi);
+            InterpreterResolvedJavaType symbolicHolder = Interpreter.resolveSymbolicHolder(method, opcode, cpi);
+            if (symbolicHolder == null) {
+                traceInterpreter("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ")
+                                .string(method.toString());
+                // If unresolvable, provide symbolic resolution's holder as best-effort.
+                symbolicHolder = symbolicResolution.getDeclaringClass();
+            }
+
+            ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(
+                            CremaRuntimeAccess.getInstance(),
+                            method.getDeclaringClass(),
+                            symbolicResolution,
+                            CallSiteType.fromOpCode(opcode),
+                            symbolicHolder);
+
+            seedMethod = resolvedCall.getResolvedMethod();
+            callKind = resolvedCall.getCallKind();
         }
         boolean hasReceiver = !seedMethod.isStatic();
 
@@ -1501,7 +1520,7 @@ public final class Interpreter {
             nullCheck(receiver);
         }
 
-        Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, false);
+        Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, callKind, forceStayInInterpreter, preferStayInInterpreter, false);
 
         retStackEffect += EspressoFrame.putKind(callerFrame, resultAt, retObj, seedSignature.getReturnKind());
 
@@ -1555,6 +1574,24 @@ public final class Interpreter {
         }
         try {
             return getConstantPool(method).resolvedTypeAt(method.getDeclaringClass(), cpi);
+        } catch (UnsupportedResolutionException e) {
+            return null;
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
+        }
+    }
+
+    public static InterpreterResolvedJavaType resolveSymbolicHolder(InterpreterResolvedJavaMethod caller, int opcode, char cpi) {
+        if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
+            return null; // CPI 0 is a marker for unresolvable AND unknown entry
+        }
+        assert Bytecodes.isInvoke(opcode) : "wrong opcode for resolving symbolic holder: " + Bytecodes.nameOf(opcode);
+        int holderCpi = getConstantPool(caller).memberClassIndex(cpi);
+        if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, holderCpi == 0)) {
+            return null; // CPI 0 is a marker for unresolvable AND unknown entry
+        }
+        try {
+            return getConstantPool(caller).resolvedTypeAt(caller.getDeclaringClass(), holderCpi);
         } catch (UnsupportedResolutionException e) {
             return null;
         } catch (Throwable t) {
