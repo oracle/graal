@@ -56,19 +56,19 @@ public final class Target_sun_nio_ch_TruffleSelector {
     }
 
     @Substitution
-    public static void deregister(int id, int fd, @Inject LibsState libsState) {
+    public static void deregister(int selectorId, int fd, @Inject LibsState libsState) {
         // this is synchronized from outside per guest SelectionKey
-        libsState.selectorDeregister(id, fd);
+        libsState.selectorDeregister(selectorId, fd);
     }
 
     @Substitution
-    public static void register(int id, int fd, int newEvents,
+    public static void register(int selectorId, int fd, int newEvents,
                     @Inject LibsState libsState,
                     @Inject TruffleIO io) {
         // this is synchronized from outside per guest SelectionKey
         try {
-            Selector selector = libsState.selectorGetHostSelector(id);
-            libsState.selectorRegisterEvents(selector, id, fd, newEvents, io);
+            Selector selector = libsState.selectorGetHostSelector(selectorId);
+            libsState.selectorRegisterEvents(selector, selectorId, fd, newEvents, io);
         } catch (EspressoException e) {
             /*
              * We should not throw exceptions here, according to the Selector API. In
@@ -80,9 +80,9 @@ public final class Target_sun_nio_ch_TruffleSelector {
     }
 
     @Substitution
-    public static void changeEvents(int id, int fd, int newEvents, @Inject LibsState libsState) {
+    public static void changeEvents(int selectorId, int fd, int newEvents, @Inject LibsState libsState) {
         // this is synchronized from outside per guest SelectionKey
-        SelectionKey selectionKey = libsState.selectorGetSelectionKey(id, fd);
+        SelectionKey selectionKey = libsState.selectorGetSelectionKey(selectorId, fd);
         if (selectionKey == null) {
             throw JavaSubstitution.shouldNotReachHere();
         }
@@ -96,25 +96,25 @@ public final class Target_sun_nio_ch_TruffleSelector {
 
     @Substitution
     @Throws(IOException.class)
-    public static int doSelect(int id, long timeout, @Inject LibsState libsState) {
+    public static int doSelect(int selectorId, long timeout, @Inject LibsState libsState) {
         // synchronized on the "this" of the guest Selector
-        Selector selector = libsState.selectorGetHostSelector(id);
+        Selector selector = libsState.selectorGetHostSelector(selectorId);
         return libsState.doSelect(selector, timeout);
     }
 
     @Substitution
-    public static void wakeup(int id, @Inject LibsState libsState) {
-        Selector selector = libsState.selectorGetHostSelector(id);
+    public static void wakeup(int selectorId, @Inject LibsState libsState) {
+        Selector selector = libsState.selectorGetHostSelector(selectorId);
         selector.wakeup();
     }
 
     @Substitution
     @TruffleBoundary
     @Throws(IOException.class)
-    public static void close(int id, @Inject LibsState libsState, @Inject EspressoContext ctx) {
+    public static void close(int selectorId, @Inject LibsState libsState, @Inject EspressoContext ctx) {
         // synchronized on the "this" of the guest Selector
-        Selector selector = libsState.selectorGetHostSelector(id);
-        libsState.freeSelector(id);
+        Selector selector = libsState.selectorGetHostSelector(selectorId);
+        libsState.freeSelector(selectorId);
         try {
             selector.close();
         } catch (IOException e) {
@@ -124,7 +124,7 @@ public final class Target_sun_nio_ch_TruffleSelector {
 
     @Substitution
     @TruffleBoundary
-    public static @JavaType(long[].class) StaticObject processEvents(int id, @Inject LibsState libsState, @Inject EspressoContext ctx, @Inject Meta meta) {
+    public static @JavaType(long[].class) StaticObject processEvents(int selectorId, @Inject LibsState libsState, @Inject EspressoContext ctx, @Inject Meta meta) {
         /*
          * Concurrency: This method is synchronized on the "this" of the guest Selector meaning it
          * can happened concurrently with register, deregister and ChangeEvents. For changing events
@@ -151,9 +151,9 @@ public final class Target_sun_nio_ch_TruffleSelector {
          * readyOps() ops is called the guest selection key will be selected and its consumer action
          * executed. Therefore, our approach will expose behaviour which is consistent with the
          * behaviour of EPollSelectorImpl.
-         * 
+         *
          */
-        Selector selector = libsState.selectorGetHostSelector(id);
+        Selector selector = libsState.selectorGetHostSelector(selectorId);
         Set<SelectionKey> selectedKeys = selector.selectedKeys();
         long[] fdAndOps = new long[selectedKeys.size()];
         int i = 0;

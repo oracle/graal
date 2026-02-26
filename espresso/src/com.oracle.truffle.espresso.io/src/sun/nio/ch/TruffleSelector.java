@@ -70,13 +70,13 @@ import java.util.function.Consumer;
  */
 public class TruffleSelector extends SelectorImpl {
 
-    private final int id;
+    private final int selectorId;
     // ConcurrentHashMap to allow concurrency between cancel and setEvenOps
     private final ConcurrentHashMap<Integer, SelectionKeyImpl> fdToKey = new ConcurrentHashMap<>();
 
     protected TruffleSelector(SelectorProvider sp) {
         super(sp);
-        id = init();
+        selectorId = init();
     }
 
     @Override
@@ -88,7 +88,7 @@ public class TruffleSelector extends SelectorImpl {
         // todo (GR-73603)
         begin(blocking);
         try {
-            doSelect(id, timeout);
+            doSelect(selectorId, timeout);
         } finally {
             end(blocking);
         }
@@ -104,7 +104,7 @@ public class TruffleSelector extends SelectorImpl {
          * fdAndOps might contain invalid fds (=-1) see
          * com.oracle.truffle.espresso.io.TruffleIO.INVALID_FD
          */
-        long[] fdAndOps = processEvents(id);
+        long[] fdAndOps = processEvents(selectorId);
         for (int i = 0; i < fdAndOps.length; i++) {
             long fdAndOp = fdAndOps[i];
             int fd = (int) (fdAndOp & 0xFFFF_FFFFL);
@@ -128,14 +128,14 @@ public class TruffleSelector extends SelectorImpl {
 
     @Override
     public Selector wakeup() {
-        wakeup(id);
+        wakeup(selectorId);
         return this;
     }
 
     @Override
     protected void implClose() throws IOException {
         assert Thread.holdsLock(this);
-        close(id);
+        close(selectorId);
     }
 
     @Override
@@ -171,7 +171,7 @@ public class TruffleSelector extends SelectorImpl {
          */
         synchronized (ski) {
             if (fdToKey.remove(fd) != null) {
-                deregister(id, fd);
+                deregister(selectorId, fd);
                 ski.registeredEvents(0);
             } else {
                 assert ski.registeredEvents() == 0;
@@ -201,9 +201,9 @@ public class TruffleSelector extends SelectorImpl {
                  * should be understood as pausing the SelectionKey but NOT canceling it.
                  */
                 if (registeredEvents == 0) {
-                    register(id, fd, newEvents);
+                    register(selectorId, fd, newEvents);
                 } else {
-                    changeEvents(id, fd, newEvents);
+                    changeEvents(selectorId, fd, newEvents);
                 }
                 ski.registeredEvents(newEvents);
             }
@@ -212,18 +212,18 @@ public class TruffleSelector extends SelectorImpl {
 
     private static native int init();
 
-    private static native int doSelect(int id, long timeout) throws IOException;
+    private static native int doSelect(int selectorId, long timeout) throws IOException;
 
-    private static native void deregister(int id, int fd);
+    private static native void deregister(int selectorId, int fd);
 
-    private static native void register(int id, int fd, int newEvents);
+    private static native void register(int selectorId, int fd, int newEvents);
 
-    private static native void wakeup(int id);
+    private static native void wakeup(int selectorId);
 
-    private static native void close(int id) throws IOException;
+    private static native void close(int selectorId) throws IOException;
 
-    private static native void changeEvents(int id, int fd, int newEvents);
+    private static native void changeEvents(int selectorId, int fd, int newEvents);
 
-    private static native long[] processEvents(int id);
+    private static native long[] processEvents(int selectorId);
 
 }
