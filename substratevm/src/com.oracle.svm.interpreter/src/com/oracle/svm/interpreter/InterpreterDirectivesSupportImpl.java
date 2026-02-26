@@ -72,7 +72,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
 
         /* arguments to Log methods might have side-effects */
         if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
-            traceInterpreter("[forceInterpreterExecution] ").string(interpreterMethod.toString()).newline();
+            traceInterpreter().string("[forceInterpreterExecution] ").string(interpreterMethod.toString()).newline();
         }
 
         int estOffset = ConfigurationValues.getWordSize() * interpreterMethod.getEnterStubOffset();
@@ -129,7 +129,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
 
         /* arguments to Log methods might have side-effects */
         if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
-            traceInterpreter("[ensureInterpreterExecution] ").string(interpreterMethod.toString()).newline();
+            traceInterpreter().string("[ensureInterpreterExecution] ").string(interpreterMethod.toString()).newline();
         }
 
         for (InterpreterResolvedJavaMethod inliner : interpreterMethod.getInlinedBy()) {

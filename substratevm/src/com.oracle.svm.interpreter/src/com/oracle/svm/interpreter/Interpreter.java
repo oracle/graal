@@ -1490,7 +1490,8 @@ public final class Interpreter {
             InterpreterResolvedJavaMethod symbolicResolution = Interpreter.resolveMethod(method, opcode, cpi);
             InterpreterResolvedJavaType symbolicHolder = Interpreter.resolveSymbolicHolder(method, opcode, cpi);
             if (symbolicHolder == null) {
-                traceInterpreter("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ")
+                traceInterpreter()
+                                .string("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ")
                                 .string(method.toString());
                 // If unresolvable, provide symbolic resolution's holder as best-effort.
                 symbolicHolder = symbolicResolution.getDeclaringClass();
