@@ -278,8 +278,12 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * upwards multiple times when caching is implemented.
          */
         classesToPreserve.reversed().forEach(c -> {
-            reflection.register(always, false, true, c.getFields());
-            reflection.register(always, true, c.getMethods());
+            try {
+                reflection.register(always, false, true, c.getFields());
+                reflection.register(always, true, c.getMethods());
+            } catch (LinkageError e) {
+                /* If we can't link we can not register fields and methods */
+            }
             serialization.register(always, true, c);
         });
 
@@ -293,9 +297,12 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
     public static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
         AccessCondition always = AccessCondition.unconditional();
         reflection.register(always, true, c);
-
-        reflection.register(always, false, true, c.getDeclaredFields());
-        reflection.register(always, true, c.getDeclaredMethods());
-        reflection.register(always, true, c.getDeclaredConstructors());
+        try {
+            reflection.register(always, false, true, c.getDeclaredFields());
+            reflection.register(always, true, c.getDeclaredMethods());
+            reflection.register(always, true, c.getDeclaredConstructors());
+        } catch (LinkageError e) {
+            /* If we can't link we can not register fields and methods */
+        }
     }
 }
