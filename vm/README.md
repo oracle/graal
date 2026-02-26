@@ -44,14 +44,14 @@ For more details, see [What is `mx`?](#what-is-mx) below.
     ```bash
     git clone https://github.com/graalvm/mx
     ```
-4. Check the `mx` version defined in the [Graal CI](../common.json). Currently it is on `"mx_version": "7.68.10"`. Then check the one you cloned:
+4. Check the `mx` version defined in the [Graal CI](../common.json). Currently it is on `"mx_version": "7.71.0"`. Then check the one you cloned:
     ```bash
     mx/mx --version
     ```
     It should correspond.
     If it does not, check out the correct version:
     ```bash
-    cd mx && git checkout 7.68.10
+    cd mx && git checkout 7.71.0
     mx --version && cd ..
     ```
 5. Add `mx` to your `PATH` environment variable:
