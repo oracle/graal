@@ -29,13 +29,13 @@ import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
 @TargetClass(SubstrateUtil.class)
-final class Target_com_oracle_svm_core_SubstrateUtil {
-    @Alias
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+final class Target_com_oracle_svm_shared_util_SubstrateUtil {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
     private static boolean HOSTED = false;
 
     @AnnotateOriginal

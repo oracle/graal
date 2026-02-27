@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.shared.util;
 
 import java.io.Console;
 import java.util.List;
@@ -38,7 +38,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.shared.meta.GuaranteeFolded;
-import com.oracle.svm.shared.util.VMError;
 
 public class SubstrateUtil {
 
