@@ -27,6 +27,7 @@ package jdk.graal.compiler.virtual.phases.ea;
 import static jdk.graal.compiler.core.common.GraalOptions.MaximumEscapeAnalysisArrayLength;
 
 import java.util.List;
+import java.util.function.Function;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -65,13 +66,23 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     private final OptionValues options;
     private final DebugContext debug;
     private ConstantNode illegalConstant;
+    /**
+     * Creates a fixed node which anchors the {@link VirtualObjectNode}.
+     */
+    private final Function<VirtualObjectNode, FixedWithNextNode> anchorSupplier;
 
     VirtualizerToolImpl(CoreProviders providers, PartialEscapeClosure<?> closure, Assumptions assumptions, OptionValues options, DebugContext debug) {
+        this(providers, closure, assumptions, options, debug, null);
+    }
+
+    VirtualizerToolImpl(CoreProviders providers, PartialEscapeClosure<?> closure, Assumptions assumptions, OptionValues options, DebugContext debug,
+                    Function<VirtualObjectNode, FixedWithNextNode> anchorSupplier) {
         super(providers);
         this.closure = closure;
         this.assumptions = assumptions;
         this.options = options;
         this.debug = debug;
+        this.anchorSupplier = anchorSupplier;
     }
 
     private boolean deleted;
@@ -280,6 +291,9 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
 
     @Override
     public void replaceWithVirtual(VirtualObjectNode virtual) {
+        if (anchorSupplier != null && current instanceof FixedNode fixed) {
+            effects.addFixedNodeBefore(anchorSupplier.apply(virtual), fixed);
+        }
         closure.addVirtualAlias(virtual, current);
         effects.deleteNode(current);
         deleted = true;

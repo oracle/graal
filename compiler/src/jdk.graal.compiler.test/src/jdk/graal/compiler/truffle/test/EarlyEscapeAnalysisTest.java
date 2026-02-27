@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -33,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.EarlyInline;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 
@@ -104,8 +106,21 @@ public class EarlyEscapeAnalysisTest extends PartialEvaluationTest {
     }
 
     @Test
-    public void testEarlyEscapeAnalysisExplodeLoops() {
-        var graph = partialEval(earlyEscapeAnalysisExplodeLoopsRoot());
+    public void testEarlyEscapeLoopExplosion() {
+        /*
+         * Tests VirtualObjects that are created above a merge exploded loop but only used inside
+         * the loop. The VirtualObjects must not be duplicated by PE.
+         */
+        testMergeExplodeHelper(earlyPEAAboveExplodedLoopRoot(), 1, -84);
+        /*
+         * Tests VirtualObjects that are created in exploded loop but only used inside the loop. The
+         * VirtualObjects must be duplicated by PE.
+         */
+        testMergeExplodeHelper(earlyPEAInExplodedLoopRoot(), 3, 3);
+    }
+
+    private void testMergeExplodeHelper(RootNode root, int expectedVirtualInstancesAfterPE, int expectedResult) {
+        var graph = partialEval(root);
 
         int virtualInstanceCount = 0;
         for (var vi : graph.getNodes(VirtualInstanceNode.TYPE)) {
@@ -113,10 +128,18 @@ public class EarlyEscapeAnalysisTest extends PartialEvaluationTest {
                 virtualInstanceCount++;
             }
         }
-        assert virtualInstanceCount == 1 : "Expected exactly one virtual instanceof of type " + TestEscape.class.getSimpleName() + ". Found " + virtualInstanceCount;
+        Assert.assertEquals("Incorrect number of virtual instanceof of type " + TestEscape.class.getSimpleName() + " after PEA and PE.", expectedVirtualInstancesAfterPE, virtualInstanceCount);
+
+        OptimizedCallTarget target = compileHelper("snippet", root, new Object[0]);
+        Assert.assertEquals(expectedResult, target.call());
     }
 
-    private static RootNode earlyEscapeAnalysisExplodeLoopsRoot() {
+    @CompilerDirectives.TruffleBoundary
+    private static int boundary(int val) {
+        return val;
+    }
+
+    private static RootNode earlyPEAAboveExplodedLoopRoot() {
         return new RootNode(null) {
 
             @Override
@@ -145,10 +168,40 @@ public class EarlyEscapeAnalysisTest extends PartialEvaluationTest {
 
                 return result;
             }
+        };
+    }
 
-            @CompilerDirectives.TruffleBoundary
-            private static int boundary(int val) {
-                return val;
+    private static RootNode earlyPEAInExplodedLoopRoot() {
+        return new RootNode(null) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return testMergeExplode();
+            }
+
+            @EarlyEscapeAnalysis
+            @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
+            private static Integer testMergeExplode() {
+                int[] states = new int[]{0, 0, 0, 1};
+                int result = 0;
+                TestEscape[] frame = new TestEscape[10];
+                int sp = 0;
+
+                for (int state : states) {
+                    switch (state) {
+                        case 0:
+                            frame[sp++] = new TestEscape(boundary(sp));
+                            break;
+                        case 1:
+                            if (frame[sp - 1] == frame[sp - 2]) {
+                                Assert.fail("VirtualObjects are identical after merge explosion!");
+                            }
+                            result = frame[--sp].value;
+                            break;
+                    }
+                }
+
+                return result;
             }
         };
     }

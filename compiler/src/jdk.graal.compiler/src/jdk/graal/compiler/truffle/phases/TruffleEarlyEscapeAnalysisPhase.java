@@ -25,11 +25,12 @@
 package jdk.graal.compiler.truffle.phases;
 
 import java.util.Map;
+import java.util.function.Function;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
@@ -67,18 +68,11 @@ public final class TruffleEarlyEscapeAnalysisPhase extends PartialEscapePhase {
     }
 
     @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
-        super.run(graph, context);
-        if (graph.hasNode(VirtualObjectNode.TYPE)) {
-            /*
-             * Anchor VirtualObjectNodes at the start of the graph. This is valid, because
-             * VirtualObjectNodes are leaf nodes without any inputs. Anchoring prevents PE from
-             * repeatedly decoding and adding duplicates during loop explosion. The anchor node is
-             * removed by the canonicalizer after PE, so VirtualObjectNodes can be scheduled freely
-             * during compilation.
-             */
-            TruffleEarlyEscapeAnchorNode anchor = graph.add(new TruffleEarlyEscapeAnchorNode(graph.getNodes(VirtualObjectNode.TYPE)));
-            graph.addAfterFixed(graph.start(), anchor);
-        }
+    protected Function<VirtualObjectNode, FixedWithNextNode> virtualAnchorSupplier() {
+        /*
+         * Introduce anchors to prevent VirtualObjects from floating into a merge exploded loops.
+         * This would cause PE to duplicate virtual instances.
+         */
+        return TruffleEarlyEscapeAnchorNode::new;
     }
 }
