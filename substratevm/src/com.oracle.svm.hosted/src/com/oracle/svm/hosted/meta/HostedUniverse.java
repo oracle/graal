@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -57,7 +58,6 @@ import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -705,7 +705,7 @@ public class HostedUniverse implements Universe {
 
             ClassLoader l1 = Optional.ofNullable(o1.getJavaClass()).map(Class::getClassLoader).orElse(null);
             ClassLoader l2 = Optional.ofNullable(o2.getJavaClass()).map(Class::getClassLoader).orElse(null);
-            result = SubstrateUtil.runtimeClassLoaderNameAndId(l1).compareTo(SubstrateUtil.runtimeClassLoaderNameAndId(l2));
+            result = BuilderUtil.runtimeClassLoaderNameAndId(l1).compareTo(BuilderUtil.runtimeClassLoaderNameAndId(l2));
             VMError.guarantee(result != 0, "HostedType objects not distinguishable by name and classloader: %s, %s", o1, o2);
             return result;
         }

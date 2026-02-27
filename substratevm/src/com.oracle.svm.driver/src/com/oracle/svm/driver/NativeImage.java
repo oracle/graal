@@ -74,6 +74,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -1292,7 +1293,7 @@ public class NativeImage {
             updateArgumentEntryValue(imageBuilderArgs, imagePathEntry, imagePath.toString());
         } else {
             String value = getNativeImageArgs().toString();
-            imageBuildID = SubstrateUtil.getUUIDFromString(value).toString();
+            imageBuildID = BuilderUtil.getUUIDFromString(value).toString();
         }
         addPlainImageBuilderArg(oH(SubstrateOptions.ImageBuildID, OptionOrigin.originDriver) + imageBuildID);
 

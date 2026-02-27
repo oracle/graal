@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -46,7 +47,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins.CEntryPointBuiltinImplementation;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -141,7 +141,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     private final ResolvedSignature<AnalysisType> targetSignature;
 
     private CEntryPointCallStubMethod(CEntryPointData entryPointData, AnalysisMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool, AnalysisMetaAccess metaAccess) {
-        super(SubstrateUtil.uniqueStubName(targetMethod.getWrapped()), holderClass, createSignature(targetMethod, metaAccess), holderConstantPool);
+        super(BuilderUtil.uniqueStubName(targetMethod.getWrapped()), holderClass, createSignature(targetMethod, metaAccess), holderConstantPool);
         this.entryPointData = entryPointData;
         this.targetMethod = targetMethod.getWrapped();
         this.targetSignature = targetMethod.getSignature();
