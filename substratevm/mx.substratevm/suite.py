@@ -1544,6 +1544,8 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "sdk:NATIVEIMAGE",
+                "SVM_GUEST_STAGING",
+                "SVM_SHARED",
             ],
             "requiresConcealed" : {
                 "java.base" : [

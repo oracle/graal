@@ -117,7 +117,7 @@ abstract class AutomaticallyRegisteredClassSupport<S extends AutomaticallyRegist
         }
     }
 
-    final List<Class<?>> findMostSpecificClasses(Class<?> baseClass, Iterable<Class<?>> candidateClasses) {
+    static final List<Class<?>> findMostSpecificClasses(Class<?> baseClass, Iterable<Class<?>> candidateClasses) {
         ArrayList<Class<?>> candidates = new ArrayList<>();
         for (Class<?> candidateClass : candidateClasses) {
             if (baseClass.isAssignableFrom(candidateClass)) {
@@ -128,7 +128,7 @@ abstract class AutomaticallyRegisteredClassSupport<S extends AutomaticallyRegist
         return candidates;
     }
 
-    private boolean hasMoreSpecificCandidate(Class<?> candidate, List<Class<?>> candidates) {
+    private static boolean hasMoreSpecificCandidate(Class<?> candidate, List<Class<?>> candidates) {
         for (Class<?> other : candidates) {
             if (candidate != other && candidate.isAssignableFrom(other)) {
                 return true;

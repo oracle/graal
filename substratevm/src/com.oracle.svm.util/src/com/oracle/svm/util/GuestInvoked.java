@@ -32,7 +32,7 @@ import java.lang.annotation.Target;
 import jdk.graal.compiler.vmaccess.VMAccess;
 
 /**
- * Marks a host method invoked from the guest context through a host proxy (see
+ * Marks a host method invoked by the guest context through a host proxy (see
  * {@link VMAccess#createHostProxy}).
  * <p>
  * Users of this annotation must add a Javadoc to each annotated method. The Javadoc
@@ -41,5 +41,5 @@ import jdk.graal.compiler.vmaccess.VMAccess;
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface GuestCallbackBridge {
+public @interface GuestInvoked {
 }

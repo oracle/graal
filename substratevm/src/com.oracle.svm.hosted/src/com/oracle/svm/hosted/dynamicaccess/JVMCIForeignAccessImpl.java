@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.hosted.ForeignAccessImpl;
 import com.oracle.svm.util.GuestAccess;
-import com.oracle.svm.util.GuestCallbackBridge;
+import com.oracle.svm.util.GuestInvoked;
 import com.oracle.svm.util.dynamicaccess.JVMCIAccessCondition;
 import com.oracle.svm.util.dynamicaccess.JVMCIForeignAccess;
 
@@ -62,7 +62,7 @@ public final class JVMCIForeignAccessImpl implements JVMCIForeignAccess {
     }
 
     /**
-     * Guest callback bridge for
+     * Guest-invoked method for
      * {@link org.graalvm.nativeimage.dynamicaccess.ForeignAccess#registerForDowncall(AccessCondition, Object, Object...)}.
      *
      * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
@@ -71,7 +71,7 @@ public final class JVMCIForeignAccessImpl implements JVMCIForeignAccess {
      * @param options a {@link JavaConstant} representing the guest {@code Object[]} of
      *            {@link java.lang.foreign.Linker.Option}s
      */
-    @GuestCallbackBridge
+    @GuestInvoked
     public void registerForDowncall(JavaConstant condition, JavaConstant desc, JavaConstant options) {
         foreignInstance().registerForDowncall(JVMCIAccessCondition.guestAccessCondition(condition), asObject(desc), asObjects(options));
     }
@@ -82,7 +82,7 @@ public final class JVMCIForeignAccessImpl implements JVMCIForeignAccess {
     }
 
     /**
-     * Guest callback bridge for
+     * Guest-invoked method for
      * {@link org.graalvm.nativeimage.dynamicaccess.ForeignAccess#registerForUpcall(AccessCondition, Object, Object...)}.
      *
      * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
@@ -91,7 +91,7 @@ public final class JVMCIForeignAccessImpl implements JVMCIForeignAccess {
      * @param options a {@link JavaConstant} representing the guest {@code Object[]} of
      *            {@link java.lang.foreign.Linker.Option}s
      */
-    @GuestCallbackBridge
+    @GuestInvoked
     public void registerForUpcall(JavaConstant condition, JavaConstant desc, JavaConstant options) {
         foreignInstance().registerForUpcall(JVMCIAccessCondition.guestAccessCondition(condition), asObject(desc), asObjects(options));
     }
@@ -102,7 +102,7 @@ public final class JVMCIForeignAccessImpl implements JVMCIForeignAccess {
     }
 
     /**
-     * Guest callback bridge for
+     * Guest-invoked method for
      * {@link org.graalvm.nativeimage.dynamicaccess.ForeignAccess#registerForDirectUpcall(AccessCondition, MethodHandle, Object, Object...)}.
      *
      * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
@@ -112,7 +112,7 @@ public final class JVMCIForeignAccessImpl implements JVMCIForeignAccess {
      * @param options a {@link JavaConstant} representing the guest {@code Object[]} of
      *            {@link java.lang.foreign.Linker.Option}s
      */
-    @GuestCallbackBridge
+    @GuestInvoked
     public void registerForDirectUpcall(JavaConstant condition, JavaConstant target, JavaConstant desc, JavaConstant options) {
         foreignInstance().registerForDirectUpcall(JVMCIAccessCondition.guestAccessCondition(condition), asObject(MethodHandle.class, target), asObject(desc), asObjects(options));
     }

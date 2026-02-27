@@ -77,7 +77,7 @@ final class AutomaticallyRegisteredImageSingletonHandler {
          * annotated superclass from being selected as the fallback registration.
          */
         for (Class<?> rootSingleton : findHierarchyRoots(automaticSingletons)) {
-            Class<?> singletonClass = resolveSingletonForRoot(rootSingleton, enabledSingletons, automaticSingletonLoader);
+            Class<?> singletonClass = resolveSingletonForRoot(rootSingleton, enabledSingletons);
             if (singletonClass != null) {
                 registerSingleton(singletonClass, layeredSingletonInfo);
             }
@@ -129,9 +129,8 @@ final class AutomaticallyRegisteredImageSingletonHandler {
      * The most specific enabled subclass wins, a disabled subclass falls back to an enabled
      * annotated superclass, and multiple enabled sibling candidates are rejected as ambiguous.
      */
-    private static Class<?> resolveSingletonForRoot(Class<?> rootSingleton, LinkedHashSet<Class<?>> enabledSingletons,
-                    AutomaticallyRegisteredImageSingletonLoader automaticSingletonLoader) {
-        List<Class<?>> mostSpecificEnabledSingletons = automaticSingletonLoader.findMostSpecificClasses(rootSingleton, enabledSingletons);
+    private static Class<?> resolveSingletonForRoot(Class<?> rootSingleton, LinkedHashSet<Class<?>> enabledSingletons) {
+        List<Class<?>> mostSpecificEnabledSingletons = AutomaticallyRegisteredClassSupport.findMostSpecificClasses(rootSingleton, enabledSingletons);
         if (mostSpecificEnabledSingletons.isEmpty()) {
             return null;
         }

@@ -53,6 +53,8 @@ import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
+import org.graalvm.nativeimage.hosted.Feature.QueryReachabilityAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
@@ -109,8 +111,11 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
+import com.oracle.svm.util.GuestInvoked;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.dynamicaccess.JVMCIJNIAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIForeignAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIReflectiveAccess;
@@ -174,6 +179,29 @@ public class FeatureImpl {
         public ClassLoader getApplicationClassLoader() {
             return imageClassLoader.getClassLoader();
         }
+
+        /**
+         * Guest-invoked methods for the unsupported common feature access methods
+         * {@link FeatureAccess#getApplicationClassPath()},
+         * {@link FeatureAccess#getApplicationModulePath()}, and
+         * {@link FeatureAccess#getApplicationClassLoader()}.
+         */
+        @GuestInvoked
+        public JavaConstant unexpectedGuestFeatureCallback0() {
+            throw new UnsupportedOperationException("This method should not call back into the builder.");
+        }
+
+        /**
+         * Guest-invoked method for {@link FeatureAccess#findClassByName(String)}.
+         *
+         * @param ignored a {@link JavaConstant} representing the guest class name as a
+         *            {@link String}
+         */
+        @GuestInvoked
+        public JavaConstant unexpectedGuestFeatureCallback1(JavaConstant ignored) {
+            throw new UnsupportedOperationException("This method should not call back into the builder.");
+        }
+
     }
 
     abstract static class RegistrationAccessBase extends FeatureAccessImpl {
@@ -388,6 +416,73 @@ public class FeatureImpl {
             return new LinkedHashSet<>(reachableMethodOverrides(asAnalysisMethod(baseMethod)));
         }
 
+        /**
+         * Guest-invoked method for {@link QueryReachabilityAccess#reachableSubtypes(Class)}.
+         *
+         * @param baseClass a {@link JavaConstant} representing the guest base {@link Class}
+         * @return a {@link JavaConstant} representing the guest {@code Set<Class<?>>} of reachable subtypes
+         */
+        @GuestInvoked
+        public JavaConstant reachableSubtypesAsSet(JavaConstant baseClass) {
+            GuestAccess guestAccess = GuestAccess.get();
+            ResolvedJavaType baseType = guestAccess.getProviders().getConstantReflection().asJavaType(baseClass);
+            if (baseType == null) {
+                throw UserError.abort("Guest reachable-subtype query requires a Class object");
+            }
+            Set<ResolvedJavaType> types = reachableSubtypes(baseType);
+            JavaConstant[] classes = new JavaConstant[types.size()];
+            int index = 0;
+            for (ResolvedJavaType type : types) {
+                classes[index++] = guestClassConstant(guestAccess, type);
+            }
+            return guestSetConstant(guestAccess, classes);
+        }
+
+        /**
+         * Guest-invoked method for
+         * {@link QueryReachabilityAccess#reachableMethodOverrides(Executable)}.
+         *
+         * @param baseMethod a {@link JavaConstant} representing the guest base {@link Executable}
+         * @return a {@link JavaConstant} representing the guest {@code Set<Executable>} of reachable overrides
+         */
+        @GuestInvoked
+        public JavaConstant reachableMethodOverridesAsSet(JavaConstant baseMethod) {
+            GuestAccess guestAccess = GuestAccess.get();
+            ResolvedJavaMethod method = guestAccess.asResolvedJavaMethod(baseMethod);
+            if (method == null) {
+                throw UserError.abort("Guest reachable-method query requires an Executable object");
+            }
+            Set<ResolvedJavaMethod> methods = reachableMethodOverrides(method);
+            JavaConstant[] executables = new JavaConstant[methods.size()];
+            int index = 0;
+            for (ResolvedJavaMethod reachableMethod : methods) {
+                JavaConstant executable = guestExecutableConstant(guestAccess, reachableMethod);
+                if (executable != null && !executable.isNull()) {
+                    executables[index++] = executable;
+                }
+            }
+            return guestSetConstant(guestAccess, java.util.Arrays.copyOf(executables, index));
+        }
+
+        private static JavaConstant guestSetConstant(GuestAccess guestAccess, JavaConstant[] elements) {
+            JavaConstant array = guestAccess.asArrayConstant(guestAccess.elements.java_lang_Object, elements);
+            return guestAccess.invokeStatic(guestAccess.elements.java_util_Set_of, array);
+        }
+
+        private static JavaConstant guestClassConstant(GuestAccess guestAccess, ResolvedJavaType type) {
+            ResolvedJavaType guestType = OriginalClassProvider.getOriginalType(type);
+            JavaConstant result = guestAccess.getProviders().getConstantReflection().asJavaClass(guestType);
+            if (result == null || result.isNull()) {
+                throw UserError.abort("Guest reachable-subtype query returned a type without a Class object: %s", type);
+            }
+            return result;
+        }
+
+        private static JavaConstant guestExecutableConstant(GuestAccess guestAccess, ResolvedJavaMethod method) {
+            ResolvedJavaMethod guestMethod = OriginalMethodProvider.getOriginalMethod(method);
+            return guestMethod == null ? null : guestAccess.asExecutableConstant(guestMethod);
+        }
+
         public void rescanObject(Object obj, ScanReason reason) {
             getUniverse().getHeapScanner().rescanObject(obj, reason);
         }
@@ -439,6 +534,23 @@ public class FeatureImpl {
         public void registerObjectReplacer(Function<Object, Object> replacer) {
             // GR-78997: migrate builder-side clients to JVMCI or guest features.
             getUniverse().registerObjectReplacer(new LegacyObjectReplacerAdapter(replacer, getUniverse().getHostedValuesProvider()));
+        }
+
+        /**
+         * Guest-invoked method for the public object replacer registration method.
+         *
+         * @param replacer a {@link JavaConstant} representing the guest {@code Function<Object, Object>}
+         * @see org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess#registerObjectReplacer(Function)
+         */
+        @GuestInvoked
+        public void registerObjectReplacer(JavaConstant replacer) {
+            if (replacer == null || replacer.isNull()) {
+                throw UserError.abort("'registerObjectReplacer' called with a null replacer");
+            }
+            registerJVMCIObjectReplacer(object -> {
+                GuestAccess guestAccess = GuestAccess.get();
+                return guestAccess.invoke(guestAccess.elements.java_util_function_Function_apply, replacer, object);
+            });
         }
 
         @Override
@@ -511,6 +623,24 @@ public class FeatureImpl {
             asAnalysisType(type).registerObjectReachableCallback(wrapper);
         }
 
+        /**
+         * Guest-invoked method for the public object reachability handler registration method.
+         *
+         * @param callback a {@link JavaConstant} representing the guest {@code Consumer<T>} object
+         * @param type a JVMCI type representing the guest {@code Class<T>} whose reachable objects trigger the callback
+         * @see org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess#registerObjectReachabilityHandler(Consumer, Class)
+         */
+        @GuestInvoked
+        public void registerObjectReachabilityHandler(JavaConstant callback, ResolvedJavaType type) {
+            if (callback == null || callback.isNull()) {
+                throw UserError.abort("'registerObjectReachabilityHandler' called with a null callback");
+            }
+            registerObjectReachabilityHandler(object -> {
+                GuestAccess guestAccess = GuestAccess.get();
+                guestAccess.invoke(guestAccess.elements.java_util_function_Consumer_accept, callback, object);
+            }, type);
+        }
+
         public void registerSubstitutionProcessor(SubstitutionProcessor substitution) {
             getUniverse().registerFeatureSubstitution(substitution);
         }
@@ -557,6 +687,7 @@ public class FeatureImpl {
         private final ReflectionDataBuilder reflectionData;
         private final Map<Consumer<DuringAnalysisAccess>, ElementNotification> reachabilityNotifications = new ConcurrentHashMap<>();
         private final Map<Consumer<JVMCIFeatureAccess.DuringAnalysisAccess>, Consumer<DuringAnalysisAccess>> jvmciReachabilityAdapters = new ConcurrentHashMap<>();
+        private final Map<JavaConstant, Consumer<DuringAnalysisAccess>> guestReachabilityAdapters = new ConcurrentHashMap<>();
 
         public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
                         DebugContext debugContext) {
@@ -830,6 +961,152 @@ public class FeatureImpl {
         }
 
         /**
+         * Guest-invoked method for the public field value transformer registration method.
+         *
+         * @param field a JVMCI field representing the guest {@link Field} to transform
+         * @param transformer a {@link JavaConstant} representing the guest
+         *            {@link FieldValueTransformer}
+         * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerFieldValueTransformer(java.lang.reflect.Field, FieldValueTransformer)
+         */
+        @GuestInvoked
+        public void registerFieldValueTransformer(ResolvedJavaField field, JavaConstant transformer) {
+            registerFieldValueTransformer(field, FieldValueInterceptionSupport.WrappedFieldValueTransformer.create(transformer));
+        }
+
+        /**
+         * Guest-invoked method for the public reachability handler registration method.
+         *
+         * @param callback a {@link JavaConstant} representing the guest
+         *            {@code Consumer<Feature.DuringAnalysisAccess>}
+         * @param elements a {@link JavaConstant} representing a guest {@code Object[]} whose entries
+         *            are guest {@code Class}, {@code Field}, or {@code Executable} objects
+         * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerReachabilityHandler(Consumer, Object...)
+         */
+        @GuestInvoked
+        public void registerReachabilityHandler(JavaConstant callback, JavaConstant elements) {
+            if (callback == null || callback.isNull()) {
+                throw UserError.abort("'registerReachabilityHandler' called with a null callback");
+            }
+
+            Object[] hostElements = decodeGuestReachabilityElements(elements);
+            Consumer<DuringAnalysisAccess> hostCallback = guestReachabilityAdapters.computeIfAbsent(callback, guestCallback -> {
+                GuestFeatureDispatchFeature dispatch = ImageSingletons.lookup(GuestFeatureDispatchFeature.class);
+                return access -> dispatch.invokeGuestReachabilityHandler(guestCallback, access);
+            });
+            registerReachabilityHandler(hostCallback, hostElements);
+        }
+
+        /**
+         * Decodes the guest array passed to {@link #registerReachabilityHandler(JavaConstant, JavaConstant)}
+         * into JVMCI metadata for the host reachability handler.
+         *
+         * @param elements a guest {@code Object[]} constant containing {@code Class}, {@code Field},
+         *            or {@code Executable} objects
+         * @return the corresponding JVMCI types, fields, and methods
+         */
+        private static Object[] decodeGuestReachabilityElements(JavaConstant elements) {
+            if (elements == null || elements.isNull()) {
+                throw UserError.abort("'registerReachabilityHandler' called with null elements; expected an Object[]");
+            }
+
+            GuestAccess guestAccess = GuestAccess.get();
+            var constantReflection = guestAccess.getProviders().getConstantReflection();
+            Integer length = constantReflection.readArrayLength(elements);
+            if (length == null) {
+                throw UserError.abort("'registerReachabilityHandler' called with elements that are not an Object[]");
+            }
+
+            Object[] hostElements = new Object[length];
+            for (int i = 0; i < length; i++) {
+                JavaConstant element = constantReflection.readArrayElement(elements, i);
+                if (element == null || element.isNull()) {
+                    throw UserError.abort("'registerReachabilityHandler' called with a null element at index %d", i);
+                }
+
+                ResolvedJavaType type = constantReflection.asJavaType(element);
+                if (type != null) {
+                    hostElements[i] = type;
+                    continue;
+                }
+
+                ResolvedJavaField field = guestAccess.asResolvedJavaField(element);
+                if (field != null) {
+                    hostElements[i] = field;
+                    continue;
+                }
+
+                ResolvedJavaMethod method = guestAccess.asResolvedJavaMethod(element);
+                if (method != null) {
+                    hostElements[i] = method;
+                    continue;
+                }
+
+                throw UserError.abort("'registerReachabilityHandler' called with an element at index %d that is not a Class, Field, or Executable", i);
+            }
+            return hostElements;
+        }
+
+        /**
+         * Guest-invoked method for the public method override reachability handler registration method.
+         *
+         * @param callback a {@link JavaConstant} representing the guest
+         *            {@code BiConsumer<Feature.DuringAnalysisAccess, Executable>}
+         * @param baseMethod a JVMCI method representing the guest {@link Executable} whose reachable overrides trigger the callback
+         * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerMethodOverrideReachabilityHandler(BiConsumer, Executable)
+         */
+        @GuestInvoked
+        public void registerMethodOverrideReachabilityHandler(JavaConstant callback, ResolvedJavaMethod baseMethod) {
+            if (callback == null || callback.isNull()) {
+                throw UserError.abort("'registerMethodOverrideReachabilityHandler' called with a null callback");
+            }
+            BiConsumer<JVMCIFeatureAccess.DuringAnalysisAccess, ResolvedJavaMethod> wrappedCallback = (access, type) -> {
+                GuestFeatureDispatchFeature dispatch = ImageSingletons.lookup(GuestFeatureDispatchFeature.class);
+                dispatch.invokeGuestMethodOverrideReachabilityHandler(callback, access, type);
+            };
+            registerMethodOverrideReachabilityHandler(wrappedCallback, baseMethod);
+        }
+
+        /**
+         * Guest-invoked method for the public subtype reachability handler registration method.
+         *
+         * @param callback a {@link JavaConstant} representing the guest
+         *            {@code BiConsumer<Feature.DuringAnalysisAccess, Class<?>>}
+         * @param baseType a JVMCI type representing the guest {@code Class<?>} whose reachable subtypes trigger the callback
+         * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerSubtypeReachabilityHandler(BiConsumer, Class)
+         */
+        @GuestInvoked
+        public void registerSubtypeReachabilityHandler(JavaConstant callback, ResolvedJavaType baseType) {
+            if (callback == null || callback.isNull()) {
+                throw UserError.abort("'registerSubtypeReachabilityHandler' called with a null callback");
+            }
+            BiConsumer<JVMCIFeatureAccess.DuringAnalysisAccess, ResolvedJavaType> wrappedCallback = (access, type) -> {
+                GuestFeatureDispatchFeature dispatch = ImageSingletons.lookup(GuestFeatureDispatchFeature.class);
+                dispatch.invokeGuestSubtypeReachabilityHandler(callback, access, type);
+            };
+            registerSubtypeReachabilityHandler(wrappedCallback, baseType);
+        }
+
+        /**
+         * Guest-invoked method for the public class initializer reachability handler registration method.
+         *
+         * @param callback a {@link JavaConstant} representing the guest
+         *            {@code Consumer<Feature.DuringAnalysisAccess>}
+         * @param type a JVMCI type representing the guest {@code Class<?>} whose class initializer reachability triggers the callback
+         * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerClassInitializerReachabilityHandler(Consumer, Class)
+         */
+        @GuestInvoked
+        public void registerClassInitializerReachabilityHandler(JavaConstant callback, ResolvedJavaType type) {
+            if (callback == null || callback.isNull()) {
+                throw UserError.abort("'registerClassInitializerReachabilityHandler' called with a null callback");
+            }
+            Consumer<DuringAnalysisAccess> hostCallback = guestReachabilityAdapters.computeIfAbsent(callback, guestCallback -> {
+                GuestFeatureDispatchFeature dispatch = ImageSingletons.lookup(GuestFeatureDispatchFeature.class);
+                return access -> dispatch.invokeGuestReachabilityHandler(guestCallback, access);
+            });
+            registerReachabilityHandler(hostCallback, type);
+        }
+
+        /**
          * Registers a {@link LayeredFieldValueTransformer} for a field whose value may be carried
          * forward from an initial layer and updated by an extension layer. Unlike
          * {@link #registerFieldValueTransformer(Field, FieldValueTransformer)}, the transformer is
@@ -894,6 +1171,20 @@ public class FeatureImpl {
             boolean result = requireAnalysisIteration;
             requireAnalysisIteration = false;
             return result;
+        }
+
+        /**
+         * Guest-invoked method for the public field value transformer registration method.
+         *
+         * @param field a JVMCI field representing the guest {@link Field} to transform
+         * @param transformer a {@link JavaConstant} representing the guest
+         *            {@link FieldValueTransformer}
+         * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerFieldValueTransformer(java.lang.reflect.Field, FieldValueTransformer)
+         */
+        @GuestInvoked
+        @Override
+        public void registerFieldValueTransformer(ResolvedJavaField field, JavaConstant transformer) {
+            registerFieldValueTransformer(field, FieldValueInterceptionSupport.WrappedFieldValueTransformer.create(transformer));
         }
 
     }
@@ -1026,8 +1317,25 @@ public class FeatureImpl {
         @Override
         @SuppressWarnings("overloads")
         public void registerAsImmutable(JavaConstant root, Predicate<JavaConstant> includeObject) {
+            // GR-72922: Temporarily convert through snippet reflection until NativeImageHeap supports JavaConstants directly.
             heap.registerAsImmutable(hUniverse.getSnippetReflection().asObject(Object.class, root),
                             object -> includeObject.test(hUniverse.getSnippetReflection().forObject(object)));
+        }
+
+        /**
+         * Guest-invoked method for immutable registration with a predicate.
+         *
+         * @param root a {@link JavaConstant} representing the guest root object
+         * @param includeObject a {@link JavaConstant} representing the guest {@code Predicate<Object>}
+         * @see org.graalvm.nativeimage.hosted.Feature.CompilationAccess#registerAsImmutable(Object, Predicate)
+         */
+        @GuestInvoked
+        public void registerAsImmutable(JavaConstant root, JavaConstant includeObject) {
+            Predicate<JavaConstant> wrappedIncludeObject = obj -> {
+                GuestAccess guestAccess = GuestAccess.get();
+                return guestAccess.invoke(guestAccess.elements.java_util_function_Predicate_test, includeObject, obj).asBoolean();
+            };
+            registerAsImmutable(root, wrappedIncludeObject);
         }
 
         @Override
