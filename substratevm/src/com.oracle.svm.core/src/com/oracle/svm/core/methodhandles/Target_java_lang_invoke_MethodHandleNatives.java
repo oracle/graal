@@ -42,7 +42,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;

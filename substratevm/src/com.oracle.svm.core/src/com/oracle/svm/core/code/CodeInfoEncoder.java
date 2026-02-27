@@ -43,7 +43,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;

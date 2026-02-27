@@ -31,7 +31,7 @@ import java.util.function.Function;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CContext;
 

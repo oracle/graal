@@ -37,7 +37,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;

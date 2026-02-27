@@ -33,13 +33,13 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 /**
  * Analyzes if run-time compiled code has any references to otherwise unreachable objects. Throws an

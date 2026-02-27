@@ -34,7 +34,7 @@ import org.graalvm.webimage.api.JSString;
 import org.graalvm.webimage.api.JSValue;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.webimage.functionintrinsics.JSConversion;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;

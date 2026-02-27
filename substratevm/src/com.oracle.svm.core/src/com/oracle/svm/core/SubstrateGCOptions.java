@@ -29,6 +29,7 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.I
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 
+import com.oracle.svm.shared.util.SubstrateUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.word.impl.Word;
 

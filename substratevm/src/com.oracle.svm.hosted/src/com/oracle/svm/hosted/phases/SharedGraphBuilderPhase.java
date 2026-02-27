@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import static com.oracle.svm.core.SubstrateUtil.toUnboxedClass;
+import static com.oracle.svm.shared.util.SubstrateUtil.toUnboxedClass;
 import static jdk.graal.compiler.bytecode.Bytecodes.LDC2_W;
 
 import java.lang.classfile.Opcode;

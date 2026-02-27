@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 

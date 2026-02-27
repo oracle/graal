@@ -29,6 +29,7 @@ import java.io.FilterInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import com.oracle.svm.shared.util.SubstrateUtil;
 import jdk.internal.misc.Unsafe;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

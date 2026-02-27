@@ -52,7 +52,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;

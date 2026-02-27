@@ -33,7 +33,7 @@ import java.util.Set;
 
 import javax.lang.model.SourceVersion;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 public final class ModuleNative {
     private ModuleNative() {

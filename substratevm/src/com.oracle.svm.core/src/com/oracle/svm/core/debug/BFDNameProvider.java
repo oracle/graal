@@ -34,7 +34,7 @@ import java.util.List;
 import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.shared.util.VMError;

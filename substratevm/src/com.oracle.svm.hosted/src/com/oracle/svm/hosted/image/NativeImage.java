@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
-import static com.oracle.svm.core.SubstrateUtil.mangleName;
+import static com.oracle.svm.shared.util.SubstrateUtil.mangleName;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.io.ByteArrayOutputStream;

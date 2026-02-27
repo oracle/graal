@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.reflect;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
 import org.graalvm.nativeimage.impl.ReflectionIntrospector;

@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;

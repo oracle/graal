@@ -47,7 +47,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.posix.PosixSignalHandlerSupport;
 

@@ -29,7 +29,7 @@ package com.oracle.svm.core.dcmd;
 import java.lang.Thread.State;
 import java.util.concurrent.locks.LockSupport;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;

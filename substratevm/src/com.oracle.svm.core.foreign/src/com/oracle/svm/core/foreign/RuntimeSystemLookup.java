@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.VMError;
 

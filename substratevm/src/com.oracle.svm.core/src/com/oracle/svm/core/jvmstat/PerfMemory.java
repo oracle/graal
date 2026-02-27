@@ -38,7 +38,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;

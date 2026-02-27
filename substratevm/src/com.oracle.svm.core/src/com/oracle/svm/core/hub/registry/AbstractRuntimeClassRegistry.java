@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.nativeimage.impl.ClassLoading;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;

@@ -45,7 +45,7 @@ import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;

@@ -32,7 +32,7 @@ import java.lang.reflect.Method;
 import java.util.UUID;
 
 import com.oracle.svm.core.util.HostedSubstrateUtil;
-import com.oracle.svm.shared.meta.GuaranteeFolded;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;

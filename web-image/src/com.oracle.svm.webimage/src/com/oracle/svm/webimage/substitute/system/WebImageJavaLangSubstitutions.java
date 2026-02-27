@@ -47,7 +47,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.OS;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
