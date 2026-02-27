@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 package com.oracle.svm.core;
 
 import java.io.Console;
-import java.io.FileDescriptor;
-import java.io.FileOutputStream;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,9 +36,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.meta.GuaranteeFolded;
@@ -128,23 +123,6 @@ public class SubstrateUtil {
         if (HOSTED) {
             throw VMError.shouldNotReachHere("Should only be called at run time");
         }
-    }
-
-    @TargetClass(com.oracle.svm.core.SubstrateUtil.class)
-    static final class Target_com_oracle_svm_core_SubstrateUtil {
-        @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true)//
-        private static boolean HOSTED = false;
-    }
-
-    @TargetClass(java.io.FileOutputStream.class)
-    static final class Target_java_io_FileOutputStream {
-        @Alias//
-        FileDescriptor fd;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static FileDescriptor getFileDescriptor(FileOutputStream out) {
-        return SubstrateUtil.cast(out, Target_java_io_FileOutputStream.class).fd;
     }
 
     /**
