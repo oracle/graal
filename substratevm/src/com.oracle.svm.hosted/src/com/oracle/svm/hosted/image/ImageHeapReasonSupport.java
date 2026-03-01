@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -260,7 +261,8 @@ public class ImageHeapReasonSupport {
         return position.getMethod();
     }
 
-    public Object objectInclusionReason(@SuppressWarnings("unused") NativeImageHeap.ObjectInfo info, Object parent, @SuppressWarnings("unused") HostedConstantReflectionProvider hConstantReflection) {
+    public Object objectInclusionReason(@SuppressWarnings("unused") NativeImageHeap.ObjectInfo info, Object parent, @SuppressWarnings("unused") HostedMetaAccess hMetaAccess,
+                    @SuppressWarnings("unused") HostedConstantReflectionProvider hConstantReflection) {
         // @formatter:off
         /*
          * Return `parent` to indicate that `info` is included in the image heap because of `parent`:
