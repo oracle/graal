@@ -35,6 +35,8 @@ import static jdk.graal.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 
 import java.util.Map;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.Node;
@@ -50,8 +52,6 @@ import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.UncheckedInterfaceProvider;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.BytecodeFrame;
 
 /**
@@ -77,6 +77,12 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     protected boolean polymorphic;
     protected InlineControl inlineControl;
     private boolean isInOOMETry;
+    /**
+     * The location killed by the invoke. Typically, it will be {@link LocationIdentity#any()}, but
+     * an interprocedural analysis can provide more precise location.
+     */
+    private LocationIdentity killedLocationIdentity = LocationIdentity.any();
+    private boolean sideEffect = true;
 
     public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci) {
         super(TYPE, callTarget.returnStamp().getTrustedStamp());
@@ -165,12 +171,20 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
 
     @Override
     public boolean hasSideEffect() {
-        return true;
+        return sideEffect;
+    }
+
+    public void setSideEffect(boolean withSideEffects) {
+        this.sideEffect = withSideEffects;
     }
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
+        return killedLocationIdentity;
+    }
+
+    public void setKilledLocationIdentity(LocationIdentity killedLocationIdentity) {
+        this.killedLocationIdentity = killedLocationIdentity;
     }
 
     @Override
