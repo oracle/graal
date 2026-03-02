@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.cosmo;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.libc.CosmoLibC;

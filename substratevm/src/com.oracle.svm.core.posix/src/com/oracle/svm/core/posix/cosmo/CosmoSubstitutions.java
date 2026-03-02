@@ -1,13 +1,13 @@
 package com.oracle.svm.core.posix.cosmo;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.posix.cosmo.headers.Signal;
 import com.oracle.svm.core.posix.cosmo.headers.Time;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.PlatformTimeUtils;
 import com.oracle.svm.core.util.TimeUtils;
 import org.graalvm.nativeimage.Platforms;

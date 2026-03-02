@@ -42,6 +42,9 @@ import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
 public class CosmoSystemPropertiesSupport extends SystemPropertiesSupport {
 
+    public CosmoSystemPropertiesSupport(boolean compatibilityMode) {
+        super(compatibilityMode);
+    }
     /*
      * Initialization code is adapted from the JDK native code that initializes the system
      * properties, as found in src/solaris/native/java/lang/java_props_md.c
@@ -124,7 +127,7 @@ class CosmoSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (LibCBase.singleton() instanceof CosmoLibC) {
-            ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new CosmoSystemPropertiesSupport());
+            ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new CosmoSystemPropertiesSupport(true));
             /* GR-42971 - Remove once SystemPropertiesSupport.class ImageSingletons use is gone. */
             ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
         }

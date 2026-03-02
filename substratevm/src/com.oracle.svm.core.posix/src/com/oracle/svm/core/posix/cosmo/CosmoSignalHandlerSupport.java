@@ -25,7 +25,7 @@
 package com.oracle.svm.core.posix.cosmo;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -50,7 +50,7 @@ import com.oracle.svm.core.posix.cosmo.headers.Signal.SignalEnum;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.sigset_tPointer;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -71,7 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.DEFAULT_HANDLER;
 import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.DISPATCH_HANDLER;
 import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.ERROR_HANDLER;

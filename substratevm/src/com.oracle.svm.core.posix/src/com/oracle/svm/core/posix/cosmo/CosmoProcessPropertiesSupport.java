@@ -110,13 +110,6 @@ public class CosmoProcessPropertiesSupport extends BaseProcessPropertiesSupport 
         }
     }
 
-    /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
-    @Override
-    @SuppressWarnings("deprecation")
-    public String setLocale(String category, String locale) {
-        return CosmoUtils.setLocale(category, locale);
-    }
-
     @Override
     public void exec(Path executable, String[] args) {
         if (!Files.isExecutable(executable)) {

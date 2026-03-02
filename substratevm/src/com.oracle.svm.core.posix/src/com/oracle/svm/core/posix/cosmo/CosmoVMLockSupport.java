@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.cosmo;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;

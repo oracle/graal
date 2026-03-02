@@ -25,14 +25,14 @@
 package com.oracle.svm.core.posix.cosmo;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.aarch64.AArch64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.GregsPointer;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.mcontext_linux_aarch64_t;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.ucontext_t;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 import jdk.vm.ci.aarch64.AArch64;
 import org.graalvm.nativeimage.Platform;
