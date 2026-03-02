@@ -249,6 +249,7 @@ import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
+import com.oracle.svm.hosted.phases.GuestFoldInvocationPlugin;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.InjectedAccessorsPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
@@ -1595,6 +1596,7 @@ public class NativeImageGenerator {
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess()));
         plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(reason));
+        plugins.appendNodePlugin(new GuestFoldInvocationPlugin());
         plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), nativeLibs));
         plugins.appendNodePlugin(new LocalizationFeature.CharsetNodePlugin());
         plugins.appendNodePlugin(new DynamicHubPlugin());
@@ -1965,14 +1967,7 @@ public class NativeImageGenerator {
                     "java.awt.Cursor.DOT_HOTSPOT_SUFFIX",
                     "sun.lwawt.macosx.CCustomCursor.fHotspot",
                     "sun.lwawt.macosx.CCustomCursor.getHotSpot()",
-                    "sun.awt.shell.Win32ShellFolder2.ATTRIB_GHOSTED",
-                    /*
-                     * Hosted options live in com.oracle.svm.shared but are folded at image build
-                     * time. This should go away once with have a guest-level folding mechanism
-                     * (GR-73653).
-                     */
-                    "com.oracle.svm.shared.option.HostedOptionKey.getValue()",
-                    "com.oracle.svm.shared.option.HostedOptionKey.hasBeenSet()");
+                    "sun.awt.shell.Win32ShellFolder2.ATTRIB_GHOSTED");
 
     private static void checkName(BigBang bb, AnalysisMethod method, String name) {
         /*

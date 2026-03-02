@@ -30,6 +30,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.shared.collections.EnumBitmask;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.Option;
@@ -67,10 +68,9 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
 
     /**
      * Returns the value of this option in the {@link HostedOptionValues}.
-     * <p>
-     * A plugin in SubstrateGraphBuilderPlugins constant-folds this method.
      */
     @Override
+    @GuestFold
     public T getValue() {
         VMError.guarantee(!ImageInfo.inImageRuntimeCode(), "Must not be called at run time");
         return getValue(HostedOptionValues.singleton());
@@ -78,10 +78,9 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
 
     /**
      * Returns {@code true} if this option has been set in the {@link HostedOptionValues}.
-     * <p>
-     * A plugin in SubstrateGraphBuilderPlugins constant-folds this method.
      */
     @Override
+    @GuestFold
     public boolean hasBeenSet() {
         VMError.guarantee(!ImageInfo.inImageRuntimeCode(), "Must not be called at run time");
         return hasBeenSet(HostedOptionValues.singleton());
