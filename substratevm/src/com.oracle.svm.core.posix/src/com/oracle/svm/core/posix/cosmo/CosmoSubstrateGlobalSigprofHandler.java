@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.Platforms;
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
- * Support for POSIX global timer (see {@link CosmoSubstrateSigprofHandler}).
+ * Support for POSIX global timer.
  */
 public final class CosmoSubstrateGlobalSigprofHandler extends PosixSubstrateSigprofHandler {
 

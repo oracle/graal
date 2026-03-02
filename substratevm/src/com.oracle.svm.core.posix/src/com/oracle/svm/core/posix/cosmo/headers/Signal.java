@@ -71,9 +71,6 @@ public class Signal {
     @CFunction(value = "stubSIG_SETMASK", transition = CFunction.Transition.NO_TRANSITION)
     public static native int SIG_SETMASK();
 
-    @CConstant
-    public static native int SIGEV_SIGNAL();
-
     @CPointerTo(nameOfCType = "sigset_t")
     public interface sigset_tPointer extends PointerBase {
     }
@@ -177,15 +174,6 @@ public class Signal {
 
         @CFieldAddress
         sigset_tPointer sa_mask();
-    }
-
-    @CStruct(addStructKeyword = true)
-    public interface sigevent extends PointerBase {
-        @CField
-        void sigev_notify(int value);
-
-        @CField
-        void sigev_signo(int value);
     }
 
     /** Don't call this function directly, use {@link CosmoSignalHandlerSupport} instead. */

@@ -140,28 +140,9 @@ public class Time {
 
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
         public static native int clock_gettime(int clock_id, timespec tp);
-
-        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int timer_create(int clockid, Signal.sigevent sevp, WordPointer timerid);
-
-        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int timer_settime(UnsignedWord timerid, int flags, itimerspec newValue, itimerspec oldValue);
-
-        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int timer_delete(UnsignedWord timerid);
-
     }
 
     @CStruct
     public interface timer_t extends PointerBase {
-    }
-
-    @CStruct(addStructKeyword = true)
-    public interface itimerspec extends PointerBase {
-        @CFieldAddress
-        Time.timespec it_interval();
-
-        @CFieldAddress
-        Time.timespec it_value();
     }
 }
