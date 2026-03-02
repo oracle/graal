@@ -24,15 +24,18 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+
 /**
  * Interface for AllocationState stored in AllocationStateMap,
  * describing what state physical location is in.
  */
 public abstract class AllocationState {
     /**
-     * No location is ever just null, always at least Unknown.
+     * Get the default allocation state for every location,
+     * instead of null, we have Unknown state.
      *
-     * @return
+     * @return Default state for every location
      */
     public static AllocationState getDefault() {
         return UnknownAllocationState.INSTANCE;
@@ -69,10 +72,12 @@ public abstract class AllocationState {
      * the program graph, decide what result of said two states
      * should be.
      *
-     * @param other Other state coming from a predecessor edge
+     * @param other      Other state coming from a predecessor edge
+     * @param otherBlock Which block is other state from
+     * @param block      Which state is this state from
      * @return What is the new state the location is in.
      */
-    public abstract AllocationState meet(AllocationState other);
+    public abstract AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block);
 
     public abstract boolean equals(AllocationState other);
 }

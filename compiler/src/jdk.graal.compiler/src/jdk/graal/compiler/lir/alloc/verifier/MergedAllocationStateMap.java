@@ -25,9 +25,9 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
-import jdk.vm.ci.code.ValueUtil;
 
 import java.util.Map;
 import java.util.Set;
@@ -36,29 +36,12 @@ import java.util.Set;
  * Mapping between a location and it's AllocationState.
  */
 public class MergedAllocationStateMap {
+    protected BasicBlock<?> block;
+
     /**
      * Internal map maintaining the mapping.
      */
     protected Map<RAValue, AllocationState> internalMap;
-    /**
-     * Integer describing when was the value inserted,
-     * the bigger it is, the newer the value is.
-     */
-    protected Map<RAValue, Integer> locationTimings;
-    /**
-     * Prioritized locations are ones made by the register allocator itself.
-     * <p>
-     * Whenever we are resolving phi variables, these are prioritized
-     * because they are likely what the register allocator chose
-     * to be used as phi locations.
-     * <p>
-     * If there's multiple, then time should make the difference.
-     */
-    protected Map<RAValue, Boolean> prioritizedLocations;
-    /**
-     * Internal constant for locationTimings.
-     */
-    protected int time;
 
     /**
      * Register allocation config describing which registers
@@ -66,22 +49,20 @@ public class MergedAllocationStateMap {
      */
     protected RegisterAllocationConfig registerAllocationConfig;
 
-    public MergedAllocationStateMap(RegisterAllocationConfig registerAllocationConfig) {
+    public MergedAllocationStateMap(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig) {
         internalMap = new EconomicHashMap<>();
-        locationTimings = new EconomicHashMap<>();
-        prioritizedLocations = new EconomicHashMap<>();
-        time = 0;
-
+        this.block = block;
         this.registerAllocationConfig = registerAllocationConfig;
     }
 
-    public MergedAllocationStateMap(MergedAllocationStateMap other) {
+    public MergedAllocationStateMap(BasicBlock<?> block, MergedAllocationStateMap other) {
         internalMap = new EconomicHashMap<>(other.internalMap);
-        locationTimings = new EconomicHashMap<>(other.locationTimings);
-        prioritizedLocations = new EconomicHashMap<>(other.prioritizedLocations);
-        time = other.time + 1;
-
+        this.block = block;
         registerAllocationConfig = other.registerAllocationConfig;
+    }
+
+    public boolean has(RAValue key) {
+        return internalMap.containsKey(key);
     }
 
     public AllocationState get(RAValue key) {
@@ -94,11 +75,6 @@ public class MergedAllocationStateMap {
             return defaultValue;
         }
         return state;
-    }
-
-    public void putAsPrioritized(RAValue key, AllocationState value) {
-        this.put(key, value);
-        this.prioritizedLocations.put(key, true);
     }
 
     /**
@@ -126,12 +102,7 @@ public class MergedAllocationStateMap {
      * @param state State to store
      */
     public void putWithoutRegCheck(RAValue key, AllocationState state) {
-        locationTimings.put(key, time++);
         internalMap.put(key, state);
-
-        if (prioritizedLocations.containsKey(key)) {
-            prioritizedLocations.put(key, false);
-        }
     }
 
     /**
@@ -147,27 +118,6 @@ public class MergedAllocationStateMap {
         }
 
         this.put(key, state.clone());
-    }
-
-    public void putCloneAsPrioritized(RAValue key, AllocationState value) {
-        this.putClone(key, value);
-        this.prioritizedLocations.put(key, true);
-    }
-
-    public boolean isPrioritized(RAValue key) {
-        return prioritizedLocations.containsKey(key);
-    }
-
-    /**
-     * Get time when the location was inserted.
-     *
-     * @param key Location used
-     * @return integer describing the insertion time - bigger = newer.
-     */
-    public int getKeyTime(RAValue key) {
-        var time = locationTimings.get(key);
-        assert time != null : "Time for key " + key + " not present.";
-        return time;
     }
 
     /**
@@ -205,7 +155,7 @@ public class MergedAllocationStateMap {
             }
 
             var currentValue = this.internalMap.get(entry.getKey());
-            var result = this.internalMap.get(entry.getKey()).meet(entry.getValue());
+            var result = this.internalMap.get(entry.getKey()).meet(entry.getValue(), source.block, this.block);
             if (!currentValue.equals(result)) {
                 changed = true;
             }
@@ -220,16 +170,15 @@ public class MergedAllocationStateMap {
      * Check if register can be used by the register allocator.
      * If not allowed, an exception is thrown.
      *
-     * @param raLocation Value that could be a register.
+     * @param location Value that could be a register.
      */
-    protected void checkRegisterDestinationValidity(RAValue raLocation) {
-        var location = raLocation.getValue();
-        if (!ValueUtil.isRegister(location)) {
+    protected void checkRegisterDestinationValidity(RAValue location) {
+        if (!location.isRegister()) {
             return;
         }
 
         // Equality check so we know that this change was made by the register allocator.
-        var register = ValueUtil.asRegister(location);
+        var register = location.asRegister().getRegister();
         if (!this.registerAllocationConfig.getAllocatableRegisters().contains(register)) {
             throw new InvalidRegisterUsedException(register);
         }

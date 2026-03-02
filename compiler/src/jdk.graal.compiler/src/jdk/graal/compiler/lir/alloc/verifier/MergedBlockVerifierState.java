@@ -24,17 +24,20 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.LIRKindWithCast;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.CastValue;
-import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
-import jdk.graal.compiler.lir.StandardOp;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Verification state a block is in.
@@ -45,35 +48,34 @@ public class MergedBlockVerifierState {
      */
     public MergedAllocationStateMap values;
 
+    /**
+     * Label variable resolution method used.
+     */
     protected PhiResolution phiResolution;
+
+    /**
+     * Register allocation config we use to check if only
+     * allocatable registers are the ones used.
+     */
     protected RegisterAllocationConfig registerAllocationConfig;
 
     /**
      * Conflict resolver for constant materialization.
      */
     protected ConflictResolver conflictConstantResolver;
-    protected ConflictResolver labelConflictResolver;
 
-    public MergedBlockVerifierState(RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver, ConflictResolver labelConflictResolver) {
-        this.values = new MergedAllocationStateMap(registerAllocationConfig);
+    public MergedBlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver) {
+        this.values = new MergedAllocationStateMap(block, registerAllocationConfig);
         this.phiResolution = phiResolution;
         this.registerAllocationConfig = registerAllocationConfig;
         this.conflictConstantResolver = constantConflictResolver;
-        this.labelConflictResolver = labelConflictResolver;
     }
 
-    protected MergedBlockVerifierState(MergedBlockVerifierState other, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver, ConflictResolver labelConflictResolver) {
-        this.phiResolution = phiResolution;
-        this.registerAllocationConfig = registerAllocationConfig;
-        this.conflictConstantResolver = constantConflictResolver;
-        this.labelConflictResolver = labelConflictResolver;
-
-        if (other == null) {
-            this.values = new MergedAllocationStateMap(registerAllocationConfig);
-            return;
-        }
-
-        this.values = new MergedAllocationStateMap(other.values);
+    protected MergedBlockVerifierState(BasicBlock<?> block, MergedBlockVerifierState other) {
+        this.phiResolution = other.phiResolution;
+        this.registerAllocationConfig = other.registerAllocationConfig;
+        this.conflictConstantResolver = other.conflictConstantResolver;
+        this.values = new MergedAllocationStateMap(block, other.values);
     }
 
     public MergedAllocationStateMap getValues() {
@@ -107,15 +109,10 @@ public class MergedBlockVerifierState {
 
             assert orig != null;
 
-            boolean isJump = op.lirInstruction instanceof StandardOp.JumpOp;
             if (curr == null) {
-                if (isJump) {
-                    if (phiResolution == PhiResolution.FromUsage || phiResolution == PhiResolution.FromUsageGlobal) {
+                if (op.isJump()) {
+                    if (phiResolution == PhiResolution.ByAllocator || phiResolution == PhiResolution.FromUsageGlobal) {
                         // Variable has no usage, thus no location present.
-                        continue;
-                    }
-
-                    if (phiResolution == PhiResolution.ByAllocator || phiResolution == PhiResolution.FromConflicts) {
                         continue;
                     }
 
@@ -125,6 +122,18 @@ public class MergedBlockVerifierState {
                 throw new MissingLocationError(op.lirInstruction, block, orig);
             }
 
+            if (!kindsEqual(orig, curr)) {
+                if (!op.isJump()) {
+                    throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
+                }
+
+                // Skip when jump due to this case:
+                // "rdx|QWORD[*] = MOVE input: rdx|QWORD[.+] moveKind: QWORD"
+                // this move is inserted by the allocator and changes type
+                // of rdx from [.+] (compressed reference) (same as original variable) to [*] (invalid reference)
+            }
+
+            AllocationState state = this.values.get(curr);
             if (orig.equals(curr)) {
                 // For these cases we do not consider checking state taking the original
                 // register as a symbol, because there's too many cases when this does
@@ -135,28 +144,21 @@ public class MergedBlockVerifierState {
                 continue;
             }
 
-            if (!kindsEqual(orig, curr) && !isJump) {
-                throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
-            }
-
-            AllocationState state = this.values.get(curr);
             if (state.isUnknown()) {
                 throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
             }
 
             if (state.isConflicted()) {
-                var variable = orig.asVariable();
-                var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
-
-                if (phiResolution == PhiResolution.FromConflicts && resolvedState == null) {
-                    resolvedState = this.labelConflictResolver.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
-                    if (resolvedState == null) {
-                        throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                if (orig.isVariable()) {
+                    var variable = orig.asVariable();
+                    var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
+                    if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
+                        this.values.put(curr, resolvedState);
+                        continue;
                     }
                 }
 
-                this.values.put(curr, resolvedState);
-                continue;
+                throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
             }
 
             if (state instanceof ValueAllocationState valAllocState) {
@@ -172,16 +174,7 @@ public class MergedBlockVerifierState {
                     if (LIRValueUtil.isConstantValue(valAllocState.value.getValue())) {
                         var variable = orig.asVariable();
                         var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState, curr);
-                        if (resolvedState != null) {
-                            this.values.put(curr, resolvedState);
-                            continue;
-                        }
-                    }
-
-                    if (phiResolution == PhiResolution.FromConflicts && orig.isVariable()) {
-                        var variable = orig.asVariable();
-                        var resolvedState = labelConflictResolver.resolveValueState(variable, valAllocState, curr);
-                        if (resolvedState != null) {
+                        if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
                             this.values.put(curr, resolvedState);
                             continue;
                         }
@@ -241,6 +234,52 @@ public class MergedBlockVerifierState {
     }
 
     /**
+     * Check that all instruction arrays of pairs of original variable and current location
+     * check out to the state stored in for this block.
+     *
+     * @param instruction Instruction we are checking
+     * @param block       Block where it is located
+     * @param labelOp     Label of the successor block, in-case resolution failed
+     */
+    public void check(RAVInstruction.Base instruction, BasicBlock<?> block, RAVInstruction.Op labelOp) {
+        if (instruction instanceof RAVInstruction.Op op) {
+            checkInputs(op.uses, op, block, labelOp);
+            checkInputs(op.alive, op, block, labelOp);
+            checkInputs(op.stateValues, op, block, labelOp);
+
+            checkTempKind(op, block);
+            checkAliveConstraint(op, block);
+            checkStateJavaKinds(op, block);
+
+            checkOperandFlags(op.dests, op, block);
+            checkOperandFlags(op.uses, op, block);
+            checkOperandFlags(op.alive, op, block);
+            checkOperandFlags(op.temp, op, block);
+        }
+    }
+
+    /**
+     * Check if kinds in the temporary array match before allocation
+     * original variables with after allocation concrete locations.
+     *
+     * @param op    Instruction we update state from
+     * @param block Block where it is located
+     * @throws KindsMismatchException if a pair does not match
+     */
+    protected void checkTempKind(RAVInstruction.Op op, BasicBlock<?> block) {
+        for (int i = 0; i < op.temp.count; i++) {
+            var curr = op.temp.curr[i];
+            var orig = op.temp.orig[i];
+
+            if (!kindsEqual(orig, curr)) {
+                // Make sure the assigned register has the correct kind for temp.
+                throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
+            }
+        }
+    }
+
+
+    /**
      * Check if alive constraint is not being violated,
      * when one location is supposed to be alive after instruction
      * is complete, but is used either as an output or a generic input.
@@ -274,79 +313,90 @@ public class MergedBlockVerifierState {
     }
 
     /**
-     * Check that all instruction arrays of pairs of original variable and current location
-     * check out to the state stored in for this block.
+     * Checks values from frame state to see if ones marked as Object JavaKind,
+     * are a reference in LIRKind.
      *
-     * @param instruction Instruction we are checking
-     * @param block       Block where it is located
-     * @param labelOp     Label of the successor block, in-case resolution failed
+     * @param op    Operation which we are checking state values for
+     * @param block In which block is this operation
      */
-    public void check(RAVInstruction.Base instruction, BasicBlock<?> block, RAVInstruction.Op labelOp) {
-        if (instruction instanceof RAVInstruction.Op op) {
-            checkInputs(op.uses, op, block, labelOp);
-            checkInputs(op.alive, op, block, labelOp);
+    protected void checkStateJavaKinds(RAVInstruction.Op op, BasicBlock<?> block) {
+        int kindIdx = 0;
+        for (int i = 0; i < op.stateValues.count; i++) {
+            var orig = op.stateValues.curr[i];
+            var curr = op.stateValues.curr[i];
 
-            for (int i = 0; i < op.temp.count; i++) {
-                var curr = op.temp.curr[i];
-                var orig = op.temp.orig[i];
+            JavaKind kind = null;
+            while (kindIdx < op.kinds.length) {
+                JavaKind target = op.kinds[kindIdx++];
+                if (!JavaKind.Illegal.equals(target)) {
+                    kind = target;
+                    break;
+                }
+                // Illegal values are ignored when iterating over state values
+                // but kept in the kinds array so we need to skip them.
+            }
 
-                if (!kindsEqual(orig, curr)) {
-                    // Make sure the assigned register has the correct kind for temp.
-                    throw new KindsMismatchException(instruction.lirInstruction, block, orig, curr, true);
+            if (kind == null) {
+                break; // We no longer have a JavaKind for other values
+            }
+
+            var origLIRKind = orig.getLIRKind();
+            var currLIRKind = curr.getLIRKind();
+            if (JavaKind.Object.equals(kind)) {
+                if (!origLIRKind.isValue() && !currLIRKind.isValue()) {
+                    continue;
+                }
+
+                throw new RAVException(orig.getValue() + " -> " + curr.getValue() + " not an object java kind when marked as a reference");
+            } else {
+                if (origLIRKind.isValue() && currLIRKind.isValue()) {
+                    continue;
+                }
+
+                throw new RAVException(orig.getValue() + " -> " + curr.getValue() + " is a reference when not marked as an object java kind");
+            }
+        }
+    }
+
+    /**
+     * Make sure concrete current locations changed by the allocator
+     * are not violating set of LIRInstruction.OperandFlag flags,
+     * which specify what type can they be. This is done on every
+     * array of pairs (dest, uses, alive, temp).
+     *
+     * @param values Value array pair we are verifying
+     * @param op     Instruction which holds this array, for tracing in exceptions
+     * @param block  Block this instruction is in, for tracing in exceptions
+     * @throws OperandFlagMismatchException Operand is a wrong type based on OperandFlag set.
+     */
+    protected void checkOperandFlags(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op, BasicBlock<?> block) {
+        for (int i = 0; i < values.count; i++) {
+            var curr = values.curr[i];
+            if (curr == null) {
+                continue;
+            }
+
+            var flags = values.operandFlags.get(i);
+            var currValue = curr.getValue();
+            if (LIRValueUtil.isStackSlotValue(currValue)) {
+                if (flags.contains(LIRInstruction.OperandFlag.STACK)) {
+                    continue;
+                }
+            } else if (ValueUtil.isRegister(currValue)) {
+                if (flags.contains(LIRInstruction.OperandFlag.REG)) {
+                    continue;
+                }
+            } else if (LIRValueUtil.isConstantValue(currValue)) {
+                if (flags.contains(LIRInstruction.OperandFlag.CONST)) {
+                    continue;
+                }
+            } else if (Value.ILLEGAL.equals(currValue)) {
+                if (flags.contains(LIRInstruction.OperandFlag.ILLEGAL)) {
+                    continue;
                 }
             }
 
-            this.checkInputs(op.stateValues, op, block, labelOp);
-
-            int kindIdx = 0;
-            for (int i = 0; i < op.stateValues.count; i++) {
-                var orig = op.stateValues.orig[i];
-                var curr = op.stateValues.curr[i];
-
-                var state = this.values.get(curr);
-                if (state instanceof ValueAllocationState valueAllocationState && valueAllocationState.getRAValue().equals(orig)) {
-                    continue;
-                }
-
-                JavaKind kind = null;
-                while (kindIdx < op.kinds.length) {
-                    JavaKind target = op.kinds[kindIdx++];
-                    if (!JavaKind.Illegal.equals(target)) {
-                        kind = target;
-                        break;
-                    }
-                    // Illegal values are ignored when iterating over state values
-                    // but kept in the kinds array so we need to skip them.
-                }
-
-                if (!JavaKind.Object.equals(kind)) {
-                    continue;
-                }
-                // Maybe check correspondence to JavaKind?
-                // Object -> has ref type in LIRKind?
-
-                var state = this.values.get(curr);
-                if (state.isUnknown() || state.isConflicted()) {
-                    continue;
-                }
-
-                var instr = op.lirInstruction;
-
-                var valueAllocState = (ValueAllocationState) state;
-                var source = valueAllocState.getSource();
-                if (source == null) {
-                    throw new IllegalStateException();
-                }
-
-                var v = valueAllocState.getValue();
-                // How to check type is a reference?
-
-                // Safepoint update -> change refered objects to unknown in-case GC cleared them?
-                // Safepoint check -> check for correspondence to JavaKind
-                // + checking correspondence to state
-            }
-
-            this.checkAliveConstraint(op, block);
+            throw new OperandFlagMismatchException(op, block, currValue, flags);
         }
     }
 
@@ -380,10 +430,6 @@ public class MergedBlockVerifierState {
             assert op.dests.orig[i] != null;
 
             if (op.dests.curr[i] == null) {
-                if (phiResolution == PhiResolution.FromJump) {
-                    throw new LabelNotResolvedError(block, op, phiResolution);
-                }
-
                 continue;
             }
 
@@ -399,6 +445,9 @@ public class MergedBlockVerifierState {
             }
         }
 
+        // For calls, we hope that all saved registers are listed, even
+        // though they are not as per checking RegisterConfig.getCallerSavedRegisters()
+        // but using said list to clear them causes issues.
         for (int i = 0; i < op.temp.count; i++) {
             var value = op.temp.curr[i];
             if (value.isIllegal()) {
@@ -412,15 +461,63 @@ public class MergedBlockVerifierState {
     }
 
     /**
-     * Update state with a ValueMove.
+     * Update block state with a safe point list of live references deemed by the GC,
+     * any other references not included in said list are to be set as unknown so
+     * there's no freed pointer use.
+     * <p>
+     * Not in use currently, because we do not have a reliable list of live references.
+     * <p>
+     * Reference test case: AOTTutorial
+     *
+     * @param references List of references deemed as live by the GC
+     */
+    protected void updateWithSafePoint(List<RAValue> references) {
+        List<RAValue> toRemove = new ArrayList<>();
+        for (var entry : this.values.internalMap.entrySet()) {
+            var state = entry.getValue();
+            if (state.isUnknown() || state.isConflicted()) {
+                continue; // Do not care, retain information
+            }
+
+            var valueAllocState = (ValueAllocationState) state;
+            if (valueAllocState.getValue().getValueKind(LIRKind.class).isValue()) {
+                continue; // Not a reference, continue
+            }
+
+            boolean referenceFound = false;
+            for (var reference : references) {
+                if (reference.equals(entry.getKey())) {
+                    referenceFound = true;
+                    break;
+                }
+            }
+
+            if (referenceFound) {
+                continue;
+            }
+
+            // Remove all references that are not present in the references list,
+            // maybe it makes sense to keep registers that have live references,
+            // that are same as the one in references list? Because said list
+            // is expected to have stack slots and registers can retain same references.
+            this.values.put(entry.getKey(), UnknownAllocationState.INSTANCE);
+        }
+    }
+
+    /**
+     * Update state with a ValueMove, if locations is concrete,
+     * we set it to a variable/constant, if it's a variable to variable
+     * move, then all locations containing old variable need to be changed
+     * to the new variable.
      *
      * @param valueMove Value move we update state from
      * @param block     Block where it is located
      */
     protected void updateWithValueMove(RAVInstruction.ValueMove valueMove, BasicBlock<?> block) {
-        if (ValueUtil.isRegister(valueMove.location.getValue())) {
-            this.values.put(valueMove.location, new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
-        } else if (valueMove.location.isVariable()) {
+        if (valueMove.location.isVariable()) {
+            // Whenever there is a move between two variables,
+            // we need to change every location containing the old variable (rhs - source)
+            // to the new variable (lhs - destination)
             // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
             // Move before allocation
             // TestCase: BoxingTest.boxBoolean

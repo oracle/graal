@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.util.EconomicHashSet;
 
 import java.util.Arrays;
@@ -44,16 +45,30 @@ public class ConflictedAllocationState extends AllocationState {
 
     public ConflictedAllocationState(ValueAllocationState state1, ValueAllocationState state2) {
         this();
-        this.conflictedStates.add(state1); // Not using addConflictedValue because a warning is thrown
-        this.conflictedStates.add(state2);
+        addConflictedValue(state1);
+        addConflictedValue(state2);
     }
 
     protected ConflictedAllocationState(Set<ValueAllocationState> conflictedStates) {
         this.conflictedStates = new EconomicHashSet<>(conflictedStates);
     }
 
-    public void addConflictedValue(ValueAllocationState state) {
+    public final void addConflictedValue(ValueAllocationState state) {
+        if (hasConflictedValue(state)) {
+            return;
+        }
+
         this.conflictedStates.add(state);
+    }
+
+    public final boolean hasConflictedValue(ValueAllocationState valueAllocationState) {
+        for (var state : this.conflictedStates) {
+            if (state.getRAValue().equals(valueAllocationState.getRAValue())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -78,14 +93,16 @@ public class ConflictedAllocationState extends AllocationState {
      * @return ConflictedAllocationState with predecessor state added up
      */
     @Override
-    public AllocationState meet(AllocationState other) {
+    public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block) {
         var newlyConflictedState = new ConflictedAllocationState(this.getConflictedStates());
         if (other instanceof ValueAllocationState valueState) {
             newlyConflictedState.addConflictedValue(valueState);
         }
 
         if (other instanceof ConflictedAllocationState conflictedState) {
-            newlyConflictedState.conflictedStates.addAll(conflictedState.conflictedStates);
+            for (var otherConfState : conflictedState.getConflictedStates()) {
+                newlyConflictedState.addConflictedValue(otherConfState);
+            }
         }
 
         if (other instanceof UnknownAllocationState) {
@@ -94,7 +111,7 @@ public class ConflictedAllocationState extends AllocationState {
             // and it means that this location was not defined there, but it was defined in a
             // different predecessor block, meaning it's now in a conflicted state, where
             // it either is defined or it is not - should not be used in further blocks.
-            newlyConflictedState.conflictedStates.add(ValueAllocationState.createIllegal());
+            newlyConflictedState.addConflictedValue(ValueAllocationState.createIllegal(otherBlock));
         }
 
         return newlyConflictedState;

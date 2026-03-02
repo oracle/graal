@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.lir.LIRValueUtil;
-import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
@@ -49,6 +49,10 @@ public class RAValue {
     public static RAValue create(Value value) {
         if (LIRValueUtil.isVariable(value)) {
             return new RAVariable(LIRValueUtil.asVariable(value));
+        }
+
+        if (ValueUtil.isRegister(value)) {
+            return new RARegister(ValueUtil.asRegisterValue(value));
         }
 
         return new RAValue(value);
@@ -76,10 +80,22 @@ public class RAValue {
         return false;
     }
 
+    public boolean isRegister() {
+        return false;
+    }
+
+    public RARegister asRegister() {
+        return (RARegister) this;
+    }
+
+    public LIRKind getLIRKind() {
+        return value.getValueKind(LIRKind.class);
+    }
+
     @Override
     public int hashCode() {
-        if (ValueUtil.isRegister(this.value)) {
-            return ValueUtil.asRegisterValue(this.value).getRegister().hashCode();
+        if (LIRValueUtil.isVirtualStackSlot(this.value)) {
+            return LIRValueUtil.asVirtualStackSlot(this.value).getId();
         }
 
         return this.value.hashCode();
@@ -95,10 +111,8 @@ public class RAValue {
     @Override
     public boolean equals(Object other) {
         if (other instanceof RAValue otherValueWrap) {
-            if (ValueUtil.isRegister(this.value) && ValueUtil.isRegister(otherValueWrap.value)) {
-                var thisReg = ValueUtil.asRegisterValue(this.value);
-                var otherReg = ValueUtil.asRegisterValue(otherValueWrap.value);
-                return thisReg.getRegister().equals(otherReg.getRegister());
+            if (LIRValueUtil.isVirtualStackSlot(this.value) && otherValueWrap.value.equals(this.value)) {
+                return LIRValueUtil.asVirtualStackSlot(this.value).getId() == LIRValueUtil.asVirtualStackSlot(otherValueWrap.value).getId();
             }
 
             return this.value.equals(otherValueWrap.value);
@@ -109,8 +123,8 @@ public class RAValue {
 
     @Override
     public String toString() {
-        if (ValueUtil.isRegister(this.value)) {
-            return ValueUtil.asRegisterValue(this.value).getRegister().toString();
+        if (LIRValueUtil.isVirtualStackSlot(this.value)) {
+            return "vstack:" + LIRValueUtil.asVirtualStackSlot(this.value).getId();
         }
 
         return value.toString();

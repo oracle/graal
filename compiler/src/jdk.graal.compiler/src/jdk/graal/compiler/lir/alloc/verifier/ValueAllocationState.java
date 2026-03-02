@@ -71,9 +71,8 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
      *
      * @return instance of ValueAllocationState holding Value.ILLEGAL.
      */
-    public static ValueAllocationState createIllegal() {
-        // TODO: pass in the block that created this value
-        return new ValueAllocationState(new RAValue(Value.ILLEGAL), null, null);
+    public static ValueAllocationState createIllegal(BasicBlock<?> block) {
+        return new ValueAllocationState(new RAValue(Value.ILLEGAL), null, block);
     }
 
     public Value getValue() {
@@ -100,12 +99,12 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
      * @param other Other state coming from a predecessor edge
      * @return ValueAllocationState if their contents are equal, otherwise ConflictedAllocationState.
      */
-    public AllocationState meet(AllocationState other) {
+    public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block) {
         if (other.isUnknown()) {
             // Unknown is coming from different predecessor where this location
             // is undefined, meaning this value is not always accessible in the successor
             // and thus conflict is created.
-            return new ConflictedAllocationState(createIllegal(), this);
+            return new ConflictedAllocationState(createIllegal(otherBlock), this);
         }
 
         if (other.isConflicted()) {

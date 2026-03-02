@@ -24,16 +24,20 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.hotspot.amd64.AMD64HotSpotSafepointOp;
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.lir.aarch64.AArch64Call;
+import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.LinkedList;
 import java.util.List;
 
 public class RAVInstruction {
@@ -73,8 +77,8 @@ public class RAVInstruction {
 
         public Base(LIRInstruction lirInstruction) {
             this.lirInstruction = lirInstruction;
-            this.virtualMoveList = new LinkedList<>();
-            this.speculativeMoveList = new LinkedList<>();
+            this.virtualMoveList = new ArrayList<>();
+            this.speculativeMoveList = new ArrayList<>();
         }
 
         public LIRInstruction getLIRInstruction() {
@@ -105,20 +109,24 @@ public class RAVInstruction {
         /**
          * Array of size count holding original variables before allocation.
          */
-        protected RAValue[] orig;
+        public RAValue[] orig;
         /**
          * Array of size count holding current locations used after allocation.
          */
-        protected RAValue[] curr;
+        public RAValue[] curr;
+
+        public ArrayList<EnumSet<LIRInstruction.OperandFlag>> operandFlags;
+
         /**
          * Number of pairs of values stored here.
          */
-        protected int count;
+        public int count;
 
         public ValueArrayPair(int count) {
             this.count = count;
             this.curr = new RAValue[count];
             this.orig = new RAValue[count];
+            this.operandFlags = new ArrayList<>(count);
         }
 
         public InstructionValueProcedure copyOriginalProc = new InstructionValueProcedure() {
@@ -127,6 +135,7 @@ public class RAVInstruction {
             @Override
             public Value doValue(LIRInstruction instruction, Value value, LIRInstruction.OperandMode mode, EnumSet<LIRInstruction.OperandFlag> flags) {
                 ValueArrayPair.this.addOrig(index, value);
+                ValueArrayPair.this.operandFlags.add(flags);
                 index++;
                 return value;
             }
@@ -138,6 +147,11 @@ public class RAVInstruction {
             @Override
             public Value doValue(LIRInstruction instruction, Value value, LIRInstruction.OperandMode mode, EnumSet<LIRInstruction.OperandFlag> flags) {
                 ValueArrayPair.this.addCurrent(index, value);
+
+                if (index < operandFlags.size() && !operandFlags.get(index).equals(flags)) {
+                    throw new IllegalStateException();
+                }
+
                 index++;
                 return value;
             }
@@ -155,9 +169,8 @@ public class RAVInstruction {
 
         public void addCurrent(int index, Value value) {
             if (index >= this.count) {
-                // TestCase: DerivedOopTest
-                // liveBasePointers has extra item after register allocation
-                // TODO: handle extra items here
+                // In test case DerivedOopTest, liveBasePointers has extra
+                // values after allocation in frame state, so we skip them
                 return;
             }
 
@@ -291,6 +304,22 @@ public class RAVInstruction {
                 }
             }
             return false;
+        }
+
+        public boolean isLabel() {
+            return lirInstruction instanceof StandardOp.LabelOp;
+        }
+
+        public boolean isJump() {
+            return lirInstruction instanceof StandardOp.JumpOp;
+        }
+
+        public boolean isCall() {
+           return lirInstruction instanceof AMD64Call.CallOp || lirInstruction instanceof AArch64Call.CallOp;
+        }
+
+        public boolean isSafePoint() {
+            return lirInstruction instanceof AMD64HotSpotSafepointOp;
         }
 
         @Override

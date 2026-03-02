@@ -36,4 +36,8 @@ public class RAVException extends GraalError {
     public RAVException(String message) {
         super(message);
     }
+
+    public RAVException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

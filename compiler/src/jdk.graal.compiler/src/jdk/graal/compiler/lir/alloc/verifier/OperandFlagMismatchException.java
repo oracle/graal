@@ -24,20 +24,33 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.vm.ci.meta.Value;
+
+import java.util.EnumSet;
+
 /**
- * Label variable location resolution method.
+ * Value used in instruction does not satisfy it's operand flags,
+ * for example if an operand is a stack slot, but should only
+ * be a register.
  */
-public enum PhiResolution {
-    /**
-     * By looking up variables first usage,
-     * and walking back to defining label -
-     * every variable at once.
-     */
-    FromUsageGlobal,
-    /**
-     * Modify the allocator to keep
-     * label variable locations present
-     * after the allocation.
-     */
-    ByAllocator
+@SuppressWarnings("serial")
+public class OperandFlagMismatchException extends RAVException {
+    public RAVInstruction.Op instruction;
+    public BasicBlock<?> block;
+    public Value value;
+    public EnumSet<LIRInstruction.OperandFlag> flags;
+
+    public OperandFlagMismatchException(RAVInstruction.Op op, BasicBlock<?> block, Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
+       super(getErrorMesage(op, block, value, flags));
+       this.instruction = op;
+       this.block = block;
+       this.value = value;
+       this.flags = flags;
+    }
+
+    static String getErrorMesage(RAVInstruction.Op op, BasicBlock<?> block, Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
+        return "Value " + value + " does not satisfy operand flags " + flags.toString() + " in " + op.lirInstruction + " in " + block;
+    }
 }

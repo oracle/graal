@@ -1,30 +1,44 @@
+/*
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.InstructionStateProcedure;
-import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.ValueProcedure;
-import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
-import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.util.EconomicHashMap;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.code.ValueUtil;
+import org.graalvm.collections.Equivalence;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -33,75 +47,13 @@ import java.util.Map;
  */
 public class PreRegisterAllocationPhase extends AllocationPhase {
     /**
-     * Factory to produce tagged constants that act like variables.
-     */
-    protected TaggedConstantFactory taggedConstantFactory;
-    /**
      * Shared state with the verification phase.
      */
     protected RegisterAllocationVerifierPhaseState state;
 
     public PreRegisterAllocationPhase(RegisterAllocationVerifierPhaseState state) {
-        this.taggedConstantFactory = new TaggedConstantFactory();
         this.state = state;
     }
-
-    /**
-     * Overwrite a constant with a tagged one.
-     */
-    public static class ConstantOverrideValueProcedure implements ValueProcedure {
-        private final LIR lir;
-        private List<Variable> variables;
-        private final Map<Variable, ConstantValue> constantValueMap;
-        private final Method nextVariableMethod;
-
-        public ConstantOverrideValueProcedure(LIR lir, Map<Variable, ConstantValue> constantValueMap) {
-            this.lir = lir;
-            this.constantValueMap = constantValueMap;
-
-            try {
-                this.nextVariableMethod = LIRGenerator.VariableProvider.class.getDeclaredMethod("nextVariable");
-                this.nextVariableMethod.setAccessible(true);
-            } catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public void setVariableList(List<Variable> variables) {
-            this.variables = variables;
-        }
-
-        public int nextVariable() {
-            try {
-                return (int) nextVariableMethod.invoke((LIRGenerator.VariableProvider) this.lir);
-            } catch (InvocationTargetException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        public Value doValue(Value value, LIRInstruction.OperandMode mode, EnumSet<LIRInstruction.OperandFlag> flags) {
-            if (value instanceof ConstantValue constant) {
-                var variable = new Variable(constant.getValueKind(), nextVariable());
-                constantValueMap.put(variable, constant);
-                variables.add(variable);
-                return variable;
-            }
-
-            return value;
-        }
-    }
-
-    protected InstructionValueProcedure taggedConstantValueProc = new InstructionValueProcedure() {
-        @Override
-        public Value doValue(LIRInstruction instruction, Value value, LIRInstruction.OperandMode mode, EnumSet<LIRInstruction.OperandFlag> flags) {
-            if (value instanceof ConstantValue constantValue) {
-                return new ConstantValue(constantValue.getValueKind(), taggedConstantFactory.createNew(constantValue.getConstant()));
-            }
-
-            return value;
-        }
-    };
 
     /**
      * Process every block and every instruction to save variables used in them for the verification procedure.
@@ -117,27 +69,15 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
         }
 
         var preallocMap = state.createInstructionMap(lirGenRes);
+        Map<LIRInstruction, RAVInstruction.Base> preallocMap = new EconomicHashMap<>(Equivalence.IDENTITY);
         LIR lir = lirGenRes.getLIR();
-        Map<Variable, ConstantValue> constantValueMap = new EconomicHashMap<>();
-        var constOverwriteProc = new ConstantOverrideValueProcedure(lir, constantValueMap);
 
         for (var blockId : lir.getBlocks()) {
             BasicBlock<?> block = lir.getBlockById(blockId);
             ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
 
-            List<Variable> newVars = new ArrayList<>();
-            constOverwriteProc.setVariableList(newVars);
-
             RAVInstruction.Base previousInstr = null;
             for (var instruction : instructions) {
-                if (instruction instanceof StandardOp.JumpOp && this.state.phiResolution == PhiResolution.FromJump) {
-                    if (this.state.moveConstants) {
-                        instruction.forEachAlive(constOverwriteProc);
-                    } else {
-                        instruction.forEachAlive(taggedConstantValueProc);
-                    }
-                }
-
                 if (this.isVirtualMove(instruction)) {
                     // Virtual moves (variable = MOV real register) are going to be removed by the allocator,
                     // but we still need the information about which variables are associated to which real
@@ -199,23 +139,6 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                     previousInstr = opRAVInstr;
                 }
             }
-
-            if (newVars.isEmpty()) {
-                continue;
-            }
-
-            var j = instructions.removeLast();
-            var it = newVars.iterator();
-            while (it.hasNext()) {
-                var v = LIRValueUtil.asVariable(it.next());
-                var mov = context.spillMoveFactory.createMove(v, constantValueMap.get(v));
-                var ravInstr = new RAVInstruction.Op(mov);
-                mov.forEachOutput(ravInstr.dests.copyOriginalProc);
-                preallocMap.put(mov, ravInstr);
-                instructions.add(mov);
-            }
-
-            instructions.add(j);
         }
     }
 

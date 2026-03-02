@@ -32,8 +32,8 @@ import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -116,7 +116,7 @@ public class FromUsageResolverGlobal {
      * Resolves label variable registers by finding where they are used.
      */
     public void resolvePhiFromUsage() {
-        Queue<BasicBlock<?>> worklist = new LinkedList<>();
+        Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
 
         this.initializeUsages();
 
@@ -175,7 +175,7 @@ public class FromUsageResolverGlobal {
     }
 
     protected void initializeUsages() {
-        Queue<BasicBlock<?>> worklist = new LinkedList<>();
+        Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
 
         var startBlock = this.lir.getControlFlowGraph().getStartBlock();
         worklist.add(startBlock);

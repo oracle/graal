@@ -71,6 +71,9 @@ public class VerifierPrinter {
             out.println(blockHeaderSB);
             for (var instruction : instructions.get(block)) {
                 out.println("\t" + instruction.toString() + " | " + instruction.getLIRInstruction().toString());
+                if (instruction instanceof RAVInstruction.Op op && op.stateValues.count > 0) {
+                    out.println("\t\t State: " + op.stateValues);
+                }
             }
             out.println();
         }

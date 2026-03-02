@@ -39,7 +39,6 @@ import java.util.Map;
  */
 public class RegisterAllocationVerifierPhaseState {
     public PhiResolution phiResolution;
-    public boolean moveConstants;
     public String filterStr;
 
     /**
@@ -51,7 +50,6 @@ public class RegisterAllocationVerifierPhaseState {
         this.verifierInstructions = new EconomicHashMap<>(Equivalence.IDENTITY);
 
         this.phiResolution = RegisterAllocationVerifierPhase.Options.RAPhiResolution.getValue(options);
-        this.moveConstants = RegisterAllocationVerifierPhase.Options.MoveConstants.getValue(options);
         this.filterStr = RegisterAllocationVerifierPhase.Options.RAFilter.getValue(options);
     }
 
