@@ -47,6 +47,7 @@ import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNINITIALIZED_DECLARING_CLASS_SENTINEL;
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.InputStream;
@@ -84,6 +85,7 @@ import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -139,15 +141,15 @@ import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GuestAccess;
-import com.oracle.svm.shared.util.ReflectionUtil;
-import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -582,8 +584,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
 
         companion.interfacesEncoding = interfacesEncoding;
-        // GR-57813: setup a LazyFinalReference that calls `values` via reflection.
-        companion.enumConstantsReference = null;
 
         /* Allocate memory in the metaspace and copy data from the Java heap to the metaspace. */
         DynamicHub hub = Metaspace.singleton().allocateDynamicHub(vTableEntries);
@@ -622,9 +622,31 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         writeInt(hub, dynamicHubOffsets.getReferenceMapCompressedOffsetOffset(), referenceMapCompressedOffset);
         writeByte(hub, dynamicHubOffsets.getLayerIdOffset(), NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID));
 
+        if ((modifiers & ACC_ENUM) != 0 && DynamicHub.toClass(superHub) == Enum.class) {
+            companion.enumConstantsReference = new LazyFinalReference<>(hub.new EnumConstantsSupplier());
+        } else {
+            companion.enumConstantsReference = null;
+        }
+
         /* Skip vtable (special treatment). */
 
         return finishInitialization(hub, companion);
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/Class.java#L3435-L3446")
+    private final class EnumConstantsSupplier implements Supplier<Object[]> {
+        @Override
+        public Object[] get() {
+            try {
+                Method values = getMethod("values");
+                values.setAccessible(true);
+                return (Object[]) values.invoke(null);
+            } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException | NullPointerException | ClassCastException ex) {
+                // These can happen when users concoct enum-like classes
+                // that don't comply with the enum spec.
+                return null;
+            }
+        }
     }
 
     /**
@@ -1231,11 +1253,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     private boolean isEnum() {
+        if (toClass(getSuperclass()) != java.lang.Enum.class) {
+            return false;
+        }
+        if (isRuntimeLoaded()) {
+            return (getModifiers() & ACC_ENUM) != 0;
+        }
         /*
          * We do not do the check "this.getModifiers() & ENUM) != 0" because we do not have the full
          * modifier bits.
          */
-        return toClass(getSuperclass()) == java.lang.Enum.class;
+        return true;
     }
 
     @KeepOriginal
