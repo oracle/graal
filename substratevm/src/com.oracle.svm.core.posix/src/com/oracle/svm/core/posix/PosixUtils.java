@@ -29,6 +29,7 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 
 import java.io.FileDescriptor;
 
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -66,7 +67,8 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 
 public class PosixUtils {
-    @TargetClass(java.io.FileDescriptor.class)
+
+    @TargetClass(value = java.io.FileDescriptor.class, onlyWith = NotCosmoLibCSupplier.class)
     private static final class Target_java_io_FileDescriptor {
 
         @Alias int fd;
@@ -103,7 +105,7 @@ public class PosixUtils {
         return Unistd.getpid();
     }
 
-    @TargetClass(className = "java.lang.ProcessImpl")
+    @TargetClass(className = "java.lang.ProcessImpl", onlyWith = NotCosmoLibCSupplier.class)
     private static final class Target_java_lang_ProcessImpl {
         @Alias int pid;
     }
