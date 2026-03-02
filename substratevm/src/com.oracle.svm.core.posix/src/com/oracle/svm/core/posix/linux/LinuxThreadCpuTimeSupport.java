@@ -37,7 +37,7 @@ import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
@@ -47,12 +47,8 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 
-<<<<<<< HEAD
-@AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-=======
 @AutomaticallyRegisteredImageSingleton(value = ThreadCpuTimeSupport.class, onlyWith = NotCosmoLibCSupplier.class)
->>>>>>> 73464dd549d (create equivalent headers/impls for Cosmopolitan Libc)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
     @Override

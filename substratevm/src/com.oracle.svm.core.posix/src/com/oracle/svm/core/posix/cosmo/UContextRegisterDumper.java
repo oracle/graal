@@ -25,7 +25,7 @@
 package com.oracle.svm.core.posix.cosmo;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.ucontext_t;
 import org.graalvm.word.PointerBase;

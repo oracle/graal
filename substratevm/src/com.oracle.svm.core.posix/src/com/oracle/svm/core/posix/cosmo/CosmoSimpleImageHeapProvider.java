@@ -21,7 +21,7 @@
  */
 package com.oracle.svm.core.posix.cosmo;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;

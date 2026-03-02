@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.cosmo;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.posix.cosmo.headers.Pthread;
 import com.oracle.svm.core.posix.cosmo.headers.Pthread.pthread_cond_t;
 import com.oracle.svm.core.posix.cosmo.headers.Pthread.pthread_condattr_t;
