@@ -38,7 +38,6 @@ import java.util.Map;
  * pertaining mostly to shared config and Verifier IR.
  */
 public class RegisterAllocationVerifierPhaseState {
-    public PhiResolution phiResolution;
     public String filterStr;
 
     /**
@@ -49,7 +48,6 @@ public class RegisterAllocationVerifierPhaseState {
     public RegisterAllocationVerifierPhaseState(OptionValues options) {
         this.verifierInstructions = new EconomicHashMap<>(Equivalence.IDENTITY);
 
-        this.phiResolution = RegisterAllocationVerifierPhase.Options.RAPhiResolution.getValue(options);
         this.filterStr = RegisterAllocationVerifierPhase.Options.RAFilter.getValue(options);
     }
 

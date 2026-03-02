@@ -69,12 +69,6 @@ public class RegisterAllocationVerifier {
     protected RegisterAllocationConfig registerAllocationConfig;
 
     /**
-     * Resolution method used for determining
-     * label variable locations.
-     */
-    protected PhiResolution phiResolution;
-
-    /**
      * Resolves locations for label variables by finding
      * their first usage and walking back to the defining
      * label.
@@ -86,7 +80,7 @@ public class RegisterAllocationVerifier {
      */
     protected ConflictResolver constantMaterializationConflictResolver;
 
-    public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution, RegisterAllocationConfig registerAllocationConfig) {
+    public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
         this.registerAllocationConfig = registerAllocationConfig;
 
@@ -97,7 +91,6 @@ public class RegisterAllocationVerifier {
         this.blockEntryStates = new BlockMap<>(cfg);
 
         this.blockStates = new BlockMap<>(cfg);
-        this.phiResolution = phiResolution;
 
         this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
     }
@@ -113,7 +106,7 @@ public class RegisterAllocationVerifier {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
 
         var startBlock = this.lir.getControlFlowGraph().getStartBlock();
-        this.blockEntryStates.put(startBlock, new MergedBlockVerifierState(startBlock, registerAllocationConfig, phiResolution, constantMaterializationConflictResolver));
+        this.blockEntryStates.put(startBlock, new MergedBlockVerifierState(startBlock, registerAllocationConfig, constantMaterializationConflictResolver));
         worklist.add(this.lir.getControlFlowGraph().getStartBlock());
 
         while (!worklist.isEmpty()) {
@@ -206,9 +199,7 @@ public class RegisterAllocationVerifier {
      */
     public void run() {
         this.constantMaterializationConflictResolver.prepare(lir, blockInstructions);
-        if (this.phiResolution == PhiResolution.FromUsageGlobal) {
-            this.fromUsageResolverGlobal.resolvePhiFromUsage();
-        }
+        this.fromUsageResolverGlobal.resolvePhiFromUsage();
 
         this.calculateEntryBlocks();
         this.verifyInstructionInputs();

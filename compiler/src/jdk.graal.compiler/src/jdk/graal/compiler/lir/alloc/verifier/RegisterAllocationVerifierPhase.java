@@ -62,12 +62,6 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         @Option(help = "Verify that register allocation is indeed, correct", type = OptionType.Debug)
         public static final OptionKey<Boolean> EnableRAVerifier = new OptionKey<>(false);
 
-        @Option(help = "Select which way you want to resolve phi arguments.", type = OptionType.Debug)
-        public static final EnumOptionKey<PhiResolution> RAPhiResolution = new EnumOptionKey<>(PhiResolution.FromUsage);
-
-        @Option(help = "Should constants be moved to variables when needed", type = OptionType.Debug)
-        public static final OptionKey<Boolean> MoveConstants = new OptionKey<>(true);
-
         @Option(help = "Substring necessary to be found for method to be verified", type = OptionType.Debug)
         public static final OptionKey<String> RAFilter = new OptionKey<>(null);
     }
@@ -95,7 +89,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         }
 
         var instructions = getVerifierInstructions(lirGenRes);
-        var verifier = new RegisterAllocationVerifier(lirGenRes.getLIR(), instructions, this.state.phiResolution, context.registerAllocationConfig);
+        var verifier = new RegisterAllocationVerifier(lirGenRes.getLIR(), instructions, context.registerAllocationConfig);
 
         // For timers for time spent in pre-alloc and verification phases look for these metric keys:
         // LIRPhaseTime_PreRegisterAllocationPhase & LIRPhaseTime_RegisterAllocationVerifierPhase

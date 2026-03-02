@@ -49,11 +49,6 @@ public class MergedBlockVerifierState {
     public MergedAllocationStateMap values;
 
     /**
-     * Label variable resolution method used.
-     */
-    protected PhiResolution phiResolution;
-
-    /**
      * Register allocation config we use to check if only
      * allocatable registers are the ones used.
      */
@@ -64,15 +59,13 @@ public class MergedBlockVerifierState {
      */
     protected ConflictResolver conflictConstantResolver;
 
-    public MergedBlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, PhiResolution phiResolution, ConflictResolver constantConflictResolver) {
+    public MergedBlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, ConflictResolver constantConflictResolver) {
         this.values = new MergedAllocationStateMap(block, registerAllocationConfig);
-        this.phiResolution = phiResolution;
         this.registerAllocationConfig = registerAllocationConfig;
         this.conflictConstantResolver = constantConflictResolver;
     }
 
     protected MergedBlockVerifierState(BasicBlock<?> block, MergedBlockVerifierState other) {
-        this.phiResolution = other.phiResolution;
         this.registerAllocationConfig = other.registerAllocationConfig;
         this.conflictConstantResolver = other.conflictConstantResolver;
         this.values = new MergedAllocationStateMap(block, other.values);
@@ -111,12 +104,7 @@ public class MergedBlockVerifierState {
 
             if (curr == null) {
                 if (op.isJump()) {
-                    if (phiResolution == PhiResolution.ByAllocator || phiResolution == PhiResolution.FromUsageGlobal) {
-                        // Variable has no usage, thus no location present.
-                        continue;
-                    }
-
-                    throw new LabelNotResolvedError(block, labelOp, phiResolution);
+                    continue;
                 }
 
                 throw new MissingLocationError(op.lirInstruction, block, orig);
