@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.posix.cosmo.CosmoLibCSupplier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -42,11 +44,15 @@ public class LinuxPLTGOTFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if(x.getAsBoolean()) return false;
         return Platform.includedIn(Platform.LINUX.class) && PLTGOTOptions.EnablePLTGOT.getValue();
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if(x.getAsBoolean()) return;
         ImageSingletons.add(DynamicMethodAddressResolutionHeapSupport.class, new LinuxGOTHeapSupport());
     }
 }

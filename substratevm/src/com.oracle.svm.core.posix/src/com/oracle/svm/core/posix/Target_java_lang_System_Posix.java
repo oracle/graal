@@ -33,10 +33,11 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.TimeUtils;
 
-@TargetClass(java.lang.System.class)
+@TargetClass(value = java.lang.System.class, onlyWith = NotCosmoLibCSupplier.class)
 final class Target_java_lang_System_Posix {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//

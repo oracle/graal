@@ -26,6 +26,7 @@
 package com.oracle.svm.core.posix;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.jfr.JfrOptions;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -40,6 +41,7 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
+import com.oracle.svm.core.posix.cosmo.CosmoLibCSupplier;
 import com.oracle.svm.core.posix.linux.LinuxSubstrateSigprofHandler;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
@@ -71,6 +73,8 @@ public class PosixSubstrateSigprofHandlerFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if(x.getAsBoolean()) return;
         if (JfrExecutionSamplerSupported.isSupported() && JfrOptions.SignalHandlerBasedExecutionSampler.getValue()) {
             SubstrateSigprofHandler sampler = makeNewSigprofHandler();
             ImageSingletons.add(JfrExecutionSampler.class, sampler);

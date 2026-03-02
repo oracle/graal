@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix.linux;
 
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
@@ -33,7 +34,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@AutomaticallyRegisteredImageSingleton(ProcessPropertiesSupport.class)
+@AutomaticallyRegisteredImageSingleton(value = ProcessPropertiesSupport.class, onlyWith = NotCosmoLibCSupplier.class)
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class LinuxProcessPropertiesSupport extends PosixProcessPropertiesSupport {
 
