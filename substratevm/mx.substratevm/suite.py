@@ -945,6 +945,28 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.native.extractsbom": {
+            "subDir": "src",
+            "native": "static_lib",
+            "deliverable" : "extract_sbom",
+            "os_arch": {
+                "linux": {
+                    "<others>": {
+                        "cflags": ["-g", "-Wall", "-fPIC" ],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only supported on linux",
+                    },
+                },
+            },
+            "multitarget": {
+                "libc": ["glibc", "default"],
+            },
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.native.reporterchelper": {
             "subDir": "src",
             "native": "shared_lib",
@@ -2395,6 +2417,7 @@ suite = {
                             "dependency:com.oracle.svm.native.libchelper/*",
                             "dependency:com.oracle.svm.native.jvm.posix/*",
                             "dependency:com.oracle.svm.native.libcontainer/*",
+                            "dependency:com.oracle.svm.native.extractsbom/*",
                             "file:debug/include",
                             "file:src/com.oracle.svm.core/src/com/oracle/svm/core/gc/shared/include",
                         ],

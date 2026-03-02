@@ -2266,6 +2266,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             build_args=svm_experimental_options([
                 '-H:-ParseRuntimeOptions',
                 '-H:+TreatAllTypeReachableConditionsAsTypeReached',
+                '--features=com.oracle.svm.configure.command.sbom.SbomExtractFeature',
             ]),
             extra_jvm_args=_native_image_utils_extra_jvm_args(),
             home_finder=False,

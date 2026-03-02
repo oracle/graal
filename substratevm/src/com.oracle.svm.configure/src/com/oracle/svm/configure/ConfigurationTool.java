@@ -31,6 +31,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.oracle.svm.configure.command.ConfigurationCommand;
+import com.oracle.svm.configure.command.ConfigurationCommandExtractSbom;
 import com.oracle.svm.configure.command.ConfigurationCommandFileCommand;
 import com.oracle.svm.configure.command.ConfigurationGenerateCommand;
 import com.oracle.svm.configure.command.ConfigurationGenerateConditionalsCommand;
@@ -58,6 +59,7 @@ public class ConfigurationTool {
         ConfigurationCommand processTraceCommand = new ConfigurationProcessTraceCommand();
         ConfigurationCommand generateFiltersCommand = new ConfigurationGenerateFiltersCommand();
         ConfigurationCommand conditionalsCommand = new ConfigurationGenerateConditionalsCommand();
+        ConfigurationCommand sbomExtractCommand = new ConfigurationCommandExtractSbom();
 
         commands.put(helpCommand.getName(), helpCommand);
         commands.put(generateCommand.getName(), generateCommand);
@@ -65,6 +67,7 @@ public class ConfigurationTool {
         commands.put(processTraceCommand.getName(), processTraceCommand);
         commands.put(conditionalsCommand.getName(), conditionalsCommand);
         commands.put(generateFiltersCommand.getName(), generateFiltersCommand);
+        commands.put(sbomExtractCommand.getName(), sbomExtractCommand);
     }
 
     public static Collection<ConfigurationCommand> getCommands() {
