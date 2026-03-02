@@ -1715,4 +1715,7 @@ public class SubstrateOptions {
         return ConcealedOptions.GraalJITCompileAtRuntime.getValue();
     }
 
+    @Option(type = Expert, help = "Support for continuations which are used by virtual threads. " +
+                    "If disabled, virtual threads can be started but each of them is backed by a platform thread.") //
+    public static final HostedOptionKey<Boolean> VMContinuations = new HostedOptionKey<>(true);
 }

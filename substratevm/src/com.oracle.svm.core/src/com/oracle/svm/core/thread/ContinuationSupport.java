@@ -37,7 +37,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -45,18 +44,10 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
 import org.graalvm.word.impl.Word;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class ContinuationSupport {
-    static final class Options {
-        @Option(type = OptionType.Expert, help = "Support for continuations which are used by virtual threads. " +
-                        "If disabled, virtual threads can be started but each of them is backed by a platform thread.") //
-        public static final HostedOptionKey<Boolean> VMContinuations = new HostedOptionKey<>(true);
-    }
-
     @Fold
     public static boolean isSupported() {
         return ContinuationsFeature.isSupported();
