@@ -940,7 +940,7 @@ public final class NativeImageHeap implements ImageHeap {
             this.size = size;
             this.identityHashCode = identityHashCode;
 
-            this.reason = reasonSupport.objectInclusionReason(this, reason, hConstantReflection);
+            this.reason = reasonSupport.objectInclusionReason(this, reason, hMetaAccess, hConstantReflection);
             if (objectReachabilityInfo != null) {
                 objectReachabilityInfo.put(this, new ObjectReachabilityInfo(this, reason));
             }
