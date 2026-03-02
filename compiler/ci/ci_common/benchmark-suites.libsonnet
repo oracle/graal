@@ -13,12 +13,11 @@
     spec_suites:: unique_suites([$.specjvm2008, $.specjbb2015]),
     jmh_micros_suites:: unique_suites([$.micros_graal_dist]),
     graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
-    microservice_suites:: unique_suites([$.microservice_benchmarks]),
 
     main_suites:: unique_suites([$.specjvm2008] + self.open_suites),
-    all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.microservice_suites),
+    all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites),
 
-    weekly_forks_suites:: self.main_suites + self.microservice_suites,
+    weekly_forks_suites:: self.main_suites,
     all_but_main_suites:: std.setDiff(self.all_suites, self.main_suites, keyF=_suite_key),
   },
 
@@ -158,51 +157,6 @@
     bench_forks_per_batch:: 1,
     forks_timelimit:: "1:15:00",
     min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
-  // Microservice benchmarks
-  microservice_benchmarks: cc.compiler_benchmark + bc.bench_no_thread_cap + {  # no thread cap here since hwloc is handled at the mx level for microservices
-    suite:: "microservices",
-    packages+: {
-      "pip:psutil": "==5.8.0"
-    },
-    local bench_upload = ["bench-uploader.py", "bench-results.json"],
-    local hwlocBind_1C_1T = ["--hwloc-bind=--cpubind node:0.core:0.pu:0 --membind node:0"],
-    local hwlocBind_2C_2T = ["--hwloc-bind=--cpubind node:0.core:0-1.pu:0 --membind node:0"],
-    local hwlocBind_4C_4T = ["--hwloc-bind=--cpubind node:0.core:0-3.pu:0 --membind node:0"],
-    local hwlocBind_16C_16T = ["--hwloc-bind=--cpubind node:0.core:0-15.pu:0 --membind node:0"],
-    local hwlocBind_16C_32T = ["--hwloc-bind=--cpubind node:0.core:0-15.pu:0-1 --membind node:0"],
-    run+: [
-      # shopcart-wrk
-      self.benchmark_cmd + ["shopcart-wrk:mixed-large"]                  + hwlocBind_16C_16T + ["--"] + self.extra_vm_args + ["-Xms512m",  "-Xmx3072m", "-XX:ActiveProcessorCount=16", "-XX:MaxDirectMemorySize=4096m"],
-      bench_upload,
-
-      # tika-wrk odt
-      self.benchmark_cmd + ["tika-wrk:odt-medium"]                       + hwlocBind_4C_4T   + ["--"] + self.extra_vm_args + ["-Xms128m",  "-Xmx600m",  "-XX:ActiveProcessorCount=4"],
-      bench_upload,
-
-      # tika-wrk pdf
-      self.benchmark_cmd + ["tika-wrk:pdf-medium"]                       + hwlocBind_4C_4T   + ["--"] + self.extra_vm_args + ["-Xms80m",   "-Xmx500m",  "-XX:ActiveProcessorCount=4"],
-      bench_upload,
-
-      # petclinic-wrk
-      self.benchmark_cmd + ["petclinic-wrk:mixed-large"]                 + hwlocBind_16C_16T + ["--"] + self.extra_vm_args + ["-Xms128m",  "-Xmx512m", "-XX:ActiveProcessorCount=16"],
-      bench_upload,
-
-      # helloworld-wrk
-      self.benchmark_cmd + ["micronaut-helloworld-wrk:helloworld"]       + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms8m",    "-Xmx64m",   "-XX:ActiveProcessorCount=1", "-XX:MaxDirectMemorySize=256m"],
-      bench_upload,
-      self.benchmark_cmd + ["quarkus-helloworld-wrk:helloworld"]         + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms8m",    "-Xmx64m",   "-XX:ActiveProcessorCount=1", "-XX:MaxDirectMemorySize=256m"],
-      bench_upload,
-      self.benchmark_cmd + ["spring-helloworld-wrk:helloworld"]          + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms8m",    "-Xmx64m",   "-XX:ActiveProcessorCount=1", "-XX:MaxDirectMemorySize=256m"],
-      bench_upload
-    ],
-    timelimit: "2:00:00",
-    forks_batches:: 3,
-    bench_forks_per_batch:: 1,
-    forks_timelimit:: "2:00:00",
-    min_jdk_version:: 11,
     max_jdk_version:: null
   },
 
