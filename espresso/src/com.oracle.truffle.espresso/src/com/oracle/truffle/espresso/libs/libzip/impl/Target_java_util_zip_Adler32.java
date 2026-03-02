@@ -22,12 +22,13 @@
  */
 package com.oracle.truffle.espresso.libs.libzip.impl;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+
 import java.nio.ByteBuffer;
-import java.util.zip.CRC32;
+import java.util.zip.Adler32;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
-import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.libs.libzip.PureJavaLibZipFilter;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -40,55 +41,56 @@ import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
 
-// Does not belong to the LibZip group as we use those substitution outside EspressoLibs
+// does not belong to the LibZip group as we use those substitution outside espressoLibs
 @EspressoSubstitutions(group = Substitution.class)
-public final class Target_java_util_zip_CRC32 {
+public final class Target_java_util_zip_Adler32 {
     private static final Unsafe UNSAFE = UnsafeAccess.get();
-    private static final long CRC_FIELD_OFFSET;
+    private static final long ADLER_FIELD_OFFSET;
 
     static {
         try {
-            CRC_FIELD_OFFSET = UNSAFE.objectFieldOffset(java.util.zip.CRC32.class.getDeclaredField("crc"));
+            ADLER_FIELD_OFFSET = UNSAFE.objectFieldOffset(java.util.zip.Adler32.class.getDeclaredField("adler"));
         } catch (NoSuchFieldException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
 
-    private static void putCRC(int newCRC, CRC32 hostCRC) {
-        UNSAFE.putInt(hostCRC, CRC_FIELD_OFFSET, newCRC);
+    private static void putAdler(int newAdler, Adler32 hostAdler) {
+        UNSAFE.putInt(hostAdler, ADLER_FIELD_OFFSET, newAdler);
     }
 
     @Substitution(languageFilter = PureJavaLibZipFilter.class)
-    public static int update(int crc, int b) {
-        CRC32 hostCRC = new CRC32();
-        putCRC(crc, hostCRC);
-        hostCRC.update(b);
-        // internally crc is always an int so the cast should be safe
-        return (int) hostCRC.getValue();
+    public static int update(int adler, int b) {
+        Adler32 hostAdler = new Adler32();
+        putAdler(adler, hostAdler);
+        hostAdler.update(b);
+        // internally adler is always an int so the cast should be safe
+        return (int) hostAdler.getValue();
     }
 
     @Substitution(languageFilter = PureJavaLibZipFilter.class)
-    public static int updateBytes0(int crc, @JavaType(byte[].class) StaticObject b, int off, int len,
+    public static int updateBytes(int adler, @JavaType(byte[].class) StaticObject b, int off, int len,
                     @Inject EspressoLanguage language) {
-        CRC32 hostCRC = new CRC32();
-        putCRC(crc, hostCRC);
-        hostCRC.update(b.unwrap(language), off, len);
-        // internally crc is always an int so the cast should be safe
-        return (int) hostCRC.getValue();
+        Adler32 hostAdler = new Adler32();
+        putAdler(adler, hostAdler);
+        hostAdler.update(b.unwrap(language), off, len);
+        // internally adler is always an int so the cast should be safe
+        return (int) hostAdler.getValue();
     }
 
     @Substitution(languageFilter = PureJavaLibZipFilter.class)
-    public static int updateByteBuffer0(int crc, long bufAddress, int off, int len,
+    public static int updateByteBuffer(int adler, long bufAddress, int off, int len,
                     @Inject NativeAccess nativeAccess, @Inject Meta meta) {
-        CRC32 hostCRC = new CRC32();
-        putCRC(crc, hostCRC);
+        Adler32 hostAdler = new Adler32();
+        putAdler(adler, hostAdler);
         try {
             ByteBuffer byteBuffer = nativeAccess.nativeMemory().wrapNativeMemory(bufAddress + off, len);
-            hostCRC.update(byteBuffer);
-            // internally crc is always an int so the cast should be safe
-            return (int) hostCRC.getValue();
-        } catch (NativeMemory.IllegalMemoryAccessException e) {
+            hostAdler.update(byteBuffer);
+            // internally adler is always an int so the cast should be safe
+            return (int) hostAdler.getValue();
+        } catch (IllegalMemoryAccessException e) {
             throw meta.throwIllegalArgumentExceptionBoundary("Invalid memory access: bufAddress and len refer to memory outside the allocated region");
+
         }
     }
 }
