@@ -87,10 +87,10 @@ import jdk.vm.ci.aarch64.AArch64;
  * <p>
  * This class also stores references to a few of the most important VM-internal locks. If a single
  * thread needs to acquire multiple VM-internal locks, keep in mind that the acquisition order is
- * relevant to prevent deadlocks (see {@link ThreadLock} for deadlock examples):
+ * relevant to prevent deadlocks (see {@link ThreadsLock} for deadlock examples):
  * <ol>
  * <li>VM operation mutex, see {@link VMOperationControl}.</li>
- * <li>Thread lock, see {@link ThreadLock}.</li>
+ * <li>Threads lock, see {@link ThreadsLock}.</li>
  * <li>Safepoint mutex, see {@link #SAFEPOINT_MUTEX}.</li>
  * </ol>
  */
@@ -110,13 +110,13 @@ public abstract class VMThreads {
 
     /**
      * The first element in the linked list of {@link IsolateThread}s. Protected by
-     * {@link ThreadLock}. Note that this value can change at any time if a thread only holds the
-     * {@link ThreadLock} in read mode.
+     * {@link ThreadsLock}. Note that this value can change at any time if a thread only holds the
+     * {@link ThreadsLock} with read access.
      */
     private static IsolateThread head;
     /**
-     * The number of attached threads. Protected by {@link ThreadLock}. Note that this value can
-     * change at any time if a thread only holds the {@link ThreadLock} in read mode.
+     * The number of attached threads. Protected by {@link ThreadsLock}. Note that this value can
+     * change at any time if a thread only holds the {@link ThreadsLock} with read access.
      */
     private static int numAttachedThreads = 0;
     /**
@@ -271,7 +271,7 @@ public abstract class VMThreads {
 
     /**
      * Usually called for starting an iteration over all currently attached {@link IsolateThread}s.
-     * {@link ThreadLock} must be held at least in read mode while iterating the thread list
+     * {@link ThreadsLock} must be held at least with read access while iterating the thread list
      * (otherwise, the returned {@link IsolateThread} could detach and free its data structure in
      * the meanwhile).
      *
@@ -284,12 +284,12 @@ public abstract class VMThreads {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static IsolateThread firstThread() {
-        VMError.guarantee(ThreadLock.hasAnyReadAccess(), "Must hold the thread lock when accessing/iterating the thread list.");
+        VMError.guarantee(ThreadsLock.hasReadAccess(), "Must hold the ThreadsLock when accessing/iterating the thread list.");
         return firstThreadUnsafe();
     }
 
     /**
-     * Like {@link #firstThread()} but without the check that {@link ThreadLock} is held by the
+     * Like {@link #firstThread()} but without the check that {@link ThreadsLock} is held by the
      * current thread. Only use this method if absolutely necessary (e.g., for printing diagnostics
      * on a fatal error). Without proper locking, there is a risk that the returned
      * {@link IsolateThread} could detach and free its data structure at any time.
@@ -329,12 +329,12 @@ public abstract class VMThreads {
         SafepointCheckCounter.setVolatile(SafepointCheckCounter.MAX_VALUE);
 
         /*
-         * Acquire the thread lock in non-exclusive write mode so that concurrent readers are still
-         * allowed, while it is guaranteed that VM operations at safepoints see a consistent thread
-         * list. Having concurrent readers is safe because newly started threads are added at the
-         * start of the thread list.
+         * Acquire the ThreadsLock with non-exclusive write access so that concurrent readers are
+         * still allowed, while it is guaranteed that VM operations at safepoints see a consistent
+         * thread list. Having concurrent readers is safe because newly started threads are added at
+         * the start of the thread list.
          */
-        ThreadLock.lockWriteNonExclusiveNoTransition();
+        ThreadsLock.lockWriteNonExclusiveNoTransition();
         try {
             nextTL.set(currentThread, head);
 
@@ -357,9 +357,9 @@ public abstract class VMThreads {
             ActionOnTransitionToJavaSupport.setSynchronizeCode(currentThread);
             StatusSupport.setStatusNative();
 
-            ThreadLock.broadcastChange();
+            ThreadsLock.broadcastChange();
         } finally {
-            ThreadLock.unlockWriteNonExclusiveNoTransition();
+            ThreadsLock.unlockWriteNonExclusiveNoTransition();
         }
 
         /* Any code after that point may be executed while the VM is at a safepoint. */
@@ -387,14 +387,14 @@ public abstract class VMThreads {
      * needs to be modified as well, see
      * {@link com.oracle.svm.core.graal.snippets.CEntryPointSnippets#tearDownIsolate}.
      */
-    @Uninterruptible(reason = "IsolateThread will be freed. Holds the thread lock in exclusive write mode.")
+    @Uninterruptible(reason = "IsolateThread will be freed. Holds the ThreadsLock with exclusive write access.")
     protected void detachThread(IsolateThread thread) {
         boolean isCurrentThread = (thread == CurrentIsolate.getCurrentThread());
-        assert isCurrentThread && ThreadLock.hasNoAccess() || ThreadLock.hasExclusiveWriteAccess();
+        assert isCurrentThread && !ThreadsLock.hasAccess() || ThreadsLock.hasExclusiveWriteAccess();
 
         OSThreadHandle threadToCleanup = Word.nullPointer();
         if (isCurrentThread) {
-            ThreadLock.lockWriteExclusive();
+            ThreadsLock.lockWriteExclusive();
         }
         try {
             removeFromThreadList(thread);
@@ -416,15 +416,15 @@ public abstract class VMThreads {
             }
         } finally {
             if (isCurrentThread) {
-                ThreadLock.unlockWriteExclusive();
+                ThreadsLock.unlockWriteExclusive();
             }
         }
 
         /*
-         * After unlocking the ThreadLock, only threads that were started by the current isolate may
-         * still access the image heap (we guarantee that the image heap is not unmapped as long as
-         * such threads are alive on the OS-level). Also note that the GC won't visit the stack of
-         * this thread anymore.
+         * After releasing the ThreadsLock, only threads that were started by the current isolate
+         * may still access the image heap (we guarantee that the image heap is not unmapped as long
+         * as such threads are alive on the OS-level). Also note that the GC won't visit the stack
+         * of this thread anymore.
          */
         cleanupExitedOsThread(threadToCleanup);
         freeIsolateThread(thread);
@@ -453,9 +453,9 @@ public abstract class VMThreads {
         }
     }
 
-    @Uninterruptible(reason = "Thread is detaching and holds the thread lock in exclusive write mode.")
+    @Uninterruptible(reason = "Thread is detaching and holds the ThreadsLock with exclusive write access.")
     private static void removeFromThreadList(IsolateThread thread) {
-        assert ThreadLock.hasExclusiveWriteAccess();
+        assert ThreadsLock.hasExclusiveWriteAccess();
 
         IsolateThread previous = Word.nullPointer();
         IsolateThread current = head;
@@ -479,7 +479,7 @@ public abstract class VMThreads {
             }
         }
 
-        ThreadLock.broadcastChange();
+        ThreadsLock.broadcastChange();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false)
@@ -505,25 +505,25 @@ public abstract class VMThreads {
      * and assumes that it is thread A.</li>
      * </ul>
      */
-    @Uninterruptible(reason = "Acquires the thread lock in non-exclusive write mode.")
+    @Uninterruptible(reason = "Acquires the ThreadsLock with non-exclusive write access.")
     public static void waitInNativeUntilDetached(IsolateThread thread) {
         assert thread.isNonNull();
         assert thread != CurrentIsolate.getCurrentThread();
         assert isTearingDown();
 
-        ThreadLock.lockWriteNonExclusive();
+        ThreadsLock.lockWriteNonExclusive();
         try {
             while (contains(thread)) {
-                ThreadLock.waitForChangeInNative();
+                ThreadsLock.waitForChangeInNative();
             }
         } finally {
-            ThreadLock.unlockWriteNonExclusive();
+            ThreadsLock.unlockWriteNonExclusive();
         }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean contains(IsolateThread thread) {
-        assert ThreadLock.hasAnyReadAccess();
+        assert ThreadsLock.hasReadAccess();
         for (IsolateThread t = VMThreads.firstThread(); t.isNonNull(); t = VMThreads.nextThread(t)) {
             if (t == thread) {
                 return true;
@@ -545,13 +545,13 @@ public abstract class VMThreads {
      * detaching thread itself. We assume that this is tolerable considering the immediately
      * following tear-down.
      */
-    @Uninterruptible(reason = "Acquires the thread lock in exclusive write mode.")
+    @Uninterruptible(reason = "Acquires the ThreadsLock with exclusive write access.")
     public static void detachAllExternallyStartedThreadsWithoutCleanupForTearDown() {
         /*
-         * Acquire the thread lock exclusively, so that the current thread can modify the thread
-         * list. This also prevents the VM from entering a safepoint.
+         * Acquire the ThreadsLock with exclusive write access, so that the current thread can
+         * modify the thread list. This also prevents the VM from entering a safepoint.
          */
-        ThreadLock.lockWriteExclusive();
+        ThreadsLock.lockWriteExclusive();
         try {
             IsolateThread thread = firstThread();
             while (thread.isNonNull()) {
@@ -567,7 +567,7 @@ public abstract class VMThreads {
                 thread = next;
             }
         } finally {
-            ThreadLock.unlockWriteExclusive();
+            ThreadsLock.unlockWriteExclusive();
         }
     }
 
@@ -671,7 +671,7 @@ public abstract class VMThreads {
          */
         boolean needsLock = !inCrashHandler;
         if (needsLock) {
-            ThreadLock.lockReadNoTransitionUnspecifiedOwner();
+            ThreadsLock.lockReadNoTransitionUnspecifiedOwner();
         }
         try {
             IsolateThread thread = firstThreadUnsafe();
@@ -684,7 +684,7 @@ public abstract class VMThreads {
             return thread;
         } finally {
             if (needsLock) {
-                ThreadLock.unlockReadNoTransitionUnspecifiedOwner();
+                ThreadsLock.unlockReadNoTransitionUnspecifiedOwner();
             }
         }
     }

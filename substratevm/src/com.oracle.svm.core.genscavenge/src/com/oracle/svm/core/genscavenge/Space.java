@@ -39,7 +39,7 @@ import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.ThreadLock;
+import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.guest.staging.Uninterruptible;
@@ -266,10 +266,10 @@ public final class Space {
     @Uninterruptible(reason = "GC must see a consistent state.")
     void appendUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk) {
         /*
-         * This method is used both during a VM operation and while detaching a thread. So, it can
-         * only check that there is some mutual exclusion.
+         * This method is used both during a VM operation and while detaching a thread. So, it
+         * cannot check more than that there is some mutual exclusion.
          */
-        VMError.guarantee(ThreadLock.hasAnyWriteAccess(), "Trying to append an unaligned chunk but no mutual exclusion.");
+        VMError.guarantee(ThreadsLock.hasWriteAccess(), "Trying to append an unaligned chunk but no mutual exclusion.");
 
         UnalignedHeapChunk.UnalignedHeader oldLast = getLastUnalignedHeapChunk();
         HeapChunk.setSpace(uChunk, this);

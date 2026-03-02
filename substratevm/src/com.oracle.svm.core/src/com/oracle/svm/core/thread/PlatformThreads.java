@@ -193,7 +193,7 @@ public abstract class PlatformThreads {
         }
 
         // If the value of another thread is accessed, then we need to do a slow lookup.
-        ThreadLock.lockRead();
+        ThreadsLock.lockRead();
         try {
             IsolateThread isolateThread = VMThreads.firstThread();
             while (isolateThread.isNonNull()) {
@@ -205,7 +205,7 @@ public abstract class PlatformThreads {
             }
             return -1;
         } finally {
-            ThreadLock.unlockRead();
+            ThreadsLock.unlockRead();
         }
     }
 
@@ -220,7 +220,7 @@ public abstract class PlatformThreads {
         }
 
         // If the value of another thread is accessed, then we need to do a slow lookup.
-        ThreadLock.lockRead();
+        ThreadsLock.lockRead();
         try {
             IsolateThread isolateThread = VMThreads.firstThread();
             while (isolateThread.isNonNull()) {
@@ -232,12 +232,12 @@ public abstract class PlatformThreads {
             }
             return -1;
         } finally {
-            ThreadLock.unlockRead();
+            ThreadsLock.unlockRead();
         }
     }
 
     public static void getThreadAllocatedBytes(long[] javaThreadIds, long[] result) {
-        ThreadLock.lockRead();
+        ThreadsLock.lockRead();
         try {
             IsolateThread isolateThread = VMThreads.firstThread();
             while (isolateThread.isNonNull()) {
@@ -253,7 +253,7 @@ public abstract class PlatformThreads {
                 isolateThread = VMThreads.nextThread(isolateThread);
             }
         } finally {
-            ThreadLock.unlockRead();
+            ThreadsLock.unlockRead();
         }
     }
 
@@ -261,7 +261,7 @@ public abstract class PlatformThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Thread fromVMThread(IsolateThread thread) {
-        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint() || ThreadLock.hasAnyReadAccess() ||
+        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint() || ThreadsLock.hasReadAccess() ||
                         SubstrateDiagnostics.isFatalErrorHandlingThread() : "must prevent the isolate thread from exiting";
         return currentThread.get(thread);
     }
@@ -277,14 +277,14 @@ public abstract class PlatformThreads {
 
     /**
      * Returns the isolate thread associated with a Java thread. The caller must hold the
-     * {@linkplain ThreadLock} (with either read or write access) and release it only after it has
+     * {@linkplain ThreadsLock} (with either read or write access) and release it only after it has
      * finished using the returned {@link IsolateThread} pointer.
      *
      * This method can return {@code NULL} if the thread is not alive or if it has been recently
      * started but has not completed initialization yet.
      */
     public static IsolateThread getIsolateThread(Thread t) {
-        VMError.guarantee(ThreadLock.hasAnyReadAccess(), "Must acquire threads mutex before accessing/iterating the thread list.");
+        VMError.guarantee(ThreadsLock.hasReadAccess(), "Must acquire ThreadsLock before accessing/iterating the thread list.");
         return getIsolateThreadUnsafe(t);
     }
 
@@ -310,15 +310,15 @@ public abstract class PlatformThreads {
     /**
      * Blocks until the number of daemon threads drops to or below {@code expectedNonDaemonThreads}.
      */
-    @Uninterruptible(reason = "Acquires the thread lock in non-exclusive write mode.")
+    @Uninterruptible(reason = "Acquires the ThreadsLock with non-exclusive write access.")
     private static void joinAllNonDaemonsInNative(int expectedNonDaemonThreads) {
-        ThreadLock.lockWriteNonExclusive();
+        ThreadsLock.lockWriteNonExclusive();
         try {
             while (nonDaemonThreads.get() > expectedNonDaemonThreads) {
-                ThreadLock.waitForChangeInNative();
+                ThreadsLock.waitForChangeInNative();
             }
         } finally {
-            ThreadLock.unlockWriteNonExclusive();
+            ThreadsLock.unlockWriteNonExclusive();
         }
     }
 
@@ -448,7 +448,7 @@ public abstract class PlatformThreads {
          */
     }
 
-    @Uninterruptible(reason = "Thread is detaching and holds the thread lock in exclusive write mode.")
+    @Uninterruptible(reason = "Thread is detaching and holds the ThreadsLock with exclusive write access.")
     public static void detach(IsolateThread vmThread) {
         Thread thread = currentThread.get(vmThread);
         if (thread != null) {
@@ -749,7 +749,7 @@ public abstract class PlatformThreads {
 
     /**
      * Callers of this method must manually notify waiting threads that the thread list changed, see
-     * {@link ThreadLock#broadcastChange}.
+     * {@link ThreadsLock#broadcastChange}.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void decrementNonDaemonThreads() {
@@ -757,14 +757,14 @@ public abstract class PlatformThreads {
         assert numThreads >= 0;
     }
 
-    @Uninterruptible(reason = "Acquires the thread lock in non-exclusive write mode.")
+    @Uninterruptible(reason = "Acquires the ThreadsLock with non-exclusive write access.")
     private static void decrementNonDaemonThreadsAndNotify() {
-        ThreadLock.lockWriteNonExclusive();
+        ThreadsLock.lockWriteNonExclusive();
         try {
             decrementNonDaemonThreads();
-            ThreadLock.broadcastChange();
+            ThreadsLock.broadcastChange();
         } finally {
-            ThreadLock.unlockWriteNonExclusive();
+            ThreadsLock.unlockWriteNonExclusive();
         }
     }
 
@@ -1116,7 +1116,7 @@ public abstract class PlatformThreads {
 
     /** Builds a list of threads that don't need any custom teardown logic. */
     private static ArrayList<Thread> fetchThreadsForTeardown() {
-        ThreadLock.lockRead();
+        ThreadsLock.lockRead();
         try {
             ArrayList<Thread> result = new ArrayList<>();
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
@@ -1131,7 +1131,7 @@ public abstract class PlatformThreads {
             }
             return result;
         } finally {
-            ThreadLock.unlockRead();
+            ThreadsLock.unlockRead();
         }
     }
 
@@ -1140,11 +1140,11 @@ public abstract class PlatformThreads {
      * thread is attached and no threads have been started which have yet to attach.
      */
     private static boolean isReadyForTearDown(boolean printLaggards) {
-        ThreadLock.lockRead();
+        ThreadsLock.lockRead();
         try {
             return isReadyForTeardown0(printLaggards);
         } finally {
-            ThreadLock.unlockRead();
+            ThreadsLock.unlockRead();
         }
     }
 

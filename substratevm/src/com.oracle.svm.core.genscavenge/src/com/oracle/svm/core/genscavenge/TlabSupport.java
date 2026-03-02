@@ -48,16 +48,16 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.ThreadLock;
+import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -313,7 +313,7 @@ public class TlabSupport {
          * This method is used both during a VM operation and while detaching a thread. So, it can
          * only check that there is some mutual exclusion.
          */
-        VMError.guarantee(ThreadLock.hasAnyWriteAccess(), "Otherwise, we wouldn't be allowed to access the space.");
+        VMError.guarantee(ThreadsLock.hasWriteAccess(), "Otherwise, we wouldn't be allowed to access the space.");
 
         boolean updateStats = VMOperation.isGCInProgress();
         retireTlab(thread, updateStats);

@@ -43,7 +43,7 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.thread.ThreadLock;
+import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.interpreter.DebuggerSupport;
 import com.oracle.svm.interpreter.EspressoFrame;
@@ -364,7 +364,7 @@ public final class ResidentJDWP implements JDWP {
     private static long[] getAllThreadIds() {
         long[] ids = new long[10];
         int i = 0;
-        ThreadLock.lockRead();
+        ThreadsLock.lockRead();
         try {
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 Thread t = ThreadStartDeathSupport.get().filterAppThread(thread);
@@ -377,7 +377,7 @@ public final class ResidentJDWP implements JDWP {
                 ids[i++] = JDWPBridgeImpl.getIds().getIdOrCreateWeak(t);
             }
         } finally {
-            ThreadLock.unlockRead();
+            ThreadsLock.unlockRead();
         }
         ids = Arrays.copyOf(ids, i);
         if (LOGGER.isLoggable()) {
@@ -551,7 +551,7 @@ public final class ResidentJDWP implements JDWP {
         int ti = 0;
         int tgi = 0;
 
-        ThreadLock.lockRead();
+        ThreadsLock.lockRead();
         try {
             // Find child threads and child groups:
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
@@ -586,7 +586,7 @@ public final class ResidentJDWP implements JDWP {
                 }
             }
         } finally {
-            ThreadLock.unlockRead();
+            ThreadsLock.unlockRead();
         }
 
         WritablePacket reply = WritablePacket.newReplyTo(packet);
@@ -629,7 +629,7 @@ public final class ResidentJDWP implements JDWP {
         long[] threadGroupIds = new long[5];
         int tgi = 0;
 
-        ThreadLock.lockRead();
+        ThreadsLock.lockRead();
         try {
             // Find all top thread groups:
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
@@ -661,7 +661,7 @@ public final class ResidentJDWP implements JDWP {
                 }
             }
         } finally {
-            ThreadLock.unlockRead();
+            ThreadsLock.unlockRead();
         }
 
         data.writeInt(tgi);

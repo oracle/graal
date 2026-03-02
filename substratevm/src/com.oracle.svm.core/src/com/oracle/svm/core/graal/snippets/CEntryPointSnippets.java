@@ -829,8 +829,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         if (runtimeAssertionsEnabled() || SubstrateOptions.CheckIsolateThreadAtEntry.getValue()) {
             /*
-             * Verification must happen before the thread state transition. It locks the ThreadLock,
-             * so the thread must still be invisible to the safepoint manager.
+             * Verification must happen before the thread state transition. It acquires the
+             * ThreadsLock, so the thread must still be invisible to the safepoint master.
              */
             runtimeCallVerifyThread(VERIFY_ISOLATE_THREAD, thread, false);
         }

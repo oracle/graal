@@ -44,38 +44,38 @@ import jdk.internal.misc.Unsafe;
 
 /**
  * A custom 3-mode lock that protects the thread list and is used by both the application and VM
- * operations. This lock has side effects on the VM as a whole, which makes it dangerous (i.e.,
- * wrong usages will result in deadlocks).
+ * operations. At first glance, this implementation looks similar to a read-write lock but there are
+ * a few crucial differences, e.g., readers can coexist with writers that have non-exclusive write
+ * access, which isn't typical behavior for a read-write lock.
  *
  * <p>
- * So, please only use this lock when absolutely necessary. For many use cases, it is possible to
- * use VM operations (e.g., {@link JavaVMOperation}) with a safepoint instead. If you need to
- * acquire the lock directly (either for performance or correctness reasons), please prefer
- * read-mode (see {@link ThreadLock#lockRead()}) as this is the safest mode in terms of deadlocks,
+ * This lock has side effects on the VM as a whole, which makes it dangerous (i.e., wrong usages
+ * will result in deadlocks). So, please only use it when absolutely necessary. For many use cases,
+ * it is preferable to use VM operations (e.g., {@link JavaVMOperation}) with a safepoint instead.
+ * If you need to acquire the lock directly (either for performance or correctness reasons), please
+ * prefer read access (see {@link ThreadsLock#lockRead()}) as this is safest in terms of deadlocks,
  * while it still allows walking the thread list.
  *
  * <p>
- * Supported locking modes:
+ * Supported access (see JavaDoc of the linked methods for more details):
  * <ul>
- * <li>Read mode, see {@link #lockRead} and {@link #unlockRead}.</li>
- * <li>Non-exclusive write mode, see {@link #lockWriteNonExclusive} and
- * {@link #unlockWriteNonExclusive}.</li>
- * <li>Exclusive write mode, see {@link #lockWriteExclusive} and {@link #unlockWriteExclusive}.</li>
+ * <li>Read access, see {@link #lockRead} and {@link #unlockRead}. Typically used when a thread
+ * needs to iterate over the thread list.</li>
+ * <li>Non-exclusive write access, see {@link #lockWriteNonExclusive} and
+ * {@link #unlockWriteNonExclusive}. This is for example used when a thread attaches to an isolate
+ * or when an isolate needs a safepoint.</li>
+ * <li>Exclusive write access, see {@link #lockWriteExclusive} and {@link #unlockWriteExclusive}.
+ * Typically used when a thread detaches from an isolate.</li>
  * </ul>
  *
- * Note that a single thread may hold this lock in both read mode and non-exclusive write mode at
- * the same time (e.g., when upgrading from read access to write access without releasing the lock
- * in between).
+ * Note that a single thread may hold this lock in both read and non-exclusive write access at the
+ * same time (e.g., when upgrading from read access to write access without releasing the lock in
+ * between). Upgrading to exclusive-write access is not supported as this could result in deadlocks.
  *
  * <p>
- * This lock is implicitly acquired in non-exclusive write mode in case that a VM operation needs a
- * safepoint. At a safepoint, it is therefore safe to walk the thread list, and it is guaranteed
- * that the thread list won't change as long as the VM operation is in progress.
- *
- * <p>
- * The implementation is slightly similar to a read/write lock but there are a few crucial
- * differences. For example, readers can coexist with writers in non-exclusive mode, which isn't
- * typical behavior for a read-write lock.
+ * A VM operation that needs a safepoint always acquires and holds this lock in non-exclusive write
+ * access for its entire duration. At a safepoint, it is therefore safe to walk the thread list, and
+ * it is guaranteed that the thread list won't change as long as the VM operation is in progress.
  *
  * <p>
  * A lot of the slow path code in this class does an explicit thread status transition to
@@ -93,36 +93,39 @@ import jdk.internal.misc.Unsafe;
  * anyways.
  *
  * <p>
- * The VM operation thread (either dedicated or temporary) may only acquire this lock in read or
- * non-exclusive write mode, but never in exclusive write mode. Otherwise, we could see deadlocks
- * with application threads that acquired the lock in read-mode from interruptible code (e.g., an
- * application thread may need to queue a VM operation such as a GC).
+ * The VM operation thread (either dedicated or temporary) may only acquire this lock with read or
+ * non-exclusive write access, but never with exclusive write access. Otherwise, we could see
+ * deadlocks with application threads that acquired the lock with read access from interruptible
+ * code (e.g., an application thread may need to queue a VM operation such as a GC).
+ *
+ * <p>
+ * While this mechanism is substantially different to thread SMR on HotSpot, it still gives similar
+ * guarantees.
  *
  * Deadlock example 1:
  * <ul>
- * <li>Thread A acquires the thread lock in one of the write modes.</li>
+ * <li>Thread A acquires the ThreadsLock with write access (either non-exclusive or exclusive).</li>
  * <li>Thread B queues a VM operation that needs a safepoint and therefore acquires the
  * corresponding VM operation queue mutex.
  * <li>Thread A allocates an object and the allocation wants to trigger a GC. So, a VM operation
  * needs to be queued, and thread A tries to acquire the VM operation queue mutex. However, thread A
  * is blocked because thread B holds that mutex.</li>
  * <li>Thread B needs to initiate a safepoint before executing the VM operation. So, it tries to
- * acquire the thread lock in non-exclusive write mode and is blocked because thread A holds that
- * lock.</li>
+ * acquire the ThreadsLock with non-exclusive write access and is blocked because thread A holds
+ * that lock.</li>
  * </ul>
  *
  * Deadlock example 2:
  * <ul>
- * <li>Thread A acquires the thread lock in one of the write modes.</li>
+ * <li>Thread A acquires the ThreadsLock with write access (either non-exclusive or exclusive).</li>
  * <li>Thread A allocates an object and the allocation wants to trigger a GC. So, a VM operation is
  * queued and thread A blocks until the VM operation is completed.</li>
  * <li>The dedicated VM operation thread needs to initiate a safepoint for the execution of the VM
- * operation. So, it tries to acquire thread lock in non-exclusive write mode and is blocked because
- * thread A still holds the thread lock.</li>
+ * operation. So, it tries to acquire the ThreadsLock with non-exclusive write access and is blocked
+ * because thread A still holds the ThreadsLock.</li>
  * </ul>
  */
-public final class ThreadLock {
-    /* exclusiveWriterActive:1, nonExclusiveWriterActive:1, readers:31 */
+public final class ThreadsLock {
     private static final int NUM_READERS_SHIFT = 0;
     private static final int NUM_READERS_BITS = 32;
     private static final int NON_EXCLUSIVE_WRITER_ACTIVE_SHIFT = NUM_READERS_SHIFT + NUM_READERS_BITS;
@@ -135,7 +138,7 @@ public final class ThreadLock {
     private static final long EXCLUSIVE_WRITER_ACTIVE_BIT = 1L << EXCLUSIVE_WRITER_ACTIVE_SHIFT;
 
     private static final Unsafe U = Unsafe.getUnsafe();
-    private static final long STATE_OFFSET = U.objectFieldOffset(ThreadLock.class, "state");
+    private static final long STATE_OFFSET = U.objectFieldOffset(ThreadsLock.class, "state");
 
     private static final VMMutex mutex = new VMMutex("thread");
     private static final VMCondition slowPathCondition = new VMCondition(mutex);
@@ -144,42 +147,52 @@ public final class ThreadLock {
     private static volatile long state;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public ThreadLock() {
+    public ThreadsLock() {
     }
 
+    /** Returns {@code true} if the current thread holds the lock with any access. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean hasNoAccess() {
-        return ThreadLockAccess.hasNoAccess();
+    public static boolean hasAccess() {
+        return ThreadsLockAccess.hasAccess();
     }
 
+    /** Returns {@code true} if the current thread holds the lock with at least read access. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean hasAnyReadAccess() {
-        return ThreadLockAccess.hasAnyReadAccess();
+    public static boolean hasReadAccess() {
+        return ThreadsLockAccess.hasReadAccess();
     }
 
+    /**
+     * Returns {@code true} if the current thread holds the lock with at least non-exclusive write
+     * access.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean hasAnyWriteAccess() {
-        return ThreadLockAccess.hasAnyWriteAccess();
+    public static boolean hasWriteAccess() {
+        return ThreadsLockAccess.hasWriteAccess();
     }
 
+    /**
+     * Returns {@code true} if the current thread holds the lock with non-exclusive write access.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean hasNonExclusiveWriteAccess() {
-        return ThreadLockAccess.hasNonExclusiveWriteAccess();
+        return ThreadsLockAccess.hasNonExclusiveWriteAccessBit();
     }
 
+    /** Returns {@code true} if the current thread holds the lock with exclusive write access. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean hasExclusiveWriteAccess() {
-        return ThreadLockAccess.hasExclusiveWriteAccess();
+        return ThreadsLockAccess.hasExclusiveWriteAccessBit();
     }
 
     /**
      * Acquires the lock once there is no exclusive writer.
      * <p>
-     * Acquiring the lock in this mode prevents already attached threads from exiting. This makes it
-     * safe to iterate over the thread list. Be aware that readers can coexist with writers in
-     * non-exclusive mode. Therefore, the head of the thread list (or other values protected by the
-     * thread lock, such as the thread counts) may change at any time even while holding this lock
-     * in read mode.
+     * Holding the lock with read access prevents attached threads from detaching and makes it safe
+     * to iterate over the thread list. Be aware that readers can coexist with writers that have
+     * non-exclusive write access. Therefore, the head of the thread list (or other values protected
+     * by the ThreadsLock, such as the thread counts) may change at any time even while holding this
+     * lock with read access.
      * <p>
      * This method may be called from either interruptible or uninterruptible code. Be aware though
      * that this method itself is not necessarily fully uninterruptible (see class-level JavaDoc for
@@ -187,12 +200,12 @@ public final class ThreadLock {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void lockRead() {
-        assert ThreadLockAccess.hasNoAccess() || ThreadLockAccess.hasNonExclusiveWriteAccess() : "could deadlock";
+        assert !ThreadsLockAccess.hasAccess() || ThreadsLockAccess.hasNonExclusiveWriteAccessBit() : "could deadlock";
 
         if (!fastPathLockRead()) {
             slowPathLockRead();
         }
-        ThreadLockAccess.addReadAccess();
+        ThreadsLockAccess.addReadAccess();
     }
 
     /**
@@ -247,12 +260,12 @@ public final class ThreadLock {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void unlockRead() {
-        ThreadLockAccess.removeReadAccess();
+        ThreadsLockAccess.removeReadAccess();
         long s = getAndAdd(-NUM_READERS_INC);
 
         /* No readers and no writer, so notify waiting threads. */
         if (numReaders(s) == 1 && !isAnyWriterActive(s)) {
-            notifySlowPathThreads();
+            notifySlowPathThreadsInNative();
         }
     }
 
@@ -275,37 +288,38 @@ public final class ThreadLock {
      * Acquires the lock once there are no other writers. Use this method only if absolutely
      * necessary as it is easy to create deadlocks.
      * <p>
-     * Acquiring the lock in this mode prevents safepoints. Besides that, it also prevents new
-     * threads from attaching and already attached threads from exiting. Note that there can be an
-     * arbitrary number of concurrent readers already holding the lock or acquiring the lock at any
-     * time, so it is <b>not</b> possible to remove any entries from the thread list.
+     * Holding the lock with non-exclusive write access prevents safepoints. Besides that, it also
+     * prevents new threads from attaching and already attached threads from detaching. Note that
+     * there can be an arbitrary number of concurrent readers already holding the lock or acquiring
+     * the lock at any time, so it is <b>not</b> possible to remove any entries from the thread
+     * list.
      * <p>
-     * All code that is executed while holding the thread lock in non-exclusive write mode should
-     * ideally be fully {@link Uninterruptible}. Be aware though that this method itself is not
-     * fully uninterruptible (see class-level JavaDoc for more details).
+     * All code that is executed while holding the ThreadsLock with non-exclusive write access
+     * should ideally be fully {@link Uninterruptible}. Be aware though that this method itself is
+     * not fully uninterruptible (see class-level JavaDoc for more details).
      */
-    @Uninterruptible(reason = "Acquires the thread lock in non-exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Acquires the ThreadsLock with non-exclusive write access.", callerMustBe = true)
     public static void lockWriteNonExclusive() {
-        assert ThreadLockAccess.hasNoAccess() || ThreadLockAccess.hasReadAccess() : "could deadlock";
+        assert !ThreadsLockAccess.hasAccess() || ThreadsLockAccess.hasReadAccessBit() : "could deadlock";
 
         if (!fastPathLockWriteNonExclusive()) {
             slowPathLockWriteNonExclusiveInNative();
         }
-        ThreadLockAccess.addNonExclusiveWriteAccess();
+        ThreadsLockAccess.addNonExclusiveWriteAccess();
     }
 
     /** Similar to {@link #unlockRead} but without doing any thread status transitions. */
-    @Uninterruptible(reason = "Acquires the thread lock in non-exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Acquires the ThreadsLock with non-exclusive write access.", callerMustBe = true)
     public static void lockWriteNonExclusiveNoTransition() {
-        assert ThreadLockAccess.hasNoAccess() || ThreadLockAccess.hasReadAccess() : "could deadlock";
+        assert !ThreadsLockAccess.hasAccess() || ThreadsLockAccess.hasReadAccessBit() : "could deadlock";
 
         if (!fastPathLockWriteNonExclusive()) {
             slowPathLockWriteNonExclusiveInNative0();
         }
-        ThreadLockAccess.addNonExclusiveWriteAccess();
+        ThreadsLockAccess.addNonExclusiveWriteAccess();
     }
 
-    @Uninterruptible(reason = "Acquires the thread lock in non-exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Acquires the ThreadsLock with non-exclusive write access.", callerMustBe = true)
     private static boolean fastPathLockWriteNonExclusive() {
         long s;
         long n;
@@ -321,7 +335,7 @@ public final class ThreadLock {
         return true;
     }
 
-    @Uninterruptible(reason = "Acquires the thread lock in non-exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Acquires the ThreadsLock with non-exclusive write access.", callerMustBe = true)
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
     private static void slowPathLockWriteNonExclusiveInNative() {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
@@ -342,26 +356,26 @@ public final class ThreadLock {
         }
     }
 
-    @Uninterruptible(reason = "Holds the thread lock in non-exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Holds the ThreadsLock with non-exclusive write access.", callerMustBe = true)
     public static void unlockWriteNonExclusive() {
-        ThreadLockAccess.removeNonExclusiveWriteAccess();
+        ThreadsLockAccess.removeNonExclusiveWriteAccess();
         long s = clearBits(NON_EXCLUSIVE_WRITER_ACTIVE_BIT);
 
         /* No readers and no writer, so notify waiting threads. */
         if (numReaders(s) == 0) {
-            notifySlowPathThreads();
+            notifySlowPathThreadsInNative();
         }
     }
 
     /** Similar to {@link #unlockRead} but without doing any thread status transitions. */
-    @Uninterruptible(reason = "Holds the thread lock in non-exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Holds the ThreadsLock with non-exclusive write access.", callerMustBe = true)
     public static void unlockWriteNonExclusiveNoTransition() {
         unlockWriteNonExclusiveNoTransition(false);
     }
 
-    @Uninterruptible(reason = "Holds the thread lock in non-exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Holds the ThreadsLock with non-exclusive write access.", callerMustBe = true)
     public static void unlockWriteNonExclusiveNoTransition(boolean alreadyOwnsMutex) {
-        ThreadLockAccess.removeNonExclusiveWriteAccess();
+        ThreadsLockAccess.removeNonExclusiveWriteAccess();
         long s = clearBits(NON_EXCLUSIVE_WRITER_ACTIVE_BIT);
 
         /* No readers and no writer, so notify waiting threads. */
@@ -378,26 +392,29 @@ public final class ThreadLock {
      * Acquires the lock exclusively once there are no other readers and writers. Use this method
      * only if absolutely necessary as it is easy to create deadlocks.
      * <p>
-     * Acquiring the lock in this mode prevents safepoints. Besides that, it also prevents new
-     * threads from attaching and already attached threads from exiting. This method is the only way
-     * to remove entries from the thread list.
+     * Holding the lock with exclusive write access prevents safepoints. Besides that, it also
+     * prevents new threads from attaching and already attached threads from detaching. This method
+     * is the only way to remove entries from the thread list.
      * <p>
-     * All code that is executed while holding the thread lock in exclusive write mode should
+     * Note that this method is prone to starvation if other threads keep acquiring the lock with
+     * read or non-exclusive write access.
+     * <p>
+     * All code that is executed while holding the ThreadsLock with exclusive write access should
      * ideally be fully {@link Uninterruptible}. Be aware though that this method itself is not
      * fully uninterruptible (see class-level JavaDoc for more details).
      */
-    @Uninterruptible(reason = "Acquires the thread lock in exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Acquires the ThreadsLock with exclusive write access.", callerMustBe = true)
     static void lockWriteExclusive() {
-        assert ThreadLockAccess.hasNoAccess() : "could deadlock";
+        assert !ThreadsLockAccess.hasAccess() : "could deadlock";
         assert !VMOperation.isInProgress() : "could deadlock if another thread called lockRead() from interruptible code";
 
         if (!fastPathLockWriteExclusive()) {
             slowPathLockWriteExclusiveInNative();
         }
-        ThreadLockAccess.addExclusiveWriteAccess();
+        ThreadsLockAccess.addExclusiveWriteAccess();
     }
 
-    @Uninterruptible(reason = "Acquires the thread lock in exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Acquires the ThreadsLock with exclusive write access.", callerMustBe = true)
     private static boolean fastPathLockWriteExclusive() {
         long s;
         long n;
@@ -413,7 +430,7 @@ public final class ThreadLock {
         return true;
     }
 
-    @Uninterruptible(reason = "Acquires the thread lock in exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Acquires the ThreadsLock with exclusive write access.", callerMustBe = true)
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
     private static void slowPathLockWriteExclusiveInNative() {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
@@ -434,16 +451,16 @@ public final class ThreadLock {
         }
     }
 
-    @Uninterruptible(reason = "Holds the thread lock in exclusive write mode.", callerMustBe = true)
+    @Uninterruptible(reason = "Holds the ThreadsLock with exclusive write access.", callerMustBe = true)
     static void unlockWriteExclusive() {
-        ThreadLockAccess.removeExclusiveWriteAccess();
+        ThreadsLockAccess.removeExclusiveWriteAccess();
         clearBits(EXCLUSIVE_WRITER_ACTIVE_BIT);
-        notifySlowPathThreads();
+        notifySlowPathThreadsInNative();
     }
 
     @Uninterruptible(reason = "Acquires the mutex.")
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
-    private static void notifySlowPathThreads() {
+    private static void notifySlowPathThreadsInNative() {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
         notifySlowPathThreads0();
         CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
@@ -490,9 +507,9 @@ public final class ThreadLock {
     }
 
     /** Notifies waiting threads that the thread list or thread count changed. */
-    @Uninterruptible(reason = "Holds the thread lock in one of the write modes.", callerMustBe = true)
+    @Uninterruptible(reason = "Holds the ThreadsLock with write access.", callerMustBe = true)
     static void broadcastChange() {
-        assert hasAnyWriteAccess();
+        assert hasWriteAccess();
 
         mutex.lockNoTransition();
         try {
@@ -503,16 +520,16 @@ public final class ThreadLock {
     }
 
     /**
-     * The calling thread must hold the thread lock in non-exclusive write mode. Waits in native
+     * The calling thread must hold the ThreadsLock with non-exclusive write access. Waits in native
      * code until the thread list or thread count changed. Spurious wake-ups may occur.
      */
-    @Uninterruptible(reason = "Holds the thread lock in one of the write modes.", callerMustBe = true)
+    @Uninterruptible(reason = "Holds the ThreadsLock with write access.", callerMustBe = true)
     static void waitForChangeInNative() {
         assert hasNonExclusiveWriteAccess();
         waitForChangeInNative0();
     }
 
-    @Uninterruptible(reason = "Holds the thread lock in one of the write modes.", callerMustBe = true)
+    @Uninterruptible(reason = "Holds the ThreadsLock with write access.", callerMustBe = true)
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
     private static void waitForChangeInNative0() {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
@@ -535,7 +552,7 @@ public final class ThreadLock {
             mutex.unlock();
         }
 
-        /* Re-acquire the lock in the same mode as before. */
+        /* Re-acquire the lock with the same access as before. */
         lockWriteNonExclusiveNoTransition();
     }
 
@@ -555,77 +572,77 @@ public final class ThreadLock {
         return (s & EXCLUSIVE_WRITER_ACTIVE_BIT) != 0L;
     }
 
-    private static final class ThreadLockAccess {
+    private static final class ThreadsLockAccess {
         private static final int NO_ACCESS = 0;
         private static final int READ_ACCESS_BIT = 1;
         private static final int NON_EXCLUSIVE_WRITE_ACCESS_BIT = 2;
         private static final int EXCLUSIVE_WRITE_ACCESS_BIT = 4;
 
-        private static final FastThreadLocalInt accessTL = FastThreadLocalFactory.createInt("ThreadLock.access");
+        private static final FastThreadLocalInt accessTL = FastThreadLocalFactory.createInt("ThreadsLock.access");
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        private static boolean hasNoAccess() {
-            return accessTL.get() == NO_ACCESS;
+        private static boolean hasAccess() {
+            return accessTL.get() != NO_ACCESS;
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private static boolean hasReadAccess() {
-            return (accessTL.get() & READ_ACCESS_BIT) != 0;
-        }
-
-        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        private static boolean hasAnyReadAccess() {
             return accessTL.get() >= READ_ACCESS_BIT;
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        private static boolean hasAnyWriteAccess() {
+        private static boolean hasWriteAccess() {
             return accessTL.get() >= NON_EXCLUSIVE_WRITE_ACCESS_BIT;
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        private static boolean hasNonExclusiveWriteAccess() {
+        private static boolean hasReadAccessBit() {
+            return (accessTL.get() & READ_ACCESS_BIT) != 0;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private static boolean hasNonExclusiveWriteAccessBit() {
             return (accessTL.get() & NON_EXCLUSIVE_WRITE_ACCESS_BIT) != 0;
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        private static boolean hasExclusiveWriteAccess() {
+        private static boolean hasExclusiveWriteAccessBit() {
             return (accessTL.get() & EXCLUSIVE_WRITE_ACCESS_BIT) != 0;
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private static void addReadAccess() {
-            assert !hasReadAccess();
+            assert !hasReadAccessBit();
             accessTL.set(accessTL.get() | READ_ACCESS_BIT);
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private static void removeReadAccess() {
-            assert hasReadAccess();
+            assert hasReadAccessBit();
             accessTL.set(accessTL.get() & ~READ_ACCESS_BIT);
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private static void addNonExclusiveWriteAccess() {
-            assert !hasNonExclusiveWriteAccess();
+            assert !hasNonExclusiveWriteAccessBit();
             accessTL.set(accessTL.get() | NON_EXCLUSIVE_WRITE_ACCESS_BIT);
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private static void removeNonExclusiveWriteAccess() {
-            assert hasNonExclusiveWriteAccess();
+            assert hasNonExclusiveWriteAccessBit();
             accessTL.set(accessTL.get() & ~NON_EXCLUSIVE_WRITE_ACCESS_BIT);
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private static void addExclusiveWriteAccess() {
-            assert !hasExclusiveWriteAccess();
+            assert !hasExclusiveWriteAccessBit();
             accessTL.set(accessTL.get() | EXCLUSIVE_WRITE_ACCESS_BIT);
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private static void removeExclusiveWriteAccess() {
-            assert hasExclusiveWriteAccess();
+            assert hasExclusiveWriteAccessBit();
             accessTL.set(accessTL.get() & ~EXCLUSIVE_WRITE_ACCESS_BIT);
         }
     }
