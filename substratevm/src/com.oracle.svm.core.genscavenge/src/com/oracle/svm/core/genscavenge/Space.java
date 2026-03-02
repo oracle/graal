@@ -215,7 +215,7 @@ public final class Space {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void appendAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
-        assert VMOperation.isGCInProgress();
+        assert VMOperation.isInProgressAtSafepoint();
         appendAlignedHeapChunkUnsafe(aChunk);
     }
 

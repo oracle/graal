@@ -140,7 +140,7 @@ public final class ThreadData extends UnacquiredThreadData {
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void detach() {
-        assert isForCurrentThread() || VMOperation.isInProgressAtSafepoint() : "may only be called by the detaching thread or at a safepoint";
+        assert ThreadsLock.hasExclusiveWriteAccess() || VMThreads.isTearingDown() && isForCurrentThread() : "may only be called during normal detach or when detaching the last thread during teardown";
         assert !detached : "may only be called once";
 
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);

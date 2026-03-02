@@ -359,7 +359,7 @@ public abstract class VMThreads {
 
             ThreadsLock.broadcastChange();
         } finally {
-            ThreadsLock.unlockWriteNonExclusiveNoTransition();
+            ThreadsLock.unlockWriteNonExclusive();
         }
 
         /* Any code after that point may be executed while the VM is at a safepoint. */
