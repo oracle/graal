@@ -622,6 +622,8 @@ public class CremaSupportImpl implements CremaSupport {
                         DynamicHub.toClass(arrayHub), false);
 
         thisType.setVtable(cremaVTable);
+        thisType.setDeclaredMethods(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
+        thisType.setDeclaredFields(InterpreterResolvedJavaField.EMPTY_ARRAY);
         fillVTable(arrayHub, cremaVTable);
 
         arrayHub.setInterpreterType(thisType);
