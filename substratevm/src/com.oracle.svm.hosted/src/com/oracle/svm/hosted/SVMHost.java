@@ -141,6 +141,7 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.shared.meta.GuaranteeFolded;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.meta.MethodVariant;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
@@ -1139,11 +1140,11 @@ public class SVMHost extends HostVM {
 
     private boolean isSupportedMethod(BigBang bb, ResolvedJavaMethod method) {
         /*
-         * Methods annotated with @Fold should not be included in the base image as they are
-         * replaced by the invocation plugin with a constant. If reachable in an extension image,
-         * the plugin will replace it again.
+         * Methods annotated with @Fold or @GuestFold should not be included in the base image as
+         * they are replaced by the invocation plugin with a constant. If reachable in an extension
+         * image, the plugin will replace it again.
          */
-        if (AnnotationUtil.isAnnotationPresent(method, Fold.class)) {
+        if (AnnotationUtil.isAnnotationPresent(method, Fold.class) && AnnotationUtil.isAnnotationPresent(method, GuestFold.class)) {
             return false;
         }
 

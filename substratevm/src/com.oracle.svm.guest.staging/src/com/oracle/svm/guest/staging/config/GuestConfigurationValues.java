@@ -28,6 +28,7 @@ import java.nio.ByteOrder;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -38,9 +39,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Guest level replacements for {@code ConfigurationValues}. It avoids exposing builder internals
  * such as {@code SubstrateTargetDescription}. Instead, it stores all the values directly in the
  * instance which is installed as an {@linkplain ImageSingletons image singleton} in
- * {@code NativeImageGenerator}. Since we cannot use the {@code @Fold} annotation in guest code,
- * custom invovation plugins are registered in
- * {@code SubstrateGraphBuilderPlugins#registerGuestPlugins}.
+ * {@code NativeImageGenerator}.
  */
 @SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.NoLayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.Duplicable.class)
 public class GuestConfigurationValues {
@@ -55,18 +54,22 @@ public class GuestConfigurationValues {
         this.byteOrder = byteOrder;
     }
 
+    @GuestFold
     private static GuestConfigurationValues singleton() {
         return ImageSingletons.lookup(GuestConfigurationValues.class);
     }
 
+    @GuestFold
     public static JavaKind getWordKind() {
         return singleton().wordKind;
     }
 
+    @GuestFold
     public static int getWordSize() {
         return singleton().wordSize;
     }
 
+    @GuestFold
     public static ByteOrder getByteOrder() {
         return singleton().byteOrder;
     }
