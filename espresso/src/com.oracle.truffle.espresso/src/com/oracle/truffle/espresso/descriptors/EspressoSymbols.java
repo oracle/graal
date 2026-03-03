@@ -497,8 +497,11 @@ public class EspressoSymbols {
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_collections_EspressoForeignSet = SYMBOLS.putType(
                         "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignSet;");
 
-        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_impl_EspressoForeignNumber = SYMBOLS.putType(
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_impl_EspressoForeignNumber = SYMBOLS.putType(//
                         "Lcom/oracle/truffle/espresso/polyglot/impl/EspressoForeignNumber;");
+
+        public static final Symbol<Type> com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException = SYMBOLS.putType(//
+                        "Lcom/oracle/truffle/espresso/vmaccess/guest/EspressoCallbackException;");
 
         // Continuations
         public static final Symbol<Type> org_graalvm_continuations_ContinuationImpl = SYMBOLS.putType(
@@ -1072,6 +1075,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> HIDDEN_internalType = SYMBOLS.putName("0internalType");
         public static final Symbol<Name> rawType = SYMBOLS.putName("rawType");
         public static final Symbol<Name> espresso_polyglot = SYMBOLS.putName("espresso.polyglot");
+        public static final Symbol<Name> getHostException = SYMBOLS.putName("getHostException");
         // Class redefinition plugin helpers
         public static final Symbol<Name> flushFromCaches = SYMBOLS.putName("flushFromCaches");
         public static final Symbol<Name> generateProxyClass = SYMBOLS.putName("generateProxyClass");
@@ -1185,6 +1189,7 @@ public class EspressoSymbols {
         public static final Symbol<Signature> ZonedDateTime_ZoneId = SYMBOLS.putSignature(Types.java_time_ZonedDateTime, Types.java_time_ZoneId);
         public static final Symbol<Signature> ZoneId_String = SYMBOLS.putSignature(Types.java_time_ZoneId, Types.java_lang_String);
         public static final Symbol<Signature> _void_Object = SYMBOLS.putSignature(Types._void, Types.java_lang_Object);
+        public static final Symbol<Signature> _void_Object_String = SYMBOLS.putSignature(Types._void, Types.java_lang_Object, Types.java_lang_String);
         public static final Symbol<Signature> Object_Object = SYMBOLS.putSignature(Types.java_lang_Object, Types.java_lang_Object);
         public static final Symbol<Signature> Object_Object_Object = SYMBOLS.putSignature(Types.java_lang_Object, Types.java_lang_Object, Types.java_lang_Object);
         public static final Symbol<Signature> Object_int = SYMBOLS.putSignature(Types.java_lang_Object, Types._int);

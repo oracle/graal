@@ -376,6 +376,11 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
         try {
             result = vmMethodMirror.execute(args);
         } catch (PolyglotException e) {
+            if (e.isHostException()) {
+                Throwable hostException = e.asHostException();
+                hostException.setStackTrace(e.getStackTrace());
+                throw new InvocationException(hostException);
+            }
             Value guestException = e.getGuestObject();
             if (guestException == null || guestException.isNull()) {
                 throw e;
@@ -385,6 +390,7 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
              * we want a handle to the exception object (`StaticObject` of guest type `Throwable`)
              */
             guestException = access.invokeJVMCIHelper("getExceptionObject", guestException);
+            assert access.maybeUnwrapHostException(guestException) == null;
             throw new InvocationException(new EspressoExternalObjectConstant(access, guestException), e);
         }
         if (isConstructor()) {

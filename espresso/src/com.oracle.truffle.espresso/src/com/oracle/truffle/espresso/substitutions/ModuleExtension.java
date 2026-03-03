@@ -81,6 +81,12 @@ public final class ModuleExtension {
                                                                     "jdk.vm.ci.meta.annotation",
                                                                     "jdk.vm.ci.runtime")))  //
                                     .build(),
+                    new Builder("jdk.graal.compiler.espresso.vmaccess.guest", "espresso-vmaccess-guest.jar", (context) -> context.getLanguage().isExternalJVMCIEnabled())  //
+                                    .setAutoAdd(true)  //
+                                    .build(),
+                    new Builder("jdk.graal.compiler.vmaccess.guest", "vmaccess-guest.jar", (context) -> context.getLanguage().isExternalJVMCIEnabled())  //
+                                    .setAutoAdd(true)  //
+                                    .build(),
     };
 
     private static final ModuleExtension[] EMPTY_MODULE_EXTENSION_ARRAY = new ModuleExtension[0];

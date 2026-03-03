@@ -82,6 +82,12 @@ public interface VMAccess {
      * {@linkplain ResolvedJavaMethod#getDeclaringClass() declaring class} will be created and
      * doesn't need to be prepended.</li>
      * </ul>
+     * <p>
+     * If the method throws a {@code CallbackException} originating from a
+     * {@linkplain #createCallback callback}, the {@code CallbackException} wrapper will be removed
+     * and a {@link InvocationException} whose {@linkplain Throwable#getCause cause} is the original
+     * host exception will be thrown.
+     * <p>
      * Note that if the implementation is backed by an {@link Executable} object, this call will
      * ensure it is {@linkplain Executable#setAccessible(boolean) accessible} before attempting the
      * invocation.
@@ -247,6 +253,92 @@ public interface VMAccess {
      * @return the location (URL), or {@code null} if no URL was supplied during construction.
      */
     URL getCodeSourceLocation(ResolvedJavaType type);
+
+    /**
+     * Returns a value that implements the {@code guestType} interface by calling back to
+     * {@code hostTarget} through its methods.
+     * <p>
+     * The {@code hostTarget} and {@code guestType} interfaces must "match" in the following way:
+     * for each method in {@code guestType} (and its super-interfaces), there must exist a
+     * "compatible" method in {@code hostTarget}'s class (or its super-class or super-interfaces).
+     * <p>
+     * A host method is "compatible" with a guest method if they have the same name, same number of
+     * arguments, argument types are "compatible", and return types are "compatible". Type
+     * "compatibility" is defined by the following table:
+     * <table>
+     * <tr>
+     * <th>Host type</th>
+     * <th>Guest type</th>
+     * <th>Notes</th>
+     * </tr>
+     * <tr>
+     * <td>primitive type T</td>
+     * <td>primitive type T</td>
+     * <td>The {@linkplain Class#isPrimitive() primitive types} must match exactly.</td>
+     * </tr>
+     * <tr>
+     * <td>{@link String}</td>
+     * <td>{@link String}</td>
+     * <td>The identity of the string might not be preserved through a round-trip.</td>
+     * </tr>
+     * <tr>
+     * <td>{@link JavaConstant}</td>
+     * <td>any type</td>
+     * <td></td>
+     * </tr>
+     * <tr>
+     * <td>{@code void}</td>
+     * <td>any type</td>
+     * <td>This is only relevant for return types.</td>
+     * </tr>
+     * <tr>
+     * <td>{@link ResolvedJavaType}</td>
+     * <td>{@link Class}</td>
+     * <td>The host type must be {@link ResolvedJavaType} exactly (e.g.,
+     * {@link jdk.vm.ci.meta.JavaType} will not work).</td>
+     * </tr>
+     * <tr>
+     * <td>{@link ResolvedJavaField}</td>
+     * <td>{@link Field}</td>
+     * <td>The host type must be {@link ResolvedJavaField} exactly (e.g.,
+     * {@link jdk.vm.ci.meta.JavaField} will not work).</td>
+     * </tr>
+     * <tr>
+     * <td>{@link ResolvedJavaMethod}</td>
+     * <td>{@link Executable}, {@link java.lang.reflect.Method}, or
+     * {@link java.lang.reflect.Constructor}</td>
+     * <td>The host type must be {@link ResolvedJavaMethod} exactly (e.g.,
+     * {@link jdk.vm.ci.meta.JavaMethod} will not work).</td>
+     * </tr>
+     * </table>
+     * <p>
+     * If a host method throws an {@link InvocationException} with an attached
+     * {@linkplain InvocationException#getExceptionObject guest exception object}, the
+     * {@link InvocationException} wrapper will be discarded and the original guest exception will
+     * be thrown in the guest. Otherwise, if a host method throws an {@link InvocationException}
+     * with no guest exception object, the {@linkplain Throwable#getCause() cause} of the
+     * {@link InvocationException} will be wrapped in a
+     * {@code jdk.graal.compiler.vmaccess.guest.CallbackException} and thrown in the guest. Finally,
+     * if a host method throws any other type of exception, it will be wrapped in
+     * {@code jdk.graal.compiler.vmaccess.guest.CallbackException} and thrown in the guest.
+     * <p>
+     * Note: generic type information is not considered, so for example if {@code hostTarget} has a
+     * {@code void accept(T t)} method with {@code T} an unbounded class type parameter, the host
+     * signature that will be checked is {@code void accept(Object t)} which can't be compatible
+     * with any guest types according to the table above.
+     *
+     * @param hostTarget the object that will be used as receiver when calling methods.
+     * @param guestType the interface that should be implemented by the returned value.
+     */
+    JavaConstant createCallback(Object hostTarget, ResolvedJavaType guestType);
+
+    /**
+     * Gets the host exception wrapped the
+     * {@code jdk.graal.compiler.vmaccess.guest.CallbackException} encapsulated by {@code constant}.
+     * Returns {@code null} if the constant doesn't encapsulate a
+     * {@code jdk.graal.compiler.vmaccess.guest.CallbackException}.
+     */
+    Throwable unwrapCallbackException(JavaConstant constant);
 
     /**
      * A builder can be used to set a JVM context up and observe it through a {@link VMAccess}.

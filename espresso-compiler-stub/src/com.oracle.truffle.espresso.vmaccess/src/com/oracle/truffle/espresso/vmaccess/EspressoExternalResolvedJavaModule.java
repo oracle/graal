@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.vmaccess;
 
 import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
 
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.polyglot.TypeLiteral;
@@ -53,12 +54,14 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
 
     @Override
     public boolean isOpen(String packageName) {
+        Objects.requireNonNull(packageName);
         Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
         return access.java_lang_Module_isOpen_String.getMirror().execute(moduleValue, packageNameValue).asBoolean();
     }
 
     @Override
     public boolean isOpen(String packageName, ResolvedJavaModule accessingModule) {
+        Objects.requireNonNull(packageName);
         if (!(accessingModule instanceof EspressoExternalResolvedJavaModule espressoModule)) {
             throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaModule, got " + safeGetClass(accessingModule));
         }
@@ -68,12 +71,14 @@ final class EspressoExternalResolvedJavaModule implements ResolvedJavaModule {
 
     @Override
     public boolean isExported(String packageName) {
+        Objects.requireNonNull(packageName);
         Value packageNameValue = access.invokeJVMCIHelper("toGuestString", packageName);
         return access.java_lang_Module_isExported_String.getMirror().execute(moduleValue, packageNameValue).asBoolean();
     }
 
     @Override
     public boolean isExported(String packageName, ResolvedJavaModule accessingModule) {
+        Objects.requireNonNull(packageName);
         if (!(accessingModule instanceof EspressoExternalResolvedJavaModule espressoModule)) {
             throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaModule, got " + safeGetClass(accessingModule));
         }
