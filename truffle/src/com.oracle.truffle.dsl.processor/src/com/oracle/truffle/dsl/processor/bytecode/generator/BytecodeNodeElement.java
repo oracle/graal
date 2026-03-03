@@ -1610,6 +1610,11 @@ final class BytecodeNodeElement extends AbstractElement {
             b.statement("return bre.targetState");
             b.end();
         }
+        if (tier.isCached()) {
+            b.startCatchBlock(parent.branchBackwardThrowException.asType(), "bte");
+            b.startThrow().string("sneakyThrow(bte.throwable)").end();
+            b.end();
+        }
 
         b.startCatchBlock(type(Throwable.class), "originalThrowable");
 

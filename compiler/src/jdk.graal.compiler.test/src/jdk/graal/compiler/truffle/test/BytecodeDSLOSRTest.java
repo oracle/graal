@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.nodes.Node;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -101,8 +102,33 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         try {
             root.getCallTarget().call();
             Assert.fail("Should not reach here.");
-        } catch (BytecodeDSLOSRTestRootNode.InCompiledCodeException ex) {
+        } catch (BytecodeDSLOSRTestRootNode.MyException ex) {
             // expected
+        }
+    }
+
+    @Test
+    public void testInfiniteInterpreterLoopCaught() {
+        BytecodeDSLOSRTestRootNode root = parseNode(b -> {
+            b.beginRoot();
+            b.beginTryCatch();
+            b.beginWhile();
+            b.emitLoadConstant(true);
+            b.emitThrowsInCompiledCode();
+            b.endWhile();
+
+            b.beginMarkExceptionAndRethrow();
+            b.emitLoadException();
+            b.endMarkExceptionAndRethrow();
+            b.endTryCatch();
+            b.endRoot();
+        });
+
+        try {
+            root.getCallTarget().call();
+            Assert.fail("Should not reach here.");
+        } catch (BytecodeDSLOSRTestRootNode.MyException ex) {
+            assertEquals(1, ex.catchCount);
         }
     }
 
@@ -448,8 +474,13 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class)
     public abstract static class BytecodeDSLOSRTestRootNode extends DebugBytecodeRootNode {
 
-        static class InCompiledCodeException extends AbstractTruffleException {
-            private static final long serialVersionUID = 1L;
+        @SuppressWarnings("serial")
+        static class MyException extends AbstractTruffleException {
+            int catchCount = 0;
+
+            MyException(Node location) {
+                super(location);
+            }
         }
 
         protected BytecodeDSLOSRTestRootNode(BytecodeDSLOSRTestLanguage language, FrameDescriptor fd) {
@@ -459,10 +490,25 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         @Operation
         static final class ThrowsInCompiledCode {
             @Specialization
-            public static void perform() {
+            public static void perform(@Bind Node location) {
                 if (CompilerDirectives.inCompiledCode()) {
-                    throw new InCompiledCodeException();
+                    doThrow(location);
                 }
+            }
+
+            @TruffleBoundary
+            private static void doThrow(Node location) {
+                // Throw behind a boundary so compilation does not insert early deopt.
+                throw new MyException(location);
+            }
+        }
+
+        @Operation
+        static final class MarkExceptionAndRethrow {
+            @Specialization
+            public static void perform(MyException ex) {
+                ex.catchCount++;
+                throw ex;
             }
         }
 

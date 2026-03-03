@@ -741,7 +741,9 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.startStatement().startCall("ensureFalseProfile").tree(BytecodeRootNodeElement.uncheckedCast(arrayOf(type(int.class)), "this.branchProfiles_")).string("branchProfileIndex").end(
                                 2);
 
-                b.startDeclaration(type(Object.class), "osrResult");
+                b.declaration(type(Object.class), "osrResult");
+                b.startTryBlock();
+                b.startAssign("osrResult");
                 b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
                 b.string("this");
                 String bci = BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.BYTECODE_INDEX)).toString();
@@ -750,7 +752,16 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.string("null"); // beforeTransfer
                 b.string("frame"); // parentFrame
                 b.end(); // static call
-                b.end(); // declaration
+                b.end(); // assign
+
+                b.end().startCatchBlock(type(Throwable.class), "osrThrowable");
+                /*
+                 * Any exception thrown from executeOSR is already handled by the OSR invocation
+                 * itself. Wrapping and rethrowing here avoids incorrect second-pass handling in
+                 * this invocation.
+                 */
+                b.startThrow().startNew(parent.parent.branchBackwardThrowException.asType()).string("osrThrowable").end(2);
+                b.end(); // try-catch
 
                 b.startIf().string("osrResult != null").end().startBlock();
                 /**
@@ -817,6 +828,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.startStatement().startCall("ensureFalseProfile").tree(BytecodeRootNodeElement.uncheckedCast(arrayOf(type(int.class)), "this.branchProfiles_")).string("branchProfileIndex").end(
                                 2);
 
+                b.startTryBlock();
                 b.startReturn();
                 b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
                 b.string("this");
@@ -827,6 +839,9 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.string("frame"); // parentFrame
                 b.end(); // static call
                 b.end(); // return
+                b.end().startCatchBlock(type(Throwable.class), "osrThrowable");
+                b.startThrow().startNew(parent.parent.branchBackwardThrowException.asType()).string("osrThrowable").end(2);
+                b.end(); // try-catch
 
                 b.end(); // if pollOSRBackEdge
                 b.returnNull();
