@@ -81,10 +81,25 @@ public abstract class BaseOSRRootNode extends RootNode {
 
     @Override
     protected final boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        return OptimizedRuntimeAccessor.NODES.prepareForCompilation(getOriginalRootNode(), rootCompilation, compilationTier, lastTier);
+    }
+
+    @Override
+    protected boolean isCaptureFramesForTrace(boolean compiledFrame) {
+        return OptimizedRuntimeAccessor.NODES.isCaptureFramesForTrace(getOriginalRootNode(), compiledFrame);
+    }
+
+    @Override
+    protected boolean countsTowardsStackTraceLimit() {
+        // OSR frames are combined with their non-OSR frames in stack traces.
+        return false;
+    }
+
+    private RootNode getOriginalRootNode() {
         Node node = (Node) loopNode; // safe to cast, always a Node
         RootNode root = node.getRootNode();
         assert root != null : "Loop and OSR nodes must be adopted";
-        return OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, rootCompilation, compilationTier, lastTier);
+        return root;
     }
 
     /**

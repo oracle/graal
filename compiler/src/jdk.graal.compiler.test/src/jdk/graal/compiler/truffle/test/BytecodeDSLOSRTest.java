@@ -25,9 +25,14 @@
 package jdk.graal.compiler.truffle.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.nodes.Node;
 import org.junit.Assert;
 import org.junit.Before;
@@ -103,7 +108,13 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
             root.getCallTarget().call();
             Assert.fail("Should not reach here.");
         } catch (BytecodeDSLOSRTestRootNode.MyException ex) {
-            // expected
+            // Expect a single stack trace element with combined state from regular and OSR frames.
+            List<TruffleStackTraceElement> elements = TruffleStackTrace.getStackTrace(ex);
+            assertEquals(1, elements.size());
+            TruffleStackTraceElement element = elements.getFirst();
+            assertEquals(root.getCallTarget(), element.getTarget());
+            assertNotNull(element.getLocation());
+            assertEquals("c.ThrowsInCompiledCode", BytecodeLocation.get(element).getInstruction().getName());
         }
     }
 

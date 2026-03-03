@@ -253,21 +253,46 @@ public final class TruffleStackTrace extends Exception {
         }
 
         List<TruffleStackTraceElement> frames = new ArrayList<>();
+        MaterializedFrame osrFrame = null;
+        // Iterate through the lazily captured stack frames from top to bottom.
         for (ListIterator<TracebackElement> iterator = elements.listIterator(elements.size()); iterator.hasPrevious();) {
             TracebackElement element = iterator.previous();
             if (element.root != null) {
-                int bytecodeIndex = LanguageAccessor.NODES.findBytecodeIndex(element.root.getRootNode(), topCallSite, element.frame);
-                frames.add(new TruffleStackTraceElement(topCallSite, element.root, element.frame, bytecodeIndex));
+                RootNode rootNode = element.root.getRootNode();
+                if (LanguageAccessor.RUNTIME.isOSRRootNode(rootNode)) {
+                    /*
+                     * Special case: OSR triggers and we have multiple traceback elements for one
+                     * logical "frame". The logical frame comprises the top-most OSR frame and
+                     * location plus the non-OSR call target. We remember the OSR frame here. (The
+                     * location, topCallSite, will be unchanged when we reach the non-OSR element
+                     * because it triggers OSR without performing a call in between.)
+                     */
+                    if (osrFrame == null) {
+                        osrFrame = element.frame;
+                    }
+                    continue;
+                }
+                MaterializedFrame frame;
+                if (osrFrame == null) {
+                    frame = element.frame;
+                } else {
+                    frame = osrFrame;
+                    osrFrame = null;
+                }
+                int bytecodeIndex = LanguageAccessor.NODES.findBytecodeIndex(rootNode, topCallSite, frame);
+                frames.add(new TruffleStackTraceElement(topCallSite, element.root, frame, bytecodeIndex));
                 topCallSite = null;
+
             }
             if (element.callNode != null) {
+                // This is the location for the next stack trace element.
                 topCallSite = element.callNode;
             }
         }
         int lazyFrames = frames.size();
 
         // attach the remaining stack trace elements
-        addFramesByStackWalking(stackFrameLimit, topCallSite, frames);
+        addFramesByStackWalking(stackFrameLimit, topCallSite, osrFrame, frames);
 
         TruffleStackTrace fullStackTrace = new TruffleStackTrace(frames, lazyFrames);
         // capture host stack trace for guest language exceptions;
@@ -424,7 +449,7 @@ public final class TruffleStackTrace extends Exception {
         }
     }
 
-    private static void addFramesByStackWalking(int stackFrameLimit, final Node topCallSite, List<TruffleStackTraceElement> frames) {
+    private static void addFramesByStackWalking(int stackFrameLimit, final Node topCallSite, final MaterializedFrame osrFrame, List<TruffleStackTraceElement> frames) {
         int lazyFrames = frames.size();
         if (stackFrameLimit >= 0 && lazyFrames >= stackFrameLimit) {
             // early exit: avoid costly iterateFrames call if enough frames have been recorded
@@ -441,17 +466,20 @@ public final class TruffleStackTrace extends Exception {
                     // no more frames to create
                     return frameInstance;
                 }
+                RootCallTarget target = ((RootCallTarget) frameInstance.getCallTarget());
+                RootNode root = target.getRootNode();
+
                 Node callNode;
+                Frame frame;
                 if (first) {
                     callNode = topCallSite;
+                    frame = osrFrame == null ? captureFrame(frameInstance, root) : osrFrame;
                     first = false;
                 } else {
                     callNode = frameInstance.getCallNode();
+                    frame = captureFrame(frameInstance, root);
                 }
 
-                RootCallTarget target = ((RootCallTarget) frameInstance.getCallTarget());
-                RootNode root = target.getRootNode();
-                Frame frame = captureFrame(frameInstance, root);
                 int bytecodeIndex = LanguageAccessor.NODES.findBytecodeIndex(root, callNode, frame);
                 frames.add(new TruffleStackTraceElement(callNode, target, frame, bytecodeIndex));
                 if (target != null && LanguageAccessor.ACCESSOR.nodeSupport().countsTowardsStackTraceLimit(target.getRootNode())) {
