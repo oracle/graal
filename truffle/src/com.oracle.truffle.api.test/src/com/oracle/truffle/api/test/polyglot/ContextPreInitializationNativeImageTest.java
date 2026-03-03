@@ -48,6 +48,7 @@ import static org.junit.Assert.fail;
 
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.InternalResource.Id;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
@@ -452,12 +453,31 @@ public class ContextPreInitializationNativeImageTest {
             context.home = homeRoot;
             context.lib = libFolder;
             context.boot = bootFile;
+
+            /*
+             * GR-50020: PolyglotContextImpl.threads leaks Thread object into Native Image.
+             */
+            TruffleContext innerContext = context.env.newInnerContextBuilder().build();
+            Object prev = innerContext.enter(null);
+            try {
+                closeInnerContext = innerContext;
+            } finally {
+                innerContext.leave(null, prev);
+                innerContext.close();
+            }
         }
+
+        /**
+         * Simulates GR-50020 by keeping a strong reference to the closed {@code TruffleContext},
+         * preventing GC disposal and ensuring deterministic failure reproduction.
+         */
+        volatile TruffleContext closeInnerContext;
 
         @Override
         protected boolean patchContext(TestContext context, Env newEnv) {
             assertFalse(context.patched);
             context.patched = true;
+            assertNotNull(closeInnerContext);
 
             if (CONTEXT_REF.get(null) != context) {
                 CompilerDirectives.shouldNotReachHere("invalid context reference");
