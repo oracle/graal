@@ -28,10 +28,11 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.InstructionStateProcedure;
+import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.options.EnumOptionKey;
@@ -40,16 +41,12 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.meta.Value;
 
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -110,6 +107,10 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                     VerifierPrinter.print(output, lir, instructions);
                 } catch (FileNotFoundException ignored) {
                 }
+
+                // Keep original message with class path prefix and add debug path info
+                // to the end so it's easier to access.
+                new RAVException(e + ", see debug file " + debugPath, e);
             }
 
             throw e;
@@ -151,7 +152,7 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
         BlockMap<List<RAVInstruction.Base>> blockInstructions = new BlockMap<>(lir.getControlFlowGraph());
         for (var blockId : lir.getBlocks()) {
             BasicBlock<?> block = lir.getBlockById(blockId);
-            var instructionList = new LinkedList<RAVInstruction.Base>();
+            var instructionList = new ArrayList<RAVInstruction.Base>();
 
             ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
             for (var instruction : instructions) {
@@ -174,10 +175,19 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                 instruction.forEachTemp(opRAVInstr.temp.copyCurrentProc);
                 instruction.forEachAlive(opRAVInstr.alive.copyCurrentProc);
                 instruction.forEachState(opRAVInstr.stateValues.copyCurrentProc);
+                instruction.forEachState(new InstructionStateProcedure() {
+                    @Override
+                    public void doState(LIRInstruction instruction, LIRFrameState state) {
+                        if (state.topFrame == null) {
+                            return;
+                        }
+
+                        opRAVInstr.currFrameSlots = state.topFrame.values;
+                    }
+                });
 
                 instructionList.add(opRAVInstr);
                 var speculativeMoves = opRAVInstr.getSpeculativeMoveList();
-
                 if (!speculativeMoves.isEmpty()) {
                     for (var speculativeMove : speculativeMoves) {
                         if (presentInstructions.contains(speculativeMove.getLIRInstruction())) {
@@ -186,9 +196,23 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
 
                         if (!speculativeMove.location.isVariable() && speculativeMove.variableOrConstant.isVariable()) {
                             var variable = speculativeMove.variableOrConstant.asVariable();
-                            if (definedVariables.containsKey(variable)) {
+                            var variableDefInstr = definedVariables.get(variable);
+                            if (variableDefInstr == null) {
                                 continue;
                             }
+
+                            if (variableDefInstr.lirInstruction instanceof StandardOp.LabelOp && variableDefInstr.lirInstruction == opRAVInstr.lirInstruction) {
+                                for (int i = 0; i < opRAVInstr.dests.count; i++) {
+                                    var orig =  opRAVInstr.dests.orig[i];
+                                    if (!orig.isVariable() || opRAVInstr.dests.curr[i] != null) {
+                                        continue;
+                                    }
+
+                                    opRAVInstr.dests.curr[i] = speculativeMove.location;
+                                }
+                            }
+
+                            continue;
                         }
 
                         instructionList.add(speculativeMove);

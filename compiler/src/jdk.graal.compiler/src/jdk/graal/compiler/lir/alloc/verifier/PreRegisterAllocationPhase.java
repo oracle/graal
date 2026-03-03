@@ -126,10 +126,19 @@ public class PreRegisterAllocationPhase extends AllocationPhase {
                             return;
                         }
 
+                        var frameSlotKinds = state.topFrame.getSlotKinds();
+                        if (state.topFrame.values.length != frameSlotKinds.length) {
+                            // Test: JVMCIInfopointErrorTest
+                            // has defined slotKinds [boolean]
+                            // but no values
+                            return;
+                        }
+
                         // Haven't found a case where there is multiple frame states on an instruction
                         // so this will work, otherwise appending them would do the job in that case
                         // if we could also get this information about VirtualObjects.
-                        opRAVInstr.kinds = state.topFrame.getSlotKinds();
+                        opRAVInstr.origFrameSlots = state.topFrame.values;
+                        opRAVInstr.frameSlotKinds = state.topFrame.getSlotKinds();
                     }
                 });
 

@@ -34,6 +34,7 @@ import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.Value;
 
 import java.util.ArrayList;
@@ -242,10 +243,15 @@ public class RAVInstruction {
         public ValueArrayPair alive;
 
         /**
-         * JavaKinds retrieved from LIRFrameState for
-         * the stateValues.
+         * Fields taken from BytecodeFrame stored
+         * in LIRFrame, we check these to make
+         * sure that whenever JavaKind is an Object,
+         * that LIRKind is a reference and if it is
+         * a primitive then make sure it is not a reference
          */
-        public JavaKind[] kinds;
+        public JavaValue[] currFrameSlots;
+        public JavaValue[] origFrameSlots;
+        public JavaKind[] frameSlotKinds;
 
         /**
          * Pairs of values retrieved from LIRFrameState,
