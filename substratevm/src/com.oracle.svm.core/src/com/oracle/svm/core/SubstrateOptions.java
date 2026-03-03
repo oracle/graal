@@ -726,7 +726,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> GenerateBuildArtifactsFile = new HostedOptionKey<>(false);
 
     @Option(help = "Enable JNI Validation.")
-    public static final HostedOptionKey<Boolean> JNIValidation = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> JNIValidation = new HostedOptionKey<>(false);
 
     /*
      * Build output options.

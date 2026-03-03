@@ -2269,7 +2269,7 @@ public final class ValidatedJNIFunctions {
             if(!isValidUtf8(bytes)) failFatally("Non-UTF8 class name");
         }
 
-        static void validateClass(JNIObjectHandle clazz, boolean allowPrimitive) {
+        public static void validateClass(JNIObjectHandle clazz, boolean allowPrimitive) {
             if (!validateHandle(clazz)) failFatally("Received null Class");
             Object o = JNIObjectHandles.getObject(clazz);
             if (!(o instanceof Class<?>)) failFatally("JNI class handle does not refer to a java.lang.Class");
@@ -2319,7 +2319,7 @@ public final class ValidatedJNIFunctions {
             }
         }
 
-        static void validateString(JNIObjectHandle str) {
+        public static void validateString(JNIObjectHandle str) {
             if (str.equal(Word.nullPointer())) {
                 failFatally("String handle is null");
             }
@@ -2356,7 +2356,7 @@ public final class ValidatedJNIFunctions {
             }
         }
 
-        static void validateObjectArray(JNIObjectHandle array) {
+        public static void validateObjectArray(JNIObjectHandle array) {
             validateArray(array);
             Class<?> arrType = Objects.requireNonNull(JNIObjectHandles.getObject(array)).getClass().getComponentType();
 
@@ -2386,14 +2386,14 @@ public final class ValidatedJNIFunctions {
         }
 
         static void failFatally(String msg) {
-            throw VMError.shouldNotReachHere("JNI validation failed: " + msg);
+            throw new IllegalStateException("JNI validation failed: " + msg);
         }
 
         static void reportWarning(String msg) {
             Log.log().string("JNI WARNING: ").string(msg).newline();
         }
 
-        static void validateJNIObjectHandle(JNIObjectHandle handle) {
+        public static void validateJNIObjectHandle(JNIObjectHandle handle) {
             if (handle.equal(Word.nullPointer())) {
                 return; // null is allowed
             }
