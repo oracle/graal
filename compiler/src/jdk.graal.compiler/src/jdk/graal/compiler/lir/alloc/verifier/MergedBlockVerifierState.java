@@ -111,6 +111,12 @@ public class MergedBlockVerifierState {
                     continue;
                 }
 
+                // Verifying Stack Allocator:
+                // Here we also need to handle stateValues being null
+                // because sometimes a StackLockValue is used and after
+                // stack allocation it is no longer given to us when
+                // iterating. This also causes issues in the if statement
+                // below items are not shifted in curr array
                 throw new MissingLocationError(op.lirInstruction, block, orig);
             }
 
@@ -133,6 +139,14 @@ public class MergedBlockVerifierState {
                 // generated variable instead of rax symbol, or NEAR_FOREIGN_CALL
                 // keeps its own registers before and after allocation, but those
                 // can also contain different variable symbols.
+                continue;
+            }
+
+            if (ValueUtil.isStackSlot(curr.getValue()) && LIRValueUtil.isVirtualStackSlot(orig.getValue())) {
+                // TestCase: IntegerDivRemCanonicalizationTest
+                // instruction r10|QWORD = STACKLEA slot: stack:80|ILLEGAL[*] in B0
+                // had vstack:0, which is not mentioned in first label or elsewhere
+                // so symbol vstack:0 won't be found
                 continue;
             }
 
