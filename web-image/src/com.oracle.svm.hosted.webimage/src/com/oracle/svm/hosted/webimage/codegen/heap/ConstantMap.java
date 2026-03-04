@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.webimage.codegen.heap;
 
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.core.jdk.StringInternSupport;
+import com.oracle.svm.core.jdk.strings.StringInternSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.webimage.Labeler;
@@ -36,6 +36,7 @@ import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
 import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.functionintrinsics.JSGenericFunctionDefinition;
 import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping;
@@ -121,7 +122,7 @@ public class ConstantMap {
      * Processes statically collected interned strings and injects them into the final image.
      *
      * The strings themselves are already in the image, the only missing thing is updating the
-     * 'imageInternedStrings' field in {@code ImageInternedStrings} to point to an array of these
+     * 'internedStringTable' field in {@code ImageInternedStrings} to point to an array of these
      * strings.
      *
      * Since {@code ImageInternedStrings} was already inspected, we can't just set the field. We
@@ -162,28 +163,31 @@ public class ConstantMap {
         /*
          * The already inspected instance of ImageInternedStrings.
          *
-         * We inspect a new array with all the interned strings and replace the imageInternedStrings
+         * We inspect a new array with all the interned strings and replace the internedStringTable
          * field with it so that the updated array is emitted in the image.
          */
         ObjectType imageInternedStringsObject = (ObjectType) identityMapping.getDefByObject(imageInternedStringsConstant);
         StringInternSupport.setImageInternedStrings(internedStrings);
 
         /*
-         * The index of the 'imageInternedStrings' field in the field list is the same as in the
+         * The index of the 'internedStringTable' field in the field list is the same as in the
          * 'members' list.
          */
         int imageInternedStringsFieldIndex = -1;
         for (int i = 0; i < imageInternedStringsObject.fields.fields.size(); i++) {
-            if (imageInternedStringsObject.fields.fields.get(i).getName().equals("imageInternedStrings")) {
+            if (imageInternedStringsObject.fields.fields.get(i).getName().equals("internedStringTable")) {
                 imageInternedStringsFieldIndex = i;
                 break;
             }
         }
-        assert imageInternedStringsFieldIndex >= 0 : "The ImageInternedStrings singleton must have the 'imageInternedStrings' field";
+        assert imageInternedStringsFieldIndex >= 0 : "The ImageInternedStrings singleton must have the 'internedStringTable' field";
         assert ((ObjectType) imageInternedStringsObject.members.get(
-                        imageInternedStringsFieldIndex)).isNull() : "The ImageInternedStrings singleton must have the 'imageInternedStrings' field set to null";
+                        imageInternedStringsFieldIndex)).isNull() : "The ImageInternedStrings singleton must have the 'internedStringTable' field set to null";
 
         /* Manually snapshot the interned strings array. */
+        Object stringInternContainerRoot = StringInternSupport.getContainerRoot();
+        VMError.guarantee(stringInternContainerRoot instanceof String[], "The ImageInternedStrings singleton must use a String[] as container");
+        internedStrings = (String[]) stringInternContainerRoot;
         ((AnalysisMetaAccess) metaAccess.getWrapped()).getUniverse().getHeapScanner().rescanObject(internedStrings, ImageHeapScanner.LATE_SCAN);
 
         JavaConstant internedStringsConstant = providers.getSnippetReflection().forObject(internedStrings);
