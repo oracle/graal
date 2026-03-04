@@ -34,15 +34,15 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.ImageHeapList;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.ImageHeapList;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -159,30 +159,22 @@ public abstract class VMLockSupport {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("VM mutexes:").indent(true);
 
-            VMLockSupport support = null;
-            if (ImageSingletons.contains(VMLockSupport.class)) {
-                support = ImageSingletons.lookup(VMLockSupport.class);
-            }
-
-            if (support == null || support.mutexes == null) {
-                log.string("No mutex information is available.").newline();
-            } else {
-                for (int i = 0; i < support.mutexes.size(); i++) {
-                    VMMutex mutex = support.mutexes.get(i);
-                    IsolateThread owner = mutex.owner;
-                    log.string("mutex \"").string(mutex.getName()).string("\" ");
-                    if (owner.isNull()) {
-                        log.string("is unlocked.");
+            VMLockSupport support = VMLockSupport.singleton();
+            for (int i = 0; i < support.mutexes.size(); i++) {
+                VMMutex mutex = support.mutexes.get(i);
+                IsolateThread owner = mutex.owner;
+                log.string("mutex \"").string(mutex.getName()).string("\" ");
+                if (owner.isNull()) {
+                    log.string("is unlocked.");
+                } else {
+                    log.string("is locked by ");
+                    if (owner.equal(VMMutex.UNSPECIFIED_OWNER)) {
+                        log.string("an unspecified thread.");
                     } else {
-                        log.string("is locked by ");
-                        if (owner.equal(VMMutex.UNSPECIFIED_OWNER)) {
-                            log.string("an unspecified thread.");
-                        } else {
-                            log.string("thread ").zhex(owner);
-                        }
+                        log.string("thread ").zhex(owner);
                     }
-                    log.newline();
                 }
+                log.newline();
             }
 
             log.indent(false);
