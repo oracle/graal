@@ -59,6 +59,7 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -160,6 +161,9 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean hasRememberedSet(UnsignedWord header) {
+        if (!GraalDirectives.inIntrinsic()) { // too expensive and not necessary in write barriers
+            assert !ObjectHeaderImpl.isMarkedHeader(header) : "use hasRememberedSetInGC";
+        }
         return ObjectHeaderImpl.hasRememberedSet(header);
     }
 

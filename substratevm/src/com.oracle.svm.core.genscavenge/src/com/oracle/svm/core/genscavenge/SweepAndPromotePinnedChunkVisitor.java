@@ -76,6 +76,7 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
 
         int foundPinnedObjs = 0;
 
+        /* Sweep, clear mark bits, and build remembered set and first object table. */
         Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer initialTop = HeapChunk.getTopPointer(chunk);
         Pointer sweepStart = p;
