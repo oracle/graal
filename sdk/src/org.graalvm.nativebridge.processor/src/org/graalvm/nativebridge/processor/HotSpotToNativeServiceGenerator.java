@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -424,7 +424,7 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
     }
 
     private static CharSequence generateStoreResult(CodeBuilder builder, MarshallerSnippet snippets, TypeMirror returnType, CharSequence nativeCall) {
-        CharSequence endPointResultVariable = snippets.storeRawResult(builder, returnType, nativeCall, null);
+        CharSequence endPointResultVariable = snippets.storeRawResult(builder, returnType, nativeCall, null, "endPointResult");
         return endPointResultVariable != null ? endPointResultVariable : nativeCall;
     }
 
@@ -1121,12 +1121,11 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
             }
 
             @Override
-            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
+            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName, CharSequence rawResultVariableName) {
                 if (marshallerData.sameDirection) {
-                    CharSequence resultVariable = "endPointResult";
-                    currentBuilder.lineStart().write(endPointMethodProvider.getEntryPointMethodParameterType(marshallerData, resultType)).space().write(resultVariable).write(" = ").write(
+                    currentBuilder.lineStart().write(endPointMethodProvider.getEntryPointMethodParameterType(marshallerData, resultType)).space().write(rawResultVariableName).write(" = ").write(
                                     invocationSnippet).lineEnd(";");
-                    return resultVariable;
+                    return rawResultVariableName;
                 } else {
                     return null;
                 }
@@ -1495,10 +1494,9 @@ final class HotSpotToNativeServiceGenerator extends AbstractNativeServiceGenerat
             }
 
             @Override
-            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
-                CharSequence resultVariable = "endPointResult";
-                currentBuilder.lineStart().write(types.getArrayType(types.getPrimitiveType(TypeKind.BYTE))).space().write(resultVariable).write(" = ").write(invocationSnippet).lineEnd(";");
-                return resultVariable;
+            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName, CharSequence rawResultVariableName) {
+                currentBuilder.lineStart().write(types.getArrayType(types.getPrimitiveType(TypeKind.BYTE))).space().write(rawResultVariableName).write(" = ").write(invocationSnippet).lineEnd(";");
+                return rawResultVariableName;
             }
 
             @Override
