@@ -25,7 +25,6 @@
 package com.oracle.svm.graal.meta;
 
 import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
-
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -50,9 +49,13 @@ public class SubstrateConstantFieldProvider extends JavaConstantFieldProvider {
 
     @Override
     protected boolean isSyntheticEnumSwitchMap(ResolvedJavaField field) {
+        if (field instanceof SubstrateField substrateField && substrateField.getDeclaringClass().getHub().isRuntimeLoaded()) {
+            return super.isSyntheticEnumSwitchMap(field);
+        }
+
         /*
          * Enum-switch fields are constant folded during native image generation, so no need to even
-         * check for such fields at run time.
+         * check for such fields at run time for AOT-loaded types.
          */
         assert !field.getName().equals("$VALUES") && !field.getName().equals("ENUM$VALUES") && !field.getName().startsWith("$SwitchMap$") && !field.getName().startsWith("$SWITCH_TABLE$");
         return false;
