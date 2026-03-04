@@ -89,7 +89,6 @@ public class RegisterAllocationVerifier {
         var cfg = lir.getControlFlowGraph();
         this.blockInstructions = blockInstructions;
         this.blockEntryStates = new BlockMap<>(cfg);
-
         this.blockStates = new BlockMap<>(cfg);
 
         this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
@@ -98,7 +97,7 @@ public class RegisterAllocationVerifier {
     /**
      * For every block, we need to calculate its entry state
      * which is a combination of states of blocks that are its
-     * predecessors, merged into a state we use to verify
+     * predecessors, we use to verify
      * that inputs to instructions are correct symbols based
      * on instructions before allocation.
      */
@@ -106,7 +105,7 @@ public class RegisterAllocationVerifier {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
 
         var startBlock = this.lir.getControlFlowGraph().getStartBlock();
-        this.blockEntryStates.put(startBlock, new MergedBlockVerifierState(startBlock, registerAllocationConfig, constantMaterializationConflictResolver));
+        this.blockEntryStates.put(startBlock, createNewBlockState(startBlock));
         worklist.add(this.lir.getControlFlowGraph().getStartBlock());
 
         while (!worklist.isEmpty()) {
@@ -123,24 +122,25 @@ public class RegisterAllocationVerifier {
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 var succ = block.getSuccessorAt(i);
 
+                MergedBlockVerifierState succState;
                 if (this.blockEntryStates.get(succ) == null) {
-                    var succState = new MergedBlockVerifierState(succ, state);
-
-                    this.blockEntryStates.put(succ, succState);
-                    worklist.remove(succ);
-                    worklist.add(succ);
-                    continue;
+                    succState = new MergedBlockVerifierState(succ, state);
+                } else {
+                    succState = this.blockEntryStates.get(succ);
+                    if (!succState.meetWith(state)) {
+                        continue;
+                    }
                 }
 
-                var succState = this.blockEntryStates.get(succ);
-                if (succState.meetWith(state)) {
-                    // State changed or labels have not yet been determined, add to worklist
-                    this.blockEntryStates.put(succ, succState);
-                    worklist.remove(succ); // Always at the end, for predecessors to be processed first.
-                    worklist.add(succ);
-                }
+                this.blockEntryStates.put(succ, succState);
+                worklist.remove(succ); // Always at the end, for predecessors to be processed first.
+                worklist.add(succ);
             }
         }
+    }
+
+    protected MergedBlockVerifierState createNewBlockState(BasicBlock<?> block) {
+        return new MergedBlockVerifierState(block, registerAllocationConfig, constantMaterializationConflictResolver);
     }
 
     /**
@@ -152,13 +152,8 @@ public class RegisterAllocationVerifier {
             var state = this.blockEntryStates.get(block);
             var instructions = this.blockInstructions.get(block);
 
-            RAVInstruction.Op labelInstrOfSucc = null;
-            if (block.getSuccessorCount() == 1) {
-                labelInstrOfSucc = (RAVInstruction.Op) this.blockInstructions.get(block.getSuccessorAt(0)).getFirst();
-            }
-
             for (var instr : instructions) {
-                state.check(instr, block, labelInstrOfSucc);
+                state.check(instr, block);
                 state.update(instr, block);
             }
         }
@@ -175,11 +170,10 @@ public class RegisterAllocationVerifier {
             var block = this.lir.getBlockById(blockId);
             var state = this.blockEntryStates.get(block);
             var instructions = this.blockInstructions.get(block);
-            var labelInstr = (RAVInstruction.Op) instructions.getFirst();
 
             for (var instr : instructions) {
                 try {
-                    state.check(instr, block, labelInstr);
+                    state.check(instr, block);
                     state.update(instr, block);
                 } catch (RAVException e) {
                     exceptions.add(e);

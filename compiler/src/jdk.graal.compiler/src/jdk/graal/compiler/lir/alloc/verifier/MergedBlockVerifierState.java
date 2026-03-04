@@ -31,9 +31,11 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
+import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -86,114 +88,120 @@ public class MergedBlockVerifierState {
         return this.values.mergeWith(other.getValues());
     }
 
+    protected void checkStateValues(RAVInstruction.Op op, BasicBlock<?> block) {
+        if (!op.hasCompleteState()) {
+            // Some values are null after allocation because of stack slot allocator
+            // because it is skipped when iteration (StackLockValue).
+            return;
+        }
+
+        checkInputs(op.stateValues, op, block);
+    }
+
     /**
      * Verify the correspondence of original variables used in instructions
      * are stored in the state of current locations.
      *
-     * @param values  Array of pairs of current location and original variable.
-     * @param op      Operation this input array of values belongs to
-     * @param block   Block this operation is in
-     * @param labelOp Label of the successor block, in-case resolution was incomplete.
+     * @param values Array of pairs of current location and original variable.
+     * @param op     Operation this input array of values belongs to
+     * @param block  Block this operation is in
      */
-    protected void checkInputs(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op, BasicBlock<?> block, RAVInstruction.Op labelOp) {
+    protected void checkInputs(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op, BasicBlock<?> block) {
         // Check that incoming values are not unknown or conflicted - these only matter if used
         for (int idx = 0; idx < values.count; idx++) {
-            var orig = values.orig[idx];
-            var curr = values.curr[idx];
+            checkOperand(values.orig[idx], values.curr[idx], op, block);
+        }
+    }
 
-            assert orig != null;
+    protected void checkOperand(RAValue orig, RAValue curr, RAVInstruction.Op op, BasicBlock<?> block) {
+        assert orig != null;
 
-            if (curr == null) {
-                if (op.isJump()) {
-                    // This can happen if a variable without a usage is passed in
-                    // even when this variable acts as an alias to the next label
-                    // there's no usage, so no location.
-                    continue;
+        if (curr == null) {
+            if (op.isJump()) {
+                // This can happen if a variable without a usage is passed in
+                // even when this variable acts as an alias to the next label
+                // there's no usage, so no location.
+                return;
+            }
+
+            // Verifying Stack Allocator:
+            // Here we also need to handle stateValues being null
+            // because sometimes a StackLockValue is used and after
+            // stack allocation it is no longer given to us when
+            // iterating. This also causes issues in the if statement
+            // below items are not shifted in curr array
+            throw new MissingLocationError(op.lirInstruction, block, orig);
+        }
+
+        if (!kindsEqual(orig, curr)) {
+            if (!op.isJump()) {
+                throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
+            }
+
+            // Skip when jump due to this case:
+            // "rdx|QWORD[*] = MOVE input: rdx|QWORD[.+] moveKind: QWORD"
+            // this move is inserted by the allocator and changes type
+            // of rdx from [.+] (compressed reference) (same as original variable) to [*] (invalid reference)
+        }
+
+        AllocationState state = this.values.get(curr);
+        if (orig.equals(curr)) {
+            // For these cases we do not consider checking state taking the original
+            // register as a symbol, because there's too many cases when this does
+            // not work, for example RETURN with rax tends to contain the actual
+            // generated variable instead of rax symbol, or NEAR_FOREIGN_CALL
+            // keeps its own registers before and after allocation, but those
+            // can also contain different variable symbols.
+            return;
+        }
+
+        if (ValueUtil.isStackSlot(curr.getValue()) && LIRValueUtil.isVirtualStackSlot(orig.getValue())) {
+            // TestCase: IntegerDivRemCanonicalizationTest
+            // instruction r10|QWORD = STACKLEA slot: stack:80|ILLEGAL[*] in B0
+            // had vstack:0, which is not mentioned in first label or elsewhere
+            // so symbol vstack:0 won't be found
+            return;
+        }
+
+        if (state.isUnknown()) {
+            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+        }
+
+        if (state.isConflicted()) {
+            if (orig.isVariable()) {
+                var variable = orig.asVariable();
+                var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
+                if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
+                    this.values.put(curr, resolvedState);
+                    return;
                 }
-
-                // Verifying Stack Allocator:
-                // Here we also need to handle stateValues being null
-                // because sometimes a StackLockValue is used and after
-                // stack allocation it is no longer given to us when
-                // iterating. This also causes issues in the if statement
-                // below items are not shifted in curr array
-                throw new MissingLocationError(op.lirInstruction, block, orig);
             }
 
-            if (!kindsEqual(orig, curr)) {
-                if (!op.isJump()) {
-                    throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
-                }
+            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+        }
 
-                // Skip when jump due to this case:
-                // "rdx|QWORD[*] = MOVE input: rdx|QWORD[.+] moveKind: QWORD"
-                // this move is inserted by the allocator and changes type
-                // of rdx from [.+] (compressed reference) (same as original variable) to [*] (invalid reference)
-            }
-
-            AllocationState state = this.values.get(curr);
-            if (orig.equals(curr)) {
-                // For these cases we do not consider checking state taking the original
-                // register as a symbol, because there's too many cases when this does
-                // not work, for example RETURN with rax tends to contain the actual
-                // generated variable instead of rax symbol, or NEAR_FOREIGN_CALL
-                // keeps its own registers before and after allocation, but those
-                // can also contain different variable symbols.
-                continue;
-            }
-
-            if (ValueUtil.isStackSlot(curr.getValue()) && LIRValueUtil.isVirtualStackSlot(orig.getValue())) {
-                // TestCase: IntegerDivRemCanonicalizationTest
-                // instruction r10|QWORD = STACKLEA slot: stack:80|ILLEGAL[*] in B0
-                // had vstack:0, which is not mentioned in first label or elsewhere
-                // so symbol vstack:0 won't be found
-                continue;
-            }
-
-            if (state.isUnknown()) {
-                throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
-            }
-
-            if (state.isConflicted()) {
-                if (orig.isVariable()) {
+        if (state instanceof ValueAllocationState valAllocState) {
+            if (!valAllocState.value.equals(orig)) {
+                if (LIRValueUtil.isConstantValue(valAllocState.value.getValue()) && orig.isVariable()) {
                     var variable = orig.asVariable();
-                    var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
+                    var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState, curr);
                     if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
                         this.values.put(curr, resolvedState);
-                        continue;
+                        return;
                     }
                 }
 
                 throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
             }
 
-            if (state instanceof ValueAllocationState valAllocState) {
-                if (!kindsEqualFromState(orig, valAllocState.value)) {
-                    throw new KindsMismatchException(op.lirInstruction, block, orig, valAllocState.value, false);
-                }
-
-                if (!valAllocState.value.equals(orig)) {
-                    if (LIRValueUtil.isCast(orig.getValue()) && valAllocState.value.getValue().equals(LIRValueUtil.uncast(orig.getValue()))) {
-                        continue; // They aren't equal here because of the CastValue, so if they are equal afterwards, we skip next part.
-                    }
-
-                    if (LIRValueUtil.isConstantValue(valAllocState.value.getValue())) {
-                        var variable = orig.asVariable();
-                        var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState, curr);
-                        if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
-                            this.values.put(curr, resolvedState);
-                            continue;
-                        }
-                    }
-
-                    throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
-                }
-
-                continue;
+            if (!kindsEqualFromState(orig, valAllocState.value)) {
+                throw new KindsMismatchException(op.lirInstruction, block, orig, valAllocState.value, false);
             }
 
-            throw GraalError.shouldNotReachHere("Invalid state " + state);
+            return;
         }
+
+        throw GraalError.shouldNotReachHere("Invalid state " + state);
     }
 
     /**
@@ -245,17 +253,15 @@ public class MergedBlockVerifierState {
      *
      * @param instruction Instruction we are checking
      * @param block       Block where it is located
-     * @param labelOp     Label of the successor block, in-case resolution failed
      */
-    public void check(RAVInstruction.Base instruction, BasicBlock<?> block, RAVInstruction.Op labelOp) {
+    public void check(RAVInstruction.Base instruction, BasicBlock<?> block) {
         if (instruction instanceof RAVInstruction.Op op) {
-            checkInputs(op.uses, op, block, labelOp);
-            checkInputs(op.alive, op, block, labelOp);
-            checkInputs(op.stateValues, op, block, labelOp);
+            checkInputs(op.uses, op, block);
+            checkInputs(op.alive, op, block);
+            checkStateValues(op, block);
 
             checkTempKind(op, block);
             checkAliveConstraint(op, block);
-            // checkStateJavaKinds(op, block);
 
             checkOperandFlags(op.dests, op, block);
             checkOperandFlags(op.uses, op, block);
@@ -314,49 +320,6 @@ public class MergedBlockVerifierState {
                 if (value.equals(instruction.dests.curr[j])) {
                     throw new AliveConstraintViolationException(instruction.lirInstruction, block, value, true);
                 }
-            }
-        }
-    }
-
-    /**
-     * Checks values from frame state to see if ones marked as Object JavaKind,
-     * are a reference in LIRKind.
-     *
-     * @param op    Operation which we are checking state values for
-     * @param block In which block is this operation
-     */
-    protected void checkStateJavaKinds(RAVInstruction.Op op, BasicBlock<?> block) {
-        if (op.frameSlotKinds == null) {
-            return;
-        }
-
-        for (int i = 0; i < op.frameSlotKinds.length; i++) {
-            var kind = op.frameSlotKinds[i];
-            var orig = op.origFrameSlots[i];
-            var curr = op.currFrameSlots[i];
-
-            if (!(orig instanceof AllocatableValue origAllocValue) || Value.ILLEGAL.equals(origAllocValue)) {
-                continue;
-            }
-
-            var currAllocValue = (AllocatableValue) curr;
-
-            var origLIRKind = origAllocValue.getValueKind(LIRKind.class);
-            var currLIRKind = currAllocValue.getValueKind(LIRKind.class);
-            if (JavaKind.Object.equals(kind)) {
-                if (!origLIRKind.isValue() && !currLIRKind.isValue()) {
-                    continue;
-                }
-
-                throw new RAVException(origAllocValue + " -> " + currAllocValue + " not an object java kind when marked as a reference");
-            } else {
-                if (origLIRKind.isValue() && currLIRKind.isValue()) {
-                    continue;
-                }
-
-                // Test: PointerTrackingTest
-                // has vstack marked as a reference, but long JavaKind.
-                throw new RAVException(origAllocValue + " -> " + currAllocValue + " is a reference when not marked as an object java kind");
             }
         }
     }
@@ -432,9 +395,11 @@ public class MergedBlockVerifierState {
 
             assert op.dests.orig[i] != null;
 
-            if (op.dests.curr[i] == null) {
-                continue;
+            if (op.dests.curr[i] == null && op.isLabel()) {
+                continue; // Unused label variable
             }
+
+            assert op.dests.curr[i] != null;
 
             RAValue location = op.dests.curr[i];
             RAValue variable = op.dests.orig[i];
@@ -475,7 +440,6 @@ public class MergedBlockVerifierState {
      * @param references List of references deemed as live by the GC
      */
     protected void updateWithSafePoint(List<RAValue> references) {
-        List<RAValue> toRemove = new ArrayList<>();
         for (var entry : this.values.internalMap.entrySet()) {
             var state = entry.getValue();
             if (state.isUnknown() || state.isConflicted()) {

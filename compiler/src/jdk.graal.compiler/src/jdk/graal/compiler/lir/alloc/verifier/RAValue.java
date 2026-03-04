@@ -26,6 +26,7 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.lir.LIRValueUtil;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
@@ -98,6 +99,11 @@ public class RAValue {
             return LIRValueUtil.asVirtualStackSlot(this.value).getId();
         }
 
+        if (ValueUtil.isStackSlot(this.value)) {
+            var stackSlot = ValueUtil.asStackSlot(this.value);
+            return stackSlot.getRawOffset();
+        }
+
         return this.value.hashCode();
     }
 
@@ -115,6 +121,10 @@ public class RAValue {
                 return LIRValueUtil.asVirtualStackSlot(this.value).getId() == LIRValueUtil.asVirtualStackSlot(otherValueWrap.value).getId();
             }
 
+            if (ValueUtil.isStackSlot(this.value) && otherValueWrap.value.equals(this.value)) {
+                return ValueUtil.asStackSlot(this.value).getRawOffset() == ValueUtil.asStackSlot(otherValueWrap.value).getRawOffset();
+            }
+
             return this.value.equals(otherValueWrap.value);
         }
 
@@ -125,6 +135,10 @@ public class RAValue {
     public String toString() {
         if (LIRValueUtil.isVirtualStackSlot(this.value)) {
             return "vstack:" + LIRValueUtil.asVirtualStackSlot(this.value).getId();
+        }
+
+        if (ValueUtil.isStackSlot(this.value)) {
+            return "stack:" + ValueUtil.asStackSlot(this.value).getRawOffset();
         }
 
         return value.toString();

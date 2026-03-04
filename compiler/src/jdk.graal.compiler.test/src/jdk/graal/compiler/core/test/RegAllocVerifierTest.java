@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.test;
 
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.StandardOp;
@@ -36,18 +37,15 @@ import jdk.graal.compiler.lir.alloc.verifier.AliveConstraintViolationException;
 import jdk.graal.compiler.lir.alloc.verifier.ConflictedAllocationState;
 import jdk.graal.compiler.lir.alloc.verifier.InvalidRegisterUsedException;
 import jdk.graal.compiler.lir.alloc.verifier.KindsMismatchException;
-import jdk.graal.compiler.lir.alloc.verifier.PreRegisterAllocationPhase;
 import jdk.graal.compiler.lir.alloc.verifier.RAVException;
 import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
 import jdk.graal.compiler.lir.alloc.verifier.RAValue;
 import jdk.graal.compiler.lir.alloc.verifier.RAVariable;
-import jdk.graal.compiler.lir.alloc.verifier.RegisterAllocationVerifierPhase;
-import jdk.graal.compiler.lir.alloc.verifier.RegisterAllocationVerifierPhaseState;
+import jdk.graal.compiler.lir.alloc.verifier.RegAllocVerifierPhase;
 import jdk.graal.compiler.lir.alloc.verifier.ValueAllocationState;
 import jdk.graal.compiler.lir.alloc.verifier.ValueNotInRegisterException;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
-import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.EconomicHashMap;
@@ -63,7 +61,6 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -82,22 +79,11 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
      * Phase that causes RAVException to be thrown,
      * by modifying LIR or Verifier State.
      */
-    LIRPhase<AllocationPhase.AllocationContext> phase;
+    RAVPhaseWrapper phase;
 
-    interface VerifierStateUser {
-        /**
-         * Set the currently used verification state to phase that
-         * implements this interface in-order for it to facilitate
-         * a change that will make the verifier find an exception.
-         *
-         * @param state Verifier state shared across it's phases
-         */
-        void setState(RegisterAllocationVerifierPhaseState state);
-    }
-
-    class RAVPhaseWrapper extends RegisterAllocationVerifierPhase {
-        RAVPhaseWrapper(RegisterAllocationVerifierPhaseState state) {
-            super(state);
+    class RAVPhaseWrapper extends RegAllocVerifierPhase {
+        public RAVPhaseWrapper() {
+            super(null, null);
         }
 
         @Override
@@ -115,21 +101,18 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
      * to cause a ValueNotInLocationException with old variable being
      * in said place.
      */
-    class ChangeVariablePhase extends LIRPhase<AllocationPhase.AllocationContext> implements VerifierStateUser {
+    class ChangeVariablePhase extends RAVPhaseWrapper {
         protected RAVariable originalVariable;
         protected RAVariable newVariable;
-        protected RegisterAllocationVerifierPhaseState state;
 
         @Override
-        public void setState(RegisterAllocationVerifierPhaseState state) {
-            this.state = state;
+        protected Map<LIRInstruction, RAVInstruction.Base> saveInstructionsPreAlloc(LIR lir) {
+            var result = super.saveInstructionsPreAlloc(lir);
+            modifyLIR(lir, result);
+            return result;
         }
 
-        @Override
-        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context) {
-            var lir = lirGenRes.getLIR();
-            // var instrMap = this.state.getInstructionMap(lirGenRes);
-            var instrMap = lirGenRes.getVIR();
+        protected void modifyLIR(LIR lir, Map<LIRInstruction, RAVInstruction.Base> instrMap) {
             for (var blockId : lir.getBlocks()) {
                 var block = lir.getBlockById(blockId);
                 var instructions = lir.getLIRforBlock(block);
@@ -139,21 +122,21 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
                     }
 
                     var virInstr = instrMap.get(instruction);
-                    if (virInstr instanceof RAVInstruction.Op op && changeVariable(lirGenRes, op)) {
-                        return;
+                    if (virInstr instanceof RAVInstruction.Op op && changeVariable(lir, op)) {
+                        break;
                     }
                 }
             }
         }
 
-        protected boolean changeVariable(LIRGenerationResult lirGenRes, RAVInstruction.Op op) {
+        protected boolean changeVariable(LIR lir, RAVInstruction.Op op) {
             for (int i = 0; i < op.dests.count; i++) {
                 if (!op.dests.orig[i].isVariable()) {
                     continue;
                 }
 
                 var variable = op.dests.orig[i].asVariable();
-                var newVariable = createNewVariable(lirGenRes, variable);
+                var newVariable = createNewVariable(lir, variable);
 
                 op.dests.orig[i] = newVariable;
 
@@ -166,8 +149,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
             return false;
         }
 
-        protected RAVariable createNewVariable(LIRGenerationResult lirGenRes, RAVariable oldVariable) {
-            var newVariable = new Variable(oldVariable.getValue().getValueKind(), lirGenRes.getLIR().numVariables() + 1);
+        protected RAVariable createNewVariable(LIR lir, RAVariable oldVariable) {
+            var newVariable = new Variable(oldVariable.getValue().getValueKind(), lir.numVariables() + 1);
             return (RAVariable) RAValue.create(newVariable);
         }
     }
@@ -177,15 +160,21 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
      * registers to be used for allocation, and we want the verifier to
      * detect usage of said register.
      */
-    class DisallowedRegisterPhase extends LIRPhase<AllocationPhase.AllocationContext> {
+    class DisallowedRegisterPhase extends RAVPhaseWrapper {
         protected Register ignoredReg;
+        protected RegisterAllocationConfig regAllocConfig;
 
         @Override
-        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context) {
-            var lir = lirGenRes.getLIR();
-
+        protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext context) {
             var restrictedTo = getAllocationRestrictedToArray(lir, context.registerAllocationConfig);
-            context.registerAllocationConfig = new RegisterAllocationConfig(context.registerAllocationConfig.getRegisterConfig(), restrictedTo);
+            regAllocConfig = new RegisterAllocationConfig(context.registerAllocationConfig.getRegisterConfig(), restrictedTo);
+
+            return super.getVerifierInstructions(lir, preallocMap, context);
+        }
+
+        @Override
+        protected RegisterAllocationConfig getRegisterAllocationConfig(AllocationContext context) {
+            return regAllocConfig;
         }
 
         protected void modifyAllocatableRegisterList(LIR lir, List<Register> registerList) {
@@ -250,31 +239,28 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
      * Change a register that is only used once as output,
      * so that state of it is Unknown.
      */
-    class ForceUnknownStateInRegister extends LIRPhase<AllocationPhase.AllocationContext> implements VerifierStateUser {
+    class ForceUnknownStateInRegister extends RAVPhaseWrapper {
         protected RAVariable variable;
         protected RegisterValue oldRegister = null;
         protected RegisterValue newRegister;
-        protected RegisterAllocationVerifierPhaseState state;
         protected int idx = 0;
-
-        ForceUnknownStateInRegister() {
-            this.regUsage = new EconomicHashMap<>();
-        }
-
-        @Override
-        public void setState(RegisterAllocationVerifierPhaseState state) {
-            this.state = state;
-        }
 
         protected Map<Register, Integer> regUsage;
 
+        ForceUnknownStateInRegister() {
+            super();
+            this.regUsage = new EconomicHashMap<>();
+        }
+
+
         @Override
-        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context) {
-            var lir = lirGenRes.getLIR();
-            var instrMap = this.state.getInstructionMap(lirGenRes);
+        protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> instrMap, AllocationContext context) {
+            modifyLIR(lir, instrMap, context);
+            return super.getVerifierInstructions(lir, instrMap, context);
+        }
 
+        protected void modifyLIR(LIR lir, Map<LIRInstruction, RAVInstruction.Base> instrMap, AllocationContext context) {
             var replacementReg = getUnusedAllowedRegister(lir, context.registerAllocationConfig);
-
             for (var blockId : lir.getBlocks()) {
                 var block = lir.getBlockById(blockId);
                 var instructions = lir.getLIRforBlock(block);
@@ -286,7 +272,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
                             return;
                         }
 
-                        if (handleVirtualMoves(op, getUnusedAllowedRegister(lir, context.registerAllocationConfig))) {
+                        if (handleVirtualMoves(op, replacementReg)) {
                             return;
                         }
                     }
@@ -389,19 +375,12 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
      * look through its operand array to find first variable and
      * change its type to Illegal.
      */
-    abstract class ChangeKindPhase extends LIRPhase<AllocationPhase.AllocationContext> implements VerifierStateUser {
-        protected RegisterAllocationVerifierPhaseState state;
+    abstract class ChangeKindPhase extends RAVPhaseWrapper {
         protected Variable variable;
 
         @Override
-        public void setState(RegisterAllocationVerifierPhaseState state) {
-            this.state = state;
-        }
-
-        @Override
-        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context) {
-            var lir = lirGenRes.getLIR();
-            var instrMap = this.state.getInstructionMap(lirGenRes);
+        protected Map<LIRInstruction, RAVInstruction.Base> saveInstructionsPreAlloc(LIR lir) {
+            var instrMap = super.saveInstructionsPreAlloc(lir);
             for (var blockId : lir.getBlocks()) {
                 var block = lir.getBlockById(blockId);
                 var instructions = lir.getLIRforBlock(block);
@@ -411,11 +390,17 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
                     }
 
                     var op = (RAVInstruction.Op) instrMap.get(instruction);
+                    if (op == null) {
+                        continue;
+                    }
+
                     if (changeVariableKind(getTargetValueArrayPair(op))) {
-                        return;
+                        return instrMap;
                     }
                 }
             }
+
+            return instrMap;
         }
 
         protected abstract RAVInstruction.ValueArrayPair getTargetValueArrayPair(RAVInstruction.Op op);
@@ -472,14 +457,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
      * both alive operand and temp/output and changes it
      * so one location is the same.
      */
-    abstract class ViolateAliveConstraint extends LIRPhase<AllocationPhase.AllocationContext> implements VerifierStateUser {
-        protected RegisterAllocationVerifierPhaseState state;
-
-        @Override
-        public void setState(RegisterAllocationVerifierPhaseState state) {
-            this.state = state;
-        }
-
+    abstract class ViolateAliveConstraint extends RAVPhaseWrapper {
         class SetAliveRegProc implements ValueProcedure {
             boolean first = true;
             Value aliveValue;
@@ -504,9 +482,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         }
 
         @Override
-        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context) {
-            var lir = lirGenRes.getLIR();
-            var instrMap = this.state.getInstructionMap(lirGenRes);
+        protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> instrMap, AllocationContext context) {
             for (var blockId : lir.getBlocks()) {
                 var block = lir.getBlockById(blockId);
                 var instructions = lir.getLIRforBlock(block);
@@ -528,10 +504,12 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
                     var setAliveRegProc = new SetAliveRegProc(aliveValue);
                     changeLocationInTarget(instruction, setAliveRegProc);
                     if (!setAliveRegProc.first) {
-                        return;
+                        return super.getVerifierInstructions(lir, instrMap, context);
                     }
                 }
             }
+
+            return super.getVerifierInstructions(lir, instrMap, context);
         }
 
         protected abstract void changeLocationInTarget(LIRInstruction instruction, ValueProcedure setAliveRegProc);
@@ -569,21 +547,14 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         }
     }
 
-    abstract class ConflictPhase extends LIRPhase<AllocationPhase.AllocationContext> implements VerifierStateUser {
-        RegisterAllocationVerifierPhaseState state;
-
-        @Override
-        public void setState(RegisterAllocationVerifierPhaseState state) {
-            this.state = state;
-        }
-
+    abstract class ConflictPhase extends RAVPhaseWrapper {
         RAVariable targetVariable;
         RAVariable newVariable;
 
         @Override
-        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationPhase.AllocationContext context) {
-            var lir = lirGenRes.getLIR();
-            var instrMap = this.state.getInstructionMap(lirGenRes);
+        protected Map<LIRInstruction, RAVInstruction.Base> saveInstructionsPreAlloc(LIR lir) {
+            var instrMap = super.saveInstructionsPreAlloc(lir);
+
             var startBlock = lir.getControlFlowGraph().getStartBlock();
 
             BasicBlock<?> conflictBlock = getConflictUseBlock(lir);
@@ -596,6 +567,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
             var branchBlock = getConflictSourceBlock(lir, conflictBlock);
             addVirtualMove(lir, branchBlock, instrMap, targetVariable, variables);
+
+            return instrMap;
         }
 
         /**
@@ -610,7 +583,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
          * Get block where conflict will be created,
          * by inserting a ValueMove instruction.
          *
-         * @param lir LIR
+         * @param lir           LIR
          * @param conflictBlock Block where conflict will be used
          * @return Source of the conflict
          */
@@ -751,22 +724,15 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         LIRSuites suites = super.createLIRSuites(options);
         var stage = suites.getAllocationStage();
 
-        if (RegisterAllocationVerifierPhase.Options.EnableRAVerifier.getValue(options)) {
+        if (RegAllocVerifierPhase.Options.EnableRAVerifier.getValue(options)) {
             return suites;
         }
 
-        var sharedState = new RegisterAllocationVerifierPhaseState(options);
-        var preAllocRAVPhase = new PreRegisterAllocationPhase(sharedState);
-        var ravPhase = new RegisterAllocationVerifierPhase(sharedState);
-
-        stage.prependPhase(preAllocRAVPhase);
-
         var it = stage.findPhase(RegisterAllocationPhase.class);
-        if (it == null) {
-            throw new IllegalStateException();
-        }
+        assert it != null;
 
-        it.add(ravPhase);
+        var allocator = (RegisterAllocationPhase) it.previous();
+        it.set(new RegAllocVerifierPhase(allocator, null));
 
         return suites;
     }
@@ -775,43 +741,17 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         LIRSuites suites = super.createLIRSuites(options);
         var stage = suites.getAllocationStage();
 
-        if (RegisterAllocationVerifierPhase.Options.EnableRAVerifier.getValue(options)) {
-            var it = stage.findPhase(RegisterAllocationVerifierPhase.class);
-            if (it != null) {
-                var verifierPhase = (RegisterAllocationVerifierPhase) it.previous();
-
-                var sharedState = verifierPhase.getState();
-                it.set(new RAVPhaseWrapper(sharedState));
-
-                if (phase instanceof VerifierStateUser stateUser) {
-                    stateUser.setState(sharedState);
-                }
-
-                it.add(phase); // Inserted before the verifier phase
-                return suites;
-            }
-        }
-
-        var sharedState = new RegisterAllocationVerifierPhaseState(options);
-        var preAllocRAVPhase = new PreRegisterAllocationPhase(sharedState);
-        var ravPhase = new RAVPhaseWrapper(sharedState);
-
-        stage.prependPhase(preAllocRAVPhase);
-
         var it = stage.findPhase(RegisterAllocationPhase.class);
-        if (it == null) {
-            throw new IllegalStateException();
+        Assert.assertNotNull(it);
+
+        var allocator = (RegisterAllocationPhase) it.previous();
+        if (allocator instanceof RegAllocVerifierPhase rav) {
+            phase.setAllocator(rav.getAllocator());
+        } else {
+            phase.setAllocator(allocator);
         }
 
-        if (phase instanceof VerifierStateUser stateUser) {
-            // This phase needs access to the verifier state
-            // in order to make changes that will create an
-            // exception.
-            stateUser.setState(sharedState);
-        }
-
-        it.add(phase); // use modifier phase here
-        it.add(ravPhase);
+        it.set(phase);
 
         return suites;
     }
@@ -1013,7 +953,6 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
             Assert.assertTrue(state.getRAValue().equals(loopConflictPhase.newVariable) || state.getRAValue().equals(loopConflictPhase.targetVariable));
         }
     }
-
 
     @Test
     public void testAliveConstraintInDest() {

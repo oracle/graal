@@ -209,7 +209,10 @@ public class FromUsageResolverGlobal {
 
                     handleUsages(op.uses, op, block);
                     handleUsages(op.alive, op, block);
-                    handleUsages(op.stateValues, op, block);
+
+                    if (op.hasCompleteState()) {
+                        handleUsages(op.stateValues, op, block);
+                    }
                 }
             }
 

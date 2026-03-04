@@ -31,6 +31,7 @@ import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaKind;
@@ -243,17 +244,6 @@ public class RAVInstruction {
         public ValueArrayPair alive;
 
         /**
-         * Fields taken from BytecodeFrame stored
-         * in LIRFrame, we check these to make
-         * sure that whenever JavaKind is an Object,
-         * that LIRKind is a reference and if it is
-         * a primitive then make sure it is not a reference
-         */
-        public JavaValue[] currFrameSlots;
-        public JavaValue[] origFrameSlots;
-        public JavaKind[] frameSlotKinds;
-
-        /**
          * Pairs of values retrieved from LIRFrameState,
          * verified same as any other input to make
          * sure GC has all necessary information.
@@ -326,6 +316,24 @@ public class RAVInstruction {
 
         public boolean isSafePoint() {
             return lirInstruction instanceof AMD64HotSpotSafepointOp;
+        }
+
+        /**
+         * Check if stateValues have null values, if so
+         * the state is not complete. This happens because
+         * iterating over certain values in LIRFrameState is
+         * ignored because they are a concrete stack slot and
+         * not a virtual one (StackLockValue).
+         *
+         * @return true, if complete - non-null values after allocation
+         */
+        public boolean hasCompleteState() {
+            for (int i = 0; i < stateValues.count; i++) {
+                if (stateValues.curr[i] == null) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         @Override
