@@ -48,6 +48,7 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
@@ -790,4 +791,43 @@ public final class CompilerDirectives {
         }
 
     }
+
+    /**
+     * Marks a local variable as the key used for merging loop iterations in methods annotated with
+     * {@link LoopExplosionKind#MERGE_EXPLODE}. Using this outside of merge exploded methods will
+     * lead to a compilation failure.
+     *
+     * This method must be used directly before a loop and the return value has to be assigned back
+     * to the variable:
+     * <pre>
+     * int bci = 0;
+     * // ...
+     * bci = CompilerDirectives.mergeExplodeKey(bci);
+     * while (bci != END_BCI) {
+     *     // ...
+     * }
+     * </pre>
+     *
+     * Only a single variable can currently be annotated with this method; annotating multiple
+     * variables causes a compilation failure. This restriction will be lifted in a future release.
+     *
+     * At every iteration, the key value must be a compile-time constant {@code int} so the compiler
+     * can create a distinct merge point for each key value and correctly handle irreducibly
+     * exploded structures. If this is not upheld, a compilation failure occurs.
+     *
+     * Other variables must have the same value at every iteration where the key matches (e.g.,
+     * partial evaluate to the same constant or remain unchanged). If a non-key variable changes
+     * while the key stays the same, a compilation failure occurs because the states cannot be
+     * merged. A way to explicitly mark a variable as exempt from the same-value requirement is
+     * planned.
+     *
+     * @param i the variable that should be used as the merge key.
+     * @return the unchanged value
+     *
+     * @since 25.1
+     */
+    public static int mergeExplodeKey(int i) {
+        return i;
+    }
+
 }
