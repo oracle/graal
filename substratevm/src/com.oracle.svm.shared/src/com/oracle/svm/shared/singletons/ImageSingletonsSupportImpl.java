@@ -301,6 +301,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             return singletonDuringImageBuild;
         }
 
+        public static void install() {
+            install(new HostedManagement());
+        }
+
         public static void install(HostedManagement vmConfig) {
             Invariants.guarantee(singletonDuringImageBuild == null, "Only one native image build can run at a time");
             singletonDuringImageBuild = vmConfig;

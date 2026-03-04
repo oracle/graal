@@ -35,6 +35,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
+import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
+
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -96,6 +98,9 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType ImageSingletons = lookupType(ImageSingletons.class);
     public final ResolvedJavaMethod ImageSingletons_add = lookupMethod(ImageSingletons, "add", Class.class, Object.class);
+
+    public final ResolvedJavaType HostedManagement = lookupType(ImageSingletonsSupportImpl.HostedManagement.class);
+    public final ResolvedJavaMethod HostedManagement_install = lookupMethod(HostedManagement, "install");
     // Checkstyle: resume field name check
 
     protected abstract ResolvedJavaType lookupType(Class<?> clazz);
