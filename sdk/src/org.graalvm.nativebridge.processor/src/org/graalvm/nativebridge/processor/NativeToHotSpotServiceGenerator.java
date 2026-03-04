@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -636,6 +636,11 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             jniBufferLength = marshalledParametersPositionVar;
         }
         builder.lineStart().write(binaryMarshallVars.jniBufferVariable).write(" = ").invokeStatic(typeCache.jniUtil, "NewByteArray", jniEnv, jniBufferLength).lineEnd(";");
+        builder.lineStart().write("if (").invoke(binaryMarshallVars.jniBufferVariable, "isNull").lineEnd(") {");
+        builder.indent();
+        builder.lineStart().write("throw ").newInstance(typeCache.outOfMemoryError, "\"Failed to allocate marshalling buffer in the host VM.\"").lineEnd(";");
+        builder.dedent();
+        builder.line("}");
         CharSequence address = new CodeBuilder(builder).invoke(binaryMarshallVars.outputVariable, "getAddress").build();
         builder.lineStart().invokeStatic(typeCache.jniUtil, "SetByteArrayRegion", jniEnv, binaryMarshallVars.jniBufferVariable, "0", marshalledParametersPositionVar, address).lineEnd(";");
         builder.dedent();
