@@ -28,7 +28,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 
 import java.util.Arrays;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -93,15 +92,16 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.util.AbstractImageHeapList;
+import com.oracle.svm.core.util.CounterSupport;
+import com.oracle.svm.core.util.ImageHeapList;
+import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.AbstractImageHeapList;
-import com.oracle.svm.core.util.CounterSupport;
-import com.oracle.svm.core.util.ImageHeapList;
-import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -1108,8 +1108,10 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             if (VMOperation.isInProgressAtSafepoint()) {
-                // Iterate all threads without checking if the thread mutex is locked (it should
-                // be locked by this thread though because we are at a safepoint).
+                /*
+                 * Iterate all threads without checking if current thread holds the ThreadsLock.
+                 * Most likely, it does (because we are at a safepoint) but there is no guarantee.
+                 */
                 int printed = 0;
                 for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     if (vmThread == CurrentIsolate.getCurrentThread()) {

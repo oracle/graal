@@ -213,7 +213,7 @@ public final class CEntryPointNativeFunctions {
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON, calleeMustBe = false)
     private static void detachAllThreadsAndTearDownIsolate0() {
-        VMThreads.detachAllThreadsExceptCurrentWithoutCleanupForTearDown();
+        VMThreads.detachAllExternallyStartedThreadsWithoutCleanupForTearDown();
     }
 
     private CEntryPointNativeFunctions() {

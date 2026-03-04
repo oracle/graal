@@ -30,11 +30,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -43,8 +42,8 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Allocates and frees the memory for aligned and unaligned heap chunks. The methods are
@@ -156,18 +155,15 @@ final class HeapChunkProvider {
     /**
      * Push a chunk to the global linked list of unused chunks.
      * <p>
-     * This method is <em>not</em> atomic. It only runs when the VMThreads.THREAD_MUTEX is held (or
-     * the virtual machine is single-threaded). However it must not be allowed to compete with pops
-     * from the global free-list, because it might cause them an ABA problem. Pushing is only used
-     * during garbage collection, so making popping uninterruptible prevents simultaneous pushing
-     * and popping.
+     * This method does not need to be atomic as unused chunks may only be pushed during garbage
+     * collection. To prevent ABA problems, the application may only pop unused chunks while in
+     * uninterruptible code.
      *
      * Note the asymmetry with {@link #popUnusedAlignedChunk()}, which does not use a global free
      * list.
      */
     private void pushUnusedAlignedChunk(AlignedHeader chunk) {
         assert VMOperation.isGCInProgress();
-        VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
 
         HeapChunk.setNext(chunk, unusedAlignedChunks.get());
         unusedAlignedChunks.set(chunk);

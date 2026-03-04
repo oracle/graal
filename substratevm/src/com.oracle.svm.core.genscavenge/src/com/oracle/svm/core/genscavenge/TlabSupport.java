@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
 import static com.oracle.svm.core.genscavenge.ThreadLocalAllocation.allocatedAlignedBytes;
 import static com.oracle.svm.core.genscavenge.ThreadLocalAllocation.getTlab;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_END_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_START_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -39,27 +39,28 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
 
 /**
  * Provides methods for initializing, calculating the size and retiring TLABs used in
@@ -308,7 +309,11 @@ public class TlabSupport {
 
     @Uninterruptible(reason = "Accesses TLAB")
     private static void retireTlabToEden(IsolateThread thread) {
-        VMThreads.guaranteeOwnsThreadMutex("Otherwise, we wouldn't be allowed to access the space.", true);
+        /*
+         * This method is used both during a VM operation and while detaching a thread. So, it can
+         * only check that there is some mutual exclusion.
+         */
+        VMError.guarantee(ThreadsLock.hasWriteAccess(), "Otherwise, we wouldn't be allowed to access the space.");
 
         boolean updateStats = VMOperation.isGCInProgress();
         retireTlab(thread, updateStats);

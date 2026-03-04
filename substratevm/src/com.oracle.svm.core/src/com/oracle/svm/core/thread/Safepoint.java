@@ -26,7 +26,6 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.core.thread.VMThreads.SAFEPOINT_MUTEX;
-import static com.oracle.svm.core.thread.VMThreads.THREAD_MUTEX;
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -134,20 +133,20 @@ public final class Safepoint {
      * Initiates a safepoint.
      *
      * May only be called by the VM operation thread and must not allocate any Java heap objects.
-     * Those invariants and some extra logic in the code for safepoint checks allow us to lock the
-     * {@link VMThreads#THREAD_MUTEX} from interruptible code (this would normally result in
-     * deadlocks).
+     * Those invariants and some extra logic in the code for safepoint checks makes the locking in
+     * this method safe.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
     boolean startSafepoint(String reason) {
         assert VMOperationControl.mayExecuteVmOperations();
         long startTicks = JfrTicks.elapsedTicks();
 
-        /* The current thread may already own the lock. */
-        boolean lockThreadMutex = !THREAD_MUTEX.isOwner();
-        if (lockThreadMutex) {
-            THREAD_MUTEX.lock();
-        }
+        /*
+         * Acquire the ThreadsLock before the safepoint mutex. This is necessary to prevent
+         * deadlocks in case that there are any threads that execute safepoint checks while holding
+         * the ThreadsLock with write access.
+         */
+        boolean acquiredThreadsLock = acquireThreadsLock();
 
         /* Make sure that threads get blocked once they see that a safepoint is pending. */
         SAFEPOINT_MUTEX.lock();
@@ -162,12 +161,12 @@ public final class Safepoint {
         safepointState = AT_SAFEPOINT;
         safepointId = safepointId.add(1);
         SafepointBeginEvent.emit(getSafepointId(), numJavaThreads, startTicks);
-        return lockThreadMutex;
+        return acquiredThreadsLock;
     }
 
     /** Let all threads proceed from their safepoint. */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
-    void endSafepoint(boolean unlockThreadMutex) {
+    void endSafepoint(boolean acquiredThreadsLock) {
         assert VMOperationControl.mayExecuteVmOperations();
         long startTicks = JfrTicks.elapsedTicks();
 
@@ -177,8 +176,8 @@ public final class Safepoint {
         /* Some Java threads may continue execution even before we unlock this mutex. */
         SAFEPOINT_MUTEX.unlock();
 
-        if (unlockThreadMutex) {
-            THREAD_MUTEX.unlock();
+        if (acquiredThreadsLock) {
+            releaseThreadsLock();
         }
 
         /*
@@ -198,9 +197,36 @@ public final class Safepoint {
         VMThreads.singleton().cleanupExitedOsThreads();
     }
 
+    /**
+     * Acquires the {@link ThreadsLock} with non-exclusive write access, if the current thread
+     * doesn't already hold it with that access.
+     */
+    @Uninterruptible(reason = "Only needed to satisfy the uninterruptible check.")
+    private static boolean acquireThreadsLock() {
+        assert VMOperationControl.mayExecuteVmOperations() : "only the VM operation thread may execute safepoint checks while holding the ThreadsLock";
+        assert !ThreadsLock.hasExclusiveWriteAccess() : "could deadlock if another thread called lockRead() from interruptible code";
+
+        if (ThreadsLock.hasNonExclusiveWriteAccess()) {
+            /* Nothing to do. */
+            return false;
+        }
+
+        /*
+         * If this thread already has read access, then it will eventually hold the lock with both
+         * read and non-exclusive write access.
+         */
+        ThreadsLock.lockWriteNonExclusive();
+        return true;
+    }
+
+    @Uninterruptible(reason = "Only needed to satisfy the uninterruptible check.")
+    private static void releaseThreadsLock() {
+        ThreadsLock.unlockWriteNonExclusive();
+    }
+
     /** Blocks until all threads (other than the current thread) have entered the safepoint. */
     private static int requestThreadsEnterSafepoint(String reason) {
-        assert THREAD_MUTEX.isOwner() : "must hold mutex while waiting for safepoints";
+        assert ThreadsLock.hasNonExclusiveWriteAccess() : "must hold the ThreadsLock while waiting for safepoints";
 
         long startNanos = System.nanoTime();
         long loopNanos = startNanos;
@@ -318,7 +344,7 @@ public final class Safepoint {
     }
 
     private static void releaseThreadsFromSafepoint() {
-        assert THREAD_MUTEX.isOwner() : "must hold mutex when releasing safepoints.";
+        assert ThreadsLock.hasNonExclusiveWriteAccess() : "must hold the ThreadsLock when releasing safepoints.";
 
         for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
             if (thread == CurrentIsolate.getCurrentThread() || SafepointBehavior.ignoresSafepoints(thread)) {

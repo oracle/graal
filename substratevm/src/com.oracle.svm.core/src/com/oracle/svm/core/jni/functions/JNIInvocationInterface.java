@@ -283,7 +283,7 @@ public final class JNIInvocationInterface {
         if (JavaFrameAnchors.getFrameAnchor().isNonNull()) {
             return JNIErrors.JNI_ERR();
         }
-        PlatformThreads.singleton().joinAllNonDaemons();
+        PlatformThreads.singleton().joinAllNonDaemonsInNative();
         return JNIErrors.JNI_OK();
     }
 
