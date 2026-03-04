@@ -30,7 +30,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
@@ -77,7 +76,7 @@ import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.StringInternSupport;
+import com.oracle.svm.core.jdk.strings.StringInternSupport;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
@@ -269,9 +268,13 @@ public final class NativeImageHeap implements ImageHeap {
         boolean usesInternedStrings = hostedField != null && hostedField.isReachable();
         if (usesInternedStrings) {
             /*
-             * Ensure that the hub of the String[] array (used for the interned objects) is written.
+             * Ensure that the hubs of the classes used for the interned strings are written and
+             * process any objects that were transitively added to the heap.
              */
-            addObject(hMetaAccess.lookupJavaType(String[].class).getHub(), false, reasonSupport.internedStringsTable());
+            StringInternSupport.forEachContainerClass(clazz -> {
+                addObject(hMetaAccess.lookupJavaType(clazz).getHub(), false, reasonSupport.internedStringsTable());
+            });
+            processAddObjectWorklist();
             /*
              * We are no longer allowed to add new interned strings, because that would modify the
              * table we are about to write.
@@ -281,24 +284,21 @@ public final class NativeImageHeap implements ImageHeap {
              * By now, all interned Strings have been added to our internal interning table.
              * Populate the VM configuration with this table, and ensure it is part of the heap.
              */
-            String[] imageInternedStrings;
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
                 var internSupport = ImageSingletons.lookup(StringInternSupport.class);
-                imageInternedStrings = internSupport.layeredSetImageInternedStrings(internedStrings.keySet());
+                internSupport.layeredSetImageInternedStrings(internedStrings.keySet());
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                     HostedImageLayerBuildingSupport.singleton().getWriter().setInternedStringsIdentityMap(internSupport.getInternedStringsIdentityMap());
                 }
             } else {
-                imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
-                Arrays.sort(imageInternedStrings);
+                String[] imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
                 StringInternSupport.setImageInternedStrings(imageInternedStrings);
             }
-            /* Manually snapshot the interned strings array. */
-            aUniverse.getHeapScanner().rescanObject(imageInternedStrings, ImageHeapScanner.LATE_SCAN);
-
-            addObject(imageInternedStrings, true, reasonSupport.internedStringsTable());
-
-            // Process any objects that were transitively added to the heap.
+            /* Manually snapshot the interned strings storage. */
+            StringInternSupport.forEachContainerObject(obj -> {
+                aUniverse.getHeapScanner().rescanObject(obj, ImageHeapScanner.LATE_SCAN);
+                addObject(obj, true, reasonSupport.internedStringsTable());
+            });
             processAddObjectWorklist();
         } else {
             internStringsPhase.disallow();
@@ -431,17 +431,20 @@ public final class NativeImageHeap implements ImageHeap {
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
         /* This unwrapping of JavaConstants should be removed once GR-72922 is done. */
+        boolean isInternedString = false;
         Object objectConstant = hUniverse.getSnippetReflection().asObject(Object.class, uncompressed);
         if (objectConstant != null) {
             aUniverse.getHeapScanner().maybeForceHashCodeComputation(uncompressed);
             if (objectConstant instanceof String stringConstant) {
-                handleImageString(stringConstant);
+                isInternedString = handleImageString(stringConstant);
+                assert !isInternedString || internStringsPhase.isAllowed() : "Interned strings cannot be added to the image heap at stage " + internStringsPhase;
             }
         }
 
         final ObjectInfo existing = getConstantInfo(uncompressed);
         if (existing == null) {
-            addObjectToImageHeap(uncompressed, immutableFromParent, identityHashCode, reason);
+            Object objectReason = isInternedString ? reasonSupport.internedStringsTable() : reason;
+            addObjectToImageHeap(uncompressed, immutableFromParent, identityHashCode, objectReason);
         } else if (objectReachabilityInfo != null) {
             objectReachabilityInfo.get(existing).addReason(reason);
         }
@@ -505,12 +508,12 @@ public final class NativeImageHeap implements ImageHeap {
         return true;
     }
 
-    private void handleImageString(final String str) {
-        if (HostedStringDeduplication.isInternedString(str)) {
-            /* The string is interned by the host VM, so it must also be interned in our image. */
-            assert internedStrings.containsKey(str) || internStringsPhase.isAllowed() : "Should not intern string during phase " + internStringsPhase.toString();
+    private boolean handleImageString(final String str) {
+        if (internStringsPhase.isAllowed() && HostedStringDeduplication.isInternedString(str)) {
             internedStrings.put(str, str);
+            return true;
         }
+        return false;
     }
 
     /**
@@ -623,7 +626,7 @@ public final class NativeImageHeap implements ImageHeap {
                     boolean fieldRelocatable = false;
                     /*
                      * Fields that are only available after heap layout, such as
-                     * StringInternSupport.imageInternedStrings and all ImageHeapInfo fields will
+                     * ImageInternedStrings.internedStringTable and all ImageHeapInfo fields will
                      * not be processed.
                      */
                     if (field.isRead() && field.isValueAvailable(constant) && !ignoredFields.contains(field)) {

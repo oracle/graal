@@ -205,7 +205,7 @@ public class ImageHeapReasonSupport {
     }
 
     /**
-     * @see com.oracle.svm.core.jdk.StringInternSupport
+     * @see com.oracle.svm.core.jdk.strings.StringInternSupport
      */
     public Object internedStringsTable() {
         return HeapInclusionReason.InternedStringsTable;

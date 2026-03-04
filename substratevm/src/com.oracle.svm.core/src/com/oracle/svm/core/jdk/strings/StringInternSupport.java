@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.strings;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -31,23 +31,21 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
@@ -56,7 +54,6 @@ import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
@@ -85,12 +82,12 @@ public final class StringInternSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setImageInternedStrings(String[] newImageInternedStrings) {
         assert !ImageLayerBuildingSupport.buildingImageLayer();
-        ImageInternedStrings.setImageInternedStrings(newImageInternedStrings);
+        getImageInternedStringsImpl().setImageInternedStrings(newImageInternedStrings);
     }
 
     @SuppressWarnings("unchecked")
     @Platforms(Platform.HOSTED_ONLY.class)
-    public String[] layeredSetImageInternedStrings(Set<String> layerInternedStrings) {
+    public void layeredSetImageInternedStrings(Set<String> layerInternedStrings) {
         assert ImageLayerBuildingSupport.buildingImageLayer();
         /*
          * When building a layered image, it is possible that this string has been interned in a
@@ -114,9 +111,7 @@ public final class StringInternSupport {
             currentLayerInternedStrings = layerInternedStrings.stream().filter(value -> !priorInternedStrings.contains(value)).toArray(String[]::new);
         }
 
-        Arrays.sort(currentLayerInternedStrings);
-
-        ImageInternedStrings.setImageInternedStrings(currentLayerInternedStrings);
+        getImageInternedStringsImpl().setImageInternedStrings(currentLayerInternedStrings);
 
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             internedStringsIdentityMap = new IdentityHashMap<>(priorInternedStrings.size() + currentLayerInternedStrings.length);
@@ -126,8 +121,6 @@ public final class StringInternSupport {
             }
             Arrays.stream(currentLayerInternedStrings).forEach(internedString -> internedStringsIdentityMap.put(internedString, internedString));
         }
-
-        return currentLayerInternedStrings;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -136,7 +129,22 @@ public final class StringInternSupport {
         return internedStringsIdentityMap;
     }
 
-    static String intern(String str) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void forEachContainerClass(Consumer<Class<?>> consumer) {
+        getImageInternedStringsImpl().forEachContainerClass(consumer);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void forEachContainerObject(Consumer<Object> consumer) {
+        getImageInternedStringsImpl().forEachContainerObject(consumer);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static Object getContainerRoot() {
+        return getImageInternedStringsImpl().getContainerRoot();
+    }
+
+    public static String intern(String str) {
         String result = RuntimeInternedStrings.getInternedStrings().get(str);
         if (result != null) {
             return result;
@@ -148,10 +156,9 @@ public final class StringInternSupport {
     private static String doIntern(String str) {
         String result = str;
         for (ImageInternedStrings layer : MultiLayeredImageSingleton.getAllLayers(ImageInternedStrings.class)) {
-            String[] layerImageInternedStrings = layer.getImageInternedStrings();
-            int imageIdx = Arrays.binarySearch(layerImageInternedStrings, str);
-            if (imageIdx >= 0) {
-                result = layerImageInternedStrings[imageIdx];
+            String found = layer.find(str);
+            if (found != null) {
+                result = found;
                 break;
             }
         }
@@ -162,7 +169,17 @@ public final class StringInternSupport {
         return result;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static Object getImageInternedStrings() {
+        return getImageInternedStringsImpl();
+    }
+
+    /**
+     * Intentionally returns an Object to avoid exposing the implementation to callers, which should
+     * use methods like {@link #forEachContainerObject} instead.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static ImageInternedStrings getImageInternedStringsImpl() {
         return LayeredImageSingletonSupport.singleton().lookup(ImageInternedStrings.class, false, true);
     }
 
@@ -199,33 +216,6 @@ class RuntimeInternedStrings {
 
     static ConcurrentHashMap<String, String> getInternedStrings() {
         return ImageSingletons.lookup(RuntimeInternedStrings.class).internedStrings;
-    }
-}
-
-@AutomaticallyRegisteredImageSingleton
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
-class ImageInternedStrings {
-
-    /**
-     * The native image contains a lot of interned strings. All Java String literals, and all class
-     * names, are interned per Java specification. We don't want the memory overhead of an hash
-     * table entry, so we store them (sorted) in this String[] array. When a string is interned at
-     * run time, it is added to the real hash map, so we pay the (logarithmic) cost of the array
-     * access only once per string.
-     *
-     * The field is set late during image generation, so the value is not available during static
-     * analysis and compilation.
-     */
-    @UnknownObjectField(availability = AfterHeapLayout.class) private String[] imageInternedStrings;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static void setImageInternedStrings(String[] newImageInternedStrings) {
-        var singleton = LayeredImageSingletonSupport.singleton().lookup(ImageInternedStrings.class, false, true);
-        singleton.imageInternedStrings = newImageInternedStrings;
-    }
-
-    String[] getImageInternedStrings() {
-        return imageInternedStrings;
     }
 }
 

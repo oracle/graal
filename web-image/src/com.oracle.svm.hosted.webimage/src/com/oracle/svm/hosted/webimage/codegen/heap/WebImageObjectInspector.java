@@ -209,7 +209,7 @@ public class WebImageObjectInspector extends ObjectInspector {
         for (HostedField f : fields.fields) {
             if (f.getJavaKind().isObject() && f.getType().getStorageKind().isObject()) {
                 if (!f.isValueAvailable(c)) {
-                    // Use NULL for computed fields such as StringInternSupport.imageInternedStrings
+                    // Use NULL for computed fields such as ImageInternedStrings.internedStringTable
                     // WebImageTypeControl.postProcess will patch the right value
                     members.add(NULL);
                     continue;
