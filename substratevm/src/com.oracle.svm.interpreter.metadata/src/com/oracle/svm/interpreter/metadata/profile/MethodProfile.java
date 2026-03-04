@@ -262,8 +262,8 @@ public final class MethodProfile {
         }
 
         public void incrementTakenCounter() {
-            takenCounter++;
             counter++;
+            takenCounter++;
         }
 
         public void incrementNotTakenCounter() {
@@ -271,10 +271,19 @@ public final class MethodProfile {
         }
 
         public double takenProfile() {
-            if (counter == 0) {
+            long total = counter;
+            if (total == 0) {
                 return -1D;
             }
-            return (double) takenCounter / (double) counter;
+            long taken = takenCounter;
+            /*
+             * Profiles are updated/read concurrently without synchronization. A racing reader can
+             * observe transient snapshots where taken > total; clamp to preserve [0,1] invariants.
+             */
+            if (taken > total) {
+                taken = total;
+            }
+            return (double) taken / (double) total;
         }
 
         public double notTakenProfile() {
