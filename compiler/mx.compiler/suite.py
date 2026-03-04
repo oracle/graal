@@ -386,6 +386,7 @@ suite = {
           "jdk.internal.access",
           "jdk.internal.loader",
           "jdk.internal.module",
+          "jdk.internal.misc",
         ],
         "jdk.internal.vm.ci": [
           "jdk.vm.ci.meta",
@@ -789,6 +790,7 @@ suite = {
             "jdk.internal.access",
             "jdk.internal.loader",
             "jdk.internal.module",
+            "jdk.internal.misc"
           ],
           "jdk.internal.vm.ci": [
             "jdk.vm.ci.meta",

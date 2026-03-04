@@ -62,6 +62,7 @@ import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
 import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.internal.loader.BootLoader;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -403,6 +404,29 @@ final class HostVMAccess implements VMAccess {
         } catch (ClassNotFoundException e) {
             return null;
         }
+    }
+
+    @Override
+    public void copyMemory(JavaConstant src, int srcFrom, int srcTo, byte[] dst, int dstFrom) {
+        ResolvedJavaType arrayType = getProviders().getMetaAccess().lookupJavaType(src);
+        if (arrayType == null || !arrayType.isArray() || !arrayType.getComponentType().isPrimitive()) {
+            throw new IllegalArgumentException("Expected a primitive array constant, got " + src);
+        }
+        var array = providers.getSnippetReflection().asObject(Object.class, src);
+        if (array == null) {
+            throw new IllegalArgumentException("Could not unwrap an array constant: " + src);
+        }
+        int sourceArrayEnd = Array.getLength(array) * arrayType.getComponentType().getJavaKind().getByteCount();
+        if (srcFrom < 0 || srcTo > sourceArrayEnd || srcTo < srcFrom) {
+            throw new IllegalArgumentException(
+                            "Invalid input range: " + srcFrom + ".." + srcTo + " for array of length " + Array.getLength(array) + " with kind " + arrayType.getComponentType().getJavaKind());
+        }
+        int bytesToCopy = srcTo - srcFrom;
+        if (dstFrom < 0 || dstFrom > dst.length - bytesToCopy) {
+            throw new IllegalArgumentException("Invalid output range: " + dstFrom + ".." + (dstFrom + bytesToCopy) + " for array of length " + dst.length);
+        }
+        var unsafe = Unsafe.getUnsafe();
+        unsafe.copyMemory(array, unsafe.arrayBaseOffset(array.getClass()) + srcFrom, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + dstFrom, bytesToCopy);
     }
 
     @Override
