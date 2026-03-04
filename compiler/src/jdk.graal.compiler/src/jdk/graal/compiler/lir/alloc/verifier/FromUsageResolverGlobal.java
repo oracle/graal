@@ -52,7 +52,8 @@ public class FromUsageResolverGlobal {
     public Map<RAVariable, Boolean> reached;
     public Map<RAVInstruction.Op, Set<RAVariable>> firstUsages;
     public Map<RAVariable, RAValue> initialLocations;
-    public Map<RAVariable, RAVariable> aliasMap;
+    public Map<RAVariable, List<RAVariable>> aliasMap;
+
     public Map<RAVariable, BasicBlock<?>> aliasBlockMap;
     public BlockMap<BlockUsage> blockUsageMap; // Entry blocks!
     public List<BasicBlock<?>> endBlocks;
@@ -105,6 +106,7 @@ public class FromUsageResolverGlobal {
         this.reached = new EconomicHashMap<>();
         this.firstUsages = new EconomicHashMap<>();
         this.initialLocations = new EconomicHashMap<>();
+        this.aliasMap = new EconomicHashMap<>();
         this.aliasMap = new EconomicHashMap<>();
         this.aliasBlockMap = new EconomicHashMap<>();
         this.endBlocks = new ArrayList<>();
@@ -233,7 +235,10 @@ public class FromUsageResolverGlobal {
                     }
 
                     aliasBlockMap.put(variable, block);
-                    aliasMap.put(variable, succLabel.dests.orig[i].asVariable());
+
+                    var aliasedVariables = aliasMap.getOrDefault(alias, new ArrayList<>());
+                    aliasedVariables.add(variable);
+                    aliasMap.put(alias, aliasedVariables);
                 }
             }
 
@@ -270,7 +275,10 @@ public class FromUsageResolverGlobal {
                 firstUsages.get(op).add(variable);
                 initialLocations.put(variable, values.curr[i]);
 
-                aliasMap.remove(variable);
+                for (var entry : aliasMap.entrySet()) {
+                    var aliasedVariables = entry.getValue();
+                    aliasedVariables.remove(variable);
+                }
             }
         }
     }
@@ -323,19 +331,18 @@ public class FromUsageResolverGlobal {
             // Variables that are passed into jumps without any other usage are aliases
             // for same variable in successor label, whenever said variable is resolved
             // we now have a location for this variable and can take other moves into account.
-            for (var entry : aliasMap.entrySet()) {
-                var aliased = entry.getValue();
-                if (variable.equals(aliased)) {
-                    var alias = entry.getKey();
-                    var aliasBlock = aliasBlockMap.get(alias);
+            if (aliasMap.containsKey(variable)) {
+                var aliasedVariables = aliasMap.get(variable);
+                for (var aliases : aliasedVariables) {
+                    var aliasBlock = aliasBlockMap.get(aliases);
 
                     if (blockUsageMap.get(aliasBlock) == null) {
                         this.blockUsageMap.put(aliasBlock, new BlockUsage());
                     }
 
                     var aliasBlockUsage = blockUsageMap.get(aliasBlock);
-                    aliasBlockUsage.locations.put(alias, location);
-                    aliasBlockUsage.reached.add(alias);
+                    aliasBlockUsage.locations.put(aliases, location);
+                    aliasBlockUsage.reached.add(aliases);
                 }
             }
 

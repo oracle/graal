@@ -31,25 +31,20 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
-import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Verification state a block is in.
  */
-public class MergedBlockVerifierState {
+public class BlockVerifierState {
     /**
      * Map maintaining mapping between locations and their state.
      */
-    public MergedAllocationStateMap values;
+    public AllocationStateMap values;
 
     /**
      * Register allocation config we use to check if only
@@ -62,32 +57,42 @@ public class MergedBlockVerifierState {
      */
     protected ConflictResolver conflictConstantResolver;
 
-    public MergedBlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, ConflictResolver constantConflictResolver) {
-        this.values = new MergedAllocationStateMap(block, registerAllocationConfig);
+    public BlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, ConflictResolver constantConflictResolver) {
+        this.values = new AllocationStateMap(block, registerAllocationConfig);
         this.registerAllocationConfig = registerAllocationConfig;
         this.conflictConstantResolver = constantConflictResolver;
     }
 
-    protected MergedBlockVerifierState(BasicBlock<?> block, MergedBlockVerifierState other) {
+    protected BlockVerifierState(BasicBlock<?> block, BlockVerifierState other) {
         this.registerAllocationConfig = other.registerAllocationConfig;
         this.conflictConstantResolver = other.conflictConstantResolver;
-        this.values = new MergedAllocationStateMap(block, other.values);
+        this.values = new AllocationStateMap(block, other.values);
     }
 
-    public MergedAllocationStateMap getValues() {
+    public AllocationStateMap getValues() {
         return values;
     }
 
     /**
-     * Merge states of block and it's predecessor.
+     * Merge states of block and it's predecessor. This process
+     * creates a new state based on contents of the predecessor,
+     * creating conflicts where current locations do not match.
      *
      * @param other Predecessor of this block
      * @return Was this state changed?
      */
-    public boolean meetWith(MergedBlockVerifierState other) {
+    public boolean meetWith(BlockVerifierState other) {
         return this.values.mergeWith(other.getValues());
     }
 
+    /**
+     * Check state values stored in LIRFrameState same way other operands,
+     * except we skip those where the state values are incorrectly stored,
+     * after stack allocation, because some values are no longer present.
+     *
+     * @param op    Operation for which we are checking state values
+     * @param block Block where this operation is located
+     */
     protected void checkStateValues(RAVInstruction.Op op, BasicBlock<?> block) {
         if (!op.hasCompleteState()) {
             // Some values are null after allocation because of stack slot allocator
@@ -113,6 +118,19 @@ public class MergedBlockVerifierState {
         }
     }
 
+    /**
+     * Check that original variable matches symbol stored at
+     * the current location in the allocation state map.
+     * <p>
+     * We also check that kinds match and possibly
+     * rematerialize variables at this point in the
+     * state map.
+     *
+     * @param orig  Original variable
+     * @param curr  Current location
+     * @param op    Operation where these are used
+     * @param block Block where this operation is
+     */
     protected void checkOperand(RAValue orig, RAValue curr, RAVInstruction.Op op, BasicBlock<?> block) {
         assert orig != null;
 
@@ -124,12 +142,6 @@ public class MergedBlockVerifierState {
                 return;
             }
 
-            // Verifying Stack Allocator:
-            // Here we also need to handle stateValues being null
-            // because sometimes a StackLockValue is used and after
-            // stack allocation it is no longer given to us when
-            // iterating. This also causes issues in the if statement
-            // below items are not shifted in curr array
             throw new MissingLocationError(op.lirInstruction, block, orig);
         }
 
@@ -231,7 +243,6 @@ public class MergedBlockVerifierState {
      * <p>
      * We need to ignore the cast value because the currently stored
      * value will not be cast.
-     * </p>
      *
      * @param orig      Original variable
      * @param fromState Value stored in state of the current location
@@ -368,6 +379,8 @@ public class MergedBlockVerifierState {
 
     /**
      * Update the current state based on outputs of this instruction.
+     * Setting contents of current location in allocation state map to
+     * the symbol that was present before allocation was completed.
      *
      * @param instruction Instruction we update state from
      * @param block       Block where it is located
@@ -382,7 +395,10 @@ public class MergedBlockVerifierState {
     }
 
     /**
-     * Update the state using a generic operation.
+     * Update the state using a generic operation,
+     * based on contents of its output array, storing
+     * symbols pre-allocation to current locations after
+     * allocation.
      *
      * @param op    Operation we update state from
      * @param block Block where it is located
@@ -432,9 +448,9 @@ public class MergedBlockVerifierState {
      * Update block state with a safe point list of live references deemed by the GC,
      * any other references not included in said list are to be set as unknown so
      * there's no freed pointer use.
-     * <p>
+     *
      * Not in use currently, because we do not have a reliable list of live references.
-     * <p>
+     *
      * Reference test case: AOTTutorial
      *
      * @param references List of references deemed as live by the GC
@@ -481,7 +497,7 @@ public class MergedBlockVerifierState {
      * @param block     Block where it is located
      */
     protected void updateWithValueMove(RAVInstruction.ValueMove valueMove, BasicBlock<?> block) {
-        if (valueMove.location.isVariable()) {
+        if (valueMove.getLocation().isVariable()) {
             // Whenever there is a move between two variables,
             // we need to change every location containing the old variable (rhs - source)
             // to the new variable (lhs - destination)
@@ -490,10 +506,10 @@ public class MergedBlockVerifierState {
             // TestCase: BoxingTest.boxBoolean
             var locations = this.values.getValueLocations(valueMove.variableOrConstant);
             for (var location : locations) {
-                this.values.put(location, new ValueAllocationState(valueMove.location, valueMove, block));
+                this.values.put(location, new ValueAllocationState(valueMove.getLocation(), valueMove, block));
             }
         } else {
-            this.values.put(valueMove.location, new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
+            this.values.put(valueMove.getLocation(), new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
         }
     }
 }

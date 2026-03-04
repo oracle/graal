@@ -27,15 +27,14 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.hotspot.amd64.AMD64HotSpotSafepointOp;
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
-import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaValue;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
 import java.util.ArrayList;
@@ -447,10 +446,7 @@ public class RAVInstruction {
          */
         public RAValue variableOrConstant;
 
-        /**
-         * Where variable (or constant) is being stored.
-         */
-        public RAValue location; // Can also be another variable!
+        protected RAValue location; // Can also be another variable!
 
         public ValueMove(LIRInstruction instr, Value variableOrConstant, Value location) {
             super(instr);
@@ -459,7 +455,27 @@ public class RAVInstruction {
         }
 
         public String toString() {
-            return location.toString() + " = VIRTMOVE " + variableOrConstant.toString();
+            return getLocation().toString() + " = VIRTMOVE " + variableOrConstant.toString();
+        }
+
+        public void setLocation(RAValue location) {
+            this.location = location;
+        }
+
+        /**
+         * Where variable (or constant) is being stored.
+         */
+        public RAValue getLocation() {
+            if (LIRValueUtil.isVirtualStackSlot(location.getValue())) {
+                var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(lirInstruction);
+                var input = valueMov.getInput();
+                if (ValueUtil.isStackSlot(input)) {
+                    // Change vstack to allocated stack slot, because it was changed
+                    location.value = input;
+                }
+            }
+
+            return location;
         }
     }
 }

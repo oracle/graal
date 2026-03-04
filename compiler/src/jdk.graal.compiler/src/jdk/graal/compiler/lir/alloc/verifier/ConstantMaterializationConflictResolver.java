@@ -197,7 +197,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         // Cannot be rematerialized to stack
         var source = state.getSource();
         if (source instanceof RAVInstruction.ValueMove move) {
-            var location = move.location.getValue();
+            var location = move.getLocation().getValue();
             return LIRValueUtil.isStackSlotValue(location);
         } else {
             throw new RematerializedConstantSourceMissingError(source, variable);

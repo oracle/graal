@@ -57,18 +57,29 @@ import java.util.Set;
 /**
  * Verification phase for Register Allocation, wraps around
  * the actual allocator and validates that order of spills, reloads
- * and moves is correct and that variables before allocations
- * are actually stored in concrete locations chosen by the allocator.
- * <p>
+ * and moves is correct and that variables before allocation
+ * are actually stored in current locations chosen by the allocator.
+ *
  * Needs to extend RegisterAllocationPhase to not throw an exception.
  */
 public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     public static class Options {
         @Option(help = "Verify that register allocation is indeed, correct", type = OptionType.Debug)
         public static final OptionKey<Boolean> EnableRAVerifier = new OptionKey<>(false);
+
+        @Option(help = "Verify output of stack allocator with register allocator", type = OptionType.Debug)
+        public static final OptionKey<Boolean> VerifyStackAllocator = new OptionKey<>(true);
     }
 
+    /**
+     * Register allocator we are verifying output of.
+     */
     protected RegisterAllocationPhase allocator;
+
+    /**
+     * Stack allocator, if not null, being verified
+     * simultaneously with reg allocator.
+     */
     protected LIRPhase<AllocationContext> stackSlotAllocator;
 
     private static final TimerKey PreallocTimer = DebugContext.timer("RAV_PreAlloc");
@@ -97,6 +108,25 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
         this.allocator = allocator;
     }
 
+    /**
+     * Get stack allocator being verified with register allocator if not null.
+     *
+     * @return Stack allocator or null
+     */
+    public LIRPhase<AllocationContext> getStackSlotAllocator() {
+        return stackSlotAllocator;
+    }
+
+    /**
+     * Set stack allocator, used by tests
+     *
+     * @param stackSlotAllocator Stack allocator
+     */
+    public void setStackSlotAllocator(LIRPhase<AllocationContext> stackSlotAllocator) {
+        this.stackSlotAllocator = stackSlotAllocator;
+    }
+
+    @SuppressWarnings("try")
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         assert allocator != null : "No register allocator present for verification";
@@ -108,16 +138,28 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
             preAllocMap = saveInstructionsPreAlloc(lir);
         }
 
+        boolean verifyStackAlloc = Options.VerifyStackAllocator.getValue(lirGenRes.getLIR().getOptions());
+
         allocator.apply(target, lirGenRes, context);
-        if (stackSlotAllocator != null) {
+        if (stackSlotAllocator != null && verifyStackAlloc) {
             stackSlotAllocator.apply(target, lirGenRes, context);
         }
 
         try (final DebugCloseable t = VerifierTimer.start(lir.getDebug())) {
             verifyAllocation(lir, preAllocMap, context);
         }
+
+        if (stackSlotAllocator != null && !verifyStackAlloc) {
+            stackSlotAllocator.apply(target, lirGenRes, context);
+        }
     }
 
+    /**
+     * Save instruction before allocation to keep track of symbols used in instructions.
+     *
+     * @param lir LIR
+     * @return Map of LIRInstruction to RAVInstruction that keeps symbols
+     */
     protected Map<LIRInstruction, RAVInstruction.Base> saveInstructionsPreAlloc(LIR lir) {
         Map<LIRInstruction, RAVInstruction.Base> preallocMap = new EconomicHashMap<>(Equivalence.IDENTITY);
         for (var blockId : lir.getBlocks()) {
@@ -178,9 +220,16 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
         return preallocMap;
     }
 
+    /**
+     * Use information before allocation to verify output of allocator(s).
+     *
+     * @param lir         LIR
+     * @param preallocMap Map of instructions before allocation
+     * @param context     Allocation context
+     */
     protected void verifyAllocation(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext context) {
         var instructions = getVerifierInstructions(lir, preallocMap, context);
-        var verifier = new RegisterAllocationVerifier(lir, instructions, getRegisterAllocationConfig(context));
+        var verifier = new RegAllocVerifier(lir, instructions, getRegisterAllocationConfig(context));
 
         try {
             verifier.run();
@@ -325,7 +374,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                 continue;
             }
 
-            if (!speculativeMove.location.isVariable() && speculativeMove.variableOrConstant.isVariable()) {
+            if (!speculativeMove.getLocation().isVariable() && speculativeMove.variableOrConstant.isVariable()) {
                 var variable = speculativeMove.variableOrConstant.asVariable();
                 var variableDefInstr = definedVariables.get(variable);
                 if (variableDefInstr == null) {
@@ -342,7 +391,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                         // Add speculative instruction location back to the label
                         // where it's missing, only when speculative move is part
                         // of said label.
-                        op.dests.curr[i] = speculativeMove.location;
+                        op.dests.curr[i] = speculativeMove.getLocation();
                     }
                 }
 

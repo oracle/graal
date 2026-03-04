@@ -33,9 +33,18 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Mapping between a location and it's AllocationState.
+ * Mapping between a location and allocation state,
+ * that stores one of these:
+ * - Unknown - our null state, nothing was stored yet
+ * - Value - symbol that is stored at said location
+ * - Conflict - set of Values that are supposed to be at same location
+ *
+ * Conflicts are resolved by assigning new Value to same location.
+ * Otherwise, they cannot be used. Value can store register, stack slot,
+ * constant, but most importantly variables used before allocation. These
+ * are what we are checking with the verification process.
  */
-public class MergedAllocationStateMap {
+public class AllocationStateMap {
     protected BasicBlock<?> block;
 
     /**
@@ -49,13 +58,13 @@ public class MergedAllocationStateMap {
      */
     protected RegisterAllocationConfig registerAllocationConfig;
 
-    public MergedAllocationStateMap(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig) {
+    public AllocationStateMap(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig) {
         internalMap = new EconomicHashMap<>();
         this.block = block;
         this.registerAllocationConfig = registerAllocationConfig;
     }
 
-    public MergedAllocationStateMap(BasicBlock<?> block, MergedAllocationStateMap other) {
+    public AllocationStateMap(BasicBlock<?> block, AllocationStateMap other) {
         internalMap = new EconomicHashMap<>(other.internalMap);
         this.block = block;
         registerAllocationConfig = other.registerAllocationConfig;
@@ -145,7 +154,7 @@ public class MergedAllocationStateMap {
      * @param source Predecessor merging to here
      * @return Was this map changed?
      */
-    public boolean mergeWith(MergedAllocationStateMap source) {
+    public boolean mergeWith(AllocationStateMap source) {
         boolean changed = false;
         for (var entry : source.internalMap.entrySet()) {
             if (!this.internalMap.containsKey(entry.getKey())) {

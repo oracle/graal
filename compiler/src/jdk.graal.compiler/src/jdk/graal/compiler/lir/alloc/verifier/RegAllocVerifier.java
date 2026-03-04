@@ -40,7 +40,7 @@ import java.util.Queue;
  * locations and checking validity of every location to variable
  * correspondence.
  */
-public class RegisterAllocationVerifier {
+public class RegAllocVerifier {
     /**
      * Verifier IR that abstracts LIR instructions
      * and marks moves inserted by the allocator.
@@ -48,14 +48,9 @@ public class RegisterAllocationVerifier {
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
     /**
-     * Current state of said block during processing.
-     */
-    protected BlockMap<MergedBlockVerifierState> blockStates;
-
-    /**
      * State of the block on entry, calculated from its predecessors.
      */
-    protected BlockMap<MergedBlockVerifierState> blockEntryStates;
+    protected BlockMap<BlockVerifierState> blockEntryStates;
 
     /**
      * LIR necessary for to access the program graph.
@@ -80,7 +75,7 @@ public class RegisterAllocationVerifier {
      */
     protected ConflictResolver constantMaterializationConflictResolver;
 
-    public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, RegisterAllocationConfig registerAllocationConfig) {
+    public RegAllocVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
         this.registerAllocationConfig = registerAllocationConfig;
 
@@ -89,7 +84,6 @@ public class RegisterAllocationVerifier {
         var cfg = lir.getControlFlowGraph();
         this.blockInstructions = blockInstructions;
         this.blockEntryStates = new BlockMap<>(cfg);
-        this.blockStates = new BlockMap<>(cfg);
 
         this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
     }
@@ -97,9 +91,10 @@ public class RegisterAllocationVerifier {
     /**
      * For every block, we need to calculate its entry state
      * which is a combination of states of blocks that are its
-     * predecessors, we use to verify
-     * that inputs to instructions are correct symbols based
-     * on instructions before allocation.
+     * predecessors, we get after reached a fixed point state,
+     * where no entry state is changed.
+     *
+     * This is necessary to verify instruction inputs correctly.
      */
     public void calculateEntryBlocks() {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
@@ -113,18 +108,17 @@ public class RegisterAllocationVerifier {
             var instructions = this.blockInstructions.get(block);
 
             // Create new entry state for successor blocks out of current block state
-            var state = new MergedBlockVerifierState(block, this.blockEntryStates.get(block));
+            var state = new BlockVerifierState(block, this.blockEntryStates.get(block));
             for (var instr : instructions) {
                 state.update(instr, block);
             }
-            this.blockStates.put(block, state);
 
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 var succ = block.getSuccessorAt(i);
 
-                MergedBlockVerifierState succState;
+                BlockVerifierState succState;
                 if (this.blockEntryStates.get(succ) == null) {
-                    succState = new MergedBlockVerifierState(succ, state);
+                    succState = new BlockVerifierState(succ, state);
                 } else {
                     succState = this.blockEntryStates.get(succ);
                     if (!succState.meetWith(state)) {
@@ -139,12 +133,16 @@ public class RegisterAllocationVerifier {
         }
     }
 
-    protected MergedBlockVerifierState createNewBlockState(BasicBlock<?> block) {
-        return new MergedBlockVerifierState(block, registerAllocationConfig, constantMaterializationConflictResolver);
+    protected BlockVerifierState createNewBlockState(BasicBlock<?> block) {
+        return new BlockVerifierState(block, registerAllocationConfig, constantMaterializationConflictResolver);
     }
 
     /**
-     * Verify every instruction input.
+     * By using the entry states calculated in step beforehand,
+     * we check input of every instruction to see that it matches
+     * symbols before allocation, after wards we update the state
+     * so the next instruction has correct state at said instruction
+     * input.
      */
     public void verifyInstructionInputs() {
         for (var blockId : this.lir.getBlocks()) {
@@ -187,9 +185,17 @@ public class RegisterAllocationVerifier {
     }
 
     /**
-     * Run the verification process, including label variable
-     * resolution, handling of materialized constants, calculating
-     * entry states for every block.
+     * Run verification based on verifier IR created in phase beforehand,
+     * resolving stripped label variable locations back, calculating entry state
+     * for every block so that at the end we can verify inputs of instructions
+     * match variables present before allocation.
+     *
+     * The issues we are looking to catch are mostly about making sure that
+     * order of spills, reloads and moves is correct and that used location
+     * after stores the symbol that is supposed to be there.
+     *
+     * We also make sure that kinds are still matching, operand flags aren't violated,
+     * alive location not being used as temp or output of same instruction.
      */
     public void run() {
         this.constantMaterializationConflictResolver.prepare(lir, blockInstructions);

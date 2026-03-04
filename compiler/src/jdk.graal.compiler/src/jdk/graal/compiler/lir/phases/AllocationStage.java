@@ -42,7 +42,7 @@ public class AllocationStage extends LIRPhaseSuite<AllocationPhase.AllocationCon
         appendPhase(new LinearScanPhase());
 
         // build frame map
-        LIRPhase<AllocationPhase.AllocationContext> stackAllocator = null;
+        LIRPhase<AllocationPhase.AllocationContext> stackAllocator;
         if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue(options)) {
             stackAllocator = new LSStackSlotAllocator();
         } else {
