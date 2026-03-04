@@ -47,10 +47,11 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.shared.util.ReflectionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
@@ -112,6 +113,11 @@ public final class GuestAccess implements VMAccess {
         this.snippetReflection = providers.getSnippetReflection();
         /* This must be last because it needs a fully initialized GuestAccess instance. */
         this.elements = new GuestElementsImpl();
+    }
+
+    @Override
+    public boolean isFullyIsolated() {
+        return delegate.isFullyIsolated();
     }
 
     /// Prefix of system properties used to configure guest access.

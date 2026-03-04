@@ -86,6 +86,11 @@ final class HostVMAccess implements VMAccess {
     }
 
     @Override
+    public boolean isFullyIsolated() {
+        return false;
+    }
+
+    @Override
     public Providers getProviders() {
         return providers;
     }
