@@ -1,3 +1,6 @@
+[properties]
+overwrite_parent = true
+
 [[rule]]
 files = "*"
 any = [
@@ -6,4 +9,15 @@ any = [
     "tomas.zezula@oracle.com",
     "boris.spasojevic@oracle.com",
     "matt.dsouza@oracle.com",
+]
+
+[[rule]]
+files = "*"
+any = [
+    "doug.simon@oracle.com",
+    "tom.rodriguez@oracle.com",
+    "david.leopoldseder@oracle.com",
+    "gergo.barany@oracle.com",
+    "yudi.zheng@oracle.com",
+    "raphael.m.mosaner@oracle.com",
 ]
