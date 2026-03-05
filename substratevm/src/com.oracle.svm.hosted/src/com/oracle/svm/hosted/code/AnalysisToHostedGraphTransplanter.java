@@ -47,7 +47,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.shared.meta.MethodVariant;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;

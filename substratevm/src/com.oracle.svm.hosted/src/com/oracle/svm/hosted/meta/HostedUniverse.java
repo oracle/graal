@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.shared.meta.MethodVariant.ORIGINAL_METHOD;
+import static com.oracle.svm.common.meta.MethodVariant.ORIGINAL_METHOD;
 
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
@@ -72,7 +72,7 @@ import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
-import com.oracle.svm.shared.meta.MethodVariant;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;

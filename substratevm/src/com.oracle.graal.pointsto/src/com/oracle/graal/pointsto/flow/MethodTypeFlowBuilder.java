@@ -59,7 +59,7 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.shared.meta.MethodVariant;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;

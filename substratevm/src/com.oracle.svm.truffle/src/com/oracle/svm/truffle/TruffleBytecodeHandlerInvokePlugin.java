@@ -35,7 +35,7 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.shared.meta.MethodVariant;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;

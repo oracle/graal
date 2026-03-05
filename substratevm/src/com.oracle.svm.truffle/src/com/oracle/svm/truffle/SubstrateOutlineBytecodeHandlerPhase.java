@@ -37,7 +37,7 @@ import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.shared.meta.MethodVariant;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.nodes.CallTargetNode;

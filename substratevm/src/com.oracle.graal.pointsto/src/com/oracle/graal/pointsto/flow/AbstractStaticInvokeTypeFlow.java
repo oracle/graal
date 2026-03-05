@@ -27,7 +27,7 @@ package com.oracle.graal.pointsto.flow;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.shared.meta.MethodVariant.MethodVariantKey;
+import com.oracle.svm.common.meta.MethodVariant.MethodVariantKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 

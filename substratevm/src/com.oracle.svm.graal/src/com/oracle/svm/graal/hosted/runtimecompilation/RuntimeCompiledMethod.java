@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
-import static com.oracle.svm.shared.meta.MethodVariant.ORIGINAL_METHOD;
+import static com.oracle.svm.common.meta.MethodVariant.ORIGINAL_METHOD;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,7 +32,7 @@ import java.util.List;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
-import com.oracle.svm.shared.meta.MethodVariant;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

@@ -48,7 +48,7 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.shared.meta.MethodVariant;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 

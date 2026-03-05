@@ -57,7 +57,7 @@ import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.shared.meta.MethodVariant;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.OptionValues;
