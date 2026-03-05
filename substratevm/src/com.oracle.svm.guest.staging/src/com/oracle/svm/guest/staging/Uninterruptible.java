@@ -83,6 +83,11 @@ public @interface Uninterruptible {
     String CALLED_FROM_UNINTERRUPTIBLE_CODE = "Called from uninterruptible code.";
 
     /**
+     * Used for code that is only executed by the garbage collector, during a garbage collection.
+     */
+    String CORE_GC_CODE = "Core GC code.";
+
+    /**
      * Documents the reason why the annotated code must not be interruptible.
      */
     String reason();

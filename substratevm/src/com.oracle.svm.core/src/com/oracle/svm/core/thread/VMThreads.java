@@ -165,7 +165,7 @@ public abstract class VMThreads {
     }
 
     /** Is threading being torn down? */
-    @Uninterruptible(reason = "Called from uninterruptible code during tear down.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isTearingDown() {
         return initializationState.get() >= STATE_TEARING_DOWN;
     }
@@ -649,7 +649,7 @@ public abstract class VMThreads {
         return threadLookup.matchesThread(thread, threadLookup.getThreadIdentifier());
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Thread state not set up yet.")
     public IsolateThread findIsolateThreadToEnterCurrentOSThread(boolean inCrashHandler) {
         // In general, it is not safe to read an unmanaged thread-local value in signal handlers.
         if (!inCrashHandler) {
@@ -664,7 +664,7 @@ public abstract class VMThreads {
         return findIsolateThreadToEnterCurrentOSThreadSlowPath(inCrashHandler, shouldUpdateCache);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Thread state not set up yet.")
     private static IsolateThread findIsolateThreadToEnterCurrentOSThreadSlowPath(boolean inCrashHandler, boolean shouldUpdateCache) {
         assert !(inCrashHandler && shouldUpdateCache);
         /*

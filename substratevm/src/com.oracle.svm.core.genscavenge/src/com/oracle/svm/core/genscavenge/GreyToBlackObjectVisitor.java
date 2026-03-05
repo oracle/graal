@@ -30,9 +30,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Run an ObjectReferenceVisitor ({@link GreyToBlackObjRefVisitor}) over any interior object

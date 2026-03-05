@@ -76,7 +76,7 @@ public class JfrTraceId {
         return id >>> TRACE_ID_SHIFT;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public static long load(Class<?> clazz) {
         assert clazz != null;
         JfrTraceId.setUsedThisEpoch(clazz);

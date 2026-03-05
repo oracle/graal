@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.heap.Heap;
@@ -48,6 +47,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -196,7 +196,7 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
         }
     }
 
-    @Uninterruptible(reason = "No need to be uninterruptible because no object was allocated.", calleeMustBe = false)
+    @Uninterruptible(reason = "No need to be uninterruptible because no object was allocated.", mayBeInlined = true, calleeMustBe = false)
     private static void throwNegativeArraySizeExceptionInterruptibly() {
         throwNegativeArraySizeException();
     }
@@ -212,7 +212,7 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
         }
     }
 
-    @Uninterruptible(reason = "No need to be uninterruptible because it kills the process.", calleeMustBe = false)
+    @Uninterruptible(reason = "No need to be uninterruptible because it kills the process.", mayBeInlined = true, calleeMustBe = false)
     private static void throwAllocationNotAllowedInterruptibly(String callSite, DynamicHub hub) {
         throw NoAllocationVerifier.exit(callSite, DynamicHub.toClass(hub).getName());
     }
@@ -225,7 +225,7 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
         return result;
     }
 
-    @Uninterruptible(reason = "No need to be uninterruptible because no object was allocated.", calleeMustBe = false)
+    @Uninterruptible(reason = "No need to be uninterruptible because no object was allocated.", mayBeInlined = true, calleeMustBe = false)
     private static void throwHeapSizeExceededInterruptibly() {
         throw OutOfMemoryUtil.heapSizeExceeded();
     }

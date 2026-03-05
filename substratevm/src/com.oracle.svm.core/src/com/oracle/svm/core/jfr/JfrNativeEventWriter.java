@@ -26,14 +26,14 @@ package com.oracle.svm.core.jfr;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
-import org.graalvm.word.impl.Word;
 
 /**
  * A JFR event writer that does not allocate any objects in the Java heap. Can only be used from
@@ -426,7 +426,7 @@ public final class JfrNativeEventWriter {
         return (int) (b1 + b2 + b3 + b4);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void putPaddedInt(JfrNativeEventWriterData data, int v) {
         assert v <= MAX_PADDED_INT_VALUE;
         if (!ensureSize(data, Integer.BYTES)) {

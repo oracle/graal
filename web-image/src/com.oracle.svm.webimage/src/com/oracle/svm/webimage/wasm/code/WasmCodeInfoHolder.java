@@ -28,13 +28,13 @@ package com.oracle.svm.webimage.wasm.code;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
-import org.graalvm.word.impl.Word;
 
 /**
  * Stores {@link WasmCodeInfoQueryResult} for each instruction pointer (IP).
@@ -60,7 +60,7 @@ public class WasmCodeInfoHolder {
         }
     }
 
-    @Uninterruptible(reason = "Switch to interruptible code for fatal error reporting.", calleeMustBe = false)
+    @Uninterruptible(reason = "Switch to interruptible code for fatal error reporting.", mayBeInlined = true, calleeMustBe = false)
     private static RuntimeException reportInvalidIp(CodePointer ip) {
         Log.log().hex(ip).newline();
         throw VMError.shouldNotReachHere("Tried to look up out-of-range IP");

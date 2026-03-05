@@ -661,7 +661,7 @@ public final class GCImpl implements GC {
      * compiled code to the Java heap must be consider as either strong or weak references,
      * depending on whether the code is currently on the execution stack.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void walkRuntimeCodeCache() {
         Timer walkRuntimeCodeCacheTimer = timers.walkRuntimeCodeCache.start();
         try {
@@ -680,7 +680,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "We don't want any safepoint checks in the core part of the GC.")
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void scan() {
         Timer timer = completeCollection ? timers.scanFromRoots : timers.scanFromDirtyRoots;
         timer.start();
@@ -691,7 +691,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void sweepAndPromotePinnedChunks() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getYoungGeneration().promoteAndSweepAlignedChunksWithPinnedObjectsInFromSpaces(pinnedChunkPromotionVisitor);
@@ -700,7 +700,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void scanFromRoots() {
         long startTicks = JfrGCEvents.startGCPhasePause();
 
@@ -753,7 +753,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void markAndScanPinnedObjects() {
         Timer promotePinnedObjectsTimer = timers.promotePinnedObjects.start();
         try {
@@ -919,7 +919,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void blackenImageHeapRoots() {
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.start();
         try {
@@ -952,7 +952,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void blackenDirtyImageHeapChunkRoots(ImageHeapInfo info) {
         /*
          * We clean and remark cards of the image heap only during complete collections when we also
@@ -963,7 +963,7 @@ public final class GCImpl implements GC {
         walkDirtyImageHeapChunkRoots(info, greyToBlackObjectVisitor, greyToBlackObjRefVisitor, clean);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     static void walkDirtyImageHeapChunkRoots(ImageHeapInfo info, UninterruptibleObjectVisitor visitor, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         assert HeapImpl.usesImageHeapCardMarking();
         RememberedSet.get().walkDirtyObjects(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk(), visitor, refVisitor, clean);
@@ -981,7 +981,7 @@ public final class GCImpl implements GC {
         ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstUnalignedWritableObject, imageHeapInfo.lastUnalignedWritableObject, visitor, false);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void blackenDirtyCardRoots() {
         assert !completeCollection : "only call for incremental collections";
         Timer blackenDirtyCardRootsTimer = timers.blackenDirtyCardRoots.start();
@@ -996,7 +996,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void blackenMetaspace() {
         if (!Metaspace.isSupported()) {
             return;
@@ -1015,7 +1015,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void beginPromotion() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getOldGeneration().beginPromotion(completeCollection);
@@ -1024,7 +1024,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void scanGreyObjects() {
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.start();
         try {
@@ -1038,7 +1038,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void incrementalScanGreyObjectsLoop() {
         assert !completeCollection;
         HeapImpl heap = HeapImpl.getHeapImpl();
@@ -1052,7 +1052,7 @@ public final class GCImpl implements GC {
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE, mayBeInlined = true)
     @SuppressWarnings("static-method")
     Object promoteObject(Object original, UnsignedWord header) {
         HeapImpl heap = HeapImpl.getHeapImpl();
@@ -1096,7 +1096,7 @@ public final class GCImpl implements GC {
         return UnalignedHeapChunk.getEnclosingChunk(obj);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void markPinnedObject(Object pinned) {
         assert pinned != null;
         assert AbstractPinnedObjectSupport.needsPinning(pinned);
@@ -1123,7 +1123,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     private void scanPinnedObject(Object pinned) {
         assert !(SerialGCOptions.useCompactingOldGen() && completeCollection);
 
@@ -1136,7 +1136,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     void promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeader chunk) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         Space originalSpace = HeapChunk.getSpace(chunk);

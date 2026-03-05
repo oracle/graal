@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -133,7 +134,7 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void beginPromotion(boolean completeCollection) {
         if (completeCollection) {
             absorb(HeapImpl.getHeapImpl().getYoungGeneration());
@@ -141,7 +142,7 @@ final class CompactingOldGeneration extends OldGeneration {
         toGreyObjectsWalker.setScanStart(space);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void absorb(YoungGeneration youngGen) {
         space.absorb(youngGen.getEden());
         for (int i = 0; i < youngGen.getMaxSurvivorSpaces(); i++) {
@@ -151,13 +152,13 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
         RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     boolean scanGreyObjects(boolean completeCollection) {
         if (!completeCollection) {
             if (!toGreyObjectsWalker.haveGreyObjects()) {
@@ -217,7 +218,7 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
@@ -264,7 +265,7 @@ final class CompactingOldGeneration extends OldGeneration {
         return original;
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void markPinnedObject(Object obj, AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert GCImpl.getGCImpl().isCompleteCollection() : "for incremental collections, must promote entire (swept) chunks";
         assert originalSpace == space;
@@ -278,7 +279,7 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert !GCImpl.getGCImpl().isCompleteCollection() : "for full collections, must mark individual pinned objects";
         assert originalSpace != space && originalSpace.isFromSpace();
@@ -287,7 +288,7 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     protected void promoteAndSweepAlignedChunksWithPinnedObjectsInFromSpaces(SweepAndPromotePinnedChunkVisitor visitor) {
         // Any promotions of pinned objects must have already happened.
         // We sweep chunks with pinned objects as part of sweepAndCompact() below.
@@ -295,7 +296,7 @@ final class CompactingOldGeneration extends OldGeneration {
         throw VMError.shouldNotReachHereAtRuntime();
     }
 
-    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    @Uninterruptible(reason = CORE_GC_CODE)
     void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser) {
         /*
          * Update or clear reference object referent fields now because planning below overwrites
@@ -326,13 +327,13 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private void planCompaction() {
         planningVisitor.init(space);
         space.walkAlignedHeapChunks(planningVisitor);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private void fixupReferencesBeforeCompaction(ChunkReleaser chunkReleaser, Timers timers) {
         Timer oldFixupAlignedChunksTimer = timers.oldFixupAlignedChunks.start();
         try {
@@ -404,7 +405,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private void fixupImageHeapRoots(ImageHeapInfo info) {
         if (HeapImpl.usesImageHeapCardMarking()) {
             // Note that cards have already been cleaned and roots re-marked during the initial scan
@@ -414,7 +415,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private void fixupMetaspace() {
         if (!Metaspace.isSupported()) {
             return;
@@ -428,7 +429,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private void fixupUnalignedChunkReferences(ChunkReleaser chunkReleaser) {
         UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
@@ -576,7 +577,7 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     void tearDown() {
         markStack.tearDown();
         arrayMarkStack.tearDown();

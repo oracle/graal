@@ -284,7 +284,7 @@ public class TlabSupport {
         retireTlab(CurrentIsolate.getCurrentThread(), false);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     static void tearDown() {
         // no other thread is alive, so it is always safe to access the first thread
         IsolateThread thread = VMThreads.firstThreadUnsafe();
@@ -446,7 +446,7 @@ public class TlabSupport {
         return UnsignedUtils.max(sizeWithReserve, minTlabSize);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses TLAB")
     private static boolean shouldRetainTlab(Descriptor tlab) {
         return availableTlabMemory(tlab).aboveThan(refillWasteLimit.get());
     }
@@ -468,7 +468,7 @@ public class TlabSupport {
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/threadLocalAllocBuffer.cpp#L76-L117")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses TLAB")
     private static void accumulateAndResetStatistics(IsolateThread thread) {
         assert VMOperation.isGCInProgress();
 

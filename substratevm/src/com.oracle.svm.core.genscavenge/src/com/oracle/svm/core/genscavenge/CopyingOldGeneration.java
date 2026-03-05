@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -65,7 +65,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     void tearDown() {
         fromSpace.tearDown();
         toSpace.tearDown();
@@ -79,7 +79,7 @@ final class CopyingOldGeneration extends OldGeneration {
 
     /** Promote an Object to ToSpace if it is not already in ToSpace. */
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
@@ -96,7 +96,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
         ObjectPromoter.promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace, getToSpace());
@@ -104,7 +104,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     protected void promoteAndSweepAlignedChunksWithPinnedObjectsInFromSpaces(SweepAndPromotePinnedChunkVisitor visitor) {
         fromSpace.walkAlignedHeapChunks(visitor);
     }
@@ -115,7 +115,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void beginPromotion(boolean completeCollection) {
         if (!completeCollection) {
             emptyFromSpaceIntoToSpace();
@@ -162,7 +162,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
         RememberedSet.get().walkDirtyObjects(toSpace.getFirstAlignedHeapChunk(), toSpace.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
@@ -199,7 +199,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     /* Extract all the HeapChunks from FromSpace and append them to ToSpace. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void emptyFromSpaceIntoToSpace() {
         getToSpace().absorb(getFromSpace());
     }

@@ -34,7 +34,6 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
@@ -43,6 +42,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
@@ -150,7 +150,7 @@ public final class JNIObjectHandles {
         return getObjectSlowInterruptibly(handle);
     }
 
-    @Uninterruptible(reason = "Not really, but our caller is to allow inlining and we must be safe at this point.", calleeMustBe = false)
+    @Uninterruptible(reason = "Not really, but our caller is to allow inlining and we must be safe at this point.", mayBeInlined = true, calleeMustBe = false)
     private static <T> T getObjectSlowInterruptibly(JNIObjectHandle handle) {
         return getObjectSlowInterruptibly0(handle);
     }
@@ -198,7 +198,7 @@ public final class JNIObjectHandles {
         return createLocalSlow(obj);
     }
 
-    @Uninterruptible(reason = "Not really, but our caller is uninterruptible for inlining and we must be safe at this point.", calleeMustBe = false)
+    @Uninterruptible(reason = "Not really, but our caller is uninterruptible for inlining and we must be safe at this point.", mayBeInlined = true, calleeMustBe = false)
     private static JNIObjectHandle createLocalSlow(Object obj) {
         return createLocalSlow0(obj);
     }

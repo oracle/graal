@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -79,7 +79,7 @@ public final class YoungGeneration extends Generation {
         return maxSurvivorSpaces;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     void tearDown() {
         heapAllocation.tearDown();
         TlabSupport.tearDown();
@@ -247,7 +247,7 @@ public final class YoungGeneration extends Generation {
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     @Override
     protected Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
@@ -263,7 +263,7 @@ public final class YoungGeneration extends Generation {
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     @Override
     protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
@@ -279,7 +279,7 @@ public final class YoungGeneration extends Generation {
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
@@ -294,7 +294,7 @@ public final class YoungGeneration extends Generation {
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     protected void promoteAndSweepAlignedChunksWithPinnedObjectsInFromSpaces(SweepAndPromotePinnedChunkVisitor visitor) {
         eden.walkAlignedHeapChunks(visitor);
         for (Space space : survivorFromSpaces) {
@@ -302,20 +302,20 @@ public final class YoungGeneration extends Generation {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private boolean alignedChunkFitsInSurvivors() {
         UnsignedWord sum = survivorsToSpacesAccounting.getChunkBytes().add(HeapParameters.getAlignedHeapChunkSize());
         return sum.belowOrEqual(GCImpl.getPolicy().getSurvivorSpacesCapacity());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private boolean unalignedChunkFitsInSurvivors(UnalignedHeapChunk.UnalignedHeader chunk) {
         UnsignedWord size = UnalignedHeapChunk.getCommittedObjectMemory(chunk);
         UnsignedWord sum = survivorsToSpacesAccounting.getChunkBytes().add(size);
         return sum.belowOrEqual(GCImpl.getPolicy().getSurvivorSpacesCapacity());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     AlignedHeapChunk.AlignedHeader requestAlignedSurvivorChunk() {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         if (!alignedChunkFitsInSurvivors()) {

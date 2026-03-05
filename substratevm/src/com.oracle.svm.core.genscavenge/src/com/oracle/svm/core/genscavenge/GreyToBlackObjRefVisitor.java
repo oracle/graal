@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -61,7 +61,7 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
 
     @Override
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
         Pointer pos = firstObjRef;
         Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
@@ -72,7 +72,7 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     private void visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
         assert !objRef.isNull();
         counters.noteObjRef();

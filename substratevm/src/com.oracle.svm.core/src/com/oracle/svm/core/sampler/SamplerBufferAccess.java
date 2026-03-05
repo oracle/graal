@@ -30,13 +30,13 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
 
 /**
  * Used to access the raw memory of a {@link SamplerBuffer}.
@@ -56,7 +56,7 @@ public final class SamplerBufferAccess {
         return SamplerBufferAccess.getHeaderSize().add(dataSize);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
     public static void reinitialize(SamplerBuffer buffer) {
         assert buffer.isNonNull();
         Pointer dataStart = getDataStart(buffer);

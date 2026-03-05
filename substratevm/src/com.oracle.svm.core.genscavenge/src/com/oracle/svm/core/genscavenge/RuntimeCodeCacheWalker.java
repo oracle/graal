@@ -28,9 +28,9 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
@@ -38,8 +38,7 @@ import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.genscavenge.RuntimeCodeCacheReachabilityAnalyzer.UnreachableObjectsException;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
-
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * References from the runtime compiled code to the Java heap must be considered either strong or

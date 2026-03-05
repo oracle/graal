@@ -46,7 +46,7 @@ import jdk.graal.compiler.nodes.UnreachableNode;
 
 public class VMErrorSubstitutions {
 
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", calleeMustBe = false)
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     static RuntimeException shouldNotReachHere(String msg, Throwable ex) {
         shutdown(msg, ex);
