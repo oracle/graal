@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
+import java.lang.classfile.MethodTransform;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
@@ -152,15 +153,16 @@ public class TestJavaAgent1 {
             if (internalClassName.equals(className)) {
                 ClassFile classFile = ClassFile.of();
                 ClassModel classModel = classFile.parse(classfileBuffer);
-
+                @SuppressWarnings("unused")
+                MethodTransform methodTransformer = (mb, me) -> {
+                    mb.withCode(cb -> {
+                        cb.loadConstant(11);
+                        cb.ireturn();
+                    });
+                };
                 return classFile.transformClass(classModel, (classbuilder, ce) -> {
                     if (ce instanceof MethodModel mm && mm.methodName().equalsString("getCounter") && mm.methodType().equalsString("()I")) {
-                        classbuilder.transformMethod(mm, (mb, me) -> {
-                            mb.withCode(cb -> {
-                                cb.loadConstant(11);
-                                cb.ireturn();
-                            });
-                        });
+                        classbuilder.transformMethod(mm, methodTransformer);
                     } else {
                         classbuilder.with(ce);
                     }

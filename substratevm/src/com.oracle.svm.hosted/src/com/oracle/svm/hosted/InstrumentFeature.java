@@ -26,28 +26,23 @@
 
 package com.oracle.svm.hosted;
 
-import java.lang.instrument.Instrumentation;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.svm.core.PreMainSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
-import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import java.io.IOException;
+import java.lang.instrument.Instrumentation;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.jar.JarFile;
 
 /**
@@ -115,6 +110,22 @@ public class InstrumentFeature implements InternalFeature {
             }
 
             support.registerPremainMethod(premainClass, premain, args.toArray(new Object[0]));
+            /**
+             * Execute the {@code public static void prelink(String)} method here. User defines what
+             * should the agent should do at build time.
+             */
+            Method prelink = findPrelinkMethod(clazz);
+            if (prelink != null) {
+                try {
+                    prelink.setAccessible(true);
+                    prelink.invoke(null, options);
+                } catch (IllegalAccessException e) {
+                    // Should not reach here, because we have set the accessible
+                    throw UserError.abort(e, "Could not execute prelink method defined in agent jar %s.", agent);
+                } catch (InvocationTargetException e) {
+                    throw UserError.abort(e, "Exceptions in prelink method defined in agent jar %s.", agent);
+                }
+            }
         } catch (ClassNotFoundException e) {
             throw UserError.abort("Could not register agent premain method because class %s was not found. Please check your %s setting.", premainClass,
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.JavaAgent, ""));
@@ -135,5 +146,13 @@ public class InstrumentFeature implements InternalFeature {
         }
 
         throw UserError.abort("Could not register agent premain method: class %s neither declares 'premain(String, Instrumentation)' nor 'premain(String)'.", premainClass);
+    }
+
+    private static Method findPrelinkMethod(Class<?> javaAgentClass) {
+        try {
+            return javaAgentClass.getDeclaredMethod("prelink", String.class);
+        } catch (NoSuchMethodException ignored) {
+            return null;
+        }
     }
 }
