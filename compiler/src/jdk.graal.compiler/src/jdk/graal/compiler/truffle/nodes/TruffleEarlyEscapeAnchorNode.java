@@ -30,8 +30,6 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.graph.NodeInputList;
-import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.graph.spi.NodeWithIdentity;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
@@ -39,12 +37,11 @@ import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-import jdk.graal.compiler.truffle.phases.TruffleEarlyEscapeAnalysisPhase;
 
 /**
- * Used for anchoring {@link VirtualObjectNode}s produced by {@link TruffleEarlyEscapeAnalysisPhase}
- * to before a loop that is exploded during partial evaluation. This prevents PE from repeatedly
- * decoding and adding duplicate virtual objects to the graph. For example in:
+ * Used for preventing {@link VirtualObjectNode} to float below their creation point until partial
+ * evaluation has finished. This prevents PE from repeatedly decoding and adding duplicate virtual
+ * objects to the graph. For example in:
  *
  * <pre>
  * ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
@@ -72,17 +69,21 @@ public class TruffleEarlyEscapeAnchorNode extends FixedWithNextNode implements C
 
     public static final NodeClass<TruffleEarlyEscapeAnchorNode> TYPE = NodeClass.create(TruffleEarlyEscapeAnchorNode.class);
 
-    @Input NodeInputList<VirtualObjectNode> virtualObjects;
+    @Input VirtualObjectNode virtualObject;
 
     @SuppressWarnings("this-escape")
-    public TruffleEarlyEscapeAnchorNode(NodeIterable<VirtualObjectNode> virtualObjects) {
+    public TruffleEarlyEscapeAnchorNode(VirtualObjectNode virtualObject) {
         super(TYPE, StampFactory.forVoid());
-        this.virtualObjects = new NodeInputList<>(this, virtualObjects.snapshot());
+        this.virtualObject = virtualObject;
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (virtualObjects.isEmpty() || this.graph().isAfterStage(GraphState.StageFlag.PARTIAL_EVALUATION)) {
+        if (graph().isAfterStage(GraphState.StageFlag.PARTIAL_EVALUATION) || !virtualObject.isAlive()) {
+            return null;
+        }
+        if (tool.allUsagesAvailable() && virtualObject.hasExactlyOneUsage() && virtualObject.singleUsage() == this) {
+            // If the virtual object has just the anchor as usage, both nodes can be removed.
             return null;
         }
         return this;
