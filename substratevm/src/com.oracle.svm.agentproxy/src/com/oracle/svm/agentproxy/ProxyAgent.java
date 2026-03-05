@@ -202,41 +202,63 @@ public class ProxyAgent {
                 throw new RuntimeException("Can't find the proxy target class " + className, e);
             }
 
-            // Locate the target agent's premain method. Prefer the two-argument form
-            // (String, Instrumentation); fall back to the one-argument form (String) if
-            // absent.
-            Method premain;
+            // Prefer the target agent's prelink method (build-time entry point) over
+            // premain (run-time entry point). If prelink(String, Instrumentation) is
+            // present, invoke it; otherwise fall back to the standard premain lookup.
+            Method prelink = null;
             try {
-                premain = targetAgentClass.getDeclaredMethod("premain", String.class, Instrumentation.class);
-            } catch (NoSuchMethodException e) {
+                prelink = targetAgentClass.getDeclaredMethod("prelink", String.class, Instrumentation.class);
+            } catch (NoSuchMethodException ignored) {
+                // prelink not provided; will fall back to premain below.
+            }
+
+            if (prelink != null) {
+                // Invoke prelink as a static method (null receiver). Wrap Instrumentation
+                // via InstrumentationProxy so that ClassFileTransformer registrations are
+                // intercepted by ClassFileTransformerProxy.
+                Object[] prelinkArgs = new Object[]{opts, InstrumentationProxy.createProxy(inst)};
                 try {
-                    premain = targetAgentClass.getDeclaredMethod("premain", String.class);
-                } catch (NoSuchMethodException e1) {
-                    throw new RuntimeException("Can't find premain method in " + targetAgentClass, e1);
+                    prelink.invoke(null, prelinkArgs);
+                } catch (ReflectiveOperationException e) {
+                    throw new RuntimeException(e);
                 }
-            }
-
-            // Build the argument array for the target premain invocation.
-            // premain is public static, so no instance is needed (pass null as the
-            // receiver).
-            // When two arguments are expected, wrap the Instrumentation via
-            // InstrumentationProxy
-            // so that ClassFileTransformer registrations are intercepted by
-            // ClassFileTransformerProxy.
-            Object[] targetArgs;
-            if (premain.getParameterCount() == 1) {
-                targetArgs = new Object[1];
             } else {
-                targetArgs = new Object[2];
-                targetArgs[1] = InstrumentationProxy.createProxy(inst);
-            }
-            targetArgs[0] = opts;
+                // Locate the target agent's premain method. Prefer the two-argument form
+                // (String, Instrumentation); fall back to the one-argument form (String) if
+                // absent.
+                Method premain;
+                try {
+                    premain = targetAgentClass.getDeclaredMethod("premain", String.class, Instrumentation.class);
+                } catch (NoSuchMethodException e) {
+                    try {
+                        premain = targetAgentClass.getDeclaredMethod("premain", String.class);
+                    } catch (NoSuchMethodException e1) {
+                        throw new RuntimeException("Can't find premain method in " + targetAgentClass, e1);
+                    }
+                }
 
-            try {
-                // Invoke as a static method (null receiver).
-                premain.invoke(null, targetArgs);
-            } catch (ReflectiveOperationException e) {
-                throw new RuntimeException(e);
+                // Build the argument array for the target premain invocation.
+                // premain is public static, so no instance is needed (pass null as the
+                // receiver).
+                // When two arguments are expected, wrap the Instrumentation via
+                // InstrumentationProxy
+                // so that ClassFileTransformer registrations are intercepted by
+                // ClassFileTransformerProxy.
+                Object[] targetArgs;
+                if (premain.getParameterCount() == 1) {
+                    targetArgs = new Object[1];
+                } else {
+                    targetArgs = new Object[2];
+                    targetArgs[1] = InstrumentationProxy.createProxy(inst);
+                }
+                targetArgs[0] = opts;
+
+                try {
+                    // Invoke as a static method (null receiver).
+                    premain.invoke(null, targetArgs);
+                } catch (ReflectiveOperationException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
     }

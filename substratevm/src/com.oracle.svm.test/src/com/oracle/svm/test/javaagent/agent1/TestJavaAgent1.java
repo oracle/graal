@@ -37,6 +37,7 @@ import java.lang.classfile.MethodModel;
 
 import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
+import java.lang.classfile.MethodTransform;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.lang.instrument.UnmodifiableClassException;
@@ -48,15 +49,27 @@ import java.util.Set;
 
 public class TestJavaAgent1 {
 
+    private static void doTransform(Instrumentation inst) throws UnmodifiableClassException {
+            DemoTransformer dt = new DemoTransformer();
+            inst.addTransformer(dt, true);
+            inst.retransformClasses(dt.getTargetClasses());
+    }
+
+    public static void prelink(String agentArgs, Instrumentation inst) throws UnmodifiableClassException {
+        doTransform(inst);
+    }
+
     public static void premain(
                     String agentArgs, Instrumentation inst) throws UnmodifiableClassException {
         AgentPremainHelper.parseOptions(agentArgs);
         System.setProperty("instrument.enable", "true");
         AgentPremainHelper.load(TestJavaAgent1.class);
+        /**
+         * Agent can do anything here for runtime usage only.
+         * e.g. A time stamp at which the agent is loaded.
+         */
         if (!ImageInfo.inImageRuntimeCode()) {
-            DemoTransformer dt = new DemoTransformer();
-            inst.addTransformer(dt, true);
-            inst.retransformClasses(dt.getTargetClasses());
+            doTransform(inst);
         } else {
             /**
              * Test {@code inst} is {@link NativeImageNoOpRuntimeInstrumentation} and behaves as
@@ -183,15 +196,16 @@ public class TestJavaAgent1 {
                 // Change getCounter() return value from 10 to 11
                 ClassFile classFile = ClassFile.of();
                 ClassModel classModel = classFile.parse(classfileBuffer);
-
+                @SuppressWarnings("unused")
+                MethodTransform methodTransformer = (mb, me) -> {
+                    mb.withCode(cb -> {
+                        cb.loadConstant(11);
+                        cb.ireturn();
+                    });
+                };
                 return classFile.transformClass(classModel, (classbuilder, ce) -> {
                     if (ce instanceof MethodModel mm && mm.methodName().equalsString("getCounter") && mm.methodType().equalsString("()I")) {
-                        classbuilder.transformMethod(mm, (mb, me) -> {
-                            mb.withCode(cb -> {
-                                cb.loadConstant(11);
-                                cb.ireturn();
-                            });
-                        });
+                        classbuilder.transformMethod(mm, methodTransformer);
                     } else {
                         classbuilder.with(ce);
                     }

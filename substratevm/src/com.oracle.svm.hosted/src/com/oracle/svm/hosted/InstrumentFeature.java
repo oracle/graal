@@ -26,32 +26,26 @@
 
 package com.oracle.svm.hosted;
 
-import java.lang.instrument.Instrumentation;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.svm.core.PreMainSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
-import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import java.io.IOException;
+import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.jar.JarFile;
 
 /**
@@ -120,6 +114,7 @@ public class InstrumentFeature implements InternalFeature {
             }
 
             support.registerPremainMethod(premainClass, premain, args.toArray(new Object[0]));
+
         } catch (ClassNotFoundException e) {
             throw UserError.abort("Could not register agent premain method because class %s was not found. Please check your %s setting.", premainClass,
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.JavaAgent, ""));
