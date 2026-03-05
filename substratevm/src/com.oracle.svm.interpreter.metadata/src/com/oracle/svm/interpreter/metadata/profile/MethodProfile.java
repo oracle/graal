@@ -255,7 +255,7 @@ public final class MethodProfile {
      * normally represented by {@link IfNode}.
      */
     public static class BranchProfile extends CountingProfile {
-        private long takenCounter;
+        private long notTakenCounter;
 
         public BranchProfile(int bci) {
             super(bci);
@@ -263,39 +263,39 @@ public final class MethodProfile {
 
         public void incrementTakenCounter() {
             counter++;
-            takenCounter++;
         }
 
         public void incrementNotTakenCounter() {
-            counter++;
+            notTakenCounter++;
         }
 
         public double takenProfile() {
-            long total = counter;
-            if (total == 0) {
+            /*
+             * The counters can be updated concurrently so we only read them once.
+             */
+            long localTakenCounter = counter;
+            long sum = localTakenCounter + notTakenCounter;
+            if (sum == 0) {
                 return -1D;
             }
-            long taken = takenCounter;
-            /*
-             * Profiles are updated/read concurrently without synchronization. A racing reader can
-             * observe transient snapshots where taken > total; clamp to preserve [0,1] invariants.
-             */
-            if (taken > total) {
-                taken = total;
-            }
-            return (double) taken / (double) total;
+            return (double) localTakenCounter / (double) sum;
         }
 
         public double notTakenProfile() {
-            if (counter == 0) {
+            /*
+             * The counters can be updated concurrently so we only read them once.
+             */
+            long localNotTakenCounter = notTakenCounter;
+            long sum = counter + localNotTakenCounter;
+            if (sum == 0) {
                 return -1D;
             }
-            return 1D - takenProfile();
+            return (double) localNotTakenCounter / (double) sum;
         }
 
         @Override
         public String toString() {
-            return "{BranchProfile:bci=" + bci + ", takenCounter=" + takenCounter + ", counter=" + counter + "}";
+            return "{BranchProfile:bci=" + bci + ", takenCounter=" + counter + ", notTakenCounter=" + notTakenCounter + "}";
         }
     }
 
