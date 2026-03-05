@@ -32,23 +32,71 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-final class GroovyIndyInterfaceFeature implements Feature {
+final class GroovyV4IndyInterfaceFeature extends GroovyIndyInterfaceFeature {
+
+    // Groovy 4 has the invalidateSwitchPoints method in the v7 package
+    static final String INDY_INTERFACE_CLASS_NAME = "org.codehaus.groovy.vmplugin.v7.IndyInterface";
 
     static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(com.oracle.svm.polyglot.groovy.GroovyIndyInterfaceFeature.class);
+            return ImageSingletons.contains(com.oracle.svm.polyglot.groovy.GroovyV4IndyInterfaceFeature.class);
         }
     }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return access.findClassByName("org.codehaus.groovy.vmplugin.v7.IndyInterface") != null;
+        return super.isInConfiguration(access, INDY_INTERFACE_CLASS_NAME);
     }
 }
 
-@TargetClass(className = "org.codehaus.groovy.vmplugin.v7.IndyInterface", onlyWith = com.oracle.svm.polyglot.groovy.GroovyIndyInterfaceFeature.IsEnabled.class)
+final class GroovyV5IndyInterfaceFeature extends GroovyIndyInterfaceFeature {
+
+    // Groovy 5 has the invalidateSwitchPoints method in the v8 package
+    static final String INDY_INTERFACE_CLASS_NAME = "org.codehaus.groovy.vmplugin.v8.IndyInterface";
+
+    static final class IsEnabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return ImageSingletons.contains(com.oracle.svm.polyglot.groovy.GroovyV5IndyInterfaceFeature.class);
+        }
+    }
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return super.isInConfiguration(access, INDY_INTERFACE_CLASS_NAME);
+    }
+}
+
+class GroovyIndyInterfaceFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return false;
+    }
+
+    protected boolean isInConfiguration(IsInConfigurationAccess access, String className) {
+        Class<?> indyInterfaceClass = access.findClassByName(className);
+        if (indyInterfaceClass == null) {
+            return false;
+        }
+        try {
+            return indyInterfaceClass.getDeclaredMethod("invalidateSwitchPoints") != null;
+        } catch (ReflectiveOperationException e) {
+            return false; // nothing to substitute
+        }
+    }
+}
+
+@TargetClass(className = com.oracle.svm.polyglot.groovy.GroovyV4IndyInterfaceFeature.INDY_INTERFACE_CLASS_NAME, onlyWith = com.oracle.svm.polyglot.groovy.GroovyV4IndyInterfaceFeature.IsEnabled.class)
 final class Target_org_codehaus_groovy_vmplugin_v7_IndyInterface_invalidateSwitchPoints {
+    @Substitute
+    protected static void invalidateSwitchPoints() {
+        throw new Error("IndyInterface.invalidateSwitchPoints() is not supported.");
+    }
+}
+
+@TargetClass(className = com.oracle.svm.polyglot.groovy.GroovyV5IndyInterfaceFeature.INDY_INTERFACE_CLASS_NAME, onlyWith = com.oracle.svm.polyglot.groovy.GroovyV5IndyInterfaceFeature.IsEnabled.class)
+final class Target_org_codehaus_groovy_vmplugin_v8_IndyInterface_invalidateSwitchPoints {
     @Substitute
     protected static void invalidateSwitchPoints() {
         throw new Error("IndyInterface.invalidateSwitchPoints() is not supported.");
