@@ -114,8 +114,9 @@ For important API changes, add a showcase change in SimpleLanguage or SimpleTool
 # Run a SimpleLanguage program
 mx --primary-suite-path . sl src/com.oracle.truffle.sl.test/src/tests/HelloWorld.sl
 
-# Build and run a native SL image (requires GraalVM with native-image)
-mx --primary-suite-path . slnative -- src/com.oracle.truffle.sl.test/src/tests/HelloWorld.sl
+# Build and run a native SL image (requires GraalVM with native-image).
+# If your default JDK is not GraalVM, pass --java-home <graalvm-location>.
+mx --java-home <graalvm-location> --primary-suite-path . slnative -- src/com.oracle.truffle.sl.test/src/tests/HelloWorld.sl
 
 # Run the TCK (default, compile, debugger configurations)
 mx --primary-suite-path . tck
@@ -124,6 +125,10 @@ mx --primary-suite-path . tck --tck-configuration compile
 # Run SL / ST unit tests
 mx --primary-suite-path . unittest com.oracle.truffle.sl.test
 mx --primary-suite-path . unittest com.oracle.truffle.st.test
+
+# Run Truffle unit tests in native image mode (expensive, usually much slower).
+# Run only when you expect JVM vs native-image behavior differences.
+mx --java-home <graalvm-location> --primary-suite-path . gate -o --tags truffle-native-lite
 ```
 
 ## Essential Docs (High-Level)
@@ -167,6 +172,7 @@ Before committing make sure you have performed the following steps:
 
 * Run `mx --primary-suite-path . spotbugs --primary` to detect code smells (limit to primary suite).
 * Run `mx --primary-suite-path . checkstyle --primary` to check code style.
+* Run `mx --primary-suite-path . build -c --jdt builtin --warning-as-error` to fail on Java compiler warnings.
 * Run `mx --primary-suite-path . eclipseformat --primary` to normalize Java formatting after any Java change.
 * Keep copyright headers up-to-date by inserting the current year whenever a file is touched with a non-trivial change.
 * For non-trivial Javadoc changes run `mx --primary-suite-path . javadoc --projects <project-name>` and make sure it produces no warnings.
