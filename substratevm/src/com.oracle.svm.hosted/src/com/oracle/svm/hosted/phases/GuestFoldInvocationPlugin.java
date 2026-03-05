@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.phases;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
@@ -94,7 +93,7 @@ public final class GuestFoldInvocationPlugin implements NodePlugin {
             } else {
                 msg = String.format("Non-constant %s %d passed to @GuestFold call. Callsite=%s Target=%s%n%s", kind, index, site, targetMethod.format("%H.%n(%p)"), b);
             }
-            throw UserError.abort(msg);
+            throw VMError.shouldNotReachHere(msg);
         }
         JavaConstant c = node.asJavaConstant();
         if (c instanceof ImageHeapConstant ihc) {

@@ -26,7 +26,7 @@ package com.oracle.svm.graal.hosted.runtimecompilation;
 
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
-import static com.oracle.svm.shared.meta.MethodVariant.ORIGINAL_METHOD;
+import static com.oracle.svm.common.meta.MethodVariant.ORIGINAL_METHOD;
 
 import java.util.Arrays;
 import java.util.List;

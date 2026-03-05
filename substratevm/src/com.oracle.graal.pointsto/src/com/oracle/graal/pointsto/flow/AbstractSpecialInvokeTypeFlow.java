@@ -29,7 +29,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.shared.meta.MethodVariant.MethodVariantKey;
+import com.oracle.svm.common.meta.MethodVariant.MethodVariantKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
