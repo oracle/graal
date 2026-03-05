@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.compacting.CompactingVisitor;
@@ -61,9 +61,10 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Timer;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.word.impl.Word;
 
 /**
  * Core of the mark-compact implementation for the old generation, which collects using (almost)
@@ -75,8 +76,8 @@ import org.graalvm.word.impl.Word;
  * <ul>
  * <li>{@linkplain #beginPromotion Absorb all chunks of the young generation.}
  *
- * <li>{@linkplain #promotePinnedObject Mark pinned objects as reachable}. These objects must remain
- * at their current address, so the chunks that contain them will be swept instead of compacted.
+ * <li>{@linkplain #markPinnedObject Mark pinned objects as reachable}. These objects must remain at
+ * their current address, so the chunks that contain them will be swept instead of compacted.
  *
  * <li>Scan reachable objects, starting from roots, in {@link #promoteAlignedObject} and
  * {@link #scanGreyObjects}, which {@linkplain ObjectHeaderImpl#setMarked marks them with a
@@ -232,7 +233,7 @@ final class CompactingOldGeneration extends OldGeneration {
         Object result = original;
         if (ObjectHeaderImpl.isIdentityHashFieldOptional() &&
                         ObjectHeaderImpl.hasIdentityHashFromAddressInline(header) &&
-                        !originalChunk.getShouldSweepInsteadOfCompact()) {
+                        !originalChunk.getSweep()) {
             /*
              * This object's identity hash code is based on its current address, which we expect to
              * change during compaction, so we must add a field to store it, which increases the
@@ -263,32 +264,37 @@ final class CompactingOldGeneration extends OldGeneration {
         return original;
     }
 
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean promotePinnedObject(Object obj, HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
-        if (!GCImpl.getGCImpl().isCompleteCollection()) {
-            assert originalSpace != space && originalSpace.isFromSpace();
-            if (isAligned) {
-                ObjectPromoter.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace, space);
-            } else {
-                ObjectPromoter.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace, space);
-            }
-            return true;
-        }
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void markPinnedObject(Object obj, AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
+        assert GCImpl.getGCImpl().isCompleteCollection() : "for incremental collections, must promote entire (swept) chunks";
         assert originalSpace == space;
         if (ObjectHeaderImpl.isMarked(obj)) {
-            assert !isAligned || ((AlignedHeapChunk.AlignedHeader) originalChunk).getShouldSweepInsteadOfCompact();
-            return true;
+            assert chunk.getSweep();
+            return;
         }
-        if (isAligned) {
-            ((AlignedHeapChunk.AlignedHeader) originalChunk).setShouldSweepInsteadOfCompact(true);
-        }
+        chunk.setSweep(true);
         ObjectHeaderImpl.setMarked(obj);
         pushOntoMarkStack(obj);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
+        assert !GCImpl.getGCImpl().isCompleteCollection() : "for full collections, must mark individual pinned objects";
+        assert originalSpace != space && originalSpace.isFromSpace();
+        ObjectPromoter.promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace, space);
         return true;
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected void promoteAndSweepAlignedChunksWithPinnedObjectsInFromSpaces(SweepAndPromotePinnedChunkVisitor visitor) {
+        // Any promotions of pinned objects must have already happened.
+        // We sweep chunks with pinned objects as part of sweepAndCompact() below.
+        // (We also don't have From spaces.)
+        throw VMError.shouldNotReachHereAtRuntime();
+    }
+
     @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser) {
         /*
@@ -454,9 +460,9 @@ final class CompactingOldGeneration extends OldGeneration {
     private void compact(Timers timers) {
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-            if (chunk.getShouldSweepInsteadOfCompact()) {
+            if (chunk.getSweep()) {
                 ObjectMoveInfo.visit(chunk, sweepingVisitor);
-                chunk.setShouldSweepInsteadOfCompact(false);
+                chunk.setSweep(false);
             } else {
                 compactingVisitor.init(chunk);
                 ObjectMoveInfo.visit(chunk, compactingVisitor);
@@ -472,6 +478,10 @@ final class CompactingOldGeneration extends OldGeneration {
             while (chunk.isNonNull()) {
                 if (!AlignedHeapChunk.isEmpty(chunk)) {
                     RememberedSet.get().clearRememberedSet(chunk);
+
+                    if (HeapParameters.getZapConsumedHeapChunks()) {
+                        HeapChunkProvider.zapUnusedObjectMemory(chunk, HeapParameters.getConsumedHeapChunkZapWord());
+                    }
                 } // empty chunks will be freed or reset before reuse, no need to reinitialize here
 
                 chunk = HeapChunk.getNext(chunk);

@@ -31,10 +31,10 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -43,8 +43,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.thread.VMOperation;
-
-import org.graalvm.word.impl.ObjectAccess;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /** Promotes individual objects or whole heap chunks to a target {@link Space}. */
 public class ObjectPromoter {
@@ -57,7 +56,7 @@ public class ObjectPromoter {
 
         Object copy = copyAlignedObject(original, targetSpace);
         if (copy != null) {
-            ObjectHeaderImpl.getObjectHeaderImpl().installForwardingPointer(original, copy);
+            ObjectHeaderImpl.installForwardingPointer(original, copy);
         }
         return copy;
     }
@@ -67,6 +66,7 @@ public class ObjectPromoter {
     private static Object copyAlignedObject(Object originalObj, Space targetSpace) {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
+        assert !ObjectHeaderImpl.isMarked(originalObj) : "must never copy a marked object";
 
         UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, false);
         UnsignedWord copySize = originalSize;
@@ -120,22 +120,15 @@ public class ObjectPromoter {
         return copy;
     }
 
-    /** Promote an AlignedHeapChunk by moving it to the target space. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace, Space targetSpace) {
+    static void promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace, Space targetSpace) {
         assert targetSpace != originalSpace && originalSpace.isFromSpace();
+        assert chunk.getObjectPinCount() != 0 : "should be used only with pinned objects";
 
         originalSpace.extractAlignedHeapChunk(chunk);
         targetSpace.appendAlignedHeapChunk(chunk);
 
-        if (targetSpace.isOldSpace()) {
-            if (originalSpace.isYoungSpace()) {
-                RememberedSet.get().enableRememberedSetForChunk(chunk);
-            } else {
-                assert originalSpace.isOldSpace();
-                RememberedSet.get().clearRememberedSet(chunk);
-            }
-        }
+        /* If necessary, the remembered set will be rebuilt while sweeping. */
     }
 
     /** Promote an UnalignedHeapChunk by moving it to the target Space. */

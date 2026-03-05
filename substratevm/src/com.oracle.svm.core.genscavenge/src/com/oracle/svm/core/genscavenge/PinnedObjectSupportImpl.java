@@ -29,8 +29,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -46,24 +46,28 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
     }
 
     @Override
-    @Uninterruptible(reason = "Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
+    @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
     protected void pinObject(Object object) {
-        modifyPinnedObjectCount(object, 1);
+        modifyObjectPinCount(object, 1);
     }
 
     @Override
-    @Uninterruptible(reason = "Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
+    @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
     protected void unpinObject(Object object) {
-        modifyPinnedObjectCount(object, -1);
+        modifyObjectPinCount(object, -1);
     }
 
-    @Uninterruptible(reason = "Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
-    private static void modifyPinnedObjectCount(Object object, int delta) {
-        Pointer pinnedObjectCount = HeapChunk.getEnclosingHeapChunk(object).addressOfPinnedObjectCount();
+    @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
+    private static void modifyObjectPinCount(Object object, int delta) {
+        if (!GCImpl.canMove(object)) {
+            return; // only put on the PinnedObject list to keep it alive
+        }
+
+        Pointer pinCount = AlignedHeapChunk.getEnclosingChunk(object).addressOfObjectPinCount();
         int oldValue;
         do {
-            oldValue = pinnedObjectCount.readInt(0);
-        } while (!pinnedObjectCount.logicCompareAndSwapInt(0, oldValue, oldValue + delta, NamedLocationIdentity.OFF_HEAP_LOCATION));
+            oldValue = pinCount.readInt(0);
+        } while (!pinCount.logicCompareAndSwapInt(0, oldValue, oldValue + delta, NamedLocationIdentity.OFF_HEAP_LOCATION));
 
         assert oldValue >= 0 && oldValue < Integer.MAX_VALUE && oldValue + delta >= 0;
     }
