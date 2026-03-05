@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -590,6 +590,9 @@ public final class JNIUtil {
             return WordFactory.nullPointer();
         }
         JBooleanArray array = NewBooleanArray(jniEnv, a.length);
+        if (array.isNull()) {
+            throw new OutOfMemoryError("Failed to allocate array in the host VM.");
+        }
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
         return array;
     }
@@ -609,6 +612,9 @@ public final class JNIUtil {
             return WordFactory.nullPointer();
         }
         JByteArray array = NewByteArray(jniEnv, a.length);
+        if (array.isNull()) {
+            throw new OutOfMemoryError("Failed to allocate array in the host VM.");
+        }
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
         return array;
     }
@@ -628,6 +634,9 @@ public final class JNIUtil {
             return WordFactory.nullPointer();
         }
         JCharArray array = NewCharArray(jniEnv, a.length);
+        if (array.isNull()) {
+            throw new OutOfMemoryError("Failed to allocate array in the host VM.");
+        }
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
         return array;
     }
@@ -647,6 +656,9 @@ public final class JNIUtil {
             return WordFactory.nullPointer();
         }
         JShortArray array = NewShortArray(jniEnv, a.length);
+        if (array.isNull()) {
+            throw new OutOfMemoryError("Failed to allocate array in the host VM.");
+        }
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
         return array;
     }
@@ -666,6 +678,9 @@ public final class JNIUtil {
             return WordFactory.nullPointer();
         }
         JIntArray array = NewIntArray(jniEnv, a.length);
+        if (array.isNull()) {
+            throw new OutOfMemoryError("Failed to allocate array in the host VM.");
+        }
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
         return array;
     }
@@ -685,6 +700,9 @@ public final class JNIUtil {
             return WordFactory.nullPointer();
         }
         JLongArray array = NewLongArray(jniEnv, a.length);
+        if (array.isNull()) {
+            throw new OutOfMemoryError("Failed to allocate array in the host VM.");
+        }
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
         return array;
     }
@@ -704,6 +722,9 @@ public final class JNIUtil {
             return WordFactory.nullPointer();
         }
         JFloatArray array = NewFloatArray(jniEnv, a.length);
+        if (array.isNull()) {
+            throw new OutOfMemoryError("Failed to allocate array in the host VM.");
+        }
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
         return array;
     }
@@ -723,6 +744,9 @@ public final class JNIUtil {
             return WordFactory.nullPointer();
         }
         JDoubleArray array = NewDoubleArray(jniEnv, a.length);
+        if (array.isNull()) {
+            throw new OutOfMemoryError("Failed to allocate array in the host VM.");
+        }
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
         return array;
     }
@@ -731,6 +755,9 @@ public final class JNIUtil {
         JObjectArray hsArray;
         if (array != null) {
             hsArray = JNIUtil.NewObjectArray(jniEnv, length, JNIUtil.findClass(jniEnv, WordFactory.nullPointer(), componentTypeBinaryName, true), WordFactory.nullPointer());
+            if (hsArray.isNull()) {
+                throw new OutOfMemoryError("Failed to allocate array in the host VM.");
+            }
             for (int i = 0; i < length; i++) {
                 HSObject element = (HSObject) array[sourcePosition + i];
                 JObject hsElement = element != null ? element.getHandle() : WordFactory.nullPointer();

@@ -677,6 +677,11 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             jniBufferLength = marshalledParametersPositionVar;
         }
         builder.lineStart().write(binaryMarshallVars.jniBufferVariable).write(" = ").invokeStatic(typeCache.jniUtil, "NewByteArray", jniEnv, jniBufferLength).lineEnd(";");
+        builder.lineStart().write("if (").invoke(binaryMarshallVars.jniBufferVariable, "isNull").lineEnd(") {");
+        builder.indent();
+        builder.lineStart().write("throw ").newInstance(typeCache.outOfMemoryError, "\"Failed to allocate marshalling buffer in the host VM.\"").lineEnd(";");
+        builder.dedent();
+        builder.line("}");
         CharSequence address = new CodeBuilder(builder).invoke(binaryMarshallVars.outputVariable, "getAddress").build();
         builder.lineStart().invokeStatic(typeCache.jniUtil, "SetByteArrayRegion", jniEnv, binaryMarshallVars.jniBufferVariable, "0", marshalledParametersPositionVar, address).lineEnd(";");
         builder.dedent();
