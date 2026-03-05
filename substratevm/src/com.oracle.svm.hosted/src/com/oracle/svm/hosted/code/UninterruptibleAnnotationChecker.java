@@ -37,13 +37,13 @@ import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils.UninterruptibleGuestValue;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.graph.Node;
@@ -92,10 +92,13 @@ public final class UninterruptibleAnnotationChecker {
         for (HostedMethod method : methods) {
             UninterruptibleGuestValue annotation = UninterruptibleAnnotationUtils.getAnnotation(method);
             CompilationGraph graph = method.compilationInfo.getCompilationGraph();
-            c.checkSpecifiedOptions(method, annotation);
-            c.checkOverrides(method, annotation);
-            c.checkCallees(method, annotation, graph);
-            c.checkCallers(method, annotation, graph);
+            if (annotation != null) {
+                c.checkSpecifiedOptions(method, annotation);
+                c.checkOverrides(method, annotation);
+                c.checkCallees(method, graph);
+            } else {
+                c.checkCallers(method, graph);
+            }
         }
 
         if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
@@ -116,10 +119,6 @@ public final class UninterruptibleAnnotationChecker {
     }
 
     private void checkSpecifiedOptions(HostedMethod method, UninterruptibleGuestValue annotation) {
-        if (annotation == null) {
-            return;
-        }
-
         if (annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE)) {
             if (!annotation.mayBeInlined() && !AnnotationUtil.isAnnotationPresent(method, NeverInline.class)) {
                 violations.add("Method " + method.format("%H.%n(%p)") +
@@ -183,9 +182,6 @@ public final class UninterruptibleAnnotationChecker {
      * {@linkplain Uninterruptible}.
      */
     private void checkOverrides(HostedMethod method, UninterruptibleGuestValue methodAnnotation) {
-        if (methodAnnotation == null) {
-            return;
-        }
         for (HostedMethod impl : method.getImplementations()) {
             UninterruptibleGuestValue implAnnotation = UninterruptibleAnnotationUtils.getAnnotation(impl);
             if (implAnnotation != null) {
@@ -209,36 +205,56 @@ public final class UninterruptibleAnnotationChecker {
      * A caller can be annotated with "calleeMustBe = false" to allow calls to methods that are not
      * annotated with {@link Uninterruptible}, to allow the few cases where that should be allowed.
      */
-    private void checkCallees(HostedMethod caller, UninterruptibleGuestValue callerAnnotation, CompilationGraph graph) {
-        if (callerAnnotation == null || graph == null) {
+    private void checkCallees(HostedMethod method, CompilationGraph graph) {
+        if (graph == null) {
             return;
         }
+
         for (CompilationGraph.InvokeInfo invoke : graph.getInvokeInfos()) {
+            HostedMethod directCaller = invoke.getDirectCaller();
             HostedMethod callee = invoke.getTargetMethod();
+
             if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
-                printDotGraphEdge(caller, callee);
+                printDotGraphEdge(method, callee);
             }
 
-            UninterruptibleGuestValue directCallerAnnotation = UninterruptibleAnnotationUtils.getAnnotation(invoke.getDirectCaller());
+            UninterruptibleGuestValue directCallerAnnotation = UninterruptibleAnnotationUtils.getAnnotation(directCaller);
             if (directCallerAnnotation == null) {
-                violations.add("Unannotated callee: " + invoke.getDirectCaller().format("%H.%n(%p):%r") + " inlined into annotated caller " + caller.format("%H.%n(%p):%r") +
+                violations.add("Unannotated callee: " + directCaller.format("%H.%n(%p):%r") + " inlined into annotated caller " + method.format("%H.%n(%p):%r") +
                                 System.lineSeparator() + invoke.getNodeSourcePosition());
+                continue;
+            }
+
+            /*
+             * Code that is annotated with 'mayBeInlined = true' must not call any code that has a
+             * good reason for being uninterruptible (i.e., 'mayBeInlined = false'). Otherwise, we
+             * could accidentally inline uninterruptible code into an interruptible caller.
+             */
+            if (directCallerAnnotation.mayBeInlined() && !callee.isNative()) {
+                UninterruptibleGuestValue calleeAnnotation = UninterruptibleAnnotationUtils.getAnnotation(callee);
+                if (calleeAnnotation != null && !calleeAnnotation.mayBeInlined() && !AnnotationUtil.isAnnotationPresent(callee, NeverInline.class) &&
+                                !AnnotationUtil.isAnnotationPresent(directCaller, AlwaysInline.class)) {
+                    violations.add("Method " + directCaller.format("%H.%n(%p):%r") + " is annotated with @Uninterruptible(mayBeInlined = true) " +
+                                    "but calls " + callee.format("%H.%n(%p):%r") + " which is annotated with @Uninterruptible(mayBeInlined = false). " +
+                                    "Either remove 'mayBeInlined = true' from the caller, annotate the caller with @AlwaysInline, add 'mayBeInlined = true' in the callee, or annotate the callee with @NeverInline." +
+                                    System.lineSeparator() + invoke.getNodeSourcePosition());
+                }
+            }
+
+            if (directCallerAnnotation.calleeMustBe()) {
+                if (!UninterruptibleAnnotationUtils.isUninterruptible(callee)) {
+                    violations.add("Unannotated callee: " + callee.format("%H.%n(%p):%r") + " called by annotated caller " + directCaller.format("%H.%n(%p):%r") +
+                                    System.lineSeparator() + invoke.getNodeSourcePosition());
+                }
             } else {
-                if (directCallerAnnotation.calleeMustBe()) {
-                    if (!UninterruptibleAnnotationUtils.isUninterruptible(callee)) {
-                        violations.add("Unannotated callee: " + callee.format("%H.%n(%p):%r") + " called by annotated caller " + caller.format("%H.%n(%p):%r") +
-                                        System.lineSeparator() + invoke.getNodeSourcePosition());
-                    }
-                } else {
-                    if (callee.isSynthetic()) {
-                        /*
-                         * Synthetic callees are dangerous because they may slip in accidentally.
-                         * This can cause issues in callers that are annotated with 'calleeMustBe =
-                         * false' because the synthetic callee may introduce unexpected safepoints.
-                         */
-                        violations.add("Synthetic method " + callee.format("%H.%n(%p):%r") + " cannot be called directly from " + caller.format("%H.%n(%p):%r") +
-                                        System.lineSeparator() + invoke.getNodeSourcePosition() + " because the caller is annotated with '@Uninterruptible(calleeMustBe = false)'.");
-                    }
+                if (callee.isSynthetic()) {
+                    /*
+                     * Synthetic callees are dangerous because they may slip in accidentally. This
+                     * can cause issues in callers that are annotated with 'calleeMustBe = false'
+                     * because the synthetic callee may introduce unexpected safepoints.
+                     */
+                    violations.add("Synthetic method " + callee.format("%H.%n(%p):%r") + " cannot be called directly from " + directCaller.format("%H.%n(%p):%r") +
+                                    System.lineSeparator() + invoke.getNodeSourcePosition() + " because the caller is annotated with '@Uninterruptible(calleeMustBe = false)'.");
                 }
             }
         }
@@ -248,10 +264,11 @@ public final class UninterruptibleAnnotationChecker {
      * Check that each method that calls a method annotated with {@linkplain Uninterruptible} that
      * has "callerMustBe = true" is also annotated with {@linkplain Uninterruptible}.
      */
-    private void checkCallers(HostedMethod caller, UninterruptibleGuestValue callerAnnotation, CompilationGraph graph) {
-        if (callerAnnotation != null || graph == null) {
+    private void checkCallers(HostedMethod caller, CompilationGraph graph) {
+        if (graph == null) {
             return;
         }
+
         for (CompilationGraph.InvokeInfo invoke : graph.getInvokeInfos()) {
             HostedMethod callee = invoke.getTargetMethod();
             if (isCallerMustBe(callee)) {
