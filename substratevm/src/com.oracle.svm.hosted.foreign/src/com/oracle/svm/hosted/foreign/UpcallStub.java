@@ -60,8 +60,8 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
@@ -116,9 +116,9 @@ public abstract class UpcallStub extends NonBytecodeMethod {
  * status, etc.
  * <p>
  * Unlike downcalls where methods could have varargs, which are not supported by the backend, this
- * cannot happen for upcalls. As such, setting the method's calling convention to
- * {@link SubstrateCallingConventionKind#Native} should be sufficient; there should be no need for a
- * customized calling convention.
+ * cannot happen for upcalls. We therefore use a custom calling convention to surface the trampoline
+ * injected isolate and method handle registers as explicit parameters while still delegating all
+ * other arguments to the standard native-to-Java mappings.
  * <p>
  * The method type is of the form (<>: argument; []: optional argument)
  *
@@ -153,12 +153,32 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     }
 
     private LowLevelUpcallStub(AnalysisMethod highLevelStubMethod, JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, MetaAccessProvider metaAccess, boolean direct) {
-        super(jep, adapted.callType(), metaAccess, false, direct);
+        super(jep, toLowLevelType(adapted.callType()), metaAccess, false, direct);
         this.highLevelStub = highLevelStubMethod;
         this.savedRegisters = SubstrateRegisterConfigFactory.singleton()
                         .newRegisterFactory(SubstrateRegisterConfig.ConfigKind.NATIVE_TO_JAVA, null, ConfigurationValues.getTarget(), SubstrateOptions.PreserveFramePointer.getValue())
                         .getCalleeSaveRegisters();
-        this.parametersAssignment = adapted.parametersAssignment().toArray(AssignedLocation.EMPTY_ARRAY);
+        this.parametersAssignment = toLowLevelAssignments(adapted);
+    }
+
+    private static MethodType toLowLevelType(MethodType callType) {
+        return callType.insertParameterTypes(0, MethodHandle.class, long.class);
+    }
+
+    /**
+     * Prepends assigned locations for special registers that will contain the method handle and the
+     * isolate pointer. This will tell the compiler that those registers are used for parameters.
+     */
+    private static AssignedLocation[] toLowLevelAssignments(TypeAdaptation adapted) {
+        AbiUtils.Registers specialRegisters = AbiUtils.singleton().upcallSpecialArgumentsRegisters();
+        List<AssignedLocation> assignedLocations = adapted.parametersAssignment();
+        AssignedLocation[] extendedAssignments = new AssignedLocation[assignedLocations.size() + 2];
+        extendedAssignments[0] = AssignedLocation.forRegister(specialRegisters.methodHandle(), JavaKind.Long);
+        extendedAssignments[1] = AssignedLocation.forRegister(specialRegisters.isolate(), JavaKind.Long);
+        for (int i = 0; i < assignedLocations.size(); i++) {
+            extendedAssignments[i + 2] = assignedLocations.get(i);
+        }
+        return extendedAssignments;
     }
 
     /**
@@ -179,12 +199,13 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
          * Read all relevant values, i.e. the MH to call, the current Isolate, the
          * function-preserved registers and function's arguments
          *
-         * The special arguments read from specific registers were set up by the trampoline.
+         * The trampoline seeds dedicated registers for the method handle and isolate; the custom
+         * calling convention exposes them as the first parameters.
          */
         AbiUtils.Registers registers = AbiUtils.singleton().upcallSpecialArgumentsRegisters();
-        ValueNode mh = kit.bindRegister(registers.methodHandle(), JavaKind.Object);
-        ValueNode isolate = kit.append(kit.bindRegister(registers.isolate(), JavaKind.Long));
         List<ValueNode> arguments = new ArrayList<>(kit.getInitialArguments());
+        ValueNode mh = arguments.removeFirst();
+        ValueNode isolate = arguments.removeFirst();
 
         /*
          * Prologue: save callee-save registers, allocate return space if needed, transition from
