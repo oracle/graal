@@ -26,20 +26,26 @@ package com.oracle.svm.hosted.phases;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.SVMHost;
@@ -78,6 +84,8 @@ import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import jdk.internal.vm.annotation.ForceInline;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -90,10 +98,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * configuration.
  *
  * Important: the implementation details of this class are publicly observable API. Since
- * {@link java.lang.reflect.Method} constants can be produced by inlining lookup methods with
- * constant arguments, reducing inlining can break customer code. This means we can never reduce the
- * amount of inlining in a future version without breaking compatibility. This also means that we
- * must be conservative and only inline what is necessary for known use cases.
+ * {@link Method} constants can be produced by inlining lookup methods with constant arguments,
+ * reducing inlining can break customer code. This means we can never reduce the amount of inlining
+ * in a future version without breaking compatibility. This also means that we must be conservative
+ * and only inline what is necessary for known use cases.
  */
 public class InlineBeforeAnalysisPolicyUtils {
     public static class Options {
@@ -156,8 +164,49 @@ public class InlineBeforeAnalysisPolicyUtils {
     private static final Class<? extends Annotation> COMPILED_LAMBDA_FORM_ANNOTATION = //
                     (Class<? extends Annotation>) ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm$Compiled");
 
-    public static boolean isMethodHandleIntrinsificationRoot(ResolvedJavaMethod method) {
-        return AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION);
+    /**
+     * Contains methods that are explicitly registered as method handle intrinsification roots.
+     * Currently, this set contains methods
+     * 'AbstractMemorySegmentImpl.get/getAtIndex/set/setAtIndex(...)'. These methods are very simple
+     * and will just load a VarHandle and invoke it. Since the handle is loaded from an argument,
+     * these methods must be inlined. Otherwise, the handle is not seen to be constant. It is also
+     * necessary to declare them as intrinsification roots because although they are annotated
+     * with @ForceInline, the annotation is ignored by InlineBeforeAnalysis. If we specify those
+     * methods in {@link #alwaysInlineInvoke}, they will be inlined but MH intrinsification won't
+     * work anymore (since we don't inline MH roots if already in an inlining context; this is the
+     * mechanism to avoid partial inlining of method handles).
+     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+10/src/java.base/share/classes/jdk/internal/foreign/AbstractMemorySegmentImpl.java#L681-L915") //
+    private final Set<ResolvedJavaMethod> explicitMethodHandleIntrinisificationRoots = computeAbstractMemorySegmentGetSetMethods();
+
+    private static Set<ResolvedJavaMethod> computeAbstractMemorySegmentGetSetMethods() {
+        MetaAccessProvider metaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+        Class<?> abstractMemorySegment = ReflectionUtil.lookupClass("jdk.internal.foreign.AbstractMemorySegmentImpl");
+
+        Set<ResolvedJavaMethod> roots = new HashSet<>();
+        for (JavaKind kind : JavaKind.values()) {
+            if (kind.isPrimitive() && kind != JavaKind.Void) {
+                Class<?> valueLayout = ReflectionUtil.lookupClass("java.lang.foreign.ValueLayout$Of" + kind.name());
+                addGetSetMethods(roots, metaAccess, abstractMemorySegment, valueLayout, kind.toJavaClass());
+            }
+        }
+
+        Class<?> addressLayout = ReflectionUtil.lookupClass("java.lang.foreign.AddressLayout");
+        Class<?> memorySegment = ReflectionUtil.lookupClass("java.lang.foreign.MemorySegment");
+        addGetSetMethods(roots, metaAccess, abstractMemorySegment, addressLayout, memorySegment);
+        return Collections.unmodifiableSet(roots);
+    }
+
+    private static void addGetSetMethods(Set<ResolvedJavaMethod> roots, MetaAccessProvider metaAccess, Class<?> abstractMemorySegment, Class<?> valueLayout, Class<?> carrier) {
+        roots.add(metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(abstractMemorySegment, "get", valueLayout, long.class)));
+        roots.add(metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(abstractMemorySegment, "getAtIndex", valueLayout, long.class)));
+        roots.add(metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(abstractMemorySegment, "set", valueLayout, long.class, carrier)));
+        roots.add(metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(abstractMemorySegment, "setAtIndex", valueLayout, long.class, carrier)));
+    }
+
+    public boolean isMethodHandleIntrinsificationRoot(ResolvedJavaMethod method) {
+        return AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION) ||
+                        explicitMethodHandleIntrinisificationRoots.contains(OriginalMethodProvider.getOriginalMethod(method));
     }
 
     public boolean isScopedMethod(ResolvedJavaMethod method) {
@@ -562,7 +611,7 @@ public class InlineBeforeAnalysisPolicyUtils {
                     ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$Accessor"), "checkCast", Object.class),
                     ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$StaticAccessor"), "checkCast", Object.class));
 
-    private static boolean inlineForMethodHandleIntrinsification(AnalysisMethod method) {
+    private boolean inlineForMethodHandleIntrinsification(AnalysisMethod method) {
         return AnnotationAccess.isAnnotationPresent(method, ForceInline.class) ||
                         isMethodHandleIntrinsificationRoot(method) ||
                         INLINE_METHOD_HANDLE_CLASSES.contains(method.getDeclaringClass().getJavaClass()) ||

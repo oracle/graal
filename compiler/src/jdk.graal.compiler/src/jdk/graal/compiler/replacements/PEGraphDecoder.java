@@ -493,6 +493,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
+        public ResolvedJavaType getInvokeReferencedType() {
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
+        }
+
+        @Override
         public String toString() {
             Formatter fmt = new Formatter();
             fmt.format("Decoding %s", methodScope.method.format("%H.%n(%p)"));

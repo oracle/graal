@@ -28,9 +28,11 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Queue;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1121,10 +1123,22 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public ResolvedJavaType getSingleImplementor() {
         /*
+         * Make use of a sealed class hierarchy. Try to find a single implementing (abstract) class
+         * by following the one permitted subclass of this interface.
+         */
+        assert isInterface();
+        if (isSealed() && hasSinglePermittedImplementor(getPermittedSubclasses())) {
+            return getPermittedSubclasses().getFirst();
+        }
+        /*
          * New classes can be loaded during the analysis, so we cannot guarantee a consistent and
          * correct result. So we need to conservatively say that there is no single implementor.
          */
         return this;
+    }
+
+    private static boolean hasSinglePermittedImplementor(List<? extends AnalysisType> permittedSubclasses) {
+        return permittedSubclasses.size() == 1 && !permittedSubclasses.getFirst().isInterface();
     }
 
     /** Get the immediate subtypes, including this type itself. */
@@ -1249,10 +1263,61 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
-        // ResolvedJavaMethod subst = universe.substitutions.resolve(((AnalysisMethod)
-        // method).wrapped);
-        // return universe.lookup(wrapped.findUniqueConcreteMethod(subst));
+        if (!isInterface() && isSealed()) {
+            ResolvedJavaMethod uniqueConcreteMethodInPermittedSubclasses = findUniqueConcreteMethodInPermittedSubclasses(method);
+            if (uniqueConcreteMethodInPermittedSubclasses != null) {
+                return new AssumptionResult<>(uniqueConcreteMethodInPermittedSubclasses);
+            }
+        }
         return null;
+    }
+
+    private ResolvedJavaMethod findUniqueConcreteMethodInPermittedSubclasses(ResolvedJavaMethod method) {
+        assert isSealed();
+
+        ResolvedJavaMethod uniqueImplementation = resolveConcreteMethod(method);
+        Queue<AnalysisType> worklist = new LinkedList<>(getPermittedSubclasses());
+        AnalysisType currentType;
+        while ((currentType = worklist.poll()) != null) {
+            boolean currentTypeIsSealed = currentType.isSealed();
+            boolean currentTypeIsFinal = currentType.isFinalFlagSet();
+            /*
+             * If any class in the hierarchy is non-sealed (i.e. not final and not sealed), we
+             * abort. In this case, arbitrary user classes may extend the base class, and we cannot
+             * do further reasoning here.
+             */
+            if (!currentTypeIsSealed && !currentTypeIsFinal) {
+                return null;
+            }
+
+            if (currentTypeIsSealed) {
+                /* If sealed, 'getPermittedSubclasses' is guaranteed to be non-null. */
+                worklist.addAll(currentType.getPermittedSubclasses());
+            }
+
+            ResolvedJavaMethod currentImplementation = currentType.resolveConcreteMethod(method);
+            if (currentImplementation == null) {
+                continue;
+            }
+
+            // remember the first concrete method
+            if (uniqueImplementation == null) {
+                uniqueImplementation = currentImplementation;
+                continue;
+            }
+
+            /*
+             * We can only return a unique concrete method if every implementation in the permitted
+             * subclass hierarchy resolves to the same target method.
+             */
+            if (uniqueImplementation.equals(currentImplementation)) {
+                continue;
+            }
+
+            // bailout: found two different implementations
+            return null;
+        }
+        return uniqueImplementation;
     }
 
     @Override
