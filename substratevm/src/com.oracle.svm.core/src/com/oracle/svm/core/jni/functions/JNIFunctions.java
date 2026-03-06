@@ -168,7 +168,7 @@ public final class JNIFunctions {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
-    static int GetVersion(JNIEnvironment env) {
+    public static int GetVersion(JNIEnvironment env) {
         return JNIVersion.JNI_VERSION_LATEST();
     }
 
