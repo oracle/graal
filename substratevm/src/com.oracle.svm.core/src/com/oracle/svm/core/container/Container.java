@@ -29,25 +29,23 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.nodes.PauseNode;
-import org.graalvm.word.impl.Word;
 
 /** Provides container awareness to the rest of the VM. */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
@@ -79,9 +77,7 @@ public class Container {
         return ImageSingletons.lookup(Container.class);
     }
 
-    /**
-     * Determines whether the image runs containerized.
-     */
+    /** Determines whether the image runs containerized. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isContainerized() {
         if (!isSupported()) {
@@ -93,33 +89,24 @@ public class Container {
         return value == State.CONTAINERIZED;
     }
 
+    /** Called once per isolate. Only the first invocation executes the C++ code. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void initialize() {
         if (!isSupported()) {
             return;
         }
+
         Pointer statePtr = STATE.get();
-        UnsignedWord value = statePtr.compareAndSwapWord(0, State.UNINITIALIZED, State.INITIALIZING, LocationIdentity.ANY_LOCATION);
+        UnsignedWord value = statePtr.readWord(0);
         if (value == State.UNINITIALIZED) {
             value = switch (ContainerLibrary.initialize(ContainerLibrary.VERSION)) {
-                case ContainerLibrary.SUCCESS_IS_NOT_CONTAINERIZED:
-                    yield State.NOT_CONTAINERIZED;
-                case ContainerLibrary.SUCCESS_IS_CONTAINERIZED:
-                    yield State.CONTAINERIZED;
-                case ContainerLibrary.ERROR_LIBCONTAINER_TOO_OLD:
-                    yield State.ERROR_LIBCONTAINER_TOO_OLD;
-                case ContainerLibrary.ERROR_LIBCONTAINER_TOO_NEW:
-                    yield State.ERROR_LIBCONTAINER_TOO_NEW;
-                default:
-                    yield State.ERROR_UNKNOWN;
+                case ContainerLibrary.SUCCESS_IS_NOT_CONTAINERIZED -> State.NOT_CONTAINERIZED;
+                case ContainerLibrary.SUCCESS_IS_CONTAINERIZED -> State.CONTAINERIZED;
+                case ContainerLibrary.ERROR_LIBCONTAINER_TOO_OLD -> State.ERROR_LIBCONTAINER_TOO_OLD;
+                case ContainerLibrary.ERROR_LIBCONTAINER_TOO_NEW -> State.ERROR_LIBCONTAINER_TOO_NEW;
+                default -> State.ERROR_UNKNOWN;
             };
-            // write
-            statePtr.writeWordVolatile(0, value);
-        } else {
-            while (value == State.INITIALIZING) {
-                PauseNode.pause();
-                value = statePtr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
-            }
+            statePtr.writeWord(0, value);
         }
         VMError.guarantee(value != State.ERROR_LIBCONTAINER_TOO_OLD, "native-image tries to use a libsvm_container version that is too old");
         VMError.guarantee(value != State.ERROR_LIBCONTAINER_TOO_NEW, "native-image tries to use a libsvm_container version that is too new");
@@ -182,11 +169,10 @@ public class Container {
 
     private static final class State {
         static final UnsignedWord UNINITIALIZED = Word.unsigned(0);
-        static final UnsignedWord INITIALIZING = Word.unsigned(1);
-        static final UnsignedWord NOT_CONTAINERIZED = Word.unsigned(2);
-        static final UnsignedWord CONTAINERIZED = Word.unsigned(3);
-        static final UnsignedWord ERROR_LIBCONTAINER_TOO_OLD = Word.unsigned(4);
-        static final UnsignedWord ERROR_LIBCONTAINER_TOO_NEW = Word.unsigned(5);
-        static final UnsignedWord ERROR_UNKNOWN = Word.unsigned(6);
+        static final UnsignedWord NOT_CONTAINERIZED = Word.unsigned(1);
+        static final UnsignedWord CONTAINERIZED = Word.unsigned(2);
+        static final UnsignedWord ERROR_LIBCONTAINER_TOO_OLD = Word.unsigned(3);
+        static final UnsignedWord ERROR_LIBCONTAINER_TOO_NEW = Word.unsigned(4);
+        static final UnsignedWord ERROR_UNKNOWN = Word.unsigned(5);
     }
 }

@@ -29,8 +29,9 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
@@ -39,10 +40,6 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.thread.PlatformThreads.ThreadLocalKey;
 import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.shared.util.VMError;
-
-import jdk.graal.compiler.nodes.PauseNode;
-import jdk.internal.misc.Unsafe;
 
 /**
  * Implements a cache for {@link IsolateThread} that is used when an {@link Isolate} is entered
@@ -74,12 +71,7 @@ import jdk.internal.misc.Unsafe;
  * {@link Isolate} before the initializing thread is attached.
  */
 public final class IsolateThreadCache {
-    private static final int UNINITIALIZED = 0;
-    private static final int IN_PROGRESS = 1;
-    private static final int INITIALIZED = 2;
-
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-    private static final CGlobalData<CIntPointer> CACHE_INIT_STATE = CGlobalDataFactory.createBytes(() -> Integer.BYTES);
+    private static final CGlobalData<Pointer> CACHE_INIT_STATE = CGlobalDataFactory.createWord(State.UNINITIALIZED);
     private static final CGlobalData<WordPointer> ISOLATE_THREAD_CACHE_KEY = CGlobalDataFactory.createWord();
     private static final CGlobalData<WordPointer> ISOLATE_CACHE_KEY = CGlobalDataFactory.createWord();
 
@@ -87,11 +79,7 @@ public final class IsolateThreadCache {
         // no instances
     }
 
-    /**
-     * Cache initialization must be performed exactly once per process. This operation needs to be
-     * called before the first time a thread attaches to an {@link Isolate}. The operation is
-     * thread-safe.
-     */
+    /** Called once per isolate. Only the first invocation creates the unmanaged thread locals. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void initialize() {
         var pt = PlatformThreads.singleton();
@@ -99,12 +87,11 @@ public final class IsolateThreadCache {
             return;
         }
 
-        WordPointer threadKeyAddr = ISOLATE_THREAD_CACHE_KEY.get();
-        WordPointer isolateKeyAddr = ISOLATE_CACHE_KEY.get();
+        Pointer statePtr = CACHE_INIT_STATE.get();
+        if (statePtr.readWord(0) == State.UNINITIALIZED) {
+            WordPointer threadKeyAddr = ISOLATE_THREAD_CACHE_KEY.get();
+            WordPointer isolateKeyAddr = ISOLATE_CACHE_KEY.get();
 
-        long initStateAddr = CACHE_INIT_STATE.get().rawValue();
-        boolean winner = UNSAFE.compareAndSetInt(null, initStateAddr, UNINITIALIZED, IN_PROGRESS);
-        if (winner) {
             assert threadKeyAddr.read() == Word.zero();
             assert isolateKeyAddr.read() == Word.zero();
 
@@ -118,16 +105,7 @@ public final class IsolateThreadCache {
             assert pt.getUnmanagedThreadLocalValue(isolateKey) == Word.zero();
             isolateKeyAddr.write(isolateKey);
 
-            UNSAFE.putIntVolatile(null, initStateAddr, INITIALIZED);
-        } else {
-            int state;
-            // spin-wait for the cache to be initialized
-            do {
-                PauseNode.pause();
-                state = UNSAFE.getIntVolatile(null, initStateAddr);
-            } while (state == IN_PROGRESS);
-            VMError.guarantee(state == INITIALIZED);
-            assert cacheKeySanityCheck(threadKeyAddr.read(), isolateKeyAddr.read());
+            statePtr.writeWord(0, State.INITIALIZED);
         }
     }
 
@@ -217,7 +195,12 @@ public final class IsolateThreadCache {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean cacheKeySanityCheck(ThreadLocalKey threadKey, ThreadLocalKey isolateKey) {
-        int state = CACHE_INIT_STATE.get().read();
-        return state == INITIALIZED && threadKey != isolateKey;
+        UnsignedWord state = CACHE_INIT_STATE.get().readWord(0);
+        return state == State.INITIALIZED && threadKey != isolateKey;
+    }
+
+    private static final class State {
+        private static final UnsignedWord UNINITIALIZED = Word.unsigned(0);
+        private static final UnsignedWord INITIALIZED = Word.unsigned(1);
     }
 }

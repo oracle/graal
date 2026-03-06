@@ -50,7 +50,6 @@ import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
@@ -75,7 +74,6 @@ import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.MembarNode.FenceKind;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
@@ -153,48 +151,36 @@ public abstract class VMThreads {
      */
     private static final FastThreadLocalBytes<Pointer> StartedByCurrentIsolate = FastThreadLocalFactory.createBytes(() -> 1, "VMThreads.StartedByCurrentIsolate");
 
-    private static final int STATE_UNINITIALIZED = 1;
-    private static final int STATE_INITIALIZING = 2;
-    private static final int STATE_INITIALIZED = 3;
-    private static final int STATE_TEARING_DOWN = 4;
-    private static final UninterruptibleUtils.AtomicInteger initializationState = new UninterruptibleUtils.AtomicInteger(STATE_UNINITIALIZED);
+    private static final int STATE_UNINITIALIZED = 0;
+    private static final int STATE_FAILED = 1;
+    private static final int STATE_INITIALIZED = 2;
+    private static final int STATE_TEARING_DOWN = 3;
+    private static volatile int initializationState = STATE_UNINITIALIZED;
 
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
     public static boolean isInitialized() {
-        return initializationState.get() >= STATE_INITIALIZED;
+        return initializationState >= STATE_INITIALIZED;
     }
 
     /** Is threading being torn down? */
     @Uninterruptible(reason = "Called from uninterruptible code during tear down.")
     public static boolean isTearingDown() {
-        return initializationState.get() >= STATE_TEARING_DOWN;
+        return initializationState >= STATE_TEARING_DOWN;
     }
 
     /** Note that threading is being torn down. */
     static void setTearingDown() {
-        initializationState.set(STATE_TEARING_DOWN);
+        initializationState = STATE_TEARING_DOWN;
     }
 
-    /**
-     * Make sure the runtime is initialized for threading.
-     */
+    /** Called once per isolate. */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public static boolean ensureInitialized() {
-        boolean result = true;
-        if (initializationState.compareAndSet(STATE_UNINITIALIZED, STATE_INITIALIZING)) {
-            /*
-             * We claimed the initialization lock, so we are now responsible for doing all the
-             * initialization.
-             */
-            result = singleton().initializeOnce();
-
-            initializationState.set(STATE_INITIALIZED);
+    public static boolean initialize() {
+        boolean result = singleton().initializeOnce();
+        if (result) {
+            initializationState = STATE_INITIALIZED;
         } else {
-            /* Already initialized, or some other thread claimed the initialization lock. */
-            while (initializationState.get() < STATE_INITIALIZED) {
-                /* Busy wait until the other thread finishes the initialization. */
-                PauseNode.pause();
-            }
+            initializationState = STATE_FAILED;
         }
         return result;
     }
@@ -277,7 +263,7 @@ public abstract class VMThreads {
      *
      * Use the following pattern to iterate over all attached threads. It is allocation free and can
      * therefore also be used during a GC:
-     * 
+     *
      * <pre>
      * for (VMThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
      * </pre>
