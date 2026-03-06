@@ -55,6 +55,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 
 final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerDispatch {
@@ -300,11 +304,36 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
 
                 ReadOnlyValueList convertedInputValues;
                 if (reportInputValues) {
-                    convertedInputValues = new ReadOnlyValueList(languageContext.toHostValues(inputValues));
+                    convertedInputValues = convertInputValues(languageContext, inputValues);
                 } else {
                     convertedInputValues = ReadOnlyValueList.EMPTY;
                 }
                 invokeReturnAllocate(convertedInputValues, returnValue);
+            }
+        }
+
+        private static ReadOnlyValueList convertInputValues(PolyglotLanguageContext languageContext, Object[] inputValues) {
+            Object[] inputValuesWithoutNull = new Object[inputValues.length];
+            for (int i = 0; i < inputValues.length; i++) {
+                if (inputValues[i] == null) {
+                    /*
+                     * In rare scenarios where not all children of a tagged node execute, the input
+                     * value can be null. Replace it with a valid guest object.
+                     */
+                    inputValuesWithoutNull[i] = new NoInputValue();
+                } else {
+                    inputValuesWithoutNull[i] = inputValues[i];
+                }
+            }
+            return new ReadOnlyValueList(languageContext.toHostValues(inputValuesWithoutNull));
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        @SuppressWarnings("static-method")
+        public static final class NoInputValue implements TruffleObject {
+            @ExportMessage
+            boolean isNull() {
+                return true;
             }
         }
 

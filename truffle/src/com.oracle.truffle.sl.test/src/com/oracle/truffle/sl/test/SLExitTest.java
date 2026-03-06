@@ -68,7 +68,7 @@ public class SLExitTest extends AbstractSLTest {
     public void testExitWithShutdownHook() throws IOException {
         String message = "Hello world!";
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            try (Context context = Context.newBuilder().out(out).build()) {
+            try (Context context = newContextBuilder().out(out).build()) {
                 context.eval("sl", "function onShutdown() {\n" +
                                 "  println(\"" + message + "\");\n" +
                                 "}\n" +

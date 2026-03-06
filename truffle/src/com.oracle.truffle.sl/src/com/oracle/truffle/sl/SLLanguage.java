@@ -203,7 +203,7 @@ import com.oracle.truffle.sl.runtime.SLStrings;
  * <b>AST vs. Bytecode interpreter:</b><br>
  * SL has an {@link SLAstRootNode AST interpreter} and a {@link SLBytecodeRootNode bytecode
  * interpreter}. The interpreter used depends on the {@link SLLanguage#UseBytecode} flag (by
- * default, the AST interpreter is used).
+ * default, the bytecode interpreter is used).
  * <p>
  * <b>Builtin functions:</b><br>
  * Library functions that are available to every SL source without prior definition are called
@@ -247,7 +247,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     private final Shape rootShape;
 
     @Option(help = "Use the SL interpreter implemented using the Truffle Bytecode DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> UseBytecode = new OptionKey<>(false);
+    public static final OptionKey<Boolean> UseBytecode = new OptionKey<>(true);
 
     @Option(help = "Prints the AST or bytecode after parsing.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> PrintParsed = new OptionKey<>(false);

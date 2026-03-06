@@ -66,7 +66,7 @@ public class SLExecutionListenerTest extends AbstractSLTest {
 
     @Before
     public void setUp() {
-        context = Context.create("sl");
+        context = newContextBuilder("sl").build();
     }
 
     @After
@@ -91,8 +91,14 @@ public class SLExecutionListenerTest extends AbstractSLTest {
 
         enterRoot(rootSourceSection("return 2;"));
         enterStatement("return 2");
-        leaveStatement("return 2", null);
-        leaveRoot(rootSourceSection("return 2;"), 2);
+        if (mode == RunMode.AST) {
+            // The AST implements returns with an exception, so the return value is not present.
+            leaveStatement("return 2", null);
+            leaveRoot(rootSourceSection("return 2;"), 2);
+        } else {
+            leaveStatement("return 2", 2);
+            leaveRoot(rootSourceSection("return 2;"), 2, 2);
+        }
     }
 
     @Test
@@ -121,12 +127,12 @@ public class SLExecutionListenerTest extends AbstractSLTest {
                         attach(context.getEngine());
         eval("2 + 3;");
 
-        enterStatement("2 + 3");
+        enterExpression("2 + 3");
         enterExpression("2");
         leaveExpression("2", 2);
         enterExpression("3");
         leaveExpression("3", 3);
-        leaveStatement("2 + 3", 5, 2, 3);
+        leaveExpression("2 + 3", 5, 2, 3);
     }
 
     @Test
@@ -152,11 +158,20 @@ public class SLExecutionListenerTest extends AbstractSLTest {
         eval("2 + 3;");
 
         enterStatement("2 + 3");
+        if (mode != RunMode.AST) {
+            // Bytecode DSL interpreters notify probes for each tag.
+            enterExpression("2 + 3");
+        }
         enterExpression("2");
         leaveExpression("2", 2);
         enterExpression("3");
         leaveExpression("3", 3);
-        leaveStatement("2 + 3", 5, 2, 3);
+        if (mode == RunMode.AST) {
+            leaveStatement("2 + 3", 5, 2, 3);
+        } else {
+            leaveExpression("2 + 3", 5, 2, 3);
+            leaveStatement("2 + 3", 5, 5);
+        }
     }
 
     @Test
@@ -247,22 +262,39 @@ public class SLExecutionListenerTest extends AbstractSLTest {
         enterStatement("return 1");
         enterExpression("1");
         leaveExpression("1", 1);
-        leaveStatement("return 1", null, 1);
-        leaveRoot(characters, 1);
+
+        if (mode == RunMode.AST) {
+            leaveStatement("return 1", null, 1);
+            leaveRoot(characters, 1);
+        } else {
+            leaveStatement("return 1", 1, 1);
+            leaveRoot(characters, 1, true, 1, null);
+        }
 
         leaveExpression("fac(n - 1)", 1, factorial, 1);
         enterExpression("n");
         leaveExpression("n", 2);
         leaveExpression("fac(n - 1) * n", 2, 1, 2);
-        leaveStatement("return fac(n - 1) * n", null, 2);
-        leaveRoot(characters, 2);
+        if (mode == RunMode.AST) {
+            leaveStatement("return fac(n - 1) * n", null, 2);
+            leaveRoot(characters, 2);
+        } else {
+            leaveStatement("return fac(n - 1) * n", 2, 2);
+            leaveRoot(characters, 2, false, null, 2);
+        }
 
         leaveExpression("fac(n - 1)", 2, factorial, 2);
         enterExpression("n");
         leaveExpression("n", 3);
         leaveExpression("fac(n - 1) * n", 6, 2, 3);
-        leaveStatement("return fac(n - 1) * n", null, 6);
-        leaveRoot(characters, 6);
+
+        if (mode == RunMode.AST) {
+            leaveStatement("return fac(n - 1) * n", null, 6);
+            leaveRoot(characters, 6);
+        } else {
+            leaveStatement("return fac(n - 1) * n", 6, 6);
+            leaveRoot(characters, 6, false, null, 6);
+        }
 
         assertTrue(events.isEmpty());
     }
@@ -270,7 +302,7 @@ public class SLExecutionListenerTest extends AbstractSLTest {
     private void enterExpression(String characters) {
         ExecutionEvent event = assertEvent(characters, null);
         assertTrue(event.isExpression());
-        assertFalse(event.isStatement());
+        // expressions are sometimes statements in the AST interpreter
         assertFalse(event.isRoot());
     }
 
@@ -291,7 +323,7 @@ public class SLExecutionListenerTest extends AbstractSLTest {
     private void leaveExpression(String characters, Object returnValue, Object... inputs) {
         ExecutionEvent event = assertEvent(characters, returnValue, inputs);
         assertTrue(event.isExpression());
-        assertFalse(event.isStatement());
+        // expressions are sometimes statements in the AST interpreter
         assertFalse(event.isRoot());
     }
 
@@ -329,7 +361,9 @@ public class SLExecutionListenerTest extends AbstractSLTest {
     }
 
     private static void assertValue(Object expected, Value actual) throws AssertionError {
-        if (actual.isNumber()) {
+        if (actual.isNull()) {
+            assertNull(expected);
+        } else if (actual.isNumber()) {
             assertEquals(expected, actual.asInt());
         } else if (actual.isBoolean()) {
             assertEquals(expected, actual.asBoolean());

@@ -44,7 +44,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(SLTestRunner.class)
-@SLTestSuite(value = {"tests"}, options = {"sl.UseBytecode", "true", "sl.ForceBytecodeTier", "UNCACHED"})
+@SLTestSuite(value = {"tests"}, options = {"sl.ForceBytecodeTier", "UNCACHED"})
 public class SLTestSuiteBytecodeUncached {
 
     public static void main(String[] args) throws Exception {

@@ -108,6 +108,8 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
             args.add("engine.SingleTierCompilationThreshold");
             args.add(compilationThresholdOption);
         }
+        args.add("sl.ForceBytecodeTier");
+        args.add("CACHED");
         Context ctx = setupContext(args.toArray(String[]::new));
         ctx.eval("sl", "function test() {}");
 

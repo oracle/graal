@@ -78,7 +78,7 @@ public class SLExceptionTest extends AbstractSLTest {
 
     @Before
     public void setUp() {
-        this.ctx = Context.create("sl");
+        this.ctx = newContextBuilder().build();
     }
 
     @After
@@ -333,7 +333,7 @@ public class SLExceptionTest extends AbstractSLTest {
 
     @Test
     public void testGuestOverHostPropagation() {
-        Context context = Context.newBuilder("sl").allowAllAccess(true).build();
+        Context context = newContextBuilder().allowAllAccess(true).build();
         String code = "" +
                         "function other(x) {" +
                         "   return invalidFunction();" +

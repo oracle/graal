@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.sl.test;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -77,33 +79,33 @@ public abstract class AbstractSLTest {
 
     @Parameter(0) public RunMode mode;
 
-    protected Engine.Builder newEngineBuilder(String... languages) {
-        var b = Engine.newBuilder(languages);
-        b.allowExperimentalOptions(true);
-        b.option("sl.UseBytecode", Boolean.toString(mode.isBytecode()));
+    private Map<String, String> getModeOptions(boolean engine) {
+        Map<String, String> options = new HashMap<>();
+        options.put("sl.UseBytecode", Boolean.toString(mode.isBytecode()));
         if (mode.isBytecode()) {
             if (mode == RunMode.BYTECODE_CACHED) {
-                b.option("sl.ForceBytecodeTier", "CACHED");
+                options.put("sl.ForceBytecodeTier", "CACHED");
             } else if (mode == RunMode.BYTECODE_UNCACHED) {
-                b.option("sl.ForceBytecodeTier", "UNCACHED");
-                if (TruffleTestAssumptions.isOptimizingRuntime()) {
+                options.put("sl.ForceBytecodeTier", "UNCACHED");
+                if (engine && TruffleTestAssumptions.isOptimizingRuntime()) {
                     // The uncached interpreter compiles to a deopt. Disable compilation because
                     // compilation tests can time out due to lack of progress.
-                    b.option("engine.Compilation", "false");
+                    options.put("engine.Compilation", "false");
                 }
             } else {
                 assert mode == RunMode.BYTECODE_DEFAULT;
-                b.option("sl.ForceBytecodeTier", "");
+                options.put("sl.ForceBytecodeTier", "");
             }
         }
-        return b;
+        return options;
+    }
+
+    protected Engine.Builder newEngineBuilder(String... languages) {
+        return Engine.newBuilder(languages).allowExperimentalOptions(true).options(getModeOptions(true));
     }
 
     protected Context.Builder newContextBuilder(String... languages) {
-        var b = Context.newBuilder(languages);
-        b.allowExperimentalOptions(true);
-        b.option("sl.UseBytecode", Boolean.toString(mode.isBytecode()));
-        return b;
+        return Context.newBuilder(languages).allowExperimentalOptions(true).options(getModeOptions(false));
     }
 
 }
