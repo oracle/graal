@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -226,6 +226,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * class file and therefore not in the list of declared methods.
      */
     @SuppressWarnings("unused") private volatile Object overrideableMethods;
+
+    /**
+     * Sentinel marker for the uninitialized state of {@link #permittedSubclasses}. Indicates that
+     * the permitted subclasses (for sealed types) has not yet been computed. Distinguishes this
+     * state from both a computed {@code null} (not sealed) and a computed list (which may be
+     * empty).
+     */
+    private static final List<AnalysisType> PERMITTED_SUBCLASSES_UNINITIALIZED = new ArrayList<>();
+    private volatile List<AnalysisType> permittedSubclasses = PERMITTED_SUBCLASSES_UNINITIALIZED;
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
@@ -991,6 +1000,67 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             arrayClass = universe.lookup(wrapped.getArrayClass());
         }
         return arrayClass;
+    }
+
+    public boolean isSealed() {
+        return getJavaClass().isSealed();
+    }
+
+    public List<? extends AnalysisType> getPermittedSubclasses() {
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_UNINITIALIZED) {
+            permittedSubclasses = buildPermittedSubclasses(getJavaClass().getPermittedSubclasses());
+        }
+        return permittedSubclasses;
+    }
+
+    private List<AnalysisType> buildPermittedSubclasses(Class<?>[] wrappedPermittedSubclasses) {
+        if (wrappedPermittedSubclasses == null) {
+            return null;
+        }
+        if (universe.sealed()) {
+            return buildPermittedSubclassesAfterAnalysis(wrappedPermittedSubclasses);
+        }
+        return buildPermittedSubclassesDuringAnalysis(wrappedPermittedSubclasses);
+    }
+
+    /**
+     * Builds the list of permitted subclasses during the analysis. This may add types to the
+     * analysis universe.
+     */
+    private List<AnalysisType> buildPermittedSubclassesDuringAnalysis(Class<?>[] wrappedPermittedSubclasses) {
+        assert !universe.sealed();
+        List<AnalysisType> result = new ArrayList<>(wrappedPermittedSubclasses.length);
+        for (Class<?> permittedSubclass : wrappedPermittedSubclasses) {
+            ResolvedJavaType resolvedPermittedSubclass = universe.getOriginalMetaAccess().lookupJavaType(permittedSubclass);
+            /*
+             * The permitted subclasses of the wrapped type may contain types that are unsupported
+             * on the target platform (e.g. hosted-only types). We therefore need to filter the list
+             * and remove those types. This is fine because such types cannot be part of the
+             * analysis universe anyway.
+             */
+            if (universe.hostVM.platformSupported(resolvedPermittedSubclass)) {
+                result.add(universe.lookup(resolvedPermittedSubclass));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Builds the list of permitted subclasses if the analysis universe was sealed. This never adds
+     * types to the analysis universe. The list will only contain the permitted subclasses of the
+     * wrapped type that were reachable during analysis.
+     */
+    private List<AnalysisType> buildPermittedSubclassesAfterAnalysis(Class<?>[] wrappedPermittedSubclasses) {
+        assert universe.sealed();
+        List<AnalysisType> result = new ArrayList<>(wrappedPermittedSubclasses.length);
+        for (Class<?> permittedSubclass : wrappedPermittedSubclasses) {
+            ResolvedJavaType resolvedPermittedSubclass = universe.getOriginalMetaAccess().lookupJavaType(permittedSubclass);
+            AnalysisType analysisType = universe.optionalLookup(resolvedPermittedSubclass);
+            if (analysisType != null) {
+                result.add(analysisType);
+            }
+        }
+        return result;
     }
 
     @Override
