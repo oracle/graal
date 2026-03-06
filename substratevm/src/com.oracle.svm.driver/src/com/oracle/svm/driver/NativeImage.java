@@ -1958,6 +1958,8 @@ public class NativeImage {
 
     private static Set<String> getRequiredModules(ModuleReference mref) {
         return mref.descriptor().requires().stream()
+                        .map(r -> Objects.requireNonNull(r, () -> "ModuleReference " + mref + " requires-Set has null-entries"))
+                        .filter(r -> !r.modifiers().contains(ModuleDescriptor.Requires.Modifier.STATIC))
                         .map(ModuleDescriptor.Requires::name)
                         .collect(Collectors.toSet());
     }
