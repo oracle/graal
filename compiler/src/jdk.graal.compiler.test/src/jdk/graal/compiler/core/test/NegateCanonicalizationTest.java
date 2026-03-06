@@ -29,6 +29,7 @@ import org.junit.Test;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.NegateNode;
+import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 
@@ -60,6 +61,14 @@ public class NegateCanonicalizationTest extends GraalCompilerTest {
         return -~(x - 1);
     }
 
+    public static int notNegate(int x) {
+        return ~(-x);
+    }
+
+    public static long notNegateLong(long x) {
+        return ~(-x);
+    }
+
     private void checkNodesOnlyUnsignedRightShift(String methodName) {
         StructuredGraph graph = parseForCompile(getResolvedJavaMethod(methodName));
         createCanonicalizerPhase().apply(graph, getProviders());
@@ -74,6 +83,13 @@ public class NegateCanonicalizationTest extends GraalCompilerTest {
         assertTrue(graph.getNodes().filter(NegateNode.class).count() == 0);
     }
 
+    private void checkNodesNoNegateNoNot(String methodName) {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod(methodName));
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(NegateNode.class).count() == 0);
+        assertTrue(graph.getNodes().filter(NotNode.class).count() == 0);
+    }
+
     @Test
     public void testNegate() {
         checkNodesOnlyUnsignedRightShift("negateInt");
@@ -82,5 +98,7 @@ public class NegateCanonicalizationTest extends GraalCompilerTest {
         checkNodesOnlyUnsignedRightShift("signExtractLong");
         checkNodesNoNegate("negateNegate");
         checkNodesNoNegate("negateNotDecrement");
+        checkNodesNoNegateNoNot("notNegate");
+        checkNodesNoNegateNoNot("notNegateLong");
     }
 }
