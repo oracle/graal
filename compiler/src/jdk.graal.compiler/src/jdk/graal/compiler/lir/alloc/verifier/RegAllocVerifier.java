@@ -100,9 +100,11 @@ public class RegAllocVerifier {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
 
         var startBlock = this.lir.getControlFlowGraph().getStartBlock();
-        this.blockEntryStates.put(startBlock, createNewBlockState(startBlock));
-        worklist.add(this.lir.getControlFlowGraph().getStartBlock());
+        var startBlockState = createNewBlockState(startBlock);
+        startBlockState.updateCalleeSavedRegisters();
+        this.blockEntryStates.put(startBlock, startBlockState);
 
+        worklist.add(startBlock);
         while (!worklist.isEmpty()) {
             var block = worklist.poll();
             var instructions = this.blockInstructions.get(block);
@@ -154,6 +156,10 @@ public class RegAllocVerifier {
                 state.check(instr, block);
                 state.update(instr, block);
             }
+
+            if (block.getSuccessorCount() == 0) {
+                state.checkCalleeSavedRegisters();
+            }
         }
     }
 
@@ -176,6 +182,14 @@ public class RegAllocVerifier {
                 } catch (RAVException e) {
                     exceptions.add(e);
                 }
+            }
+
+            try {
+                if (block.getSuccessorCount() == 0) {
+                    state.checkCalleeSavedRegisters();
+                }
+            }  catch (RAVException e) {
+                exceptions.add(e);
             }
         }
 

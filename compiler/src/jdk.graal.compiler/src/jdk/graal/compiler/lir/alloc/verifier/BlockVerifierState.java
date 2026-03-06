@@ -57,16 +57,23 @@ public class BlockVerifierState {
      */
     protected ConflictResolver conflictConstantResolver;
 
+    /**
+     * Block this state pertains to
+     */
+    protected BasicBlock<?> block;
+
     public BlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, ConflictResolver constantConflictResolver) {
         this.values = new AllocationStateMap(block, registerAllocationConfig);
         this.registerAllocationConfig = registerAllocationConfig;
         this.conflictConstantResolver = constantConflictResolver;
+        this.block = block;
     }
 
     protected BlockVerifierState(BasicBlock<?> block, BlockVerifierState other) {
         this.registerAllocationConfig = other.registerAllocationConfig;
         this.conflictConstantResolver = other.conflictConstantResolver;
         this.values = new AllocationStateMap(block, other.values);
+        this.block = block;
     }
 
     public AllocationStateMap getValues() {
@@ -429,9 +436,8 @@ public class BlockVerifierState {
             }
         }
 
-        // For calls, we hope that all saved registers are listed, even
-        // though they are not as per checking RegisterConfig.getCallerSavedRegisters()
-        // but using said list to clear them causes issues.
+        // For calls, temp lists all registers that are supposed to be caller saved,
+        // because sometimes there's a difference between RegisterConfig.getCallerSaveRegisters
         for (int i = 0; i < op.temp.count; i++) {
             var value = op.temp.curr[i];
             if (value.isIllegal()) {
@@ -459,7 +465,7 @@ public class BlockVerifierState {
         for (var entry : this.values.internalMap.entrySet()) {
             var state = entry.getValue();
             if (state.isUnknown() || state.isConflicted()) {
-                continue; // Do not care, retain information
+                continue; // Retain information
             }
 
             var valueAllocState = (ValueAllocationState) state;
@@ -484,6 +490,50 @@ public class BlockVerifierState {
             // that are same as the one in references list? Because said list
             // is expected to have stack slots and registers can retain same references.
             this.values.put(entry.getKey(), UnknownAllocationState.INSTANCE);
+        }
+    }
+
+    /**
+     * Take list of callee saved registers and add them to the start
+     * block state with their own values as symbols in order to check
+     * that they were correctly retrieved at exit point.
+     */
+    protected void updateCalleeSavedRegisters() {
+        var registers = this.registerAllocationConfig.getRegisterConfig().getCalleeSaveRegisters();
+        if (registers == null) {
+            return;
+        }
+
+        for (var reg :  registers) {
+            var regValue = RARegister.create(reg.asValue());
+
+            // Save same registers as symbol, and later check if it was retrieved
+            this.values.putWithoutRegCheck(regValue, new ValueAllocationState(regValue, null, block));
+        }
+    }
+
+    /**
+     * At exit point, check that all callee saved registers were
+     * indeed correctly saved, by checking that the symbol stored
+     * in said registers is equal to the registers themselves.
+     */
+    protected void checkCalleeSavedRegisters() {
+        var registers = this.registerAllocationConfig.getRegisterConfig().getCalleeSaveRegisters();
+        if (registers == null) {
+            return;
+        }
+
+        for (var reg : registers) {
+            var regValue = RARegister.create(reg.asValue());
+            var state = this.values.get(regValue);
+            if (state instanceof ValueAllocationState valueAllocationState) {
+                if (valueAllocationState.getRAValue().equals(regValue)) {
+                    // Same symbol as register means the value was retrieved safely
+                    continue;
+                }
+            }
+
+            throw new RAVException("Callee saved register " + regValue + " not recovered.");
         }
     }
 

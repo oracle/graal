@@ -43,6 +43,7 @@ public class ConflictedAllocationState extends AllocationState {
         this.conflictedStates = new EconomicHashSet<>();
     }
 
+    @SuppressWarnings("this-escape")
     public ConflictedAllocationState(ValueAllocationState state1, ValueAllocationState state2) {
         this();
         addConflictedValue(state1);
@@ -53,7 +54,7 @@ public class ConflictedAllocationState extends AllocationState {
         this.conflictedStates = new EconomicHashSet<>(conflictedStates);
     }
 
-    public final void addConflictedValue(ValueAllocationState state) {
+    public void addConflictedValue(ValueAllocationState state) {
         if (hasConflictedValue(state)) {
             return;
         }
@@ -61,7 +62,7 @@ public class ConflictedAllocationState extends AllocationState {
         this.conflictedStates.add(state);
     }
 
-    public final boolean hasConflictedValue(ValueAllocationState valueAllocationState) {
+    public boolean hasConflictedValue(ValueAllocationState valueAllocationState) {
         for (var state : this.conflictedStates) {
             if (state.getRAValue().equals(valueAllocationState.getRAValue())) {
                 return true;
