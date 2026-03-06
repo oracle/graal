@@ -180,6 +180,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TraversingQueueInvalidatedBonus=[0.0, inf)` : Controls how much of a priority should be given to compilations after invalidations (default: 1.0, no bonus).
 - `--engine.TraversingQueueOSRBonus=[0.0, inf)` : Controls how much of a priority should be given to OSR compilations (default: 1.0, no bonus).
 - `--engine.TraversingQueueRateHalfLife=[0, inf)` : Sets the time, in milliseconds, after which the impact of a compilation unit's observed execution rate is halved. (default: 300 ms)
+- `--engine.TraversingQueueStaleTaskDelay=[0, inf)` : Maximum time in milliseconds a queued compilation task may stay without invocation activity before it is considered stale. Set to 0 to disable. (default: 100)
 - `--engine.TraversingQueueWeightingBothTiers=true|false` : Traversing queue uses rate as priority for both tier. (default: true)
 - `--compiler.CompilationTimeout` : Time limit in seconds before a compilation expires and throws a bailout (0 to disable the limit). 
 - `--compiler.DeoptCycleDetectionAllowedRepeats` : Maximum allowed repeats of the same compiled code for the same compilable. Works only if the detection of repeated compilation is enabled after DeoptCycleDetectionThreshold has been reached for the compilable. (negative integer means 0, default: 0)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.truffle.test;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -118,6 +119,7 @@ public class DynamicCompilationThresholdsTest {
                             .option("engine.DynamicCompilationThresholdsMaxNormalLoad", "20") //
                             .option("engine.DynamicCompilationThresholdsMinNormalLoad", "10") //
                             .option("engine.DynamicCompilationThresholdsMinScale", "0.1") //
+                            .option("engine.TraversingQueueStaleTaskDelay", "0") //
                             .option("engine.CompilerThreads", "1").build()) {
                 int firstCompilationId = submitCompilation(context);
                 SourceCompilation firstCompilation = startedCompilationsQueue.take();
@@ -160,7 +162,7 @@ public class DynamicCompilationThresholdsTest {
                 optimizedTruffleRuntime.removeListener(listener);
             }
         };
-        SubprocessTestUtils.newBuilder(DynamicCompilationThresholdsTest.class, test).run();
+        SubprocessTestUtils.newBuilder(DynamicCompilationThresholdsTest.class, test).prefixVmOption("-Dpolyglot.engine.TraversingQueueStaleTaskDelay=0").timeout(Duration.ofMinutes(10)).run();
     }
 
     private void allowCompilationToProceed(int id) throws InterruptedException {
