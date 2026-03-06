@@ -273,6 +273,11 @@ final class EspressoExternalVMAccess implements VMAccess {
         callbacks = new EspressoExternalCallbacks(this);
     }
 
+    @Override
+    public boolean isFullyIsolated() {
+        return true;
+    }
+
     private static EspressoExternalResolvedJavaMethod requireMethod(ResolvedJavaType type, String name, String methodDescriptor, Providers providers) {
         Signature forNameSignature = providers.getMetaAccess().parseMethodDescriptor(methodDescriptor);
         EspressoExternalResolvedJavaMethod method = (EspressoExternalResolvedJavaMethod) type.findMethod(name, forNameSignature);

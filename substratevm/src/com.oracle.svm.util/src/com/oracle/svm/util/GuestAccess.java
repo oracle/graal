@@ -115,6 +115,11 @@ public final class GuestAccess implements VMAccess {
         this.elements = new GuestElementsImpl();
     }
 
+    @Override
+    public boolean isFullyIsolated() {
+        return delegate.isFullyIsolated();
+    }
+
     /// Prefix of system properties used to configure guest access.
     private static final String PROPERTY_PREFIX = ImageInfo.PROPERTY_NATIVE_IMAGE_PREFIX + "vmaccess.";
 

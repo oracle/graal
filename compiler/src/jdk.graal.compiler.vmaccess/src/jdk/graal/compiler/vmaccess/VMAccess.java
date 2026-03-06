@@ -43,6 +43,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public interface VMAccess {
     /**
+     * @return true if the VM access implementation enforces full heap isolation (e.g. espresso),
+     *         false if not (e.g. host). This method should be used only where it's absolutely
+     *         needed, e.g., for guarding code that can be executed in both builder and guest, such
+     *         as when registering the image singleton registry, to avoid a double registration when
+     *         there is no full heap isolation.
+     */
+    boolean isFullyIsolated();
+
+    /**
      * Returns the Graal compiler {@link Providers} which can be used to reflect upon and manipulate
      * the observed JVM.
      */

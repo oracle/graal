@@ -35,6 +35,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class GuestImageSingletonSupport {
 
+    /**
+     * Install the singleton registry in guest context.
+     */
+    public static void install() {
+        GuestAccess access = GuestAccess.get();
+        access.invoke(access.elements.HostedManagement_install, null);
+    }
+
     public static void add(Class<?> key, JavaConstant value) {
         GuestAccess access = GuestAccess.get();
         add(access.getProviders().getMetaAccess().lookupJavaType(key), value);
