@@ -244,7 +244,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                     output.println("Register Allocation Verification failure:");
                     output.println(e.getMessage());
                     output.println();
-                    VerifierPrinter.print(output, lir, instructions);
+                    VerifierPrinter.printAligned(output, lir, instructions);
                 } catch (FileNotFoundException ignored) {
                 }
 

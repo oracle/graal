@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 
@@ -43,32 +44,7 @@ public class VerifierPrinter {
         for (var blockId : lir.getBlocks()) {
             var block = lir.getBlockById(blockId);
 
-            var blockHeaderSB = new StringBuilder();
-            blockHeaderSB.append(block.toString()).append(": ");
-
-            if (block.getPredecessorCount() > 0) {
-                blockHeaderSB.append(" <- ");
-                for (int i = 0; i < block.getPredecessorCount(); i++) {
-                    blockHeaderSB.append(block.getPredecessorAt(i)).append(", ");
-                }
-
-                if (!blockHeaderSB.isEmpty()) {
-                    blockHeaderSB.setLength(blockHeaderSB.length() - 2);
-                }
-            }
-
-            if (block.getSuccessorCount() > 0) {
-                blockHeaderSB.append(" -> ");
-                for (int i = 0; i < block.getSuccessorCount(); i++) {
-                    blockHeaderSB.append(block.getSuccessorAt(i)).append(", ");
-                }
-
-                if (block.getSuccessorCount() > 0 && !blockHeaderSB.isEmpty()) {
-                    blockHeaderSB.setLength(blockHeaderSB.length() - 2);
-                }
-            }
-
-            out.println(blockHeaderSB);
+            printBlockHeader(out, block);
             for (var instruction : instructions.get(block)) {
                 out.println("\t" + instruction.toString() + " | " + instruction.getLIRInstruction().toString());
                 if (instruction instanceof RAVInstruction.Op op && op.stateValues.count > 0) {
@@ -77,5 +53,92 @@ public class VerifierPrinter {
             }
             out.println();
         }
+    }
+
+    public static void printAligned(PrintStream out, LIR lir, BlockMap<List<RAVInstruction.Base>> instructions) {
+        int longestRAVInstruction = 0;
+        for (var blockId : lir.getBlocks()) {
+            var block = lir.getBlockById(blockId);
+
+            for (var instruction : instructions.get(block)) {
+                int instructionLength = instruction.toString().length();
+                if (instructionLength > longestRAVInstruction) {
+                    longestRAVInstruction = instruction.toString().length();
+                }
+            }
+        }
+
+        for (var blockId : lir.getBlocks()) {
+            var block = lir.getBlockById(blockId);
+
+            printBlockHeader(out, block);
+            for (var instruction : instructions.get(block)) {
+                var instructionString = instruction.toString();
+                var difference = longestRAVInstruction - instructionString.length();
+
+                var space = new String(new char[difference + 4]).replace("\0", " ");
+
+                out.println("\t" + instructionString + space + instruction.lirInstruction.toString());
+                if (instruction instanceof RAVInstruction.Op op && op.stateValues.count > 0) {
+                    out.println("\t\t State: " + op.stateValues);
+                }
+            }
+            out.println();
+        }
+    }
+
+    public static void printNumbered(PrintStream out, LIR lir, BlockMap<List<RAVInstruction.Base>> instructions) {
+        for (var blockId : lir.getBlocks()) {
+            var block = lir.getBlockById(blockId);
+
+            printBlockHeader(out, block);
+            int n = 1;
+            for (var instruction : instructions.get(block)) {
+                out.println("\t" + n + "." + instruction.toString());
+                if (instruction instanceof RAVInstruction.Op op && op.stateValues.count > 0) {
+                    out.println("\t\t State: " + op.stateValues);
+                }
+
+                n++;
+            }
+
+            out.println();
+
+            n = 1;
+            for (var instruction : instructions.get(block)) {
+                out.println("\t" + n + "." + instruction.lirInstruction.toString());
+                n++;
+            }
+            out.println();
+        }
+    }
+
+    protected static void printBlockHeader(PrintStream out, BasicBlock<?> block) {
+        var blockHeaderSB = new StringBuilder();
+        blockHeaderSB.append(block.toString()).append(": ");
+
+        if (block.getPredecessorCount() > 0) {
+            blockHeaderSB.append(" <- ");
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                blockHeaderSB.append(block.getPredecessorAt(i)).append(", ");
+            }
+
+            if (!blockHeaderSB.isEmpty()) {
+                blockHeaderSB.setLength(blockHeaderSB.length() - 2);
+            }
+        }
+
+        if (block.getSuccessorCount() > 0) {
+            blockHeaderSB.append(" -> ");
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                blockHeaderSB.append(block.getSuccessorAt(i)).append(", ");
+            }
+
+            if (block.getSuccessorCount() > 0 && !blockHeaderSB.isEmpty()) {
+                blockHeaderSB.setLength(blockHeaderSB.length() - 2);
+            }
+        }
+
+        out.println(blockHeaderSB);
     }
 }
