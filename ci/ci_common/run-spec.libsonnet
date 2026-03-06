@@ -1,6 +1,6 @@
 // run-spec: a library for declaratively describing CI jobs
 //
-// See `docs/ci/run-spec.md`
+// See `ci/run-spec.md`
 //
 local _impl      = import "run-spec-impl.libsonnet";
 local examples   = (import "run-spec-examples.libsonnet").examples;
