@@ -1,0 +1,42 @@
+package com.oracle.svm.hosted.analysis.ai.checker.core;
+
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+
+import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Set;
+
+public final class NodeUtil {
+    /**
+     * Used to find the nearest enclosing {@link IfNode} of a given node
+     */
+    public static IfNode findGuardingIf(Node node) {
+        Set<Node> seen = new HashSet<>();
+        ArrayDeque<Node> work = new ArrayDeque<>();
+        work.add(node);
+        while (!work.isEmpty()) {
+            Node cur = work.poll();
+            if (!seen.add(cur)) continue;
+            for (var pred : cur.cfgPredecessors()) {
+                if (pred instanceof IfNode ifn) {
+                    return ifn;
+                }
+                work.add(pred);
+            }
+        }
+        return null;
+    }
+
+    public static boolean leadsToByteCodeException(IfNode ifNode) {
+        if (ifNode == null) return false;
+        return isDirectPredecessorOfBCE(ifNode.trueSuccessor()) || isDirectPredecessorOfBCE(ifNode.falseSuccessor());
+    }
+
+    public static boolean isDirectPredecessorOfBCE(Node node) {
+        if (node == null) return false;
+        if (node.successors().count() != 1) return false;
+        return node.successors().first() instanceof  BytecodeExceptionNode;
+    }
+}

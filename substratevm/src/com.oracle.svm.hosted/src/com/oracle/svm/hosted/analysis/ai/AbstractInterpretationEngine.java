@@ -1,0 +1,136 @@
+package com.oracle.svm.hosted.analysis.ai;
+
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.ai.analysis.Analyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.AnalyzerManager;
+import com.oracle.svm.hosted.analysis.ai.analysis.InterProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.IntraProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.context.MethodGraphCache;
+import com.oracle.svm.hosted.analysis.ai.analysis.mode.InterAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.analysis.mode.IntraAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
+import jdk.graal.compiler.debug.DebugContext;
+
+import java.util.List;
+
+/**
+ * This class is responsible for running the abstract interpretation analyses,
+ * that were configured by {@link AbstractInterpretationDriver}.
+ */
+public class AbstractInterpretationEngine {
+
+    private final AnalyzerManager analyzerManager;
+    private final List<AnalysisMethod> rootMethods;
+    private final List<AnalysisMethod> invokedMethods;
+    private AnalysisMethod mainMethod;
+
+    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, AnalysisMethod mainEntryPoint, Inflation bb, DebugContext debug) {
+        var analysisServices = AbstractInterpretationServices.getInstance(bb, debug);
+        this.analyzerManager = analyzerManager;
+        this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
+        this.invokedMethods = analysisServices.getInvokedMethods();
+
+        // The mainEntryPoint is not required, but we may need it for some debugging purposes, such as analyzing only from it
+        this.mainMethod = null;
+//        for (AnalysisMethod m : invokedMethods) {
+//            if (m.getName().endsWith("main")) {
+//                this.mainMethod = m;
+//                break;
+//            }
+//        }
+    }
+
+    public void executeAbstractInterpretation() {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        for (var analyzer : analyzerManager.getAnalyzers()) {
+            executeAnalyzer(analyzer);
+        }
+        logger.close();
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void executeAnalyzer(Analyzer<?> analyzer) {
+        if (analyzer instanceof InterProceduralAnalyzer<?> interProceduralAnalyzer) {
+            executeInterProceduralAnalysis((InterProceduralAnalyzer) interProceduralAnalyzer);
+            return;
+        }
+        if (analyzer instanceof IntraProceduralAnalyzer<?> intraProceduralAnalyzer) {
+            executeIntraProceduralAnalysis(intraProceduralAnalyzer);
+            return;
+        }
+        throw new RuntimeException("The provided abstract interpretation analyzer is neither an Intra nor Inter procedural analyzer");
+    }
+
+    private void executeIntraProceduralAnalysis(IntraProceduralAnalyzer<?> analyzer) {
+        var logger = AbstractInterpretationLogger.getInstance();
+        IntraAnalyzerMode mode = analyzer.getAnalyzerMode();
+        if (mode == IntraAnalyzerMode.ANALYZE_MAIN_ENTRYPOINT_ONLY) {
+            logger.log("Running intraprocedural analyzer on the main entry point only", LoggerVerbosity.INFO);
+            analyzer.runAnalysis(mainMethod);
+            return;
+        }
+
+        logger.log("Running intraprocedural analyzer on all trivially invoked methods", LoggerVerbosity.INFO);
+        invokedMethods.parallelStream().filter(method -> !analyzer.getMethodFilterManager().shouldSkipMethod(method)).forEach(analyzer::runAnalysis);
+    }
+
+    private <Domain extends AbstractDomain<Domain>> void executeInterProceduralAnalysis(InterProceduralAnalyzer<Domain> analyzer) {
+        var logger = AbstractInterpretationLogger.getInstance();
+        InterAnalyzerMode mode = analyzer.getAnalyzerMode();
+
+        if (mode == InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT) {
+            logger.log("Running interprocedural analyzer from the main entry point only", LoggerVerbosity.INFO);
+            analyzer.runAnalysis(mainMethod);
+            var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();
+            var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
+            analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
+            return;
+        }
+
+        // Compute per-root analyses in parallel, then merge results sequentially to avoid races.
+        logger.log("Running interprocedural analyzer from all root methods", LoggerVerbosity.INFO);
+        for (var root : rootMethods) {
+            logger.log("Running analysis of root:" + root.getQualifiedName(), LoggerVerbosity.INFO);
+            analyzer.runAnalysis(root);
+        }
+
+        var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();
+        var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
+
+        // debugging purposes only additionally run the root manually if it wasn't found bt the interproc analysis
+        // todo: think how to make this more parallel
+        if (mainMethod != null && !methodGraphCache.containsKey(mainMethod)) {
+            analyzer.runAnalysis(mainMethod);
+        }
+        analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
+    }
+
+    private static final class InterResult<Domain extends AbstractDomain<Domain>> {
+        private final SummaryManager<Domain> summaries;
+        private final MethodGraphCache graphs;
+
+        InterResult(SummaryManager<Domain> s, MethodGraphCache g) {
+            this.summaries = s;
+            this.graphs = g;
+        }
+
+        void merge(InterResult<Domain> other) {
+            this.summaries.mergeFrom(other.summaries);
+            this.graphs.joinWith(other.graphs);
+        }
+
+        public MethodGraphCache getMethodGraphCache() {
+            return graphs;
+        }
+
+        public SummaryManager<Domain> getSummaryManager() {
+            return summaries;
+        }
+    }
+}
