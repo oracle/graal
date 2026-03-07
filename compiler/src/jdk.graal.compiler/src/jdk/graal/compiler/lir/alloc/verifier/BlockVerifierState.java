@@ -32,6 +32,8 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -58,7 +60,7 @@ public class BlockVerifierState {
     protected ConflictResolver conflictConstantResolver;
 
     /**
-     * Block this state pertains to
+     * Block this state pertains to.
      */
     protected BasicBlock<?> block;
 
@@ -285,6 +287,46 @@ public class BlockVerifierState {
             checkOperandFlags(op.uses, op, block);
             checkOperandFlags(op.alive, op, block);
             checkOperandFlags(op.temp, op, block);
+
+            checkBytecodeFrames(op);
+        }
+    }
+
+    public void checkBytecodeFrames(RAVInstruction.Op op) {
+        if (op.bcFrames.isEmpty()) {
+            return;
+        }
+
+        for (var frame : op.bcFrames) {
+            for (int i = 0; i < frame.kinds.length; i++) {
+                var origJV = frame.orig[i];
+                if (!(origJV instanceof AllocatableValue orig) || Value.ILLEGAL.equals(orig)) {
+                    continue;
+                }
+
+                var currJV = frame.curr[i];
+                if (!(currJV instanceof AllocatableValue curr) || Value.ILLEGAL.equals(curr)) {
+                    continue;
+                }
+
+                var kind = frame.kinds[i];
+
+                var origLIRKind = orig.getValueKind(LIRKind.class);
+                var currLIRKind = curr.getValueKind(LIRKind.class);
+                if (JavaKind.Object.equals(kind)) {
+                    if (!origLIRKind.isValue() && !currLIRKind.isValue()) {
+                        continue;
+                    }
+
+                    throw new RAVException(orig + " -> " + curr + " not an object java kind when marked as a reference");
+                } else {
+                    if (origLIRKind.isValue() && currLIRKind.isValue()) {
+                        continue;
+                    }
+
+                    throw new RAVException(orig + " -> " + curr + " is a reference when not marked as an object java kind");
+                }
+            }
         }
     }
 

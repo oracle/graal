@@ -35,6 +35,8 @@ import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.Value;
 
 import java.util.ArrayList;
@@ -219,6 +221,21 @@ public class RAVInstruction {
         }
     }
 
+    public static class StateValuePair {
+        public JavaKind[] kinds;
+        public JavaValue[] curr;
+        public JavaValue[] orig;
+
+        StateValuePair(JavaValue[] orig, JavaKind[] kinds) {
+            this.orig = orig;
+            this.kinds = kinds;
+        }
+
+        public void setCurr(JavaValue[] curr) {
+            this.curr = curr;
+        }
+    }
+
     /**
      * RAV instruction that handles a regular operation
      * in an abstract way - we do not care about the function of said operation.
@@ -248,6 +265,11 @@ public class RAVInstruction {
          * sure GC has all necessary information.
          */
         public ValueArrayPair stateValues;
+
+        /**
+         * Bytecode frame information for this instruction.
+         */
+        public ArrayList<StateValuePair> bcFrames;
 
         /**
          * Count number of values stored.
@@ -290,6 +312,8 @@ public class RAVInstruction {
 
             instruction.forEachState(countValuesProc);
             this.stateValues = new ValueArrayPair(countValuesProc.getCount());
+
+            this.bcFrames = new ArrayList<>();
         }
 
         public boolean hasMissingDefinitions() {

@@ -32,9 +32,11 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
+import jdk.graal.compiler.lir.StateProcedure;
 import jdk.graal.compiler.lir.alloc.RegisterAllocationPhase;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.LIRPhase;
@@ -43,6 +45,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueUtil;
 import org.graalvm.collections.Equivalence;
@@ -91,7 +94,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Get allocator that is being verified
+     * Get allocator that is being verified.
      *
      * @return Register allocator
      */
@@ -118,7 +121,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Set stack allocator, used by tests
+     * Set stack allocator, used by tests.
      *
      * @param stackSlotAllocator Stack allocator
      */
@@ -145,7 +148,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
             stackSlotAllocator.apply(target, lirGenRes, context);
         }
 
-        try (final DebugCloseable t = VerifierTimer.start(lir.getDebug())) {
+        try (DebugCloseable t = VerifierTimer.start(lir.getDebug())) {
             verifyAllocation(lir, preAllocMap, context);
         }
 
@@ -209,6 +212,27 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                 instruction.forEachTemp(opRAVInstr.temp.copyOriginalProc);
                 instruction.forEachAlive(opRAVInstr.alive.copyOriginalProc);
                 instruction.forEachState(opRAVInstr.stateValues.copyOriginalProc);
+                instruction.forEachState(new StateProcedure() {
+                    @Override
+                    public void doState(LIRFrameState state) {
+                        if (state.topFrame == null) {
+                            return;
+                        }
+
+                        BytecodeFrame frame = state.topFrame;
+                        while (frame != null) {
+                            var kinds = frame.getSlotKinds();
+                            if (kinds.length != frame.numLocals + frame.numStack) {
+                                frame = frame.caller();
+                                continue;
+                            }
+
+                            var values = frame.values.clone();
+                            opRAVInstr.bcFrames.add(new RAVInstruction.StateValuePair(values, kinds));
+                            frame = frame.caller();
+                        }
+                    }
+                });
 
                 preallocMap.put(instruction, opRAVInstr);
 
@@ -306,6 +330,26 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                 instruction.forEachTemp(opRAVInstr.temp.copyCurrentProc);
                 instruction.forEachAlive(opRAVInstr.alive.copyCurrentProc);
                 instruction.forEachState(opRAVInstr.stateValues.copyCurrentProc);
+                instruction.forEachState(new StateProcedure() {
+                    @Override
+                    public void doState(LIRFrameState state) {
+                        if (state.topFrame == null) {
+                            return;
+                        }
+
+                        int i = 0;
+                        BytecodeFrame frame = state.topFrame;
+                        while (frame != null) {
+                            if (i >= opRAVInstr.bcFrames.size()) {
+                                break;
+                            }
+
+                            opRAVInstr.bcFrames.get(i).setCurr(frame.values);
+                            frame = frame.caller();
+                            i++;
+                        }
+                    }
+                });
 
                 instructionList.add(opRAVInstr);
                 var speculativeMoves = opRAVInstr.getSpeculativeMoveList();
