@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,17 +26,28 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
-
 import java.lang.reflect.Modifier;
 
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.ConstantValueEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
+import com.oracle.objectfile.debugentry.LocalEntry;
+import com.oracle.objectfile.debugentry.LocalValueEntry;
+import com.oracle.objectfile.debugentry.RegisterValueEntry;
+import com.oracle.objectfile.debugentry.StackValueEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
+import jdk.vm.ci.amd64.AMD64;
+
+import java.util.List;
+import java.util.Map;
+
+import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_LOCAL_BP;
+import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_PARAM_BP;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
 
 final class CVSymbolSubsectionBuilder {
 
@@ -47,14 +58,20 @@ final class CVSymbolSubsectionBuilder {
     private final String heapName;
     private final short heapRegister;
 
+    /**
+     * Create a symbol section by iterating over all classes, emitting types and line numbers as we
+     * go. See SubstrateAMD64RegisterConfig.java
+     *
+     * @param cvDebugInfo debugInfo container
+     */
     CVSymbolSubsectionBuilder(CVDebugInfo cvDebugInfo) {
         this.cvDebugInfo = cvDebugInfo;
         this.cvSymbolSubsection = new CVSymbolSubsection(cvDebugInfo);
         this.lineRecordBuilder = new CVLineRecordBuilder(cvDebugInfo);
         this.heapName = SectionName.SVM_HEAP.getFormatDependentName(cvDebugInfo.getCVSymbolSection().getOwner().getFormat());
-        /* For isolates, Graal currently uses r14; this code will handle r8-r15. */
-        assert 8 <= cvDebugInfo.getHeapbaseRegister() && cvDebugInfo.getHeapbaseRegister() <= 15;
-        this.heapRegister = (short) (CV_AMD64_R8 + cvDebugInfo.getHeapbaseRegister() - 8);
+        /* For isolates, Graal currently uses r14 as the heap base; this code will handle r8-r15. */
+        assert AMD64.r8.number <= CVDebugInfo.getHeapbaseRegister() && CVDebugInfo.getHeapbaseRegister() <= AMD64.r15.number;
+        this.heapRegister = CVRegisterUtil.getCVRegister(CVDebugInfo.getHeapbaseRegister(), CVDebugInfo.POINTER_LENGTH);
     }
 
     /**
@@ -126,40 +143,123 @@ final class CVSymbolSubsectionBuilder {
         /* The name as exposed to the linker. */
         final String externalName = primaryRange.getSymbolName();
 
-        /* S_PROC32 add function definition. */
-        int functionTypeIndex = addTypeRecords(compiledEntry);
-        byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, externalName, debuggerName, 0, 0, 0,
-                        primaryRange.getHiOffset() - primaryRange.getLoOffset(), 0, 0, functionTypeIndex, (short) 0, funcFlags);
+        /* add function definition. */
+        final int functionTypeIndex = addTypeRecords(compiledEntry);
+        final byte funcFlags = 0;
+        CVSymbolSubrecord.CVSymbolGProc32IdRecord proc32 = new CVSymbolSubrecord.CVSymbolGProc32IdRecord(cvDebugInfo, externalName, debuggerName, 0, 0, 0,
+                        primaryRange.getHiOffset() - primaryRange.getLoOffset(),
+                        0, 0, functionTypeIndex, (short) 0, funcFlags);
         addSymbolRecord(proc32);
 
-        /* S_FRAMEPROC add frame definitions. */
-        int asynceh = 1 << 9; /* Async exception handling (vc++ uses 1, clang uses 0). */
-        /* TODO: This may change in the presence of isolates. */
-        int localBP = 1 << 14; /* Local base pointer = SP (0=none, 1=sp, 2=bp 3=r13). */
-        int paramBP = 1 << 16; /* Param base pointer = SP. */
-        int frameFlags = asynceh + localBP + paramBP; /* NB: LLVM uses 0x14000. */
+        final int frameFlags = FRAME_LOCAL_BP + FRAME_PARAM_BP;
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.frameSize(), frameFlags));
 
-        /* TODO: add parameter definitions (types have been added already). */
-        /* TODO: add local variables, and their types. */
-        /* TODO: add block definitions. */
+        addParameters(compiledEntry, primaryRange.getVarRangeMap());
+        /* In the future: addLocals(compiledEntry, varRangeMap); */
 
-        /* S_END add end record. */
-        addSymbolRecord(new CVSymbolSubrecord.CVSymbolEndRecord(cvDebugInfo));
+        /* S_PROC_ID_END add end record. */
+        addSymbolRecord(new CVSymbolSubrecord.CVSymbolProcIdEndRecord(cvDebugInfo));
 
         /* Add line number records. */
         addLineNumberRecords(compiledEntry);
     }
 
+    void addParameters(CompiledMethodEntry primaryEntry, Map<LocalEntry, List<Range>> varRangeMap) {
+        final Range primaryRange = primaryEntry.primary();
+        /* The name as exposed to the linker. */
+        final String externalName = primaryRange.getSymbolName();
+        final MethodEntry method = primaryRange.getMethodEntry();
+
+        /* define function parameters */
+        assert Modifier.isStatic(method.getModifiers()) || !method.getParams().isEmpty();
+        for (LocalEntry paramInfo : method.getParams()) {
+            final TypeEntry paramType = paramInfo.type();
+            final int typeIndex = cvDebugInfo.getCVTypeSection().getIndexForPointer(paramType);
+            emitLocal(paramInfo, varRangeMap, paramInfo.name(), paramType, typeIndex, true, externalName, primaryRange);
+        }
+    }
+
+    private static int infoTypeToInt(LocalValueEntry info) {
+        return switch (info) {
+            case RegisterValueEntry p -> p.regIndex();
+            case StackValueEntry p -> -p.stackSlot();
+            default -> 0;
+        };
+    }
+
+    void emitLocal(LocalEntry info, Map<LocalEntry, List<Range>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam,
+                    String procName, Range range) {
+        short flags = isParam ? CVSymbolSubrecord.CVSymbolLocalRecord.S_LOCAL_FLAGS_IS_PARAM : 0;
+        List<Range> ranges = varRangeMap.get(info);
+        addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, name, typeIndex, flags));
+        long currentHigh = Integer.MIN_VALUE;
+        int registerOrSlot = 0; /* -slot or +register or 0=unknown */
+        CVSymbolSubrecord.CVSymbolDefRangeBase currentRecord = null;
+        for (Range subrange : ranges) {
+            LocalValueEntry value = subrange.lookupValue(info);
+            if (value != null) {
+                if (subrange.getLo() == currentHigh && registerOrSlot == infoTypeToInt(value)) {
+                    /* if we can, merge records */
+                    currentHigh = subrange.getHi();
+                    if (currentRecord != null) {
+                        long reclen = currentHigh - currentRecord.procOffset - range.getLo();
+                        if (reclen > 0xffff) {
+                            /*
+                             * Variable span is too large to fit into 16 bits; emit what we have so
+                             * far. Future work could emit more ranges or utilize gaps.
+                             */
+                            currentRecord.length = (short) 0xffff;
+                            return;
+                        }
+                        currentRecord.length = (short) reclen;
+                    }
+                    continue;
+                }
+                currentHigh = subrange.getHi();
+                registerOrSlot = infoTypeToInt(value);
+                switch (value) {
+                    case RegisterValueEntry v -> {
+                        short cvreg = CVRegisterUtil.getCVRegister(v.regIndex(), typeEntry);
+                        /*
+                         * It could be that Graal has allocated a register that we don't know how to
+                         * represent in CodeView. In that case, getCVRegister() will return a
+                         * negative number and no local variable record is issued; instead a warning
+                         */
+                        if (cvreg >= 0) {
+                            currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()),
+                                            (short) (subrange.getHi() - subrange.getLo()), cvreg);
+                            addSymbolRecord(currentRecord);
+                        } else {
+                            cvDebugInfo.getCVSymbolSection().warn("Register %s unimplemented in Windows debug support", v.toString());
+                        }
+                    }
+                    case StackValueEntry v -> {
+                        currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()),
+                                        (short) (subrange.getHi() - subrange.getLo()),
+                                        v.stackSlot());
+                        addSymbolRecord(currentRecord);
+                    }
+                    case ConstantValueEntry v -> {
+                        /* For now, silently ignore constant definitions an parameters. */
+                        /* JavaConstant constant = value.constantValue(); */
+                    }
+                    default -> {
+                        /* Unimplemented - this is a surprise. */
+                        assert (false);
+                    }
+                }
+            }
+        }
+    }
+
     private void addLineNumberRecords(CompiledMethodEntry compiledEntry) {
-        CVLineRecord record = lineRecordBuilder.build(compiledEntry);
+        CVLineRecord lineRecord = lineRecordBuilder.build(compiledEntry);
         /*
          * If there are no file entries (perhaps for a synthetic function?), we don't add this
          * record.
          */
-        if (!record.isEmpty()) {
-            cvDebugInfo.getCVSymbolSection().addRecord(record);
+        if (!lineRecord.isEmpty()) {
+            cvDebugInfo.getCVSymbolSection().addRecord(lineRecord);
         }
     }
 
@@ -192,7 +292,7 @@ final class CVSymbolSubsectionBuilder {
     }
 
     /**
-     * Add type records for a class and all its members.
+     * Add type records for a method.
      *
      * @param entry compiled method containing entities whos type records must be added
      * @return type index of function type
