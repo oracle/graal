@@ -1029,7 +1029,22 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
-        return getCompileQueue().submitCompilation(priority, optimizedCallTarget);
+        return getCompileQueue().submitCompilation(priority, optimizedCallTarget, CompilationTask.SubmissionReason.EXPLICIT);
+    }
+
+    @SuppressWarnings("try")
+    public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation, CompilationTask.SubmissionReason submissionReason) {
+        BackgroundCompileQueue compileQueue = getCompileQueue();
+        if (compileQueue == null) {
+            /*
+             * Binary compatibility for Substrate runtimes that only override the legacy 2-arg
+             * submit method. This occurs with older GraalVM 21 runtime mixes where hosted mode and
+             * single-threaded runtime execution do not initialize a background compile queue.
+             */
+            return submitForCompilation(optimizedCallTarget, lastTierCompilation);
+        }
+        Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
+        return compileQueue.submitCompilation(priority, optimizedCallTarget, submissionReason);
     }
 
     @SuppressWarnings("all")
