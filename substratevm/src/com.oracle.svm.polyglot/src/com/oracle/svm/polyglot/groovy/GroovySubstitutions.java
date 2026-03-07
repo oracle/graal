@@ -43,7 +43,16 @@ final class GroovyIndyInterfaceFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return access.findClassByName("org.codehaus.groovy.vmplugin.v7.IndyInterface") != null;
+        Class<?> indyInterfaceClass = access.findClassByName("org.codehaus.groovy.vmplugin.v7.IndyInterface");
+        if (indyInterfaceClass == null) {
+            return false;
+        }
+        // Groovy 5 has the invalidateSwitchPoints method removed. Allow for it to not exist.
+        try {
+            return indyInterfaceClass.getDeclaredMethod("invalidateSwitchPoints") != null;
+        } catch (ReflectiveOperationException e) {
+            return false; // nothing to substitute
+        }
     }
 }
 
