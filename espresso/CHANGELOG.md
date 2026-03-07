@@ -1,5 +1,9 @@
 # Espresso Changelog
 
+## Version 25.1.0
+### Internal changes
+* Added branch profiles. It generates branch probability hints for the JIT compiler and therefore improves peak performance in some cases.
+
 ## Version 25.0.0
 ### User-visible changes
 * Added experimental support for JVMCI. It can be enabled with the `java.EnableJVMCI` option.
