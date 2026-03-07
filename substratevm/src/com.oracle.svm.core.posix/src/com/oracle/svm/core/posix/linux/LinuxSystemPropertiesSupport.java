@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import com.oracle.svm.core.c.libc.CosmoLibC;
+import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -115,6 +117,9 @@ class LinuxSystemPropertiesFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
+        if (LibCBase.singleton() instanceof CosmoLibC) {
+            return;
+        }
         LinuxSystemPropertiesSupport singleton = new LinuxSystemPropertiesSupport(NativeImageOptions.compatibilityMode());
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class, singleton);
         ImageSingletons.add(SystemPropertiesSupport.class, singleton);

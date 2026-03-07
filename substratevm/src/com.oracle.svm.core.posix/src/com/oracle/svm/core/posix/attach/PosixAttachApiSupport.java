@@ -29,7 +29,10 @@ package com.oracle.svm.core.posix.attach;
 import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.posix.cosmo.CosmoAttachApiSupport;
+import com.oracle.svm.core.posix.cosmo.CosmoLibCSupplier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -208,8 +211,15 @@ public class PosixAttachApiSupport implements AttachApiSupport {
 class PosixAttachApiFeature extends AttachApiFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        PosixAttachApiSupport support = new PosixAttachApiSupport();
-        ImageSingletons.add(AttachApiSupport.class, support);
-        ImageSingletons.add(PosixAttachApiSupport.class, support);
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if (x.getAsBoolean()) {
+            CosmoAttachApiSupport support = new CosmoAttachApiSupport();
+            ImageSingletons.add(AttachApiSupport.class, support);
+            ImageSingletons.add(CosmoAttachApiSupport.class, support);
+        } else {
+            PosixAttachApiSupport support = new PosixAttachApiSupport();
+            ImageSingletons.add(AttachApiSupport.class, support);
+            ImageSingletons.add(PosixAttachApiSupport.class, support);
+        }
     }
 }
