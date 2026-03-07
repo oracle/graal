@@ -181,7 +181,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeSkeletonClassLayout(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+    private int writeSkeletonClassLayout(DebugContext context, ClassEntry classEntry, boolean hasLineTable, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] class layout", pos);
         AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_CU;
@@ -195,12 +195,20 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         long typeSignature = classEntry.getLayoutTypeSignature();
         log(context, "  [0x%08x]     type specification 0x%x", pos, typeSignature);
         pos = writeTypeSignature(typeSignature, buffer, pos);
-        int fileIdx = classEntry.getFileIdx();
-        log(context, "  [0x%08x]     file  0x%x (%s)", pos, fileIdx, classEntry.getFileName());
-        pos = writeAttrData2((short) fileIdx, buffer, pos);
+        // Note: DW_AT_decl_file was removed from CLASS_LAYOUT_CU because these entries may appear
+        // in CLASS_UNIT_1 compilation units which don't have a line table (stmt_list).
 
-        pos = writeStaticFieldDeclarations(context, classEntry, buffer, pos);
-        pos = writeMethodDeclarations(context, classEntry, buffer, pos);
+        // Use skeleton declarations when there's no line table, to avoid invalid file references.
+        // Skeleton declarations don't include DW_AT_decl_file which requires a line table.
+        if (hasLineTable) {
+            pos = writeStaticFieldDeclarations(context, classEntry, buffer, pos);
+            pos = writeMethodDeclarations(context, classEntry, buffer, pos);
+        } else {
+            // For CUs without line tables, use skeleton declarations that omit file/line info
+            pos = writeStaticFieldDeclarationsSkeleton(context, classEntry, buffer, pos);
+            // Pass true for isCU - this is a compilation unit, so set method declaration indices
+            pos = writeSkeletonMethodDeclarations(context, classEntry, true, buffer, pos);
+        }
         /*
          * Write a terminating null attribute.
          */
@@ -806,7 +814,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         /* Now write references to all class layouts that implement this interface. */
         pos = writeInterfaceImplementors(context, interfaceClassEntry, buffer, pos);
-        pos = writeSkeletonMethodDeclarations(context, interfaceClassEntry, buffer, pos);
+        // Pass false for isCU - this is a Type Unit, don't set method declaration indices
+        pos = writeSkeletonMethodDeclarations(context, interfaceClassEntry, false, buffer, pos);
 
         /* Write a terminating null attribute for the interface layout. */
         pos = writeAttrNull(buffer, pos);
@@ -850,8 +859,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         /* Now write the child fields. */
         pos = writeSuperReference(context, superClassEntry.getLayoutTypeSignature(), superClassEntry.getTypeName(), buffer, pos);
-        pos = writeFields(context, classEntry, buffer, pos);
-        pos = writeSkeletonMethodDeclarations(context, classEntry, buffer, pos);
+        // Type Units don't have line tables, so pass false for hasLineTable
+        pos = writeFields(context, classEntry, false, buffer, pos);
+        // Pass false for isCU - this is a Type Unit, don't set method declaration indices
+        pos = writeSkeletonMethodDeclarations(context, classEntry, false, buffer, pos);
 
         /* Write a terminating null attribute for the class layout. */
         pos = writeAttrNull(buffer, pos);
@@ -1108,14 +1119,23 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         /* Now write the child DIEs starting with the layout and pointer type. */
 
+        // Pass whether the CU has a line table (stmt_list) - only CLASS_UNIT_2/3 have one.
+        boolean hasLineTable = (abbrevCode == AbbrevCode.CLASS_UNIT_2 || abbrevCode == AbbrevCode.CLASS_UNIT_3);
+
         if (dwarfSections.getForeignMethodListClassEntry() != classEntry) {
             // This works for any structured type entry. Entry kind specifics are in the
             // type units.
-            pos = writeSkeletonClassLayout(context, classEntry, buffer, pos);
+            pos = writeSkeletonClassLayout(context, classEntry, hasLineTable, buffer, pos);
         } else {
-            // The foreign class list does not have a corresponding type unit, so we have to add
-            // full declarations here.
-            pos = writeMethodDeclarations(context, classEntry, buffer, pos);
+            // The foreign method list does not have a corresponding type unit, so we have to add
+            // declarations here. Use skeleton declarations if there's no line table to avoid
+            // invalid file references.
+            if (hasLineTable) {
+                pos = writeMethodDeclarations(context, classEntry, buffer, pos);
+            } else {
+                // Use skeleton declarations that don't include DW_AT_decl_file
+                pos = writeSkeletonMethodDeclarations(context, classEntry, true, buffer, pos);
+            }
         }
 
         /* Write all compiled code locations */
@@ -1208,9 +1228,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeFields(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+    private int writeFields(DebugContext context, ClassEntry classEntry, boolean hasLineTable, byte[] buffer, int p) {
+        final boolean includeFileInfo = hasLineTable;
         return classEntry.getFields().stream().filter(DwarfInfoSectionImpl::isManifestedField).reduce(p,
-                        (pos, fieldEntry) -> writeField(context, classEntry, fieldEntry, buffer, pos),
+                        (pos, fieldEntry) -> writeField(context, classEntry, fieldEntry, includeFileInfo, buffer, pos),
                         (oldPos, newPos) -> newPos);
     }
 
@@ -1218,10 +1239,15 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return fieldEntry.getOffset() >= 0;
     }
 
-    private int writeField(DebugContext context, StructureTypeEntry entry, FieldEntry fieldEntry, byte[] buffer, int p) {
+    /**
+     * Write a field declaration.
+     * @param hasLineTable true if the containing unit has a line table (stmt_list), which makes file indices valid
+     */
+    private int writeField(DebugContext context, StructureTypeEntry entry, FieldEntry fieldEntry, boolean hasLineTable, byte[] buffer, int p) {
         int pos = p;
         int modifiers = fieldEntry.getModifiers();
-        boolean hasFile = !fieldEntry.getFileName().isEmpty();
+        // Only include file info if the unit has a line table and the field has file info
+        boolean hasFile = hasLineTable && !fieldEntry.getFileName().isEmpty();
         log(context, "  [0x%08x] field definition", pos);
         AbbrevCode abbrevCode;
         boolean isStatic = Modifier.isStatic(modifiers);
@@ -1248,7 +1274,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (hasFile) {
             assert entry instanceof ClassEntry;
             int fileIdx = fieldEntry.getFileIdx();
-            assert fileIdx > 0;
+            assert fileIdx >= 0;
             log(context, "  [0x%08x]     filename  0x%x (%s)", pos, fileIdx, fieldEntry.getFileName());
             pos = writeAttrData2((short) fileIdx, buffer, pos);
             /* At present we definitely don't have line numbers. */
@@ -1275,23 +1301,43 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeSkeletonMethodDeclarations(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+    /**
+     * Write skeleton method declarations for a class.
+     *
+     * @param isCU true if this is a Compilation Unit context (should set method declaration index),
+     *            false if this is a Type Unit context (should not set index)
+     */
+    private int writeSkeletonMethodDeclarations(DebugContext context, ClassEntry classEntry, boolean isCU, byte[] buffer, int p) {
         int pos = p;
         for (MethodEntry method : classEntry.getMethods()) {
             if (method.isInRange() || method.isInlined() || method.isCompiledInPriorLayer()) {
                 /*
                  * Declare all methods whether or not they have been compiled or inlined.
                  */
-                pos = writeSkeletonMethodDeclaration(context, classEntry, method, buffer, pos);
+                pos = writeSkeletonMethodDeclaration(context, classEntry, method, isCU, buffer, pos);
             }
         }
 
         return pos;
     }
 
-    private int writeSkeletonMethodDeclaration(DebugContext context, ClassEntry classEntry, MethodEntry method, byte[] buffer, int p) {
+    /**
+     * Write a skeleton method declaration (without file/line info).
+     *
+     * @param isCU true if this is a Compilation Unit context (should set method declaration index),
+     *            false if this is a Type Unit context (should not set index)
+     */
+    private int writeSkeletonMethodDeclaration(DebugContext context, ClassEntry classEntry, MethodEntry method, boolean isCU, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] method declaration %s::%s", pos, classEntry.getTypeName(), method.getMethodName());
+        /*
+         * For CU contexts, set the method declaration index so that inlined methods and
+         * method definitions can reference this declaration via DW_AT_specification.
+         * For TU contexts, don't set the index as type units are for type structure only.
+         */
+        if (isCU) {
+            setMethodDeclarationIndex(method, pos);
+        }
         AbbrevCode abbrevCode = AbbrevCode.METHOD_DECLARATION_SKELETON;
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -1578,6 +1624,20 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
+    /**
+     * Write static field declarations without file info, for use in compilation units without
+     * a line table (CLASS_UNIT_1). Always uses FIELD_DECLARATION_3 which doesn't have DW_AT_decl_file.
+     */
+    private int writeStaticFieldDeclarationsSkeleton(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+        int pos = p;
+        for (FieldEntry fieldEntry : classEntry.getFields()) {
+            if (isManifestedStaticField(fieldEntry)) {
+                pos = writeClassStaticFieldDeclarationSkeleton(context, fieldEntry, buffer, pos);
+            }
+        }
+        return pos;
+    }
+
     private static boolean isManifestedStaticField(FieldEntry fieldEntry) {
         return Modifier.isStatic(fieldEntry.getModifiers()) && fieldEntry.getOffset() >= 0;
     }
@@ -1605,11 +1665,46 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* We may not have a file and line for a field. */
         if (hasFile) {
             int fileIdx = fieldEntry.getFileIdx();
-            assert fileIdx > 0;
+            assert fileIdx >= 0;
             log(context, "  [0x%08x]     filename  0x%x (%s)", pos, fileIdx, fieldEntry.getFileName());
             pos = writeAttrData2((short) fileIdx, buffer, pos);
             /* At present we definitely don't have line numbers. */
         }
+        TypeEntry valueType = fieldEntry.getValueType();
+        /* use the compressed type for the field so pointers get translated if needed */
+        long typeSignature = valueType.getTypeSignatureForCompressed();
+        log(context, "  [0x%08x]     type  0x%x (%s)", pos, typeSignature, valueType.getTypeName());
+        pos = writeTypeSignature(typeSignature, buffer, pos);
+        log(context, "  [0x%08x]     accessibility %s", pos, fieldEntry.getModifiersString());
+        pos = writeAttrAccessibility(fieldEntry.getModifiers(), buffer, pos);
+        /* Static fields are only declared here and are external. */
+        log(context, "  [0x%08x]     external(true)", pos);
+        pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
+        log(context, "  [0x%08x]     definition(true)", pos);
+        pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
+        return pos;
+    }
+
+    /**
+     * Write a static field declaration without file info, for use in compilation units without
+     * a line table. Always uses FIELD_DECLARATION_3 which doesn't have DW_AT_decl_file.
+     */
+    private int writeClassStaticFieldDeclarationSkeleton(DebugContext context, FieldEntry fieldEntry, byte[] buffer, int p) {
+        assert Modifier.isStatic(fieldEntry.getModifiers());
+
+        int pos = p;
+        log(context, "  [0x%08x] field definition (skeleton)", pos);
+        // Always use FIELD_DECLARATION_3 which doesn't have DW_AT_decl_file
+        AbbrevCode abbrevCode = AbbrevCode.FIELD_DECLARATION_3;
+        /* Record the position of the declaration to use when we write the definition. */
+        setFieldDeclarationIndex(fieldEntry, pos);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+
+        String name = uniqueDebugString(fieldEntry.fieldName());
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
+        pos = writeStrSectionOffset(name, buffer, pos);
+        // Note: No file info written - FIELD_DECLARATION_3 doesn't have DW_AT_decl_file
         TypeEntry valueType = fieldEntry.getValueType();
         /* use the compressed type for the field so pointers get translated if needed */
         long typeSignature = valueType.getTypeSignatureForCompressed();
@@ -1677,7 +1772,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* write a type definition for the element array field. */
         int arrayDataTypeIdx = pos;
         pos = writeArrayDataType(context, elementType, buffer, pos);
-        pos = writeFields(context, arrayTypeEntry, buffer, pos);
+        // Type Units don't have line tables, so pass false for hasLineTable
+        pos = writeFields(context, arrayTypeEntry, false, buffer, pos);
 
         /* Write a zero length element array field. */
         pos = writeArrayElementField(context, size, arrayDataTypeIdx, buffer, pos);
@@ -1770,11 +1866,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeFields(DebugContext context, ArrayTypeEntry arrayTypeEntry, byte[] buffer, int p) {
+    private int writeFields(DebugContext context, ArrayTypeEntry arrayTypeEntry, boolean hasLineTable, byte[] buffer, int p) {
         int pos = p;
         for (FieldEntry fieldEntry : arrayTypeEntry.getFields()) {
             if (isManifestedField(fieldEntry)) {
-                pos = writeField(context, arrayTypeEntry, fieldEntry, buffer, pos);
+                pos = writeField(context, arrayTypeEntry, fieldEntry, hasLineTable, buffer, pos);
             }
         }
         return pos;
