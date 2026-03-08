@@ -59,6 +59,7 @@ import jdk.graal.compiler.lir.SwitchStrategy;
 import jdk.graal.compiler.lir.SwitchStrategy.BaseSwitchClosure;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -71,14 +72,21 @@ public class AArch64ControlFlow {
     public static final class ReturnOp extends AArch64BlockEndOp {
         public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
         @Use({REG, ILLEGAL}) protected Value x;
-        @Use({REG, ILLEGAL}) protected Value tailCallTarget;
-        @Use({REG, STACK}) private AllocatableValue[] additionalReturns;
+        @Alive({REG, ILLEGAL}) protected Value tailCallTarget;
+        @Alive({REG, STACK}) private AllocatableValue[] additionalReturns;
+        @Temp private AllocatableValue[] killed;
 
         public ReturnOp(Value x, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns) {
             super(TYPE);
             this.x = x;
             this.tailCallTarget = tailCallTarget;
             this.additionalReturns = additionalReturns;
+            /*
+             * Avoid allocating r29 (frame pointer, keep this in sync with
+             * AArch64HotSpotRegisterConfig.fp and SubstrateAArch64RegisterConfig.fp) and lr for
+             * tailCallTarget and additionalReturns.
+             */
+            this.killed = new AllocatableValue[]{AArch64.r29.asValue(), AArch64.lr.asValue()};
         }
 
         @Override
