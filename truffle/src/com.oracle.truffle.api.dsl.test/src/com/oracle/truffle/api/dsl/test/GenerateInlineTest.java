@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -102,6 +103,7 @@ import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use2048BitsNode
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use32BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use512BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseAssumptionCacheNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseAssumptionInvalidationInlinedNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseBindInInlinedNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseCustomInlineNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseDoNotInlineInlinableNodeNodeGen;
@@ -390,6 +392,19 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
             }
         }
         return fields;
+    }
+
+    private static Field findField(Class<?> type, boolean staticField, Class<?> fieldType) {
+        for (Field field : type.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers()) != staticField) {
+                continue;
+            }
+            if (fieldType.isAssignableFrom(field.getType())) {
+                field.setAccessible(true);
+                return field;
+            }
+        }
+        throw new AssertionError("No field of type " + fieldType.getName() + " found in " + type.getName());
     }
 
     /*
@@ -957,6 +972,97 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
             node.execute(assumptions, 4);
         }, UnsupportedSpecializationException.class);
 
+    }
+
+    @GenerateInline
+    public abstract static class AssumptionInvalidationInlinedNode extends Node {
+
+        abstract int execute(Node node, Assumption[] assumptions, int value);
+
+        @Specialization(guards = "value == cachedValue", limit = "3", assumptions = "getAssumption(cachedAssumptions, cachedValue)")
+        @SuppressWarnings("unused")
+        static int doCached(Node node, Assumption[] assumptions, int value,
+                        @Cached("value") int cachedValue,
+                        @Cached(value = "assumptions", dimensions = 1) Assumption[] cachedAssumptions,
+                        @Cached InlinedConditionProfile profile,
+                        @Cached(inline = false) FourBitNode bitNode) {
+            profile.profile(node, assumptions[cachedValue].isValid());
+            return bitNode.execute(node, value) - 1;
+        }
+
+        static Assumption getAssumption(Assumption[] assumptions, int index) {
+            return assumptions[index];
+        }
+
+    }
+
+    @GenerateInline(false)
+    public abstract static class UseAssumptionInvalidationInlinedNode extends Node {
+
+        abstract int execute(Assumption[] assumptions, int value);
+
+        @Specialization
+        int doDefault(Assumption[] assumptions, int value,
+                        @Cached(inline = true) AssumptionInvalidationInlinedNode cachedNode) {
+            return cachedNode.execute(this, assumptions, value);
+        }
+
+    }
+
+    @Test
+    public void testAssumptionInvalidationInlinedNode() {
+        UseAssumptionInvalidationInlinedNode node = adoptNode(UseAssumptionInvalidationInlinedNodeGen.create()).get();
+
+        Assumption[] assumptions = new Assumption[3];
+        for (int i = 0; i < assumptions.length; i++) {
+            assumptions[i] = Truffle.getRuntime().createAssumption();
+            assertEquals(i, node.execute(assumptions, i));
+        }
+
+        for (int i = 0; i < 100; i++) {
+            int removeIndex = i % assumptions.length;
+            assumptions[removeIndex].invalidate();
+            assumptions[removeIndex] = Truffle.getRuntime().createAssumption();
+            assertEquals(removeIndex, node.execute(assumptions, removeIndex));
+        }
+    }
+
+    @Test
+    public void testGR72902() throws Exception {
+        UseAssumptionInvalidationInlinedNode node = adoptNode(UseAssumptionInvalidationInlinedNodeGen.create()).get();
+
+        Assumption[] assumptions = new Assumption[3];
+        for (int i = 0; i < assumptions.length; i++) {
+            assumptions[i] = Truffle.getRuntime().createAssumption();
+            assertEquals(i, node.execute(assumptions, i));
+        }
+
+        Field inlinedNodeField = findField(node.getClass(), true, AssumptionInvalidationInlinedNode.class);
+        AssumptionInvalidationInlinedNode inlinedNode = (AssumptionInvalidationInlinedNode) inlinedNodeField.get(null);
+        Field cachedCacheField = findField(inlinedNode.getClass(), false, InlineSupport.ReferenceField.class);
+        @SuppressWarnings("unchecked")
+        InlineSupport.ReferenceField<Object> cachedCache = (InlineSupport.ReferenceField<Object>) cachedCacheField.get(inlinedNode);
+
+        Object head = cachedCache.get(node);
+        assertNotNull(head);
+
+        Field nextField = findField(head.getClass(), false, head.getClass());
+        Object middle = nextField.get(head);
+        assertNotNull(middle);
+        Object tail = nextField.get(middle);
+        assertNotNull(tail);
+        assertNull(nextField.get(tail));
+
+        Method removeCached = inlinedNode.getClass().getDeclaredMethod("removeCached_", Node.class, head.getClass());
+        removeCached.setAccessible(true);
+
+        assumptions[0].invalidate();
+        assumptions[0] = Truffle.getRuntime().createAssumption();
+        removeCached.invoke(inlinedNode, node, tail);
+
+        assertEquals(0, node.execute(assumptions, 0));
+        assertEquals(1, node.execute(assumptions, 1));
+        assertEquals(2, node.execute(assumptions, 2));
     }
 
     @GenerateInline(true)
