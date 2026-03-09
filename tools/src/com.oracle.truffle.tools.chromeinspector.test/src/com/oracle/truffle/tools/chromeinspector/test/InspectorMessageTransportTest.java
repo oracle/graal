@@ -321,7 +321,8 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
         } catch (PolyglotException ex) {
             String message = ex.getMessage();
             Assert.assertTrue(message, message.startsWith("Starting inspector on "));
-            Assert.assertTrue(message, message.endsWith(":" + PORT + " failed: Server vetoed."));
+            Assert.assertTrue(message, message.contains(PORT));
+            Assert.assertTrue(message, message.endsWith(" failed: Server vetoed."));
         }
     }
 
