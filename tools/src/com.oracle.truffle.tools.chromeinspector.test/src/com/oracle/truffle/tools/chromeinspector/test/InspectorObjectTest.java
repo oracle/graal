@@ -86,7 +86,7 @@ public class InspectorObjectTest {
     @Test
     public void testOpen() {
         context.eval("sl", "function testOpen(inspector) {\n" +
-                        "    inspector.open(" + freePort + ", \"localhost\");\n" +
+                        "    inspector.open(" + freePort + ", \"127.0.0.1\");\n" +
                         "}");
         Value testOpen = context.getBindings("sl").getMember("testOpen");
         testOpen.execute(inspector);
@@ -112,7 +112,7 @@ public class InspectorObjectTest {
                         "    return inspector.url();\n" +
                         "}\n" +
                         "function doOpen(inspector) {\n" +
-                        "    inspector.open(" + freePort + ", \"localhost\");\n" +
+                        "    inspector.open(" + freePort + ", \"127.0.0.1\");\n" +
                         "}\n" +
                         "function testClose(inspector) {\n" +
                         "    inspector.close();\n" +
@@ -140,11 +140,11 @@ public class InspectorObjectTest {
     @Test
     public void testOpenCloseOpen() {
         context.eval("sl", "function testOpenCloseOpen(inspector) {\n" +
-                        "    inspector.open(" + freePort + ", \"localhost\", false);\n" +
+                        "    inspector.open(" + freePort + ", \"127.0.0.1\", false);\n" +
                         "    url = inspector.url();\n" +
                         "    inspector.close();\n" +
                         "    nourl = inspector.url();\n" +
-                        "    inspector.open(" + freePort + ", \"localhost\", false);\n" +
+                        "    inspector.open(" + freePort + ", \"127.0.0.1\", false);\n" +
                         "    url2 = inspector.url();\n" +
                         "    inspector.close();\n" +
                         "    return url + \",\" + nourl + \",\" + url2;\n" +

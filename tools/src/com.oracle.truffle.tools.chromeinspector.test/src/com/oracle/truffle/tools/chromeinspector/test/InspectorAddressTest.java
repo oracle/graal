@@ -30,7 +30,6 @@ import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -70,22 +69,12 @@ public class InspectorAddressTest {
     }
 
     @Test
-    public void testHostPortDisabled() {
+    public void testPortDisabled() {
         try (Context context = Context.newBuilder().option("inspect", "false").err(errorOutput).build()) {
             assert context != null;
         }
         String out = errorOutput.toString();
         assertTrue(out, out.isEmpty());
-    }
-
-    @Test
-    public void testHost() {
-        Assume.assumeTrue(System.getProperty("os.name").contains("Linux")); // Extra IPs are used
-        try (Context context = Context.newBuilder().option("inspect", "127.0.0.2").err(errorOutput).build()) {
-            assert context != null;
-        }
-        String[] wsAddress = parseWSAddress(errorOutput.toString());
-        assertAddress("127.0.0.2", "9229", "?", wsAddress);
     }
 
     @Test
@@ -119,13 +108,13 @@ public class InspectorAddressTest {
     }
 
     @Test
-    public void testHostPort() {
-        Assume.assumeTrue(System.getProperty("os.name").contains("Linux")); // Extra IPs are used
+    public void testHostPortNotSupported() {
         try (Context context = Context.newBuilder().option("inspect", "127.0.0.2:2992").err(errorOutput).build()) {
             assert context != null;
+            fail();
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("Port is not a number"));
         }
-        String[] wsAddress = parseWSAddress(errorOutput.toString());
-        assertAddress("127.0.0.2", "2992", "?", wsAddress);
     }
 
     @Test
