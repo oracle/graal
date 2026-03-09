@@ -1021,7 +1021,7 @@ public class CremaSupportImpl implements CremaSupport {
             if (resolved != null) {
                 return resolved;
             }
-            int dispatchIndex = InterpreterResolvedJavaMethod.VTBL_NO_ENTRY;
+            int dispatchIndex = InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED;
             if (vtableIndex != -1) {
                 assert itableIndex == -1;
                 dispatchIndex = vtableIndex;

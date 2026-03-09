@@ -110,6 +110,24 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     public static final int UNKNOWN_METHOD_ID = 0;
 
+    // dispatch index special values
+    /**
+     * This VTable index has not yet been set. Should never be seen at runtime.
+     */
+    public static final int VTBL_UNINITIALIZED = -1;
+    /**
+     * This method has a single implementation and is devirtualized in the image.
+     */
+    public static final int VTBL_ONE_IMPL = -2;
+    /**
+     * This method is never overriden, and is always inlined in the image.
+     */
+    public static final int VTBL_ALWAYS_INLINED = -3;
+    /**
+     * The VTable index is unavailable.
+     */
+    public static final int VTBL_INVALID = -99;
+
     private final Symbol<Signature> signatureSymbol;
 
     // Should be final (not its contents, it can be patched with BREAKPOINT).
@@ -163,9 +181,8 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     protected final InlinedBy inlinedBy;
 
-    public static final int VTBL_NO_ENTRY = -1;
-    public static final int VTBL_ONE_IMPL = -2;
-    private int vtableIndex = VTBL_NO_ENTRY;
+    private int vtableIndex = VTBL_UNINITIALIZED;
+
     private InterpreterResolvedJavaMethod oneImplementation;
 
     /* slot in GOT */
@@ -585,7 +602,8 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final String toString() {
-        return "InterpreterResolvedJavaMethod<holder=" + getDeclaringClass().getName() + " name=" + getName() + " descriptor=" + getSignature().toMethodDescriptor() + ">";
+        return "InterpreterResolvedJavaMethod<holder=" + getDeclaringClass().getName() + " name=" + getName() + " descriptor=" + getSignature().toMethodDescriptor() + " dispatchIndex=" +
+                        getVTableIndex() + ">";
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -702,7 +720,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public final void setVTableIndex(int vtableIndex) {
-        VMError.guarantee(vtableIndex == VTBL_NO_ENTRY || (!isStatic() && !isConstructor()));
+        VMError.guarantee(vtableIndex == VTBL_UNINITIALIZED || (!isStatic() && !isConstructor()));
         if (vtableIndex >= 0) {
             VMError.guarantee(!isFinal());
         }
@@ -714,8 +732,22 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         return hasDispatchIndex() && getDeclaringClass().isInterface();
     }
 
+    public final boolean isDevirtualized() {
+        return VTBL_INVALID < vtableIndex && vtableIndex < VTBL_UNINITIALIZED;
+    }
+
+    public final InterpreterResolvedJavaMethod devirtualizationTarget() {
+        assert isDevirtualized();
+        if (vtableIndex == VTBL_ONE_IMPL) {
+            return getOneImplementation();
+        } else if (vtableIndex == VTBL_ALWAYS_INLINED) {
+            return this;
+        }
+        throw VMError.shouldNotReachHere("Unable to devirtualize.");
+    }
+
     public final boolean hasDispatchIndex() {
-        return vtableIndex != VTBL_NO_ENTRY && vtableIndex != VTBL_ONE_IMPL;
+        return vtableIndex >= 0;
     }
 
     public final void setOneImplementation(InterpreterResolvedJavaMethod oneImplementation) {
@@ -779,7 +811,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> withVTableIndex(int index) {
-        assert vtableIndex == VTBL_NO_ENTRY;
+        assert vtableIndex == VTBL_UNINITIALIZED;
         vtableIndex = index;
         return this;
     }

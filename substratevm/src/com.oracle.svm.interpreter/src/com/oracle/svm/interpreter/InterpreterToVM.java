@@ -28,7 +28,6 @@ package com.oracle.svm.interpreter;
 import static com.oracle.svm.interpreter.InterpreterOptions.DebuggerWithInterpreter;
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
-import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_ONE_IMPL;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -850,11 +849,10 @@ public final class InterpreterToVM {
             } else {
                 return peekAtInterpreterVTable(seedMethod.getDeclaringClass().getJavaClass(), receiverClass, seedMethod.getVTableIndex());
             }
-        } else if (seedMethod.getVTableIndex() == VTBL_ONE_IMPL) {
-            InterpreterResolvedJavaMethod target = seedMethod.getOneImplementation();
-            VMError.guarantee(target != null, "VTBL_ONE_IMPL implies that oneImplementation is available in seedMethod");
+        } else if (isVirtual && seedMethod.isDevirtualized()) {
+            InterpreterResolvedJavaMethod target = seedMethod.devirtualizationTarget();
             if (InterpreterTraceSupport.getValue() && !quiet) {
-                traceInterpreter().string("found oneImpl: ").string(target.toString()).newline();
+                traceInterpreter().string("found devirtualized target: ").string(target.toString()).newline();
             }
             return target;
         } else {
