@@ -110,6 +110,7 @@ public final class HeapParameters {
         return Word.unsigned(SerialGCOptions.MaxHeapFree.getValue());
     }
 
+    @Fold
     public static int getHeapChunkHeaderPadding() {
         return SerialAndEpsilonGCOptions.HeapChunkHeaderPadding.getValue();
     }
@@ -146,15 +147,12 @@ public final class HeapParameters {
         return Word.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
     }
 
-    /*
-     * Zapping
-     */
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Fold
     public static boolean getZapProducedHeapChunks() {
         return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapProducedHeapChunks.getValue();
     }
 
+    @Fold
     public static boolean getZapConsumedHeapChunks() {
         return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapConsumedHeapChunks.getValue();
     }

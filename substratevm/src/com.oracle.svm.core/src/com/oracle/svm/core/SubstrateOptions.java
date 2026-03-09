@@ -82,6 +82,7 @@ import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -366,7 +367,7 @@ public class SubstrateOptions {
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
 
             if (newLevel == OptimizationLevel.SIZE) {
-                configureOs(values);
+                configureOptimizeForCodeSize(values, true, true);
             }
 
             if (optimizeValueUpdateHandler != null) {
@@ -376,30 +377,37 @@ public class SubstrateOptions {
         }
     };
 
-    public static void configureOs(EconomicMap<OptionKey<?>, Object> values) {
+    public static void configureOptimizeForCodeSize(EconomicMap<OptionKey<?>, Object> values, boolean disableLoopOptimizations, boolean disablePEA) {
         enable(GraalOptions.ReduceCodeSize, values);
         enable(ReduceImplicitExceptionStackTraceInformation, values);
         enable(GraalOptions.OptimizeLongJumps, values);
 
-        /*
-         * Remove all loop optimizations that can increase code size, i.e., duplicate a loop body
-         * somehow.
-         */
-        disable(GraalOptions.LoopPeeling, values);
-        disable(GraalOptions.LoopUnswitch, values);
-        disable(GraalOptions.FullUnroll, values);
-        disable(GraalOptions.PartialUnroll, values);
+        if (disableLoopOptimizations) {
+            /*
+             * Remove all loop optimizations that can increase code size, i.e., duplicate a loop
+             * body somehow.
+             */
+            disable(GraalOptions.LoopPeeling, values);
+            disable(GraalOptions.LoopUnswitch, values);
+            disable(GraalOptions.FullUnroll, values);
+            disable(GraalOptions.PartialUnroll, values);
+        }
 
         /*
          * Do not align loop headers to further reduce code size.
          */
         GraalOptions.LoopHeaderAlignment.update(values, 0);
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
+        // We cannot check for architecture at the moment because ImageSingletons has not been
+        // initialized yet
+        disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
 
-        /*
-         * Do not run PEA - it can fan out allocations too much.
-         */
-        disable(GraalOptions.PartialEscapeAnalysis, values);
+        if (disablePEA) {
+            /*
+             * Do not run PEA - it can fan out allocations too much.
+             */
+            disable(GraalOptions.PartialEscapeAnalysis, values);
+        }
 
         /*
          * Do not fan out division.
@@ -417,10 +425,18 @@ public class SubstrateOptions {
         disable(DeadCodeEliminationPhase.Options.ReduceDCE, values);
     }
 
+    /**
+     * Sets {@code key} to false in {@code values}. This silently overrides any existing value for
+     * {@code key} in {@code values}.
+     */
     public static void disable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, false);
     }
 
+    /**
+     * Sets {@code key} to true in {@code values}. This silently overrides any existing value for
+     * {@code key} in {@code values}.
+     */
     public static void enable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, true);
     }

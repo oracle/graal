@@ -43,8 +43,6 @@ public interface GCAllocationSupport {
 
     ForeignCallDescriptor getNewDynamicHub();
 
-    boolean useTLAB();
-
     boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray);
 
     Word getTLABInfo();

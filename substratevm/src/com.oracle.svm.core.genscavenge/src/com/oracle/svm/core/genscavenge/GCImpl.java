@@ -142,6 +142,11 @@ public final class GCImpl implements GC {
         RuntimeSupport.getRuntimeSupport().addShutdownHook(isFirstIsolate -> printGCSummary());
     }
 
+    @Uninterruptible(reason = "Tear-down in progress.")
+    public void tearDown() {
+        policy.tearDown();
+    }
+
     @Override
     public String getName() {
         if (SubstrateOptions.useEpsilonGC()) {
@@ -407,7 +412,7 @@ public final class GCImpl implements GC {
     }
 
     private static void resizeAllTlabs() {
-        if (SubstrateGCOptions.TlabOptions.ResizeTLAB.getValue()) {
+        if (SubstrateGCOptions.ResizeTLAB.getValue()) {
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 TlabSupport.resize(thread);
             }
