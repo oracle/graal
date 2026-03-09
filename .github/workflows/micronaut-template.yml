@@ -62,7 +62,7 @@ jobs:
   build-and-test-micronaut:
     name: Native Tests
     needs: build-graalvm
-    runs-on: ubuntu-22.04
+    runs-on: ${{ contains(inputs.NATIVE_IMAGE_OPTIONS || '', '-H:Preserve=all') && 'ubuntu-8core-32gb' || 'ubuntu-22.04' }}
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     steps:
     - name: Checkout oracle/graal
