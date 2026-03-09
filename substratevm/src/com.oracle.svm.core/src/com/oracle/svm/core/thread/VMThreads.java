@@ -1125,6 +1125,13 @@ public abstract class VMThreads {
         /** Code synchronization should be performed due to newly installed code. */
         private static final int SYNCHRONIZE_CODE = NO_ACTION + 1;
 
+        /**
+         * Checks whether an action is pending for the current thread.
+         * <p>
+         * This method uses a non-volatile read for performance reasons, even though the value may
+         * be updated concurrently by other threads. Callers may therefore need to use additional
+         * memory barriers or synchronization to see the latest values.
+         */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isActionPending() {
             if (!isAarch64()) {

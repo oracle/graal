@@ -29,11 +29,11 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-
-import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.c.CIsolateDataFactory;
-import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
+
+import com.oracle.svm.core.c.CIsolateDataFactory;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A mutex that has minimal requirements on Java code. The implementation does not perform memory

@@ -81,7 +81,7 @@ public final class SafepointSnippets extends SubstrateTemplates implements Snipp
     private static void safepointSnippet() {
         final boolean needSlowPath = SafepointCheckNode.test();
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
-            callSlowPathSafepointCheck(SafepointSlowpath.ENTER_SLOW_PATH_SAFEPOINT_CHECK);
+            callSlowPathSafepointCheck(SafepointSlowpath.ENTER_SLOW_PATH_SAFEPOINT_CHECK_CALLEE_SAVED_CCONV);
         }
     }
 

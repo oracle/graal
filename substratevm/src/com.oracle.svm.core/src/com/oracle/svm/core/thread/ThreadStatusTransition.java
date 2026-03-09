@@ -24,16 +24,19 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.thread.SafepointSlowpath.ENTER_SLOW_PATH_SAFEPOINT_CHECK_REGULAR_CCONV;
+import static com.oracle.svm.core.thread.SafepointSlowpath.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS;
+import static com.oracle.svm.core.thread.SafepointSlowpath.SLOW_PATH_RUN_PENDING_ACTIONS;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
@@ -71,21 +74,30 @@ public class ThreadStatusTransition {
         StatusSupport.assertStatusNativeOrSafepoint();
         int newStatus = StatusSupport.STATUS_IN_JAVA;
 
-        if (probability(VERY_FAST_PATH_PROBABILITY, !VMThreads.ActionOnTransitionToJavaSupport.isActionPending()) &&
-                        probability(VERY_FAST_PATH_PROBABILITY, !RecurringCallbackSupport.needsNativeToJavaSlowpath()) &&
-                        probability(VERY_FAST_PATH_PROBABILITY, StatusSupport.compareAndSetNativeToNewStatus(newStatus))) {
+        if (probability(VERY_FAST_PATH_PROBABILITY, StatusSupport.compareAndSetNativeToNewStatus(newStatus))) {
+            /* Prevent reads from floating before the status transition. */
+            MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
+
             if (popFrameAnchor) {
                 JavaFrameAnchors.popFrameAnchor();
             }
-        } else {
-            callSlowPathNativeToNewStatus(SafepointSlowpath.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, popFrameAnchor);
-        }
 
-        /*
-         * Kill all memory locations to ensure that no floating reads are scheduled before the
-         * thread is properly transitioned into Java.
-         */
-        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
+            /*
+             * Another thread may have executed a VM operation in the meanwhile that modified the
+             * thread locals of this thread. It is guaranteed that this thread sees the latest
+             * values for its thread-locals because the atomic status transition above emits the
+             * necessary memory barriers.
+             */
+            if (probability(VERY_SLOW_PATH_PROBABILITY, VMThreads.ActionOnTransitionToJavaSupport.isActionPending()) ||
+                            probability(VERY_SLOW_PATH_PROBABILITY, RecurringCallbackSupport.needsNativeToJavaSlowpath())) {
+                call(ENTER_SLOW_PATH_SAFEPOINT_CHECK_REGULAR_CCONV);
+            }
+        } else {
+            call(ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, popFrameAnchor);
+
+            /* Prevent reads from floating before the status transition. */
+            MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
+        }
     }
 
     /**
@@ -108,7 +120,7 @@ public class ThreadStatusTransition {
         int newStatus = StatusSupport.STATUS_IN_VM;
         boolean needSlowPath = !StatusSupport.compareAndSetNativeToNewStatus(newStatus);
         if (probability(VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
-            callSlowPathNativeToNewStatus(SafepointSlowpath.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, false);
+            call(ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, false);
         }
     }
 
@@ -128,7 +140,7 @@ public class ThreadStatusTransition {
         /* Only execute pending actions but don't do a safepoint slowpath call. */
         boolean needSlowPath = VMThreads.ActionOnTransitionToJavaSupport.isActionPending();
         if (probability(VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
-            callRunPendingActions(SafepointSlowpath.SLOW_PATH_RUN_PENDING_ACTIONS);
+            call(SLOW_PATH_RUN_PENDING_ACTIONS);
         }
     }
 
@@ -155,8 +167,8 @@ public class ThreadStatusTransition {
     }
 
     @Node.NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void callRunPendingActions(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor);
+    private static native void call(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor);
 
     @Node.NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void callSlowPathNativeToNewStatus(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, int newThreadStatus, boolean popFrameAnchor);
+    private static native void call(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, int newThreadStatus, boolean popFrameAnchor);
 }

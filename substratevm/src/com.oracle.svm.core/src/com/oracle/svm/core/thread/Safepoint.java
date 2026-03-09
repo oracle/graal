@@ -329,7 +329,7 @@ public final class Safepoint {
             restoreCounter(thread);
 
             /* Skip suspended threads so that they remain in STATUS_IN_SAFEPOINT. */
-            if (ThreadSuspendSupport.isSuspended(thread)) {
+            if (ThreadSuspendSupport.shouldBlock(thread)) {
                 continue;
             }
 
