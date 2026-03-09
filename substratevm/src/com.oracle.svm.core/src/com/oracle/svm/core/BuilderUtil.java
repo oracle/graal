@@ -55,14 +55,6 @@ public class BuilderUtil {
     @NodeIntrinsic(BreakpointNode.class)
     public static native void breakpoint(Object arg0);
 
-    /** The functional interface for a "thunk". */
-    @FunctionalInterface
-    public interface Thunk {
-
-        /** The method to be supplied by the implementor. */
-        void invoke();
-    }
-
     /**
      * Convenience method that unwraps the method details and delegates to the currently registered
      * UniqueShortNameProvider image singleton with the significant exception that it always passes

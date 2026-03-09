@@ -179,14 +179,6 @@ public class SubstrateUtil {
         return (value & (value - 1)) == 0;
     }
 
-    /** The functional interface for a "thunk". */
-    @FunctionalInterface
-    public interface Thunk {
-
-        /** The method to be supplied by the implementor. */
-        void invoke();
-    }
-
     /**
      * Mangle the given method name according to our image's (default) mangling convention. A rough
      * requirement is that symbol names are valid symbol name tokens for the assembler. (This is
