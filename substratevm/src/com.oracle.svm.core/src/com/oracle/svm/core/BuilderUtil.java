@@ -49,6 +49,8 @@ public class BuilderUtil {
     /**
      * Emits a node that triggers a breakpoint in debuggers.
      *
+     * Eventually, this should be moved to guest code (GR-73917).
+     *
      * @param arg0 value to inspect when the breakpoint hits
      * @see BreakpointNode how to use breakpoints and inspect breakpoint values in the debugger
      */
