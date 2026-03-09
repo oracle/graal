@@ -460,7 +460,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         LocaleSupport.checkForError();
 
         if (!firstIsolate) {
-            int state = Unsafe.getUnsafe().getInt(initStateAddr);
+            /*
+             * Always do a volatile read so that memory barriers are emitted. Together with the
+             * volatile write to initStateAddr below, this guarantees that subsequently created
+             * isolates see consistent values for the process-global state that was initialized by
+             * the first isolate.
+             */
+            int state = Unsafe.getUnsafe().getIntVolatile(null, initStateAddr);
             if (state != FirstIsolateInitStates.SUCCESSFUL) {
                 while (state == FirstIsolateInitStates.IN_PROGRESS) { // spin-wait for first isolate
                     PauseNode.pause();
@@ -517,6 +523,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
         if (firstIsolate) { // let other isolates (if any) initialize now
             int state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
+            /* Do a volatile write to ensure that other threads see a consistent state. */
             Unsafe.getUnsafe().putIntVolatile(null, initStateAddr, state);
         }
 
