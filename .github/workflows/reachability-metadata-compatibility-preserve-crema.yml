@@ -53,4 +53,4 @@ jobs:
   call-template:
     uses: './.github/workflows/reachability-metadata-template.yml'
     with:
-      NATIVE_IMAGE_OPTIONS: '-H:+UnlockExperimentalVMOptions -H:+ReportExceptionStackTraces -H:+CompatibilityMode -H:Preserve=all -H:+RuntimeClassLoading -H:-UnlockExperimentalVMOptions'
+      NATIVE_IMAGE_OPTIONS: '-H:+UnlockExperimentalVMOptions -H:+ReportExceptionStackTraces -H:+CompatibilityMode -H:Preserve=module=java.base,module=ALL-UNNAMED -H:+RuntimeClassLoading -H:-UnlockExperimentalVMOptions'

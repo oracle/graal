@@ -61,6 +61,7 @@ jobs:
   build-and-test-spring:
     name: Native Tests
     needs: build-graalvm
+    timeout-minutes: 60
     runs-on: ${{ contains(inputs.NATIVE_IMAGE_OPTIONS || '', '-H:Preserve=all') && 'ubuntu-8core-32gb' || 'ubuntu-22.04' }}
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     steps:
