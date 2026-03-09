@@ -296,7 +296,8 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             return;
         }
         if (!invokeFlow.isFlowEnabled()) {
-            super.unreachableInvoke(invoke, tool, () -> super.location(invoke) + ": flow is not enabled by its predicate " + invokeFlow.getPredicate());
+            super.unreachableInvoke(invoke, tool, () -> super.location(invoke) + ": Invoke flow with target method " + invokeFlow.getTargetMethod().format("%H.%n") +
+                            " is not enabled by its predicate: " + invokeFlow.getPredicate().format(true, true));
             /* Invoke is unreachable, there is no point in improving any types further. */
             return;
         }
@@ -606,7 +607,8 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         boolean hasUsages = node.usages().filter(n -> !(n instanceof FrameState)).isNotEmpty();
 
         if (!nodeFlow.isFlowEnabled()) {
-            super.makeUnreachable(anchorPoint.next(), tool, () -> super.location(node) + ": flow is not enabled by its predicate " + nodeFlow.getPredicate());
+            super.makeUnreachable(anchorPoint.next(), tool, () -> super.location(node) + ": flow is not enabled by its predicate " +
+                            nodeFlow.getPredicate().format(true, true));
             unreachableValues.add(node);
             return null;
         }

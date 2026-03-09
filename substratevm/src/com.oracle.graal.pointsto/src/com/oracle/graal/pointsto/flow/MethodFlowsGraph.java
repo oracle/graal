@@ -484,12 +484,22 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         }
 
         /*
-         * Saturate the return of virtual invokes that could return new types from the open world.
-         * Returns from methods that cannot be overwritten, i.e., the receiver type is closed, are
-         * not saturated.
+         * Saturate the return of invokes that could return new types from the open world or that
+         * can only be invoked on open world receiver types. This applies to virtual invokes which
+         * may link to open world callees. It also applies to special invokes to target methods
+         * declared in abstract types: since the type may only be implemented in the open world the
+         * invokes may not otherwise be linked during analysis. In predicated points-to analysis
+         * this matters also for void methods since their successful execution (modeled by an
+         * ActualReturnTypeFlow) predicates subsequents statements in the caller. However, returns
+         * from methods that cannot be overwritten, i.e., the receiver type is closed, are not
+         * saturated. Similarly, we don't need to saturate the return of static invokes or the
+         * return of special invokes to methods in concrete classes since the analysis will resolve
+         * the concrete callee, and it will analyze it.
          */
         for (InvokeTypeFlow invokeTypeFlow : getInvokes()) {
-            if (!invokeTypeFlow.isDirectInvoke() && !bb.isClosed(invokeTypeFlow.getReceiverType())) {
+            AnalysisType receiverType = invokeTypeFlow.getReceiverType();
+            if ((invokeTypeFlow.isDirectInvoke() && receiverType != null && receiverType.isAbstract() ||
+                            !invokeTypeFlow.isDirectInvoke()) && !bb.isClosed(receiverType)) {
                 invokeTypeFlow.saturateForOpenTypeWorld(bb);
             }
         }
