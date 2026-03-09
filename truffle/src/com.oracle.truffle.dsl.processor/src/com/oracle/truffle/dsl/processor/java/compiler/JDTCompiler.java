@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,11 +131,12 @@ public class JDTCompiler extends AbstractCompiler {
 
     /**
      * Returns true if and only if the used version of ECJ has the <a
-     * href=https://github.com/eclipse-jdt/eclipse.jdt.core/issues/1752>static member inheritace
-     * bug</a>.
+     * href=https://github.com/eclipse-jdt/eclipse.jdt.core/issues/1752>static member inheritance
+     * bug</a>. ECJ 3.45 changed {@code getAllMembers(...)} to include inherited static members
+     * again, so the workaround is only needed for 3.34 .. 3.44.
      */
     private boolean hasStaticMemberInheritanceBug() {
-        return (compilerMajorVersion > 3 || (compilerMajorVersion == 3 && compilerMinorVersion >= 34));
+        return compilerMajorVersion == 3 && compilerMinorVersion >= 34 && compilerMinorVersion < 45;
     }
 
     private List<? extends Element> getAllMembers(ProcessingEnvironment environment, TypeElement type) {
