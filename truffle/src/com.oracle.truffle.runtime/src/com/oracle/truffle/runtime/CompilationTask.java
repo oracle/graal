@@ -238,6 +238,10 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
         }
 
         int callAndLoopCount = target.getCallAndLoopCount();
+        if (callAndLoopCount == Integer.MAX_VALUE) {
+            // The counter saturates, so further activity is no longer observable via increments.
+            return false;
+        }
         int threshold = OptimizedCallTarget.scaledThreshold((engineData.multiTier && !isFirstTier()) ? engineData.callAndLoopThresholdInFirstTier : engineData.callAndLoopThresholdInInterpreter);
         if (callAndLoopCount < threshold) {
             return true;
