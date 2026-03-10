@@ -242,7 +242,8 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             // The counter saturates, so further activity is no longer observable via increments.
             return false;
         }
-        int threshold = OptimizedCallTarget.scaledThreshold((engineData.multiTier && !isFirstTier()) ? engineData.callAndLoopThresholdInFirstTier : engineData.callAndLoopThresholdInInterpreter);
+        int thresholdBase = (engineData.multiTier && isLastTier()) ? engineData.callAndLoopThresholdInFirstTier : engineData.callAndLoopThresholdInInterpreter;
+        int threshold = OptimizedCallTarget.scaledThreshold(thresholdBase);
         if (callAndLoopCount < threshold) {
             return true;
         }
