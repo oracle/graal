@@ -222,9 +222,7 @@ public final class JVMCIVersionCheck {
                 if (!isComparableRelease(other)) {
                     throw new IncomparableReleaseException(this, other);
                 }
-                if (this.jvmciBuild < other.jvmciBuild) {
-                    return true;
-                }
+                return this.jvmciBuild < other.jvmciBuild;
             }
             return false;
         }
@@ -301,7 +299,7 @@ public final class JVMCIVersionCheck {
         this.vmVersion = vmVersion;
     }
 
-    enum PrintFormat {
+    public enum PrintFormat {
         TUPLE,
         AS_TAG
     }
