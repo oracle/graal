@@ -283,11 +283,8 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return vtableHolder.vtable;
     }
 
-    public final void setVtable(InterpreterResolvedJavaMethod[] vtable) {
-        setVtable(vtable, vtable.length);
-    }
-
     public final void setVtable(InterpreterResolvedJavaMethod[] vtable, int classVtableLength) {
+        // The stored table may include interface dispatch tail entries beyond the class vtable.
         VMError.guarantee(classVtableLength >= 0 && classVtableLength <= vtable.length, "Invalid class vtable length");
         this.vtableHolder = new VTableHolder(this, vtable, classVtableLength);
     }
