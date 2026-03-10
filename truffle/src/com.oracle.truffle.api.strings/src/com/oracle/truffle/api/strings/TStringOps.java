@@ -47,6 +47,7 @@ import static com.oracle.truffle.api.strings.Encodings.isUTF8ContinuationByte;
 import static com.oracle.truffle.api.strings.Encodings.reverseBytes;
 import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -372,6 +373,152 @@ final class TStringOps {
         } else {
             assert stride == 2;
             return runIndexOfTableForeignEndian(location, array, offset, length, 2, isNative, fromIndex, tables);
+        }
+    }
+
+    static long indexOfTableWithBitSet(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
+        return indexOfTableWithBitSetIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
+    }
+
+    private static long indexOfTableWithBitSetIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, byte[] tables) {
+        return packIndexOfTableResult(indexOfTableIntl(location, array, offset, length, stride, fromIndex, tables), array, offset, stride, false, tables);
+    }
+
+    static long indexOfTableWithBitSetForeignEndian(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
+        return indexOfTableWithBitSetForeignEndianIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
+    }
+
+    private static long indexOfTableWithBitSetForeignEndianIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, byte[] tables) {
+        return packIndexOfTableResult(indexOfTableForeignEndianIntl(location, array, offset, length, stride, fromIndex, tables), array, offset, stride, true, tables);
+    }
+
+    private static long packIndexOfTableResult(int index, byte[] array, long offset, int stride, boolean foreignEndian, byte[] tables) {
+        if (index < 0) {
+            return packIndexOfTablesResult(-1, 0);
+        }
+        int value = readValue(array, offset, stride, index);
+        int candidate = tableBitSet(tables, 0, foreignEndian ? Encodings.reverseBytes(value, stride) : value);
+        assert candidate != 0;
+        return packIndexOfTablesResult(index, candidate);
+    }
+
+    static long indexOf2ConsecutiveTables(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
+        return indexOf2ConsecutiveTablesIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
+    }
+
+    private static long indexOf2ConsecutiveTablesIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, byte[] tables) {
+        assert tables.length == 64;
+        final boolean isNative = array == null;
+        assert validateRegionIndexWithBaseOffset(array, offset, length, stride, fromIndex);
+        ensureConsecutiveTablesIntrinsicWindowLength(length, fromIndex);
+        if (stride == 0) {
+            return runIndexOf2ConsecutiveTables(location, array, offset, length, 0, isNative, fromIndex, tables);
+        } else if (stride == 1) {
+            return runIndexOf2ConsecutiveTables(location, array, offset, length, 1, isNative, fromIndex, tables);
+        } else {
+            assert stride == 2;
+            return runIndexOf2ConsecutiveTables(location, array, offset, length, 2, isNative, fromIndex, tables);
+        }
+    }
+
+    static long indexOf2ConsecutiveTablesForeignEndian(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
+        return indexOf2ConsecutiveTablesForeignEndianIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
+    }
+
+    private static long indexOf2ConsecutiveTablesForeignEndianIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, byte[] tables) {
+        assert tables.length == 64;
+        final boolean isNative = array == null;
+        assert validateRegionIndexWithBaseOffset(array, offset, length, stride, fromIndex);
+        ensureConsecutiveTablesIntrinsicWindowLength(length, fromIndex);
+        if (stride == 0) {
+            return runIndexOf2ConsecutiveTables(location, array, offset, length, 0, isNative, fromIndex, tables);
+        } else if (stride == 1) {
+            return runIndexOf2ConsecutiveTablesForeignEndian(location, array, offset, length, 1, isNative, fromIndex, tables);
+        } else {
+            assert stride == 2;
+            return runIndexOf2ConsecutiveTablesForeignEndian(location, array, offset, length, 2, isNative, fromIndex, tables);
+        }
+    }
+
+    static long indexOf3ConsecutiveTables(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
+        return indexOf3ConsecutiveTablesIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
+    }
+
+    private static long indexOf3ConsecutiveTablesIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, byte[] tables) {
+        assert tables.length == 96;
+        final boolean isNative = array == null;
+        assert validateRegionIndexWithBaseOffset(array, offset, length, stride, fromIndex);
+        ensureConsecutiveTablesIntrinsicWindowLength(length, fromIndex);
+        if (stride == 0) {
+            return runIndexOf3ConsecutiveTables(location, array, offset, length, 0, isNative, fromIndex, tables);
+        } else if (stride == 1) {
+            return runIndexOf3ConsecutiveTables(location, array, offset, length, 1, isNative, fromIndex, tables);
+        } else {
+            assert stride == 2;
+            return runIndexOf3ConsecutiveTables(location, array, offset, length, 2, isNative, fromIndex, tables);
+        }
+    }
+
+    static long indexOf3ConsecutiveTablesForeignEndian(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
+        return indexOf3ConsecutiveTablesForeignEndianIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
+    }
+
+    private static long indexOf3ConsecutiveTablesForeignEndianIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, byte[] tables) {
+        assert tables.length == 96;
+        final boolean isNative = array == null;
+        assert validateRegionIndexWithBaseOffset(array, offset, length, stride, fromIndex);
+        ensureConsecutiveTablesIntrinsicWindowLength(length, fromIndex);
+        if (stride == 0) {
+            return runIndexOf3ConsecutiveTables(location, array, offset, length, 0, isNative, fromIndex, tables);
+        } else if (stride == 1) {
+            return runIndexOf3ConsecutiveTablesForeignEndian(location, array, offset, length, 1, isNative, fromIndex, tables);
+        } else {
+            assert stride == 2;
+            return runIndexOf3ConsecutiveTablesForeignEndian(location, array, offset, length, 2, isNative, fromIndex, tables);
+        }
+    }
+
+    static long indexOf4ConsecutiveTables(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
+        return indexOf4ConsecutiveTablesIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
+    }
+
+    private static long indexOf4ConsecutiveTablesIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, byte[] tables) {
+        assert tables.length == 128;
+        final boolean isNative = array == null;
+        assert validateRegionIndexWithBaseOffset(array, offset, length, stride, fromIndex);
+        ensureConsecutiveTablesIntrinsicWindowLength(length, fromIndex);
+        if (stride == 0) {
+            return runIndexOf4ConsecutiveTables(location, array, offset, length, 0, isNative, fromIndex, tables);
+        } else if (stride == 1) {
+            return runIndexOf4ConsecutiveTables(location, array, offset, length, 1, isNative, fromIndex, tables);
+        } else {
+            assert stride == 2;
+            return runIndexOf4ConsecutiveTables(location, array, offset, length, 2, isNative, fromIndex, tables);
+        }
+    }
+
+    static long indexOf4ConsecutiveTablesForeignEndian(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
+        return indexOf4ConsecutiveTablesForeignEndianIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
+    }
+
+    private static long indexOf4ConsecutiveTablesForeignEndianIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, byte[] tables) {
+        assert tables.length == 128;
+        final boolean isNative = array == null;
+        assert validateRegionIndexWithBaseOffset(array, offset, length, stride, fromIndex);
+        ensureConsecutiveTablesIntrinsicWindowLength(length, fromIndex);
+        if (stride == 0) {
+            return runIndexOf4ConsecutiveTables(location, array, offset, length, 0, isNative, fromIndex, tables);
+        } else if (stride == 1) {
+            return runIndexOf4ConsecutiveTablesForeignEndian(location, array, offset, length, 1, isNative, fromIndex, tables);
+        } else {
+            assert stride == 2;
+            return runIndexOf4ConsecutiveTablesForeignEndian(location, array, offset, length, 2, isNative, fromIndex, tables);
+        }
+    }
+
+    private static void ensureConsecutiveTablesIntrinsicWindowLength(int length, int fromIndex) {
+        if (length - fromIndex < 16) {
+            throw CompilerDirectives.shouldNotReachHere("consecutive-table intrinsic requires raw search window length >= 16");
         }
     }
 
@@ -1100,7 +1247,7 @@ final class TStringOps {
     private static int runIndexOfTable(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, byte[] tables) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
-            if (value <= 0xff && performTableLookup(tables, value)) {
+            if (performTableLookup(tables, value)) {
                 return i;
             }
             TStringConstants.truffleSafePointPoll(location, i + 1);
@@ -1115,7 +1262,7 @@ final class TStringOps {
     private static int runIndexOfTableForeignEndian(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, byte[] tables) {
         for (int i = fromIndex; i < length; i++) {
             int value = Encodings.reverseBytes(readValue(array, offset, stride, i), stride);
-            if (value <= 0xff && performTableLookup(tables, value)) {
+            if (performTableLookup(tables, value)) {
                 return i;
             }
             TStringConstants.truffleSafePointPoll(location, i + 1);
@@ -1124,9 +1271,137 @@ final class TStringOps {
     }
 
     private static boolean performTableLookup(byte[] tables, int value) {
-        int tableHi = uInt(tables[((value >>> 4) & 0xf)]);
-        int tableLo = uInt(tables[16 + (value & 0xf)]);
-        return (tableHi & tableLo) != 0;
+        return tableBitSet(tables, 0, value) != 0;
+    }
+
+    private static int tableBitSet(byte[] tables, int tableOffset, int value) {
+        if (Integer.compareUnsigned(value, 0xff) > 0) {
+            return 0;
+        }
+        int tableHi = uInt(tables[tableOffset + ((value >>> 4) & 0xf)]);
+        int tableLo = uInt(tables[tableOffset + 16 + (value & 0xf)]);
+        return tableHi & tableLo;
+    }
+
+    static long packIndexOfTablesResult(int index, int candidateBitSet) {
+        return ((long) candidateBitSet << Integer.SIZE) | Integer.toUnsignedLong(index);
+    }
+
+    static int unpackIndexOfTablesResultIndex(long result) {
+        return (int) result;
+    }
+
+    static int unpackIndexOfTablesResultBitSet(long result) {
+        return (int) (result >>> Integer.SIZE);
+    }
+
+    static boolean indexOfTablesResultIsMatch(long result) {
+        return unpackIndexOfTablesResultIndex(result) >= 0;
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static long runIndexOf2ConsecutiveTables(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, byte[] tables) {
+        for (int i = fromIndex + 1; i < length; i++) {
+            int candidate = tableBitSet(tables, 0, readValue(array, offset, stride, i - 1)) &
+                            tableBitSet(tables, 32, readValue(array, offset, stride, i));
+            if (candidate != 0) {
+                return packIndexOfTablesResult(i - 1, candidate);
+            }
+            TStringConstants.truffleSafePointPoll(location, i);
+        }
+        return packIndexOfTablesResult(-1, 0);
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static long runIndexOf2ConsecutiveTablesForeignEndian(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex,
+                    byte[] tables) {
+        for (int i = fromIndex + 1; i < length; i++) {
+            int candidate = tableBitSet(tables, 0, Encodings.reverseBytes(readValue(array, offset, stride, i - 1), stride)) &
+                            tableBitSet(tables, 32, Encodings.reverseBytes(readValue(array, offset, stride, i), stride));
+            if (candidate != 0) {
+                return packIndexOfTablesResult(i - 1, candidate);
+            }
+            TStringConstants.truffleSafePointPoll(location, i);
+        }
+        return packIndexOfTablesResult(-1, 0);
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static long runIndexOf3ConsecutiveTables(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, byte[] tables) {
+        for (int i = fromIndex + 2; i < length; i++) {
+            int candidate = tableBitSet(tables, 0, readValue(array, offset, stride, i - 2)) &
+                            tableBitSet(tables, 32, readValue(array, offset, stride, i - 1)) &
+                            tableBitSet(tables, 64, readValue(array, offset, stride, i));
+            if (candidate != 0) {
+                return packIndexOfTablesResult(i - 2, candidate);
+            }
+            TStringConstants.truffleSafePointPoll(location, i);
+        }
+        return packIndexOfTablesResult(-1, 0);
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static long runIndexOf3ConsecutiveTablesForeignEndian(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex,
+                    byte[] tables) {
+        for (int i = fromIndex + 2; i < length; i++) {
+            int candidate = tableBitSet(tables, 0, Encodings.reverseBytes(readValue(array, offset, stride, i - 2), stride)) &
+                            tableBitSet(tables, 32, Encodings.reverseBytes(readValue(array, offset, stride, i - 1), stride)) &
+                            tableBitSet(tables, 64, Encodings.reverseBytes(readValue(array, offset, stride, i), stride));
+            if (candidate != 0) {
+                return packIndexOfTablesResult(i - 2, candidate);
+            }
+            TStringConstants.truffleSafePointPoll(location, i);
+        }
+        return packIndexOfTablesResult(-1, 0);
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static long runIndexOf4ConsecutiveTables(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, byte[] tables) {
+        for (int i = fromIndex + 3; i < length; i++) {
+            int candidate = tableBitSet(tables, 0, readValue(array, offset, stride, i - 3)) &
+                            tableBitSet(tables, 32, readValue(array, offset, stride, i - 2)) &
+                            tableBitSet(tables, 64, readValue(array, offset, stride, i - 1)) &
+                            tableBitSet(tables, 96, readValue(array, offset, stride, i));
+            if (candidate != 0) {
+                return packIndexOfTablesResult(i - 3, candidate);
+            }
+            TStringConstants.truffleSafePointPoll(location, i);
+        }
+        return packIndexOfTablesResult(-1, 0);
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static long runIndexOf4ConsecutiveTablesForeignEndian(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex,
+                    byte[] tables) {
+        for (int i = fromIndex + 3; i < length; i++) {
+            int candidate = tableBitSet(tables, 0, Encodings.reverseBytes(readValue(array, offset, stride, i - 3), stride)) &
+                            tableBitSet(tables, 32, Encodings.reverseBytes(readValue(array, offset, stride, i - 2), stride)) &
+                            tableBitSet(tables, 64, Encodings.reverseBytes(readValue(array, offset, stride, i - 1), stride)) &
+                            tableBitSet(tables, 96, Encodings.reverseBytes(readValue(array, offset, stride, i), stride));
+            if (candidate != 0) {
+                return packIndexOfTablesResult(i - 3, candidate);
+            }
+            TStringConstants.truffleSafePointPoll(location, i);
+        }
+        return packIndexOfTablesResult(-1, 0);
     }
 
     /**

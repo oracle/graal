@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,6 +120,17 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
                     public Object execute(VirtualFrame frame) {
                         Object[] args = frame.getArguments();
                         return benchNode.execute(args[0], args[1]);
+                    }
+                };
+            case "byteIndexOfStringSetTString":
+                return new RootNode(this) {
+
+                    @Child ByteIndexOfStringSetTStringNode benchNode = TStringBenchDummyLanguageFactory.ByteIndexOfStringSetTStringNodeGen.create();
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Object[] args = frame.getArguments();
+                        return benchNode.execute(args[0], args[1], args[2], args[3]);
                     }
                 };
             case "codePointIndexToByteIndexUTF8":
@@ -310,6 +321,31 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
         int bench(TruffleString a, byte b,
                         @Cached TruffleString.ByteIndexOfAnyByteNode compareNode) {
             return compareNode.execute(a, 0, a.byteLength(TruffleString.Encoding.UTF_8), new byte[]{b}, TruffleString.Encoding.UTF_8);
+        }
+    }
+
+    abstract static class ByteIndexOfStringSetTStringNode extends Node {
+
+        abstract long execute(Object haystack, Object fromByteIndex, Object toByteIndex, Object stringSet);
+
+        @Specialization(limit = "1")
+        long benchCached(TruffleString haystack, int fromByteIndex, int toByteIndex, Object stringSetHostObject,
+                        @CachedLibrary("stringSetHostObject") InteropLibrary interop,
+                        @Cached ByteIndexOfStringSetTStringCacheNode cacheNode) {
+            TruffleString.StringSet stringSet = (TruffleString.StringSet) asHostObject(stringSetHostObject, interop);
+            return cacheNode.execute(haystack, fromByteIndex, toByteIndex, stringSet);
+        }
+    }
+
+    abstract static class ByteIndexOfStringSetTStringCacheNode extends Node {
+
+        abstract long execute(TruffleString haystack, int fromByteIndex, int toByteIndex, TruffleString.StringSet stringSet);
+
+        @Specialization(guards = "stringSet == cachedStringSet", limit = "1")
+        long benchCached(TruffleString haystack, int fromByteIndex, int toByteIndex, TruffleString.StringSet stringSet,
+                        @Cached("stringSet") TruffleString.StringSet cachedStringSet,
+                        @Cached TruffleString.ByteIndexOfStringSetNode node) {
+            return node.execute(haystack, fromByteIndex, toByteIndex, cachedStringSet);
         }
     }
 

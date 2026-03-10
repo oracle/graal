@@ -37,10 +37,18 @@ import jdk.vm.ci.amd64.AMD64;
 public class ArrayIndexOfForeignCalls {
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name, int nValues) {
-        return foreignCallDescriptor(name, nValues, int.class);
+        return foreignCallDescriptor(name, nValues, int.class, int.class);
     }
 
-    private static ForeignCallDescriptor foreignCallDescriptor(String name, int nValues, Class<?> valueClass) {
+    private static ForeignCallDescriptor foreignCallDescriptorTable(String name) {
+        return foreignCallDescriptor(name, 1, int.class, byte[].class);
+    }
+
+    private static ForeignCallDescriptor foreignCallDescriptorCTables(String name) {
+        return foreignCallDescriptor(name, 1, long.class, byte[].class);
+    }
+
+    private static ForeignCallDescriptor foreignCallDescriptor(String name, int nValues, Class<?> resultClass, Class<?> valueClass) {
         Class<?>[] argTypes = new Class<?>[4 + nValues];
         argTypes[0] = Object.class;
         argTypes[1] = long.class;
@@ -49,7 +57,7 @@ public class ArrayIndexOfForeignCalls {
         for (int i = 4; i < argTypes.length; i++) {
             argTypes[i] = valueClass;
         }
-        return ForeignCalls.pureFunctionForeignCallDescriptor(name, int.class, argTypes);
+        return ForeignCalls.pureFunctionForeignCallDescriptor(name, resultClass, argTypes);
     }
 
     public static final ForeignCallDescriptor STUB_INDEX_OF_1_S1 = foreignCallDescriptor("indexOf1S1", 1);
@@ -84,11 +92,26 @@ public class ArrayIndexOfForeignCalls {
     public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S1 = foreignCallDescriptor("indexOfTwoConsecutiveWithMaskS1", 4);
     public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S2 = foreignCallDescriptor("indexOfTwoConsecutiveWithMaskS2", 4);
     public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S4 = foreignCallDescriptor("indexOfTwoConsecutiveWithMaskS4", 4);
-    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S1 = foreignCallDescriptor("indexOfTableS1", 1, byte[].class);
-    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S2 = foreignCallDescriptor("indexOfTableS2", 1, byte[].class);
-    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S4 = foreignCallDescriptor("indexOfTableS4", 1, byte[].class);
-    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_FE_S2 = foreignCallDescriptor("indexOfTableForeignEndianS2", 1, byte[].class);
-    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_FE_S4 = foreignCallDescriptor("indexOfTableForeignEndianS4", 1, byte[].class);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S1 = foreignCallDescriptorTable("indexOfTableS1");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S2 = foreignCallDescriptorTable("indexOfTableS2");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S4 = foreignCallDescriptorTable("indexOfTableS4");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_2_CONSECUTIVE_TABLES_S1 = foreignCallDescriptorCTables("indexOf2ConsecutiveTablesS1");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_2_CONSECUTIVE_TABLES_S2 = foreignCallDescriptorCTables("indexOf2ConsecutiveTablesS2");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_2_CONSECUTIVE_TABLES_S4 = foreignCallDescriptorCTables("indexOf2ConsecutiveTablesS4");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_2_CONSECUTIVE_TABLES_FE_S2 = foreignCallDescriptorCTables("indexOf2ConsecutiveTablesForeignEndianS2");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_2_CONSECUTIVE_TABLES_FE_S4 = foreignCallDescriptorCTables("indexOf2ConsecutiveTablesForeignEndianS4");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_3_CONSECUTIVE_TABLES_S1 = foreignCallDescriptorCTables("indexOf3ConsecutiveTablesS1");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_3_CONSECUTIVE_TABLES_S2 = foreignCallDescriptorCTables("indexOf3ConsecutiveTablesS2");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_3_CONSECUTIVE_TABLES_S4 = foreignCallDescriptorCTables("indexOf3ConsecutiveTablesS4");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_3_CONSECUTIVE_TABLES_FE_S2 = foreignCallDescriptorCTables("indexOf3ConsecutiveTablesForeignEndianS2");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_3_CONSECUTIVE_TABLES_FE_S4 = foreignCallDescriptorCTables("indexOf3ConsecutiveTablesForeignEndianS4");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_4_CONSECUTIVE_TABLES_S1 = foreignCallDescriptorCTables("indexOf4ConsecutiveTablesS1");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_4_CONSECUTIVE_TABLES_S2 = foreignCallDescriptorCTables("indexOf4ConsecutiveTablesS2");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_4_CONSECUTIVE_TABLES_S4 = foreignCallDescriptorCTables("indexOf4ConsecutiveTablesS4");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_4_CONSECUTIVE_TABLES_FE_S2 = foreignCallDescriptorCTables("indexOf4ConsecutiveTablesForeignEndianS2");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_4_CONSECUTIVE_TABLES_FE_S4 = foreignCallDescriptorCTables("indexOf4ConsecutiveTablesForeignEndianS4");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_FE_S2 = foreignCallDescriptorTable("indexOfTableForeignEndianS2");
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_FE_S4 = foreignCallDescriptorTable("indexOfTableForeignEndianS4");
 
     /**
      * CAUTION: the ordering here is important: ever entry's index must be 4 * log2(stride) +
@@ -134,6 +157,21 @@ public class ArrayIndexOfForeignCalls {
                     STUB_INDEX_OF_TABLE_S1,
                     STUB_INDEX_OF_TABLE_S2,
                     STUB_INDEX_OF_TABLE_S4,
+                    STUB_INDEX_OF_2_CONSECUTIVE_TABLES_S1,
+                    STUB_INDEX_OF_2_CONSECUTIVE_TABLES_S2,
+                    STUB_INDEX_OF_2_CONSECUTIVE_TABLES_S4,
+                    STUB_INDEX_OF_2_CONSECUTIVE_TABLES_FE_S2,
+                    STUB_INDEX_OF_2_CONSECUTIVE_TABLES_FE_S4,
+                    STUB_INDEX_OF_3_CONSECUTIVE_TABLES_S1,
+                    STUB_INDEX_OF_3_CONSECUTIVE_TABLES_S2,
+                    STUB_INDEX_OF_3_CONSECUTIVE_TABLES_S4,
+                    STUB_INDEX_OF_3_CONSECUTIVE_TABLES_FE_S2,
+                    STUB_INDEX_OF_3_CONSECUTIVE_TABLES_FE_S4,
+                    STUB_INDEX_OF_4_CONSECUTIVE_TABLES_S1,
+                    STUB_INDEX_OF_4_CONSECUTIVE_TABLES_S2,
+                    STUB_INDEX_OF_4_CONSECUTIVE_TABLES_S4,
+                    STUB_INDEX_OF_4_CONSECUTIVE_TABLES_FE_S2,
+                    STUB_INDEX_OF_4_CONSECUTIVE_TABLES_FE_S4,
                     STUB_INDEX_OF_TABLE_FE_S2,
                     STUB_INDEX_OF_TABLE_FE_S4)).toArray(ForeignCallDescriptor[]::new);
 
@@ -155,6 +193,24 @@ public class ArrayIndexOfForeignCalls {
         }
         if (name.startsWith("indexOfTableForeignEndian")) {
             return LIRGeneratorTool.ArrayIndexOfVariant.TableForeignEndian;
+        }
+        if (name.startsWith("indexOf2ConsecutiveTablesForeignEndian")) {
+            return LIRGeneratorTool.ArrayIndexOfVariant.FindTwoConsecutiveTablesForeignEndian;
+        }
+        if (name.startsWith("indexOf2ConsecutiveTables")) {
+            return LIRGeneratorTool.ArrayIndexOfVariant.FindTwoConsecutiveTables;
+        }
+        if (name.startsWith("indexOf3ConsecutiveTablesForeignEndian")) {
+            return LIRGeneratorTool.ArrayIndexOfVariant.FindThreeConsecutiveTablesForeignEndian;
+        }
+        if (name.startsWith("indexOf3ConsecutiveTables")) {
+            return LIRGeneratorTool.ArrayIndexOfVariant.FindThreeConsecutiveTables;
+        }
+        if (name.startsWith("indexOf4ConsecutiveTablesForeignEndian")) {
+            return LIRGeneratorTool.ArrayIndexOfVariant.FindFourConsecutiveTablesForeignEndian;
+        }
+        if (name.startsWith("indexOf4ConsecutiveTables")) {
+            return LIRGeneratorTool.ArrayIndexOfVariant.FindFourConsecutiveTables;
         }
         if (name.startsWith("indexOfTable")) {
             return LIRGeneratorTool.ArrayIndexOfVariant.Table;
@@ -242,6 +298,66 @@ public class ArrayIndexOfForeignCalls {
                         return STUB_INDEX_OF_TABLE_S2;
                     case S4:
                         return STUB_INDEX_OF_TABLE_S4;
+                    default:
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
+                }
+            case FindTwoConsecutiveTables:
+                switch (stride) {
+                    case S1:
+                        return STUB_INDEX_OF_2_CONSECUTIVE_TABLES_S1;
+                    case S2:
+                        return STUB_INDEX_OF_2_CONSECUTIVE_TABLES_S2;
+                    case S4:
+                        return STUB_INDEX_OF_2_CONSECUTIVE_TABLES_S4;
+                    default:
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
+                }
+            case FindTwoConsecutiveTablesForeignEndian:
+                switch (stride) {
+                    case S2:
+                        return STUB_INDEX_OF_2_CONSECUTIVE_TABLES_FE_S2;
+                    case S4:
+                        return STUB_INDEX_OF_2_CONSECUTIVE_TABLES_FE_S4;
+                    default:
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
+                }
+            case FindThreeConsecutiveTables:
+                switch (stride) {
+                    case S1:
+                        return STUB_INDEX_OF_3_CONSECUTIVE_TABLES_S1;
+                    case S2:
+                        return STUB_INDEX_OF_3_CONSECUTIVE_TABLES_S2;
+                    case S4:
+                        return STUB_INDEX_OF_3_CONSECUTIVE_TABLES_S4;
+                    default:
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
+                }
+            case FindThreeConsecutiveTablesForeignEndian:
+                switch (stride) {
+                    case S2:
+                        return STUB_INDEX_OF_3_CONSECUTIVE_TABLES_FE_S2;
+                    case S4:
+                        return STUB_INDEX_OF_3_CONSECUTIVE_TABLES_FE_S4;
+                    default:
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
+                }
+            case FindFourConsecutiveTables:
+                switch (stride) {
+                    case S1:
+                        return STUB_INDEX_OF_4_CONSECUTIVE_TABLES_S1;
+                    case S2:
+                        return STUB_INDEX_OF_4_CONSECUTIVE_TABLES_S2;
+                    case S4:
+                        return STUB_INDEX_OF_4_CONSECUTIVE_TABLES_S4;
+                    default:
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
+                }
+            case FindFourConsecutiveTablesForeignEndian:
+                switch (stride) {
+                    case S2:
+                        return STUB_INDEX_OF_4_CONSECUTIVE_TABLES_FE_S2;
+                    case S4:
+                        return STUB_INDEX_OF_4_CONSECUTIVE_TABLES_FE_S4;
                     default:
                         throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
