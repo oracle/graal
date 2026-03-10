@@ -219,7 +219,7 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
     }
 
     public synchronized boolean start() {
-        assert !started : "Should not start a stared task";
+        assert !started : "Should not start a started task";
         if (cancelled || isStale()) {
             return false;
         }
