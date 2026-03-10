@@ -584,6 +584,10 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 return emitCustomShortCircuit(b);
             case LOAD_ARGUMENT:
                 return emitLoadArgument(b, resultLocalName, mode);
+            case LOAD_STACKVALUE:
+                return emitLoadStackValue(b, resultLocalName);
+            case STORE_STACKVALUE:
+                return emitStoreStackValue(b);
             case BRANCH:
                 b.statement("return " + BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                 return null;
@@ -1542,6 +1546,22 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         } else {
             b.startCall("getRoot()", model().interceptOutgoingValue).string(value).end();
         }
+    }
+
+    private TypeMirror emitLoadStackValue(CodeTreeBuilder b, String resultLocalName) {
+        b.startDeclaration(type(Object.class), resultLocalName);
+        BytecodeRootNodeElement.startGetFrameUnsafe(b, "frame", type(Object.class));
+        b.startGroup().string("sp - 1 - ").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.findImmediate(ImmediateKind.SHORT, "offset"))).end();
+        b.end(); // getFrameUnsafe
+        b.end(); // declaration
+        return type(Object.class);
+    }
+
+    private TypeMirror emitStoreStackValue(CodeTreeBuilder b) {
+        b.declaration(type(int.class), "offset", BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.findImmediate(ImmediateKind.SHORT, "offset")));
+        b.declaration(parent.getStackPointerType(), "targetIndex", "sp - 1 - offset");
+        b.statement(BytecodeRootNodeElement.setFrameObject("targetIndex", instruction.signature.singleDynamicOperand().localName()));
+        return null;
     }
 
     private TypeMirror emitTagLeave(CodeTreeBuilder b, ExecutionMode mode) {

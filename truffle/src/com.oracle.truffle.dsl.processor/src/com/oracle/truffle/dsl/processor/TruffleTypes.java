@@ -403,6 +403,7 @@ public class TruffleTypes {
     public static final String BytecodeEncodingException_Name = "com.oracle.truffle.api.bytecode.BytecodeEncodingException";
     public static final String BytecodeLabel_Name = "com.oracle.truffle.api.bytecode.BytecodeLabel";
     public static final String BytecodeLocal_Name = "com.oracle.truffle.api.bytecode.BytecodeLocal";
+    public static final String StackValue_Name = "com.oracle.truffle.api.bytecode.StackValue";
     public static final String BytecodeParser_Name = "com.oracle.truffle.api.bytecode.BytecodeParser";
     public static final String BytecodeRootNode_Name = "com.oracle.truffle.api.bytecode.BytecodeRootNode";
     public static final String BytecodeRootNodes_Name = "com.oracle.truffle.api.bytecode.BytecodeRootNodes";
@@ -479,6 +480,7 @@ public class TruffleTypes {
     public final DeclaredType BytecodeConfig_Builder = c.getDeclaredTypeOptional(BytecodeConfig_Builder_Name);
     public final DeclaredType BytecodeLabel = c.getDeclaredTypeOptional(BytecodeLabel_Name);
     public final DeclaredType BytecodeLocal = c.getDeclaredTypeOptional(BytecodeLocal_Name);
+    public final DeclaredType StackValue = c.getDeclaredTypeOptional(StackValue_Name);
     public final DeclaredType BytecodeParser = c.getDeclaredTypeOptional(BytecodeParser_Name);
     public final DeclaredType BytecodeRootNode = c.getDeclaredTypeOptional(BytecodeRootNode_Name);
     public final DeclaredType BytecodeRootNodes = c.getDeclaredTypeOptional(BytecodeRootNodes_Name);

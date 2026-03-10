@@ -60,6 +60,7 @@ import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.LocalVariable;
+import com.oracle.truffle.api.bytecode.StackValue;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -204,6 +205,43 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
         }
         assertEquals(42L, node.getCallTarget().call());
 
+    }
+
+    @Test
+    public void testLoadStackValuePop() {
+        BasicInterpreter node = parseNode("loadStackValuePop", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            b.beginBindStackValue();
+            b.emitLoadConstant(123L);
+            StackValue x = b.endBindStackValue();
+
+            // this result is popped.
+            b.emitLoadStackValue(x);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "load.constant",
+                            "load.constant",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "load.constant",
+                            "load.stackvalue",
+                            "pop",
+                            "load.constant",
+                            "return");
+        }
+        assertEquals(42L, node.getCallTarget().call());
     }
 
     @Test

@@ -724,6 +724,10 @@ meth public abstract java.util.List<com.oracle.truffle.api.bytecode.SourceInform
 meth public final java.lang.String toString()
 supr com.oracle.truffle.api.bytecode.SourceInformation
 
+CLSS public abstract com.oracle.truffle.api.bytecode.StackValue
+cons public init(java.lang.Object)
+supr java.lang.Object
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.StoreBytecodeIndex
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
