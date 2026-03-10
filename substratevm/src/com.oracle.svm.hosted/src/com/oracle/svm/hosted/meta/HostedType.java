@@ -228,6 +228,14 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return RuntimeClassLoading.isSupported() ? getCremaOpenTypeWorldDispatchTables() : getVTable();
     }
 
+    public int getInterpreterClassVTableLength() {
+        HostedMethod[] interpreterDispatchTable = getInterpreterDispatchTable();
+        if (itableStartingOffsets.length > 0) {
+            return itableStartingOffsets[0];
+        }
+        return interpreterDispatchTable.length;
+    }
+
     @Override
     public int getTypeID() {
         assert typeID != INVALID_TYPECHECK_ID;

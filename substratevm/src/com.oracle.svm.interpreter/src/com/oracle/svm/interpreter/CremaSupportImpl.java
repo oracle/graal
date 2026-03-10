@@ -378,7 +378,7 @@ public class CremaSupportImpl implements CremaSupport {
          */
         InterpreterResolvedJavaMethod[] completeVTable = dispatchTable.cremaVTable(transitiveSuperInterfaces).toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
         assert completeVTable.length == hubNumVTableEntries;
-        thisType.setVtable(completeVTable);
+        thisType.setVtable(completeVTable, dispatchTable.vtableLength());
         fillVTable(hub, completeVTable);
 
         thisType.setDeclaredMethods(dispatchTable.declaredMethods());
@@ -621,7 +621,7 @@ public class CremaSupportImpl implements CremaSupport {
                         componentType, superType, interfaces, null,
                         DynamicHub.toClass(arrayHub), false);
 
-        thisType.setVtable(cremaVTable);
+        thisType.setVtable(cremaVTable, objectArrayType.getClassVtableLength());
         thisType.setDeclaredMethods(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
         thisType.setDeclaredFields(InterpreterResolvedJavaField.EMPTY_ARRAY);
         fillVTable(arrayHub, cremaVTable);
@@ -913,17 +913,10 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         private static List<InterpreterResolvedJavaMethod> computeParentTable(Class<?> superClass) {
-            DynamicHub superHub = DynamicHub.fromClass(superClass);
-            InterpreterResolvedObjectType superType = (InterpreterResolvedObjectType) superHub.getInterpreterType();
+            InterpreterResolvedObjectType superType = (InterpreterResolvedObjectType) DynamicHub.fromClass(superClass).getInterpreterType();
             InterpreterResolvedJavaMethod[] superVTableMirror = superType.getVtable();
-            // Computes the size of the parent's vtable, without the trailing itables.
-            long vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
-            long minOffset = superVTableMirror.length * vTableEntrySize;
-            int[] typeSlots = superHub.getOpenTypeWorldTypeCheckSlots();
-            for (int i = superHub.getNumClassTypes(); i < typeSlots.length; i += 2) {
-                minOffset = Math.min(minOffset, typeSlots[i + 1]);
-            }
-            int superTableLen = Math.toIntExact(minOffset / vTableEntrySize);
+            int superTableLen = superType.getClassVtableLength();
+            VMError.guarantee(superTableLen >= 0 && superTableLen <= superVTableMirror.length, "Invalid parent table length");
             InterpreterResolvedJavaMethod[] superTable = Arrays.copyOf(superVTableMirror, superTableLen);
             return Arrays.asList(superTable);
         }
