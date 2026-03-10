@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,6 +82,18 @@ public final class Bytes {
      */
     public static int beU2(byte[] data, int bci) {
         return ((data[bci] & 0xff) << 8) | (data[bci + 1] & 0xff);
+    }
+
+    /**
+     * Writes an unsigned 2-byte big-endian value.
+     *
+     * @param data the array containing the data
+     * @param bci the start index of where to write the value
+     * @param value the value to write (only the 2 least significant bytes are stored)
+     */
+    public static void beU2(byte[] data, int bci, int value) {
+        data[bci] = (byte) ((value >> 8) & 0xff);
+        data[bci + 1] = (byte) (value & 0xff);
     }
 
     /**
