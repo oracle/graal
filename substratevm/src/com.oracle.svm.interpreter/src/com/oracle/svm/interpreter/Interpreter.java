@@ -58,6 +58,7 @@ import static com.oracle.svm.interpreter.EspressoFrame.setLocalObject;
 import static com.oracle.svm.interpreter.EspressoFrame.setLocalObjectOrReturnAddress;
 import static com.oracle.svm.interpreter.EspressoFrame.startingStackOffset;
 import static com.oracle.svm.interpreter.EspressoFrame.swapSingle;
+import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterToVM.nullCheck;
 import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.AALOAD;
@@ -404,21 +405,21 @@ public final class Interpreter {
     public static final ThreadLocal<Integer> logIndent = ThreadLocal.withInitial(() -> 0);
 
     private static int getLogIndent() {
-        if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (InterpreterTraceSupport.getValue()) {
             return logIndent.get();
         }
         return 0;
     }
 
     private static void setLogIndent(int indent) {
-        if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (InterpreterTraceSupport.getValue()) {
             logIndent.set(indent);
         }
     }
 
     private static void traceInterpreterEnter(InterpreterResolvedJavaMethod method, int indent, int curBCI, int top) {
         /* arguments to Log methods might have side-effects */
-        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (!InterpreterTraceSupport.getValue()) {
             return;
         }
 
@@ -435,7 +436,7 @@ public final class Interpreter {
 
     private static void traceInterpreterReturn(InterpreterResolvedJavaMethod method, int indent, int curBCI, int top) {
         /* arguments to Log methods might have side-effects */
-        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (!InterpreterTraceSupport.getValue()) {
             return;
         }
 
@@ -452,7 +453,7 @@ public final class Interpreter {
 
     private static void traceInterpreterInstruction(InterpreterFrame frame, int indent, int curBCI, int top, int curOpcode) {
         /* arguments to Log methods might have side-effects */
-        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (!InterpreterTraceSupport.getValue()) {
             return;
         }
 
@@ -467,7 +468,7 @@ public final class Interpreter {
 
     private static void traceInterpreterException(InterpreterResolvedJavaMethod method, int indent, int curBCI, int top) {
         /* arguments to Log methods might have side-effects */
-        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (!InterpreterTraceSupport.getValue()) {
             return;
         }
 
@@ -484,7 +485,7 @@ public final class Interpreter {
 
     private static void traceIntrinsicEnter(InterpreterResolvedJavaMethod method, int indent, SignaturePolymorphicIntrinsic intrinsic) {
         /* arguments to Log methods might have side-effects */
-        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (!InterpreterTraceSupport.getValue()) {
             return;
         }
 
@@ -501,7 +502,7 @@ public final class Interpreter {
 
     private static void traceInvokeBasic(InterpreterResolvedJavaMethod target, int indent) {
         /* arguments to Log methods might have side-effects */
-        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (!InterpreterTraceSupport.getValue()) {
             return;
         }
 
@@ -516,7 +517,7 @@ public final class Interpreter {
 
     private static void traceLinkTo(InterpreterResolvedJavaMethod target, SignaturePolymorphicIntrinsic intrinsic, int indent) {
         /* arguments to Log methods might have side-effects */
-        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (!InterpreterTraceSupport.getValue()) {
             return;
         }
 
@@ -1490,22 +1491,33 @@ public final class Interpreter {
             InterpreterResolvedJavaMethod symbolicResolution = Interpreter.resolveMethod(method, opcode, cpi);
             InterpreterResolvedJavaType symbolicHolder = Interpreter.resolveSymbolicHolder(method, opcode, cpi);
             if (symbolicHolder == null) {
-                traceInterpreter()
-                                .string("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ")
-                                .string(method.toString());
+                if (InterpreterTraceSupport.getValue()) {
+                    traceInterpreter()
+                                    .string("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ")
+                                    .string(method.toString()).newline();
+                }
                 // If unresolvable, provide symbolic resolution's holder as best-effort.
                 symbolicHolder = symbolicResolution.getDeclaringClass();
             }
+            try {
+                ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(
+                                CremaRuntimeAccess.getInstance(),
+                                method.getDeclaringClass(),
+                                symbolicResolution,
+                                CallSiteType.fromOpCode(opcode),
+                                symbolicHolder);
 
-            ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(
-                            CremaRuntimeAccess.getInstance(),
-                            method.getDeclaringClass(),
-                            symbolicResolution,
-                            CallSiteType.fromOpCode(opcode),
-                            symbolicHolder);
+                seedMethod = resolvedCall.getResolvedMethod();
+                callKind = resolvedCall.getCallKind();
+            } catch (Throwable e) {
+                throw SemanticJavaException.raise(e);
+            }
+            if (InterpreterTraceSupport.getValue()) {
+                traceInterpreter().string("Linking for call site of ").string(Bytecodes.nameOf(opcode)).string(" with resolved cp entry ").string(symbolicResolution.toString()).string(":")
+                                .newline();
+                traceInterpreter().string("  ").string(callKind.toString()).string(": ").string(seedMethod.toString()).newline();
+            }
 
-            seedMethod = resolvedCall.getResolvedMethod();
-            callKind = resolvedCall.getCallKind();
         }
         boolean hasReceiver = !seedMethod.isStatic();
 
@@ -1582,6 +1594,18 @@ public final class Interpreter {
         }
     }
 
+    /**
+     * For a member constant ({@code CONSTANT_Methodref_info},
+     * {@code CONSTANT_InterfaceMethodref_info}, or {@code CONSTANT_Fieldref_info}) entry in the
+     * constant pool at index {@code cpi}, resolves the class entry at index {@code class_index}.
+     * <p>
+     * Note that this <i>does not</i> resolve the member constant itself, only its holder class.
+     *
+     * @return The resolved class constant if successful, or {@code null} if the AOT constant pool
+     *         of the {@code caller} did not record the necessary entries.
+     * @throws SemanticJavaException Any exception thrown during resolution will be rethrown wrapped
+     *             in this exception type.
+     */
     public static InterpreterResolvedJavaType resolveSymbolicHolder(InterpreterResolvedJavaMethod caller, int opcode, char cpi) {
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
             return null; // CPI 0 is a marker for unresolvable AND unknown entry

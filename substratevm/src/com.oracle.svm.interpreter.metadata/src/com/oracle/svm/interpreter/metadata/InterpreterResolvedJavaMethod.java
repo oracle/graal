@@ -183,7 +183,8 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      */
     private int methodId;
 
-    @Platforms(Platform.HOSTED_ONLY.class) public boolean needMethodBody;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public boolean needMethodBody;
 
     private final SignaturePolymorphicIntrinsic intrinsic;
 
@@ -385,18 +386,25 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     }
 
     @Override
-    public InterpreterResolvedJavaMethod findSignaturePolymorphicIntrinsic(Symbol<Signature> methodSignature) {
-        return (InterpreterResolvedJavaMethod) CremaSupport.singleton().findMethodHandleIntrinsic(this, methodSignature);
-    }
-
-    @Override
     public final boolean isDeclaredSignaturePolymorphic() {
         // Note: might not be true for the instantiation of polymorphic signature intrinsics.
         return (flags & ACC_SIGNATURE_POLYMORPHIC) != 0;
     }
 
     @Override
+    public InterpreterResolvedJavaMethod findSignaturePolymorphicIntrinsic(Symbol<Signature> methodSignature) {
+        if (!RuntimeClassLoading.isSupported()) {
+            throw VMError.shouldNotReachHere("Signature polymorphic method handling is unsupported without runtime class loading enabled.");
+        }
+
+        return (InterpreterResolvedJavaMethod) CremaSupport.singleton().findMethodHandleIntrinsic(this, methodSignature);
+    }
+
+    @Override
     public final InterpreterResolvedJavaMethod createSignaturePolymorphicIntrinsic(Symbol<Signature> newSignature) {
+        if (!RuntimeClassLoading.isSupported()) {
+            throw VMError.shouldNotReachHere("Unable to create signature polymorphic intrinsic when runtime class loading is disabled.");
+        }
         SignaturePolymorphicIntrinsic iid = SignaturePolymorphicIntrinsic.getId(this);
         assert iid != null;
         assert intrinsic == null;
@@ -422,6 +430,10 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     public final SignaturePolymorphicIntrinsic getSignaturePolymorphicIntrinsic() {
         return intrinsic;
+    }
+
+    public final boolean isSignaturePolymorphicIntrinsic() {
+        return getSignaturePolymorphicIntrinsic() != null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -918,15 +930,6 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     }
 
     public CallKind getCallKind() {
-        if (isStatic()) {
-            return CallKind.STATIC;
-        }
-        if (isPrivate() || isFinalFlagSet() || getDeclaringClass().isFinalFlagSet()) {
-            return CallKind.DIRECT;
-        }
-        if (getDeclaringClass().isInterface()) {
-            return CallKind.ITABLE_LOOKUP;
-        }
-        return CallKind.VTABLE_LOOKUP;
+        return CallKind.getCallKind(this);
     }
 }
