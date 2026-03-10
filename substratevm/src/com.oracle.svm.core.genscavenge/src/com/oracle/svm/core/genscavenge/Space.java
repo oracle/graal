@@ -39,9 +39,11 @@ import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A Space is a collection of HeapChunks.
@@ -215,11 +217,7 @@ public final class Space {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void appendAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
-        /*
-         * This method is called either during a GC or when detaching threads. So, it cannot
-         * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
-         */
-        VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.", true);
+        assert VMOperation.isInProgressAtSafepoint();
         appendAlignedHeapChunkUnsafe(aChunk);
     }
 
@@ -270,10 +268,10 @@ public final class Space {
     @Uninterruptible(reason = "GC must see a consistent state.")
     void appendUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk) {
         /*
-         * This method is used while detaching a thread, so it cannot guarantee that it is inside a
-         * VMOperation, only that there is some mutual exclusion.
+         * This method is used both during a VM operation and while detaching a thread. So, it
+         * cannot check more than that there is some mutual exclusion.
          */
-        VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.", true);
+        VMError.guarantee(ThreadsLock.hasWriteAccess(), "Trying to append an unaligned chunk but no mutual exclusion.");
 
         UnalignedHeapChunk.UnalignedHeader oldLast = getLastUnalignedHeapChunk();
         HeapChunk.setSpace(uChunk, this);

@@ -47,7 +47,6 @@ import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -70,7 +69,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SystemGCEvent;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -87,6 +85,8 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -433,7 +433,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
+    @Uninterruptible(reason = "Current thread holds the ThreadsLock with exclusive write access.")
     public void detachThread(IsolateThread isolateThread) {
         TlabSupport.disableAndFlushForThread(isolateThread);
     }

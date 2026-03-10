@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import static com.oracle.svm.core.genscavenge.HeapChunk.CHUNK_HEADER_TOP_IDENTITY;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.nodes.extended.MembarNode.FenceKind;
 
 import org.graalvm.nativeimage.Platform;
@@ -35,19 +35,19 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.internal.misc.Unsafe;
-import org.graalvm.word.impl.Word;
 
 /**
  * Per-isolate bump-pointer allocation inside {@link AlignedHeapChunk}. First the allocation is
@@ -231,7 +231,7 @@ public final class HeapAllocation {
     }
 
     public void retireChunksToEden() {
-        VMOperation.guaranteeInProgressAtSafepoint("HeapAllocation.retireChunksToEden");
+        assert VMOperation.isInProgressAtSafepoint();
 
         AlignedHeader chunk = currentChunk;
         currentChunk = Word.nullPointer();

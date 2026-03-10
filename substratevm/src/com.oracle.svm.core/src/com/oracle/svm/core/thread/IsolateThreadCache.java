@@ -155,7 +155,7 @@ public final class IsolateThreadCache {
      * 
      * Isolates are compared using their {@link Isolates#getIsolateId() identifiers}. This is
      * necessary because if
-     * {@link VMThreads#detachAllThreadsExceptCurrentWithoutCleanupForTearDown()} is used, an OS
+     * {@link VMThreads#detachAllExternallyStartedThreadsWithoutCleanupForTearDown()} is used, an OS
      * thread may outlive the {@link Isolate} without properly detaching itself (i.e. the cache
      * won't be cleared). The {@link Isolate} pointer may be then reused which could lead to an
      * incorrect cache hit.
