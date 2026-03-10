@@ -17,6 +17,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-69929: Reset a `CallTarget`’s execution profile when its associated nmethod is invalidated by HotSpot due to code cache “cold” flushing heuristics.
 * GR-72991: If a `PolyglotException` wraps an exception that has a cause according to the interop protocol (`InteropLibrary.getExceptionCause`), then calling `getCause()` on that `PolyglotExceptions' will return a `PolyglotException` representing that cause. Note that for `PolyglotException` objects that wrap a host exception that has a cause, this means that `getCause` returns a `PolyglotException` that wraps this cause.
 * GR-71940: `Engine.getVersion()` now return the Truffle API version rather than the GraalVM version.
+* GR-73953: Polyglot 25.1 is no longer backwards compatible with older GraalVM versions. The minimum required GraalVM version is now 25.1. Previously, polyglot was compatible with GraalVM starting from version 23.1.2.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

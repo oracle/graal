@@ -79,7 +79,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-73519: `InteropLibrary#getExceptionCause` may return an interop null object if the exception supports a cause but the cause itself is `null`.
 * GR-44465: Added `TruffleString.FromZeroTerminatedNativePointerNode` to support creating TruffleStrings from zero-terminated native buffers.
 * GR-72022: Added `@GenerateBytecode(enableTailCallHandlers=true)` to enable the tail call bytecode handler annotations.
-* GR-72022: Deprecated `BytecodeDebugListener.beforeInstructionExecute(...)` and `BytecodeDebugListener.afterInstructionExecute(...)`. Please use instrumentation based instruction tracing instead. 
+* GR-72022: Deprecated `BytecodeDebugListener.beforeInstructionExecute(...)` and `BytecodeDebugListener.afterInstructionExecute(...)`. Please use instrumentation based instruction tracing instead.
+* GR-73953: Truffle 25.1 is no longer backwards compatible with older GraalVM versions. The minimum required GraalVM version is now 25.1. Previously, Truffle was compatible with GraalVM starting from version 23.1.2.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.
