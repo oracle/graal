@@ -40,6 +40,7 @@ import com.oracle.objectfile.debugentry.StackValueEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.amd64.AMD64;
 
 import java.util.List;
@@ -190,7 +191,7 @@ final class CVSymbolSubsectionBuilder {
     void emitLocal(LocalEntry info, Map<LocalEntry, List<Range>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam,
                     String procName, Range range) {
         short flags = isParam ? CVSymbolSubrecord.CVSymbolLocalRecord.S_LOCAL_FLAGS_IS_PARAM : 0;
-        List<Range> ranges = varRangeMap.get(info);
+        List<Range> ranges = varRangeMap.getOrDefault(info, List.of());
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, name, typeIndex, flags));
         long currentHigh = Integer.MIN_VALUE;
         int registerOrSlot = 0; /* -slot or +register or 0=unknown */
@@ -227,7 +228,7 @@ final class CVSymbolSubsectionBuilder {
                          */
                         if (cvreg >= 0) {
                             currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()),
-                                            (short) (subrange.getHi() - subrange.getLo()), cvreg);
+                                            (short) Math.min(subrange.getHi() - subrange.getLo(), NumUtil.maxValueUnsigned(Short.SIZE)), cvreg);
                             addSymbolRecord(currentRecord);
                         } else {
                             cvDebugInfo.getCVSymbolSection().warn("Register %s unimplemented in Windows debug support", v.toString());
@@ -235,8 +236,7 @@ final class CVSymbolSubsectionBuilder {
                     }
                     case StackValueEntry v -> {
                         currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, (int) (subrange.getLo() - range.getLo()),
-                                        (short) (subrange.getHi() - subrange.getLo()),
-                                        v.stackSlot());
+                                        (short) Math.min(subrange.getHi() - subrange.getLo(), NumUtil.maxValueUnsigned(Short.SIZE)), v.stackSlot());
                         addSymbolRecord(currentRecord);
                     }
                     case ConstantValueEntry v -> {

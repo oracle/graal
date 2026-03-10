@@ -317,9 +317,9 @@ abstract class CVTypeRecord {
 
     static final class CVTypeMFuncIdRecord extends CVTypeRecord {
 
-        int parentTypeIdx;
-        int typeIdx;
-        String name;
+        private final int parentTypeIdx;
+        private final int typeIdx;
+        private final String name;
 
         CVTypeMFuncIdRecord(int parentTypeIdx, int typeIdx, String name) {
             super(LF_MFUNC_ID);

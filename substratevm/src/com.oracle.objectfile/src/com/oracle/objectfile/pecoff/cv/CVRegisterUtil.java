@@ -188,11 +188,7 @@ public class CVRegisterUtil {
         }
 
         CvRegDef(Register r, short cv4, short cv8) {
-            this.register = r;
-            this.cv1 = -1;
-            this.cv2 = -1;
-            this.cv4 = cv4;
-            this.cv8 = cv8;
+            this(r, (short) -1, (short) -1, cv4, cv8);
         }
     }
 
