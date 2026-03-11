@@ -229,11 +229,15 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     public int getInterpreterClassVTableLength() {
-        HostedMethod[] interpreterDispatchTable = getInterpreterDispatchTable();
-        if (itableStartingOffsets.length > 0) {
+        if (itableStartingOffsets != null && itableStartingOffsets.length > 0) {
             return itableStartingOffsets[0];
         }
-        return interpreterDispatchTable.length;
+        /*
+         * i-table offsets are only initialized for open-world dispatch tables. Otherwise the
+         * interpreter dispatch table is just the class vtable, so its full length is correct.
+         */
+        assert SubstrateOptions.useClosedTypeWorldHubLayout() || itableStartingOffsets != null : this;
+        return getInterpreterDispatchTable().length;
     }
 
     @Override
