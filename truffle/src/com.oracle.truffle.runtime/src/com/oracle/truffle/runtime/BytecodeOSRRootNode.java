@@ -40,64 +40,86 @@
  */
 package com.oracle.truffle.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
 
-final class BytecodeOSRRootNode extends BaseOSRRootNode {
+abstract sealed class BytecodeOSRRootNode extends BaseOSRRootNode permits BytecodeOSRRootNode.VirtualFrameOSRRootNode, BytecodeOSRRootNode.ParentFrameOSRRootNode {
     private final long target;
     private final Object interpreterState;
-    @CompilationFinal private boolean seenMaterializedFrame;
-
     private final Object entryTagsCache;
 
     BytecodeOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, long target, Object interpreterState, Object entryTagsCache) {
         super(language, frameDescriptor, bytecodeOSRNode);
         this.target = target;
         this.interpreterState = interpreterState;
-        this.seenMaterializedFrame = materializeCalled(frameDescriptor);
         this.entryTagsCache = entryTagsCache;
     }
 
-    private static boolean materializeCalled(FrameDescriptor frameDescriptor) {
-        return ((OptimizedTruffleRuntime) Truffle.getRuntime()).getFrameMaterializeCalled(frameDescriptor);
+    final long getTarget() {
+        return target;
+    }
+
+    final Object getInterpreterState() {
+        return interpreterState;
+    }
+
+    final BytecodeOSRNode getOSRNode() {
+        return (BytecodeOSRNode) loopNode;
     }
 
     Object getEntryTagsCache() {
         return entryTagsCache;
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public Object executeOSR(VirtualFrame frame) {
-        BytecodeOSRNode osrNode = (BytecodeOSRNode) loopNode;
-        VirtualFrame parentFrame = (VirtualFrame) osrNode.restoreParentFrameFromArguments(frame.getArguments());
+    abstract boolean usesParentFrame();
 
-        if (!seenMaterializedFrame) {
-            // We aren't expecting a materialized frame. If we get one, deoptimize.
-            if (materializeCalled(parentFrame.getFrameDescriptor())) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                seenMaterializedFrame = true;
-            }
+    static final class VirtualFrameOSRRootNode extends BytecodeOSRRootNode {
+        VirtualFrameOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, long target, Object interpreterState, Object entryTagsCache) {
+            super(language, frameDescriptor, bytecodeOSRNode, target, interpreterState, entryTagsCache);
         }
 
-        if (seenMaterializedFrame) {
-            // If materialize has ever happened, just use the parent frame.
-            // This will be slower, since we cannot do scalar replacement on the frame, but it is
-            // required to prevent the materialized frame from getting out of sync during OSR.
-            return osrNode.executeOSR(parentFrame, target, interpreterState);
-        } else {
-            osrNode.copyIntoOSRFrame(frame, parentFrame, target, entryTagsCache);
+        @Override
+        @SuppressWarnings("deprecation")
+        public Object executeOSR(VirtualFrame frame) {
+            BytecodeOSRNode osrNode = getOSRNode();
+            VirtualFrame parentFrame = (VirtualFrame) osrNode.restoreParentFrameFromArguments(frame.getArguments());
+            osrNode.copyIntoOSRFrame(frame, parentFrame, getTarget(), getEntryTagsCache());
             try {
-                return osrNode.executeOSR(frame, target, interpreterState);
+                return osrNode.executeOSR(frame, getTarget(), getInterpreterState());
             } finally {
                 osrNode.restoreParentFrame(frame, parentFrame);
             }
+        }
+
+        @Override
+        boolean usesParentFrame() {
+            return false;
+        }
+    }
+
+    static final class ParentFrameOSRRootNode extends BytecodeOSRRootNode {
+        ParentFrameOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, long target, Object interpreterState, Object entryTagsCache) {
+            super(language, frameDescriptor, bytecodeOSRNode, target, interpreterState, entryTagsCache);
+        }
+
+        @Override
+        protected VirtualFrame getFrame(VirtualFrame frame) {
+            return (VirtualFrame) getOSRNode().restoreParentFrameFromArguments(frame.getArguments());
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public Object executeOSR(VirtualFrame frame) {
+            VirtualFrame parentFrame = getFrame(frame);
+            return getOSRNode().executeOSR(parentFrame, getTarget(), getInterpreterState());
+        }
+
+        @Override
+        boolean usesParentFrame() {
+            return true;
         }
     }
 

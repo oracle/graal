@@ -103,6 +103,18 @@ public abstract class BaseOSRRootNode extends RootNode {
     }
 
     /**
+     * Returns the effective execution frame for this OSR root.
+     * <p>
+     * The frame passed to {@link #execute(VirtualFrame)} may differ from the frame used by
+     * {@link #executeOSR(VirtualFrame)} to execute guest code. The returned frame is used for
+     * operations that should reflect the effective execution frame, such as attaching lazy
+     * exception stack trace information.
+     */
+    protected VirtualFrame getFrame(VirtualFrame frame) {
+        return frame;
+    }
+
+    /**
      * Entrypoint for OSR root nodes.
      */
     protected abstract Object executeOSR(VirtualFrame frame);
