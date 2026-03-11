@@ -44,10 +44,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -85,7 +85,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @Before
     @Override
     public void before() {
-        setupContext("engine.MultiTier", "false",
+        setupDefaultContext();
+    }
+
+    public Context setupDefaultContext() {
+        return setupContext("engine.MultiTier", "false",
                         "engine.OSR", "true",
                         "engine.OSRCompilationThreshold", String.valueOf(OSR_THRESHOLD),
                         "engine.OSRMaxCompilationReAttempts", String.valueOf(1),
@@ -406,6 +410,40 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
+     * Test that stack walking still observes the up-to-date frame when bytecode OSR reuses the
+     * parent frame.
+     */
+    @Test
+    public void testStackTraceUsesParentFrameWhenMaterialized() {
+        var frameBuilder = FrameDescriptor.newBuilder();
+        CheckStackWalkFrame osrNode = new CheckStackWalkFrame(frameBuilder, false);
+        RootNode rootNode = new Program(osrNode, frameBuilder.build());
+        runtime.markFrameMaterializeCalled(rootNode.getFrameDescriptor());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        osrNode.callTarget = target; // set the call target so stack walking can use it
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(2 * OSR_THRESHOLD));
+    }
+
+    /*
+     * Test that bytecode OSR can transition from using the virtual frame to the parent frame when
+     * the frame is marked materialized.
+     */
+    @Test
+    public void testStackTraceSwitchesToParentFrameAfterMaterialization() {
+        var frameBuilder = FrameDescriptor.newBuilder();
+        CheckStackWalkFrame osrNode = new CheckStackWalkFrame(frameBuilder, true);
+        RootNode rootNode = new Program(osrNode, frameBuilder.build());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        osrNode.callTarget = target; // set the call target so stack walking can use it
+
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(2 * OSR_THRESHOLD));
+
+        runtime.markFrameMaterializeCalled(rootNode.getFrameDescriptor());
+        osrNode.expectVirtualFrame = false;
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(2 * OSR_THRESHOLD));
+    }
+
+    /*
      * Test that the topmost OSR frame is used in the Truffle stack trace when there are multiple
      * levels of OSR.
      */
@@ -440,6 +478,26 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
+     * Same as testGetStackTraceInsideExecuteOSR, but marks the parent frame as materialized so it
+     * gets used in OSR.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testGetStackTraceInsideExecuteOSRMaterialized() {
+        var frameBuilder = FrameDescriptor.newBuilder();
+        GetStackTraceInsideExecuteOSR osrNode = new GetStackTraceInsideExecuteOSR(frameBuilder);
+        RootNode rootNode = new Program(osrNode, frameBuilder.build());
+        runtime.markFrameMaterializeCalled(rootNode.getFrameDescriptor());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+
+        List<TruffleStackTraceElement> trace = (List<TruffleStackTraceElement>) target.call();
+        Assert.assertEquals(1, trace.size());
+        Assert.assertEquals(target, trace.getFirst().getTarget());
+        Assert.assertEquals(osrNode, trace.getFirst().getLocation());
+        Assert.assertEquals(BaseGetStackTraceNode.OSR_VALUE, trace.getFirst().getFrame().getInt(osrNode.valueSlot));
+    }
+
+    /*
      * Test that we see a single stack trace element when a stack trace is materialized after
      * throwing an exception out of execute.
      */
@@ -448,6 +506,29 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         var frameBuilder = FrameDescriptor.newBuilder();
         ThrowOutOfExecuteOSRAndExecute osrNode = new ThrowOutOfExecuteOSRAndExecute(frameBuilder);
         RootNode rootNode = new Program(osrNode, frameBuilder.build());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        try {
+            target.call();
+            fail("No exception was thrown.");
+        } catch (OSRStackTraceException e) {
+            List<TruffleStackTraceElement> trace = TruffleStackTrace.getStackTrace(e);
+            Assert.assertEquals(1, trace.size());
+            Assert.assertEquals(target, trace.getFirst().getTarget());
+            Assert.assertEquals(osrNode, trace.getFirst().getLocation());
+            Assert.assertEquals(BaseGetStackTraceNode.OSR_VALUE, trace.getFirst().getFrame().getInt(osrNode.valueSlot));
+        }
+    }
+
+    /*
+     * Same as testGetStackTraceThrownOutOfExecute, but marks the parent frame as materialized so it
+     * gets used in OSR.
+     */
+    @Test
+    public void testGetStackTraceThrownOutOfExecuteMaterialized() {
+        var frameBuilder = FrameDescriptor.newBuilder();
+        ThrowOutOfExecuteOSRAndExecute osrNode = new ThrowOutOfExecuteOSRAndExecute(frameBuilder);
+        RootNode rootNode = new Program(osrNode, frameBuilder.build());
+        runtime.markFrameMaterializeCalled(rootNode.getFrameDescriptor());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         try {
             target.call();
@@ -485,10 +566,10 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testStackTraceElementLimitThrownOutOfExecute() {
-        // Run in context so that default countsTowardsStackTraceLimit returns true.
-        try (Context ctx = Context.newBuilder(LANGUAGE).build()) {
+        try (Context ctx = setupDefaultContext()) {
+            // Initialize so that RootNode#countsTowardStackTraceLimit returns true; the OSR root
+            // node should override countsTowardStackTraceLimit.
             ctx.initialize(LANGUAGE);
-            ctx.enter();
             var frameBuilder = FrameDescriptor.newBuilder();
             ThrowOutOfExecuteOSRAndExecute osrNode = new ThrowOutOfExecuteOSRAndExecute(frameBuilder, 1);
             RootNode rootNode = new Program(Language.REFERENCE.get(null), osrNode, frameBuilder.build());
@@ -510,10 +591,10 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @Test
     @SuppressWarnings("unchecked")
     public void testStackTraceElementLimitStackTraceInExecuteOSR() {
-        // Run in context so that default countsTowardsStackTraceLimit returns true.
-        try (Context ctx = Context.newBuilder(LANGUAGE).build()) {
+        try (Context ctx = setupDefaultContext()) {
+            // Initialize so that RootNode#countsTowardStackTraceLimit returns true; the OSR root
+            // node should override countsTowardStackTraceLimit.
             ctx.initialize(LANGUAGE);
-            ctx.enter();
             var frameBuilder = FrameDescriptor.newBuilder();
             GetStackTraceInsideExecuteOSR osrNode = new GetStackTraceInsideExecuteOSR(frameBuilder, 1);
             RootNode calleeRoot = new Program(Language.REFERENCE.get(null), osrNode, frameBuilder.build());
@@ -1371,11 +1452,17 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class CheckStackWalkFrame extends StackWalkingFixedIterationLoop {
+        public boolean expectVirtualFrame;
         public CallTarget callTarget; // call target containing this node (must be set after
                                       // construction due to circular dependence)
 
         public CheckStackWalkFrame(FrameDescriptor.Builder frameBuilder) {
+            this(frameBuilder, true);
+        }
+
+        public CheckStackWalkFrame(FrameDescriptor.Builder frameBuilder, boolean expectVirtualFrame) {
             super(frameBuilder);
+            this.expectVirtualFrame = expectVirtualFrame;
         }
 
         @Override
@@ -1385,12 +1472,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 public Void visitFrame(FrameInstance frameInstance) {
                     if (frameInstance.getCallTarget() == callTarget) {
                         try {
-                            // The OSR frame will be up to date; the parent frame will not. We
-                            // should get the OSR frame here.
+                            // We should observe the up-to-date frame (not a stale parent frame).
                             int indexInFrame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY).getInt(indexSlot);
                             assertEquals(index, indexInFrame);
                             if (CompilerDirectives.inCompiledCode()) {
-                                Assert.assertTrue(frameInstance.isVirtualFrame());
+                                assertEquals(expectVirtualFrame, frameInstance.isVirtualFrame());
                             }
                         } catch (FrameSlotTypeException e) {
                             throw new IllegalStateException("Error accessing index slot");

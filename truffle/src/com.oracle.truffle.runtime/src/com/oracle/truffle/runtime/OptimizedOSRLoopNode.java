@@ -385,7 +385,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
         @Override
         protected Object executeOSR(VirtualFrame frame) {
-            VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
+            VirtualFrame parentFrame = getFrame(frame);
             OptimizedOSRLoopNode loop = getLoopNode();
             RepeatingNode loopBody = loop.repeatingNode;
             Object status;
@@ -406,6 +406,11 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
                 }
             }
             return status;
+        }
+
+        @Override
+        protected final VirtualFrame getFrame(VirtualFrame frame) {
+            return clazz.cast(frame.getArguments()[0]);
         }
 
         @Override
