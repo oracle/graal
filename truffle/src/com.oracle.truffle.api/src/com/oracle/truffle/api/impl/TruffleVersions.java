@@ -54,10 +54,10 @@ import java.nio.charset.StandardCharsets;
  */
 public final class TruffleVersions {
 
-    public static final int MIN_JDK_VERSION = 21;
-    public static final int MAX_JDK_VERSION = 29;
-    public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
-    public static final Version NEXT_VERSION_UPDATE = Version.create(29, 1);
+    public static final int MIN_JDK_VERSION = 25;
+    public static final int MAX_JDK_VERSION = 26;
+    public static final Version MIN_COMPILER_VERSION = Version.create(25, 1, 0);
+    public static final Version NEXT_VERSION_UPDATE = Version.create(25, 2);
     public static final Version TRUFFLE_API_VERSION;
     static {
         if (isVersionCheckEnabled()) {
