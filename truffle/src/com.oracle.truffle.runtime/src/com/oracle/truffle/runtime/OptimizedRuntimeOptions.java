@@ -345,6 +345,10 @@ public final class OptimizedRuntimeOptions {
     @Option(help = "Sets the time, in milliseconds, after which the impact of a compilation unit's observed execution rate is halved. (default: 300 ms)", usageSyntax = "[0, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Long> TraversingQueueRateHalfLife = new OptionKey<>(300L);
 
+    @Option(help = "Maximum time in milliseconds a queued compilation task may stay without invocation activity before it is considered stale. " +
+                    "Set to 0 to disable. (default: 100)", usageSyntax = "[0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Long> TraversingQueueStaleTaskDelay = new OptionKey<>(100L);
+
     public static OptionDescriptors getDescriptors() {
         return new OptimizedRuntimeOptionsOptionDescriptors();
     }

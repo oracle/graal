@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,6 +81,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueue
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueInvalidatedBonus;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueOSRBonus;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueRateHalfLife;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueStaleTaskDelay;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueWeightingBothTiers;
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 
@@ -166,6 +167,7 @@ public final class EngineData {
     @CompilationFinal public double traversingInvalidatedBonus;
     @CompilationFinal public double traversingOSRBonus;
     @CompilationFinal public long traversingRateHalfLifeNs;
+    @CompilationFinal public long traversingStaleTaskMaxNoActivityNs;
     @CompilationFinal public boolean propagateCallAndLoopCount;
     @CompilationFinal public int propagateCallAndLoopCountMaxDepth;
     @CompilationFinal public int maximumCompilations;
@@ -355,6 +357,7 @@ public final class EngineData {
         this.traceCompilation = options.get(TraceCompilation);
         this.traceCompilationDetails = options.get(TraceCompilationDetails);
         this.backgroundCompilation = options.get(BackgroundCompilation) && !compileAOTOnCreate;
+        traversingStaleTaskMaxNoActivityNs = backgroundCompilation ? options.get(TraversingQueueStaleTaskDelay) * 1_000_000 : 0;
         this.callThresholdInInterpreter = computeCallThresholdInInterpreter(options);
         this.callAndLoopThresholdInInterpreter = computeCallAndLoopThresholdInInterpreter(options);
         this.callThresholdInFirstTier = computeCallThresholdInFirstTier(options);
