@@ -630,13 +630,11 @@ public final class Serializers {
                     (context, in) -> {
                         InterpreterResolvedObjectType holder = context.readReference(in);
                         InterpreterResolvedJavaMethod[] vtable = context.readerFor(InterpreterResolvedJavaMethod[].class).read(context, in);
-                        int classVtableLength = LEB128.readUnsignedInt(in);
-                        return new InterpreterResolvedObjectType.VTableHolder(holder, vtable, classVtableLength);
+                        return new InterpreterResolvedObjectType.VTableHolder(holder, vtable);
                     },
                     (context, out, value) -> {
                         context.writeReference(out, value.holder);
                         context.writerFor(InterpreterResolvedJavaMethod[].class).write(context, out, value.vtable);
-                        LEB128.writeUnsignedInt(out, value.classVtableLength);
                     });
 
     static final ValueSerializer<PreparedArgumentType> PREPARED_ARGUMENT_TYPE = createSerializer(

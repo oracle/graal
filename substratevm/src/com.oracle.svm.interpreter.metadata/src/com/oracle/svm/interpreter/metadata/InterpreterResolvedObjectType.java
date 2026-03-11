@@ -76,12 +76,10 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         public InterpreterResolvedObjectType holder;
         @UnknownObjectField(availability = AfterAnalysis.class) //
         public InterpreterResolvedJavaMethod[] vtable;
-        public int classVtableLength;
 
-        public VTableHolder(InterpreterResolvedObjectType holder, InterpreterResolvedJavaMethod[] vtable, int classVtableLength) {
+        public VTableHolder(InterpreterResolvedObjectType holder, InterpreterResolvedJavaMethod[] vtable) {
             this.holder = holder;
             this.vtable = vtable;
-            this.classVtableLength = classVtableLength;
         }
     }
 
@@ -283,17 +281,8 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return vtableHolder.vtable;
     }
 
-    public final void setVtable(InterpreterResolvedJavaMethod[] vtable, int classVtableLength) {
-        // The stored table may include interface dispatch tail entries beyond the class vtable.
-        VMError.guarantee(classVtableLength >= 0 && classVtableLength <= vtable.length, "Invalid class vtable length");
-        this.vtableHolder = new VTableHolder(this, vtable, classVtableLength);
-    }
-
-    public final int getClassVtableLength() {
-        if (vtableHolder == null) {
-            return 0;
-        }
-        return vtableHolder.classVtableLength;
+    public final void setVtable(InterpreterResolvedJavaMethod[] vtable) {
+        this.vtableHolder = new VTableHolder(this, vtable);
     }
 
     @Override

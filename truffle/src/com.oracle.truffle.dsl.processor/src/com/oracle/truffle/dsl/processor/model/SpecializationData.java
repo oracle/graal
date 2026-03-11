@@ -335,7 +335,11 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public boolean hasFrameParameter() {
-        for (Parameter p : getSignatureParameters()) {
+        /*
+         * Frames are optional DSL parameters and therefore are not part of the signature parameter
+         * list.
+         */
+        for (Parameter p : getParameters()) {
             if (ElementUtils.typeEquals(p.getType(), types.VirtualFrame) || ElementUtils.typeEquals(p.getType(), types.Frame)) {
                 return true;
             }

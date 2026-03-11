@@ -66,6 +66,7 @@ public class CachedLibraryCompilationTest extends PartialEvaluationTest {
         }
     }
 
+
     abstract static class GuardNode extends Node {
 
         static int LIMIT = 0;
@@ -95,7 +96,7 @@ public class CachedLibraryCompilationTest extends PartialEvaluationTest {
                 return null;
             }
         });
-        Assert.assertEquals(3, graph.getNodes(MethodCallTargetNode.TYPE).count());
+        Assert.assertEquals(2, graph.getNodes(MethodCallTargetNode.TYPE).count());
     }
 
     abstract static class NoGuardNode extends Node {
@@ -177,7 +178,7 @@ public class CachedLibraryCompilationTest extends PartialEvaluationTest {
         };
 
         StructuredGraph graph = partialEval(testRoot);
-        Assert.assertEquals(4, graph.getNodes(MethodCallTargetNode.TYPE).count());
+        Assert.assertEquals(3, graph.getNodes(MethodCallTargetNode.TYPE).count());
     }
 
     abstract static class VarArgsLibraryNode extends Node {
