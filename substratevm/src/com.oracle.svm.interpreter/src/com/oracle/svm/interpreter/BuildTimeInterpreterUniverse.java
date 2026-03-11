@@ -940,7 +940,7 @@ public final class BuildTimeInterpreterUniverse {
                 iVTable[i] = getMethod(hostedDispatchTable[i].getWrapped());
             }
         }
-        objectType.setVtable(iVTable);
+        objectType.setVtable(iVTable, hostedType.getInterpreterClassVTableLength());
         rescanFieldInHeap.accept(objectType);
     }
 }
