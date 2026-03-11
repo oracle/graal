@@ -38,7 +38,7 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
 import com.oracle.svm.core.ForeignSupport;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;

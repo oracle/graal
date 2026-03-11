@@ -26,7 +26,7 @@ package com.oracle.svm.webimage.substitute.system;
 
 import java.util.concurrent.ForkJoinTask;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;

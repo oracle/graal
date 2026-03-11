@@ -27,13 +27,13 @@ package com.oracle.svm.hosted.code;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.code.FactoryThrowMethodHolder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -80,7 +80,7 @@ public class FactoryMethodSupport {
              * Computing the factory method name via the analysis universe ensures that type name
              * modifications, like to make lambda names unique, are incorporated in the name.
              */
-            String name = SubstrateUtil.uniqueStubName(aConstructor);
+            String name = BuilderUtil.uniqueStubName(aConstructor);
             /*
              * Computing the signature types via the analysis universe ensures that we have all
              * substitutions applied and all types already resolved.

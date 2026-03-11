@@ -29,12 +29,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.code.IsolateLeaveStub;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -115,7 +115,7 @@ public final class CEntryPointCallStubSupport {
                 assert !bb.getUniverse().sealed();
                 AnalysisMethod nativeStub = registerStubForMethod(method, () -> CEntryPointData.create(method));
                 CFunctionPointer nativeStubAddress = new MethodPointer(nativeStub);
-                String stubName = SubstrateUtil.uniqueStubName(method);
+                String stubName = BuilderUtil.uniqueStubName(method);
                 ResolvedJavaType holderClass = bb.getMetaAccess().lookupJavaType(IsolateLeaveStub.class).getWrapped();
                 CEntryPointJavaCallStubMethod stub = new CEntryPointJavaCallStubMethod(method.getWrapped(), stubName, holderClass, nativeStubAddress);
                 value = bb.getUniverse().lookup(stub);

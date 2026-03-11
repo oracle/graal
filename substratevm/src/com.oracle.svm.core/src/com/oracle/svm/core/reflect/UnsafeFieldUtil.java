@@ -27,7 +27,7 @@ package com.oracle.svm.core.reflect;
 import java.lang.reflect.Field;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;

@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -43,7 +44,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SkipStackOverflowCheck;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -191,7 +191,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
             @Override
             public String generateUniqueName(String name) {
-                return SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
+                boolean isConstructor = wrapped.isConstructor();
+                return BuilderUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, isConstructor);
             }
         };
 

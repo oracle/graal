@@ -25,7 +25,7 @@
 package com.oracle.svm.core.graal.nodes;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.type.StampFactory;

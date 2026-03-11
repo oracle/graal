@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.webimage.platform;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 public final class WebImageJSPlatform implements WebImagePlatform {
     @Override

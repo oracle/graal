@@ -27,7 +27,7 @@ package com.oracle.svm.core.reflect.target;
 import static com.oracle.svm.core.reflect.target.Util_java_lang_reflect_ReflectAccess.copyAccessibleObject;
 import static com.oracle.svm.core.reflect.target.Util_java_lang_reflect_ReflectAccess.copyExecutable;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 

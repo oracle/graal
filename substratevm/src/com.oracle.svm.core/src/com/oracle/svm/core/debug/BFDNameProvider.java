@@ -31,9 +31,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.List;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.shared.util.VMError;
@@ -83,7 +84,7 @@ public class BFDNameProvider implements UniqueShortNameProvider {
         if (isGraalImageLoader(loader)) {
             return "";
         }
-        String name = SubstrateUtil.runtimeClassLoaderNameAndId(loader);
+        String name = BuilderUtil.runtimeClassLoaderNameAndId(loader);
         // name will look like "org.foo.bar.FooBarClassLoader @1234"
         // trim it down to something more manageable
         // escaping quotes in the classlaoder name does not work in GDB

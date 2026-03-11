@@ -30,7 +30,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.hosted.NativeImageOptions;
 
 public interface CPUType {

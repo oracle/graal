@@ -28,7 +28,7 @@ package com.oracle.svm.core.reflect.fieldaccessor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.FieldAccessor;

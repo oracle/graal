@@ -205,7 +205,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     }
 
     /**
-     * Workaround for {@code CheckSVMInvariant}. since HostedOptionValue.getValue() is no longer
+     * Workaround for {@code CheckSVMInvariant} since HostedOptionValue.getValue() is no longer
      * folded on hotspot, which makes {@code SVMInvariantsCheck} complain. Factoring it out in its
      * own {@link Fold} method avoids this issue.
      */

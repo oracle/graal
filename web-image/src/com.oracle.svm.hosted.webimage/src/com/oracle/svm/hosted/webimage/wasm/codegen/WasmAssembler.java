@@ -41,7 +41,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;

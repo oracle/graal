@@ -39,7 +39,7 @@ import java.util.random.RandomGenerator;
 import java.util.zip.ZipFile;
 
 import com.oracle.svm.core.ForeignSupport;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
 

@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
