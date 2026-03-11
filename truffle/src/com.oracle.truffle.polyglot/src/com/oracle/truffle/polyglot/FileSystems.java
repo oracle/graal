@@ -1845,6 +1845,7 @@ final class FileSystems {
         private Path toNormalizedAbsolutePath(Path path) {
             if (path.isAbsolute()) {
                 // TruffleFile absolute path is always normalized.
+                assert isNormalized(path) : "Absolute paths passed from TruffleFile to the FileSystem SPI must be normalized.";
                 return path;
             }
             Path absolutePath = toAbsolutePathImpl(path);
