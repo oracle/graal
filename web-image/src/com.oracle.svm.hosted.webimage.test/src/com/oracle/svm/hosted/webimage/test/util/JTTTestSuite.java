@@ -67,7 +67,6 @@ import jdk.graal.compiler.test.AddExports;
 import jdk.vm.ci.common.JVMCIError;
 
 @AddExports({
-                "jdk.graal.compiler/jdk.graal.compiler.options",
                 "jdk.graal.compiler/jdk.graal.compiler.debug",
 })
 public abstract class JTTTestSuite {

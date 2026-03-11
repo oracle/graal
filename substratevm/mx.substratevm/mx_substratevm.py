@@ -724,7 +724,6 @@ def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
                       'experimental-conditional-config-part']
         jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
                       '-Dcom.oracle.svm.configure.test.conditionalconfig.PartialConfigurationGenerator.enabled=true',
-                      '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
                       '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                       '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
                       '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
@@ -741,7 +740,6 @@ def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
     jvm_unittest(
         ['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_output_dir,
          "-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.enabled=true",
-         '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
@@ -760,7 +758,6 @@ def run_agent_conditional_config_test(agent_path, conditional_config_filter_path
     # This run generates the configuration from different test cases
     jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
                   '-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator.enabled=true',
-                  '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
@@ -769,7 +766,6 @@ def run_agent_conditional_config_test(agent_path, conditional_config_filter_path
     # This run verifies that the generated configuration matches the expected one
     jvm_unittest(['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_dir,
                   '-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.enabled=true',
-                  '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
@@ -3007,7 +3003,6 @@ class StandalonePointstoUnittestsConfig(mx_unittest.MxUnittestConfig):
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
 
-        vmArgs.extend(['--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED'])
         # need to access jdk.graal.compiler.phases.util.Providers
         vmArgs.extend(['--add-exports=jdk.graal.compiler/jdk.graal.compiler.phases.util=ALL-UNNAMED'])
         # VMAccess needs to access jdk.internal.module.Modules

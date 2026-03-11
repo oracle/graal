@@ -25,6 +25,7 @@
 
 from __future__ import print_function
 import os
+import sys
 from functools import total_ordering, lru_cache
 from os.path import join, exists, basename, dirname, isdir
 import argparse
@@ -176,7 +177,14 @@ def _check_jvmci_version(jdk):
     """
     def _capture_jvmci_version(args=None):
         out = mx.OutputCapture()
-        _run_jvmci_version_check(args, jdk=jdk, out=out)
+        err = mx.OutputCapture()
+        rc = _run_jvmci_version_check(args, jdk=jdk, out=out, err=err, nonZeroIsFatal=False)
+        if rc != 0:
+            errmsg = err.data
+            if "JVMCI_VERSION_CHECK" in err.data:
+                errmsg += "HINT: Run `mx -y fetch-jdk default` to install a compatible JDK and re-try with `--java-home=lookup:default`"
+            print(errmsg, file=sys.stderr)
+            mx.abort(rc)
         if out.data:
             try:
                 (jdk_version, release_name, jvmci_build) = out.data.split(',')
