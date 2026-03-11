@@ -27,9 +27,10 @@ package com.oracle.svm.core.posix.jdk;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.posix.PosixSignalHandlerSupport;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.Signal;
 
-@TargetClass(className = "jdk.internal.misc.Signal")
+@TargetClass(className = "jdk.internal.misc.Signal", onlyWith = NotCosmoLibCSupplier.class)
 final class Target_jdk_internal_misc_Signal {
     @Substitute
     private static int findSignal0(String signalName) {

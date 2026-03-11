@@ -32,6 +32,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.code.CodeInfoEncoder;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.ImageCodeInfo;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.word.impl.Word;
 import org.graalvm.collections.Pair;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -56,6 +61,9 @@ import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.Reference;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
@@ -228,6 +236,29 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         return result;
     }
 
+    @Override
+    protected void encodeMethod(CodeInfoEncoder codeInfoEncoder, Pair<HostedMethod, CompilationResult> pair) {
+        final HostedMethod method = pair.getLeft();
+        final CompilationResult compilation = pair.getRight();
+        codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset(), codeSizeFor(method));
+    }
+
+    @Override
+    protected ImageCodeInfo.HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,
+                                                                RuntimeMetadataEncoder runtimeMetadataEncoder, DeadlockWatchdog watchdog) {
+        ImageCodeInfo.HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getCurrentLayerImageCodeCache().getHostedImageCodeInfo();
+        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new HostedInstantReferenceAdjuster(snippetReflection), watchdog::recordActivity);
+        runtimeMetadataEncoder.encodeAllAndInstall();
+        UnsignedWord spaceForNops = WordFactory.unsigned(getFirstCompilation().getRight().getNopCodeSize() * SubstrateOptions.nopsBeforeFunctionEntry());
+        imageCodeInfo.setCodeStart(firstMethod);
+        imageCodeInfo.setNopsBeforeEntry(spaceForNops);
+        imageCodeInfo.setCodeSize(codeSize);
+        imageCodeInfo.setDataOffset(codeSize);
+        imageCodeInfo.setDataSize(Word.zero()); // (only for data immediately after code)
+        imageCodeInfo.setCodeAndDataMemorySize(codeSize);
+        return imageCodeInfo;
+    }
+
     /**
      * After the initial method layout, on some platforms some direct calls between methods may be
      * too far apart. When this happens a trampoline must be inserted to reach the call target.
@@ -382,6 +413,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     private void processDirectCallSites(HostedMethod method, CompilationResult compilation, Map<Integer, HostedPatcher> patches) {
         Map<HostedMethod, Integer> trampolineOffsetMap = trampolineMap.get(method);
         int compStart = method.getCodeAddressOffset();
+        int spaceForNops = compilation.getNopCodeSize() * SubstrateOptions.nopsBeforeFunctionEntry();
         for (Infopoint infopoint : compilation.getInfopoints()) {
             if (infopoint instanceof Call call && ((Call) infopoint).direct) {
                 // NOTE that for the moment, we don't make static calls to external
@@ -394,6 +426,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 if (trampolineOffsetMap != null && trampolineOffsetMap.containsKey(callTarget)) {
                     callTargetStart = trampolineOffsetMap.get(callTarget);
                 }
+                callTargetStart += spaceForNops;
 
                 // Patch a PC-relative call.
                 // This code handles the case of section-local calls only.
@@ -505,7 +538,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         @Override
         protected void defineMethodSymbol(String name, boolean global, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
             final int size = result == null ? 0 : result.getTargetCodeSize();
-            objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
+            int spaceForNops = result == null ? 0 : (result.getNopCodeSize() * SubstrateOptions.nopsBeforeFunctionEntry());
+            objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset() + spaceForNops, size - spaceForNops, true, global);
         }
     }
 
