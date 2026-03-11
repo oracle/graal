@@ -469,7 +469,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     private void registerConstructorAccessor(AccessCondition cnd, Class<?> serializationTargetClass, Class<?> targetConstructorClass, boolean preserved) {
-        Optional.ofNullable(addConstructorAccessor(serializationTargetClass, targetConstructorClass))
+        Optional.ofNullable(addConstructorAccessor(serializationTargetClass, targetConstructorClass, cnd, preserved))
                         .map(ReflectionUtil::lookupConstructor)
                         .ifPresent(methods -> ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, preserved, methods));
     }
@@ -506,6 +506,33 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         Method method = ReflectionUtil.lookupMethod(true, clazz, methodName, args);
         if (method != null) {
             ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, preserved, method);
+        }
+    }
+
+    /**
+     * Record deserialization builds method handles for primitive components via
+     * {@code ObjectStreamClass.RecordSupport}, which looks up the corresponding
+     * {@code jdk.internal.util.ByteArray#getXxx(byte[], int)} helpers reflectively.
+     */
+    private static void registerRecordPrimitiveExtractors(AccessCondition cnd, boolean preserved, Class<?> serializationTargetClass) {
+        Class<?> byteArrayClass = ReflectionUtil.lookupClass("jdk.internal.util.ByteArray");
+        for (var component : serializationTargetClass.getRecordComponents()) {
+            Class<?> componentType = component.getType();
+            if (componentType == boolean.class) {
+                registerMethod(cnd, preserved, byteArrayClass, "getBoolean", byte[].class, int.class);
+            } else if (componentType == char.class) {
+                registerMethod(cnd, preserved, byteArrayClass, "getChar", byte[].class, int.class);
+            } else if (componentType == short.class) {
+                registerMethod(cnd, preserved, byteArrayClass, "getShort", byte[].class, int.class);
+            } else if (componentType == int.class) {
+                registerMethod(cnd, preserved, byteArrayClass, "getInt", byte[].class, int.class);
+            } else if (componentType == float.class) {
+                registerMethod(cnd, preserved, byteArrayClass, "getFloat", byte[].class, int.class);
+            } else if (componentType == long.class) {
+                registerMethod(cnd, preserved, byteArrayClass, "getLong", byte[].class, int.class);
+            } else if (componentType == double.class) {
+                registerMethod(cnd, preserved, byteArrayClass, "getDouble", byte[].class, int.class);
+            }
         }
     }
 
@@ -604,6 +631,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
                 ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, preserved, methods);
                 Executable[] methods1 = RecordUtils.getRecordComponentAccessorMethods(serializationTargetClass);
                 ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, preserved, methods1);
+                registerRecordPrimitiveExtractors(cnd, preserved, serializationTargetClass);
             } catch (LinkageError le) {
                 /*
                  * Handled by the record component registration above.
@@ -698,7 +726,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         return ReflectionUtil.invokeMethod(getExternalizableConstructorMethod, null, serializationTargetClass);
     }
 
-    private Class<?> addConstructorAccessor(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
+    private Class<?> addConstructorAccessor(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass, AccessCondition cnd, boolean preserved) {
         // Don't generate SerializationConstructorAccessor class for Externalizable case
         if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
             try {
@@ -743,7 +771,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         AnalysisType serializationTargetType = analysisMetaAccess.lookupJavaType(serializationTargetClass);
         AnalysisType targetConstructorType = analysisMetaAccess.lookupJavaType(targetConstructorClass);
         SVMHost hostVM = (SVMHost) universe.hostVM();
-        serializationSupport.addConstructorAccessor(hostVM.dynamicHub(serializationTargetType), hostVM.dynamicHub(targetConstructorType), getConstructorAccessor(targetConstructor));
+        serializationSupport.addConstructorAccessor(cnd, preserved, hostVM.dynamicHub(serializationTargetType), hostVM.dynamicHub(targetConstructorType), getConstructorAccessor(targetConstructor));
         return targetConstructorClass;
     }
 }

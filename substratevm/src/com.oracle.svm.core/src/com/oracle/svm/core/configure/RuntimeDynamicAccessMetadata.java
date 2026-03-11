@@ -26,9 +26,11 @@
 package com.oracle.svm.core.configure;
 
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackUnsatisfiedTypeReachedConditions;
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackConditionSatisfied;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.StringJoiner;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicSet;
@@ -40,6 +42,8 @@ import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * The dynamic access metadata for some value that can be accessed at run time. Contains a set of
@@ -76,8 +80,11 @@ public class RuntimeDynamicAccessMetadata {
         TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) cnd;
         VMError.guarantee(reachabilityCondition.isRuntimeChecked(), "Only runtime conditions can be added to the ConditionalRuntimeValue.");
         if (satisfied) {
+            maybeTrackConditionSatisfied(reachabilityCondition, true);
             return;
         } else if (reachabilityCondition.isAlwaysTrue()) {
+            maybeTrackConditionSatisfied(conditions, true);
+
             conditions = null;
             satisfied = true;
             return;
@@ -129,6 +136,7 @@ public class RuntimeDynamicAccessMetadata {
             } else {
                 for (Object condition : localConditions) {
                     if (isSatisfied(condition)) {
+                        maybeTrackConditionSatisfied(condition);
                         conditions = null;
                         satisfied = result = true;
                         break;
@@ -146,6 +154,41 @@ public class RuntimeDynamicAccessMetadata {
         return result;
     }
 
+    private static void maybeTrackConditionSatisfied(Object condition) {
+        maybeTrackConditionSatisfied(condition, false);
+    }
+
+    private static void maybeTrackConditionSatisfied(Object condition, boolean ignoredAtBuildTime) {
+        if (condition == null) {
+            return;
+        } else if (condition instanceof Object[] conditionsArray) {
+            for (Object singleCondition : conditionsArray) {
+                maybeTrackConditionSatisfied(singleCondition, ignoredAtBuildTime);
+            }
+            return;
+        }
+
+        String trackedType = trackConditionSatisfied();
+        String typeName = null;
+        if (condition instanceof Class<?> reachedTypeCondition) {
+            typeName = reachedTypeCondition.getTypeName();
+        } else if (condition instanceof TypeReachabilityCondition reachedTypeCondition) {
+            typeName = reachedTypeCondition.getType().getTypeName();
+        }
+        if (trackedType != null && typeName != null && ("*".equals(trackedType) || typeName.equals(trackedType)) && !"java.lang.Object".equals(typeName)) {
+            if (ignoredAtBuildTime) {
+                LogUtils.info("Tracked runtime condition reached at build time and ignored: type = " + typeName);
+            } else {
+                LogUtils.info("Tracked runtime condition reached: type = " + typeName);
+            }
+        }
+    }
+
+    @Fold
+    public static String trackConditionSatisfied() {
+        return TrackConditionSatisfied.getValue();
+    }
+
     /*
      * Used in snippets, returns true only if the condition was already satisfied beforehand.
      */
@@ -155,6 +198,70 @@ public class RuntimeDynamicAccessMetadata {
 
     public boolean isPreserved() {
         return preserved;
+    }
+
+    /**
+     * Returns a user-facing description of unresolved runtime conditions.
+     */
+    public String formatUnsatisfiedConditions() {
+        Object[] localConditions = conditions;
+        if (satisfied || localConditions == null) {
+            return "";
+        }
+
+        StringJoiner joiner = new StringJoiner(", ");
+        for (Object condition : localConditions) {
+            if (condition instanceof Class<?> reachedTypeCondition) {
+                /*
+                 * java.lang.Object is always reached in practice and adds noise to diagnostics.
+                 */
+                if (reachedTypeCondition == Object.class) {
+                    continue;
+                }
+                joiner.add("typeReached(" + DynamicHub.fromClass(reachedTypeCondition).getTypeName() + ")");
+            } else {
+                joiner.add(String.valueOf(condition));
+            }
+        }
+        return joiner.toString();
+    }
+
+    /**
+     * Returns unresolved runtime conditions formatted as JSON.
+     */
+    public String formatUnsatisfiedConditionsAsJson() {
+        Object[] localConditions = conditions;
+        if (satisfied || localConditions == null) {
+            return "";
+        }
+
+        String lineSeparator = System.lineSeparator();
+        StringBuilder builder = new StringBuilder();
+        boolean wroteAny = false;
+        for (Object condition : localConditions) {
+            if (!(condition instanceof Class<?> reachedTypeCondition)) {
+                continue;
+            }
+            /*
+             * java.lang.Object is always reached in practice and adds noise to diagnostics.
+             */
+            if (reachedTypeCondition == Object.class) {
+                continue;
+            }
+            if (wroteAny) {
+                builder.append(lineSeparator);
+            }
+            builder.append("    \"typeReached\": \"").append(DynamicHub.fromClass(reachedTypeCondition).getTypeName()).append("\"").append(lineSeparator);
+            wroteAny = true;
+        }
+        if (!wroteAny) {
+            return "";
+        }
+        /*
+         * Remove trailing line separator to keep spacing deterministic in user-facing messages.
+         */
+        builder.setLength(builder.length() - lineSeparator.length());
+        return builder.toString();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

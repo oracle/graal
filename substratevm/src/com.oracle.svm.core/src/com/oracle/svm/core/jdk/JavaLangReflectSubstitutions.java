@@ -26,10 +26,13 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+
 import java.lang.reflect.Array;
 import java.util.Objects;
 
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -417,8 +420,9 @@ final class Target_java_lang_reflect_Array {
         DynamicHub arrayHub = DynamicHub.fromClass(componentType);
         for (int i = 0; i < dimensions.length; i++) {
             DynamicHub maybeArrayHub = arrayHub.getOrCreateArrayHub();
-            if (maybeArrayHub == null) {
-                throw MissingReflectionRegistrationUtils.reportArrayInstantiation(componentType, dimensions.length);
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = maybeArrayHub == null ? null : maybeArrayHub.getDynamicAccessMetadata();
+            if (maybeArrayHub == null || (throwMissingRegistrationErrors() && (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied()))) {
+                throw MissingReflectionRegistrationUtils.reportArrayInstantiation(componentType, dimensions.length, dynamicAccessMetadata);
             }
             arrayHub = maybeArrayHub;
         }

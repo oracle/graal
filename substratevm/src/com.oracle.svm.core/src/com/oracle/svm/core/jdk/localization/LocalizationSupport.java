@@ -294,6 +294,17 @@ public class LocalizationSupport {
         return false;
     }
 
+    public RuntimeDynamicAccessMetadata getBundleLookupDynamicAccessMetadata(String baseName, Locale locale, Object controlOrStrategy) {
+        if (baseName == null || locale == null || controlOrStrategy == null) {
+            return null;
+        }
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = registeredBundles.get(baseName);
+        if (dynamicAccessMetadata == null || dynamicAccessMetadata.satisfied()) {
+            return null;
+        }
+        return dynamicAccessMetadata;
+    }
+
     private static EconomicSet<String> getLanguageTags(EconomicSet<Locale> locales) {
         EconomicSet<String> names = EconomicSet.create();
         for (Locale locale : locales) {

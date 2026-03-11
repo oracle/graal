@@ -125,6 +125,11 @@ public class MethodHandleFeature implements InternalFeature {
     private EconomicSet<Object> heapSpeciesData = EconomicSet.create();
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        registerValueConversionsMethodsForReflection(access);
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
         Class<?> memberNameClass = ReflectionUtil.lookupClass("java.lang.invoke.MemberName");
         memberNameIsMethod = ReflectionUtil.lookupMethod(memberNameClass, "isMethod");
@@ -389,9 +394,18 @@ public class MethodHandleFeature implements InternalFeature {
     }
 
     /**
-     * Eagerly initialize method handle caches in {@link ValueConversions} so that 1) we avoid
-     * reflection registration for conversion methods, and 2) the static analysis already sees a
-     * consistent snapshot that does not change after analysis when the JDK needs more conversions.
+     * Runtime conversion-cache misses trigger {@code ValueConversions} lookups through
+     * {@code Class.getDeclaredMethod}. Register all declared methods so these lookups keep working
+     * even when reflection class-query checks require class-level metadata.
+     */
+    private static void registerValueConversionsMethodsForReflection(AfterRegistrationAccess access) {
+        RuntimeReflection.register(ReflectionUtil.lookupClass("sun.invoke.util.ValueConversions"));
+    }
+
+    /**
+     * Eagerly initialize method handle caches in {@link ValueConversions} so that 1) we avoid most
+     * runtime lookups for conversion methods, and 2) the static analysis already sees a consistent
+     * snapshot that does not change after analysis when the JDK needs more conversions.
      */
     private static void eagerlyInitializeValueConversionsCaches() {
         ValueConversions.ignore();

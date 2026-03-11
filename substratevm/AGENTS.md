@@ -29,6 +29,7 @@ Do not run `mx` commands concurrently; parallel runs can produce misleading fail
 
 ## Change Hygiene
 
+- Do not use lambdas in runtime code.
 - If you touch documented behavior, update `docs/`.
 - Do not commit generated output from `mxbuild/`, `svmbuild/`, `graal_dumps/`, or `sources/`.
 - Be careful when changing `mx native-unittest` / `svmjunit` feature registration. Features added to the shared native test image affect unrelated tests too.

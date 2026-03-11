@@ -50,7 +50,8 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -139,6 +140,8 @@ public final class PredefinedClassesSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void registerLambdaForReflection(Class<?> lambdaClass) {
+        AccessCondition condition = AccessCondition.typeReached(lambdaClass.getNestHost());
+        RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
         /*
          * When {@code java.lang.invoke.InnerClassLambdaMetafactory} builds a call site for a lambda
          * class, it uses either static field LAMBDA_INSTANCE$ or lambda constructor. Since we are
@@ -146,9 +149,9 @@ public final class PredefinedClassesSupport {
          * constructor for reflection.
          */
         try {
-            RuntimeReflection.register(lambdaClass.getDeclaredField("LAMBDA_INSTANCE$"));
+            reflectionSupport.register(condition, false, false, lambdaClass.getDeclaredField("LAMBDA_INSTANCE$"));
         } catch (NoSuchFieldException ignored) {
-            RuntimeReflection.register(lambdaClass.getDeclaredConstructors());
+            reflectionSupport.register(condition, false, lambdaClass.getDeclaredConstructors());
         }
 
         /*
@@ -161,7 +164,7 @@ public final class PredefinedClassesSupport {
                         SerializationSupport.currentLayer().isLambdaCapturingClassRegistered(LambdaUtils.capturingClass(lambdaClass.getName()))) {
             try {
                 Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
-                RuntimeReflection.register(serializeLambdaMethod);
+                reflectionSupport.register(condition, false, serializeLambdaMethod);
             } catch (NoSuchMethodException e) {
                 throw VMError.shouldNotReachHere("Serializable lambda class must contain the writeReplace method.");
             }

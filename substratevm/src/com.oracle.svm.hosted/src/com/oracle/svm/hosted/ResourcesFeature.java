@@ -185,11 +185,14 @@ public class ResourcesFeature implements InternalFeature {
     private record ConditionalPattern(AccessCondition condition, String pattern, Object origin) {
     }
 
+    private record ConditionalGlob(AccessCondition condition, String module, String glob, Object origin) {
+    }
+
     private record CompiledConditionalPattern(AccessCondition condition, ResourcePattern compiledPattern, Object origin) {
     }
 
     private Set<ConditionalPattern> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private Set<ConditionalPattern> globWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private Set<ConditionalGlob> globWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<ConditionalPattern> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private ImageClassLoader imageClassLoader;
@@ -237,8 +240,7 @@ public class ResourcesFeature implements InternalFeature {
         @Override
         public void addGlob(AccessCondition condition, String module, String glob, Object origin) {
             String canonicalGlob = NativeImageResourcePathRepresentation.toCanonicalForm(glob);
-            String resolvedGlob = GlobUtils.transformToTriePath(canonicalGlob, module);
-            globWorkSet.add(new ConditionalPattern(condition, resolvedGlob, origin));
+            globWorkSet.add(new ConditionalGlob(condition, module, canonicalGlob, origin));
         }
 
         @Override
@@ -694,7 +696,8 @@ public class ResourcesFeature implements InternalFeature {
         /* prepare globs for resource registration */
         List<CompressedGlobTrie.GlobWithInfo<ConditionWithOrigin>> patternsWithInfo = globWorkSet
                         .stream()
-                        .map(entry -> new CompressedGlobTrie.GlobWithInfo<>(entry.pattern(), new ConditionWithOrigin(entry.condition(), entry.origin()))).toList();
+                        .map(entry -> new CompressedGlobTrie.GlobWithInfo<>(GlobUtils.transformToTriePath(entry.glob(), entry.module()), new ConditionWithOrigin(entry.condition(), entry.origin())))
+                        .toList();
         GlobTrieNode<ConditionWithOrigin> trie = CompressedGlobTrie.CompressedGlobTrieBuilder.build(patternsWithInfo);
         Resources.currentLayer().setResourcesTrieRoot(trie);
 
@@ -728,6 +731,7 @@ public class ResourcesFeature implements InternalFeature {
         if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             includePatterns.forEach(resourcePattern -> collector.registerIncludePattern(resourcePattern.condition, resourcePattern.compiledPattern.moduleName(),
                             resourcePattern.compiledPattern.pattern.pattern()));
+            globWorkSet.forEach(glob -> collector.registerIncludePattern(glob.condition(), glob.module(), glob.glob()));
         }
 
         /* if we have any entry in resource config file we should collect resources */

@@ -148,7 +148,7 @@ public final class Target_java_lang_reflect_Method {
         }
         assert methodAccessor == null : "acquireMethodAccessor() method must not be called if `this` is in image heap.";
         if (methodAccessorFromMetadata == null || !dynamicAccessMetadata.satisfied()) {
-            throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
+            throw MissingReflectionRegistrationUtils.reportInvokedExecutable(dynamicAccessMetadata, SubstrateUtil.cast(this, Executable.class));
         }
         return methodAccessorFromMetadata;
     }

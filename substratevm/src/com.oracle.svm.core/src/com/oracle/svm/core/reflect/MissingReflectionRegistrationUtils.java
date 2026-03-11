@@ -29,7 +29,8 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -40,42 +41,47 @@ import com.oracle.svm.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 
 public final class MissingReflectionRegistrationUtils extends MissingRegistrationUtils {
 
-    public static void reportClassAccess(String className) {
+    public static void reportClassAccess(String className, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         String json = elementToJSON(namedConfigurationType(className));
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("access the class", quote(className), json),
+                        reflectionError("access the class", quote(className), json, dynamicAccessMetadata),
                         Class.class, null, className, null);
         report(exception);
     }
 
-    public static void reportUnsafeAllocation(Class<?> clazz) {
+    public static void reportUnsafeAllocation(Class<?> clazz, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         ConfigurationType type = getConfigurationType(clazz);
         type.setUnsafeAllocated();
         String json = elementToJSON(type);
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("unsafe instantiate", typeDescriptor(clazz), json),
+                        reflectionError("unsafe instantiate", typeDescriptor(clazz), json, dynamicAccessMetadata),
                         Class.class, null, clazz.getTypeName(), null);
         report(exception);
     }
 
     public static void reportFieldQuery(Class<?> declaringClass, String fieldName) {
+        reportFieldQuery(declaringClass, fieldName, null);
+    }
+
+    public static void reportFieldQuery(Class<?> declaringClass, String fieldName, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         ConfigurationType type = getConfigurationType(declaringClass);
         String json = elementToJSON(type);
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("access field", quote(declaringClass.getTypeName() + "#" + fieldName), json),
+                        reflectionError("access field", quote(declaringClass.getTypeName() + "#" + fieldName), json, dynamicAccessMetadata),
                         Field.class, declaringClass, fieldName, null);
         report(exception);
     }
 
-    public static MissingReflectionRegistrationError reportAccessedField(Field field) {
+    public static MissingReflectionRegistrationError reportAccessedField(Field field, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         ConfigurationType type = getConfigurationType(field.getDeclaringClass());
         addField(type, field.getName());
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("read or write field", quote(field.toString()), elementToJSON(type)),
+                        reflectionError("read or write field", quote(field.toString()), elementToJSON(type), dynamicAccessMetadata),
                         field.getClass(), field.getDeclaringClass(), field.getName(), null);
         report(exception);
         /*
@@ -85,7 +91,11 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         throw exception;
     }
 
-    public static void reportMethodQuery(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
+    public static void reportExecutableQuery(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
+        reportExecutableQuery(declaringClass, methodName, paramTypes, null);
+    }
+
+    public static void reportExecutableQuery(Class<?> declaringClass, String methodName, Class<?>[] paramTypes, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         StringJoiner paramTypeNames = new StringJoiner(", ", "(", ")");
         if (paramTypes != null) {
             for (Class<?> paramType : paramTypes) {
@@ -95,18 +105,18 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         ConfigurationType type = getConfigurationType(declaringClass);
         String json = elementToJSON(type);
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("access method", quote(declaringClass.getTypeName() + "#" + methodName + paramTypeNames), json),
+                        reflectionError("access method", quote(declaringClass.getTypeName() + "#" + methodName + paramTypeNames), json, dynamicAccessMetadata),
                         Method.class, declaringClass, methodName, paramTypes);
         report(exception);
     }
 
-    public static MissingReflectionRegistrationError reportInvokedExecutable(Executable executable) {
+    public static MissingReflectionRegistrationError reportInvokedExecutable(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Executable executable) {
         ConfigurationType type = getConfigurationType(executable.getDeclaringClass());
         var methodName = executable instanceof Constructor<?> ? "<init>" : executable.getName();
         var executableType = executable instanceof Constructor<?> ? "constructor" : "method";
         addMethod(type, methodName, executable.getParameterTypes());
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("invoke " + executableType, quote(executable.toString()), elementToJSON(type)),
+                        reflectionError("invoke " + executableType, quote(executable.toString()), elementToJSON(type), dynamicAccessMetadata),
                         executable.getClass(), executable.getDeclaringClass(), executable.getName(), executable.getParameterTypes());
         report(exception);
         /*
@@ -116,19 +126,30 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         return exception;
     }
 
-    public static void reportClassQuery(Class<?> declaringClass, String methodName) {
+    public static void reportClassQuery(Class<?> declaringClass, String methodName, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         ConfigurationType type = getConfigurationType(declaringClass);
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("access the", typeDescriptor(declaringClass), elementToJSON(type)),
+                        reflectionError("access the", typeDescriptor(declaringClass), elementToJSON(type), dynamicAccessMetadata),
                         null, declaringClass, methodName, null);
         report(exception);
     }
 
-    public static MissingReflectionRegistrationError reportProxyAccess(Class<?>... interfaces) {
-        var interfaceList = Arrays.stream(interfaces).map(Class::getTypeName).toList();
+    public static MissingReflectionRegistrationError reportProxyAccess(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Class<?>... interfaces) {
+        return reportProxyAccess(dynamicAccessMetadata, null, interfaces);
+    }
+
+    public static MissingReflectionRegistrationError reportProxyAccess(RuntimeDynamicAccessMetadata dynamicAccessMetadata, String proxyInterfaceOrderHint, Class<?>... interfaces) {
+        List<String> interfaceList = new ArrayList<>(interfaces.length);
+        for (Class<?> intf : interfaces) {
+            interfaceList.add(intf.getTypeName());
+        }
         ConfigurationType type = new ConfigurationType(UnresolvedAccessCondition.unconditional(), new ProxyConfigurationTypeDescriptor(interfaceList), true);
+        String message = reflectionError("access the proxy class inheriting", interfacesString(interfaces), elementToJSON(type), dynamicAccessMetadata);
+        if (proxyInterfaceOrderHint != null && !proxyInterfaceOrderHint.isEmpty()) {
+            message += System.lineSeparator() + System.lineSeparator() + proxyInterfaceOrderHint;
+        }
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("access the proxy class inheriting", interfacesString(interfaces), elementToJSON(type)),
+                        message,
                         Proxy.class, null, null, interfaces);
         report(exception);
         /*
@@ -139,10 +160,14 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
     }
 
     public static MissingReflectionRegistrationError reportArrayInstantiation(Class<?> elementClass, int dimension) {
+        return reportArrayInstantiation(elementClass, dimension, null);
+    }
+
+    public static MissingReflectionRegistrationError reportArrayInstantiation(Class<?> elementClass, int dimension, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
         String typeName = elementClass.getTypeName() + "[]".repeat(dimension);
         ConfigurationType type = namedConfigurationType(typeName);
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("instantiate the array class", quote(typeName), elementToJSON(type)),
+                        reflectionError("instantiate the array class", quote(typeName), elementToJSON(type), dynamicAccessMetadata),
                         null, null, null, null);
         report(exception);
         /*
@@ -152,8 +177,10 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         return exception;
     }
 
-    private static String reflectionError(String failedAction, String elementDescriptor, String json) {
-        return registrationMessage(failedAction, elementDescriptor, json, "reflectively", "reflection", "reflection");
+    private static String reflectionError(String failedAction, String elementDescriptor, String json, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        return appendUnsatisfiedConditions(
+                        registrationMessage(failedAction, elementDescriptor, json, "reflectively", "reflection", "reflection"),
+                        dynamicAccessMetadata);
     }
 
     private static void report(MissingReflectionRegistrationError exception) {
