@@ -203,6 +203,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     final VirtualStateElement virtualState;
     final CounterStateElement counterState = new CounterStateElement(this);
 
+    final BranchBackwardThrowExceptionElement branchBackwardThrowException;
+
     CodeTypeElement configEncoder;
     OldBytecodesBoxElement oldBytecodesBoxElement;
     AbstractBytecodeNodeElement abstractBytecodeNode;
@@ -280,6 +282,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         if (model.isBytecodeUpdatable()) {
             this.oldBytecodesBoxElement = this.add(new OldBytecodesBoxElement(this));
         }
+
+        this.branchBackwardThrowException = add(new BranchBackwardThrowExceptionElement(parent));
 
         this.abstractBytecodeNode = this.add(new AbstractBytecodeNodeElement(this));
 

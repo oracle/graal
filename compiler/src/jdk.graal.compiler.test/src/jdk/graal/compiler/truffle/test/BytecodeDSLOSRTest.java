@@ -25,9 +25,15 @@
 package jdk.graal.compiler.truffle.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
+import com.oracle.truffle.api.nodes.Node;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -101,8 +107,39 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         try {
             root.getCallTarget().call();
             Assert.fail("Should not reach here.");
-        } catch (BytecodeDSLOSRTestRootNode.InCompiledCodeException ex) {
-            // expected
+        } catch (BytecodeDSLOSRTestRootNode.MyException ex) {
+            // Expect a single stack trace element with combined state from regular and OSR frames.
+            List<TruffleStackTraceElement> elements = TruffleStackTrace.getStackTrace(ex);
+            assertEquals(1, elements.size());
+            TruffleStackTraceElement element = elements.getFirst();
+            assertEquals(root.getCallTarget(), element.getTarget());
+            assertNotNull(element.getLocation());
+            assertEquals("c.ThrowsInCompiledCode", BytecodeLocation.get(element).getInstruction().getName());
+        }
+    }
+
+    @Test
+    public void testInfiniteInterpreterLoopCaught() {
+        BytecodeDSLOSRTestRootNode root = parseNode(b -> {
+            b.beginRoot();
+            b.beginTryCatch();
+            b.beginWhile();
+            b.emitLoadConstant(true);
+            b.emitThrowsInCompiledCode();
+            b.endWhile();
+
+            b.beginMarkExceptionAndRethrow();
+            b.emitLoadException();
+            b.endMarkExceptionAndRethrow();
+            b.endTryCatch();
+            b.endRoot();
+        });
+
+        try {
+            root.getCallTarget().call();
+            Assert.fail("Should not reach here.");
+        } catch (BytecodeDSLOSRTestRootNode.MyException ex) {
+            assertEquals(1, ex.catchCount);
         }
     }
 
@@ -448,8 +485,13 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class)
     public abstract static class BytecodeDSLOSRTestRootNode extends DebugBytecodeRootNode {
 
-        static class InCompiledCodeException extends AbstractTruffleException {
-            private static final long serialVersionUID = 1L;
+        @SuppressWarnings("serial")
+        static class MyException extends AbstractTruffleException {
+            int catchCount = 0;
+
+            MyException(Node location) {
+                super(location);
+            }
         }
 
         protected BytecodeDSLOSRTestRootNode(BytecodeDSLOSRTestLanguage language, FrameDescriptor fd) {
@@ -459,10 +501,25 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         @Operation
         static final class ThrowsInCompiledCode {
             @Specialization
-            public static void perform() {
+            public static void perform(@Bind Node location) {
                 if (CompilerDirectives.inCompiledCode()) {
-                    throw new InCompiledCodeException();
+                    doThrow(location);
                 }
+            }
+
+            @TruffleBoundary
+            private static void doThrow(Node location) {
+                // Throw behind a boundary so compilation does not insert early deopt.
+                throw new MyException(location);
+            }
+        }
+
+        @Operation
+        static final class MarkExceptionAndRethrow {
+            @Specialization
+            public static void perform(MyException ex) {
+                ex.catchCount++;
+                throw ex;
             }
         }
 

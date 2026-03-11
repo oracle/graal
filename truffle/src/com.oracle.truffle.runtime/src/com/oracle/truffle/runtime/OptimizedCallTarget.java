@@ -856,7 +856,11 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     private RuntimeException handleException(VirtualFrame frame, Throwable t) {
         Throwable profiledT = profileExceptionType(t);
-        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(null, this, profiledT, frame);
+        VirtualFrame effectiveFrame = frame;
+        if (rootNode instanceof BaseOSRRootNode osrRootNode) {
+            effectiveFrame = osrRootNode.getFrame(frame);
+        }
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(null, this, profiledT, effectiveFrame);
         throw rethrow(profiledT);
     }
 

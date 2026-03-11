@@ -85,7 +85,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     final CodeExecutableElement getCachedLocalTagInternal;
     final CodeExecutableElement setCachedLocalTagInternal;
     final CodeExecutableElement checkStableTagsAssumption;
-    BranchBackwardReturnExceptionElement branchBackwardReturnException;
+    final BranchBackwardReturnExceptionElement branchBackwardReturnException;
 
     AbstractBytecodeNodeElement(BytecodeRootNodeElement parent) {
         super(parent, Set.of(PRIVATE, STATIC, ABSTRACT, SEALED), ElementKind.CLASS, null, "AbstractBytecodeNode");
@@ -101,6 +101,8 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         if (model().enableTailCallHandlers) {
             this.branchBackwardReturnException = add(new BranchBackwardReturnExceptionElement(parent));
+        } else {
+            this.branchBackwardReturnException = null;
         }
 
         if (parent.model.enableTagInstrumentation) {
