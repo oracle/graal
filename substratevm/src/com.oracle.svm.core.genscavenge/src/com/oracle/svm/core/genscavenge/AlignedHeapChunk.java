@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldAddress;
@@ -166,7 +167,7 @@ public final class AlignedHeapChunk {
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     static void walkObjectsFromInline(AlignedHeader that, Pointer start, GreyToBlackObjectVisitor visitor) {
         HeapChunk.walkObjectsFromInline(that, start, visitor);
     }

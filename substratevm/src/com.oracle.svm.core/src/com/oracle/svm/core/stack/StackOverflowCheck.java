@@ -24,14 +24,16 @@
  */
 package com.oracle.svm.core.stack;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.option.HostedOptionKey;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
@@ -168,7 +170,7 @@ public interface StackOverflowCheck {
      * it must only be called in the case of a fatal error where the VM is going to exit soon and
      * does not execute user code anymore that relies on proper stack overflow checking.
      */
-    @Uninterruptible(reason = "Called by fatal error handling that is uninterruptible.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void disableStackOverflowChecksForFatalError();
 
     /**

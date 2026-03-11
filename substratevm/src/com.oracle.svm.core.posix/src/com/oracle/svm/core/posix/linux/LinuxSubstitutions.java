@@ -24,23 +24,25 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import java.util.Objects;
+
 import org.graalvm.nativeimage.StackValue;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.util.TimeUtils;
-
-import java.util.Objects;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 @TargetClass(java.lang.System.class)
 final class Target_java_lang_System_Linux {
 
     @Substitute
-    @Uninterruptible(reason = "Does basic math after a simple system call")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long nanoTime() {
         Time.timespec tp = StackValue.get(Time.timespec.class);
         int status = LinuxTime.NoTransitions.clock_gettime(LinuxTime.CLOCK_MONOTONIC(), tp);

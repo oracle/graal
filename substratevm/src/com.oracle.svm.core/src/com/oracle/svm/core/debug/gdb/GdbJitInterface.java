@@ -40,14 +40,14 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CUnsigned;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.ProjectHeaderFile;
 import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * This interface is based on the <a href=
@@ -210,7 +210,8 @@ public class GdbJitInterface {
      *
      * @param entry the {@code JITCodeEntry} to pass to {@code GDB}.
      */
-    @Uninterruptible(reason = "Called with raw object pointer.", calleeMustBe = false)
+    /* This should not execute interruptible code, see GR-73898. */
+    @Uninterruptible(reason = "Called with raw object pointer.", mayBeInlined = true, calleeMustBe = false)
     public static void unregisterJITCode(JITCodeEntry entry) {
         JITCodeEntry prevEntry = entry.getPrevEntry();
         JITCodeEntry nextEntry = entry.getNextEntry();

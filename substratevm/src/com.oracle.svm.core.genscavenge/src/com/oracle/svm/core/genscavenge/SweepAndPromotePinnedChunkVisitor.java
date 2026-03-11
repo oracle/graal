@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -43,7 +43,7 @@ import com.oracle.svm.guest.staging.Uninterruptible;
  */
 public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk.Visitor {
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     public void visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
         Space originalSpace = HeapChunk.getSpace(chunk);
         assert originalSpace.isFromSpace();

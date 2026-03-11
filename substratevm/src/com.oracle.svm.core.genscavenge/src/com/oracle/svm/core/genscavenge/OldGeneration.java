@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -68,10 +69,10 @@ public abstract class OldGeneration extends Generation {
 
     abstract boolean verifySpaces();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     abstract void tearDown();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     AlignedHeapChunk.AlignedHeader requestAlignedChunk() {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         AlignedHeapChunk.AlignedHeader chunk = HeapImpl.getChunkProvider().produceAlignedChunk();

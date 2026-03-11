@@ -79,7 +79,7 @@ final class HeapChunkProvider {
     }
 
     /** Acquire a new AlignedHeapChunk, either from the free list or from the operating system. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     AlignedHeader produceAlignedChunk() {
         UnsignedWord chunkSize = HeapParameters.getAlignedHeapChunkSize();
         AlignedHeader result = popUnusedAlignedChunk();
@@ -179,7 +179,7 @@ final class HeapChunkProvider {
      * garbage collections, I avoid the ABA problem by making the kernel of this method
      * uninterruptible so it can not be interrupted by a safepoint.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     private AlignedHeader popUnusedAlignedChunk() {
         AlignedHeader result = popUnusedAlignedChunkUninterruptibly();
         if (result.isNull()) {
@@ -226,7 +226,7 @@ final class HeapChunkProvider {
 
     /** Acquire an UnalignedHeapChunk from the operating system. */
     @SuppressWarnings("static-method")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     UnalignedHeader produceUnalignedChunk(UnsignedWord objectSize) {
         UnsignedWord chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objectSize);
 
@@ -268,12 +268,12 @@ final class HeapChunkProvider {
         HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", false);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     void tearDown() {
         freeAlignedChunkList(unusedAlignedChunks.get());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     static void freeAlignedChunkList(AlignedHeader first) {
         for (AlignedHeader chunk = first; chunk.isNonNull();) {
             AlignedHeader next = HeapChunk.getNext(chunk);
@@ -282,7 +282,7 @@ final class HeapChunkProvider {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     static void freeUnalignedChunkList(UnalignedHeader first) {
         for (UnalignedHeader chunk = first; chunk.isNonNull();) {
             UnalignedHeader next = HeapChunk.getNext(chunk);
@@ -291,12 +291,12 @@ final class HeapChunkProvider {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     private static void freeAlignedChunk(AlignedHeader chunk) {
         ChunkBasedCommittedMemoryProvider.get().freeAlignedChunk(chunk, HeapParameters.getAlignedHeapChunkSize(), HeapParameters.getAlignedHeapChunkAlignment());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     private static void freeUnalignedChunk(UnalignedHeader chunk) {
         ChunkBasedCommittedMemoryProvider.get().freeUnalignedChunk(chunk, unalignedChunkSize(chunk));
     }

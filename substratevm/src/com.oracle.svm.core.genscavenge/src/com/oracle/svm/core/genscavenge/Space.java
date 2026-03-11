@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -99,7 +100,7 @@ public final class Space {
         return (getFirstAlignedHeapChunk().isNull() && getFirstUnalignedHeapChunk().isNull());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     public void tearDown() {
         HeapChunkProvider.freeAlignedChunkList(getFirstAlignedHeapChunk());
         HeapChunkProvider.freeUnalignedChunkList(getFirstUnalignedHeapChunk());
@@ -172,7 +173,7 @@ public final class Space {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void walkAlignedHeapChunks(AlignedHeapChunk.Visitor visitor) {
         AlignedHeapChunk.AlignedHeader chunk = getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
@@ -215,7 +216,7 @@ public final class Space {
         accounting.reset();
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void appendAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
         assert VMOperation.isInProgressAtSafepoint();
         appendAlignedHeapChunkUnsafe(aChunk);
@@ -352,7 +353,7 @@ public final class Space {
         lastUnalignedHeapChunk = chunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void absorb(Space src) {
         /*
          * Absorb the chunks of a source into this Space. I cannot just copy the lists, because each

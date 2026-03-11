@@ -223,7 +223,7 @@ public final class HeapAllocation {
         } while (true);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     private static AlignedHeader requestNewAlignedChunk() {
         AlignedHeader newChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
         HeapImpl.getAccounting().increaseEdenUsedBytes(HeapParameters.getAlignedHeapChunkSize());
@@ -269,7 +269,7 @@ public final class HeapAllocation {
         return size.belowOrEqual(AlignedHeapChunk.getUsableSizeForObjects());
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     public void tearDown() {
         // This implicitly frees retainedChunk as well.
         HeapChunkProvider.freeAlignedChunkList(currentChunk);

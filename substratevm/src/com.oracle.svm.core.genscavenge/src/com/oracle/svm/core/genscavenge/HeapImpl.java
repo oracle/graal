@@ -772,7 +772,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
     public UnsignedWord getUsedMemoryAfterLastGC() {
         return accounting.getUsedBytes();
     }

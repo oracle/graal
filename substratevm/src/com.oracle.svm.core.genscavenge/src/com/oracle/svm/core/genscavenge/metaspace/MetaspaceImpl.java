@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge.metaspace;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -138,7 +139,7 @@ public class MetaspaceImpl implements Metaspace {
         space.walkObjects(objectVisitor);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     public void walkDirtyObjects(UninterruptibleObjectVisitor objectVisitor, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         assert VMOperation.isInProgressAtSafepoint() : "prevent other threads from manipulating the metaspace";
         RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), objectVisitor, refVisitor, clean);
@@ -164,7 +165,7 @@ public class MetaspaceImpl implements Metaspace {
         return HeapVerifier.verifyRememberedSet(space);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     public void tearDown() {
         space.tearDown();
     }

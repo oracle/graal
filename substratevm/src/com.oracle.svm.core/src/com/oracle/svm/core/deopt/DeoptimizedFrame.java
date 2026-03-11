@@ -352,7 +352,7 @@ public final class DeoptimizedFrame {
      * GC when walking the stack after being installed during eager deoptimization. For lazy
      * deoptimization, the pin is not needed, and in that case this method must not be called.
      */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Object pinning internals must never end up in interruptible code.")
     public void unpin() {
         assert pin != null;
         pin.close();
@@ -427,7 +427,7 @@ public final class DeoptimizedFrame {
         firstAddressEntry.returnAddress += handler;
     }
 
-    @Uninterruptible(reason = "Does not need to be uninterruptible because it throws a fatal error.", calleeMustBe = false)
+    @Uninterruptible(reason = "Does not need to be uninterruptible because it throws a fatal error.", mayBeInlined = true, calleeMustBe = false)
     private static void throwMissingExceptionHandler(CodeInfo info, ReturnAddress firstAddressEntry) {
         throwMissingExceptionHandler0(info, firstAddressEntry);
     }

@@ -183,7 +183,7 @@ public class RecurringCallbackSupport {
      * Resumes the execution of recurring callbacks for the current thread. The callback execution
      * might be triggered at the next safepoint check.
      */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Must not contain safepoint checks.")
     public static void resumeCallbackTimerAtNextSafepointCheck() {
         if (!isEnabled()) {
             return;

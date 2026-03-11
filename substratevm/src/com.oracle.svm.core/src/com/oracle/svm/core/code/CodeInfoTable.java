@@ -44,11 +44,11 @@ import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.VMError;
@@ -280,7 +280,7 @@ public class CodeInfoTable {
         return info;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     public static void tearDown() {
         getRuntimeCodeCache().tearDown();
     }

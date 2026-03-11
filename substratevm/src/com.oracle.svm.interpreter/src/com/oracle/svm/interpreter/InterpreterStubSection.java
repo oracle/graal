@@ -65,7 +65,6 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
@@ -77,6 +76,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.vm.ci.code.InstalledCode;
@@ -361,7 +361,7 @@ public abstract class InterpreterStubSection {
         return enterData;
     }
 
-    @Uninterruptible(reason = "allow allocation now ", calleeMustBe = false)
+    @Uninterruptible(reason = "Switch to interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static Object enterInterpreterStub0(InterpreterResolvedJavaMethod interpreterMethod, PreparedSignature compiledSignature, Pointer enterData, int handleCount, int handleFrameId) {
         TestingBackdoor.stressEnterStub();
         return enterInterpreterStubCore(interpreterMethod, compiledSignature, enterData, handleCount, handleFrameId);

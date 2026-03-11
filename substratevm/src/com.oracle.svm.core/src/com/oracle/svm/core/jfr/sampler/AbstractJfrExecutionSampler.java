@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -155,7 +155,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
         ExecutionSamplerInstallation.disallow(thread);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "This method executes during signal handling.")
     protected static boolean isExecutionSamplingAllowedInCurrentThread() {
         boolean disallowed = singleton().isSignalHandlerDisabledGlobally.get() > 0 ||
                         isDisabledForCurrentThread.get() > 0 ||
@@ -173,7 +173,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
     protected abstract void uninstall(IsolateThread thread);
 
-    @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
+    @Uninterruptible(reason = "This method executes during signal handling.", callerMustBe = true)
     protected static void tryUninterruptibleStackWalk(CodePointer ip, Pointer sp, boolean isAsync) {
         /*
          * To prevent races, it is crucial that the thread count is incremented before we do any

@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge.remset;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import java.util.List;
 
@@ -310,7 +311,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     public void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor,
                     UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         AlignedHeader aChunk = firstAlignedChunk;

@@ -27,14 +27,14 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.jfr.utils.JfrVisitedTable;
 import com.oracle.svm.core.locks.VMMutex;
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Repository that collects and writes used methods.
@@ -148,7 +148,7 @@ public class JfrMethodRepository implements JfrRepository {
             JfrBufferAccess.reinitialize(buffer);
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = "May free current epoch data.")
         void teardown() {
             table.teardown();
             unflushedEntries = 0;

@@ -31,13 +31,13 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 import java.lang.ref.WeakReference;
 
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.collections.UninterruptibleComparable;
 import com.oracle.svm.core.collections.UninterruptibleLinkedList;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.jfr.JfrTicks;
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Holds information about a sampled object. This data may only be accessed while holding the
@@ -155,7 +155,7 @@ public final class JfrOldObject implements UninterruptibleComparable, Uninterrup
         return ReferenceInternals.getReferent(reference);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
     public boolean isAlive() {
         return ReferenceInternals.isReferentAlive(reference);
     }

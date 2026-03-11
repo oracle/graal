@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.guest.staging.Uninterruptible;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 class JfrGCEvents {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -40,7 +41,7 @@ class JfrGCEvents {
         return 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Emitted during a GC.")
     public static void emitGCPhasePauseEvent(UnsignedWord gcEpoch, String name, long start) {
         if (hasJfrSupport()) {
             int level = jfrSupport().stopGCPhasePause();

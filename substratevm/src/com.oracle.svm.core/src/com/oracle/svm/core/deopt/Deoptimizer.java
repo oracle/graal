@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.deopt;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.stack.JavaFrameAnchors.verifyTopFrameAnchor;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -40,14 +40,14 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.BarrieredAccess;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -71,7 +71,6 @@ import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -84,6 +83,8 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -92,7 +93,6 @@ import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.lir.asm.FrameContext;
 import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.options.Option;
-import org.graalvm.word.impl.BarrieredAccess;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -405,7 +405,7 @@ public final class Deoptimizer {
         return ip.equal(DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer()) || ip.equal(DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer());
     }
 
-    @Uninterruptible(reason = "Switch to interruptible code and report a fatal error.", calleeMustBe = false)
+    @Uninterruptible(reason = "Switch to interruptible code and report a fatal error.", mayBeInlined = true, calleeMustBe = false)
     private static RuntimeException checkDeoptimizedError(Pointer sp) {
         throw checkDeoptimizedError0(sp);
     }

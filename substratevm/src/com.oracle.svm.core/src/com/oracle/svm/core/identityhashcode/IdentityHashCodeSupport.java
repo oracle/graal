@@ -31,9 +31,9 @@ import java.util.SplittableRandom;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
+import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
@@ -42,6 +42,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -50,7 +51,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.internal.misc.Unsafe;
 
 public final class IdentityHashCodeSupport {

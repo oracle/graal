@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge.remset;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import java.util.List;
 
@@ -36,7 +37,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -52,6 +52,7 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
@@ -154,7 +155,7 @@ public final class AlignedChunkRememberedSet {
         ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     static void walkDirtyObjects(AlignedHeader chunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);

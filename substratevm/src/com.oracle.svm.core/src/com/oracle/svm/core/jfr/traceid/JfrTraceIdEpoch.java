@@ -29,9 +29,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -66,22 +66,22 @@ public class JfrTraceIdEpoch {
         epochId++;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent epoch from changing.", callerMustBe = true)
     long thisEpochBit() {
         return getEpoch() ? EPOCH_1_BIT : EPOCH_0_BIT;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent epoch from changing.", callerMustBe = true)
     long previousEpochBit() {
         return getEpoch() ? EPOCH_0_BIT : EPOCH_1_BIT;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent epoch from changing.", callerMustBe = true)
     public boolean currentEpoch() {
         return getEpoch();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent epoch from changing.", callerMustBe = true)
     public boolean previousEpoch() {
         return !getEpoch();
     }

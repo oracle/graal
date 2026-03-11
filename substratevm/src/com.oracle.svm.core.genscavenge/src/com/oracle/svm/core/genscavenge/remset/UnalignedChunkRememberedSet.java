@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge.remset;
 
 import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,7 +34,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
@@ -50,9 +50,10 @@ import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.ContinuationSupport;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -198,7 +199,7 @@ final class UnalignedChunkRememberedSet {
 
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     public static void walkDirtyObjects(UnalignedHeader chunk, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         UnsignedWord objStartOffset = getObjectStartOffset(chunk);
         Object obj = HeapChunk.asPointer(chunk).add(objStartOffset).toObjectNonNull();
@@ -226,7 +227,7 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private static void walkStoredContinuationImprecise(StoredContinuation s, Pointer cardTableStart, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         if (!ContinuationSupport.isSupported()) {
             throw VMError.shouldNotReachHere("Stored continuation objects cannot be in the heap if the continuation support is disabled.");
@@ -244,7 +245,7 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private static void walkObjectArrayPrecise(Object obj, Pointer cardTableStart, UnsignedWord cardTableLimitIdx, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
