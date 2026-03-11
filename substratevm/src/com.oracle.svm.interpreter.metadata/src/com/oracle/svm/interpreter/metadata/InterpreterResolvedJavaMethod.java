@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_NATIVE;
@@ -33,6 +32,7 @@ import static com.oracle.svm.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.BREAKPOINT;
 import static com.oracle.svm.interpreter.metadata.CremaMethodAccess.toJVMCI;
 
@@ -53,7 +53,6 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.SubstrateMetadata;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
@@ -62,7 +61,6 @@ import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.JavaVersion;
 import com.oracle.svm.espresso.classfile.ParserMethod;
@@ -73,10 +71,13 @@ import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
+import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
-import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -108,6 +109,24 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     public static final ExceptionHandler[] EMPTY_EXCEPTION_HANDLERS = new ExceptionHandler[0];
 
     public static final int UNKNOWN_METHOD_ID = 0;
+
+    // dispatch index special values
+    /**
+     * This VTable index has not yet been set. Should never be seen at runtime.
+     */
+    public static final int VTBL_UNINITIALIZED = -1;
+    /**
+     * This method has a single implementation and is devirtualized in the image.
+     */
+    public static final int VTBL_ONE_IMPL = -2;
+    /**
+     * This method is never overriden, and is always inlined in the image.
+     */
+    public static final int VTBL_ALWAYS_INLINED = -3;
+    /**
+     * The VTable index is unavailable.
+     */
+    public static final int VTBL_INVALID = -99;
 
     private final Symbol<Signature> signatureSymbol;
 
@@ -162,9 +181,8 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     protected final InlinedBy inlinedBy;
 
-    public static final int VTBL_NO_ENTRY = -1;
-    public static final int VTBL_ONE_IMPL = -2;
-    private int vtableIndex = VTBL_NO_ENTRY;
+    private int vtableIndex = VTBL_UNINITIALIZED;
+
     private InterpreterResolvedJavaMethod oneImplementation;
 
     /* slot in GOT */
@@ -182,7 +200,8 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      */
     private int methodId;
 
-    @Platforms(Platform.HOSTED_ONLY.class) public boolean needMethodBody;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public boolean needMethodBody;
 
     private final SignaturePolymorphicIntrinsic intrinsic;
 
@@ -384,18 +403,25 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     }
 
     @Override
-    public InterpreterResolvedJavaMethod findSignaturePolymorphicIntrinsic(Symbol<Signature> methodSignature) {
-        return (InterpreterResolvedJavaMethod) CremaSupport.singleton().findMethodHandleIntrinsic(this, methodSignature);
-    }
-
-    @Override
     public final boolean isDeclaredSignaturePolymorphic() {
         // Note: might not be true for the instantiation of polymorphic signature intrinsics.
         return (flags & ACC_SIGNATURE_POLYMORPHIC) != 0;
     }
 
     @Override
+    public InterpreterResolvedJavaMethod findSignaturePolymorphicIntrinsic(Symbol<Signature> methodSignature) {
+        if (!RuntimeClassLoading.isSupported()) {
+            throw VMError.shouldNotReachHere("Signature polymorphic method handling is unsupported without runtime class loading enabled.");
+        }
+
+        return (InterpreterResolvedJavaMethod) CremaSupport.singleton().findMethodHandleIntrinsic(this, methodSignature);
+    }
+
+    @Override
     public final InterpreterResolvedJavaMethod createSignaturePolymorphicIntrinsic(Symbol<Signature> newSignature) {
+        if (!RuntimeClassLoading.isSupported()) {
+            throw VMError.shouldNotReachHere("Unable to create signature polymorphic intrinsic when runtime class loading is disabled.");
+        }
         SignaturePolymorphicIntrinsic iid = SignaturePolymorphicIntrinsic.getId(this);
         assert iid != null;
         assert intrinsic == null;
@@ -421,6 +447,10 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     public final SignaturePolymorphicIntrinsic getSignaturePolymorphicIntrinsic() {
         return intrinsic;
+    }
+
+    public final boolean isSignaturePolymorphicIntrinsic() {
+        return getSignaturePolymorphicIntrinsic() != null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -572,7 +602,8 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final String toString() {
-        return "InterpreterResolvedJavaMethod<holder=" + getDeclaringClass().getName() + " name=" + getName() + " descriptor=" + getSignature().toMethodDescriptor() + ">";
+        return "InterpreterResolvedJavaMethod<holder=" + getDeclaringClass().getName() + " name=" + getName() + " descriptor=" + getSignature().toMethodDescriptor() + " dispatchIndex=" +
+                        getVTableIndex() + ">";
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -689,7 +720,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public final void setVTableIndex(int vtableIndex) {
-        VMError.guarantee(vtableIndex == VTBL_NO_ENTRY || (!isStatic() && !isConstructor()));
+        VMError.guarantee(vtableIndex == VTBL_UNINITIALIZED || (!isStatic() && !isConstructor()));
         if (vtableIndex >= 0) {
             VMError.guarantee(!isFinal());
         }
@@ -697,8 +728,26 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     }
 
     @Override
-    public final boolean hasVTableIndex() {
-        return vtableIndex != VTBL_NO_ENTRY && vtableIndex != VTBL_ONE_IMPL;
+    public final boolean requiresInterfaceDispatch(InterpreterResolvedJavaType holder) {
+        return hasDispatchIndex() && getDeclaringClass().isInterface();
+    }
+
+    public final boolean isDevirtualized() {
+        return VTBL_INVALID < vtableIndex && vtableIndex < VTBL_UNINITIALIZED;
+    }
+
+    public final InterpreterResolvedJavaMethod devirtualizationTarget() {
+        assert isDevirtualized();
+        if (vtableIndex == VTBL_ONE_IMPL) {
+            return getOneImplementation();
+        } else if (vtableIndex == VTBL_ALWAYS_INLINED) {
+            return this;
+        }
+        throw VMError.shouldNotReachHere("Unable to devirtualize.");
+    }
+
+    public final boolean hasDispatchIndex() {
+        return vtableIndex >= 0;
     }
 
     public final void setOneImplementation(InterpreterResolvedJavaMethod oneImplementation) {
@@ -762,7 +811,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> withVTableIndex(int index) {
-        assert vtableIndex == VTBL_NO_ENTRY;
+        assert vtableIndex == VTBL_UNINITIALIZED;
         vtableIndex = index;
         return this;
     }
@@ -910,5 +959,9 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
             }
         }
         return invoker;
+    }
+
+    public CallKind getCallKind() {
+        return CallKind.getCallKind(this);
     }
 }

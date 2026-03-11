@@ -53,7 +53,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -71,6 +70,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -232,7 +232,7 @@ public final class BuildTimeInterpreterUniverse {
                         lineNumberTable,
                         null,
                         null,
-                        InterpreterResolvedJavaMethod.VTBL_NO_ENTRY,
+                        InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED,
                         GOTEntryAllocator.GOT_NO_ENTRY,
                         InterpreterResolvedJavaMethod.EST_NO_ENTRY,
                         InterpreterResolvedJavaMethod.UNKNOWN_METHOD_ID);

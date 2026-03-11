@@ -244,7 +244,7 @@ public final class EspressoMethodTableBuilder {
         for (PartialMethod<Klass, Method, Field> m : mirandas) {
             Method entry = m.asMethodAccess();
             // We add mirandas to the vtable in builder, they should have a vtable index by now.
-            assert entry.hasVTableIndex();
+            assert entry.isVTableIndexInitialized();
             // Creating a proxy is handled in Method.withVTableIndex().
             assert entry.isProxy();
             // Ensure that the pass over vtable has already set poison pills.

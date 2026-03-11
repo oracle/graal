@@ -29,10 +29,10 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
+import com.oracle.svm.shared.util.VMError;
 
 public class InterpreterUtil {
     private static final boolean assertionsEnabled;
@@ -49,6 +49,26 @@ public class InterpreterUtil {
     public static void guarantee(boolean condition, String simpleFormat, Object arg1) {
         if (!condition) {
             VMError.guarantee(condition, MetadataUtil.fmt(simpleFormat, arg1));
+        }
+    }
+
+    /**
+     * Alternative to {@link VMError#guarantee(boolean, String, Object, Object)} that avoids
+     * {@link String#format(String, Object...)} .
+     */
+    public static void guarantee(boolean condition, String simpleFormat, Object arg1, Object arg2) {
+        if (!condition) {
+            VMError.guarantee(condition, MetadataUtil.fmt(simpleFormat, arg1, arg2));
+        }
+    }
+
+    /**
+     * Alternative to {@link VMError#guarantee(boolean, String, Object, Object)} that avoids
+     * {@link String#format(String, Object...)} .
+     */
+    public static void guarantee(boolean condition, String simpleFormat, Object... args) {
+        if (!condition) {
+            VMError.guarantee(condition, MetadataUtil.fmt(simpleFormat, args));
         }
     }
 
@@ -109,6 +129,21 @@ public class InterpreterUtil {
         }
     }
 
+    /**
+     * Appends current interpreter log indent, then returns the interpreter log.
+     */
+    public static Log traceInterpreter() {
+        if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
+            if (InterpreterOptions.InterpreterTrace.getValue()) {
+                return Log.log().string(" ".repeat(Interpreter.logIndent.get()));
+            }
+        }
+        return Log.noopLog();
+    }
+
+    /**
+     * Appends given message to the Interpreter log, then returns it.
+     */
     public static Log traceInterpreter(String msg) {
         if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
             if (InterpreterOptions.InterpreterTrace.getValue()) {

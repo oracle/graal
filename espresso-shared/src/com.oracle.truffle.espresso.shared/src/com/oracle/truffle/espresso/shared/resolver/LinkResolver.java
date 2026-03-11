@@ -463,6 +463,7 @@ public final class LinkResolver {
                 callKind = CallKind.STATIC;
                 break;
             case Interface:
+                assert resolved.getDeclaringClass().isInterface() || resolved.getDeclaringClass().isJavaLangObject() : "Should have been a ClassFormatError.";
                 // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() ||
@@ -475,15 +476,27 @@ public final class LinkResolver {
                     }
                     return null;
                 }
-                if (resolved.isPrivate()) {
+                if (resolved.isFinalFlagSet() || resolved.isPrivate()) {
                     assert runtime.getJavaVersion().java9OrLater() : "Should have thrown in previous check.";
-                    // Interface private methods do not appear in itables.
+                    /*
+                     * The final flag check handles resolving to final j.l.Object methods (eg:
+                     * getClass()).
+                     *
+                     * Note: checking final flag of resolved's declaring class is not needed. In
+                     * this branch, it may only be either an interface (which can not be final) or
+                     * j.l.Object, which is not final.
+                     */
                     callKind = CallKind.DIRECT;
                 } else if (resolved.getDeclaringClass().isJavaLangObject()) {
                     // Can happen in old classfiles that calls j.l.Object methods on interfaces.
                     callKind = CallKind.VTABLE_LOOKUP;
-                } else {
+                } else if (resolved.requiresInterfaceDispatch(symbolicHolder)) {
                     callKind = CallKind.ITABLE_LOOKUP;
+                } else {
+                    // Some runtimes may optimize interface methods known to have a unique concrete
+                    // implementation. Such example may include sealed interfaces with a single
+                    // non-interface permitted subclass.
+                    callKind = CallKind.VTABLE_LOOKUP;
                 }
                 break;
             case Virtual:
@@ -500,13 +513,13 @@ public final class LinkResolver {
                 }
                 if (resolved.isFinalFlagSet() || resolved.getDeclaringClass().isFinalFlagSet() || resolved.isPrivate()) {
                     callKind = CallKind.DIRECT;
-                } else if (resolved.hasVTableIndex()) {
-                    callKind = CallKind.VTABLE_LOOKUP;
-                } else {
+                } else if (resolved.requiresInterfaceDispatch(symbolicHolder)) {
                     // This case can only happen if implicit interface methods are not added to the
                     // vtables.
                     assert resolved.getDeclaringClass().isInterface();
                     callKind = CallKind.ITABLE_LOOKUP;
+                } else {
+                    callKind = CallKind.VTABLE_LOOKUP;
                 }
                 break;
             case Special:

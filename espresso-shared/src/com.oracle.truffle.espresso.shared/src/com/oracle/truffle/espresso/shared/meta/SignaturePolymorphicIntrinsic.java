@@ -29,26 +29,29 @@ import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.resolver.CallKind;
 
 /**
  * Classification of signature polymorphic methods found in the JDK based on how their behaviour is
  * to be implemented.
  */
 public enum SignaturePolymorphicIntrinsic {
-    InvokeGeneric(false, false),
-    InvokeBasic(false, true),
-    LinkToVirtual(true, true),
-    LinkToStatic(true, true),
-    LinkToSpecial(true, true),
-    LinkToInterface(true, true),
-    LinkToNative(true, true);
+    InvokeGeneric(false, false, CallKind.DIRECT),
+    InvokeBasic(false, true, CallKind.DIRECT),
+    LinkToVirtual(true, true, CallKind.VTABLE_LOOKUP),
+    LinkToStatic(true, true, CallKind.STATIC),
+    LinkToSpecial(true, true, CallKind.DIRECT),
+    LinkToInterface(true, true, CallKind.ITABLE_LOOKUP),
+    LinkToNative(true, true, CallKind.DIRECT);
 
     private final boolean isStatic;
     private final boolean isSignaturePolymorphicIntrinsic;
+    private final CallKind callKind;
 
-    SignaturePolymorphicIntrinsic(boolean isStatic, boolean isSignaturePolymorphic) {
+    SignaturePolymorphicIntrinsic(boolean isStatic, boolean isSignaturePolymorphic, CallKind callKind) {
         this.isStatic = isStatic;
         this.isSignaturePolymorphicIntrinsic = isSignaturePolymorphic;
+        this.callKind = callKind;
     }
 
     /**
@@ -71,6 +74,13 @@ public enum SignaturePolymorphicIntrinsic {
      */
     public final boolean isSignaturePolymorphicIntrinsic() {
         return isSignaturePolymorphicIntrinsic;
+    }
+
+    /**
+     * Returns the call kind associated with the intrinsic behavior.
+     */
+    public final CallKind getCallKind() {
+        return callKind;
     }
 
     /**
