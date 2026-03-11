@@ -71,8 +71,10 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
     private boolean sealed;
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(this::collectReachableObjects);
+    public void duringSetup(DuringSetupAccess a) {
+        FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
+        access.registerObjectReachableCallback(Thread.class, (_, thread, _) -> collectReachableThreads(thread));
+        access.registerObjectReachableCallback(ThreadGroup.class, (_, group, _) -> collectReachableThreadGroups(group));
 
         /*
          * This currently only means that we don't support setting custom values for
@@ -123,37 +125,33 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
         });
     }
 
-    private Object collectReachableObjects(Object original) {
-        if (original instanceof Thread) {
-            Thread thread = (Thread) original;
-            if (thread.getState() == Thread.State.NEW) {
-                registerReachableObject(reachableThreads, thread, Boolean.TRUE);
-            } else {
-                /*
-                 * Started Threads must not be in the image heap. The error is reported in
-                 * DisallowedImageHeapObjectFeature (which is in a hosted project).
-                 */
-            }
+    private void collectReachableThreads(Thread thread) {
+        if (thread.getState() == Thread.State.NEW) {
+            registerReachableObject(reachableThreads, thread, Boolean.TRUE);
+        } else {
+            /*
+             * Started Threads must not be in the image heap. The error is reported in
+             * DisallowedImageHeapObjectFeature (which is in a hosted project).
+             */
+        }
+    }
 
-        } else if (original instanceof ThreadGroup) {
-            ThreadGroup group = (ThreadGroup) original;
-            if (registerReachableObject(reachableThreadGroups, group, new ReachableThreadGroup())) {
-                ThreadGroup parent = group.getParent();
-                if (parent != null) {
-                    /* Ensure ReachableThreadGroup object for parent is created. */
-                    collectReachableObjects(parent);
-                    /*
-                     * Build the tree of thread groups that is then written out in the image heap.
-                     * This tree is a subtree of all thread groups in the image generator,
-                     * containing only the thread groups that were found as reachable at run time.
-                     */
-                    reachableThreadGroups.get(parent).add(group);
-                } else {
-                    assert group == PlatformThreads.singleton().systemGroup;
-                }
+    private void collectReachableThreadGroups(ThreadGroup group) {
+        if (registerReachableObject(reachableThreadGroups, group, new ReachableThreadGroup())) {
+            ThreadGroup parent = group.getParent();
+            if (parent != null) {
+                /* Ensure ReachableThreadGroup object for parent is created. */
+                collectReachableThreadGroups(parent);
+                /*
+                 * Build the tree of thread groups that is then written out in the image heap. This
+                 * tree is a subtree of all thread groups in the image generator, containing only
+                 * the thread groups that were found as reachable at run time.
+                 */
+                reachableThreadGroups.get(parent).add(group);
+            } else {
+                assert group == PlatformThreads.singleton().systemGroup;
             }
         }
-        return original;
     }
 
     private <K, V> boolean registerReachableObject(Map<K, V> map, K object, V value) {
