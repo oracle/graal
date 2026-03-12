@@ -35,7 +35,6 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-
 /**
  * Platform dependent time related utils. See also {@link TimeUtils} for platform independent utils.
  */

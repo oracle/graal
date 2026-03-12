@@ -58,7 +58,6 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.Uninterruptible;
 
-
 import jdk.graal.compiler.core.common.NumUtil;
 
 /**
