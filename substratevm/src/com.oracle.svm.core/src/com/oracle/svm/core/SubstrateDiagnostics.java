@@ -96,7 +96,7 @@ import com.oracle.svm.core.util.AbstractImageHeapList;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.ImageHeapList;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;

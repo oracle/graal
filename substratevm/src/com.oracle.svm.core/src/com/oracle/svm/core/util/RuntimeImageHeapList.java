@@ -27,7 +27,7 @@ package com.oracle.svm.core.util;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * The immutable runtime list view for an {@link ImageHeapList}.

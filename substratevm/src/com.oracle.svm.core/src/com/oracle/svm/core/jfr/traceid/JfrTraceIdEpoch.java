@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 

@@ -44,7 +44,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;

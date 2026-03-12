@@ -25,7 +25,7 @@
 package com.oracle.svm.core.meta;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;

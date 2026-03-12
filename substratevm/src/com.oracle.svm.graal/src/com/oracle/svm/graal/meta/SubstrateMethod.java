@@ -58,7 +58,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.api.replacements.Snippet;

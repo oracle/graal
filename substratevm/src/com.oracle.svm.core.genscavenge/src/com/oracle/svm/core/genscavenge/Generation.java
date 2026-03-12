@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /** A Generation is a collection of one or more Spaces. */
 abstract class Generation {

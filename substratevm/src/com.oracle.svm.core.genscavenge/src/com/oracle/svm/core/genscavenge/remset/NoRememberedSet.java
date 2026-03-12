@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.List;
 
@@ -44,7 +44,7 @@ import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.gc.BarrierSet;

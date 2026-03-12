@@ -36,7 +36,7 @@ import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /** Visits surviving objects before compaction to update their references. */
 public final class ObjectFixupVisitor implements UninterruptibleObjectVisitor {

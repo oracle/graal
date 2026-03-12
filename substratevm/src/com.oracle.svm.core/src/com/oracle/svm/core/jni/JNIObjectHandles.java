@@ -42,7 +42,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;

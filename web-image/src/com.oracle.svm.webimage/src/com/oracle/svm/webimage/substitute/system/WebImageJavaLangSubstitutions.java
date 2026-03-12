@@ -25,7 +25,7 @@
 
 package com.oracle.svm.webimage.substitute.system;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.ByteArrayInputStream;
 import java.io.Console;
@@ -55,7 +55,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
 import com.oracle.svm.webimage.functionintrinsics.JSInternalErrors;

@@ -26,7 +26,7 @@ package com.oracle.svm.core.thread;
 
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * Like {@link JavaSpinLockUtils} except that the lock is located in native memory.

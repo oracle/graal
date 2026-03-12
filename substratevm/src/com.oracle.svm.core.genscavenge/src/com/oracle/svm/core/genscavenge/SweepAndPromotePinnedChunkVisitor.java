@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -35,7 +35,7 @@ import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * In chunks that contain pinned objects, overwrites objects which have died or which have survived

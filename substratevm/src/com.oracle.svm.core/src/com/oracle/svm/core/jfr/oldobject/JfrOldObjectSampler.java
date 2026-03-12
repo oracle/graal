@@ -26,7 +26,7 @@
 
 package com.oracle.svm.core.jfr.oldobject;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.word.UnsignedWord;
 
@@ -38,7 +38,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.OldObjectSampleEvent;
 import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * A sampler that tracks old objects that are potential memory leaks.

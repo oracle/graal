@@ -34,7 +34,7 @@ import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.Constant;

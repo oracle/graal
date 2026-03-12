@@ -71,7 +71,7 @@ import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.hosted.webimage.wasm.stack.WebImageWasmStackFrameVisitor;
 import com.oracle.svm.hosted.webimage.wasm.stack.WebImageWasmStackWalker;
 import com.oracle.svm.shared.option.HostedOptionKey;

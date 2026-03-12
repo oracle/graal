@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.After;
 import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.Before;
 import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.During;
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.ref.Reference;
 
@@ -109,7 +109,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;

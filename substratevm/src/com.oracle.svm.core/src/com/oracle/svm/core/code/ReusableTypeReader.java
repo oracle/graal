@@ -25,7 +25,7 @@
 
 package com.oracle.svm.core.code;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import jdk.graal.compiler.core.common.util.AbstractTypeReader;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 

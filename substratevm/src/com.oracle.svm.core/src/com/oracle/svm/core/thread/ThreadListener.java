@@ -26,7 +26,7 @@ package com.oracle.svm.core.thread;
 
 import org.graalvm.nativeimage.IsolateThread;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 public interface ThreadListener {
     @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")

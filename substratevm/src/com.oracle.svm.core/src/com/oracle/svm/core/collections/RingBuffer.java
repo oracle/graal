@@ -26,7 +26,7 @@ package com.oracle.svm.core.collections;
 
 import java.util.function.Supplier;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /** Keeps the last-n entries. */
 public final class RingBuffer<T> {

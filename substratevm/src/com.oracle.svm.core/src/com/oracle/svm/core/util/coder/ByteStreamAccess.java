@@ -26,7 +26,7 @@ package com.oracle.svm.core.util.coder;
 
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 public class ByteStreamAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

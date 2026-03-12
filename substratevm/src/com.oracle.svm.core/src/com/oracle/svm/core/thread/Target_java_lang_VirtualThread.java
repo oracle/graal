@@ -44,7 +44,7 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 @TargetClass(className = "java.lang.VirtualThread")

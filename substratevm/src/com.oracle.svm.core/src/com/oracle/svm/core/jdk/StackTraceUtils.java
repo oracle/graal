@@ -25,7 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.security.AccessControlContext;
 import java.security.AccessController;
@@ -61,7 +61,7 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;

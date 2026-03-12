@@ -39,7 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class UninterruptibleAnnotationUtils {
 
     /**
-     * Wraps a guest-level {@code com.oracle.svm.guest.staging.Uninterruptible} annotation.
+     * Wraps a guest-level {@code com.oracle.svm.shared.Uninterruptible} annotation.
      */
     public record UninterruptibleGuestValue(String reason, boolean callerMustBe, boolean calleeMustBe, boolean mayBeInlined) {
 

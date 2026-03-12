@@ -122,7 +122,7 @@ import com.oracle.svm.core.thread.Target_java_lang_BaseVirtualThread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.ArrayUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.Utf8;
 import com.oracle.svm.shared.util.VMError;
 

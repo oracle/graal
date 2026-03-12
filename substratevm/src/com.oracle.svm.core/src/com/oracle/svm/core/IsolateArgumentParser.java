@@ -29,7 +29,7 @@ import static com.oracle.svm.core.IsolateArgumentAccess.readLong;
 import static com.oracle.svm.core.IsolateArgumentAccess.writeBoolean;
 import static com.oracle.svm.core.IsolateArgumentAccess.writeCCharPointer;
 import static com.oracle.svm.core.IsolateArgumentAccess.writeLong;
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -61,7 +61,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.ImageHeapList;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;

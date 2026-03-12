@@ -32,7 +32,7 @@ import static com.oracle.svm.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.BREAKPOINT;
 import static com.oracle.svm.interpreter.metadata.CremaMethodAccess.toJVMCI;
 
@@ -73,7 +73,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;

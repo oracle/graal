@@ -46,7 +46,7 @@ import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 public final class JfrOldObjectRepository implements JfrRepository {
     private static final int OBJECT_DESCRIPTION_MAX_LENGTH = 100;

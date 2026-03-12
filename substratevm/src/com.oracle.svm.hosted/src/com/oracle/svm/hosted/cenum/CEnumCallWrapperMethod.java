@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.cenum;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
 
 import java.lang.reflect.Modifier;
