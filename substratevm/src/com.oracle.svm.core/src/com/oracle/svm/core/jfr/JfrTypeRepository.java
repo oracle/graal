@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -37,7 +39,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.collections.UninterruptibleEntry;
@@ -48,8 +50,6 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
-
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
  * Repository that collects and writes used classes, packages, modules, and classloaders. There are

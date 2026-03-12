@@ -30,7 +30,7 @@ import jdk.jfr.Recording;
 import org.junit.Test;
 import com.oracle.svm.core.jfr.JfrSymbolRepository;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;

@@ -26,7 +26,6 @@
 
 package com.oracle.svm.core.posix.jfr;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.nmt.NmtCategory;
@@ -35,7 +34,7 @@ import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
 import org.graalvm.word.Pointer;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -43,7 +42,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -53,9 +52,10 @@ import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
-import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.collections.GrowableWordArray;
 import com.oracle.svm.core.collections.GrowableWordArrayAccess;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import java.nio.charset.StandardCharsets;
 
@@ -243,7 +243,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
                 CCharPointer fn = entry.d_name();
                 if (filter(fn)) {
                     // Append filtered files to list
-                    if (!GrowableWordArrayAccess.add(gwa, (Word) fn, NmtCategory.JFR)) {
+                    if (!GrowableWordArrayAccess.add(gwa, (Word) (Pointer) fn, NmtCategory.JFR)) {
                         SubstrateJVM.getLogging().logJfrSystemError("Unable to add chunk filename to list during jfr emergency dump");
                     }
                     count++;
@@ -258,8 +258,8 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+2/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L191-L212")
     static int compare(Word a, Word b) {
-        CCharPointer filenameA = (CCharPointer) a;
-        CCharPointer filenameB = (CCharPointer) b;
+        CCharPointer filenameA = (CCharPointer) ((Pointer) a);
+        CCharPointer filenameB = (CCharPointer) ((Pointer) b);
         int cmp = LibC.strncmp(filenameA, filenameB, Word.unsigned(ISO_8601_LEN));
         if (cmp == 0) {
             CCharPointer aDot = SubstrateUtil.strchr(filenameA, DOT);
@@ -287,7 +287,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         }
 
         for (int i = 0; i < sortedChunkFilenames.getSize(); i++) {
-            CCharPointer fn = (CCharPointer) GrowableWordArrayAccess.get(sortedChunkFilenames, i);
+            CCharPointer fn = (CCharPointer) ((Pointer) GrowableWordArrayAccess.get(sortedChunkFilenames, i));
             RawFileDescriptor chunkFd = getFileSupport().open(fullyQualified(fn), FileAccessMode.READ_WRITE);
             if (getFileSupport().isValid(chunkFd)) {
 

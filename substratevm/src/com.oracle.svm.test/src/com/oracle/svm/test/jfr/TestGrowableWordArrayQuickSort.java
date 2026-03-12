@@ -29,7 +29,7 @@ package com.oracle.svm.test.jfr;
 import org.junit.Test;
 
 import com.oracle.svm.core.nmt.NmtCategory;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordFactory;
 import org.graalvm.nativeimage.StackValue;
 
