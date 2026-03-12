@@ -29,6 +29,8 @@ import java.lang.reflect.Method;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.shared.Uninterruptible;
+
 /**
  * A collection of static methods for error reporting of fatal error. A fatal error leaves the VM in
  * an inconsistent state, so no meaningful recovery is possible.
@@ -150,16 +152,14 @@ public final class VMError {
         throw shouldNotReachHere(msgShouldNotReachHereUnsupportedPlatform);
     }
 
-    // The following is done via substitutions:
-    // @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition) {
         if (!condition) {
             throw shouldNotReachHere("guarantee failed");
         }
     }
 
-    // The following is done via substitutions:
-    // @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition, String msg) {
         if (!condition) {
             throw shouldNotReachHere(msg);
