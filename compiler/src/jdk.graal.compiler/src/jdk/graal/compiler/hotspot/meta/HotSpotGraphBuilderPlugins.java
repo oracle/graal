@@ -279,7 +279,7 @@ public class HotSpotGraphBuilderPlugins {
 
             @Override
             public void run() {
-                StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, true, false, true);
+                StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, true, false, true, true);
 
                 registerObjectPlugins(invocationPlugins, config);
                 registerClassPlugins(plugins, config);

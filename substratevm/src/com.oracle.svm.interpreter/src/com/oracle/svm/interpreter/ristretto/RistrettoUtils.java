@@ -376,7 +376,7 @@ public class RistrettoUtils {
         GraphBuilderConfiguration.Plugins runtimeParseGraphBuilderPlugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
         RistrettoGraphBuilderPlugins.setRuntimeGraphBuilderPlugins(runtimeParseGraphBuilderPlugins);
         SnippetReflectionProvider srp = RuntimeCompilationSupport.getRuntimeConfig().getProviders().getSnippetReflection();
-        StandardGraphBuilderPlugins.registerInvocationPlugins(srp, runtimeParseGraphBuilderPlugins.getInvocationPlugins(), true, true, false);
+        StandardGraphBuilderPlugins.registerInvocationPlugins(srp, runtimeParseGraphBuilderPlugins.getInvocationPlugins(), true, true, false, false);
         runtimeParseGraphBuilderPlugins.getInvocationPlugins().closeRegistration();
 
         GraphBuilderConfiguration gpc = GraphBuilderConfiguration.getDefault(runtimeParseGraphBuilderPlugins);
