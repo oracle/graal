@@ -73,7 +73,6 @@ import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
@@ -284,11 +283,15 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int createIsolate(CEntryPointCreateIsolateParameters providedParameters) {
-        CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
-        if (cpuFeatureAccess.verifyHostSupportsArchitectureEarly() != 0) {
+        /*
+         * Check if the CPU provides all features that were used during the image build. This must
+         * be checked before any other code is executed.
+         */
+        if (CPUFeatureAccess.singleton().verifyHostSupportsArchitectureEarly() != 0) {
             return CEntryPointErrors.CPU_FEATURE_CHECK_FAILED;
         }
 
+        /* Check if the run-time page size is compatible with the build-time page size. */
         UnsignedWord runtimePageSize = VirtualMemoryProvider.get().getGranularity();
         UnsignedWord imagePageSize = Word.unsigned(SubstrateOptions.getPageSize());
         UnsignedWord minimumPageSize = Word.unsigned(SubstrateOptions.MINIMUM_PAGE_SIZE);
@@ -297,8 +300,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
         }
 
-        LocaleSupport.initialize();
+        /* Initialize process-wide state such as the locale support. */
+        EarlyProcessWideState.initialize();
 
+        /* Parse isolate arguments. */
         CEntryPointCreateIsolateParameters parameters = providedParameters;
         if (parameters.isNull() || parameters.version() < 1) {
             parameters = StackValue.get(CEntryPointCreateIsolateParameters.class);
@@ -313,8 +318,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         IsolateArgumentParser.singleton().parse(parameters, arguments);
 
-        Container.initialize();
-
+        /* Create the isolate and map the image heap. */
         WordPointer isolatePtr = StackValue.get(WordPointer.class);
         int error = Isolates.create(isolatePtr, arguments);
         if (error != CEntryPointErrors.NO_ERROR) {
@@ -322,22 +326,27 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return error;
         }
 
+        /* Initialize all base registers. */
         Isolate isolate = isolatePtr.read();
         initBaseRegisters(Isolates.getHeapBase(isolate));
 
-        return createIsolate0(isolate, arguments);
+        /* Finish isolate creation and attach the current thread. */
+        error = createIsolate0(isolate, arguments);
+        if (error != CEntryPointErrors.NO_ERROR) {
+            IsolateArgumentParser.singleton().tearDown(arguments);
+        }
+        return error;
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @NeverInline("Base registers are set in caller, prevent reads from floating before that.")
     private static int createIsolate0(Isolate isolate, IsolateArguments arguments) {
         assert Heap.getHeap().verifyImageHeapMapping();
-        IsolateThreadCache.initialize();
         IsolateArgumentParser.singleton().persistOptions(arguments);
         IsolateListenerSupport.singleton().afterCreateIsolate(isolate);
 
         CodeInfoTable.prepareImageCodeInfo();
-        if (!VMThreads.ensureInitialized()) {
+        if (!VMThreads.initialize()) {
             return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
         }
 
@@ -406,7 +415,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         /*
          * Initialize the physical memory size. This must be done as early as possible because we
-         * must not trigger GC before PhysicalMemory is initialized.
+         * must not trigger a GC before PhysicalMemory is initialized.
          */
         PhysicalMemory.initialize();
 
