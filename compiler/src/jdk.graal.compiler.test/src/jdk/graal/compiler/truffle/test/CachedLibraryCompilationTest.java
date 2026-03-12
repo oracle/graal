@@ -66,7 +66,6 @@ public class CachedLibraryCompilationTest extends PartialEvaluationTest {
         }
     }
 
-
     abstract static class GuardNode extends Node {
 
         static int LIMIT = 0;
