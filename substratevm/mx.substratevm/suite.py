@@ -2016,7 +2016,7 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.shared",
                 "exports" : [
-                    """com.oracle.svm.shared.* to
+                    """* to
                             com.oracle.svm.extraimage_enterprise,
                             com.oracle.svm.jdwp.server,
                             com.oracle.svm.svm_enterprise,
