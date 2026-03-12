@@ -34,7 +34,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;

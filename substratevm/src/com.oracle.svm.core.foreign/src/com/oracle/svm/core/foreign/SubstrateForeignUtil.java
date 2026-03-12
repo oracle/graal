@@ -40,7 +40,7 @@ import java.util.Optional;
 import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ForeignConfiguration.ConfigurationFunctionDescriptor;
 import com.oracle.svm.configure.config.ForeignConfiguration.StubDesc;
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.ArenaIntrinsics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime.LinkRequest;

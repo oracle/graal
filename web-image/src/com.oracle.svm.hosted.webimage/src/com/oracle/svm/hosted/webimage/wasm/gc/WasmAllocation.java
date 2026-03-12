@@ -39,7 +39,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.NeverInline;

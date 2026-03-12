@@ -28,7 +28,7 @@ package hello;
 
 // Checkstyle: stop
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.test.debug.CStructTests;
 

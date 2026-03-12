@@ -41,7 +41,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.graal.SubstrateGraalUtils;

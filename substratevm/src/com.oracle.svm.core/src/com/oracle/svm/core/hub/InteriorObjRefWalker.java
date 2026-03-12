@@ -31,7 +31,7 @@ import java.util.function.IntConsumer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
