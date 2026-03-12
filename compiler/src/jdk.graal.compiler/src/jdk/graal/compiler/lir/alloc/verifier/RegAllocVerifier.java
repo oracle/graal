@@ -112,7 +112,7 @@ public class RegAllocVerifier {
             // Create new entry state for successor blocks out of current block state
             var state = new BlockVerifierState(block, this.blockEntryStates.get(block));
             for (var instr : instructions) {
-                state.update(instr, block);
+                state.update(instr);
             }
 
             for (int i = 0; i < block.getSuccessorCount(); i++) {
@@ -153,8 +153,8 @@ public class RegAllocVerifier {
             var instructions = this.blockInstructions.get(block);
 
             for (var instr : instructions) {
-                state.check(instr, block);
-                state.update(instr, block);
+                state.check(instr);
+                state.update(instr);
             }
 
             if (block.getSuccessorCount() == 0) {
@@ -177,8 +177,8 @@ public class RegAllocVerifier {
 
             for (var instr : instructions) {
                 try {
-                    state.check(instr, block);
-                    state.update(instr, block);
+                    state.check(instr);
+                    state.update(instr);
                 } catch (RAVException e) {
                     exceptions.add(e);
                 }

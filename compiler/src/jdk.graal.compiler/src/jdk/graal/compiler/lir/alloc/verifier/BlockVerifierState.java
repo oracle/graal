@@ -37,8 +37,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
-import java.util.List;
-
 /**
  * Verification state a block is in.
  */
@@ -100,16 +98,15 @@ public class BlockVerifierState {
      * after stack allocation, because some values are no longer present.
      *
      * @param op    Operation for which we are checking state values
-     * @param block Block where this operation is located
      */
-    protected void checkStateValues(RAVInstruction.Op op, BasicBlock<?> block) {
+    protected void checkStateValues(RAVInstruction.Op op) {
         if (!op.hasCompleteState()) {
             // Some values are null after allocation because of stack slot allocator
             // because it is skipped when iteration (StackLockValue).
             return;
         }
 
-        checkInputs(op.stateValues, op, block);
+        checkInputs(op.stateValues, op);
     }
 
     /**
@@ -118,12 +115,11 @@ public class BlockVerifierState {
      *
      * @param values Array of pairs of current location and original variable.
      * @param op     Operation this input array of values belongs to
-     * @param block  Block this operation is in
      */
-    protected void checkInputs(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op, BasicBlock<?> block) {
+    protected void checkInputs(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op) {
         // Check that incoming values are not unknown or conflicted - these only matter if used
         for (int idx = 0; idx < values.count; idx++) {
-            checkOperand(values.orig[idx], values.curr[idx], op, block);
+            checkOperand(values.orig[idx], values.curr[idx], op);
         }
     }
 
@@ -138,9 +134,8 @@ public class BlockVerifierState {
      * @param orig  Original variable
      * @param curr  Current location
      * @param op    Operation where these are used
-     * @param block Block where this operation is
      */
-    protected void checkOperand(RAValue orig, RAValue curr, RAVInstruction.Op op, BasicBlock<?> block) {
+    protected void checkOperand(RAValue orig, RAValue curr, RAVInstruction.Op op) {
         assert orig != null;
 
         if (curr == null) {
@@ -272,21 +267,20 @@ public class BlockVerifierState {
      * check out to the state stored in for this block.
      *
      * @param instruction Instruction we are checking
-     * @param block       Block where it is located
      */
-    public void check(RAVInstruction.Base instruction, BasicBlock<?> block) {
+    public void check(RAVInstruction.Base instruction) {
         if (instruction instanceof RAVInstruction.Op op) {
-            checkInputs(op.uses, op, block);
-            checkInputs(op.alive, op, block);
-            checkStateValues(op, block);
+            checkInputs(op.uses, op);
+            checkInputs(op.alive, op);
+            checkStateValues(op);
 
-            checkTempKind(op, block);
-            checkAliveConstraint(op, block);
+            checkTempKind(op);
+            checkAliveConstraint(op);
 
-            checkOperandFlags(op.dests, op, block);
-            checkOperandFlags(op.uses, op, block);
-            checkOperandFlags(op.alive, op, block);
-            checkOperandFlags(op.temp, op, block);
+            checkOperandFlags(op.dests, op);
+            checkOperandFlags(op.uses, op);
+            checkOperandFlags(op.alive, op);
+            checkOperandFlags(op.temp, op);
 
             checkBytecodeFrames(op);
         }
@@ -335,10 +329,9 @@ public class BlockVerifierState {
      * original variables with after allocation concrete locations.
      *
      * @param op    Instruction we update state from
-     * @param block Block where it is located
      * @throws KindsMismatchException if a pair does not match
      */
-    protected void checkTempKind(RAVInstruction.Op op, BasicBlock<?> block) {
+    protected void checkTempKind(RAVInstruction.Op op) {
         for (int i = 0; i < op.temp.count; i++) {
             var curr = op.temp.curr[i];
             var orig = op.temp.orig[i];
@@ -357,9 +350,8 @@ public class BlockVerifierState {
      * is complete, but is used either as an output or a generic input.
      *
      * @param instruction Instruction with alive inputs
-     * @param block       Block this instruction is in
      */
-    protected void checkAliveConstraint(RAVInstruction.Op instruction, BasicBlock<?> block) {
+    protected void checkAliveConstraint(RAVInstruction.Op instruction) {
         for (int i = 0; i < instruction.alive.count; i++) {
             RAValue value = instruction.alive.curr[i];
             if (value == null) {
@@ -392,10 +384,9 @@ public class BlockVerifierState {
      *
      * @param values Value array pair we are verifying
      * @param op     Instruction which holds this array, for tracing in exceptions
-     * @param block  Block this instruction is in, for tracing in exceptions
      * @throws OperandFlagMismatchException Operand is a wrong type based on OperandFlag set.
      */
-    protected void checkOperandFlags(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op, BasicBlock<?> block) {
+    protected void checkOperandFlags(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op) {
         for (int i = 0; i < values.count; i++) {
             var curr = values.curr[i];
             if (curr == null) {
@@ -432,12 +423,11 @@ public class BlockVerifierState {
      * the symbol that was present before allocation was completed.
      *
      * @param instruction Instruction we update state from
-     * @param block       Block where it is located
      */
-    public void update(RAVInstruction.Base instruction, BasicBlock<?> block) {
+    public void update(RAVInstruction.Base instruction) {
         switch (instruction) {
-            case RAVInstruction.Op op -> this.updateWithOp(op, block);
-            case RAVInstruction.ValueMove virtMove -> this.updateWithValueMove(virtMove, block);
+            case RAVInstruction.Op op -> this.updateWithOp(op);
+            case RAVInstruction.ValueMove virtMove -> this.updateWithValueMove(virtMove);
             case RAVInstruction.LocationMove move -> this.values.putClone(move.to, this.values.get(move.from));
             default -> throw GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
         }
@@ -450,9 +440,8 @@ public class BlockVerifierState {
      * allocation.
      *
      * @param op    Operation we update state from
-     * @param block Block where it is located
      */
-    protected void updateWithOp(RAVInstruction.Op op, BasicBlock<?> block) {
+    protected void updateWithOp(RAVInstruction.Op op) {
         for (int i = 0; i < op.dests.count; i++) {
             if (op.dests.orig[i].isIllegal()) {
                 continue; // Safe to ignore, when destination is illegal value, not when used.
@@ -586,9 +575,8 @@ public class BlockVerifierState {
      * to the new variable.
      *
      * @param valueMove Value move we update state from
-     * @param block     Block where it is located
      */
-    protected void updateWithValueMove(RAVInstruction.ValueMove valueMove, BasicBlock<?> block) {
+    protected void updateWithValueMove(RAVInstruction.ValueMove valueMove) {
         if (valueMove.getLocation().isVariable()) {
             // Whenever there is a move between two variables,
             // we need to change every location containing the old variable (rhs - source)
