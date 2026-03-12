@@ -95,7 +95,18 @@ public class VectorAPIFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReachabilityHandler(VectorAPIFeature::eagerlyInitializeValueLayout, valueLayoutClass);
+        /*
+         * Initialize fields of the VarHandle corresponding to the ValueLayout instances eagerly, so
+         * that during method handle intrinsification their loads can be constant-folded.
+         * 
+         * Note that we use an object replacer instead of an object reachability handler because we
+         * want the replacement to happen early, as part of method inlining before analysis. If we
+         * used an object reachability hook we'd only see its effects later, during analysis, when
+         * the VarHandle object itself is marked as reachable. The goal of intrinsification is to
+         * actually avoid making the VarHandle object itself reachable. See also VarHandleFeature
+         * where we use the same approach.
+         */
+        access.registerObjectReplacer(VectorAPIFeature::eagerlyInitializeValueLayout);
     }
 
     @Override
@@ -326,11 +337,12 @@ public class VectorAPIFeature implements InternalFeature {
     private static final Class<?> valueLayoutClass = ReflectionUtil.lookupClass("java.lang.foreign.ValueLayout");
     private static final Method valueLayoutVarHandle = ReflectionUtil.lookupMethod(valueLayoutClass, "varHandle");
 
-    private static void eagerlyInitializeValueLayout(Object valueLayout) {
-        VMError.guarantee(valueLayoutClass.isInstance(valueLayout));
-        VarHandle varHandle = ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
-        VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
-
+    private static Object eagerlyInitializeValueLayout(Object valueLayout) {
+        if (valueLayoutClass.isInstance(valueLayout)) {
+            VarHandle varHandle = ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
+            VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
+        }
+        return valueLayout;
     }
 
     private static Class<?> vectorClass(LaneType laneType, Shape shape) {
