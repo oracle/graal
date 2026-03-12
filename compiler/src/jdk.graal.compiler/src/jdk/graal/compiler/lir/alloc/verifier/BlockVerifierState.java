@@ -283,14 +283,14 @@ public class BlockVerifierState {
             checkOperandFlags(op.temp, op);
 
             checkBytecodeFrames(op);
+
+            if (op.references != null) {
+                checkReferences(op);
+            }
         }
     }
 
     public void checkBytecodeFrames(RAVInstruction.Op op) {
-        if (op.bcFrames.isEmpty()) {
-            return;
-        }
-
         for (var frame : op.bcFrames) {
             for (int i = 0; i < frame.kinds.length; i++) {
                 var origJV = frame.orig[i];
@@ -317,7 +317,8 @@ public class BlockVerifierState {
                     if (origLIRKind.isValue() && currLIRKind.isValue()) {
                         continue;
                     }
-
+                    // PointerTrackingTest
+                    // jdk.graal.compiler.replacements.test.DerivedOopTest
                     throw new RAVException(orig + " -> " + curr + " is a reference when not marked as an object java kind");
                 }
             }
@@ -479,6 +480,10 @@ public class BlockVerifierState {
             RAValue location = op.temp.curr[i];
             this.values.put(location, UnknownAllocationState.INSTANCE);
         }
+
+        if (op.references != null) {
+            updateWithSafePoint(op);
+        }
     }
 
     /**
@@ -486,13 +491,11 @@ public class BlockVerifierState {
      * any other references not included in said list are to be set as unknown so
      * there's no freed pointer use.
      *
-     * Not in use currently, because we do not have a reliable list of live references.
+     * References need to be retrieved using LocationMarker classes.
      *
-     * Reference test case: AOTTutorial
-     *
-     * @param references List of references deemed as live by the GC
+     * @param op SafePoint we are using to remove old references
      */
-    protected void updateWithSafePoint(List<RAValue> references) {
+    protected void updateWithSafePoint(RAVInstruction.Op op) {
         for (var entry : this.values.internalMap.entrySet()) {
             var state = entry.getValue();
             if (state.isUnknown() || state.isConflicted()) {
@@ -500,12 +503,12 @@ public class BlockVerifierState {
             }
 
             var valueAllocState = (ValueAllocationState) state;
-            if (valueAllocState.getValue().getValueKind(LIRKind.class).isValue()) {
+            if (Value.ILLEGAL.equals(valueAllocState.getValue()) || valueAllocState.getValue().getValueKind(LIRKind.class).isValue()) {
                 continue; // Not a reference, continue
             }
 
             boolean referenceFound = false;
-            for (var reference : references) {
+            for (RAValue reference : op.references) {
                 if (reference.equals(entry.getKey())) {
                     referenceFound = true;
                     break;
@@ -520,7 +523,29 @@ public class BlockVerifierState {
             // maybe it makes sense to keep registers that have live references,
             // that are same as the one in references list? Because said list
             // is expected to have stack slots and registers can retain same references.
-            this.values.put(entry.getKey(), UnknownAllocationState.INSTANCE);
+            entry.setValue(new ValueAllocationState(new RAValue(Value.ILLEGAL), op, block));
+        }
+    }
+
+    /**
+     * Check if all values defined in references list are not
+     * unknown in the allocation state map.
+     *
+     * @param op Operation which holds these references
+     */
+    protected void checkReferences(RAVInstruction.Op op) {
+        for (RAValue reference : op.references) {
+            var state = values.get(reference);
+            if (state.isConflicted()) {
+                continue;
+            }
+
+            if (state.isUnknown()) {
+                throw new RAVException("No reference inside " + reference + " in " + op + " in " + block);
+            }
+
+            // There are cases of references not having kind set as reference
+            // so checking for references here would throw an exception
         }
     }
 

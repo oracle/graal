@@ -79,9 +79,16 @@ public class VerifierPrinter {
                 var space = new String(new char[difference + 4]).replace("\0", " ");
 
                 out.println("\t" + instructionString + space + instruction.lirInstruction.toString());
-                if (instruction instanceof RAVInstruction.Op op && op.stateValues.count > 0) {
-                    out.println("\t\t State: " + op.stateValues);
+                if (instruction instanceof RAVInstruction.Op op) {
+                    if (op.lirInstruction.hasState()) {
+                        out.println("\t\t State: " + op.stateValues);
+                    }
+
+                    if (op.references != null) {
+                        out.println("\t\t References: " + op.references);
+                    }
                 }
+
             }
             out.println();
         }

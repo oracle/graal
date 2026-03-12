@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotSafepointOp;
 import jdk.graal.compiler.hotspot.amd64.AMD64HotSpotSafepointOp;
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -272,6 +273,12 @@ public class RAVInstruction {
         public ArrayList<StateValuePair> bcFrames;
 
         /**
+         * List of GC roots, calculated using LocationMarker class,
+         * other references in state maps need to be nullified.
+         */
+        public List<RAValue> references;
+
+        /**
          * Count number of values stored.
          */
         private final class GetCountProcedure implements InstructionValueProcedure {
@@ -338,7 +345,7 @@ public class RAVInstruction {
         }
 
         public boolean isSafePoint() {
-            return lirInstruction instanceof AMD64HotSpotSafepointOp;
+            return references != null && (lirInstruction instanceof AMD64HotSpotSafepointOp || lirInstruction instanceof AArch64HotSpotSafepointOp || isCall());
         }
 
         /**
