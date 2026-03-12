@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.impl.ClassLoading;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.JavaVersion;
 import com.oracle.svm.espresso.classfile.descriptors.NameSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;

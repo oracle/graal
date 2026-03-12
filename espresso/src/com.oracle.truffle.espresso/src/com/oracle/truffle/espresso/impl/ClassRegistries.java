@@ -108,7 +108,7 @@ public final class ClassRegistries {
 
     public ClassRegistry getOrInitializeClassRegistry(StaticObject classLoader, ArchivedRegistryData archivedRegistryData) {
         // Double-checked locking to attach class registry to guest instance.
-        ClassRegistry classRegistry = (ClassRegistry) context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObject(classLoader, true);
+        ClassRegistry classRegistry = (ClassRegistry) context.getMeta().java_lang_ClassLoader_0registry.getHiddenObject(classLoader, true);
         if (classRegistry == null) {
             // Synchronizing on the classLoader instance would be the natural choice here, but:
             // On SubstrateVM, synchronizing on a StaticObject instance will add an extra slot/field
@@ -117,7 +117,7 @@ public final class ClassRegistries {
             // Setting the class registry happens only once, for such rare operations, no contention
             // is expected.
             synchronized (weakClassLoaderSet) {
-                classRegistry = (ClassRegistry) context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObject(classLoader, true);
+                classRegistry = (ClassRegistry) context.getMeta().java_lang_ClassLoader_0registry.getHiddenObject(classLoader, true);
                 if (classRegistry == null) {
                     classRegistry = registerRegistry(classLoader, archivedRegistryData);
                 }
@@ -131,7 +131,7 @@ public final class ClassRegistries {
         assert Thread.holdsLock(weakClassLoaderSet);
         ClassRegistry classRegistry;
         classRegistry = new GuestClassRegistry(context.getClassLoadingEnv(), classLoader, archivedRegistryData);
-        context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.setHiddenObject(classLoader, classRegistry, true);
+        context.getMeta().java_lang_ClassLoader_0registry.setHiddenObject(classLoader, classRegistry, true);
         // Register the class loader in the weak set.
         weakClassLoaderSet.add(classLoader);
         totalClassLoadersSet++;
@@ -395,10 +395,10 @@ public final class ClassRegistries {
     public void processFixupList(StaticObject javaBase) {
         assert StaticObject.notNull(javaBase);
         for (PrimitiveKlass k : context.getMeta().PRIMITIVE_KLASSES) {
-            context.getMeta().java_lang_Class_module.setObject(k.initializeEspressoClass(), javaBase);
+            context.getMeta().java_lang_Class_module.setObject(k.initializeGuestClassMirror(), javaBase);
         }
         for (Klass k : fixupModuleList) {
-            context.getMeta().java_lang_Class_module.setObject(k.initializeEspressoClass(), javaBase);
+            context.getMeta().java_lang_Class_module.setObject(k.initializeGuestClassMirror(), javaBase);
         }
         fixupModuleList = null;
     }

@@ -33,14 +33,14 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
+
 
 /**
  * Platform dependent time related utils. See also {@link TimeUtils} for platform independent utils.
  */
 public abstract class PlatformTimeUtils {
 
-    @Fold
     public static PlatformTimeUtils singleton() {
         return ImageSingletons.lookup(PlatformTimeUtils.class);
     }

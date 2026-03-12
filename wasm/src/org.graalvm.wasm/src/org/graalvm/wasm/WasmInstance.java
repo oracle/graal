@@ -59,11 +59,11 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
     private List<LinkAction> linkActions;
 
     public WasmInstance(WasmStore store, WasmModule module) {
-        this(store, module, module.numFunctions(), module.droppedDataInstanceOffset());
+        this(store, module, module.numFunctions());
     }
 
-    private WasmInstance(WasmStore store, WasmModule module, int numberOfFunctions, int droppedDataInstanceAddress) {
-        super(store, module, numberOfFunctions, droppedDataInstanceAddress);
+    private WasmInstance(WasmStore store, WasmModule module, int numberOfFunctions) {
+        super(store, module, numberOfFunctions);
     }
 
     public String name() {

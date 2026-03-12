@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -59,6 +60,7 @@ import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInter
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder.BytecodeVariant;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterProductionRootScopingTailCall;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -134,6 +136,9 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testOSR1() {
+        // TODO GR-73673 deopt loop with immediate compilation
+        Assume.assumeTrue(run.interpreterClass() != BasicInterpreterProductionRootScopingTailCall.class);
+
         BasicInterpreter root = parseNode(run, BytecodeDSLTestLanguage.REF.get(null), "osrRoot", b -> {
             b.beginRoot();
 

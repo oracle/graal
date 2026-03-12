@@ -87,7 +87,7 @@ import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.home.HomeFinder;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -508,7 +508,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             return;
         }
         runtimeInitialized = true;
-        if (TruffleOptions.AOT) {
+        if (ImageInfo.inImageRuntimeCode()) {
             // we do not need to trigger runtime in native image
             return;
         }
@@ -2549,16 +2549,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
         if (engineToClose != null) {
             engineToClose.ensureClosed(false, false);
-        }
-    }
-
-    @SuppressWarnings("static-method")
-    String getVersion() {
-        String version = HomeFinder.getInstance().getVersion();
-        if (version.equals("snapshot")) {
-            return "Development Build";
-        } else {
-            return version;
         }
     }
 

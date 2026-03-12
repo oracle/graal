@@ -29,10 +29,10 @@ package com.oracle.svm.core.dcmd;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_dcmd_AbstractDCmd;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_dcmd_DCmdStart;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 public class JfrStartDCmd extends AbstractJfrDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)

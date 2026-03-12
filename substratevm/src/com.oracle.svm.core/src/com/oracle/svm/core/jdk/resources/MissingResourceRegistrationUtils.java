@@ -37,7 +37,7 @@ import com.oracle.svm.configure.ConditionalElement;
 import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.core.MissingRegistrationUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.Loader;

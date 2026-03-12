@@ -33,7 +33,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.BuildDirectoryProvider;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.hosted.c.util.FileUtils;
 

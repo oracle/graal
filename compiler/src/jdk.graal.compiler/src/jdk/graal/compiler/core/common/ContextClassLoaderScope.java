@@ -25,7 +25,7 @@
 package jdk.graal.compiler.core.common;
 
 /**
- * Utility to use in a try-with-resource statement override the
+ * Utility to use in a try-with-resource statement to override the
  * {@linkplain Thread#getContextClassLoader() context class loader} in a scoped way.
  */
 public class ContextClassLoaderScope implements AutoCloseable {

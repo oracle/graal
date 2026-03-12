@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -303,6 +303,15 @@ public final class BytecodeStream {
      */
     public short readShort(int curBCI) {
         return (short) Bytes.beS2(code, curBCI + 1);
+    }
+
+    /**
+     * Reads an unsigned, 2-byte short for the current instruction.
+     *
+     * @return the short value
+     */
+    public int readUShort(int curBCI) {
+        return Bytes.beU2(code, curBCI + 1);
     }
 
     /**

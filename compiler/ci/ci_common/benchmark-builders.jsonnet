@@ -7,7 +7,7 @@
   local hw = bc.bench_hw,
 
   # GR-49532 TODO add 'throughput' metric and 'top-tier-throughput' secondary_metrics
-  local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time', 'throughput'], secondary_metrics: ['binary-size', 'max-rss', 'top-tier-throughput']}},
+  local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time', 'throughput'], secondary_metrics: ['binary-size', 'max-rss', 'top-tier-throughput'], baseline_benchmarking: true}},
 
   local main_builds = std.flattenArrays([
     [
@@ -18,7 +18,6 @@
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.specjvm2008 + PR_bench_libgraal,
     c.monthly                  + hw.x52 + jdk + cc.libgraal + bench.specjbb2015,
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.awfy + PR_bench_libgraal,
-    c.daily                    + hw.x52 + jdk + cc.libgraal + bench.microservice_benchmarks,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.micros_graal_whitebox,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.micros_graal_dist,
     ]

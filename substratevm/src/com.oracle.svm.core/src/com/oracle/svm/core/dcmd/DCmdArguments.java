@@ -26,7 +26,7 @@ package com.oracle.svm.core.dcmd;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 public class DCmdArguments {
     private final EconomicMap<DCmdOption<?>, Object> values;

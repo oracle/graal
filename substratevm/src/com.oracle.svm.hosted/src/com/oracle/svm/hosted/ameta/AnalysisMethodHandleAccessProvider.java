@@ -28,10 +28,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.BaseLayerMethod;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -47,8 +47,8 @@ final class AnalysisMethodHandleAccessProvider implements MethodHandleAccessProv
     AnalysisMethodHandleAccessProvider(AnalysisUniverse analysisUniverse) {
         assert analysisUniverse != null;
         this.analysisUniverse = analysisUniverse;
-        this.originalMethodHandleAccess = GraalAccess.getOriginalProviders().getConstantReflection().getMethodHandleAccess();
-        this.originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
+        this.originalMethodHandleAccess = GuestAccess.get().getProviders().getConstantReflection().getMethodHandleAccess();
+        this.originalSnippetReflection = GuestAccess.get().getSnippetReflection();
     }
 
     @Override

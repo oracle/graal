@@ -85,6 +85,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
 import jdk.graal.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import jdk.graal.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
 import jdk.graal.compiler.lir.aarch64.AArch64HaltOp;
+import jdk.graal.compiler.lir.aarch64.AArch64IndexOfZeroOp;
 import jdk.graal.compiler.lir.aarch64.AArch64MD5Op;
 import jdk.graal.compiler.lir.aarch64.AArch64Move;
 import jdk.graal.compiler.lir.aarch64.AArch64Move.MembarOp;
@@ -700,6 +701,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         }
         append(new AArch64ArrayIndexOfOp(stride, variant, this, result, emitConvertNullToZero(arrayPointer), asAllocatable(arrayOffset), asAllocatable(arrayLength),
                         asAllocatable(fromIndex), allocatableSearchValues));
+        return result;
+    }
+
+    @Override
+    public Variable emitIndexOfZero(Stride stride, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayPointer) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.QWORD));
+        append(new AArch64IndexOfZeroOp(stride, this, result, asAllocatable(arrayPointer)));
         return result;
     }
 

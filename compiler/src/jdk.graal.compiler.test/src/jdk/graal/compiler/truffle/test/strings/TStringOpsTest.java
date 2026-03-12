@@ -77,7 +77,7 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
         return Unsafe.ARRAY_INT_BASE_OFFSET;
     }
 
-    private static long getBufferAddress(ByteBuffer buffer) {
+    protected static long getBufferAddress(ByteBuffer buffer) {
         return UNSAFE.getLong(buffer, byteBufferAddressOffset);
     }
 

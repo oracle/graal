@@ -36,7 +36,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.code.Register;
 

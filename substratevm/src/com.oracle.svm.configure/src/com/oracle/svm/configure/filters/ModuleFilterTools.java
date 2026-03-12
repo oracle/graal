@@ -27,9 +27,10 @@ package com.oracle.svm.configure.filters;
 import java.lang.module.ModuleDescriptor;
 import java.util.Arrays;
 
-import com.oracle.svm.configure.filters.ConfigurationFilter.Inclusion;
-import com.oracle.svm.util.LogUtils;
 import org.graalvm.collections.EconomicSet;
+
+import com.oracle.svm.configure.filters.ConfigurationFilter.Inclusion;
+import com.oracle.svm.shared.util.LogUtils;
 
 public class ModuleFilterTools {
 

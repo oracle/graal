@@ -27,16 +27,16 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Used to access the raw memory of a {@link JfrBuffer}.
@@ -50,16 +50,16 @@ public final class JfrBufferAccess {
 
     @Fold
     public static UnsignedWord getHeaderSize() {
-        return UnsignedUtils.roundUp(SizeOf.unsigned(JfrBuffer.class), Word.unsigned(ConfigurationValues.getTarget().wordSize));
+        return UnsignedUtils.roundUp(SizeOf.unsigned(JfrBuffer.class), Word.unsigned(ConfigurationValues.getWordSize()));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.")
     public static JfrBuffer allocate(JfrBufferType bufferType) {
         UnsignedWord dataSize = SubstrateJVM.getThreadLocal().getThreadLocalBufferSize();
         return allocate(dataSize, bufferType);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.")
     public static JfrBuffer allocate(UnsignedWord dataSize, JfrBufferType bufferType) {
         UnsignedWord headerSize = JfrBufferAccess.getHeaderSize();
         JfrBuffer result = NullableNativeMemory.malloc(headerSize.add(dataSize), NmtCategory.JFR);
@@ -73,7 +73,7 @@ public final class JfrBufferAccess {
         return result;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a native JFR buffer.")
     public static void free(JfrBuffer buffer) {
         NullableNativeMemory.free(buffer);
     }
@@ -106,12 +106,6 @@ public final class JfrBufferAccess {
     public static Pointer getFlushedPos(JfrBuffer buffer) {
         assert buffer.getNode().isNull() || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
         return buffer.getFlushedPos();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Pointer getAddressOfCommittedPos(JfrBuffer buffer) {
-        assert buffer.isNonNull();
-        return ((Pointer) buffer).add(JfrBuffer.offsetOfCommittedPos());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

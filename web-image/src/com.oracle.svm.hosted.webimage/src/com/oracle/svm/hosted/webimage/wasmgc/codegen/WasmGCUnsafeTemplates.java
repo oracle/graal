@@ -735,7 +735,7 @@ public class WasmGCUnsafeTemplates {
             boolean isRead = param.isRead();
             JavaKind componentKind = param.accessKind();
 
-            ResolvedJavaType receiverType = metaAccess.lookupJavaType((componentKind == JavaKind.Object ? Object.class : componentKind.toJavaClass()).arrayType());
+            ResolvedJavaType receiverType = metaAccess.lookupJavaType(componentKind == JavaKind.Object ? Object.class : componentKind.toJavaClass()).getArrayClass();
             int baseOffset = metaAccess.getArrayBaseOffset(componentKind);
             int indexScale = metaAccess.getArrayIndexScale(componentKind);
             assert CodeUtil.isPowerOf2(indexScale);

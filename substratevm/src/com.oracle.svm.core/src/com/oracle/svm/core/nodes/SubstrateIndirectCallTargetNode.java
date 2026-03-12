@@ -40,23 +40,40 @@ public class SubstrateIndirectCallTargetNode extends IndirectCallTargetNode {
 
     private final JavaMethodProfile methodProfile;
 
+    /**
+     * Optional argument that gets passed "on the side" along the regular arguments. There is a
+     * dedicated register used to pass this value to the callee. This only works for callees that
+     * are aware of it (e.g. enterstub of the SVM interpreter).
+     */
+    @OptionalInput private ValueNode hiddenArgument;
+
+    public SubstrateIndirectCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target,
+                    CallingConvention.Type callType, InvokeKind invokeKind, JavaMethodProfile methodProfile, ValueNode hiddenArgument) {
+        this(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, methodProfile, hiddenArgument);
+    }
+
     public SubstrateIndirectCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target,
                     CallingConvention.Type callType, InvokeKind invokeKind, JavaMethodProfile methodProfile) {
-        this(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, methodProfile);
+        this(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, methodProfile, null);
     }
 
     public SubstrateIndirectCallTargetNode(ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp, JavaType[] signature, ResolvedJavaMethod target,
                     CallingConvention.Type callType, InvokeKind invokeKind) {
-        this(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, null);
+        this(TYPE, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind, null, null);
     }
 
     protected SubstrateIndirectCallTargetNode(NodeClass<? extends SubstrateIndirectCallTargetNode> type, ValueNode computedAddress, ValueNode[] arguments, StampPair returnStamp,
-                    JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind, JavaMethodProfile methodProfile) {
+                    JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind, JavaMethodProfile methodProfile, ValueNode hiddenArgument) {
         super(type, computedAddress, arguments, returnStamp, signature, target, callType, invokeKind);
         this.methodProfile = methodProfile;
+        this.hiddenArgument = hiddenArgument;
     }
 
     public JavaMethodProfile getMethodProfile() {
         return methodProfile;
+    }
+
+    public ValueNode getHiddenArgument() {
+        return hiddenArgument;
     }
 }

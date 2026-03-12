@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
-
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
@@ -94,12 +93,13 @@ public class WebImageObjectInspector extends ObjectInspector {
 
         assert !isFrozen() : "Object inspector already frozen";
 
-        HostedType type = (HostedType) providers.getMetaAccess().lookupJavaType(c);
+        HostedMetaAccess metaAccess = providers.getMetaAccess();
+        HostedType type = metaAccess.lookupJavaType(c);
 
         ObjectDefinition odef;
         if (type.isArray()) {
             odef = new ArrayType<>(c, type.getComponentType(), reason);
-        } else if (type.getJavaClass() == String.class) {
+        } else if (type.equals(metaAccess.lookupJavaType(String.class))) {
             String strValue = providers.getSnippetReflection().asObject(String.class, c);
             odef = new StringType(c, strValue, reason);
         } else {
@@ -209,7 +209,7 @@ public class WebImageObjectInspector extends ObjectInspector {
         for (HostedField f : fields.fields) {
             if (f.getJavaKind().isObject() && f.getType().getStorageKind().isObject()) {
                 if (!f.isValueAvailable(c)) {
-                    // Use NULL for computed fields such as StringInternSupport.imageInternedStrings
+                    // Use NULL for computed fields such as ImageInternedStrings.internedStringTable
                     // WebImageTypeControl.postProcess will patch the right value
                     members.add(NULL);
                     continue;
@@ -249,7 +249,8 @@ public class WebImageObjectInspector extends ObjectInspector {
     private void buildArrayType(ArrayType<ObjectDefinition> out, JavaConstant c, ConstantIdentityMapping identityMapping) {
         assert c.isNonNull();
 
-        ResolvedJavaType arrayType = providers.getMetaAccess().lookupJavaType(c);
+        HostedMetaAccess meta = providers.getMetaAccess();
+        ResolvedJavaType arrayType = meta.lookupJavaType(c);
         assert arrayType.isArray() : c;
 
         HostedType componentType = (HostedType) arrayType.getComponentType();
@@ -286,18 +287,6 @@ public class WebImageObjectInspector extends ObjectInspector {
                     continue;
                 }
 
-                boolean continueInspection = false;
-                Class<?> tc = ((HostedType) providers.getMetaAccess().lookupJavaType(valueConstant)).getJavaClass();
-                // bailout on function ptrs
-                for (Class<?> interfaces : tc.getInterfaces()) {
-                    if (interfaces.equals(CFunctionPointer.class)) {
-                        continueInspection = true;
-                        break;
-                    }
-                }
-                if (continueInspection) {
-                    continue;
-                }
                 /*
                  * replace the elements here, we can never register the dynamic type, because if it
                  * is replace it is not part of the universe

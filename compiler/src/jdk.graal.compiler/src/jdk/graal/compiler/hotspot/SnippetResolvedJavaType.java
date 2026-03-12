@@ -29,8 +29,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

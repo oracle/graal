@@ -1,3 +1,4 @@
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 local common = import '../../../ci/ci_common/common.jsonnet';
 
 local node_map = {
@@ -5,6 +6,24 @@ local node_map = {
 };
 
 {
+  process_gate_predicate(build, suites, extra_includes=[], extra_excludes=[])::
+    if std.member(build.targets, 'gate') || std.member(build.targets, 'tier1') || std.member(build.targets, 'tier2') || std.member(build.targets, 'tier3') then
+      build {
+        guard+: {
+          includes+: [suite + '/**' for suite in suites] + extra_includes + utils.top_level_ci,
+          excludes+: [suite + '/docs/**' for suite in suites] + extra_excludes,
+        },
+        setup+: [
+          // Ensures all repos are cloned
+          ['mx', 'sversion'],
+          ['apply-predicates', '--delete-excluded', '--process-hidden', '--pattern-root', '..']
+          + ['--exclude=' + e for e in utils.std_get(self.guard, 'excludes', [])]
+          + ['--include=' + e for e in utils.std_get(self.guard, 'includes', [])],
+        ],
+      }
+    else
+      build,
+
   /*
    * Creates command to prepend the given path to $PATH on the given platform
    */
@@ -58,8 +77,9 @@ local node_map = {
     },
   },
 
-  guard_suites: ['<graal>/web-image', '<graal>/substratevm', '<graal>/compiler', '<graal>/sdk', '<graal>/wasm'],
-  extra_includes: [],
+  guard_suites: ['<graal>/web-image', '<graal>/substratevm', '<graal>/compiler', '<graal>/sdk', '<graal>/truffle', '<graal>/wasm', '<graal>/espresso-shared'],
+  // Ensure .git folder is not deleted by apply-predicates
+  extra_includes: ['<graal>/.git/**', '<graal>/common.json'],
 
   catch_test_failures: {
     catch_files+: [

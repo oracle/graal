@@ -25,6 +25,7 @@
 
 import os
 import pathlib
+import platform
 import re
 import shutil
 import tempfile
@@ -51,6 +52,7 @@ import mx_subst
 import mx_util
 import mx_substratevm_benchmark  # pylint: disable=unused-import
 import mx_substratevm_namespace  # pylint: disable=unused-import
+from mx import is_linux
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_sdk_vm_impl import svm_experimental_options
@@ -116,8 +118,8 @@ def svm_suite():
 def svmbuild_dir(suite=None):
     if not suite:
         suite = svm_suite()
-    return join(suite.dir, 'svmbuild')
-
+    out_root = suite.get_output_root()
+    return join(out_root, 'svmbuild')
 
 def is_musl_supported():
     jdk = get_jdk()
@@ -211,6 +213,7 @@ class Tags(set):
 
 GraalTags = Tags([
     'helloworld',
+    'terminus',
     'debuginfotest',
     'standalone_pointsto_unittests',
     'native_unittests',
@@ -393,6 +396,7 @@ def truffle_unittest_task(extra_build_args=None):
     success = False
     try:
         native_unittest(['com.oracle.truffle.sl.test.SLFactorialTest'] + truffle_args(extra_build_args) +[
+                    '-Dpolyglot.engine.AllowExperimentalOptions=true',
                     '-Dpolyglot.engine.CompileImmediately=true',
                     '-Dpolyglot.engine.BackgroundCompilation=false',
                     f'-Dpolyglot.log.file={logfile.name}',
@@ -419,6 +423,9 @@ def svm_gate_body(args, tasks):
                 image_demo_task(args.extra_image_builder_arguments)
                 helloworld(svm_experimental_options(['-H:+RunMainInNewThread']) + args.extra_image_builder_arguments)
 
+    with Task('terminus helloworld', tasks, tags=[GraalTags.terminus]) as t:
+        if t: _run_terminus_gate(args)
+
     with Task('image debuginfotest', tasks, tags=[GraalTags.debuginfotest]) as t:
         if t:
             if mx.is_windows():
@@ -431,6 +438,8 @@ def svm_gate_body(args, tasks):
         if t:
             if mx.is_windows():
                 mx.warn('layereddebuginfotest does not work on Windows')
+            elif mx.is_darwin() and platform.machine() == "arm64":
+                mx.warn('layered images do not currently work on ARM macOS')
             # Running debuginfotest with layers does not work for static builds
             elif '--static' not in args.extra_image_builder_arguments:
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -456,7 +465,7 @@ def svm_gate_body(args, tasks):
 
     with Task('native unittests', tasks, tags=[GraalTags.native_unittests]) as t:
         if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+            with native_image_context(IMAGE_ASSERTION_FLAGS):
                 native_unittests_task(args.extra_image_builder_arguments)
 
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
@@ -543,7 +552,88 @@ def svm_gate_body(args, tasks):
         if t:
             java_agent_test(args.extra_image_builder_arguments)
 
-def native_unittests_task(extra_build_args=None):
+
+# THIS IS THE EXPECTED FAILURE STACK TRACE FOR TERMINUS HELLO WORLD MVP (GR-72797).
+# Whitespaces are stripped and line numbers are replaced with a placeholder to account for line changes.
+TERMINUS_HELLO_WORLD_EXPECTED_FAILURE = """
+    at jdk.graal.compiler.espresso.vmaccess/com.oracle.truffle.espresso.vmaccess.EspressoExternalSnippetReflectionProvider.originalMethod(EspressoExternalSnippetReflectionProvider.java:104)
+    at org.graalvm.nativeimage.base/com.oracle.svm.util.OriginalMethodProvider.getJavaMethod(OriginalMethodProvider.java:68)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.buildImage(NativeImageGeneratorRunner.java:579)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.build(NativeImageGeneratorRunner.java:768)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.start(NativeImageGeneratorRunner.java:183)
+    at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.NativeImageGeneratorRunner.main(NativeImageGeneratorRunner.java:131)
+"""
+
+
+def _run_terminus_gate(args):
+    # check for the espresso compiler stub suite
+    espresso_compiler_stub = 'espresso-compiler-stub'
+    if not mx.suite(espresso_compiler_stub, fatalIfMissing=False):
+        mx.abort(f'The {espresso_compiler_stub} suite is require for running terminus.\n' +
+                 f'Use `mx --dy /{espresso_compiler_stub}` to dynamically import it.')
+
+    # we need to wrap the native_image command to inject the output capture and ignore non-zero return values
+    out = mx.LinesOutputCapture()
+    def _native_image_wrapper(native_image_func):
+        def _native_image_with_out(*args, **kwargs):
+            kwargs.update(out=mx.TeeOutputCapture(out), nonZeroIsFatal=False)
+            native_image_func(*args, **kwargs)
+        return _native_image_with_out
+
+    # running with --build-only since for now there won't be anything to execute
+    run_helloworld_command(
+        ['--build-only'] + svm_experimental_options(['-H:+RunMainInNewThread']) + ['-Dorg.graalvm.nativeimage.vmaccess.name=espresso'] + args.extra_image_builder_arguments,
+        config=None, command_name="helloworld", native_image_wrapper=_native_image_wrapper
+    )
+
+    # pattern to remove line number from the end of the stack trace
+    line_number_pattern = re.compile(r':\d+\)$')
+    def _strip_line_numbers(lines):
+        return [line_number_pattern.sub(':xxx)', s.strip()) for s in lines if s.strip()]
+
+    # split and strip
+    expected_lines = _strip_line_numbers(TERMINUS_HELLO_WORLD_EXPECTED_FAILURE.splitlines())
+    actual_lines = _strip_line_numbers(out.lines)
+
+    # sanity check
+    if len(actual_lines) < len(expected_lines):
+        mx.log_error(f"Actual output too short. Expected {len(expected_lines)} lines, got {len(actual_lines)}.")
+        mx.log_error("Expected output:")
+        mx.log_error("\n".join(expected_lines))
+        mx.abort("Truncated output.")
+
+    # compare expected and actual from bottom to top
+    for idx in range(len(expected_lines)):
+        expected_line = expected_lines[-idx-1]
+        actual_line = actual_lines[-idx-1]
+
+        if expected_line != actual_line:
+            mx.log_error("Actual output does not match expected:")
+
+            # print lines before mismatch
+            for s in expected_lines[0:idx]:
+                mx.log_error(" " + s)
+
+            # print mismatching line in diff style
+            mx.log_error(mx.colorize(f"+{actual_line}", color="green"))
+            mx.log_error(mx.colorize(f"-{expected_line}", color="red"))
+
+            # print lines after mismatch
+            for s in expected_lines[idx+1:]:
+                mx.log_error(" " + s)
+
+            mx.abort("Please update TERMINUS_HELLO_WORLD_EXPECTED_FAILURE in mx_substrate.py")
+
+    mx.log(mx.colorize("Detected the expected failure pattern!", color="green"))
+
+
+def _compute_native_unittest_args(extra_build_args=None, include_svm_test_features=True):
+    """
+    Compute the arguments and environment necessary to run the native unit tests.
+    This logic is shared by the gate task and the mx native-unittest command.
+    """
+    additional_build_args = []
+    # Windows/JDK specific ignores that affect which tests run
     if mx.is_windows():
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
@@ -553,22 +643,27 @@ def native_unittests_task(extra_build_args=None):
     resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
     simple_dir = join(cp_entry_name, 'simpleDir')
 
-    os.makedirs(cp_entry_name)
-    os.makedirs(resources_from_dir)
-    os.makedirs(simple_dir)
+    mx_util.ensure_dir_exists(resources_from_dir)
+    mx_util.ensure_dir_exists(simple_dir)
 
+    # Create/overwrite simple resource files (idempotent content write)
     for i in range(4):
-        with open(join(cp_entry_name, "resourcesFromDir", f'cond-resource{i}.txt'), 'w') as out:
-            out.write(f"Conditional file{i}" + '\n')
+        with open(join(resources_from_dir, f'cond-resource{i}.txt'), 'w') as out:
+            out.write(f"Conditional file{i}\n")
+        with open(join(simple_dir, f'simple-resource{i}.txt'), 'w') as out:
+            out.write(f"Simple file{i}\n")
 
-        with open(join(cp_entry_name, "simpleDir", f'simple-resource{i}.txt'), 'w') as out:
-            out.write(f"Simple file{i}" + '\n')
-
-    additional_build_args = svm_experimental_options([
-        '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
-        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
+    # Always add our extra classpath entry with resources
+    additional_build_args += svm_experimental_options([
         '-cp', cp_entry_name
     ])
+    # Only add SVM test-specific security provider/service overrides when running the SVM tests.
+    # Truffle/native unittests (and others) don't have com.oracle.svm.test on the classpath.
+    if include_svm_test_features:
+        additional_build_args += svm_experimental_options([
+            '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
+            '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
+        ])
     if extra_build_args is not None:
         additional_build_args += extra_build_args
 
@@ -576,8 +671,19 @@ def native_unittests_task(extra_build_args=None):
         if mx.is_windows():
             mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
 
-    native_unittest(['--build-args', _native_unittest_features] + additional_build_args)
+    # Inject SVM test feature classes only if we are actually running SVM tests.
+    # Truffle unit tests (and other suites) do not have com.oracle.svm.test on the classpath,
+    # so adding these features would fail with "Feature class not found".
+    if include_svm_test_features:
+        return ['--build-args', _native_unittest_features] + additional_build_args
+    else:
+        return ['--build-args'] + additional_build_args
 
+# Do not inline this, it's used from the enterprise repository.
+def native_unittests_task(extra_build_args=None):
+    # native_unittests runs the SVM test suite => include SVM test features.
+    computed = _compute_native_unittest_args(extra_build_args, include_svm_test_features=True)
+    native_image_context_run(_native_unittest, computed)
 
 def conditional_config_task(native_image):
     agent_path = build_native_image_agent(native_image)
@@ -618,7 +724,6 @@ def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
                       'experimental-conditional-config-part']
         jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
                       '-Dcom.oracle.svm.configure.test.conditionalconfig.PartialConfigurationGenerator.enabled=true',
-                      '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
                       '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                       '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
                       '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
@@ -635,7 +740,6 @@ def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
     jvm_unittest(
         ['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_output_dir,
          "-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.enabled=true",
-         '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
@@ -654,7 +758,6 @@ def run_agent_conditional_config_test(agent_path, conditional_config_filter_path
     # This run generates the configuration from different test cases
     jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
                   '-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator.enabled=true',
-                  '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
@@ -663,7 +766,6 @@ def run_agent_conditional_config_test(agent_path, conditional_config_filter_path
     # This run verifies that the generated configuration matches the expected one
     jvm_unittest(['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_dir,
                   '-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.enabled=true',
-                  '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
@@ -695,6 +797,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         build_args.append("-D" + key + "=" + value)
 
     build_args.append('--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED')
+    build_args.append('--add-exports=java.base/jdk.internal.vm=ALL-UNNAMED')
     run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mx_util.ensure_dir_exists(junit_native_dir)
@@ -723,7 +826,14 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
 
         failures = []
         for classes in batched(test_classes, test_classes_per_run):
-            ret = mx.run([unittest_image] + run_args + [arg for c in classes for arg in ['--run-explicit', c]], nonZeroIsFatal=False)
+            # Run the tests with the working directory set to the junit test dir so that any
+            # artifacts created with default filenames (e.g. JFR dumps like svmjunit-pid-*.jfr)
+            # end up under the suite output (MX_ALT_OUTPUT_ROOT) rather than the source tree.
+            ret = mx.run(
+                [unittest_image] + run_args + [arg for c in classes for arg in ['--run-explicit', c]],
+                nonZeroIsFatal=False,
+                cwd=junit_test_dir
+            )
             if ret != 0:
                 failures.append((ret, classes))
         if len(failures) != 0:
@@ -1283,7 +1393,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
         # We do not want to step into class initializer, so initialize everything at build time.
         '--initialize-at-build-time=com.oracle.svm.test.debug.helper',
         # We need access to ModuleSupport
-        '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
+        '--add-exports=org.graalvm.nativeimage.shared/com.oracle.svm.shared.util=ALL-UNNAMED',
         '--features=com.oracle.svm.test.debug.helper.RuntimeCompileDebugInfoTest$RegisterMethodsFeature',
         'com.oracle.svm.test.debug.helper.RuntimeCompileDebugInfoTest',
     ] + svm_experimental_options([
@@ -1385,16 +1495,24 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     # Use short name for Truffle Runtime SVM to select by priority
     dependencies=['GraalVM compiler', 'SubstrateVM Static Libraries', 'Graal SDK Native Image', 'svmt'],
-    jar_distributions=['substratevm:LIBRARY_SUPPORT'],
+    # Note that SVM_GUEST_STAGING is loaded by the guest (`jar_distributions`) and the builder (`builder_jar_distributions`).
+    # It is a transitional module will be merged to SVM_GUEST once all dependencies from the builder are removed.
+    # On the other hand, SVM_SHARED contains code that is shared between the guest and the builder. Conceptually, the
+    # module is loaded twice, once in the guest and once in the builder. Thus, it can not be used for data sharing,
+    # e.g., via static fields. It is only for sharing implementation for functionality that is used in both.
+    jar_distributions=['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST', 'substratevm:SVM_GUEST_STAGING', 'substratevm:SVM_SHARED', 'sdk:VMACCESS_GUEST'],
     builder_jar_distributions=[
         'substratevm:SVM',
         'substratevm:SVM_CONFIGURE',
+        'substratevm:SVM_GUEST_STAGING',
+        'substratevm:SVM_SHARED',
         'espresso-shared:ESPRESSO_SVM',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
         'substratevm:SVM_CAPNPROTO_RUNTIME',
         'substratevm:NATIVE_IMAGE_BASE',
         'compiler:VMACCESS',
+        'sdk:VMACCESS_GUEST',  # required by HOSTVMACCESS
         'compiler:HOSTVMACCESS',
     ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
@@ -1735,7 +1853,7 @@ libgraal_build_args = [
 
     # Reduce image size by outlining all write barriers.
     # Benchmarking showed no performance degradation.
-    '-H:+OutlineWriteBarriers',
+    '-H:WriteBarrierOutlining=Always',
 
     # Libgraal must not change the process-wide locale settings.
     '-H:-UseSystemLocale',
@@ -1813,13 +1931,53 @@ libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
 
 mx_sdk_vm.register_graalvm_component(libsvmjdwp)
 
+# At the moment this list is mostly driven by tests and use-cases.
+# Packages get added as needed based on errors such as
+# "Trying to dispatch to compiled code for AOT method ..."
+# or "Cannot load undefined field: ..."
 lib_jvm_preserved_packages = [
-    'java.util',
-    'java.util.stream',
-    'java.util.concurrent.locks',
+    'java.io',
     'java.lang',
+    'java.lang.annotation',
+    'java.lang.classfile',
+    'java.lang.classfile.attribute',
+    'java.lang.classfile.constantpool',
+    'java.lang.classfile.instruction',
+    'java.lang.constant',
     'java.lang.invoke',
-    'java.io'
+    'java.lang.module',
+    'java.lang.ref',
+    'java.lang.reflect',
+    'java.math',
+    'java.net',
+    'java.net.spi',
+    'java.nio',
+    'java.nio.charset',
+    'java.nio.channels',
+    'java.nio.channels.spi',
+    'java.nio.file',
+    'java.security',
+    'java.security.cert',
+    'java.security.spec',
+    'java.time',
+    'java.time.chrono',
+    'java.time.format',
+    'java.time.temporal',
+    'java.util',
+    'java.util.concurrent',
+    'java.util.concurrent.atomic',
+    'java.util.concurrent.locks',
+    'java.util.function',
+    'java.util.jar',
+    'java.util.regex',
+    'java.util.stream',
+    'java.util.zip',
+    'javax.net',
+    'jdk.internal.access',
+    'jdk.internal.classfile.impl',
+    'jdk.internal.constant',
+    'jdk.internal.misc',
+    'sun.invoke.util',
 ]
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -1836,23 +1994,44 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     priority=0,
     library_configs=[
         mx_sdk_vm.LibraryConfig(
+            use_modules='image',
             destination='<lib:jvm>',
-            jar_distributions=[],
-            build_args=[
-                '--features=com.oracle.svm.hosted.libjvm.LibJVMFeature'
-            ] + svm_experimental_options([
-                '-H:+RuntimeClassLoading',
-                '-H:+InterpreterTraceSupport',
-                '-H:+AllowJRTFileSystem'
-                ] + ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]),
+            jar_distributions=['substratevm:SVM_LIBJVM'],
+            build_args=svm_experimental_options(['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]),
             headers=False,
             home_finder=False,
         ),
     ],
+    jvm_configs=[{
+        'configs': ['-svm KNOWN'],
+        'priority': 3,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+    }],
     support_libraries_distributions=[],
     stability="experimental",
     jlink=False,
 ))
+
+if os.environ.get('LIBJVM_IMAGE_AS_DEFAULT') == 'true':
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+        suite=suite,
+        name='SubstrateVM java as default',
+        short_name='svmjavad',
+        dir_name='svm',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=[],
+        jar_distributions=[],
+        builder_jar_distributions=[],
+        support_distributions=[],
+        priority=0,
+        jvm_configs=[{
+            'configs': ['-svm KNOWN'],
+            'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+        }],
+        support_libraries_distributions=[],
+        stability="experimental",
+        jlink=False,
+    ))
 
 def _native_image_utils_extra_jvm_args():
     packages = ['jdk.graal.compiler/jdk.graal.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.graal.compiler/jdk.graal.compiler.core.common.util']
@@ -1892,7 +2071,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 ))
 
 
-def run_helloworld_command(args, config, command_name):
+def run_helloworld_command(args, config, command_name, native_image_wrapper=None):
     parser = ArgumentParser(prog='mx ' + command_name)
     all_args = ['--output-path', '--javac-command', '--build-only', '--variant', '--list']
     masked_args = [_mask(arg, all_args) for arg in args]
@@ -1913,7 +2092,7 @@ def run_helloworld_command(args, config, command_name):
         return
     native_image_context_run(
         lambda native_image, a:
-        _helloworld(native_image, javac_command, output_path, build_only, a, variant=parsed.variant), unmask(image_args),
+        _helloworld(native_image_wrapper(native_image) if native_image_wrapper else native_image, javac_command, output_path, build_only, a, variant=parsed.variant), unmask(image_args),
         config=config,
     )
 
@@ -2531,11 +2710,14 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         graal_compiler_flags_base = [
             '-XX:+UnlockExperimentalVMOptions',
             '-XX:+EnableJVMCI',
-            '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
-            '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', # use truffle interpreter as fallback
-            '-Dgraalvm.ForcePolyglotInvalid=true', # use PolyglotInvalid PolyglotImpl fallback (when --tool:truffle is not used)
             '-Dgraalvm.locatorDisabled=true',
         ]
+        if not mx_sdk_vm_impl.has_component('esvm'):
+            # This should not be added when using espresso as VMAccess
+            graal_compiler_flags_base += [
+                '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', # use truffle interpreter as fallback
+                '-Dgraalvm.ForcePolyglotInvalid=true', # use PolyglotInvalid PolyglotImpl fallback (when --tool:truffle is not used)
+            ]
         if mx.get_os() == 'linux':
             libc = mx.get_os_variant() if mx.get_os_variant() else 'glibc'
             graal_compiler_flags_base.append('-Dsubstratevm.HostLibC=' + libc)
@@ -2601,9 +2783,24 @@ def _debug_args():
 
 @mx.command(suite.name, 'native-unittest')
 def native_unittest(args):
-    """builds a native image of JUnit tests and runs them."""
-    native_image_context_run(_native_unittest, args)
-
+    """Builds a native image of JUnit tests and runs them."""
+    arg_list = list(args)
+    # Decide whether to include the SVM test feature injections based on the selectors provided.
+    # If no selectors were provided, native-unittest will default to SVM tests, so include features.
+    def _is_svm_selector(a: str) -> bool:
+        return a.startswith('com.oracle.svm.test')
+    include_svm_test_features = True if not arg_list else any(_is_svm_selector(a) for a in arg_list)
+    computed = _compute_native_unittest_args(include_svm_test_features=include_svm_test_features)
+    # Merge computed build args into an existing --build-args block if present, otherwise append.
+    if '--build-args' in arg_list:
+        idx = arg_list.index('--build-args')
+        # Insert everything after the token so argparse collects both user and computed values.
+        arg_list[idx+1:idx+1] = computed[1:]  # skip the '--build-args' token
+        merged_args = arg_list
+    else:
+        merged_args = arg_list + computed
+    # Important: keep user-provided selectors/args order intact.
+    native_image_context_run(_native_unittest, merged_args)
 
 @mx.command(suite, 'javac-image', '[image-options]')
 def javac_image(args):
@@ -2655,8 +2852,11 @@ def _get_libcontainer_files(skip_svm_specific=False):
 def check_libcontainer_annotations(args):
     """Verifies that files from libcontainer that are copied from hotspot have a @BasedOnJDKFile annotation in ContainerLibrary."""
 
-    # collect paths to check
+    if not is_linux():
+        mx.warn("Skipping check_libcontainer_annotations because this is a Linux specific task.")
+        return
 
+    # collect paths to check
     libcontainer_dir, paths = _get_libcontainer_files()
 
     java_project = mx.project("com.oracle.svm.core")
@@ -2720,6 +2920,9 @@ LIBCONTAINER_NAMESPACE = "svm_libcontainer_namespace"
 
 @mx.command(suite, LIBCONTAINER_NAMESPACE)
 def svm_libcontainer_namespace(args):
+    if not is_linux():
+        mx.warn("Skipping svm_libcontainer_namespace as it is a Linux specific task.")
+        return
     libcontainer_project = mx.project("com.oracle.svm.native.libcontainer")
     for src_dir in  libcontainer_project.source_dirs():
         mx.command_function("svm_namespace")(args + ["--directory", src_dir , "--namespace", "svm_container"])
@@ -2800,7 +3003,6 @@ class StandalonePointstoUnittestsConfig(mx_unittest.MxUnittestConfig):
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
 
-        vmArgs.extend(['--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED'])
         # need to access jdk.graal.compiler.phases.util.Providers
         vmArgs.extend(['--add-exports=jdk.graal.compiler/jdk.graal.compiler.phases.util=ALL-UNNAMED'])
         # VMAccess needs to access jdk.internal.module.Modules

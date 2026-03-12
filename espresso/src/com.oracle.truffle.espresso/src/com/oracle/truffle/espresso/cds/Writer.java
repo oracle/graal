@@ -325,7 +325,7 @@ final class Writer implements CDSArchiveFormat {
         prependSize(() -> {
             writeGuestObject(guestClassLoader);
             // Do not eagerly initialize and register the registry, just read the hidden field.
-            ClassRegistry classRegistry = (ClassRegistry) espressoContext.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObject(guestClassLoader, true);
+            ClassRegistry classRegistry = (ClassRegistry) espressoContext.getMeta().java_lang_ClassLoader_0registry.getHiddenObject(guestClassLoader, true);
             ArchivedRegistryData data = null;
             if (classRegistry != null) {
                 data = new ArchivedRegistryData(classRegistry.packages(), classRegistry.modules(), classRegistry.getUnnamedModule());

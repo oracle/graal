@@ -28,9 +28,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Provides data for the heap monitoring. All sizes are on chunk (and not on object) granularity.

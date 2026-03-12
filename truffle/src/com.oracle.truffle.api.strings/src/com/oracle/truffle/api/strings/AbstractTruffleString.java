@@ -1537,11 +1537,20 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
             this.pointer = pointer;
         }
 
-        static NativePointer create(Node nodeThis, Object pointerObject, Node interopLibrary) {
+        static NativePointer create(Node nodeThis, Object pointerObject, Node interopLibrary, InlinedConditionProfile rawPointerProfile) {
             if (!TStringAccessor.isNativeAccessAllowed(nodeThis)) {
                 throw InternalErrors.nativeAccessRequired();
             }
-            return new NativePointer(pointerObject, TStringAccessor.INTEROP.unboxPointer(interopLibrary, pointerObject));
+            final long nativePointer;
+            final Object ref;
+            if (rawPointerProfile.profile(nodeThis, pointerObject instanceof Long)) {
+                nativePointer = (long) pointerObject;
+                ref = null;
+            } else {
+                nativePointer = TStringAccessor.INTEROP.unboxPointer(interopLibrary, pointerObject);
+                ref = pointerObject;
+            }
+            return new NativePointer(ref, nativePointer);
         }
 
         static long unwrap(Object data) {

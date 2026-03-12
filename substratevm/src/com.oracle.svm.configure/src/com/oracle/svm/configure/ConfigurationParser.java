@@ -45,7 +45,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageInfo;
 
-import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.shared.util.LogUtils;
 
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonParserException;
@@ -83,6 +83,7 @@ public abstract class ConfigurationParser {
     public static final String BUNDLE_KEY = "bundle";
     private final EconomicMap<String, EconomicSet<String>> seenUnknownAttributesByType = EconomicMap.create();
     private final EnumSet<ConfigurationParserOption> parserOptions;
+    private static EconomicSet<String> usedMetadataFiles = EconomicSet.create();
 
     protected ConfigurationParser(EnumSet<ConfigurationParserOption> parserOptions) {
         this.parserOptions = parserOptions;
@@ -106,12 +107,30 @@ public abstract class ConfigurationParser {
     public void parseAndRegister(URI uri) throws IOException {
         try (Reader reader = openReader(uri)) {
             parseAndRegister(new JsonParser(reader).parse(), uri);
+            reportUsedMetadataFile(uri); // report if successfully parsed
         } catch (FileNotFoundException e) {
             /*
              * Ignore: *-config.json files can be missing when reachability-metadata.json is
              * present, and vice-versa
              */
         }
+    }
+
+    private static void reportUsedMetadataFile(URI uri) {
+        // usedMetadataFiles should not be null in regular usecases, unless already read
+        // OmitPreviousConfigTests is an example where this unfortunately happens.
+        if (usedMetadataFiles != null) {
+            usedMetadataFiles.add(uri.toString());
+        }
+    }
+
+    public static EconomicSet<String> getUsedMetadataFiles() {
+        if (usedMetadataFiles == null) {
+            return null;
+        }
+        EconomicSet<String> set = usedMetadataFiles;
+        usedMetadataFiles = null; // avoid retaining memory here
+        return set;
     }
 
     protected static BufferedReader openReader(URI uri) throws IOException {

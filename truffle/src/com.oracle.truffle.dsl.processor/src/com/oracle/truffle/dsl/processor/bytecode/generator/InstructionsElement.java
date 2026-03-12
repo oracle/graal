@@ -76,6 +76,8 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 final class InstructionsElement extends AbstractElement {
 
+    public static final int OPCODE_START_INDEX = 1;
+
     InstructionsElement(BytecodeRootNodeElement parent) {
         super(parent, Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "Instructions");
     }
@@ -89,7 +91,7 @@ final class InstructionsElement extends AbstractElement {
          * We order after cached instruction order to ensure we have a compact table switch layout.
          */
         List<List<InstructionModel>> instructionPartitions = BytecodeRootNodeElement.partitionInstructions(parent.model.getInstructions());
-        int index = 1;
+        int index = OPCODE_START_INDEX;
         constants = new HashMap<>();
         for (List<InstructionModel> partition : instructionPartitions) {
             for (InstructionModel instruction : partition) {
@@ -253,7 +255,7 @@ final class InstructionsElement extends AbstractElement {
         TypeMirror returnType = generic(List.class, types.Instruction_Argument);
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), returnType, "getArguments");
         ex.addParameter(new CodeVariableElement(type(int.class), "opcode"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+        ex.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "bci"));
         ex.addParameter(new CodeVariableElement(parent.abstractBytecodeNode.asType(), "bytecode"));
         ex.addParameter(new CodeVariableElement(type(byte[].class), "bytecodes"));
         ex.addParameter(new CodeVariableElement(type(Object[].class), "constants"));
@@ -402,7 +404,7 @@ final class InstructionsElement extends AbstractElement {
                 args.add(new CodeVariableElement(Set.of(FINAL), parent.abstractBytecodeNode.asType(), "bytecode"));
                 args.add(new CodeVariableElement(Set.of(FINAL), type(byte[].class), "bytecodes"));
                 args.add(new CodeVariableElement(Set.of(FINAL), types.Node, "singleton"));
-                args.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "bytecodeIndex"));
+                args.add(new CodeVariableElement(Set.of(FINAL), parent.getBytecodeIndexType(), "bytecodeIndex"));
                 break;
             default:
                 args.add(new CodeVariableElement(Set.of(FINAL), parent.abstractBytecodeNode.asType(), "bytecode"));
@@ -499,9 +501,9 @@ final class InstructionsElement extends AbstractElement {
         AbstractArgumentElement() {
             super(Set.of(PRIVATE, SEALED, STATIC, ABSTRACT),
                             ElementKind.CLASS, null, "AbstractArgument");
-            this.setSuperClass(InstructionsElement.this.types.Instruction_Argument);
+            this.setSuperClass(types.Instruction_Argument);
             this.add(new CodeVariableElement(Set.of(FINAL), argumentDescriptorImpl.asType(), "descriptor"));
-            this.add(new CodeVariableElement(Set.of(FINAL), InstructionsElement.this.type(int.class), "bci"));
+            this.add(new CodeVariableElement(Set.of(FINAL), parent.getBytecodeIndexType(), "bci"));
             CodeExecutableElement constructor = this.add(createConstructorUsingFields(Set.of(), this, null));
             CodeTree tree = constructor.getBodyTree();
             CodeTreeBuilder b = constructor.createBuilder();
@@ -654,7 +656,8 @@ final class InstructionsElement extends AbstractElement {
                 b.declaration(InstructionsElement.this.types.Node, "node", "asCachedNode()");
                 b.startIf().startStaticCall(InstructionsElement.this.types.Introspection, "isIntrospectable").string("node").end().end().startBlock();
                 b.startReturn();
-                b.startStaticCall(InstructionsElement.this.types.Introspection, "getSpecializations").string("this.bytecode").string("this.bytecodeIndex").string("node").end();
+                b.startStaticCall(InstructionsElement.this.types.Introspection, "getSpecializations").string("this.bytecode").string(parent.castBytecodeIndexToInt("this.bytecodeIndex")).string(
+                                "node").end();
                 b.end(); // return
                 b.end();
             }

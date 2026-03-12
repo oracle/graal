@@ -37,7 +37,6 @@ import org.graalvm.webimage.api.JSObject;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -46,6 +45,7 @@ import com.oracle.svm.hosted.webimage.logging.LoggableMetric;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.logging.LoggerScope;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.shared.option.HostedOptionValues;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.MetricKey;
@@ -71,7 +71,7 @@ public abstract class WebImageCompileQueue extends CompileQueue {
     @Override
     protected boolean canBeUsedForInlining(Invoke invoke) {
         HostedMethod method = (HostedMethod) invoke.callTarget().targetMethod();
-        if (method.isConstructor() && JSObject.class.isAssignableFrom(method.getDeclaringClass().getJavaClass())) {
+        if (method.isConstructor() && providers.getMetaAccess().lookupJavaType(JSObject.class).isAssignableFrom(method.getDeclaringClass())) {
             // The constructor of a JavaScript class must be not be inlined after the graph is
             // parsed.
             return false;

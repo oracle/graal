@@ -52,10 +52,14 @@ import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
 public class ForceCachedTest {
     @Test
@@ -141,6 +145,18 @@ public class ForceCachedTest {
         return ForceCachedRootNodeGen.create(null, BytecodeConfig.DEFAULT, builder).getNode(0);
     }
 
+    @GenerateInline
+    @GenerateCached(false)
+    public abstract static class CustomInlineNode extends Node {
+        public abstract boolean execute(Node inliningTarget, int arg);
+
+        @Specialization
+        static boolean doIt(Node inliningTarget, int a,
+                        @Cached InlinedConditionProfile profile) {
+            return profile.profile(inliningTarget, a == 0);
+        }
+    }
+
     @GenerateBytecode(boxingEliminationTypes = {long.class}, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true)
     @OperationProxy(AddProxy.class)
     @OperationProxy(value = AddProxyForceCached.class, forceCached = true)
@@ -163,6 +179,16 @@ public class ForceCachedTest {
         static final class AddForceCached {
             @Specialization
             public static int doInts(int a, int b) {
+                return a + b;
+            }
+        }
+
+        @Operation(forceCached = true)
+        @SuppressWarnings("unused")
+        static final class ForceCachedWithCache {
+            @Specialization
+            public static int doInts(int a, int b,
+                            @Cached CustomInlineNode inlinedNode) {
                 return a + b;
             }
         }

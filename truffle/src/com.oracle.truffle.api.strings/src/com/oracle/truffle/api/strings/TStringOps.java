@@ -874,6 +874,34 @@ final class TStringOps {
         return runCodePointIndexToByteIndexUTF16FEValid(location, array, offset, length, index, isNative);
     }
 
+    /**
+     * Calculates the length of a zero-terminated 8-bit native string, equivalent to libc's
+     * {@code strlen} function.
+     *
+     * @param nativePointer pointer to a native off-heap buffer.
+     */
+    static long strlen8Bit(Node location, long nativePointer) {
+        return runIndexOfZeroS1(location, nativePointer);
+    }
+
+    /**
+     * Calculates the length of a zero-terminated 16-bit native string.
+     *
+     * @param nativePointer pointer to a native off-heap buffer.
+     */
+    static long strlen16Bit(Node location, long nativePointer) {
+        return runIndexOfZeroS2(location, nativePointer);
+    }
+
+    /**
+     * Calculates the length of a zero-terminated 16-bit native string.
+     *
+     * @param nativePointer pointer to a native off-heap buffer.
+     */
+    static long strlen32Bit(Node location, long nativePointer) {
+        return runIndexOfZeroS4(location, nativePointer);
+    }
+
     private static int runIndexOfAnyByte(Node location, byte[] array, long offset, int length, int fromIndex, byte... needle) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValueS0(array, offset, i);
@@ -1726,6 +1754,45 @@ final class TStringOps {
             TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return cpi == 0 ? length : -1;
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static long runIndexOfZeroS1(Node location, long array) {
+        for (long i = 0;; i++) {
+            if (TStringUnsafe.getByte(array + i) == 0) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, (int) (i + 1));
+        }
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static long runIndexOfZeroS2(Node location, long array) {
+        for (long i = 0;; i += 2) {
+            if (TStringUnsafe.getChar(array + i) == 0) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, (int) (i + 2) >> 1);
+        }
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static long runIndexOfZeroS4(Node location, long array) {
+        for (long i = 0;; i += 4) {
+            if (TStringUnsafe.getInt(array + i) == 0) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, (int) (i + 4) >> 2);
+        }
     }
 
     private static boolean rangeInBounds(int rangeStart, int rangeLength, int arrayLength) {

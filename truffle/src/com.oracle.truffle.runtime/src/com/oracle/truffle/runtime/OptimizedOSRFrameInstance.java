@@ -42,6 +42,7 @@ package com.oracle.truffle.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -62,11 +63,22 @@ final class OptimizedOSRFrameInstance extends OptimizedFrameInstance {
     @TruffleBoundary
     @Override
     public Frame getFrame(FrameAccess access) {
-        Frame materializedOSRFrame = getFrameFrom(osrFrame, access);
-        if (getOSRRootNode() instanceof OptimizedOSRLoopNode.LoopOSRRootNode) {
-            return (Frame) materializedOSRFrame.getArguments()[0];
+        RootNode osrRootNode = getOSRRootNode();
+        if (osrRootNode instanceof OptimizedOSRLoopNode.LoopOSRRootNode) {
+            // Loop-based OSR reuses the parent frame passed as the first argument.
+            // That frame comes from the interpreter, so it has materialized access already.
+            Frame readOnlyOSRFrame = getFrameFrom(osrFrame, FrameAccess.READ_ONLY);
+            return (Frame) readOnlyOSRFrame.getArguments()[0];
+        } else if (osrRootNode instanceof BytecodeOSRRootNode bytecodeOSRRootNode && bytecodeOSRRootNode.usesParentFrame()) {
+            // If the frame ever materialized, bytecode OSR uses the parent frame.
+            // That frame comes from the interpreter, so it has materialized access already.
+            Frame readOnlyOSRFrame = getFrameFrom(osrFrame, FrameAccess.READ_ONLY);
+            BytecodeOSRNode osrNode = (BytecodeOSRNode) bytecodeOSRRootNode.loopNode;
+            return osrNode.restoreParentFrameFromArguments(readOnlyOSRFrame.getArguments());
+        } else {
+            // Otherwise, bytecode OSR uses the fresh virtual frame. Get it.
+            return getFrameFrom(osrFrame, access);
         }
-        return materializedOSRFrame;
     }
 
     private RootNode getOSRRootNode() {
@@ -76,6 +88,11 @@ final class OptimizedOSRFrameInstance extends OptimizedFrameInstance {
     @TruffleBoundary
     @Override
     public boolean isVirtualFrame() {
+        RootNode osrRootNode = getOSRRootNode();
+        if (osrRootNode instanceof OptimizedOSRLoopNode.LoopOSRRootNode ||
+                        (osrRootNode instanceof BytecodeOSRRootNode bytecodeOSRRootNode && bytecodeOSRRootNode.usesParentFrame())) {
+            return false;
+        }
         return osrFrame.isVirtual(FRAME_INDEX);
     }
 

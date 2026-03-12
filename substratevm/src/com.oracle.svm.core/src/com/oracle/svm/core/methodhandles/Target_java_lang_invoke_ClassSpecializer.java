@@ -27,6 +27,8 @@ package com.oracle.svm.core.methodhandles;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
 
 @TargetClass(className = "java.lang.invoke.ClassSpecializer")
 final class Target_java_lang_invoke_ClassSpecializer {
@@ -55,6 +57,7 @@ final class Target_java_lang_invoke_ClassSpecializer_Factory {
      * Avoid generating signature-specific classes at runtime.
      */
     @Substitute
+    @TargetElement(onlyWith = NoRuntimeClassLoading.class)
     Target_java_lang_invoke_ClassSpecializer_SpeciesData loadSpecies(Target_java_lang_invoke_ClassSpecializer_SpeciesData speciesData) {
         String className = speciesData.deriveClassName();
         assert (className.indexOf('/') < 0) : className;

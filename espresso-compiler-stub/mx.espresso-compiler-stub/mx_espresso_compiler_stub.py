@@ -47,6 +47,31 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     stability=_espresso_stability,
 ))
 
+if mx.suite('substratevm', fatalIfMissing=False) is not None:
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+        suite=_suite,
+        name='Espresso VMAccess for Native Image',
+        short_name='esvm',
+        license_files=[],
+        third_party_license_files=[],
+        dir_name='svm',
+        dependencies=['SubstrateVM'],
+        builder_jar_distributions=[
+            'espresso:ESPRESSO',
+            'espresso:ESPRESSO_JVMCI',
+            'espresso:ESPRESSO_LIBS_RESOURCES',
+            'espresso-compiler-stub:ESPRESSO_GRAAL',
+            'espresso-compiler-stub:ESPRESSO_VMACCESS',
+            'espresso-shared:ESPRESSO_SHARED',
+            'truffle:TRUFFLE_RUNTIME',
+            'truffle:TRUFFLE_NFI',
+            'truffle:TRUFFLE_NFI_LIBFFI',
+        ],
+        priority=2,
+        stability=_espresso_stability,
+        jlink=False,
+    ))
+
 def _nfi_llvm_required():
     # Linux needs nfi-llvm in JVM mode.  Darwin uses nfi-staticlib in JVM mode.
     return not mx.is_darwin()

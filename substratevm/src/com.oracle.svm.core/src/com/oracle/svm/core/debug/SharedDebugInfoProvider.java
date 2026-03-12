@@ -315,7 +315,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         // Get some information on heap layout and object/object header layout
         this.useHeapBase = ReferenceAccess.singleton().haveCompressedReferences() && ReferenceAccess.singleton().getCompressEncoding().hasBase();
         this.compressionShift = ReferenceAccess.singleton().getCompressionShift();
-        this.pointerSize = ConfigurationValues.getTarget().wordSize;
+        this.pointerSize = ConfigurationValues.getWordSize();
         this.referenceSize = getObjectLayout().getReferenceSize();
         this.objectAlignment = getObjectLayout().getAlignment();
         this.reservedHubBitsMask = Heap.getHeap().getObjectHeader().getReservedHubBitsMask();

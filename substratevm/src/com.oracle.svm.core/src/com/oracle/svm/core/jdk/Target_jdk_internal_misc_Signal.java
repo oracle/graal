@@ -45,8 +45,9 @@ public final class Target_jdk_internal_misc_Signal {
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
-        if (!SubstrateOptions.EnableSignalHandling.getValue()) {
-            throw new IllegalArgumentException("Signal handlers can't be installed if signal handling is disabled, see option '" + SubstrateOptions.EnableSignalHandling.getName() + "'.");
+        if (!SubstrateOptions.isSignalHandlingAllowed()) {
+            throw new IllegalArgumentException("Signal handlers can't be installed if signal handling is disabled, see option '" +
+                            SubstrateOptions.ConcealedOptions.EnableSignalHandling.getName() + "'.");
         }
         return SignalHandlerSupport.singleton().installJavaSignalHandler(sig, nativeH);
     }

@@ -36,7 +36,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -71,16 +71,16 @@ public final class ReachabilityAnalysisMethod extends AnalysisMethod {
     private BytecodePosition reason;
 
     public ReachabilityAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
-        super(universe, wrapped, MultiMethod.ORIGINAL_METHOD, null);
+        super(universe, wrapped, MethodVariant.ORIGINAL_METHOD, null);
     }
 
-    private ReachabilityAnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
-        super(original, multiMethodKey);
+    private ReachabilityAnalysisMethod(AnalysisMethod original, MethodVariantKey methodVariantKey) {
+        super(original, methodVariantKey);
     }
 
     @Override
-    protected AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey) {
-        return new ReachabilityAnalysisMethod(analysisMethod, newMultiMethodKey);
+    protected AnalysisMethod createMethodVariant(AnalysisMethod analysisMethod, MethodVariantKey newMethodVariantKey) {
+        return new ReachabilityAnalysisMethod(analysisMethod, newMethodVariantKey);
     }
 
     @Override

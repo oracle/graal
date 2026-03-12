@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.heap.dump;
 
+import static com.oracle.svm.core.heap.dump.HeapDumpWriter.HeapDumpException;
+import static com.oracle.svm.core.heap.dump.HeapDumpWriter.HeapDumpError.AllocationFailed;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -36,9 +39,10 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
@@ -47,25 +51,23 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.TypeIDs;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.coder.ByteStream;
 import com.oracle.svm.core.util.coder.ByteStreamAccess;
 import com.oracle.svm.core.util.coder.NativeCoder;
 import com.oracle.svm.core.util.coder.Pack200Coder;
-
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Provides access to the encoded heap dump metadata that was prepared at image build-time.
@@ -140,7 +142,7 @@ public class HeapDumpMetadata {
         return true;
     }
 
-    public boolean initialize() {
+    public void initialize() {
         assert classInfos.isNull() && fieldInfoTable.isNull() && fieldNameTable.isNull();
 
         HeapDumpEncodedData[] encodedDataArray = HeapDumpEncodedData.layeredSingletons();
@@ -176,19 +178,19 @@ public class HeapDumpMetadata {
         UnsignedWord classInfosSize = Word.unsigned(classInfoCount).multiply(SizeOf.get(ClassInfo.class));
         classInfos = NullableNativeMemory.calloc(classInfosSize, NmtCategory.HeapDump);
         if (classInfos.isNull()) {
-            return false;
+            throw HeapDumpException.throwSingleton(AllocationFailed);
         }
 
         UnsignedWord fieldStartsSize = Word.unsigned(totalFieldCount).multiply(SizeOf.get(FieldInfoPointer.class));
         fieldInfoTable = NullableNativeMemory.calloc(fieldStartsSize, NmtCategory.HeapDump);
         if (fieldInfoTable.isNull()) {
-            return false;
+            throw HeapDumpException.throwSingleton(AllocationFailed);
         }
 
         UnsignedWord fieldNameTableSize = Word.unsigned(fieldNameCount).multiply(SizeOf.get(FieldNamePointer.class));
         fieldNameTable = NullableNativeMemory.calloc(fieldNameTableSize, NmtCategory.HeapDump);
         if (fieldNameTable.isNull()) {
-            return false;
+            throw HeapDumpException.throwSingleton(AllocationFailed);
         }
 
         /*
@@ -270,7 +272,6 @@ public class HeapDumpMetadata {
                 computeInstanceFieldsDumpSize(classInfo);
             }
         }
-        return true;
     }
 
     /**

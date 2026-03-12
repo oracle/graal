@@ -26,6 +26,9 @@ package com.oracle.svm.core.meta;
 
 import java.util.Objects;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.meta.VMConstant;
@@ -37,6 +40,7 @@ import jdk.vm.ci.meta.VMConstant;
  * At this time, code offset constants are required only in the heap. When supporting embedding them
  * in code, this class could be merged with {@link SubstrateMethodPointerConstant}.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class SubstrateMethodOffsetConstant implements VMConstant {
 
     private final MethodOffset offset;

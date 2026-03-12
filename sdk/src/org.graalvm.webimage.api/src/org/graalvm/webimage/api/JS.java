@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,7 +87,17 @@ import java.lang.annotation.Target;
  * defined conversion methods such as {@link JSValue#asInt()} and {@link JSValue#asString()}, which
  * allow converting certain {@link JSValue} objects to corresponding Java objects (for example,
  * {@link JSNumber} can be converted to most Java numeric types).
- *
+ * <p>
+ * As a result of regular JS to Java conversion (without {@link JS.Coerce}), JS objects will always
+ * be converted to {@link JSObject} and never to one of its subtypes, even when the JS object was
+ * created by calling the constructor of an {@link JS.Export exported} type. If a {@link JS}
+ * annotated method should return a subtype of {@link JSObject}, {@link JS.Coerce coercion} must be
+ * used.
+ * <p>
+ * No guarantee is made about object identity of the {@link JSValue} instances when converting a JS
+ * value to Java. For example, the same JS object may be converted to Java twice, but the produced
+ * {@link JSObject} instances may not be equal.
+ * <p>
  * Other Java classes are transformed to JavaScript {@code Proxy} objects, which expose JavaScript
  * keys that correspond to methods of the underlying Java object. Such an object behaves as if it
  * were a regular JavaScript object, but its internal behavior is defined by the corresponding Java

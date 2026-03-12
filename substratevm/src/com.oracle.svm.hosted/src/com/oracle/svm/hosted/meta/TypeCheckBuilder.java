@@ -40,7 +40,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
-import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -55,7 +54,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
@@ -554,13 +554,14 @@ public final class TypeCheckBuilder {
 
             HostedType subtypeStampType = null;
             for (HostedType child : subtypeMap.get(type)) {
+                VMError.guarantee(child.strengthenStampType != HostedType.UNINITIALIZED);
                 if (child.strengthenStampType != null) {
                     if (subtypeStampType != null && !subtypeStampType.equals(child.strengthenStampType)) {
                         /* The join of instantiated subtypes is this type. */
                         subtypeStampType = type;
                         break;
                     } else {
-                        subtypeStampType = child.strengthenStampType;
+                        subtypeStampType = (HostedType) child.strengthenStampType;
                     }
                 }
             }
@@ -596,6 +597,7 @@ public final class TypeCheckBuilder {
                     type.uniqueConcreteImplementation = null;
                 } else {
                     type.strengthenStampType = subtypeStampType;
+                    VMError.guarantee(subtypeStampType.uniqueConcreteImplementation != HostedType.UNINITIALIZED);
                     type.uniqueConcreteImplementation = subtypeStampType.uniqueConcreteImplementation;
                 }
             }
@@ -1927,7 +1929,7 @@ public final class TypeCheckBuilder {
                     }
                 });
                 if (!mismatchedTypes.isEmpty()) {
-                    mismatchedTypes.forEach(System.err::println);
+                    mismatchedTypes.forEach(System.out::println);
                     throw new AssertionError("Verification of type assignment failed");
                 }
             }
@@ -2092,7 +2094,7 @@ public final class TypeCheckBuilder {
                     }
                 });
                 if (!mismatchedTypes.isEmpty()) {
-                    mismatchedTypes.forEach(System.err::println);
+                    mismatchedTypes.forEach(System.out::println);
                     throw new AssertionError("Verification of type assignment failed");
                 }
             }

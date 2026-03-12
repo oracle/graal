@@ -25,7 +25,7 @@
 package com.oracle.svm.jvmtiagentbase;
 
 import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
-import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.shared.util.VMError.guarantee;
 
 import java.util.concurrent.locks.ReentrantLock;
 

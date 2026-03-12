@@ -78,7 +78,11 @@ public final class EspressoResolvedJavaMethod extends AbstractEspressoResolvedJa
     protected native boolean isForceInline();
 
     @Override
-    protected native int getVtableIndexForInterfaceMethod(EspressoResolvedInstanceType resolved);
+    protected int getVtableIndexForInterfaceMethod(AbstractEspressoResolvedInstanceType resolved) {
+        return getVtableIndexForInterfaceMethod0((EspressoResolvedInstanceType) resolved);
+    }
+
+    private native int getVtableIndexForInterfaceMethod0(EspressoResolvedInstanceType resolved);
 
     @Override
     protected native int getVtableIndex();

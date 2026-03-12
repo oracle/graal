@@ -29,8 +29,9 @@ import java.lang.reflect.Constructor;
 import java.util.Objects;
 
 import com.oracle.svm.hosted.DeadlockWatchdog;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ModuleSupport;
+import com.oracle.svm.util.HostedModuleSupport;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 /**
  * Interface to run source code through the closure compiler without having to directly reference
@@ -74,8 +75,8 @@ public interface ClosureCompilerSupport {
     }
 
     /**
-     * Exports all packages in {@link ModuleSupport#SYSTEM_MODULES system modules} to the module of
-     * the given class and all its superclasses (except for classes in {@code java.base}).
+     * Exports all packages in {@link HostedModuleSupport#SYSTEM_MODULES system modules} to the
+     * module of the given class and all its superclasses (except for classes in {@code java.base}).
      * <p>
      * The implementations of this interface may live in other modules that by default do not have
      * access to the Compiler and Native Image modules.
@@ -83,7 +84,7 @@ public interface ClosureCompilerSupport {
     private static void exportModulePackagesToImplementations(Class<?> baseClass) {
         Class<?> clazz = baseClass;
         while (!Objects.equals(clazz.getModule(), Object.class.getModule())) {
-            for (String systemModule : ModuleSupport.SYSTEM_MODULES) {
+            for (String systemModule : HostedModuleSupport.SYSTEM_MODULES) {
                 ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, clazz, true, systemModule);
             }
             clazz = clazz.getSuperclass();

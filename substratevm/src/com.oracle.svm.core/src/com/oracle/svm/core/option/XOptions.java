@@ -25,12 +25,14 @@
 package com.oracle.svm.core.option;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+
+import jdk.graal.compiler.options.OptionKey;
 
 /**
  * A parser for the HotSpot-like memory sizing options "-Xmn", "-Xms", "-Xmx", "-Xss". Every option

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
@@ -34,9 +34,10 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
@@ -60,13 +61,12 @@ import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.Word;
 
 /** Helper for allocating and accessing {@link StoredContinuation} instances. */
 public final class StoredContinuationAccess {
@@ -75,8 +75,8 @@ public final class StoredContinuationAccess {
 
     private static StoredContinuation allocate(int framesSize) {
         // Using Word[] to ensure that words are properly aligned.
-        int nwords = Integer.divideUnsigned(framesSize, ConfigurationValues.getTarget().wordSize);
-        assert nwords * ConfigurationValues.getTarget().wordSize == framesSize;
+        int nwords = Integer.divideUnsigned(framesSize, ConfigurationValues.getWordSize());
+        assert nwords * ConfigurationValues.getWordSize() == framesSize;
         /*
          * There is no need to zero the array part (i.e., the stack data) of the StoredContinuation,
          * because the GC won't visit it if StoredContinuation.ip is null.
@@ -91,7 +91,7 @@ public final class StoredContinuationAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getSizeInBytes(StoredContinuation s) {
-        return arrayLength(s) * ConfigurationValues.getTarget().wordSize;
+        return arrayLength(s) * ConfigurationValues.getWordSize();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

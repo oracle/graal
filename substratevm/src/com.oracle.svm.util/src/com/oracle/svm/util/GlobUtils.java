@@ -30,6 +30,9 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.StringUtil;
+
 public final class GlobUtils {
 
     private GlobUtils() {

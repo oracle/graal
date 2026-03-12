@@ -28,7 +28,7 @@ import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Collection;
 
-import com.oracle.svm.util.StringUtil;
+import com.oracle.svm.shared.util.StringUtil;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.json.JsonPrintable;

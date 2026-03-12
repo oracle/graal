@@ -31,7 +31,7 @@ import java.util.List;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 
 public class JNIRegistryAdapter extends RegistryAdapter {
@@ -118,9 +118,9 @@ public class JNIRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    protected void registerExecutable(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Executable... executable) {
+    protected void registerExecutable(AccessCondition condition, boolean jniAccessible, Executable... executable) {
         ensureJniAccessible(jniAccessible);
-        super.registerExecutable(condition, queriedOnly, true, executable);
+        super.registerExecutable(condition, true, executable);
     }
 
     @Override

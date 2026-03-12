@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.util.List;
 

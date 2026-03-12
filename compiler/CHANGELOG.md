@@ -8,6 +8,8 @@ This changelog summarizes newly introduced optimizations and other compiler rela
   serializes all compilations matching the pattern to JSON files, which contain the results of JVMCI calls. The
   recorded compilations can be replayed with the `mx replaycomp` command. Truffle compilations are currently not
   supported. See `docs/ReplayCompilation.md` for details.
+* (GR-71053): Added new distool utility which can disassemble HexCodeFile in .cfg files and MachCode sections
+    in HotSpot hs\_err\_pid files. E.g. `mx distool https://ci.server.com/jobs/1234/hs_err_pid5677.log`.
 
 ## GraalVM 25 (Internal Version 25.0.0)
 * (GR-60088): This PR adds the `org.graalvm.nativeimage.libgraal` SDK module. With this module, all logic for building

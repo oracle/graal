@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.jfr;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.IsolateThread;
@@ -35,8 +35,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
@@ -56,9 +56,10 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.Uninterruptible;
+
 
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 
 /**
  * This class is used when writing the in-memory JFR data to a file. For all operations, except
@@ -415,7 +416,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long beginEvent() {
         long start = getFileSupport().position(fd);
         // Write a placeholder for the size. Will be patched by endEvent,
@@ -424,7 +424,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void endEvent(long start) {
         long end = getFileSupport().position(fd);
         long writtenBytes = end - start;
@@ -436,21 +435,18 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeBoolean(boolean value) {
         assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         writeByte((byte) (value ? 1 : 0));
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeByte(byte value) {
         assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         getFileSupport().writeByte(fd, value);
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeBytes(byte[] values) {
         assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         getFileSupport().write(fd, values);

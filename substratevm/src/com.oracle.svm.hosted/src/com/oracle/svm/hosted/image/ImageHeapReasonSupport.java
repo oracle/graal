@@ -24,23 +24,24 @@
  */
 package com.oracle.svm.hosted.image;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.traits.BuiltinTraits;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedField;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.Collection;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
+import com.oracle.svm.hosted.meta.HostedField;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * This class provides proxies for building and using heap-inclusion reasons. Heap inclusion reasons
@@ -180,7 +181,7 @@ import java.util.Collection;
  *
  */
 @AutomaticallyRegisteredImageSingleton
-@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.NoLayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class ImageHeapReasonSupport {
 
     protected static final String UNKNOWN_REASON_KIND = "Unknown reason kind";
@@ -204,7 +205,7 @@ public class ImageHeapReasonSupport {
     }
 
     /**
-     * @see com.oracle.svm.core.jdk.StringInternSupport
+     * @see com.oracle.svm.core.jdk.strings.StringInternSupport
      */
     public Object internedStringsTable() {
         return HeapInclusionReason.InternedStringsTable;
@@ -260,7 +261,8 @@ public class ImageHeapReasonSupport {
         return position.getMethod();
     }
 
-    public Object objectInclusionReason(@SuppressWarnings("unused") NativeImageHeap.ObjectInfo info, Object parent, @SuppressWarnings("unused") HostedConstantReflectionProvider hConstantReflection) {
+    public Object objectInclusionReason(@SuppressWarnings("unused") NativeImageHeap.ObjectInfo info, Object parent, @SuppressWarnings("unused") HostedMetaAccess hMetaAccess,
+                    @SuppressWarnings("unused") HostedConstantReflectionProvider hConstantReflection) {
         // @formatter:off
         /*
          * Return `parent` to indicate that `info` is included in the image heap because of `parent`:
@@ -412,7 +414,7 @@ public class ImageHeapReasonSupport {
         return msg.append("    root: ").append(reason).append(System.lineSeparator());
     }
 
-    public void dumpMetadata(@SuppressWarnings("unused") ImageHeapLayoutInfo heapLayout, @SuppressWarnings("unused") Collection<NativeImageHeap.ObjectInfo> objects) {
+    public void dumpMetadata(@SuppressWarnings("unused") ImageHeapLayoutInfo heapLayout, @SuppressWarnings("unused") Iterable<NativeImageHeap.ObjectInfo> objects) {
         // no metadata to dump
     }
 }

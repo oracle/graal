@@ -50,7 +50,6 @@ import org.graalvm.collections.Equivalence;
 import jdk.graal.compiler.core.common.FieldIntrospection;
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
@@ -76,6 +75,7 @@ import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MemoryMap;
 import jdk.graal.compiler.nodes.spi.MemoryEdgeProxy;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.internal.misc.Unsafe;
 
 /**

@@ -47,7 +47,7 @@ public interface ImageHeapLayouter {
      * be cancelled through the {@link ImageHeapLayouterCallback}. If the layout is cancelled, an
      * instance of {@link ImageHeapLayoutCancelledException} is thrown.
      */
-    ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapLayouterCallback callback);
+    ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize, ImageHeapObjectSorter objectSorter, ImageHeapLayouterCallback callback);
 
     /**
      * Based on the layout decided during an earlier call to {@link #layout}, fill the image heap in

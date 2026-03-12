@@ -31,8 +31,10 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKESPECIAL;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKESTATIC;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEVIRTUAL;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EST_NO_ENTRY;
-import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_NO_ENTRY;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_ALWAYS_INLINED;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_INVALID;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_ONE_IMPL;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED;
 import static com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl.toHexString;
 
 import java.io.IOException;
@@ -76,9 +78,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
@@ -108,6 +108,8 @@ import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 import com.oracle.svm.interpreter.metadata.serialization.Serializers;
+import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -550,7 +552,7 @@ public class DebuggerFeature implements InternalFeature {
 
             if (!hostedMethod.isCompiled()) {
                 InterpreterUtil.log("[got] after compilation: %s is not compiled, nulling it out", hostedMethod);
-                interpreterMethod.setVTableIndex(VTBL_NO_ENTRY);
+                interpreterMethod.setVTableIndex(VTBL_UNINITIALIZED);
                 interpreterMethod.setNativeEntryPoint(null);
             } else {
                 if (interpreterMethod.hasBytecodes()) {
@@ -565,6 +567,7 @@ public class DebuggerFeature implements InternalFeature {
                 if (hostedMethod.getImplementations().length > 1) {
                     if (!hostedMethod.hasVTableIndex()) {
                         InterpreterUtil.log("[vtable assignment] %s has multiple implementations but no vtable slot. This is not supported.%n", hostedMethod);
+                        interpreterMethod.setVTableIndex(VTBL_INVALID);
                     } else {
                         InterpreterUtil.log("[vtable assignment] Setting to Index %s for methods %s <> %s%n", hostedMethod.getVTableIndex(), interpreterMethod, hostedMethod);
                         interpreterMethod.setVTableIndex(hostedMethod.getVTableIndex());
@@ -582,7 +585,7 @@ public class DebuggerFeature implements InternalFeature {
                     InterpreterUtil.log("[vtable assignment]  set oneImpl to -> %s%n", oneImpl);
                 } else {
                     InterpreterUtil.log("[vtable assignment] No implementation available: %s%n", hostedMethod);
-                    interpreterMethod.setVTableIndex(VTBL_NO_ENTRY);
+                    interpreterMethod.setVTableIndex(VTBL_ALWAYS_INLINED);
                 }
             }
         }
@@ -641,7 +644,7 @@ public class DebuggerFeature implements InternalFeature {
             if (field.isArtificiallyReachable()) {
                 // Value should be already computed.
                 JavaConstant value = field.getUnmaterializedConstant();
-                VMError.guarantee(value != null && value != JavaConstant.ILLEGAL);
+                VMError.guarantee(value != null && !value.equals(JavaConstant.ILLEGAL));
                 continue;
             }
             HostedField hostedField = accessImpl.getMetaAccess().getUniverse().optionalLookup(field.getOriginalField());

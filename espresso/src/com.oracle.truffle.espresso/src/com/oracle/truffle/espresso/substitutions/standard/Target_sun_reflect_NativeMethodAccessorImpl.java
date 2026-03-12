@@ -268,7 +268,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                     @JavaType(Object[].class) StaticObject args,
                     EspressoLanguage language, Meta meta,
                     ToEspressoNode.DynamicToEspresso toEspressoNode) {
-        Method reflectedMethod = Method.getHostReflectiveMethodRoot(guestMethod, meta);
+        Method reflectedMethod = Method.getVMMethod(guestMethod, meta);
         Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass(meta);
 
         if ((klass == meta.java_lang_invoke_MethodHandle) && ((reflectedMethod.getName() == Names.invoke) || (reflectedMethod.getName() == Names.invokeExact))) {

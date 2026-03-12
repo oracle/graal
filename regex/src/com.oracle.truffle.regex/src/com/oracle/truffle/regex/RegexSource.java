@@ -149,6 +149,12 @@ public final class RegexSource implements JsonConvertible {
     }
 
     @TruffleBoundary
+    public String toNodeName() {
+        String esc = toStringEscaped();
+        return "tregex " + (esc.length() > 30 ? esc.substring(0, 30) + "..." : esc);
+    }
+
+    @TruffleBoundary
     @Override
     public JsonValue toJson() {
         return Json.obj(Json.prop("pattern", pattern),

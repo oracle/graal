@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,6 +115,7 @@ import jdk.graal.compiler.lir.amd64.AMD64CounterModeAESCryptOp;
 import jdk.graal.compiler.lir.amd64.AMD64EncodeArrayOp;
 import jdk.graal.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
 import jdk.graal.compiler.lir.amd64.AMD64HaltOp;
+import jdk.graal.compiler.lir.amd64.AMD64IndexOfZeroOp;
 import jdk.graal.compiler.lir.amd64.AMD64LFenceOp;
 import jdk.graal.compiler.lir.amd64.AMD64MD5Op;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
@@ -727,9 +728,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         long maxOffset = linkage.getMaxCallTargetOffset(getCodeCache());
         if (maxOffset != (int) maxOffset) {
-            append(new AMD64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, info));
+            append(new AMD64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, linkage.getAdditionalReturns(), info));
         } else {
-            append(new AMD64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info));
+            append(new AMD64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, linkage.getAdditionalReturns(), info));
         }
     }
 
@@ -1113,6 +1114,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
         append(AMD64ArrayIndexOfOp.movParamsAndCreate(stride, variant, this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures,
                         result, arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues));
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Variable emitIndexOfZero(Stride stride, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayPointer) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.QWORD));
+        append(AMD64IndexOfZeroOp.movParamsAndCreate(stride, this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, result, arrayPointer));
         return result;
     }
 

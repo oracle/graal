@@ -25,7 +25,7 @@
 package com.oracle.svm.interpreter.fieldlayout;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.JavaKind;
 import com.oracle.svm.espresso.classfile.ParserField;
 

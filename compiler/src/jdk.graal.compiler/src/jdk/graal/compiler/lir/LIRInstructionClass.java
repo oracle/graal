@@ -31,7 +31,6 @@ import java.util.Locale;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstruction.OperandFlag;
@@ -39,6 +38,7 @@ import jdk.graal.compiler.lir.LIRInstruction.OperandMode;
 import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.graal.compiler.lir.StandardOp.MoveOp;
 import jdk.graal.compiler.lir.StandardOp.ValueMoveOp;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Value;
 

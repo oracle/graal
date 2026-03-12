@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.hosted.code;
 
-import com.oracle.svm.core.util.VMError;
+import java.nio.ByteBuffer;
+
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
-import com.oracle.svm.util.ClassUtil;
-import jdk.graal.compiler.code.CompilationResult;
+import com.oracle.svm.shared.util.ClassUtil;
+import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Reference;
 import jdk.vm.ci.meta.JavaConstant;
-
-import java.nio.ByteBuffer;
 
 /**
  * Represents a patch for machine code during image generation. At the specified operand position,

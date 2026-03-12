@@ -11,7 +11,7 @@ redirect_from: /reference-manual/native-image/JNI/
 Java Native Interface (JNI) is a native API that enables Java code to interact with native code and vice versa.
 This page gives an overview of the JNI implementation in Native Image.
 
-JNI support is enabled by default and built into Native Image. 
+JNI support is enabled by default and built into Native Image.
 Individual classes, methods, and fields that should be accessible via JNI must be specified at image build time in a configuration file (read below).
 
 Java code can load native code from a shared object with `System.loadLibrary()`.
@@ -33,7 +33,7 @@ The Native Image JNI implementation supports both approaches.
 
 ## Loading Native Libraries
 
-When loading native libraries using `System.loadLibrary()` (and related APIs), the native image will search the directory containing the native image before searching the Java library path. 
+When loading native libraries using `System.loadLibrary()` (and related APIs), the native image will search the directory containing the native image before searching the Java library path.
 So as long as the native libraries to be loaded are in the same directory as the native image, no other settings should be necessary.
 
 ## Reflection Metadata
@@ -45,25 +45,25 @@ Moreover, `native-image` must generate wrapper code ahead-of-time for any method
 Therefore, specifying a concise list of items that need to be accessible via JNI guarantees their availability and allows for a smaller footprint.
 Such a list should be specified in the [_reachability-metadata.json_ file](ReachabilityMetadata.md#java-native-interface).
 
-The JNI configuration can be collected automatically using the [Tracing Agent](AutomaticMetadataCollection.md) from the GraalVM JDK. 
-The agent tracks all usages of dynamic features during application execution on a regular Java VM. 
+The JNI configuration can be collected automatically using the [Tracing Agent](AutomaticMetadataCollection.md) from the GraalVM JDK.
+The agent tracks all usages of dynamic features during application execution on a regular Java VM.
 When the application completes and the JVM exits, the agent writes configuration to JSON files in the specified output directory.
-If you move the generated configuration files from that output directory to _META-INF/native-image/_ on the class path, they are then automatically used at build time. 
+If you move the generated configuration files from that output directory to _META-INF/native-image/_ on the class path, they are then automatically used at build time.
 The `native-image` builder searches for _META-INF/native-image/_ and its subdirectories for file named _reachability-metadata.json_, or legacy files such as _reflect-config.json_ and others.
 
-Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the image build using the `JNIRuntimeAccess` class. For example:
+Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the image build using the `RuntimeJNIAccess` class. For example:
 ```java
 class JNIRegistrationFeature implements Feature {
   public void beforeAnalysis(BeforeAnalysisAccess access) {
     try {
-      JNIRuntimeAccess.register(String.class);
-      JNIRuntimeAccess.register(String.class.getDeclaredField("value"));
-      JNIRuntimeAccess.register(String.class.getDeclaredField("hash"));
-      JNIRuntimeAccess.register(String.class.getDeclaredConstructor(char[].class));
-      JNIRuntimeAccess.register(String.class.getDeclaredMethod("charAt", int.class));
-      JNIRuntimeAccess.register(String.class.getDeclaredMethod("format", String.class, Object[].class));
-      JNIRuntimeAccess.register(String.CaseInsensitiveComparator.class);
-      JNIRuntimeAccess.register(String.CaseInsensitiveComparator.class.getDeclaredMethod("compare", String.class, String.class));
+      RuntimeJNIAccess.register(String.class);
+      RuntimeJNIAccess.register(String.class.getDeclaredField("value"));
+      RuntimeJNIAccess.register(String.class.getDeclaredField("hash"));
+      RuntimeJNIAccess.register(String.class.getDeclaredConstructor(char[].class));
+      RuntimeJNIAccess.register(String.class.getDeclaredMethod("charAt", int.class));
+      RuntimeJNIAccess.register(String.class.getDeclaredMethod("format", String.class, Object[].class));
+      RuntimeJNIAccess.register(String.CaseInsensitiveComparator.class);
+      RuntimeJNIAccess.register(String.CaseInsensitiveComparator.class.getDeclaredMethod("compare", String.class, String.class));
     } catch (NoSuchMethodException | NoSuchFieldException e) { ... }
   }
 }

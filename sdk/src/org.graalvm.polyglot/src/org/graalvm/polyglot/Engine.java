@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -412,7 +412,7 @@ public final class Engine implements AutoCloseable {
     /**
      * Creates a new engine instance with default configuration with a set of permitted languages.
      * This method is a shortcut for {@link #newBuilder(String...)
-     * newBuilder(permittedLanuages).build()}.
+     * newBuilder(permittedLanguages).build()}.
      *
      * @see Context#create(String...) to create a new execution context.
      * @since 21.3
@@ -672,8 +672,8 @@ public final class Engine implements AutoCloseable {
          * value is <code>true</code> indicating that the system properties should be used. System
          * properties are looked up with the prefix <i>"polyglot"</i> in order to disambiguate
          * existing system properties. For example, for the option with the key
-         * <code>"js.ECMACompatiblity"</code>, the system property
-         * <code>"polyglot.js.ECMACompatiblity"</code> is read. Invalid options specified using
+         * <code>"js.ECMACompatibility"</code>, the system property
+         * <code>"polyglot.js.ECMACompatibility"</code> is read. Invalid options specified using
          * system properties will cause the {@link #build() build} method to fail using an
          * {@link IllegalArgumentException}. System properties are read once when the engine is
          * built and are never updated after that.
@@ -1924,7 +1924,7 @@ public final class Engine implements AutoCloseable {
 
         private static RuntimeException noPolyglotImplementationFound() {
             return new IllegalStateException("No language and polyglot implementation was found on the module-path. " +
-                            "Make sure at last one language is added to the module-path. ");
+                            "Make sure at least one language is added to the module-path. ");
         }
 
         @Override

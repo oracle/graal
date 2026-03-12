@@ -34,11 +34,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateMetadata;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
@@ -207,7 +208,11 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final boolean hasSameDefiningClassLoader(InterpreterResolvedJavaType other) {
-        return this.clazz.getClassLoader() == other.clazz.getClassLoader();
+        return this.getClassLoader() == other.getClassLoader();
+    }
+
+    public final ClassLoader getClassLoader() {
+        return SubstrateUtil.cast(getJavaClass(), DynamicHub.class).getClassLoader();
     }
 
     @Override
@@ -292,7 +297,31 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final Assumptions.AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype() {
-        throw VMError.intentionallyUnimplemented();
+        if (isLeaf()) {
+            // No assumptions are required.
+            return new Assumptions.AssumptionResult<>(this);
+        }
+
+        if (isArray()) {
+            ResolvedJavaType elementalType = getElementalType();
+            Assumptions.AssumptionResult<ResolvedJavaType> elementType = elementalType.findLeafConcreteSubtype();
+            if (elementType != null && elementType.getResult().equals(elementalType)) {
+                /*
+                 * If the elementType is leaf then the array is leaf under the same assumptions but
+                 * only if the element type is exactly the leaf type. The element type can be
+                 * abstract even if there is only one implementor of the abstract type.
+                 */
+                Assumptions.AssumptionResult<ResolvedJavaType> result = new Assumptions.AssumptionResult<>(this);
+                result.add(elementType);
+                return result;
+            }
+            return null;
+        } else {
+            /*
+             * TODO GR-72446 - add single implementor class hierarchy analysis to ristretto
+             */
+            return null;
+        }
     }
 
     @Override
@@ -317,7 +346,8 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final InterpreterResolvedObjectType getArrayClass() {
-        throw VMError.intentionallyUnimplemented();
+        DynamicHub arrayHub = DynamicHub.fromClass(clazz).getOrCreateArrayHub();
+        return (InterpreterResolvedObjectType) arrayHub.getInterpreterType();
     }
 
     @Override

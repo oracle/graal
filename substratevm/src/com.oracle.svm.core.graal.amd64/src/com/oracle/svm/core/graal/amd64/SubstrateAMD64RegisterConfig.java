@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 import static jdk.vm.ci.amd64.AMD64.k0;
 import static jdk.vm.ci.amd64.AMD64.k1;
 import static jdk.vm.ci.amd64.AMD64.k2;
@@ -76,7 +76,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
@@ -84,7 +84,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.vm.ci.amd64.AMD64;
@@ -389,7 +389,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
                 AssignedLocation storage = type.fixedParameterAssignment[i];
                 if (storage.assignsToRegister()) {
-                    if (!kind.isNumericInteger() && !kind.isNumericFloat()) {
+                    if (kind == JavaKind.Void || kind == JavaKind.Illegal) {
                         throw unsupportedFeature("Unsupported storage/kind pair - Storage: " + storage + " ; Kind: " + kind);
                     }
                     Register reg = storage.register();
@@ -419,7 +419,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
          * SubstrateAMD64NodeLIRBuilder.visitInvokeArguments. This information can be useful for
          * functions taking a variable number of arguments (varargs).
          */
-        if (type.nativeABI()) {
+        if (type.nativeABI() && type.mayBeVarargs()) {
             kinds = Arrays.copyOf(kinds, kinds.length + 1);
             locations = Arrays.copyOf(locations, locations.length + 1);
             kinds[kinds.length - 1] = JavaKind.Int;

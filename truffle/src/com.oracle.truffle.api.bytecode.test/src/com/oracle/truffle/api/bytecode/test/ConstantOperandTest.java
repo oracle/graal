@@ -77,17 +77,17 @@ import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
-import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
-import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
-import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
-import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer.DeserializerContext;
-import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.LocalAccessor;
 import com.oracle.truffle.api.bytecode.MaterializedLocalAccessor;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer.DeserializerContext;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext;
+import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.bytecode.test.ConstantOperandTestRootNode.ReplaceValue;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
@@ -244,7 +244,7 @@ public class ConstantOperandTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
             nodes.serialize(new DataOutputStream(output), serializer);
-            Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+            Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
             return variant.deserialize(LANGUAGE, BytecodeConfig.DEFAULT, input, deserializer);
         } catch (IOException ex) {
             throw new AssertionError(ex);

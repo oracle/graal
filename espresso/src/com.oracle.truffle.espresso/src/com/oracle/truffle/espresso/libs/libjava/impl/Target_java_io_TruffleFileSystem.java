@@ -82,7 +82,7 @@ public final class Target_java_io_TruffleFileSystem {
     static @JavaType(String.class) StaticObject normalize0(@JavaType(String.class) StaticObject path, @Inject EspressoContext ctx) {
         nullCheck(path, ctx);
         String hostPath = ctx.getMeta().toHostString(path);
-        String normalized = ctx.getTruffleIO().getPublicTruffleFileSafe(hostPath).normalize().getPath();
+        String normalized = ctx.getTruffleIO().getInternalTruffleFile(hostPath).normalize().getPath();
         return ctx.getMeta().toGuestString(normalized);
     }
 
@@ -92,14 +92,14 @@ public final class Target_java_io_TruffleFileSystem {
         nullCheck(child, ctx);
         String hostParent = ctx.getMeta().toHostString(parent);
         String hostChild = ctx.getMeta().toHostString(child);
-        String resolvedPath = ctx.getTruffleIO().getPublicTruffleFileSafe(hostParent).resolve(hostChild).getPath();
+        String resolvedPath = ctx.getTruffleIO().getInternalTruffleFile(hostParent).resolve(hostChild).getPath();
         return ctx.getMeta().toGuestString(resolvedPath);
     }
 
     @Substitution(flags = {needsSignatureMangle})
     static @JavaType(String.class) StaticObject resolve0(@JavaType(File.class) StaticObject f, @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String path = getPathFromFile(f, io, ctx);
-        return ctx.getMeta().toGuestString(io.getPublicTruffleFileSafe(path).getPath());
+        return ctx.getMeta().toGuestString(io.getInternalTruffleFile(path).getPath());
     }
 
     @Substitution
@@ -110,14 +110,14 @@ public final class Target_java_io_TruffleFileSystem {
     @Substitution
     static boolean isAbsolute0(@JavaType(File.class) StaticObject f, @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String path = getPathFromFile(f, io, ctx);
-        return io.getPublicTruffleFileSafe(path).isAbsolute();
+        return io.getInternalTruffleFile(path).isAbsolute();
     }
 
     @Substitution
     static boolean isInvalid0(@JavaType(File.class) StaticObject f, @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String path = getPathFromFile(f, io, ctx);
         try {
-            io.getPublicTruffleFileSafe(path);
+            io.getInternalTruffleFile(path);
         } catch (IllegalArgumentException e) {
             return true;
         }
@@ -132,7 +132,7 @@ public final class Target_java_io_TruffleFileSystem {
         // Work around until canonicalize of TruffleFile works for non-existent paths (GR-29215).
         nullCheck(path, ctx);
         Meta meta = ctx.getMeta();
-        TruffleFile tf = io.getPublicTruffleFileSafe(meta.toHostString(path));
+        TruffleFile tf = io.getInternalTruffleFile(meta.toHostString(path));
         return meta.toGuestString(recursiveCanonicalize(tf, ctx).getPath());
 
     }
@@ -160,7 +160,7 @@ public final class Target_java_io_TruffleFileSystem {
     static int getBooleanAttributes0(@JavaType(File.class) StaticObject f, @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String path = getPathFromFile(f, io, ctx);
         int res = 0;
-        TruffleFile tf = io.getPublicTruffleFileSafe(path);
+        TruffleFile tf = io.getInternalTruffleFile(path);
         if (tf.exists()) {
             res |= io.fileSystemSync.BA_EXISTS;
         }
@@ -177,7 +177,7 @@ public final class Target_java_io_TruffleFileSystem {
     @Substitution
     static boolean checkAccess0(@JavaType(File.class) StaticObject f, int access, @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String path = getPathFromFile(f, io, ctx);
-        TruffleFile file = io.getPublicTruffleFileSafe(path);
+        TruffleFile file = io.getInternalTruffleFile(path);
         if ((access & io.fileSystemSync.ACCESS_READ) != 0 && !file.isReadable()) {
             return false;
         }
@@ -194,7 +194,7 @@ public final class Target_java_io_TruffleFileSystem {
     static long getLastModifiedTime0(@JavaType(File.class) StaticObject f,
                     @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String path = getPathFromFile(f, io, ctx);
-        TruffleFile file = io.getPublicTruffleFileSafe(path);
+        TruffleFile file = io.getInternalTruffleFile(path);
         try {
             return file.getLastModifiedTime().toMillis();
         } catch (IOException | SecurityException e) {
@@ -206,7 +206,7 @@ public final class Target_java_io_TruffleFileSystem {
     static long getLength0(@JavaType(File.class) StaticObject f,
                     @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String path = getPathFromFile(f, io, ctx);
-        TruffleFile file = io.getPublicTruffleFileSafe(path);
+        TruffleFile file = io.getInternalTruffleFile(path);
         try {
             return file.size();
         } catch (IOException e) {
@@ -223,7 +223,7 @@ public final class Target_java_io_TruffleFileSystem {
     static boolean setPermission0(@JavaType(File.class) StaticObject f, int access, boolean enable, boolean owneronly,
                     @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String path = getPathFromFile(f, io, ctx);
-        TruffleFile tf = io.getPublicTruffleFileSafe(path);
+        TruffleFile tf = io.getInternalTruffleFile(path);
         try {
             Set<PosixFilePermission> perms = getPosixPermissions(tf, access, enable, owneronly);
             if (perms == null) {
@@ -293,7 +293,7 @@ public final class Target_java_io_TruffleFileSystem {
     static boolean delete0(@JavaType(File.class) StaticObject path,
                     @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String strPath = getPathFromFile(path, io, ctx);
-        TruffleFile tf = io.getPublicTruffleFileSafe(strPath);
+        TruffleFile tf = io.getInternalTruffleFile(strPath);
         try {
             tf.delete();
             return true;
@@ -307,7 +307,7 @@ public final class Target_java_io_TruffleFileSystem {
     static @JavaType(String[].class) StaticObject list0(@JavaType(File.class) StaticObject path,
                     @Inject TruffleIO io, @Inject EspressoContext ctx) {
         String strPath = getPathFromFile(path, io, ctx);
-        TruffleFile tf = io.getPublicTruffleFileSafe(strPath);
+        TruffleFile tf = io.getInternalTruffleFile(strPath);
         try {
             Collection<TruffleFile> ls = tf.list();
             StaticObject[] ret = new StaticObject[ls.size()];
@@ -329,7 +329,7 @@ public final class Target_java_io_TruffleFileSystem {
     static boolean createDirectory0(@JavaType(File.class) StaticObject f,
                     @Inject TruffleIO io, @Inject EspressoContext ctx, @Inject LibsState libsState) {
         String path = getPathFromFile(f, io, ctx);
-        TruffleFile tf = io.getPublicTruffleFileSafe(path);
+        TruffleFile tf = io.getInternalTruffleFile(path);
         try {
             tf.createDirectory();
             return true;

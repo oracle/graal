@@ -60,12 +60,12 @@ import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.ClassInclusionPolicy.DefaultAllInclusionPolicy;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.LocatableMultiOptionValue;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -159,22 +159,25 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         }
 
         if (classLoaderSupport.isPreserveAll()) {
-            /* Include all parts of native image that are stripped */
-            AddAllCharsets.update(hostedValues, true);
-            IncludeAllLocales.update(hostedValues, true);
-            AllowJRTFileSystem.update(hostedValues, true);
-
-            /* Should be removed with GR-61365 */
-            var missingJDKProtocols = List.of("http", "https", "ftp", "jar", "mailto", "jrt", "jmod");
-            for (String missingProtocol : missingJDKProtocols) {
-                EnableURLProtocols.update(hostedValues, missingProtocol);
-            }
-
-            AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
+            enableAllJDKFeatures(hostedValues);
 
             /* Allow metadata tracing in preserve all images */
             MetadataTracingSupport.update(hostedValues, true);
         }
+    }
+
+    public static void enableAllJDKFeatures(EconomicMap<OptionKey<?>, Object> hostedValues) {
+        /* Include all parts of native image that are stripped */
+        AddAllCharsets.update(hostedValues, true);
+        IncludeAllLocales.update(hostedValues, true);
+        AllowJRTFileSystem.update(hostedValues, true);
+
+        /* Should be removed with GR-61365 */
+        var missingJDKProtocols = List.of("http", "https", "ftp", "jar", "mailto", "jrt", "jmod");
+        for (String missingProtocol : missingJDKProtocols) {
+            EnableURLProtocols.update(hostedValues, missingProtocol);
+        }
+        AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
     }
 
     private static String getSecurityProvidersCSV() {
@@ -244,10 +247,10 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                 jni.register(always, true, c);
                 try {
                     for (Method declaredMethod : c.getDeclaredMethods()) {
-                        jni.register(always, false, true, declaredMethod);
+                        jni.register(always, true, declaredMethod);
                     }
                     for (Constructor<?> declaredConstructor : c.getDeclaredConstructors()) {
-                        jni.register(always, false, true, declaredConstructor);
+                        jni.register(always, true, declaredConstructor);
                     }
                     for (Field declaredField : c.getDeclaredFields()) {
                         jni.register(always, false, true, declaredField);
@@ -275,8 +278,12 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * upwards multiple times when caching is implemented.
          */
         classesToPreserve.reversed().forEach(c -> {
-            reflection.registerAllFields(always, true, c);
-            reflection.registerAllMethodsQuery(always, false, true, c);
+            try {
+                reflection.register(always, false, true, c.getFields());
+                reflection.register(always, true, c.getMethods());
+            } catch (LinkageError e) {
+                /* If we can't link we can not register fields and methods */
+            }
             serialization.register(always, true, c);
         });
 
@@ -290,16 +297,12 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
     public static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
         AccessCondition always = AccessCondition.unconditional();
         reflection.register(always, true, c);
-
-        reflection.registerAllDeclaredFields(always, true, c);
-        reflection.registerAllDeclaredMethodsQuery(always, false, true, c);
-        reflection.registerAllDeclaredConstructorsQuery(always, false, true, c);
-        reflection.registerAllConstructorsQuery(always, false, true, c);
-        reflection.registerAllClassesQuery(always, true, c);
-        reflection.registerAllDeclaredClassesQuery(always, true, c);
-        reflection.registerAllNestMembersQuery(always, true, c);
-        reflection.registerAllPermittedSubclassesQuery(always, true, c);
-        reflection.registerAllRecordComponentsQuery(always, c);
-        reflection.registerAllSignersQuery(always, c);
+        try {
+            reflection.register(always, false, true, c.getDeclaredFields());
+            reflection.register(always, true, c.getDeclaredMethods());
+            reflection.register(always, true, c.getDeclaredConstructors());
+        } catch (LinkageError e) {
+            /* If we can't link we can not register fields and methods */
+        }
     }
 }

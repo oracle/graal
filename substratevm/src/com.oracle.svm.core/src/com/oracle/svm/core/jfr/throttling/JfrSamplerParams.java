@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.jfr.throttling;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * This class is based on the JDK 23+8 version of the HotSpot struct {@code JfrSamplerParams} (see

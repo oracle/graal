@@ -30,7 +30,7 @@ import com.oracle.svm.core.pltgot.amd64.AMD64ExitMethodAddressResolutionOp;
 import com.oracle.svm.core.pltgot.amd64.AMD64MethodAddressResolutionDispatcher;
 import com.oracle.svm.hosted.pltgot.HostedPLTGOTConfiguration;
 import com.oracle.svm.hosted.pltgot.PLTStubGenerator;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.vm.ci.code.Register;

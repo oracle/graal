@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.log;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.Integer.highestOneBit;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.abs;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.max;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.min;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.String.charAt;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.nio.charset.StandardCharsets;
 
@@ -38,17 +38,17 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDKUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
-import jdk.graal.compiler.word.Word;
 
 abstract class AbstractLog implements Log {
     private static final byte[] NEWLINE = System.lineSeparator().getBytes(StandardCharsets.US_ASCII);
@@ -569,12 +569,12 @@ abstract class AbstractLog implements Log {
         }
     }
 
-    @Uninterruptible(reason = "Some implementations are interruptible.", calleeMustBe = false)
+    @Uninterruptible(reason = "Some implementations are interruptible.", mayBeInlined = true, calleeMustBe = false)
     protected void writeBytes0(CCharPointer bytes, UnsignedWord length) {
         rawBytes(bytes, length);
     }
 
-    @Uninterruptible(reason = "Some implementations are interruptible.", calleeMustBe = false)
+    @Uninterruptible(reason = "Some implementations are interruptible.", mayBeInlined = true, calleeMustBe = false)
     private int printBacktrace0(Throwable t, int maxFrames) {
         return printBacktrace(t, maxFrames);
     }

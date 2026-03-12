@@ -47,12 +47,12 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.libgraal.LibGraalRuntime;
 import org.graalvm.nativeimage.libgraal.hosted.GlobalData;
 import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
+import org.graalvm.word.impl.Word;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.libgraal.truffle.HSTruffleCompilerRuntime;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
@@ -227,7 +227,7 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
     @SuppressWarnings("try")
     public void shutdown(String callbackClassName, String callbackMethodName) {
         try (CompilerThreadCanCallJavaScope ignore = new CompilerThreadCanCallJavaScope(true)) {
-            if (callbackClassName != null) {
+            if (callbackClassName != null && callbackMethodName != null) {
                 JNI.JNIEnv env = Word.unsigned(getJNIEnv());
                 JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
                                 JNIUtil.getBinaryName(callbackClassName), true);
@@ -241,7 +241,6 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
             }
         }
         VMRuntime.shutdown();
-
     }
 
     @Override

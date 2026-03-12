@@ -60,7 +60,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
          * A full MethodFlowsGraph has the full internal flow. Whether the graph flows for all
          * object parameters and return values, regardless of whether they are linked to the
          * internal flows, is dependent on
-         * {@code HostVM.MultiMethodAnalysisPolicy#insertPlaceholderParamAndReturnFlows}.
+         * {@code HostVM.MethodVariantsAnalysisPolicy#insertPlaceholderParamAndReturnFlows}.
          */
         FULL,
     }
@@ -369,7 +369,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
                     InvokeTypeFlow invoke = callerInvoke;
                     if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(callerInvoke)) {
                         /* The invoke has been replaced by the context insensitive one. */
-                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveVirtualInvoke(method.getMultiMethodKey());
+                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveVirtualInvoke(method.getMethodVariantKey());
                     }
                     for (MethodFlowsGraph calleeFlowGraph : invoke.getAllNonStubCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one

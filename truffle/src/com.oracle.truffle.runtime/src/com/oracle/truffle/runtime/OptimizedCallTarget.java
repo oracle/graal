@@ -709,7 +709,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
         // Check if call target is hot enough to compile
         if (shouldCompileImpl(intCallCount, intLoopCallCount)) {
-            boolean isCompiled = compile(!engine.multiTier);
+            boolean isCompiled = compileQueuedByHotness(!engine.multiTier);
             /*
              * If we bypassed the installed code chances are high that the code is currently being
              * debugged. This means that returning true for the interpreter call will retry the call
@@ -778,7 +778,11 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     @TruffleBoundary
     private boolean lastTierCompile() {
-        return compile(true);
+        return compileQueuedByHotness(true);
+    }
+
+    private boolean compileQueuedByHotness(boolean lastTierCompilation) {
+        return compile(lastTierCompilation, CompilationTask.SubmissionReason.HOTNESS);
     }
 
     private void propagateCallAndLoopCount() {
@@ -852,7 +856,11 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     private RuntimeException handleException(VirtualFrame frame, Throwable t) {
         Throwable profiledT = profileExceptionType(t);
-        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(null, this, profiledT, frame);
+        VirtualFrame effectiveFrame = frame;
+        if (rootNode instanceof BaseOSRRootNode osrRootNode) {
+            effectiveFrame = osrRootNode.getFrame(frame);
+        }
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(null, this, profiledT, effectiveFrame);
         throw rethrow(profiledT);
     }
 
@@ -975,6 +983,10 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
      * for compilation.
      */
     public final boolean compile(boolean lastTierCompilation) {
+        return compile(lastTierCompilation, CompilationTask.SubmissionReason.EXPLICIT);
+    }
+
+    private boolean compile(boolean lastTierCompilation, CompilationTask.SubmissionReason submissionReason) {
         boolean lastTier = !engine.firstTierOnly && lastTierCompilation;
         if (!needsCompile(lastTier)) {
             return true;
@@ -1034,7 +1046,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
                             return false;
                         }
 
-                        this.compilationTask = task = runtime().submitForCompilation(this, lastTier);
+                        this.compilationTask = task = runtime().submitForCompilation(this, lastTier, submissionReason);
                     } catch (RejectedExecutionException e) {
                         return false;
                     }
@@ -1784,9 +1796,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     public final OptimizedDirectCallNode getCallSiteForSplit() {
         if (isSplit()) {
-            OptimizedDirectCallNode callNode = getSingleCallNode();
-            assert callNode != null;
-            return callNode;
+            return getSingleCallNode();
         } else {
             return null;
         }

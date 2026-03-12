@@ -81,7 +81,7 @@ public class IdentityMethodAddressResolverFeature implements InternalFeature {
             GOTEntryAllocator gotEntryAllocator = HostedPLTGOTConfiguration.singleton().getGOTEntryAllocator();
             SharedMethod[] got = gotEntryAllocator.getGOT();
             long methodCount = got.length;
-            int wordSize = ConfigurationValues.getTarget().wordSize;
+            int wordSize = ConfigurationValues.getWordSize();
             long gotSectionSize = methodCount * wordSize;
             offsetsSectionBuffer = new RelocatableBuffer(gotSectionSize, imageObjectFile.getByteOrder());
             offsetsSectionBufferImpl = new BasicProgbitsSectionImpl(offsetsSectionBuffer.getBackingArray());

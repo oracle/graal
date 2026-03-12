@@ -27,6 +27,7 @@ package jdk.graal.compiler.truffle.hotspot;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -52,7 +53,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.truffle.nodes.TruffleSafepointNode;
 import jdk.graal.compiler.truffle.phases.TruffleSafepointInsertionPhase;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Snippet that lowers {@link TruffleSafepointNode}.

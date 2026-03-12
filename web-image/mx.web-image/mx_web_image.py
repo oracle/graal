@@ -104,7 +104,6 @@ web_image_hosted_options = [
     "RuntimeDebugChecks",
     "SILENT_COMPILE",
     "SourceMapSourceRoot=",
-    "StackSize=",
     "StrictWarnings",
     "UnsafeErrorMessages",
     "UseBinaryen",
@@ -150,6 +149,11 @@ class WebImageConfiguration:
     to add the Wasm codegen jars to builder's classpath, because that would make it produce a Wasm binary.
     """
 
+    suites: List[mx.Suite] = [_suite]
+    """
+    All Web Image suites.
+    """
+
     suite = None
     """Suite used to resolve the location of the web-image executable"""
 
@@ -160,6 +164,10 @@ class WebImageConfiguration:
     @classmethod
     def get_svm_wasm_component(cls) -> mx_sdk_vm.GraalVmComponent:
         return mx_sdk_vm.graalvm_component_by_name(cls.svm_wasm_component)
+
+    @classmethod
+    def get_all_suites(cls) -> List[mx.Suite]:
+        return cls.suites
 
     @classmethod
     def get_suite(cls) -> mx.Suite:
@@ -466,7 +474,7 @@ mx_gate.add_gate_argument(
 )
 
 
-def get_launcher_flags(names: [str], cp_suffix: str = None) -> [str]:
+def get_launcher_flags(names: List[str], cp_suffix: str = None) -> List[str]:
     """
     This gathers all the flags (class path, module path, etc.) needed to compile the given names
     (distributions, projects) with web image.
@@ -483,7 +491,11 @@ def get_launcher_flags(names: [str], cp_suffix: str = None) -> [str]:
     return mx.get_runtime_jvm_args(names, cp_suffix=cp_suffix, exclude_names=builder_jars)
 
 
-class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
+class WebImageSpecTestConfig(mx_unittest.MxUnittestConfig):
+    """
+    "Unit test" config for running JTTTestSuite test suites, which compile Web Images as part of the test.
+    """
+
     def __init__(self):
         super().__init__("web-image")
 
@@ -526,7 +538,7 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
         return vm_args, main_class, main_class_args
 
 
-mx_unittest.register_unittest_config(WebImageUnittestConfig())
+mx_unittest.register_unittest_config(WebImageSpecTestConfig())
 
 
 class WebImageMacroBuilder(mx.ArchivableProject):

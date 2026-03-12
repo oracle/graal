@@ -31,32 +31,23 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class ContinuationSupport {
-    static final class Options {
-        @Option(type = OptionType.Expert, help = "Support for continuations which are used by virtual threads. " +
-                        "If disabled, virtual threads can be started but each of them is backed by a platform thread.") //
-        public static final HostedOptionKey<Boolean> VMContinuations = new HostedOptionKey<>(true);
-    }
-
     @Fold
     public static boolean isSupported() {
         return ContinuationsFeature.isSupported();
@@ -125,7 +116,7 @@ public class ContinuationSupport {
     @Uninterruptible(reason = "Copies stack frames containing references.")
     protected CodePointer copyFrames(StoredContinuation storedCont, Pointer topSP, @SuppressWarnings("unused") Object preparedData) {
         int totalSize = StoredContinuationAccess.getFramesSizeInBytes(storedCont);
-        assert totalSize % ConfigurationValues.getTarget().wordSize == 0;
+        assert totalSize % ConfigurationValues.getWordSize() == 0;
 
         Pointer frameData = StoredContinuationAccess.getFramesStart(storedCont);
         UnmanagedMemoryUtil.copyWordsForward(frameData, topSP, Word.unsigned(totalSize));

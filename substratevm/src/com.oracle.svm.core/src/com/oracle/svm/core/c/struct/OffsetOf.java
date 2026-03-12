@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.c.struct;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 /**
  * Supplies static methods that provide access to the offset of fields of {@link CStruct} and

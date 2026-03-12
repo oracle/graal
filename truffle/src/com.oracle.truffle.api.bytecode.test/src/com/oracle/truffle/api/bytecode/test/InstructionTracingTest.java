@@ -654,7 +654,7 @@ public class InstructionTracingTest extends AbstractInstructionTest {
 
         node.getBytecodeNode().setUncachedThreshold(32);
         CallTarget target = node.getCallTarget();
-        target.call(30);
+        target.call(31);
         assertNotEquals(0, instructions.size());
         instructions.clear();
 

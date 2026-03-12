@@ -31,6 +31,7 @@ import javax.lang.model.SourceVersion;
 
 import com.oracle.svm.webimage.NamingConvention;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -48,10 +49,10 @@ public class NamingConventionUtil {
 
     public static String formatClassName(ResolvedJavaType type) {
         assert type != null;
-        String className = type.getName();
-        if (className.length() == 0) {
+        String className = type.toClassName();
+        if (className.isEmpty()) {
             // must check always, would destroy image execution on violation
-            JVMCIError.shouldNotReachHere("Class names must have pos length -->" + className);
+            throw GraalError.shouldNotReachHere("Class names must not be empty");
         }
 
         return cleanTypeName(className);
@@ -63,21 +64,11 @@ public class NamingConventionUtil {
 
         for (int i = 0; i < sig.getParameterCount(false); i++) {
             JavaType t = sig.getParameterType(i, null);
-
-            if (t instanceof ResolvedJavaType) {
-                sb.append(conv.identForType((ResolvedJavaType) t));
-            } else {
-                sb.append(cleanTypeName(t.getName()));
-            }
+            sb.append(conv.identForType((ResolvedJavaType) t));
         }
 
         JavaType t = sig.getReturnType(null);
-
-        if (t instanceof ResolvedJavaType) {
-            sb.append(conv.identForType((ResolvedJavaType) t));
-        } else {
-            sb.append(cleanTypeName(t.getName()));
-        }
+        sb.append(conv.identForType((ResolvedJavaType) t));
 
         // #5 ctors have "<" and ">" in md
         sb.insert(0, "__");

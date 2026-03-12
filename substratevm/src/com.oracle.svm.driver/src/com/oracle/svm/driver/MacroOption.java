@@ -41,11 +41,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.option.OptionUtils;
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.driver.NativeImage.BuildConfiguration;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
-import org.graalvm.collections.EconomicSet;
+import com.oracle.svm.shared.option.OptionUtils;
 
 final class MacroOption {
 

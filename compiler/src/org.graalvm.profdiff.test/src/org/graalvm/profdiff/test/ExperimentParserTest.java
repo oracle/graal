@@ -41,6 +41,7 @@ import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Method;
 import org.graalvm.profdiff.core.OptionValues;
+import org.graalvm.profdiff.core.Writer;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
@@ -50,7 +51,6 @@ import org.graalvm.profdiff.parser.ExperimentFiles;
 import org.graalvm.profdiff.parser.ExperimentParser;
 import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.graalvm.profdiff.parser.FileView;
-import org.graalvm.profdiff.core.Writer;
 import org.junit.Test;
 
 public class ExperimentParserTest {
@@ -306,21 +306,21 @@ public class ExperimentParserTest {
     }
 
     /**
-     * Verifies that multi-method keys are separated from multi-method names.
+     * Verifies that method variant keys are separated from method variant names.
      *
-     * The optimization logs from Graal contain method names with multi-method keys. In profdiff, we
-     * want to be able to compare two compilation units even if they come from a different
-     * multi-method. For this reason the parser removes multi-method keys from positions and
+     * The optimization logs from Graal contain method names with method variant keys. In profdiff,
+     * we want to be able to compare two compilation units even if they come from a different method
+     * variant. For this reason the parser removes method variant keys from positions and
      * inlining-tree nodes.
      */
     @Test
-    public void multiMethodKeys() throws ExperimentParserError, IOException {
+    public void methodVariantKeys() throws ExperimentParserError, IOException {
         String compilationUnitJSON = """
                         {
-                            "methodName": "foo.Bar%%MultiMethodKey(Baz)",
+                            "methodName": "foo.Bar%%MethodVariantKey(Baz)",
                             "compilationId": "100",
                             "inliningTree": {
-                                "methodName": "foo.Bar%%MultiMethodKey(Baz)",
+                                "methodName": "foo.Bar%%MethodVariantKey(Baz)",
                                 "callsiteBci": -1,
                                 "inlined": false,
                                 "indirect": false,
@@ -334,7 +334,7 @@ public class ExperimentParserTest {
                                     {
                                         "optimizationName": "DeadCodeElimination",
                                         "eventName": "NodeRemoval",
-                                        "position": {"foo.Bar%%MultiMethodKey(Baz)": 10}
+                                        "position": {"foo.Bar%%MethodVariantKey(Baz)": 10}
                                     }
                                 ]
                             }
@@ -344,7 +344,7 @@ public class ExperimentParserTest {
         Method method = experiment.getMethodsByName().get(methodName);
         assertNotNull(method);
         CompilationUnit compilationUnit = method.getCompilationUnits().get(0);
-        assertEquals("MultiMethodKey", compilationUnit.getMultiMethodKey());
+        assertEquals("MethodVariantKey", compilationUnit.getMethodVariantKey());
         CompilationUnit.TreePair treePair = compilationUnit.loadTrees();
         assertEquals(methodName, treePair.getInliningTree().getRoot().getName());
         Optimization optimization = treePair.getOptimizationTree().getRoot().getOptimizationsRecursive().get(0);

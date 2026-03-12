@@ -76,6 +76,7 @@ mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-zgc', ['-server', '-XX:-E
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-shenandoah', ['-server', '-XX:-EnableJVMCI', '-XX:+UseShenandoahGC']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-no-tiered-comp', ['-server', '-XX:-EnableJVMCI', '-XX:-TieredCompilation']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'xint', ['-server', '-Xint']), _suite, 1)
 
 
 class CompilerMetricsBenchmarkMixin:

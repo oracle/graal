@@ -59,7 +59,7 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -735,7 +735,7 @@ public class MethodTypeFlowBuilder {
             handleOpaqueReturn();
         }
 
-        boolean insertPlaceholderFlows = bb.getHostVM().getMultiMethodAnalysisPolicy().insertPlaceholderParamAndReturnFlows(method.getMultiMethodKey());
+        boolean insertPlaceholderFlows = bb.getHostVM().getMethodVariantsAnalysisPolicy().insertPlaceholderParamAndReturnFlows(method.getMethodVariantKey());
         if (graphKind == GraphKind.STUB) {
             AnalysisError.guarantee(insertPlaceholderFlows, "placeholder flows must be enabled for STUB graphkinds.");
             insertPlaceholderParamAndReturnFlows();
@@ -1870,21 +1870,21 @@ public class MethodTypeFlowBuilder {
                 }
             }
 
-            MultiMethod.MultiMethodKey multiMethodKey = method.getMultiMethodKey();
+            MethodVariant.MethodVariantKey methodVariantKey = method.getMethodVariantKey();
             InvokeTypeFlow invokeFlow;
             if (createDeoptInvokeTypeFlow) {
-                invokeFlow = bb.analysisPolicy().createDeoptInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
+                invokeFlow = bb.analysisPolicy().createDeoptInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, methodVariantKey);
             } else {
                 switch (invokeKind) {
                     case Static:
-                        invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
+                        invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, methodVariantKey);
                         break;
                     case Special:
-                        invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
+                        invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, methodVariantKey);
                         break;
                     case Virtual:
                     case Interface:
-                        invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
+                        invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, methodVariantKey);
                         break;
                     default:
                         throw shouldNotReachHere();

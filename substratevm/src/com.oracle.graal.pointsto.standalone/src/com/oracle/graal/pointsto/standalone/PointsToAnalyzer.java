@@ -67,9 +67,9 @@ import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.PointsToOptionParser;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.util.GraalAccess;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ModuleSupport;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
@@ -118,7 +118,7 @@ public final class PointsToAnalyzer {
         this.options = options;
         standaloneAnalysisFeatureManager = new StandaloneAnalysisFeatureManager(options);
         this.classLoaderAccess = classLoaderAccess;
-        Providers originalProviders = GraalAccess.getOriginalProviders();
+        Providers originalProviders = GuestAccess.get().getProviders();
         SnippetReflectionProvider snippetReflection = originalProviders.getSnippetReflection();
         MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
         debugContext = new DebugContext.Builder(options, new GraalDebugHandlersFactory(snippetReflection)).build();
@@ -261,7 +261,7 @@ public final class PointsToAnalyzer {
     }
 
     private static VMAccess.Builder getVmAccessBuilder() {
-        String requestedAccessName = GraalServices.getSavedProperty("com.oracle.graal.pointsto.standalone.vmaccessname", "host");
+        String requestedAccessName = GraalServices.getSavedProperty("com.oracle.graal.pointsto.standalone.vmaccess.name", "host");
         ServiceLoader<VMAccess.Builder> loader = ServiceLoader.load(VMAccess.Builder.class);
         VMAccess.Builder selected = null;
         for (VMAccess.Builder builder : loader) {
@@ -357,7 +357,7 @@ public final class PointsToAnalyzer {
             if (mainType == null) {
                 throw new RuntimeException("Can't find the specified analysis main class " + entryClass);
             }
-            Signature signature = GraalAccess.getOriginalProviders().getMetaAccess().parseMethodDescriptor("([Ljava/lang/String;)V");
+            Signature signature = GuestAccess.get().getProviders().getMetaAccess().parseMethodDescriptor("([Ljava/lang/String;)V");
             ResolvedJavaMethod mainMethod = mainType.findMethod("main", signature);
             if (mainMethod == null) {
                 throw new RuntimeException("Can't find the main method in the analysis main class " + analysisName);
@@ -391,7 +391,7 @@ public final class PointsToAnalyzer {
     }
 
     protected static void reportException(Throwable e) {
-        System.err.print("Exception:");
-        e.printStackTrace();
+        System.out.print("Exception:");
+        e.printStackTrace(System.out);
     }
 }

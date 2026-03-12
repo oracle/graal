@@ -205,6 +205,18 @@ final class TStringUnsafe {
         return UNSAFE.getInt(array, byteOffset);
     }
 
+    static byte getByte(long nativePointer) {
+        return UNSAFE.getByte(nativePointer);
+    }
+
+    static char getChar(long nativePointer) {
+        return UNSAFE.getChar(nativePointer);
+    }
+
+    static int getInt(long nativePointer) {
+        return UNSAFE.getInt(nativePointer);
+    }
+
     static long getLong(byte[] array, long byteOffset) {
         return UNSAFE.getLong(array, byteOffset);
     }

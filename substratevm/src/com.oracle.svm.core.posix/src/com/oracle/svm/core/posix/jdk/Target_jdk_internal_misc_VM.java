@@ -30,7 +30,8 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
+
 import com.oracle.svm.core.util.PlatformTimeUtils;
 import com.oracle.svm.core.util.PlatformTimeUtils.SecondsNanos;
 

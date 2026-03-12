@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.GuardedUnsafeLoadNode;
@@ -167,6 +168,88 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
             } catch (UnexpectedResultException e) {
                 throw CompilerDirectives.shouldNotReachHere();
             }
+        }
+    }
+
+    @Test
+    public void testConstantFoldingFromField() {
+        testConstantFolding(newInstanceWithFields());
+    }
+
+    @Test
+    public void testConstantFoldingFromArray() {
+        testConstantFolding(newInstanceWithoutFields());
+    }
+
+    private void testConstantFolding(DynamicObject obj) {
+        Object refKey = "refKey";
+        Object refValue = "refValue";
+        Object intKey = "intKey";
+        int intValue = 42;
+        Object longKey = "longKey";
+        long longValue = 277777788888899L;
+        Object doubleKey = "doubleKey";
+        double doubleValue = Math.PI;
+
+        DynamicObject.PutNode.getUncached().execute(obj, refKey, refValue);
+        DynamicObject.PutNode.getUncached().execute(obj, intKey, intValue);
+        DynamicObject.PutNode.getUncached().execute(obj, longKey, longValue);
+        DynamicObject.PutNode.getUncached().execute(obj, doubleKey, doubleValue);
+
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new TestDynamicObjectGetFinalRootNode(obj).getCallTarget();
+        callTarget.call(refKey);
+        callTarget.call(intKey);
+        callTarget.call(longKey);
+        callTarget.call(doubleKey);
+
+        StructuredGraph graph = partialEval(callTarget, new Object[]{intKey});
+
+        if (!graph.getNodes().filter(RawLoadNode.class).isEmpty()) {
+            Assert.fail("Found unexpected RawLoadNode: " + graph.getNodes().filter(RawLoadNode.class).snapshot());
+        }
+        if (graph.getNodes().filter(ConstantNode.class).filter(n -> n instanceof ConstantNode c &&
+                        c.getStackKind() == JavaKind.Object &&
+                        getConstantReflection().constantEquals(c.asJavaConstant(), getSnippetReflection().forObject(refValue))).isEmpty()) {
+            Assert.fail("Constant " + refValue + " not found in the graph.");
+        }
+        if (graph.getNodes().filter(ConstantNode.class).filter(n -> n instanceof ConstantNode c &&
+                        c.getStackKind() == JavaKind.Int &&
+                        c.asJavaConstant().asInt() == intValue).isEmpty()) {
+            Assert.fail("Constant " + intValue + " not found in the graph.");
+        }
+        if (graph.getNodes().filter(ConstantNode.class).filter(n -> n instanceof ConstantNode c &&
+                        c.getStackKind() == JavaKind.Long &&
+                        c.asJavaConstant().asLong() == longValue).isEmpty()) {
+            Assert.fail("Constant " + longValue + " not found in the graph.");
+        }
+        if (graph.getNodes().filter(ConstantNode.class).filter(n -> n instanceof ConstantNode c &&
+                        c.getStackKind() == JavaKind.Double &&
+                        Double.compare(c.asJavaConstant().asDouble(), doubleValue) == 0).isEmpty()) {
+            Assert.fail("Constant " + doubleValue + " not found in the graph.");
+        }
+
+        compile(callTarget, graph);
+
+        Assert.assertTrue("CallTarget is valid", callTarget.isValid());
+        Assert.assertSame(refValue, callTarget.call(refKey));
+        Assert.assertEquals(intValue, callTarget.call(intKey));
+        Assert.assertEquals(longValue, callTarget.call(longKey));
+        Assert.assertEquals(doubleValue, callTarget.call(doubleKey));
+    }
+
+    static class TestDynamicObjectGetFinalRootNode extends RootNode {
+        final DynamicObject receiver;
+        @Child DynamicObject.GetNode getNode = DynamicObject.GetNode.create();
+
+        TestDynamicObjectGetFinalRootNode(DynamicObject receiver) {
+            super(null);
+            this.receiver = receiver;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object key = frame.getArguments()[0];
+            return getNode.execute(receiver, key, null);
         }
     }
 

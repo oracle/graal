@@ -50,7 +50,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
-import jdk.graal.compiler.word.ObjectAccess;
+import org.graalvm.word.impl.ObjectAccess;
 import jdk.internal.misc.Unsafe;
 
 /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,7 +130,7 @@ abstract class AbstractNativeServiceGenerator extends AbstractServiceGenerator {
                         CharSequence jniEnvFieldName);
 
         @SuppressWarnings("unused")
-        void declarePerMarshalledParameterVariable(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, Map<String, CharSequence> parameterValueOverrides) {
+        void declarePreMarshalledParameterVariable(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, Map<String, CharSequence> parameterValueOverrides) {
         }
 
         @SuppressWarnings("unused")
@@ -162,7 +162,7 @@ abstract class AbstractNativeServiceGenerator extends AbstractServiceGenerator {
         }
 
         @SuppressWarnings("unused")
-        CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
+        CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName, CharSequence rawResultVariableName) {
             return null;
         }
 

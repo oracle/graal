@@ -27,10 +27,13 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import java.io.PrintStream;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.webimage.codegen.heap.ConstantMap;
 import com.oracle.svm.hosted.webimage.codegen.heap.WebImageObjectInspector;
+import com.oracle.svm.hosted.webimage.codegen.long64.Long64Provider;
 import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -41,14 +44,21 @@ public class WebImageJSProviders extends WebImageProviders {
     private final WebImageObjectInspector objectInspector;
     private final WebImageTypeControl typeControl;
     private final ClassLoader classLoader;
+    private final Long64Provider long64Provider;
 
     @SuppressWarnings("this-escape")
     public WebImageJSProviders(CoreProviders underlyingProviders, PrintStream out, DebugContext debug) {
         super(underlyingProviders, out, debug);
-        HostedUniverse hUniverse = ((HostedMetaAccess) underlyingProviders.getMetaAccess()).getUniverse();
+        HostedMetaAccess metaAccess = (HostedMetaAccess) underlyingProviders.getMetaAccess();
+        HostedUniverse hUniverse = metaAccess.getUniverse();
         this.typeControl = new WebImageTypeControl(hUniverse, this, new ConstantMap(this), WebImageNamingConvention.getInstance());
         this.objectInspector = new WebImageObjectInspector(this);
         this.classLoader = hUniverse.hostVM().getClassLoader();
+        this.long64Provider = new Long64Provider(metaAccess);
+    }
+
+    public static WebImageJSProviders singleton() {
+        return (WebImageJSProviders) ImageSingletons.lookup(WebImageProviders.class);
     }
 
     public WebImageTypeControl typeControl() {
@@ -61,5 +71,9 @@ public class WebImageJSProviders extends WebImageProviders {
 
     public ClassLoader getClassLoader() {
         return classLoader;
+    }
+
+    public Long64Provider getLong64Provider() {
+        return long64Provider;
     }
 }

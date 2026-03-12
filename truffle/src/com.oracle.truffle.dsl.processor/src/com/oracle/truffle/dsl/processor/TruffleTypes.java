@@ -50,8 +50,12 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeNames;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 
 public class TruffleTypes {
 
@@ -140,6 +144,12 @@ public class TruffleTypes {
     public static final String HostCompilerDirectives_BytecodeInterpreterSwitch_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch";
     public static final String HostCompilerDirectives_InliningCutoff_Name = "com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff";
     public static final String HostCompilerDirectives_InliningRoot_Name = "com.oracle.truffle.api.HostCompilerDirectives.InliningRoot";
+    public static final String HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig";
+    public static final String HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument";
+    public static final String HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_ExpansionKind_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.ExpansionKind";
+    public static final String HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_Field_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.Field";
+    public static final String HostCompilerDirectives_BytecodeInterpreterFetchOpcode_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterFetchOpcode";
+    public static final String HostCompilerDirectives_BytecodeInterpreterHandler_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandler";
 
     public static final String InternalResource_Name = "com.oracle.truffle.api.InternalResource";
     public static final String InternalResource_Id_Name = "com.oracle.truffle.api.InternalResource.Id";
@@ -209,6 +219,14 @@ public class TruffleTypes {
     public final DeclaredType HostCompilerDirectives_BytecodeInterpreterSwitch = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterSwitch_Name);
     public final DeclaredType HostCompilerDirectives_InliningCutoff = c.getDeclaredType(HostCompilerDirectives_InliningCutoff_Name);
     public final DeclaredType HostCompilerDirectives_InliningRoot = c.getDeclaredType(HostCompilerDirectives_InliningRoot_Name);
+    public final DeclaredType HostCompilerDirectives_BytecodeInterpreterHandlerConfig = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Name);
+    public final DeclaredType HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_Name);
+    public final DeclaredType HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_ExpansionKind = c.getDeclaredType(
+                    HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_ExpansionKind_Name);
+    public final DeclaredType HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_Field = c.getDeclaredType(
+                    HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_Field_Name);
+    public final DeclaredType HostCompilerDirectives_BytecodeInterpreterFetchOpcode = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterFetchOpcode_Name);
+    public final DeclaredType HostCompilerDirectives_BytecodeInterpreterHandler = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterHandler_Name);
     public final DeclaredType InternalResource = c.getDeclaredType(InternalResource_Name);
     public final DeclaredType InternalResource_Id = c.getDeclaredType(InternalResource_Id_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
@@ -489,7 +507,7 @@ public class TruffleTypes {
     public final DeclaredType InstructionTracer_InstructionAccess = c.getDeclaredTypeOptional(InstructionTracer_InstructionAccess_Name);
     public final DeclaredType Yield = c.getDeclaredTypeOptional(Yield_Name);
 
-    public final DeclaredType Instruction_Argument = c.getDeclaredTypeOptional(Instruction_Argument_Name);
+    public final DeclaredType Instruction_Argument = customType(c.getDeclaredTypeOptional(Instruction_Argument_Name), "com.oracle.truffle.api.bytecode", "Instruction.Argument");
     public final DeclaredType Instruction_Argument_BranchProfile = c.getDeclaredTypeOptional(Instruction_Argument_BranchProfile_Name);
     public final DeclaredType Instruction_Argument_Kind = c.getDeclaredTypeOptional(Instruction_Argument_Kind_Name);
     public final DeclaredType BytecodeIntrospection = c.getDeclaredTypeOptional(BytecodeIntrospection_Name);
@@ -522,6 +540,17 @@ public class TruffleTypes {
     public final DeclaredType FrameExtensions = c.getDeclaredTypeOptional(FrameExtensions_Name);
 
     public final DeclaredType GenerateInstructionRewriter = c.getDeclaredTypeOptional(GenerateInstructionRewriter_Name);
+
+    public static DeclaredCodeTypeMirror customType(TypeMirror type, String packageName, String name) {
+        if (type == null) {
+            return null;
+        }
+        CodeTypeElement element = CodeTypeElement.cloneShallow(ElementUtils.castTypeElement(type));
+        element.setEnclosingElement(ElementUtils.findPackageElement(element));
+        element.setPackageName(CodeNames.of(packageName));
+        element.setSimpleName(CodeNames.of(name));
+        return new DeclaredCodeTypeMirror(element);
+    }
 
     // Library API
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";

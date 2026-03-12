@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 
 import jdk.vm.ci.code.RegisterConfig;
@@ -32,4 +34,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public interface SubstrateRegisterConfigFactory {
     RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer);
+
+    static SubstrateRegisterConfigFactory singleton() {
+        return ImageSingletons.lookup(SubstrateRegisterConfigFactory.class);
+    }
 }

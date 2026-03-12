@@ -30,6 +30,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
@@ -191,11 +192,19 @@ public class SLInspectDebugTest {
         tester = null;
     }
 
+    private static InspectorTester startInspectorTester(boolean suspend) throws Exception {
+        /*
+         * The AST and Bytecode DSL interpreters diverge in their approach to scopes. The hard-coded
+         * messages in these tests are written for AST scopes.
+         */
+        return InspectorTester.start(suspend, false, false, Map.of("sl.UseBytecode", "false"));
+    }
+
     // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
     // CheckStyle: stop line length check
     @Test
     public void testInitialSuspendAndSource() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -237,7 +246,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testStepping() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -327,7 +336,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testBreakpoints() throws Exception {
-        tester = InspectorTester.start(false);
+        tester = startInspectorTester(false);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
@@ -405,7 +414,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testBreakpointDeactivation() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", CODE2, "SLTest.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -565,7 +574,7 @@ public class SLInspectDebugTest {
     }
 
     private void testGuestFunctionBreakpoints(boolean useConsoleUtilities) throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", GUEST_FUNCTIONS, "SLTest.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -649,7 +658,7 @@ public class SLInspectDebugTest {
     }
 
     private void testBuiltInFunctionBreakpoints(boolean useConsoleUtilities) throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", BUILTIN_FUNCTIONS, "SLTest.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -728,7 +737,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testScopes() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -808,7 +817,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testNotSuspended() throws Exception {
-        tester = InspectorTester.start(false);
+        tester = startInspectorTester(false);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -839,7 +848,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testNoInternalSources() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         String internFunction = "function intern(n) {\n" +
                         "  if (n > 0) {\n" +
                         "    return public(n);\n" +
@@ -1109,7 +1118,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testNoBlackboxedSources() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         String blackboxedFunction = "function black(n) {\n" +
                         "  if (n > 0) {\n" +
                         "    return public(n);\n" +
@@ -1228,7 +1237,7 @@ public class SLInspectDebugTest {
         TruffleFile truffleFile = SLContext.get(null).getEnv().getPublicTruffleFile(file.toPath().toString());
         com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("sl", truffleFile).build();
 
-        tester = InspectorTester.start(false);
+        tester = startInspectorTester(false);
         InspectorDebugger debugger = (InspectorDebugger) tester.getDebugger();
         debugger.enable();
         // Test name of a file
@@ -1261,7 +1270,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testRestartFrame() throws Exception {
-        tester = InspectorTester.start(false);
+        tester = startInspectorTester(false);
         Source source = Source.newBuilder("sl", CODE3, "SLTest.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -1395,7 +1404,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testReturnValue() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", CODE_RET_VAL, "SLTest.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -1607,7 +1616,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testBreakpointCorrections() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", CODE4, "SLTest.sl").build();
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
@@ -1690,7 +1699,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testPossibleBreakpoints() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", CODE4, "SLTest.sl").build();
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
@@ -1758,7 +1767,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testThrown() throws Exception {
-        tester = InspectorTester.start(false);
+        tester = startInspectorTester(false);
         Source source = Source.newBuilder("sl", CODE_THROW, "SLThrow.sl").build();
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
@@ -1808,7 +1817,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testSetVariableValue() throws Exception {
-        tester = InspectorTester.start(false);
+        tester = startInspectorTester(false);
         Source source = Source.newBuilder("sl", CODE_VARS, "SLVars.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -1899,7 +1908,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testMemberCompletionChrome() throws Exception {
-        tester = InspectorTester.start(false);
+        tester = startInspectorTester(false);
         Source source = Source.newBuilder("sl", CODE_MEMBERS, "SLMembers.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -1945,7 +1954,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testMemberCompletionVSCode() throws Exception {
-        tester = InspectorTester.start(false);
+        tester = startInspectorTester(false);
         Source source = Source.newBuilder("sl", CODE_MEMBERS, "SLMembers.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -1987,7 +1996,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testCompletionUpdate() throws Exception {
-        tester = InspectorTester.start(true);
+        tester = startInspectorTester(true);
         Source source = Source.newBuilder("sl", CODE1, "Code1Compl.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -2047,7 +2056,7 @@ public class SLInspectDebugTest {
 
     @Test
     public void testObjectGroups() throws Exception {
-        tester = InspectorTester.start(false);
+        tester = startInspectorTester(false);
         Source source = Source.newBuilder("sl", CODE_OBJECT_GROUPS, "SLObjectGroups.sl").build();
         String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");

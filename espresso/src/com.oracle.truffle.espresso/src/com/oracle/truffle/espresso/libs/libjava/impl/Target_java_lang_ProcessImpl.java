@@ -88,7 +88,7 @@ public final class Target_java_lang_ProcessImpl {
 
         // set directory
         String dirString = JNU.getString(dirArr, 0, dirArr.length - 1);
-        TruffleFile dirTF = io.getPublicTruffleFileSafe(dirString);
+        TruffleFile dirTF = io.getInternalTruffleFile(dirString);
         builder.directory(dirTF);
 
         // set fds

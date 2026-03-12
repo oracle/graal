@@ -26,7 +26,7 @@ package com.oracle.svm.core.option;
 
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.heap.Heap;
 
 /**

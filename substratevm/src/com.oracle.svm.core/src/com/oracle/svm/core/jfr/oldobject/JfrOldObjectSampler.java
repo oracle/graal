@@ -26,11 +26,10 @@
 
 package com.oracle.svm.core.jfr.oldobject;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.collections.UninterruptibleLinkedList;
 import com.oracle.svm.core.collections.UninterruptiblePriorityQueue;
 import com.oracle.svm.core.heap.Heap;
@@ -39,6 +38,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.OldObjectSampleEvent;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * A sampler that tracks old objects that are potential memory leaks.
@@ -64,7 +64,7 @@ final class JfrOldObjectSampler {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Must not safepoint while holding the object profiler lock.")
     boolean sample(Object obj, UnsignedWord allocatedSize, int arrayLength) {
         totalAllocated = totalAllocated.add(allocatedSize);
         UnsignedWord span = totalAllocated.subtract(totalInQueue);
@@ -93,7 +93,7 @@ final class JfrOldObjectSampler {
         return true;
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
     private int scavenge() {
         int numDead = 0;
         JfrOldObject cur = getOldestObject();
@@ -144,7 +144,7 @@ final class JfrOldObjectSampler {
         sample.reset();
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Must not safepoint while holding the object profiler lock.")
     private void store(Object obj, UnsignedWord span, UnsignedWord allocatedSize, int arrayLength) {
         Thread thread = JavaThreads.getCurrentThreadOrNull();
         long threadId = thread == null ? 0L : JavaThreads.getThreadId(thread);
@@ -158,7 +158,7 @@ final class JfrOldObjectSampler {
         totalInQueue = totalInQueue.add(span);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Must not safepoint while holding the object profiler lock.")
     void emit(long cutoff, @SuppressWarnings("unused") boolean emitAll, @SuppressWarnings("unused") boolean skipBFS) {
         /* We don't support paths-to-gc-roots yet. */
         if (cutoff <= 0) {
@@ -166,7 +166,7 @@ final class JfrOldObjectSampler {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Must not safepoint while holding the object profiler lock.")
     private void emitUnchained() {
         long startTicks = JfrTicks.elapsedTicks();
 

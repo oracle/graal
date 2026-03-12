@@ -33,16 +33,21 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SAXParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SchemaDVFactoryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
+import static com.oracle.svm.hosted.xml.XMLParsersRegistration.XMLCryptoTransformServiceClassesAndResources;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
 
     @Override
@@ -58,6 +63,10 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
 
         access.registerReachabilityHandler(new TransformerClassesAndResources()::registerConfigs,
                         method(access, "javax.xml.transform.FactoryFinder", "find", Class.class, String.class));
+
+        // TransformService of java.xml.crypto module
+        optionalMethod(access, "com.sun.org.apache.xml.internal.security.utils.I18n", "init", String.class, String.class)
+                        .ifPresent(method -> access.registerReachabilityHandler(new XMLCryptoTransformServiceClassesAndResources()::registerConfigs, method));
 
         access.registerReachabilityHandler(new DOMImplementationRegistryClasses()::registerConfigs,
                         method(access, "org.w3c.dom.bootstrap.DOMImplementationRegistry", "newInstance"));

@@ -72,7 +72,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
 
     private static RuntimeConstantPool getRuntimeConstantPool(StaticObject self, Meta meta) {
         StaticObject holder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
-        ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder);
+        ObjectKlass klass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(holder);
         RuntimeConstantPool pool = klass.getConstantPool();
         assert pool.getHolder() == klass;
         return pool;
@@ -88,9 +88,9 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         if (StaticObject.isNull(jvmciMethod)) {
             throw meta.throwNullPointerExceptionBoundary();
         }
-        Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(jvmciMethod);
+        Method method = (Method) meta.jvmci.EspressoResolvedJavaMethod_0vmMethod.getHiddenObject(jvmciMethod);
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
-        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
         RuntimeConstantPool constantPool = cpHolderKlass.getConstantPool();
         Field resolved = JVMCIConstantPoolUtils.lookupResolvedField(constantPool, cpi, method, opcode, context);
         if (resolved == null) {
@@ -142,10 +142,10 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
-        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
         Method caller = null;
         if (!StaticObject.isNull(callerMirror)) {
-            caller = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(callerMirror);
+            caller = (Method) meta.jvmci.EspressoResolvedJavaMethod_0vmMethod.getHiddenObject(callerMirror);
         }
         RuntimeConstantPool constantPool = cpHolderKlass.getConstantPool();
         Method result = JVMCIConstantPoolUtils.lookupResolvedMethod(constantPool, cpi, opcode, caller, context);
@@ -180,7 +180,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
-        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
         RuntimeConstantPool constantPool = cpHolderKlass.getConstantPool();
 
         Object result = JVMCIConstantPoolUtils.lookupReferencedType(constantPool, cpi, opcode, context);
@@ -198,7 +198,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
-        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
         RuntimeConstantPool constantPool = cpHolderKlass.getConstantPool();
         return JVMCIConstantPoolUtils.loadReferencedType0(cpi, opcode, constantPool, cpHolderKlass, meta);
     }
@@ -209,7 +209,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
-        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
         RuntimeConstantPool constantPool = cpHolderKlass.getConstantPool();
 
         ConstantPool.Tag tag = safeTagAt(constantPool, cpi, meta);
@@ -305,7 +305,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
-        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
         JVMCIIndyData indyData = JVMCIIndyData.getExisting(cpHolderKlass, meta);
         int indyCpi = indyData.recoverFullCpi(siteIndex);
         return lookupBootstrapMethodInvocation(self, indyCpi, INVOKEDYNAMIC, cpHolderKlass, cpHolder, context);
@@ -318,7 +318,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
-        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
         return lookupBootstrapMethodInvocation(self, cpi, opcode, cpHolderKlass, cpHolder, context);
     }
 
@@ -327,7 +327,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
-        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(cpHolder);
+        ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
         JVMCIIndyData indyData = JVMCIIndyData.maybeGetExisting(cpHolderKlass, meta);
         if (indyData == null) {
             return 0;

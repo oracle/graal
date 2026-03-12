@@ -28,10 +28,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.util.EconomicHashMap;
 

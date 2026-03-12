@@ -29,12 +29,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.util.PhasePlan;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.vm.ci.code.TargetDescription;
 
 public class LIRPhaseSuite<C> extends LIRPhase<C> implements PhasePlan<LIRPhase<C>> {

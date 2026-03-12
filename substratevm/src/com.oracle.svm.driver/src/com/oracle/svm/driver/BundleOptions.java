@@ -24,11 +24,9 @@
  */
 package com.oracle.svm.driver;
 
-import static com.oracle.svm.driver.BundleSupport.BUNDLE_OPTION;
-
 import java.util.Arrays;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.StringUtil;
 
 public class BundleOptions {
 
@@ -36,9 +34,9 @@ public class BundleOptions {
     public static BundleOption parseBundleOption(String cmdLineArg) {
         // Given an argument of form --bundle-create=bundle.nib,dry-run
         // First get the list: [bundle-create=bundle.nib, dry-run]
-        String[] options = SubstrateUtil.split(cmdLineArg.substring(BUNDLE_OPTION.length() + 1), ",");
+        String[] options = StringUtil.split(cmdLineArg.substring(BundleSupport.BUNDLE_OPTION.length() + 1), ",");
         // Then extract the variant components: [create=bundle.nib, dry-run]
-        String[] variantAndFileName = SubstrateUtil.split(options[0], "=", 2);
+        String[] variantAndFileName = StringUtil.split(options[0], "=", 2);
         // First part is the option variant
         String variant = variantAndFileName[0];
         // Second part is the optional file name
@@ -55,7 +53,7 @@ public class BundleOptions {
     }
 
     private static ExtendedOption parseExtendedOption(String option) {
-        String[] optionParts = SubstrateUtil.split(option, "=", 2);
+        String[] optionParts = StringUtil.split(option, "=", 2);
         if (optionParts.length == 2) {
             return new ExtendedOption(optionParts[0], optionParts[1]);
         } else {

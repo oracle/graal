@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.code;
 
 import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;

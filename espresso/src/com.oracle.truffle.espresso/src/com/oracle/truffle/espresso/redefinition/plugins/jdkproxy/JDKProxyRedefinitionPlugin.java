@@ -61,7 +61,7 @@ public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin
 
             Klass[] proxyInterfaces = new Klass[interfaces.length(language)];
             for (int i = 0; i < proxyInterfaces.length; i++) {
-                proxyInterfaces[i] = (Klass) meta.HIDDEN_MIRROR_KLASS.getHiddenObject(interfaces.get(language, i));
+                proxyInterfaces[i] = (Klass) meta.java_lang_Class_0klass.getHiddenObject(interfaces.get(language, i));
             }
             // cache proxy arguments under each interface, so that
             // when they change we can re-generate the proxy bytes

@@ -423,9 +423,10 @@ public class BuiltinsTutorial {
         assertEquals(42, root.getCallTarget().call(42));
         assertEquals(BytecodeTier.UNCACHED, root.getBytecodeNode().getTier());
         assertEquals(42, root.getCallTarget().call("42"));
+        assertEquals(BytecodeTier.UNCACHED, root.getBytecodeNode().getTier());
         // transitions to cached once the threshold is exceeded
-        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
         assertEquals(42, root.getCallTarget().call(42));
+        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
         assertEquals(42, root.getCallTarget().call("42"));
     }
 
@@ -552,7 +553,7 @@ public class BuiltinsTutorial {
     private static BuiltinLanguageRootNode deserialize(byte[] deserialized) {
         try {
             BytecodeRootNodes<BuiltinLanguageRootNode> nodes = BuiltinLanguageRootNodeGen.deserialize(LanguageWithBuiltins.get(), BytecodeConfig.DEFAULT,
-                            () -> SerializationUtils.createDataInput(ByteBuffer.wrap(deserialized)),
+                            () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(deserialized)),
                             (context, input) -> {
                                 return input.readInt();
                             });

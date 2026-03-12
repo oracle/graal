@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.c.codegen;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
 import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 
@@ -47,7 +47,7 @@ import org.graalvm.nativeimage.c.type.CTypedef;
 
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageOptions.CStandards;
 import com.oracle.svm.hosted.c.NativeLibraries;

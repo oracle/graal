@@ -730,14 +730,14 @@ public abstract class Source {
      * @since 0.17
      */
     public final SourceSection createSection(int startLine, int startColumn, int length) {
-        if (hasBytes() || !hasCharacters()) {
+        if (!hasCharacters()) {
             throw new UnsupportedOperationException("Operation is only enabled for character based sources.");
         }
         if (startLine <= 0) {
             throw new IllegalArgumentException("startLine < 1");
         } else if (startColumn <= 0) {
             throw new IllegalArgumentException("startColumn < 1");
-        } else if (hasCharacters() && length < 0) {
+        } else if (length < 0) {
             throw new IllegalArgumentException("length < 0");
         }
         final int lineStartOffset = getTextMap().lineStartOffset(startLine);

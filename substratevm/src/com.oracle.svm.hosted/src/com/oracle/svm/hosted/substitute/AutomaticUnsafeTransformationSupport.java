@@ -54,20 +54,19 @@ import com.oracle.svm.core.fieldvaluetransformer.ArrayIndexScaleFieldValueTransf
 import com.oracle.svm.core.fieldvaluetransformer.ArrayIndexShiftFieldValueTransformer;
 import com.oracle.svm.core.fieldvaluetransformer.FieldOffsetFieldValueTransformer;
 import com.oracle.svm.core.fieldvaluetransformer.StaticFieldBaseFieldValueTransformer;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializerGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.OriginalFieldProvider;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
@@ -148,7 +147,7 @@ public class AutomaticUnsafeTransformationSupport {
         this.options = options;
         this.annotationSubstitutions = annotationSubstitutions;
 
-        MetaAccessProvider originalMetaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+        MetaAccessProvider originalMetaAccess = GuestAccess.get().getProviders().getMetaAccess();
         try {
             Method fieldSetAccessible = Field.class.getMethod("setAccessible", boolean.class);
             ResolvedJavaMethod fieldSetAccessibleMethod = originalMetaAccess.lookupJavaMethod(fieldSetAccessible);
@@ -354,8 +353,9 @@ public class AutomaticUnsafeTransformationSupport {
              * GR-72441: need equivalent of ConstantReflectionProvider.asJavaType() for fields to
              * get a `ResolvedJavaField` from a `JavaConstant`.
              */
-            Field oField = GraalAccess.getOriginalSnippetReflection().asObject(Field.class, fieldArgument);
-            ResolvedJavaField field = GraalAccess.lookupField(oField);
+            GuestAccess access = GuestAccess.get();
+            Field oField = access.getSnippetReflection().asObject(Field.class, fieldArgument);
+            ResolvedJavaField field = access.lookupField(oField);
             if (isValidField(invoke, field, unsuccessfulReasons, methodFormat)) {
                 targetField = field;
             }
@@ -385,7 +385,7 @@ public class AutomaticUnsafeTransformationSupport {
                     receiver = receiverNode.asJavaConstant();
                 }
             }
-            Providers p = GraalAccess.getOriginalProviders();
+            Providers p = GuestAccess.get().getProviders();
             ConstantNode result = ConstantFoldUtil.tryConstantFold(p.getConstantFieldProvider(), p.getConstantReflection(), p.getMetaAccess(),
                             field, receiver, options, loadFieldNode.getNodeSourcePosition());
             if (result != null) {
@@ -433,7 +433,7 @@ public class AutomaticUnsafeTransformationSupport {
             if (classArgument.isNullConstant()) {
                 unsuccessfulReasons.add(() -> "The Class argument of Unsafe.objectFieldOffset(Class, String) is a null constant.");
             } else {
-                targetFieldHolder = GraalAccess.getOriginalProviders().getConstantReflection().asJavaType(classArgument.asJavaConstant());
+                targetFieldHolder = GuestAccess.get().getProviders().getConstantReflection().asJavaType(classArgument.asJavaConstant());
             }
         } else {
             unsuccessfulReasons.add(() -> "The Class argument of Unsafe.objectFieldOffset(Class, String) is not a constant class.");
@@ -441,7 +441,7 @@ public class AutomaticUnsafeTransformationSupport {
 
         ValueNode nameArgument = unsafeObjectFieldOffsetInvoke.callTarget().arguments().get(2);
         if (nameArgument.isConstant()) {
-            String fieldName = GraalAccess.getOriginalSnippetReflection().asObject(String.class, nameArgument.asJavaConstant());
+            String fieldName = GuestAccess.get().getSnippetReflection().asObject(String.class, nameArgument.asJavaConstant());
             if (fieldName == null) {
                 unsuccessfulReasons.add(() -> "The String argument of Unsafe.objectFieldOffset(Class, String) is a null String.");
             } else {
@@ -500,7 +500,7 @@ public class AutomaticUnsafeTransformationSupport {
 
         ValueNode arrayClassArgument = unsafeArrayBaseOffsetInvoke.callTarget().arguments().get(1);
         if (arrayClassArgument.isJavaConstant()) {
-            arrayType = GraalAccess.getOriginalProviders().getConstantReflection().asJavaType(arrayClassArgument.asJavaConstant());
+            arrayType = GuestAccess.get().getProviders().getConstantReflection().asJavaType(arrayClassArgument.asJavaConstant());
         } else {
             unsuccessfulReasons.add(() -> "The argument of the call to Unsafe.arrayBaseOffset() is not a constant.");
         }
@@ -538,7 +538,7 @@ public class AutomaticUnsafeTransformationSupport {
 
         ValueNode arrayClassArgument = unsafeArrayIndexScale.callTarget().arguments().get(1);
         if (arrayClassArgument.isJavaConstant()) {
-            arrayType = GraalAccess.getOriginalProviders().getConstantReflection().asJavaType(arrayClassArgument.asJavaConstant());
+            arrayType = GuestAccess.get().getProviders().getConstantReflection().asJavaType(arrayClassArgument.asJavaConstant());
         } else {
             unsuccessfulReasons.add(() -> "The argument of the call to Unsafe.arrayIndexScale() is not a constant.");
         }
@@ -901,7 +901,7 @@ public class AutomaticUnsafeTransformationSupport {
                 case ArrayBaseOffset -> new ArrayBaseOffsetFieldValueTransformer(targetType, field.getType().getJavaKind());
                 case ArrayIndexScale -> new ArrayIndexScaleFieldValueTransformer(targetType, field.getType().getJavaKind());
                 case ArrayIndexShift -> new ArrayIndexShiftFieldValueTransformer(targetType, field.getType().getJavaKind());
-                case FieldOffset -> new FieldOffsetFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField), field.getType().getJavaKind());
+                case FieldOffset -> new FieldOffsetFieldValueTransformer(targetField, field.getType().getJavaKind());
                 case StaticFieldBase -> new StaticFieldBaseFieldValueTransformer(targetField);
                 default -> throw VMError.shouldNotReachHere("Unexpected kind: " + kind);
             };
@@ -1072,7 +1072,7 @@ public class AutomaticUnsafeTransformationSupport {
     private StructuredGraph getStaticInitializerGraph(ResolvedJavaMethod clinit, DebugContext debug) {
         assert clinit.hasBytecodes();
 
-        HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
+        HighTierContext context = new HighTierContext(GuestAccess.get().getProviders(), null, OptimisticOptimizations.NONE);
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(clinit).recordInlinedMethods(false).build();
         graph.getGraphState().configureExplicitExceptionsNoDeopt();
 

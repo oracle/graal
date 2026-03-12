@@ -1,0 +1,131 @@
+/*
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.shared.singletons.traits;
+
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.SingletonAccessFlags;
+
+/**
+ * Commonly used {@link SingletonTrait}s.
+ */
+public class BuiltinTraits {
+
+    /**
+     * Trait indicating this singleton should only be accessed from code executed at runtime.
+     */
+    public static final AccessSingletonTrait RUNTIME_ONLY = new AccessSingletonTrait(() -> SingletonAccessFlags.RUNTIME_ACCESS_ONLY);
+
+    public static final class RuntimeAccessOnly extends SingletonAccessSupplier {
+        @Override
+        public AccessSingletonTrait getAccessTrait() {
+            return RUNTIME_ONLY;
+        }
+    }
+
+    /**
+     * Trait indicating this singleton should only be accessed from the native image generator
+     * process and not at runtime.
+     */
+    public static final AccessSingletonTrait BUILDTIME_ONLY = new AccessSingletonTrait(() -> SingletonAccessFlags.BUILDTIME_ACCESS_ONLY);
+
+    public static final class BuildtimeAccessOnly extends SingletonAccessSupplier {
+        @Override
+        public AccessSingletonTrait getAccessTrait() {
+            return BUILDTIME_ONLY;
+        }
+    }
+
+    /**
+     * Trait indicating this singleton can be freely accessed both from the native image generator
+     * process and at runtime.
+     */
+    public static final AccessSingletonTrait ALL_ACCESS = new AccessSingletonTrait(() -> SingletonAccessFlags.ALL_ACCESS);
+
+    public static final class AllAccess extends SingletonAccessSupplier {
+        @Override
+        public AccessSingletonTrait getAccessTrait() {
+            return ALL_ACCESS;
+        }
+    }
+
+    /**
+     * Trait indicating this singleton has no special callbacks needed during layered builds.
+     */
+    public static final LayeredCallbacksSingletonTrait NO_LAYERED_CALLBACKS = new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<>() {
+        @Override
+        public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+            return LayeredPersistFlags.NOTHING;
+        }
+    });
+
+    public static class NoLayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return NO_LAYERED_CALLBACKS;
+        }
+    }
+
+    /**
+     * Trait indicating nothing should be persisted for this singleton and that a singleton cannot
+     * be linked to this key in a subsequent image layer. This limits the singleton to being
+     * installed in a single layer.
+     */
+    public static final LayeredCallbacksSingletonTrait SINGLE_LAYER = new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<>() {
+        @Override
+        public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+            return LayeredPersistFlags.FORBIDDEN;
+        }
+    });
+
+    public static class SingleLayer extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return SINGLE_LAYER;
+        }
+    }
+
+    /**
+     * Trait indicating this singleton is not yet fully compatible with layered images. See
+     * {@link SingletonTraitKind#PARTIALLY_LAYER_AWARE} for more information.
+     */
+    public static final PartiallyLayerAwareSingletonTrait PARTIALLY_LAYER_AWARE = new PartiallyLayerAwareSingletonTrait();
+
+    public static class PartiallyLayerAware extends SingletonTraitsSupplier {
+        @Override
+        public SingletonTrait<EmptyMetadata> getTrait() {
+            return PARTIALLY_LAYER_AWARE;
+        }
+    }
+
+    public static final DisallowedSingletonTrait DISALLOWED_TRAIT = new DisallowedSingletonTrait();
+
+    public static final class Disallowed extends SingletonTraitsSupplier {
+        @Override
+        public SingletonTrait<EmptyMetadata> getTrait() {
+            return DISALLOWED_TRAIT;
+        }
+    }
+}

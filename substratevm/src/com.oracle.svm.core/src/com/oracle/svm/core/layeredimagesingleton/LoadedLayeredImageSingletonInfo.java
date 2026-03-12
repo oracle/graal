@@ -25,17 +25,15 @@
 package com.oracle.svm.core.layeredimagesingleton;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class LoadedLayeredImageSingletonInfo {
 
     private final EconomicSet<Class<?>> loadedKeys;
@@ -44,11 +42,19 @@ public class LoadedLayeredImageSingletonInfo {
         this.loadedKeys = loadedKeys;
     }
 
+    /**
+     * Returns whether the specified singleton key was already handled during the layer loading
+     * phase.
+     * <p>
+     * The key is the {@code Class} object used to identify a particular image singleton type. If
+     * this method returns {@code true}, the singleton was already processed during layer loading
+     * and should not be processed again by singleton initialization logic.
+     *
+     * @param key the class key identifying an image singleton type
+     * @return {@code true} if the key was recorded as handled during loading; {@code false}
+     *         otherwise
+     */
     public boolean handledDuringLoading(Class<?> key) {
         return loadedKeys.contains(key);
-    }
-
-    public static LoadedLayeredImageSingletonInfo singleton() {
-        return ImageSingletons.lookup(LoadedLayeredImageSingletonInfo.class);
     }
 }

@@ -32,19 +32,18 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * The methods in this class are stand-ins for the JNI entrypoints of a Crema-loaded application
  * main-class. This can be removed once GR-71358 is implemented. This ImageSingleton is registered
  * only if LibJVMFeature is enabled.
  */
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public final class LibJVMMainMethodWrappers {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -102,7 +101,9 @@ public final class LibJVMMainMethodWrappers {
         }
 
         if (throwable != null) {
-            throwable.printStackTrace();
+            // Checkstyle: allow System.err (run time code expected to print to stderr)
+            throwable.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
         }
     }
 
@@ -131,7 +132,9 @@ public final class LibJVMMainMethodWrappers {
         }
 
         if (throwable != null) {
-            throwable.printStackTrace();
+            // Checkstyle: allow System.err (run time code expected to print to stderr)
+            throwable.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
         }
     }
 

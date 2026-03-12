@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.cenum;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
 
 import java.lang.reflect.Modifier;
@@ -36,15 +36,15 @@ import org.graalvm.nativeimage.c.constant.CEnumValue;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.DebugContext;
@@ -60,7 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
-                    newAnnotationValue(Uninterruptible.class,
+                    newAnnotationValue(GuestAccess.elements().Uninterruptible,
                                     "reason", CALLED_FROM_UNINTERRUPTIBLE_CODE,
                                     "mayBeInlined", true));
 

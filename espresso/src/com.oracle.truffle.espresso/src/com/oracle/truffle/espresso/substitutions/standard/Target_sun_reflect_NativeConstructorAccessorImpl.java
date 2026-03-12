@@ -67,7 +67,7 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
             if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
                 throw meta.throwException(meta.java_lang_InstantiationException);
             }
-            Method reflectedMethod = Method.getHostReflectiveConstructorRoot(constructor, meta);
+            Method reflectedMethod = Method.getVMMethodForConstructor(constructor, meta);
             StaticObject instance = klass.allocateInstance(meta.getContext());
             StaticObject parameterTypes = meta.java_lang_reflect_Constructor_parameterTypes.getObject(constructor);
             Target_sun_reflect_NativeMethodAccessorImpl.callMethodReflectively(language, meta, instance, args0, reflectedMethod, klass, parameterTypes, toEspressoNode);

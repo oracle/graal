@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,7 +103,7 @@ public enum BarrierType {
     }
 
     /**
-     * Returns true if accssses using the {@link BarrierType} are permitted to be folded by the
+     * Returns true if accesses using the {@link BarrierType} are permitted to be folded by the
      * optimizer. Accesses by {@link java.lang.ref.Reference#get},
      * {@link java.lang.ref.WeakReference}{@code .refersTo0}, and
      * {@link java.lang.ref.PhantomReference}{@code .refersTo0} shouldn't be optimized as those

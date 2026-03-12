@@ -52,7 +52,7 @@ public final class EspressoMethodTableBuilder {
                     ObjectKlass.KlassVersion thisKlass,
                     ObjectKlass.KlassVersion[] transitiveInterfaces,
                     Method.MethodVersion[] declaredMethods,
-                    boolean allowInterfaceResolutionToPrivete) {
+                    boolean allowInterfaceResolutionToPrivate) {
         try {
             if (thisKlass.isInterface()) {
                 return new EspressoTables(
@@ -65,7 +65,7 @@ public final class EspressoMethodTableBuilder {
             tables = VTable.create(
                             new PartialKlass(thisKlass, thisKlass.getSuperKlass(), transitiveInterfaces, declaredMethods),
                             false,
-                            allowInterfaceResolutionToPrivete,
+                            allowInterfaceResolutionToPrivate,
                             true);
             return new EspressoTables(
                             vtable(tables),
@@ -244,7 +244,7 @@ public final class EspressoMethodTableBuilder {
         for (PartialMethod<Klass, Method, Field> m : mirandas) {
             Method entry = m.asMethodAccess();
             // We add mirandas to the vtable in builder, they should have a vtable index by now.
-            assert entry.hasVTableIndex();
+            assert entry.isVTableIndexInitialized();
             // Creating a proxy is handled in Method.withVTableIndex().
             assert entry.isProxy();
             // Ensure that the pass over vtable has already set poison pills.

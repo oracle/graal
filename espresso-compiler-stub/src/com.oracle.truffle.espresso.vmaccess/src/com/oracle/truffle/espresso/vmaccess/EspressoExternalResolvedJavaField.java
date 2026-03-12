@@ -26,22 +26,40 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaField;
 
-import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-final class EspressoExternalResolvedJavaField extends AbstractEspressoResolvedJavaField {
-    private final Value fieldMirror;
+final class EspressoExternalResolvedJavaField extends AbstractEspressoResolvedJavaField implements EspressoExternalVMAccess.Element {
+    /**
+     * The guest {@code com.oracle.truffle.espresso.impl.Field} value associated with this field.
+     */
+    private final Value vmFieldMirror;
+
+    /**
+     * Value of {@code com.oracle.truffle.espresso.classfile.ParserField.flags}.
+     */
     private final int flags;
 
-    EspressoExternalResolvedJavaField(EspressoExternalResolvedInstanceType holder, Value fieldMirror) {
+    /**
+     * A guest {@link java.lang.reflect.Field} value associated with this field.
+     */
+    private Value reflectFieldMirror;
+
+    EspressoExternalResolvedJavaField(EspressoExternalResolvedInstanceType holder, Value vmFieldMirror, Value reflectFieldMirror) {
         super(holder);
-        this.fieldMirror = fieldMirror;
-        this.flags = fieldMirror.getMember("flags").asInt();
+        this.vmFieldMirror = vmFieldMirror;
+        this.reflectFieldMirror = reflectFieldMirror;
+        this.flags = vmFieldMirror.getMember("flags").asInt();
     }
 
     private EspressoExternalVMAccess getAccess() {
         return ((EspressoExternalResolvedInstanceType) getDeclaringClass()).getAccess();
+    }
+
+    Value getMirror() {
+        return vmFieldMirror;
     }
 
     @Override
@@ -51,44 +69,101 @@ final class EspressoExternalResolvedJavaField extends AbstractEspressoResolvedJa
 
     @Override
     public int getOffset() {
-        return fieldMirror.getMember("offset").asInt();
+        return vmFieldMirror.getMember("offset").asInt();
     }
 
     @Override
     protected String getName0() {
-        return fieldMirror.getMember("name").asString();
+        return vmFieldMirror.getMember("name").asString();
     }
 
     @Override
     protected JavaType getType0(UnresolvedJavaType unresolved) {
-        String name = fieldMirror.getMember("type").asString();
+        String name = vmFieldMirror.getMember("type").asString();
         return getAccess().lookupType(name, getDeclaringClass(), false);
     }
 
     @Override
     protected int getConstantValueIndex() {
-        throw JVMCIError.unimplemented();
+        return vmFieldMirror.getMember("constantValueIndex").asInt();
     }
 
     @Override
     protected byte[] getRawAnnotationBytes(int category) {
-        return getAccess().getRawAnnotationBytes(fieldMirror, category);
+        return getAccess().getRawAnnotationBytes(vmFieldMirror, category);
     }
 
     @Override
     protected boolean equals0(AbstractEspressoResolvedJavaField that) {
         if (that instanceof EspressoExternalResolvedJavaField espressoField) {
-            return fieldMirror.equals(espressoField.fieldMirror);
+            return vmFieldMirror.equals(espressoField.vmFieldMirror);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return fieldMirror.hashCode();
+        return vmFieldMirror.hashCode();
     }
 
     public Value readValue(Value receiver) {
-        return fieldMirror.invokeMember("read", receiver);
+        return vmFieldMirror.invokeMember("read", receiver);
+    }
+
+    void writeValue(JavaConstant receiver, JavaConstant value) {
+        if (value == null) {
+            throw new NullPointerException("value");
+        }
+
+        final Value receiverValue;
+        if (isStatic()) {
+            if (receiver != null) {
+                throw new IllegalArgumentException("Static field write requires null receiver");
+            }
+            receiverValue = null;
+        } else {
+            if (receiver == null) {
+                throw new NullPointerException("receiver");
+            }
+            if (receiver.isNull()) {
+                throw new IllegalArgumentException("Receiver is null");
+            }
+            if (!(receiver instanceof EspressoExternalObjectConstant espressoReceiver)) {
+                throw new IllegalArgumentException("Expected an espresso object receiver, got " + receiver.getClass().getName());
+            }
+            receiverValue = espressoReceiver.getValue();
+        }
+
+        JavaKind kind = getJavaKind();
+        final Object boxed;
+        if (kind == JavaKind.Object) {
+            if (value.isNull()) {
+                boxed = null;
+            } else if (value instanceof EspressoExternalObjectConstant objConst) {
+                boxed = objConst.getValue();
+            } else {
+                throw new IllegalArgumentException("Expected an espresso object constant, got " + value.getClass().getName());
+            }
+        } else {
+            if (kind != value.getJavaKind()) {
+                throw new IllegalArgumentException("Expected value kind " + kind + " but got " + value.getJavaKind());
+            }
+            boxed = value.asBoxedPrimitive();
+        }
+
+        getAccess().invokeJVMCIHelper("writeField", vmFieldMirror, receiverValue, boxed);
+    }
+
+    /**
+     * Gets a guest {@link java.lang.reflect.Field} value associated with this field, creating it
+     * first if necessary.
+     */
+    Value getReflectFieldMirror() {
+        Value value = reflectFieldMirror;
+        if (value == null) {
+            value = getAccess().invokeJVMCIHelper("getReflectField", vmFieldMirror);
+            reflectFieldMirror = value;
+        }
+        return value;
     }
 }

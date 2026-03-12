@@ -27,7 +27,7 @@ package jdk.graal.compiler.hotspot;
 import java.lang.reflect.Field;
 import java.util.Objects;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
 import jdk.vm.ci.hotspot.HotSpotProfilingInfo;

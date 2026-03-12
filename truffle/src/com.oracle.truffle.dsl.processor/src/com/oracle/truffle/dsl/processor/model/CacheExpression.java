@@ -82,6 +82,7 @@ public final class CacheExpression extends MessageContainer {
 
     private LibraryData cachedlibrary;
     private boolean usedInGuard;
+    private boolean usedInCache;
 
     private AnnotationMirror sharedGroupMirror;
     private AnnotationValue sharedGroupValue;
@@ -162,8 +163,16 @@ public final class CacheExpression extends MessageContainer {
         this.usedInGuard = b;
     }
 
+    public void setUsedInCache(boolean usedInCache) {
+        this.usedInCache = usedInCache;
+    }
+
     public boolean isUsedInGuard() {
         return usedInGuard;
+    }
+
+    public boolean isUsedInCache() {
+        return usedInCache;
     }
 
     public boolean isNeverDefault() {

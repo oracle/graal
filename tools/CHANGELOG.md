@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 25.1.0
+* GR-72122: `--cpusampler.DumpInterval` and `--cpusampler.ResetAfterIntervalDump` options were added to dump the sampler output at a specified interval, optionally clearing all sampler data after each dump. Interval-based dumping is disabled by default; the sampler output is dumped only at the end.
+  * `CPUSampler#addProcessSampleListener` was added to allow users to receive notifications when sampling results are processed. The new interval-based dumping feature uses this API internally.
+* GR-72763 [PR-12760](https://github.com/oracle/graal/pull/12760) Enhanced GraalVM Insight to allow tracking reads and writes of local variables
+
 ## Version 24.1.0
 * GR-52742: `CPUSampler` no longer guarantees to keep all contexts on the engine alive. As a result `CPUSampler#getData()` is deprecated and may not return data for all contexts on the engine. The contexts that were already collected by GC won't be in the returned map. `CPUSamplerData#getContext()` is also deprecated and returns null if the context was already collected.
 * GR-52742: `CPUSamplerData#getDataList()` was introduced and returns all data collected by the sampler as a list of `CPUSamplerData`. For each context on the engine, including the ones that were already collected, there is a corresponding element in the list. `CPUSamplerData#getContextIndex()` returns the index of the data in the list.

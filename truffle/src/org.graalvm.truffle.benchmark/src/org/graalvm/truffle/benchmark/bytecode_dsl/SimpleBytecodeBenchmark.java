@@ -99,6 +99,8 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
             case "bytecodeDSLAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeAllOpts.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
             case "bytecodeDSLThreadedAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeThreadedAllOpts.BYTECODE, null,
                             benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+            case "bytecodeDSLTailCallAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeTailCallAllOpts.BYTECODE, null,
+                            benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
             case "bytecodeDSLUncached" -> {
                 var node = createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeUncached.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast();
                 node.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
@@ -157,6 +159,11 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
 
     @Benchmark
     public void bytecodeDSLThreadedAllOpts() {
+        benchmark(callTarget);
+    }
+
+    @Benchmark
+    public void bytecodeDSLTailCallAllOpts() {
         benchmark(callTarget);
     }
 

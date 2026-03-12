@@ -104,19 +104,21 @@ final class InstructionTracerAccessImplElement extends AbstractElement {
     private CodeExecutableElement createOnInstructionEnter() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(), type(void.class), "onInstructionEnter",
                         new CodeVariableElement(types.BytecodeNode, "bytecode"),
-                        new CodeVariableElement(type(int.class), "bytecodeIndex"),
+                        new CodeVariableElement(parent.getBytecodeIndexType(), "bytecodeIndex"),
                         new CodeVariableElement(types.Frame, "frame"));
         ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
         ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.ExplodeLoop));
 
         CodeTreeBuilder b = ex.createBuilder();
 
+        b.declaration(type(int.class), "bci", parent.castBytecodeIndexToInt("bytecodeIndex"));
+
         b.startFor().type(types.InstructionTracer).string(" t : localTracers").end().startBlock();
-        b.statement("t.onInstructionEnter(this, bytecode, bytecodeIndex, frame)");
+        b.statement("t.onInstructionEnter(this, bytecode, bci, frame)");
         b.end();
 
         b.startFor().type(types.InstructionTracer).string(" t : globalTracers").end().startBlock();
-        b.statement("t.onInstructionEnter(this, bytecode, bytecodeIndex, frame)");
+        b.statement("t.onInstructionEnter(this, bytecode, bci, frame)");
         b.end();
         return ex;
     }

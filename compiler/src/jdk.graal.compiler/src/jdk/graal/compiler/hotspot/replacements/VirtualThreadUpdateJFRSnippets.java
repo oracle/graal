@@ -39,9 +39,10 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PRO
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
-import static jdk.graal.compiler.word.Word.objectToTrackedPointer;
+import static org.graalvm.word.impl.Word.objectToTrackedWord;
 
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -57,7 +58,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -109,7 +109,7 @@ public class VirtualThreadUpdateJFRSnippets implements Snippets {
         // the pseudo-code.
         Word javaThread = registerAsWord(javaThreadRegister);
         Word carrierThreadHandle = javaThread.readWord(threadCarrierThreadOffset(INJECTED_VMCONFIG), JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION);
-        Word thread = objectToTrackedPointer(threadObj);
+        Word thread = objectToTrackedWord(threadObj);
 
         if (probability(LIKELY_PROBABILITY, thread.notEqual(carrierThreadHandle.readWord(0, HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION)))) {
             int vthreadEpochRaw = thread.readShort(javaLangThreadJFREpochOffset(INJECTED_VMCONFIG), JAVA_LANG_THREAD_JFR_EPOCH);

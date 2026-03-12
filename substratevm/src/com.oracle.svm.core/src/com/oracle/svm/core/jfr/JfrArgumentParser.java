@@ -31,7 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.util.StringUtil;
+import com.oracle.svm.shared.util.StringUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 

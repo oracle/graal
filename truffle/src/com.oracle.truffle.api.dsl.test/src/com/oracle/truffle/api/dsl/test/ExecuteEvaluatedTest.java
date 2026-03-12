@@ -477,6 +477,7 @@ public class ExecuteEvaluatedTest {
 
     @TypeSystemReference(TestEvaluatedImplicitCast2TypeSystem.class)
     @SuppressWarnings("unused")
+    @DisableStateBitWidthModfication
     abstract static class TestEvaluatedImplicitCast2Node extends SlowPathListenerNode {
 
         public abstract Object execute(Object receiver, short intValue);

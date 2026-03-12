@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.espresso.shared.resolver;
 
+import com.oracle.truffle.espresso.shared.meta.MethodAccess;
+
 /**
  * Indicates what dispatch behavior should be performed for a call-site.
  * <p>
@@ -65,6 +67,23 @@ public enum CallKind {
 
     public boolean hasLookup() {
         return (tags & Constants.HAS_LOOKUP) != 0;
+    }
+
+    /**
+     * Obtains the {@linkplain CallKind call kind} associated with the given {@code targetMethod} if
+     * it were to be reflectively invoked.
+     */
+    public static CallKind getCallKind(MethodAccess<?, ?, ?> targetMethod) {
+        if (targetMethod.isStatic()) {
+            return CallKind.STATIC;
+        }
+        if (targetMethod.isPrivate() || targetMethod.isFinalFlagSet() || targetMethod.getDeclaringClass().isFinalFlagSet() || targetMethod.isConstructor()) {
+            return CallKind.DIRECT;
+        }
+        if (targetMethod.getDeclaringClass().isInterface()) {
+            return CallKind.ITABLE_LOOKUP;
+        }
+        return CallKind.VTABLE_LOOKUP;
     }
 
     private static final class Constants {

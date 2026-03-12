@@ -29,7 +29,7 @@ import java.nio.channels.spi.SelectorProvider;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 @TargetClass(className = "java.nio.channels.spi.SelectorProvider", innerClass = "Holder")
 final class Target_java_nio_channels_spi_SelectorProvider_Holder {

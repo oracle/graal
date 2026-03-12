@@ -26,9 +26,9 @@ package com.oracle.svm.hosted.webimage.codegen.value;
 
 import org.graalvm.collections.EconomicSet;
 
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 

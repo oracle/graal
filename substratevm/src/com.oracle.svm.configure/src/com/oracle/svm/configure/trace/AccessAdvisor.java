@@ -42,6 +42,8 @@ import jdk.graal.compiler.phases.common.LazyValue;
  * Decides if a recorded access should be included in a configuration.
  */
 public final class AccessAdvisor {
+    // Checkstyle: allow System.err (agent class)
+
     /**
      * {@link java.lang.reflect.Proxy} generated classes can be put in arbitrary packages depending
      * on the visibility and module of the interfaces they implement, so we can only match against

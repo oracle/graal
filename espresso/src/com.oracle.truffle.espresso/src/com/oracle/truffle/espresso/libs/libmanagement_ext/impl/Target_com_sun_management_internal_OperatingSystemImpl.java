@@ -22,16 +22,17 @@
  */
 package com.oracle.truffle.espresso.libs.libmanagement_ext.impl;
 
-import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.libs.libmanagement_ext.LibManagementExt;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
-import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
 @EspressoSubstitutions(type = "Lcom/sun/management/internal/OperatingSystemImpl;", group = LibManagementExt.class)
 public final class Target_com_sun_management_internal_OperatingSystemImpl {
     @Substitution
-    public static void initialize0(@Inject LibsState libsState) {
-        libsState.checkManagement();
+    public static void initialize0() {
+        /*
+         * This method is called in the static class initializer so we should not throw a
+         * SecurityException if management is not allowed.
+         */
     }
 }

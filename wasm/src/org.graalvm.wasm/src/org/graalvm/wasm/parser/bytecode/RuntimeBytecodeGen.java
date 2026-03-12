@@ -42,7 +42,7 @@
 package org.graalvm.wasm.parser.bytecode;
 
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
@@ -370,42 +370,100 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         return location;
     }
 
-    public enum BranchOp {
-        BR(op(Bytecode.BR_U8), op(Bytecode.BR_I32), false),
-        BR_IF(op(Bytecode.BR_IF_U8), op(Bytecode.BR_IF_I32), true),
-        BR_ON_NULL(miscOp(Bytecode.BR_ON_NULL_U8), miscOp(Bytecode.BR_ON_NULL_I32), true),
-        BR_ON_NON_NULL(miscOp(Bytecode.BR_ON_NON_NULL_U8), miscOp(Bytecode.BR_ON_NON_NULL_I32), true);
+    public abstract static class BranchOp {
 
-        private final byte[] opcodesU8;
-        private final byte[] opcodesI32;
+        public static final BranchOp BR = new BranchOp(false) {
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.BR_U8);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.BR_I32);
+            }
+        };
+
+        public static final BranchOp BR_IF = new BranchOp(true) {
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.BR_IF_U8);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.BR_IF_I32);
+            }
+        };
+
+        public static final BranchOp BR_ON_NULL = new BranchOp(true) {
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.MISC);
+                bytecode.add1(Bytecode.BR_ON_NULL_U8);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.MISC);
+                bytecode.add1(Bytecode.BR_ON_NULL_I32);
+            }
+        };
+
+        public static final BranchOp BR_ON_NON_NULL = new BranchOp(true) {
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.MISC);
+                bytecode.add1(Bytecode.BR_ON_NON_NULL_U8);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.MISC);
+                bytecode.add1(Bytecode.BR_ON_NON_NULL_I32);
+            }
+        };
+
+        public static class BrOnCast extends BranchOp {
+
+            private final boolean brOnCastFail;
+            private final int expectedReferenceType;
+
+            public BrOnCast(boolean brOnCastFail, int expectedReferenceType) {
+                super(true);
+                this.brOnCastFail = brOnCastFail;
+                this.expectedReferenceType = expectedReferenceType;
+            }
+
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                // Bytecode.AGGREGATE already emitted by caller
+                bytecode.add1(brOnCastFail ? Bytecode.BR_ON_CAST_FAIL_U8 : Bytecode.BR_ON_CAST_U8);
+                bytecode.add4(expectedReferenceType);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                // Bytecode.AGGREGATE already emitted by caller
+                bytecode.add1(brOnCastFail ? Bytecode.BR_ON_CAST_FAIL_I32 : Bytecode.BR_ON_CAST_I32);
+                bytecode.add4(expectedReferenceType);
+            }
+        }
+
         private final boolean profiled;
 
-        BranchOp(byte[] opcodesU8, byte[] opcodesI32, boolean profiled) {
-            this.opcodesU8 = opcodesU8;
-            this.opcodesI32 = opcodesI32;
+        BranchOp(boolean profiled) {
             this.profiled = profiled;
         }
 
-        public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
-            bytecode.addBytes(opcodesU8, 0, opcodesU8.length);
-        }
+        public abstract void emitOpcodesU8(RuntimeBytecodeGen bytecode);
 
-        public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
-            bytecode.addBytes(opcodesI32, 0, opcodesI32.length);
-        }
+        public abstract void emitOpcodesI32(RuntimeBytecodeGen bytecode);
 
         public void emitProfile(RuntimeBytecodeGen bytecode) {
             if (profiled) {
                 bytecode.addProfile();
             }
-        }
-
-        private static byte[] op(int opcode) {
-            return new byte[]{(byte) opcode};
-        }
-
-        private static byte[] miscOp(int opcode) {
-            return new byte[]{(byte) Bytecode.MISC, (byte) opcode};
         }
     }
 
@@ -684,30 +742,6 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds the runtime header of a data segment to the bytecode.
-     * 
-     * @param length The length of the data segment
-     */
-    public void addDataRuntimeHeader(int length) {
-        int location = location();
-        add1(0);
-        int flags = 0;
-        if (length <= 63) {
-            flags = length;
-        } else if (fitsIntoUnsignedByte(length)) {
-            flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8;
-            add1(length);
-        } else if (fitsIntoUnsignedShort(length)) {
-            flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16;
-            add2(length);
-        } else {
-            flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32;
-            add4(length);
-        }
-        set(location, (byte) flags);
-    }
-
-    /**
      * Adds the header of an elem segment to the bytecode.
      * 
      * @param mode The segment mode of the elem segment
@@ -810,19 +844,12 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a null entry to the data of an elem segment.
-     */
-    public void addElemNull() {
-        add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_NULL_FLAG);
-    }
-
-    /**
      * Adds a function index entry to the data of an elem segment.
      * 
      * @param functionIndex The function index of the element in the elem segment
      */
     public void addElemFunctionIndex(int functionIndex) {
-        if (functionIndex >= 0 && functionIndex <= 15) {
+        if (functionIndex >= 0 && functionIndex <= BytecodeBitEncoding.ELEM_ITEM_MAX_INLINE_VALUE) {
             add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE | functionIndex);
         } else if (fitsIntoUnsignedByte(functionIndex)) {
             add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8);
@@ -837,23 +864,25 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a global index entry to the data of an elem segment.
+     * Adds a bytecode entry to the data of an elem segment.
      * 
-     * @param globalIndex The global index of the element in the elem segment
+     * @param elementBytecode The bytecode of the element expression in the elem segment
      */
-    public void addElemGlobalIndex(int globalIndex) {
-        if (globalIndex >= 0 && globalIndex <= 15) {
-            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE | globalIndex);
-        } else if (fitsIntoUnsignedByte(globalIndex)) {
-            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8);
-            add1(globalIndex);
-        } else if (fitsIntoUnsignedShort(globalIndex)) {
-            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16);
-            add2(globalIndex);
+    public void addElemBytecode(byte[] elementBytecode) {
+        int elementBytecodeLength = elementBytecode.length;
+        if (elementBytecodeLength >= 0 && elementBytecodeLength <= BytecodeBitEncoding.ELEM_ITEM_MAX_INLINE_VALUE) {
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE | BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE | elementBytecodeLength);
+        } else if (fitsIntoUnsignedByte(elementBytecodeLength)) {
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8);
+            add1(elementBytecodeLength);
+        } else if (fitsIntoUnsignedShort(elementBytecodeLength)) {
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16);
+            add2(elementBytecodeLength);
         } else {
-            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32);
-            add4(globalIndex);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE | BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32);
+            add4(elementBytecodeLength);
         }
+        addBytes(elementBytecode, 0, elementBytecodeLength);
     }
 
     /**

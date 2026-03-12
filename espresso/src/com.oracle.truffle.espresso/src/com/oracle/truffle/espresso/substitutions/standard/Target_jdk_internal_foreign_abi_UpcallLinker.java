@@ -50,7 +50,7 @@ public final class Target_jdk_internal_foreign_abi_UpcallLinker {
                     @Inject EspressoContext context, @Inject Meta meta) {
         StaticObject lform = meta.java_lang_invoke_MethodHandle_form.getObject(mh);
         StaticObject mname = meta.java_lang_invoke_LambdaForm_vmentry.getObject(lform);
-        Method target = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(mname);
+        Method target = (Method) meta.java_lang_invoke_MemberName_0vmTarget.getHiddenObject(mname);
         assert target.getDeclaringKlass().isInitialized();
         assert target.isStatic();
 

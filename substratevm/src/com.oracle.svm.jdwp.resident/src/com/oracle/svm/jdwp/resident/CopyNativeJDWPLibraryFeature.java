@@ -38,7 +38,7 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 
 /**
  * Copies {@code lib:svmjdwp} from the GraalVM native libraries, if it exists, to the native-image

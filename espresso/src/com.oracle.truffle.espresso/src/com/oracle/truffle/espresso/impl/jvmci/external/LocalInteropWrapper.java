@@ -64,7 +64,7 @@ public final class LocalInteropWrapper implements TruffleObject {
         static final String END_BCI = "endBCI";
         static final String SLOT = "slot";
         static final String NAME = "name";
-        static final String TYPE = "catchType";
+        static final String TYPE = "type";
 
         @Specialization(guards = "START_BCI.equals(member)")
         static int getStartBCI(LocalInteropWrapper receiver, @SuppressWarnings("unused") String member) {

@@ -29,7 +29,7 @@ import java.lang.invoke.MethodHandles;
 import java.security.ProtectionDomain;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;

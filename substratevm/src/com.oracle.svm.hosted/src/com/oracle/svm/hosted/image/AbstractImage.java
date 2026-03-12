@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
@@ -88,7 +89,8 @@ public abstract class AbstractImage {
         }
 
         public final String getOutputFilename(String imageName) {
-            return imageName + getFilenameSuffix();
+            // avoid adding suffix when it is already there.
+            return imageName.toLowerCase(Locale.ROOT).endsWith(getFilenameSuffix().toLowerCase(Locale.ROOT)) ? imageName : imageName + getFilenameSuffix();
         }
 
         protected String getFilenameSuffix() {

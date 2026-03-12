@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,9 +36,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -66,6 +67,21 @@ public class AnnotationValueSupport {
             throw new IllegalArgumentException(annotationType.toJavaName() + " is not an annotation interface");
         }
         return getDeclaredAnnotationValues(annotated).get(annotationType);
+    }
+
+    /**
+     * Checks if an annotation of the specified type is directly present on the given
+     * {@code annotated} element. Class initialization is not triggered for enum types referenced by
+     * the returned annotation. This method ignores inherited annotations.
+     *
+     * @param annotationType the type object corresponding to the annotation interface type
+     * @return true if an annotation of the specified type is directly present on the given
+     *         {@code annotated} element
+     * @throws IllegalArgumentException if {@code annotationType} is not an annotation interface
+     *             type
+     */
+    public static boolean isAnnotationPresent(ResolvedJavaType annotationType, Annotated annotated) {
+        return getDeclaredAnnotationValue(annotationType, annotated) != null;
     }
 
     /**
@@ -156,7 +172,13 @@ public class AnnotationValueSupport {
             return null;
         }
         ResolvedJavaType container = info.container();
-        ResolvedJavaType memberType = method.getSignature().getReturnType(container).resolve(container);
+        JavaType returnType = method.getSignature().getReturnType(container);
+        ResolvedJavaType memberType;
+        try {
+            memberType = returnType.resolve(container);
+        } catch (NoClassDefFoundError e) {
+            return new MissingType(returnType.getName(), e);
+        }
         return AnnotationValueParser.parseMemberValue(memberType, ByteBuffer.wrap(info.bytes()), info.constPool(), container);
     }
 

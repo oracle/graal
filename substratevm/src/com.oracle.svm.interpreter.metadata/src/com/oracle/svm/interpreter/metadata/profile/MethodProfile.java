@@ -137,7 +137,7 @@ public final class MethodProfile {
     }
 
     public long profileMethodEntry() {
-        return ((CountingProfile) getAtBCI(JVMCI_METHOD_ENTRY_BCI, CountingProfile.class)).counter++;
+        return ++((CountingProfile) getAtBCI(JVMCI_METHOD_ENTRY_BCI, CountingProfile.class)).counter;
     }
 
     public long getProfileEntryCount() {
@@ -255,38 +255,47 @@ public final class MethodProfile {
      * normally represented by {@link IfNode}.
      */
     public static class BranchProfile extends CountingProfile {
-        private long takenCounter;
+        private long notTakenCounter;
 
         public BranchProfile(int bci) {
             super(bci);
         }
 
         public void incrementTakenCounter() {
-            takenCounter++;
             counter++;
         }
 
         public void incrementNotTakenCounter() {
-            counter++;
+            notTakenCounter++;
         }
 
         public double takenProfile() {
-            if (counter == 0) {
+            /*
+             * The counters can be updated concurrently so we only read them once.
+             */
+            long localTakenCounter = counter;
+            long sum = localTakenCounter + notTakenCounter;
+            if (sum == 0) {
                 return -1D;
             }
-            return (double) takenCounter / (double) counter;
+            return (double) localTakenCounter / (double) sum;
         }
 
         public double notTakenProfile() {
-            if (counter == 0) {
+            /*
+             * The counters can be updated concurrently so we only read them once.
+             */
+            long localNotTakenCounter = notTakenCounter;
+            long sum = counter + localNotTakenCounter;
+            if (sum == 0) {
                 return -1D;
             }
-            return 1D - takenProfile();
+            return (double) localNotTakenCounter / (double) sum;
         }
 
         @Override
         public String toString() {
-            return "{BranchProfile:bci=" + bci + ", takenCounter=" + takenCounter + ", counter=" + counter + "}";
+            return "{BranchProfile:bci=" + bci + ", takenCounter=" + counter + ", notTakenCounter=" + notTakenCounter + "}";
         }
     }
 

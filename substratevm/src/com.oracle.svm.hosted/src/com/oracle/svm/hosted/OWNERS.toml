@@ -15,3 +15,9 @@ all = [
 ]
 any = [
 ]
+
+[[rule]]
+files = ["*HostedConfiguration*", "*ImageGenerator*"]
+all = [
+    "peter.hofer@oracle.com",
+]

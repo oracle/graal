@@ -41,11 +41,11 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParserOption;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.core.option.BundleMember;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.BundleMember;
+import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.option.OptionMigrationMessage;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;

@@ -26,7 +26,7 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
@@ -68,7 +68,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -80,22 +79,21 @@ import com.oracle.svm.core.jdk.LayeredModuleSingleton;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.RuntimeClassLoaderValueSupport;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.HostedSubstrateUtil;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AnalysisAccessBase;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
-import com.oracle.svm.util.GraalAccess;
-import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.OriginalModuleProvider;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.ModuleSupport;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.StringUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.HostedModuleSupport;
 
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
@@ -231,7 +229,7 @@ public class ModuleLayerFeature implements InternalFeature {
         public Object transform(Object receiver, Object originalValue) {
             Module module = (Module) receiver;
 
-            if (!LayeredModuleSingleton.singleton().containsModule(GraalAccess.lookupModule(module))) {
+            if (!LayeredModuleSingleton.singleton().containsModule(module)) {
                 /*
                  * Modules that are not processed by the LayeredModuleSingleton don't need to be
                  * delayed until the application layer.
@@ -324,9 +322,9 @@ public class ModuleLayerFeature implements InternalFeature {
          * Parse explicitly added modules via --add-modules. This is done early as this information
          * is required when filtering the analysis reachable module set.
          */
-        Set<String> extraModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
+        Set<String> extraModules = HostedModuleSupport.parseModuleSetModifierProperty(HostedModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
         extraModules.addAll(Resources.getIncludedResourcesModules());
-        extraModules.stream().filter(Predicate.not(ModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
+        extraModules.stream().filter(Predicate.not(HostedModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
             Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
             if (module.isEmpty()) {
                 throw VMError.shouldNotReachHere("Explicitly required module " + moduleName + " is not available");
@@ -396,9 +394,8 @@ public class ModuleLayerFeature implements InternalFeature {
             FeatureImpl.BeforeCompilationAccessImpl access = (FeatureImpl.BeforeCompilationAccessImpl) a;
             CrossLayerConstantRegistryFeature singleton = CrossLayerConstantRegistryFeature.singleton();
             for (var module : LayeredModuleSingleton.singleton().getModules()) {
-                Module javaModule = OriginalModuleProvider.getJavaModule(module);
-                finalizeFutureHeapConstant(singleton, javaModule, PackageType.OPENED, moduleLayerFeatureUtils.moduleOpenPackagesField);
-                finalizeFutureHeapConstant(singleton, javaModule, PackageType.EXPORTED, moduleLayerFeatureUtils.moduleExportedPackagesField);
+                finalizeFutureHeapConstant(singleton, module, PackageType.OPENED, moduleLayerFeatureUtils.moduleOpenPackagesField);
+                finalizeFutureHeapConstant(singleton, module, PackageType.EXPORTED, moduleLayerFeatureUtils.moduleExportedPackagesField);
             }
         }
     }
@@ -419,7 +416,7 @@ public class ModuleLayerFeature implements InternalFeature {
         ModuleFinder upgradeModulePath = NativeImageClassLoaderSupport.finderFor("jdk.module.upgrade.path");
         ModuleFinder appModulePath = moduleLayerFeatureUtils.getAppModuleFinder();
         String mainModule = ModuleLayerFeatureUtils.getMainModuleName();
-        Set<String> limitModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
+        Set<String> limitModules = HostedModuleSupport.parseModuleSetModifierProperty(HostedModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
 
         Object systemModules = null;
         ModuleFinder systemModuleFinder;
@@ -468,13 +465,13 @@ public class ModuleLayerFeature implements InternalFeature {
         boolean addAllApplicationModules = false;
         for (String mod : addModules) {
             switch (mod) {
-                case ModuleSupport.MODULE_SET_ALL_DEFAULT:
+                case HostedModuleSupport.MODULE_SET_ALL_DEFAULT:
                     addAllDefaultModules = true;
                     break;
-                case ModuleSupport.MODULE_SET_ALL_SYSTEM:
+                case HostedModuleSupport.MODULE_SET_ALL_SYSTEM:
                     addAllSystemModules = true;
                     break;
-                case ModuleSupport.MODULE_SET_ALL_MODULE_PATH:
+                case HostedModuleSupport.MODULE_SET_ALL_MODULE_PATH:
                     addAllApplicationModules = true;
                     break;
                 default:
@@ -809,7 +806,7 @@ public class ModuleLayerFeature implements InternalFeature {
             runtimeModules = new HashMap<>();
             imageClassLoader = cl;
             nativeAccessEnabled = NativeImageClassLoaderOptions.EnableNativeAccess.getValue().values().stream()
-                            .flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ",")))
+                            .flatMap(m -> Arrays.stream(StringUtil.split(m, ",")))
                             .collect(Collectors.toSet());
 
             Method classGetDeclaredFields0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
@@ -827,7 +824,7 @@ public class ModuleLayerFeature implements InternalFeature {
 
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
                     LayeredModuleSingleton singleton = LayeredModuleSingleton.singleton();
-                    singleton.setUnnamedModules(GraalAccess.lookupModule(everyoneModule), GraalAccess.lookupModule(allUnnamedModule));
+                    singleton.setUnnamedModules(everyoneModule, allUnnamedModule);
                 }
 
                 moduleDescriptorField = findFieldByName(moduleClassFields, "descriptor");
@@ -1114,7 +1111,7 @@ public class ModuleLayerFeature implements InternalFeature {
                         }
                         moduleExportedPackagesField.set(m, exportedPackages);
                         if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                            LayeredModuleSingleton.singleton().setExportedPackages(GraalAccess.lookupModule(m), exportedPackages);
+                            LayeredModuleSingleton.singleton().setExportedPackages(m, exportedPackages);
                         }
                         rescan(access, exportedPackages, m, moduleExportedPackagesField);
                     } else {
@@ -1169,8 +1166,8 @@ public class ModuleLayerFeature implements InternalFeature {
                         moduleExportedPackagesField.set(m, exportedPackages);
                         if (ImageLayerBuildingSupport.buildingImageLayer()) {
                             LayeredModuleSingleton singleton = LayeredModuleSingleton.singleton();
-                            singleton.setOpenPackages(GraalAccess.lookupModule(m), openPackages);
-                            singleton.setExportedPackages(GraalAccess.lookupModule(m), exportedPackages);
+                            singleton.setOpenPackages(m, openPackages);
+                            singleton.setExportedPackages(m, exportedPackages);
                         }
                         rescan(access, openPackages, m, moduleOpenPackagesField);
                         rescan(access, exportedPackages, m, moduleExportedPackagesField);
@@ -1247,7 +1244,7 @@ public class ModuleLayerFeature implements InternalFeature {
                 prev.add(other == null ? allUnnamedModule : other);
             }
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                LayeredModuleSingleton.singleton().setExportedPackages(GraalAccess.lookupModule(module), exports);
+                LayeredModuleSingleton.singleton().setExportedPackages(module, exports);
             }
             rescan(accessImpl, exports, module, moduleExportedPackagesField);
         }
@@ -1304,20 +1301,20 @@ public class ModuleLayerFeature implements InternalFeature {
                 prev.add(other == null ? allUnnamedModule : other);
             }
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                LayeredModuleSingleton.singleton().setOpenPackages(GraalAccess.lookupModule(module), opens);
+                LayeredModuleSingleton.singleton().setOpenPackages(module, opens);
             }
             rescan(accessImpl, opens, module, moduleOpenPackagesField);
         }
 
         private void addPreviousLayerOpenPackages(Module module, Map<String, Set<Module>> packages, Function<String, Module> nameToModule) {
             if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
-                addPreviousLayerPackages(packages, nameToModule, LayeredModuleSingleton.singleton().getOpenPackages(GraalAccess.lookupModule(module)));
+                addPreviousLayerPackages(packages, nameToModule, LayeredModuleSingleton.singleton().getOpenPackages(module));
             }
         }
 
         private void addPreviousLayerExportedPackages(Module module, Map<String, Set<Module>> packages, Function<String, Module> nameToModule) {
             if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
-                addPreviousLayerPackages(packages, nameToModule, LayeredModuleSingleton.singleton().getExportedPackages(GraalAccess.lookupModule(module)));
+                addPreviousLayerPackages(packages, nameToModule, LayeredModuleSingleton.singleton().getExportedPackages(module));
             }
         }
 
@@ -1462,7 +1459,7 @@ public class ModuleLayerFeature implements InternalFeature {
         }
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
     public record ApplicationModuleImpl(Set<String> names) implements ApplicationModules {
     }
 

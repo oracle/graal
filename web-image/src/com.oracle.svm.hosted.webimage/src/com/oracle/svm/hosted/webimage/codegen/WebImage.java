@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,13 +35,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -98,14 +96,13 @@ public class WebImage extends AbstractImage {
     @SuppressWarnings("try")
     @Override
     public void build(String imageName, DebugContext debug) {
-        WebImageProviders webImageProviders = ImageSingletons.lookup(WebImageProviders.class);
         try (Timer.StopTimer codeGenTimer = TimerCollection.createTimerAndStart(WebImageGenerator.CodegenTimer)) {
             webImageCodeGen = WebImageCodeGen.generateCode(
                             (WebImageCodeCache) codeCache,
                             heapLayout,
                             entryPoints,
                             mainEntryPoint,
-                            webImageProviders,
+                            WebImageProviders.singleton(),
                             debug,
                             WebImageHostedConfiguration.get(),
                             imageClassLoader);

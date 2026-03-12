@@ -38,7 +38,7 @@ public class SubstituteLoadLookup implements Predicate<String> {
     @Override
     public boolean test(String className) {
         LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
-        return support.optimizedMode() || support.substituteLoadLookup();
+        return support.substituteLoadLookup();
     }
 
 }

@@ -47,6 +47,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -58,8 +59,6 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -78,9 +77,7 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldOffsetFieldValueTransforme
 import com.oracle.svm.core.fieldvaluetransformer.NewInstanceOfFixedClassFieldValueTransformer;
 import com.oracle.svm.core.fieldvaluetransformer.StaticFieldBaseFieldValueTransformer;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
@@ -90,14 +87,15 @@ import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport.WrappedFieldValueTransformer;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
-import com.oracle.svm.util.OriginalFieldProvider;
-import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -199,7 +197,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                  * requested dimension has not yet been created. The registered substitution is the
                  * original type that the alias is pointing to.
                  */
-                int dimension = SubstrateUtil.arrayTypeDimension(type);
+                int dimension = BuilderUtil.arrayTypeDimension(type);
 
                 /*
                  * Eagerly register all array types of dimensions up to the required type dimension.
@@ -397,6 +395,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             return;
         }
 
+        boolean userSubstitution = !builderModules.contains(annotatedClass.getModule());
+        if (NativeImageOptions.compatibilityMode() && userSubstitution) {
+            return;
+        }
+
         TargetClass targetClassAnnotation = lookupAnnotation(annotatedClass, TargetClass.class);
         Class<?> originalClass = findTargetClass(annotatedClass, targetClassAnnotation);
         if (originalClass == null) {
@@ -415,7 +418,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         int numAnnotations = (deleteAnnotation != null ? 1 : 0) + (substituteAnnotation != null ? 1 : 0);
         guarantee(numAnnotations <= 1, "Only one of @Delete or @Substitute can be used: %s", annotatedClass);
 
-        boolean userSubstitution = !builderModules.contains(annotatedClass.getModule());
         if (deleteAnnotation != null) {
             handleDeletedClass(originalClass, deleteAnnotation);
         } else if (substituteAnnotation != null) {
@@ -515,7 +517,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             registerAsDeleted(annotated, original, deleteAnnotation);
         } else if (substituteAnnotation != null) {
-            if (AnnotationUtil.isAnnotationPresent(annotated, Uninterruptible.class) && !isEffectivelyFinal(original)) {
+            if (AnnotationUtil.isAnnotationPresent(annotated, GuestAccess.elements().Uninterruptible) && !isEffectivelyFinal(original)) {
                 throw UserError.abort("@Uninterruptible may only be combined with @Substitute if the original method is effectively final: %s", annotatedMethod);
             }
 
@@ -525,7 +527,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             register(methodSubstitutions, annotated, original, substitution);
         } else if (annotateOriginalAnnotation != null) {
-            if (AnnotationUtil.isAnnotationPresent(annotated, Uninterruptible.class) && !isEffectivelyFinal(original)) {
+            if (AnnotationUtil.isAnnotationPresent(annotated, GuestAccess.elements().Uninterruptible) && !isEffectivelyFinal(original)) {
                 throw UserError.abort("@Uninterruptible may only be combined with @AnnotateOriginal if the original method is effectively final: %s", annotatedMethod);
             }
 
@@ -1049,8 +1051,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
-        ResolvedJavaType targetType = GraalAccess.lookupType(targetClass);
-        ResolvedJavaType transformedValueAllowedType = GraalAccess.lookupType(getTargetClass(annotatedField.getType()));
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType targetType = access.lookupType(targetClass);
+        Class<?> cls = getTargetClass(annotatedField.getType());
+        ResolvedJavaType transformedValueAllowedType = access.lookupType(cls);
 
         JVMCIFieldValueTransformer newTransformer = switch (kind) {
             case None, Manual -> null;
@@ -1066,7 +1070,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             case FieldOffset -> {
                 var targetField = getField(annotated, targetType, targetName);
                 unsafeAccessedFields.put(targetField, original);
-                yield new FieldOffsetFieldValueTransformer(OriginalFieldProvider.getJavaField(targetField), original.getType().getJavaKind());
+                yield new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind());
             }
             case StaticFieldBase -> {
                 var targetField = getField(annotated, targetType, targetName);

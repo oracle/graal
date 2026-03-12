@@ -32,10 +32,10 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
+import com.oracle.svm.shared.option.LocatableMultiOptionValue;
+import com.oracle.svm.shared.util.StringUtil;
 
 public class IncludeOptionsSupport {
     public record ExtendedOptionWithOrigin(ExtendedOption option, LocatableMultiOptionValue.ValueWithOrigin<?> valueWithOrigin) {
@@ -48,7 +48,7 @@ public class IncludeOptionsSupport {
         public static final String PATH_OPTION = "path";
 
         public static ExtendedOption parse(String option) {
-            String[] optionParts = SubstrateUtil.split(option, "=", 2);
+            String[] optionParts = StringUtil.split(option, "=", 2);
             if (optionParts.length == 2) {
                 return new ExtendedOption(optionParts[0], optionParts[1]);
             } else {

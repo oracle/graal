@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -345,6 +345,11 @@ suite = {
     "RENAISSANCE_0.16.0" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.16.0.jar"],
       "digest" : "sha512:82cc829636f3420622b9ce55fb0406230a2a90692f03f0e85bfe6d99f1bd58ee9ec173695bd1c597aeae149b19391231d0f7fe47ca290334b2dba7c7cd3ef64e",
+    },
+
+    "RENAISSANCE_0.16.1" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.16.1.jar"],
+      "digest" : "sha512:54a95bd6dee83ff032603fbbf9b8b0a06800e657edd15b0a2795e5fcf6d685269e45058b235438c518746c8157b37744aa06f997a3834c21f6d7c0eaac1c702f",
     },
 
     "UBENCH_AGENT_DIST" : {
@@ -874,6 +879,15 @@ suite = {
       ],
       "graalCompilerSourceEdition": "ignore",
     },
+
+    "jdk.graal.compiler.vmaccess.guest": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "dependencies": [],
+      "javaCompliance": "21+",
+      "checkstyle" : "org.graalvm.word",
+      "graalCompilerSourceEdition": "ignore",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -987,6 +1001,7 @@ suite = {
                                              org.graalvm.nativeimage.base,
                                              org.graalvm.nativeimage.builder,
                                              org.graalvm.nativeimage.configure,
+                                             org.graalvm.nativeimage.shared,
                                              com.oracle.svm.svm_enterprise,
                                              org.graalvm.extraimage.builder,
                                              org.graalvm.truffle.runtime.svm,
@@ -1142,8 +1157,22 @@ suite = {
         "name" : "org.graalvm.word",
         "requires" : [],
         "exports" : [
+            # Export the word interface types and WordFactory publicly
             "org.graalvm.word",
-            "org.graalvm.word.impl to jdk.graal.compiler",
+
+            # Export the package containing Word to all modules
+            # co-developed in the same repository.
+            """org.graalvm.word.impl to
+                   jdk.graal.compiler,
+                   org.graalvm.truffle.runtime.svm,
+                   org.graalvm.nativeimage.builder,
+                   org.graalvm.nativeimage.foreign,
+                   org.graalvm.nativeimage.shared,
+                   com.oracle.graal.graal_enterprise,
+                   com.oracle.svm.svm_enterprise,
+                   com.oracle.truffle.enterprise.svm,
+                   com.oracle.svm.enterprise.truffle,
+                   org.graalvm.extraimage.builder""",
         ],
         "uses" : [],
         "opens" : [],
@@ -1734,6 +1763,27 @@ set(CMAKE_AR           <path:MUSL_GCC_TOOLCHAIN>/musl-toolchain/bin/aarch64-linu
         },
       },
       "maven" : False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "VMACCESS_GUEST": {
+      "description" : "Provides classes used for VMAccess in the guest.",
+      "moduleInfo": {
+        "name": "jdk.graal.compiler.vmaccess.guest",
+        "exports": [
+          "jdk.graal.compiler.vmaccess.guest",
+        ],
+      },
+      "subDir": "src",
+      "dependencies": [
+        "jdk.graal.compiler.vmaccess.guest",
+      ],
+      "distDependencies": [],
+      "useModulePath": True,
+      "noMavenJavadoc": True,
+      "maven": {
+        "tag": ["default", "public"],
+      },
       "graalCompilerSourceEdition": "ignore",
     },
   },

@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
@@ -99,7 +99,7 @@ public class RistrettoProfileSupport {
         }
 
         assert iMethod instanceof CremaResolvedJavaMethodImpl;
-        final RistrettoMethod rMethod = RistrettoMethod.create(iMethod);
+        final RistrettoMethod rMethod = RistrettoMethod.getOrCreate(iMethod);
 
         int oldState = COMPILATION_STATE_UPDATER.get(rMethod);
         if (!RistrettoCompileStateMachine.shouldEnterProfiling(oldState)) {

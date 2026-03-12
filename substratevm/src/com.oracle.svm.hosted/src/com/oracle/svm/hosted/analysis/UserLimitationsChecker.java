@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.analysis;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
 import com.oracle.svm.hosted.NativeImageOptions;

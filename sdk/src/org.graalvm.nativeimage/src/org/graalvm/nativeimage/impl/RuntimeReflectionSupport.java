@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,39 +40,28 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.util.Arrays;
+
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // needed as reflection-specific ImageSingletons key
-    void registerAllMethodsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
+    default void registerAllFields(AccessCondition condition, boolean preserved, Class<?> clazz) {
+        register(condition, false, preserved, clazz.getFields());
+    }
 
-    void registerAllDeclaredMethodsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
-
-    void registerAllFields(AccessCondition condition, boolean preserved, Class<?> clazz);
-
-    void registerAllDeclaredFields(AccessCondition condition, boolean preserved, Class<?> clazz);
-
-    void registerAllFieldsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
-
-    void registerAllDeclaredFieldsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
-
-    void registerAllConstructorsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
-
-    void registerAllDeclaredConstructorsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
-
-    void registerAllClassesQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
-
-    void registerAllDeclaredClassesQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
-
-    void registerAllRecordComponentsQuery(AccessCondition condition, Class<?> clazz);
-
-    void registerAllPermittedSubclassesQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
-
-    void registerAllNestMembersQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
-
-    void registerAllSignersQuery(AccessCondition condition, Class<?> clazz);
+    default void registerAllDeclaredFields(AccessCondition condition, boolean preserved, Class<?> clazz) {
+        register(condition, false, preserved, clazz.getDeclaredFields());
+    }
 
     void registerClassLookupException(AccessCondition condition, String typeName, Throwable t);
 
-    void registerUnsafeAllocation(AccessCondition condition, boolean preserved, Class<?>... classes);
+    default void registerUnsafeAllocation(AccessCondition condition, boolean preserved, Class<?>... classes) {
+        Arrays.stream(classes).forEach(clazz -> {
+            register(condition, preserved, clazz);
+            registerUnsafeAllocation(condition, preserved, clazz);
+        });
+    }
+
+    void registerUnsafeAllocation(AccessCondition condition, boolean preserved, Class<?> clazz);
 }

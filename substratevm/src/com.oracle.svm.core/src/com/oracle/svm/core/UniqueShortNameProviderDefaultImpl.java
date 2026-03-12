@@ -28,6 +28,9 @@ import java.lang.reflect.Member;
 import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -39,20 +42,22 @@ import jdk.vm.ci.meta.Signature;
  * to the Java name before generating the digest.
  */
 @AutomaticallyRegisteredImageSingleton(value = UniqueShortNameProvider.class, onlyWith = UniqueShortNameProviderDefaultImpl.UseDefault.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvider {
     @Override
     public String uniqueShortName(ClassLoader loader, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        return SubstrateUtil.defaultUniqueShortName(SubstrateUtil.runtimeClassLoaderNameAndId(loader), declaringClass, methodName, methodSignature, isConstructor);
+        String loaderNameAndId = BuilderUtil.runtimeClassLoaderNameAndId(loader);
+        return BuilderUtil.defaultUniqueShortName(loaderNameAndId, declaringClass, methodName, methodSignature, isConstructor);
     }
 
     @Override
     public String uniqueShortName(Member m) {
-        return SubstrateUtil.defaultUniqueShortName(m);
+        return BuilderUtil.defaultUniqueShortName(m);
     }
 
     @Override
     public String uniqueShortLoaderName(ClassLoader classLoader) {
-        return SubstrateUtil.runtimeClassLoaderNameAndId(classLoader);
+        return BuilderUtil.runtimeClassLoaderNameAndId(classLoader);
     }
 
     public static class UseDefault implements BooleanSupplier {

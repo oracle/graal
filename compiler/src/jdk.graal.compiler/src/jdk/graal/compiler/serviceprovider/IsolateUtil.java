@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.serviceprovider;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.options.LibGraalSupport;
 
 /**
  * Utility methods that provide access to isolate details.

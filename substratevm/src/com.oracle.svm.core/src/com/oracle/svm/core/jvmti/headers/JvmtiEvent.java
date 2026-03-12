@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
-import com.oracle.svm.core.collections.EnumBitmask;
+import com.oracle.svm.shared.collections.EnumBitmask;
 
 @CContext(JvmtiDirectives.class)
 @CEnum("jvmtiEvent")

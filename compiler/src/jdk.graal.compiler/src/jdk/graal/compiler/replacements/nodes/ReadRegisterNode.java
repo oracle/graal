@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
@@ -89,7 +88,7 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowe
         LIRKind kind = generator.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
         Value result = register.asValue(kind);
         if (incoming) {
-            ((LIRGenerator) generator.getLIRGeneratorTool()).emitIncomingValues(new Value[]{result});
+            ((LIRGenerator) generator.getLIRGeneratorTool()).addIncomingValues(new Value[]{result});
         }
         if (!directUse) {
             result = generator.getLIRGeneratorTool().emitReadRegister(register, kind);

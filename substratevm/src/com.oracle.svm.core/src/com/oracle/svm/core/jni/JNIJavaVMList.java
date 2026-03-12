@@ -25,25 +25,24 @@
 package com.oracle.svm.core.jni;
 
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
-import static jdk.graal.compiler.word.Word.nullPointer;
-import static jdk.graal.compiler.word.Word.unsigned;
-import static jdk.graal.compiler.word.Word.zero;
+import static org.graalvm.word.impl.Word.nullPointer;
+import static org.graalvm.word.impl.Word.unsigned;
+import static org.graalvm.word.impl.Word.zero;
 
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
-
-import jdk.graal.compiler.word.Word;
 
 /**
  * A process-global, lock-free list of JavaVM pointers. Implemented as arrays in native memory which

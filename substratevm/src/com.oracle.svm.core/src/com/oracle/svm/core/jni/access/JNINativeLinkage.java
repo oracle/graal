@@ -28,7 +28,6 @@ import static com.oracle.svm.core.jni.access.JNIReflectionDictionary.WRAPPED_CST
 
 import java.util.function.Function;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
 
@@ -39,6 +38,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.Signature;
+import org.graalvm.word.impl.Word;
 
 /**
  * Encapsulates the code address of a {@code native} method's implementation at runtime. This object

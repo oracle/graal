@@ -26,7 +26,7 @@ package com.oracle.svm.interpreter.metadata;
 
 import java.util.function.Function;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;

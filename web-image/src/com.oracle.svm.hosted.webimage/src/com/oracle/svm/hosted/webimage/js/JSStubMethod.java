@@ -31,6 +31,7 @@ import java.util.Objects;
 import org.graalvm.webimage.api.JS;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -39,7 +40,7 @@ import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.phases.WebImageHostedGraphKit;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.webimage.functionintrinsics.JSConversion;
 
@@ -164,7 +165,7 @@ public class JSStubMethod extends CustomSubstitutionMethod {
         if (WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASMGC) {
             exceptionHandler = null;
         } else {
-            exceptionHandler = kit.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupMethod(JSConversion.class, "handleJSError", Object.class));
+            exceptionHandler = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(kit.getMetaAccess(), JSConversion.class, "handleJSError", Object.class);
         }
 
         ValueNode returnValue = kit.createJSBody(jsCode, method, arguments, jsBodyStamp, state, bci, exceptionHandler).asNode();
@@ -183,6 +184,9 @@ public class JSStubMethod extends CustomSubstitutionMethod {
             return argument;
         }
 
+        AnalysisMetaAccess meta = kit.getMetaAccess();
+        AnalysisType jsConversionType = meta.lookupJavaType(JSConversion.class);
+
         // Step 1: box the argument.
         if (paramType.isPrimitive()) {
             argument = kit.createBoxing(argument, paramType.getJavaKind(), boxedTypeFor(kit, paramType.getJavaKind()));
@@ -192,21 +196,13 @@ public class JSStubMethod extends CustomSubstitutionMethod {
         // Step 2a: if coercion is enabled, implicitly convert Java values to JSValue objects
         // where possible, according to the coercion rules.
         if (coercion) {
-            try {
-                AnalysisMethod coerceJavaToJavaScriptMethod = kit.getMetaAccess().lookupJavaMethod(JSConversion.class.getDeclaredMethod("coerceJavaToJavaScript", Object.class));
-                argument = kit.createInvokeWithExceptionAndUnwind(coerceJavaToJavaScriptMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), argument);
-            } catch (NoSuchMethodException e) {
-                throw JVMCIError.shouldNotReachHere(e);
-            }
+            ResolvedJavaMethod coerceJavaToJavaScriptMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, jsConversionType, "coerceJavaToJavaScript", Object.class);
+            argument = kit.createInvokeWithExceptionAndUnwind(coerceJavaToJavaScriptMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), argument);
         }
 
         // Step 2b: apply Java-to-JavaScript conversion rules.
-        try {
-            AnalysisMethod javaToJavaScriptMethod = kit.getMetaAccess().lookupJavaMethod(JSConversion.class.getDeclaredMethod("javaToJavaScript", Object.class));
-            argument = kit.createInvokeWithExceptionAndUnwind(javaToJavaScriptMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), argument);
-        } catch (NoSuchMethodException e) {
-            throw JVMCIError.shouldNotReachHere(e);
-        }
+        ResolvedJavaMethod javaToJavaScriptMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, jsConversionType, "javaToJavaScript", Object.class);
+        argument = kit.createInvokeWithExceptionAndUnwind(javaToJavaScriptMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), argument);
 
         return argument;
     }
@@ -231,51 +227,41 @@ public class JSStubMethod extends CustomSubstitutionMethod {
 
         AnalysisType referenceReturnType = returnType.isPrimitive() ? boxedTypeFor(kit, returnType.getJavaKind()) : returnType;
 
+        AnalysisMetaAccess meta = kit.getMetaAccess();
+        AnalysisType jsConversionType = meta.lookupJavaType(JSConversion.class);
+
         // Step 2a: apply JavaScript-to-Java conversion rules.
-        try {
-            AnalysisMethod javaScriptToJavaMethod = kit.getMetaAccess().lookupJavaMethod(JSConversion.class.getDeclaredMethod("javaScriptToJava", Object.class));
-            returnValue = kit.createInvokeWithExceptionAndUnwind(javaScriptToJavaMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), returnValue);
-        } catch (NoSuchMethodException e) {
-            throw JVMCIError.shouldNotReachHere(e);
-        }
+        ResolvedJavaMethod javaScriptToJavaMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, jsConversionType, "javaScriptToJava", Object.class);
+        returnValue = kit.createInvokeWithExceptionAndUnwind(javaScriptToJavaMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), returnValue);
 
         // Step 2b: if coercion is enabled, implicitly convert JSValue objects to Java objects
         // where possible, according to the coercion rules.
         if (coercion) {
-            try {
-                AnalysisMethod coerceJavaScriptToJavaMethod = kit.getMetaAccess().lookupJavaMethod(JSConversion.class.getDeclaredMethod("coerceJavaScriptToJava", Object.class, Class.class));
-                Stamp classStamp = StampFactory.forDeclaredType(null, kit.getMetaAccess().lookupJavaType(Class.class), true).getTrustedStamp();
-                // Note: we use the boxed type (where applicable) for the conversion, as
-                // unboxing happens in a later step.
-                ConstantNode hub = ConstantNode.forConstant(classStamp, kit.getConstantReflection().asObjectHub(referenceReturnType), kit.getMetaAccess(), kit.getGraph());
-                returnValue = kit.createInvokeWithExceptionAndUnwind(coerceJavaScriptToJavaMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), returnValue, hub);
-            } catch (NoSuchMethodException e) {
-                throw JVMCIError.shouldNotReachHere(e);
-            }
+            ResolvedJavaMethod coerceJavaScriptToJavaMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, jsConversionType, "coerceJavaScriptToJava", Object.class, Class.class);
+            Stamp classStamp = StampFactory.forDeclaredType(null, kit.getMetaAccess().lookupJavaType(Class.class), true).getTrustedStamp();
+            // Note: we use the boxed type (where applicable) for the conversion, as
+            // unboxing happens in a later step.
+            ConstantNode hub = ConstantNode.forConstant(classStamp, kit.getConstantReflection().asObjectHub(referenceReturnType), kit.getMetaAccess(), kit.getGraph());
+            returnValue = kit.createInvokeWithExceptionAndUnwind(coerceJavaScriptToJavaMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), returnValue, hub);
         }
 
         // Step 3: Perform checkcast against the expected (boxed) return type.
-        try {
-            // Note: it's important to explicitly encode the instanceof check in the graph (i.e. not
-            // call a Java method that does the check and the cast), because the instanceof needs to
-            // be visible during analysis.
-            final TypeReference referenceReturnTypeRef = TypeReference.createTrusted(null, referenceReturnType);
-            LogicNode instanceOf = InstanceOfNode.createAllowNull(referenceReturnTypeRef, returnValue, null, null);
-            IfNode ifNode = kit.startIf(instanceOf, ProfileData.BranchProbabilityData.injected(HIGH_INSTANCEOF_PROBABILITY));
-            kit.elsePart();
-            AnalysisMethod throwClassCastExceptionMethod = kit.getMetaAccess().lookupJavaMethod(
-                            JSConversion.class.getDeclaredMethod("throwClassCastExceptionForClass", Object.class, Class.class));
-            ConstantNode classValue = ConstantNode.forConstant(kit.getConstantReflection().asJavaClass(referenceReturnType), kit.getMetaAccess(), kit.getGraph());
-            kit.createInvokeWithExceptionAndUnwind(throwClassCastExceptionMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), returnValue, classValue);
-            kit.append(new DeadEndNode());
-            kit.thenPart();
-            kit.endIf();
+        // Note: it's important to explicitly encode the instanceof check in the graph (i.e. not
+        // call a Java method that does the check and the cast), because the instanceof needs to
+        // be visible during analysis.
+        final TypeReference referenceReturnTypeRef = TypeReference.createTrusted(null, referenceReturnType);
+        LogicNode instanceOf = InstanceOfNode.createAllowNull(referenceReturnTypeRef, returnValue, null, null);
+        IfNode ifNode = kit.startIf(instanceOf, ProfileData.BranchProbabilityData.injected(HIGH_INSTANCEOF_PROBABILITY));
+        kit.elsePart();
+        ResolvedJavaMethod throwClassCastExceptionMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(meta, jsConversionType, "throwClassCastExceptionForClass", Object.class, Class.class);
+        ConstantNode classValue = ConstantNode.forConstant(kit.getConstantReflection().asJavaClass(referenceReturnType), kit.getMetaAccess(), kit.getGraph());
+        kit.createInvokeWithExceptionAndUnwind(throwClassCastExceptionMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), returnValue, classValue);
+        kit.append(new DeadEndNode());
+        kit.thenPart();
+        kit.endIf();
 
-            // Insert PiNode to strengthen stamp of type checked node
-            returnValue = PiNode.create(returnValue, returnValue.stamp(NodeView.DEFAULT).join(StampFactory.object(referenceReturnTypeRef)), ifNode.trueSuccessor());
-        } catch (NoSuchMethodException e) {
-            throw JVMCIError.shouldNotReachHere(e);
-        }
+        // Insert PiNode to strengthen stamp of type checked node
+        returnValue = PiNode.create(returnValue, returnValue.stamp(NodeView.DEFAULT).join(StampFactory.object(referenceReturnTypeRef)), ifNode.trueSuccessor());
 
         // Step 4: Perform unboxing if necessary.
         if (returnType.isPrimitive()) {

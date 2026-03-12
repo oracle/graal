@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
@@ -32,9 +34,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.TypePlugin;
-import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordOperationPlugin;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;

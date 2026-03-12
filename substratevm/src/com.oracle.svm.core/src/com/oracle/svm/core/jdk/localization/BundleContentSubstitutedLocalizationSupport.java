@@ -25,8 +25,6 @@
 package com.oracle.svm.core.jdk.localization;
 
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
@@ -36,8 +34,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
@@ -46,11 +42,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
-import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
-import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
 import sun.util.resources.OpenListResourceBundle;
@@ -68,7 +61,6 @@ import sun.util.resources.ParallelListResourceBundle;
  * regressions in compile time and binary size when multiple locales are requested.
  *
  * @see BundleSerializationUtils
- * @see GzipBundleCompression
  * @see SubstituteLoadLookup
  */
 public class BundleContentSubstitutedLocalizationSupport extends LocalizationSupport {
@@ -77,19 +69,15 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     private static final String INTERNAL_BUNDLES_PATTERN = "sun\\..*";
 
     @Platforms(Platform.HOSTED_ONLY.class)//
-    private final List<Pattern> compressBundlesPatterns;
-
-    @Platforms(Platform.HOSTED_ONLY.class)//
     private final ForkJoinPool pool;
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
 
     private final Set<String> existingBundles = ConcurrentHashMap.newKeySet();
 
-    public BundleContentSubstitutedLocalizationSupport(EconomicSet<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
+    public BundleContentSubstitutedLocalizationSupport(EconomicSet<Locale> locales, Charset defaultCharset, ForkJoinPool pool) {
         super(locales, defaultCharset);
         this.pool = pool;
-        this.compressBundlesPatterns = parseCompressBundlePatterns(requestedPatterns);
     }
 
     @Override
@@ -124,16 +112,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     @Platforms(Platform.HOSTED_ONLY.class)
     private void storeBundleContentOf(ResourceBundle bundle) {
         GraalError.guarantee(isBundleSupported(bundle), "Unsupported bundle %s of type %s", bundle, bundle.getClass());
-        storedBundles.put(bundle.getClass(), processBundle(bundle));
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private StoredBundle processBundle(ResourceBundle bundle) {
-        if (shouldCompressBundle(bundle) && GzipBundleCompression.canCompress(bundle)) {
-            return GzipBundleCompression.compress(bundle);
-        }
         Map<String, Object> content = BundleSerializationUtils.extractContent(bundle);
-        return new ExtractedBundle(content);
+        storedBundles.put(bundle.getClass(), new ExtractedBundle(content));
     }
 
     @Override
@@ -153,30 +133,6 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean isBundleSupported(Class<?> bundleClass) {
         return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass) || ParallelListResourceBundle.class.isAssignableFrom(bundleClass);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static List<Pattern> parseCompressBundlePatterns(List<String> userPatterns) {
-        List<Pattern> compiled = new ArrayList<>();
-        List<String> invalid = new ArrayList<>();
-        compiled.add(Pattern.compile(INTERNAL_BUNDLES_PATTERN));
-        for (String pattern : userPatterns) {
-            try {
-                compiled.add(Pattern.compile(pattern));
-            } catch (PatternSyntaxException ex) {
-                invalid.add(pattern);
-            }
-        }
-        if (!invalid.isEmpty()) {
-            throw UserError.abort("Invalid patterns specified: %s", invalid);
-        }
-        return compiled;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean shouldCompressBundle(ResourceBundle bundle) {
-        String className = bundle.getClass().getName();
-        return compressBundlesPatterns.stream().anyMatch(pattern -> pattern.matcher(className).matches());
     }
 
     @Override

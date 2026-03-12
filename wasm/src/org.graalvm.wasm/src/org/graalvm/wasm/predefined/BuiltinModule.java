@@ -103,7 +103,7 @@ public abstract class BuiltinModule {
         // We could check if the same function type had already been allocated,
         // but this is just an optimization, and probably not very important,
         // since predefined modules have a relatively small size.
-        final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes, context.getContextOptions().supportMultiValue());
+        final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes, context.getContextOptions().supportMultiValue(), context.language());
         final WasmFunction function = module.symbolTable().declareExportedFunction(typeIdx, name);
         function.setTarget(rootNode.getCallTarget());
         return function;
@@ -140,7 +140,7 @@ public abstract class BuiltinModule {
     }
 
     protected void importFunction(WasmContext context, WasmModule module, String importModuleName, String importFunctionName, int[] paramTypes, int[] retTypes, String exportName) {
-        final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes, context.getContextOptions().supportMultiValue());
+        final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes, context.getContextOptions().supportMultiValue(), context.language());
         final WasmFunction function = module.symbolTable().importFunction(importModuleName, importFunctionName, typeIdx);
         module.symbolTable().exportFunction(function.index(), exportName);
     }

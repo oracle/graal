@@ -25,15 +25,11 @@
 
 package com.oracle.svm.hosted.webimage.wasmgc;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.hosted.FeatureHandler;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.webimage.code.WebImageCompileQueue;
-import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmFunctionTemplate;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
 
@@ -67,8 +63,7 @@ public class WebImageWasmGCCompileQueue extends WebImageCompileQueue {
         super.compileAll();
 
         runOnExecutor(() -> {
-            WebImageWasmGCProviders wasmProviders = (WebImageWasmGCProviders) ImageSingletons.lookup(WebImageProviders.class);
-            HostedMethod placeholder = ((HostedMetaAccess) wasmProviders.getMetaAccess()).getUniverse().lookup(WasmGCFunctionTemplateFeature.getFunctionTemplatesPlaceholder());
+            HostedMethod placeholder = WebImageWasmGCProviders.singleton().getMetaAccess().getUniverse().lookup(WasmGCFunctionTemplateFeature.getFunctionTemplatesPlaceholder());
             placeholder.compilationInfo.setCustomCompileFunction(WasmGCFunctionTemplateFeature::createFunctionTemplates);
             ensureCompiled(placeholder, new EntryPointReason());
         });

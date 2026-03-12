@@ -56,13 +56,13 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.ForeignConfigurationParser;
 import com.oracle.svm.configure.UnresolvedAccessCondition;
-import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.foreign.MemoryLayoutParser.MemoryLayoutParserException;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
-import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.util.json.JsonFormatter;

@@ -36,14 +36,14 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 /*
  * To be kept in sync with:
  *  - substratevm/src/com.oracle.svm.native.libchelper/include/amd64hotspotcpuinfo.h
  *  - substratevm/src/com.oracle.svm.native.libchelper/src/cpuid.c
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+23/src/hotspot/cpu/x86/vm_version_x86.hpp#L41-L348")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.2+2/src/hotspot/cpu/x86/vm_version_x86.hpp#L41-L356")
 @CLibrary(value = "libchelper", requireStatic = true)
 public class AMD64LibCHelper {
     @Platforms(Platform.AMD64.class)

@@ -33,11 +33,6 @@ import jdk.internal.misc.Signal;
 @SuppressWarnings("unused")
 final class Target_jdk_internal_misc_VM_Web {
     @Substitute
-    public static String[] getRuntimeArguments() {
-        throw new UnsupportedOperationException("VM.getRuntimeArguments");
-    }
-
-    @Substitute
     public static long getNanoTimeAdjustment(long offsetInSeconds) {
         // This method is supposed to receive some number of seconds X that represents a certain
         // time index, and it is supposed to return the difference between the current time and X,

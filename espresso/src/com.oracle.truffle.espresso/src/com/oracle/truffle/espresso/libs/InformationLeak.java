@@ -47,6 +47,7 @@ import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.Management;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 /**
  * In the context of the EspressoLibs project, this class is designed to aggregate methods and
@@ -242,4 +243,19 @@ public class InformationLeak {
         return management.GetLongAttribute(StaticObject.NULL, att);
     }
 
+    public static int pageSize() {
+        return UnsafeAccess.get().pageSize();
+    }
+
+    public static void loadFence() {
+        UnsafeAccess.get().loadFence();
+    }
+
+    public static void storeFence() {
+        UnsafeAccess.get().storeFence();
+    }
+
+    public static void fullFence() {
+        UnsafeAccess.get().fullFence();
+    }
 }

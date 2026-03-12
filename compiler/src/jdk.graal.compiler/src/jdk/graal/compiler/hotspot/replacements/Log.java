@@ -31,13 +31,13 @@ import static jdk.graal.compiler.replacements.nodes.CStringConstant.cstring;
 
 import java.io.PrintStream;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
-import jdk.graal.compiler.word.Word;
-
 import jdk.vm.ci.meta.JavaKind;
 
 //JaCoCo Exclude

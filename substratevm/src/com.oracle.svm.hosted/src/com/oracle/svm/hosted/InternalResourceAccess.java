@@ -29,7 +29,7 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;

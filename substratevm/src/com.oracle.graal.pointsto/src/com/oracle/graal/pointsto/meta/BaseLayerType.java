@@ -24,13 +24,13 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.annotation.Annotation;
 import java.util.List;
 
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.AnnotationsContainer;
 import com.oracle.svm.util.OriginalClassProvider;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -74,7 +74,7 @@ public class BaseLayerType extends AnnotationsContainer implements ResolvedJavaT
 
     public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isRecord, boolean isInitialized, boolean isLinked,
                     String sourceFileName, ResolvedJavaType enclosingType, ResolvedJavaType componentType, ResolvedJavaType superClass, ResolvedJavaType[] interfaces, ResolvedJavaType objectType,
-                    Annotation[] annotations) {
+                    AnnotationValue[] annotations) {
         super(annotations);
         this.name = name.substring(0, name.length() - 1) + BASE_LAYER_SUFFIX;
         this.baseLayerId = baseLayerId;

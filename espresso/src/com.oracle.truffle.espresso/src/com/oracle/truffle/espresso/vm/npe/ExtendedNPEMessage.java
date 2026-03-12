@@ -36,7 +36,7 @@ public final class ExtendedNPEMessage {
         assert throwable.getKlass() == ctx.getMeta().java_lang_NullPointerException : "Calling getExtendedNPEMessage with non NPE throwable.";
 
         // Java tries to ensure NPE message is constructed after the stack trace is filled in.
-        VM.StackTrace frames = (VM.StackTrace) ctx.getMeta().HIDDEN_FRAMES.getHiddenObject(throwable);
+        VM.StackTrace frames = (VM.StackTrace) ctx.getMeta().java_lang_Throwable_0frames.getHiddenObject(throwable);
         if (frames == null) {
             return null;
         }

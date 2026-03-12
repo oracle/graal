@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 
 @TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class)
 @SuppressWarnings({"unused", "static-method"})
@@ -70,6 +71,16 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     }
 
     @Substitute
+    @TargetElement(onlyWith = ClassForNameSupport.IgnoresClassLoader.class)
+    protected Class<?> defineClass(String cn, Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule loadedModule) {
+        /*
+         * Avoid dragging in logging & formatting code through
+         * ModuleReader->JarFile->Manifest->Attributes
+         */
+        throw RuntimeClassLoading.throwNoBytecodeClasses(cn);
+    }
+
+    @Substitute
     public URL findResource(String mn, String name) {
         Module module = ModuleLayer.boot().findModule(mn).orElse(null);
         return ResourcesHelper.nameToResourceURL(module, name);
@@ -82,11 +93,19 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     public URL findResource(String name) {
+        if (ClassForNameSupport.respectClassLoader() && this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
+            /* Workaround for GR-73221 */
+            return null;
+        }
         return ResourcesHelper.nameToResourceURL(name);
     }
 
     @Substitute
     public Enumeration<URL> findResources(String name) {
+        if (ClassForNameSupport.respectClassLoader() && this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
+            /* Workaround for GR-73221 */
+            return null;
+        }
         return ResourcesHelper.nameToResourceEnumerationURLs(name);
     }
 
@@ -103,11 +122,19 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     private URL findResourceOnClassPath(String name) {
+        if (ClassForNameSupport.respectClassLoader() && this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
+            /* Workaround for GR-73221 */
+            return null;
+        }
         return ResourcesHelper.nameToResourceURL(name);
     }
 
     @Substitute
     private Enumeration<URL> findResourcesOnClassPath(String name) {
+        if (ClassForNameSupport.respectClassLoader() && this != Target_jdk_internal_loader_ClassLoaders.bootLoader()) {
+            /* Workaround for GR-73221 */
+            return null;
+        }
         return ResourcesHelper.nameToResourceEnumerationURLs(name);
     }
 
@@ -117,4 +144,8 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
             return new ConcurrentHashMap<>();
         }
     }
+}
+
+@TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class, innerClass = "LoadedModule")
+final class Target_jdk_internal_loader_BuiltinClassLoader_LoadedModule {
 }

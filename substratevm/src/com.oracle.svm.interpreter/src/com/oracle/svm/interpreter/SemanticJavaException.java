@@ -25,7 +25,7 @@
 
 package com.oracle.svm.interpreter;
 
-import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 /**
  * Wraps exceptions thrown by the interpreted code or by compiled code. This is a way to

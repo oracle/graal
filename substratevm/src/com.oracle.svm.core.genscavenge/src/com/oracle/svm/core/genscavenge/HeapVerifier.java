@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -52,7 +53,6 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 
 public class HeapVerifier {
     private static final ObjectVerifier OBJECT_VERIFIER = new ObjectVerifier();
@@ -133,7 +133,7 @@ public class HeapVerifier {
          * After we are done with all other verifications, it is guaranteed that the heap is in a
          * reasonable state. Now, we can verify the remembered sets without having to worry about
          * basic heap consistency.
-         * 
+         *
          * It would be nice to assert that all cards in the image heap and old generation are clean
          * after a garbage collection. For the image heap, it is pretty much impossible to do that
          * as the GC itself dirties the card table. For the old generation, it is also not possible
@@ -205,7 +205,7 @@ public class HeapVerifier {
                 success = false;
             }
 
-            if (aChunk.getShouldSweepInsteadOfCompact()) {
+            if (aChunk.getSweep()) {
                 Log.log().string("Aligned chunk ").zhex(aChunk).string(" is marked for sweeping while this should only be used during collections.").newline();
                 success = false;
             }
@@ -276,7 +276,7 @@ public class HeapVerifier {
             return false;
         }
 
-        if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
+        if (ObjectHeaderImpl.isMarkedHeader(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a marked header: ").zhex(header).newline();
             return false;
         }

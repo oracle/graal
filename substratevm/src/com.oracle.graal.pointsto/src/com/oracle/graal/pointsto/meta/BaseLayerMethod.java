@@ -24,12 +24,12 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.svm.util.AnnotationsContainer;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -70,7 +70,7 @@ public class BaseLayerMethod extends AnnotationsContainer implements ResolvedJav
     private final IntrinsicMethod methodHandleIntrinsic;
 
     public BaseLayerMethod(int id, AnalysisType declaringClass, String name, boolean isVarArgs, boolean isBridge, ResolvedSignature<AnalysisType> signature, boolean canBeStaticallyBound,
-                    boolean isConstructor, int modifiers, boolean isSynthetic, byte[] code, int codeSize, IntrinsicMethod methodHandleIntrinsic, Annotation[] annotations) {
+                    boolean isConstructor, int modifiers, boolean isSynthetic, byte[] code, int codeSize, IntrinsicMethod methodHandleIntrinsic, AnnotationValue[] annotations) {
         super(annotations);
         this.id = id;
         this.declaringClass = declaringClass.getWrapped();

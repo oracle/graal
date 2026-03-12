@@ -105,13 +105,6 @@ public class BytecodeBitEncoding {
     public static final int DATA_SEG_MEMORY_INDEX_I32 = 0b1100_0000;
     public static final int DATA_SEG_MEMORY_INDEX_VALUE = 0b0011_1111;
 
-    // Runtime data sections
-    public static final int DATA_SEG_RUNTIME_LENGTH_MASK = 0b1100_0000;
-    public static final int DATA_SEG_RUNTIME_LENGTH_INLINE = 0b0000_0000;
-    public static final int DATA_SEG_RUNTIME_LENGTH_U8 = 0b0100_0000;
-    public static final int DATA_SEG_RUNTIME_LENGTH_U16 = 0b1000_0000;
-    public static final int DATA_SEG_RUNTIME_LENGTH_I32 = 0b1100_0000;
-
     // Elem sections
 
     public static final int ELEM_SEG_COUNT_MASK = 0b1100_0000;
@@ -146,13 +139,9 @@ public class BytecodeBitEncoding {
 
     // Elem items
 
-    public static final int ELEM_ITEM_REF_NULL_ENTRY_PREFIX = 0;
-    public static final int ELEM_ITEM_REF_FUNC_ENTRY_PREFIX = 1;
-    public static final int ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX = 2;
-
     public static final int ELEM_ITEM_TYPE_MASK = 0b1000_0000;
     public static final int ELEM_ITEM_TYPE_FUNCTION_INDEX = 0b0000_0000;
-    public static final int ELEM_ITEM_TYPE_GLOBAL_INDEX = 0b1000_0000;
+    public static final int ELEM_ITEM_TYPE_BYTECODE = 0b1000_0000;
 
     public static final int ELEM_ITEM_LENGTH_MASK = 0b0110_0000;
     public static final int ELEM_ITEM_LENGTH_INLINE = 0b0000_0000;
@@ -160,9 +149,8 @@ public class BytecodeBitEncoding {
     public static final int ELEM_ITEM_LENGTH_U16 = 0b0100_0000;
     public static final int ELEM_ITEM_LENGTH_I32 = 0b0110_0000;
 
-    public static final int ELEM_ITEM_NULL_FLAG = 0b0001_0000;
-
-    public static final int ELEM_ITEM_INLINE_VALUE = 0b0000_1111;
+    public static final int ELEM_ITEM_INLINE_VALUE = 0b0001_1111;
+    public static final int ELEM_ITEM_MAX_INLINE_VALUE = ELEM_ITEM_INLINE_VALUE;
 
     // Code entries
 

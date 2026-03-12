@@ -49,6 +49,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -60,6 +61,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -83,19 +85,36 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         return runs;
     }
 
-    private void beginSourceSection(BasicInterpreterBuilder b, int start, int length) {
-        if (sourceRun.mode() == Mode.PREFIX) {
-            b.beginSourceSection(start, length);
+    private void beginSourceSection(BasicInterpreterBuilder b, int... args) {
+        if (args.length == 0) {
+            b.beginSourceSectionUnavailable();
+        } else if (sourceRun.mode() == Mode.PREFIX) {
+            switch (args.length) {
+                case 1 -> b.beginSourceSection(args[0]);
+                case 2 -> b.beginSourceSection(args[0], args[1]);
+                case 3 -> b.beginSourceSection(args[0], args[1], args[2]);
+                case 4 -> b.beginSourceSection(args[0], args[1], args[2], args[3]);
+                default -> throw new AssertionError("Unexpected argument count " + args.length);
+            }
         } else {
             b.beginSourceSection();
         }
     }
 
-    private void endSourceSection(BasicInterpreterBuilder b, int start, int length) {
-        if (sourceRun.mode() == Mode.PREFIX) {
+    private void endSourceSection(BasicInterpreterBuilder b, int... args) {
+        if (args.length == 0) {
+            b.endSourceSectionUnavailable();
+        } else if (sourceRun.mode() == Mode.PREFIX) {
             b.endSourceSection();
         } else {
-            b.endSourceSection(start, length);
+            switch (args.length) {
+                case 0 -> b.endSourceSectionUnavailable();
+                case 1 -> b.endSourceSection(args[0]);
+                case 2 -> b.endSourceSection(args[0], args[1]);
+                case 3 -> b.endSourceSection(args[0], args[1], args[2]);
+                case 4 -> b.endSourceSection(args[0], args[1], args[2], args[3]);
+                default -> throw new AssertionError("Unexpected argument count " + args.length);
+            }
         }
     }
 
@@ -250,6 +269,91 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
                         est("23456789", est("3456789", est("456789"))));
     }
 
+    /**
+     * Tests that nested roots get the expected source sections.
+     */
+    @Test
+    public void testNestedRootNodeSourceSectionSimple() {
+        Source source = Source.newBuilder("test", "0123456789", "test.test").build();
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(run, LANGUAGE, BytecodeConfig.WITH_SOURCE, b -> {
+            b.beginSource(source);
+            beginSourceSection(b, 0, 10);
+            beginSourceSection(b, 1, 9);
+            beginSourceSection(b, 2, 8);
+
+            b.beginRoot();
+            b.beginRoot();
+            b.endRoot();
+            b.endRoot();
+
+            endSourceSection(b, 2, 8);
+            endSourceSection(b, 1, 9);
+            endSourceSection(b, 0, 10);
+            b.endSource();
+        });
+        // All roots should observe the most specific source section.
+        for (BasicInterpreter root : nodes.getNodes()) {
+            assertSourceSection(root.getSourceSection(), source, 2, 8);
+        }
+    }
+
+    /**
+     * Comprehensive test for source sections with nested root nodes. For suffix sections, this test
+     * constructs a long patch list that spans multiple source sections of the current root and
+     * multiple nested roots, validating that they are all patched correctly.
+     */
+    @Test
+    public void testNestedRootNodeSourceSectionComprehensive() {
+        Source source = Source.newBuilder("test", "0123456789", "test.test").build();
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(run, LANGUAGE, BytecodeConfig.WITH_SOURCE, b -> {
+            b.beginSource(source);
+            beginSourceSection(b, 0, 10);
+            beginSourceSection(b, 1, 9);
+
+            b.beginRoot();
+            beginSourceSection(b, 2, 8);
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.beginRoot();
+            b.beginRoot();
+            b.endRoot().setName("C");
+            b.endRoot().setName("B");
+            b.endReturn();
+
+            b.beginRoot();
+            b.endRoot().setName("D");
+
+            b.beginBlock();
+            b.emitLabel(b.createLabel()); // force reachable
+            b.endBlock();
+
+            b.beginReturn();
+            b.emitLoadNull();
+            b.beginRoot();
+            b.endRoot().setName("E");
+            b.endReturn();
+
+            endSourceSection(b, 2, 8);
+            b.endRoot().setName("A");
+
+            endSourceSection(b, 1, 9);
+            endSourceSection(b, 0, 10);
+            b.endSource();
+        });
+        assertSourceSection(nodes.getNode(0).getSourceSection(), source, 1, 9);
+        AbstractInstructionTest.assertInstructions(nodes.getNode(0),
+                        "load.constant",
+                        "return",
+                        "load.null",
+                        "return");
+        List<Instruction> aInstructions = nodes.getNode(0).getBytecodeNode().getInstructionsAsList();
+        assertInstructionSourceSection(aInstructions.get(0), source, 2, 8);
+        assertInstructionSourceSection(aInstructions.get(2), source, 2, 8);
+        for (int i = 1; i < 5; i++) {
+            assertSourceSection(nodes.getNode(i).getSourceSection(), source, 2, 8);
+        }
+    }
+
     @Test
     public void testWithoutSource() {
         BasicInterpreter node = parseNode("source", b -> {
@@ -286,12 +390,35 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertNull(node.getBytecodeNode().getSourceInformationTree());
     }
 
-    @Test
-    public void testSourceUnavailable() {
+    public void doTestSourceSectionEncoding(int... args) {
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginSource(source);
-            beginSourceSection(b, -1, -1);
+            beginSourceSection(b, args);
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadConstant(1L);
+            b.endReturn();
+            b.endRoot();
+            endSourceSection(b, args);
+            b.endSource();
+        });
+        assertSourceSection(node.getSourceSection(), source, args);
+    }
+
+    @Test
+    public void testAllSourceSectionEncodings() {
+        doTestSourceSectionEncoding(1);
+        doTestSourceSectionEncoding(0, 8);
+        doTestSourceSectionEncoding(1, 1, 8);
+        doTestSourceSectionEncoding(1, 1, 1, 8);
+    }
+
+    private void doTestSourceSectionUnavailable(Consumer<BasicInterpreterBuilder> beginUnavailableSourceSection, Consumer<BasicInterpreterBuilder> endUnavailableSourceSection) {
+        Source source = Source.newBuilder("test", "return 1", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
+            b.beginSource(source);
+            beginUnavailableSourceSection.accept(b);
             b.beginRoot();
 
             b.beginReturn();
@@ -301,7 +428,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endReturn();
 
             b.endRoot();
-            endSourceSection(b, -1, -1);
+            endUnavailableSourceSection.accept(b);
             b.endSource();
         });
 
@@ -313,6 +440,57 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertTrue(!instructions.get(run.testTracer() ? 3 : 1).getSourceSection().isAvailable());
 
         assertSourceInformationTree(bytecode, ExpectedSourceTree.expectedSourceTreeUnavailable(est("1")));
+    }
+
+    @Test
+    public void testSourceSectionUnavailable() {
+        doTestSourceSectionUnavailable(b -> beginSourceSection(b), b -> endSourceSection(b));
+        doTestSourceSectionUnavailable(b -> beginSourceSection(b, -1), b -> endSourceSection(b, -1));
+        doTestSourceSectionUnavailable(b -> beginSourceSection(b, -1, -1), b -> endSourceSection(b, -1, -1));
+        doTestSourceSectionUnavailable(b -> beginSourceSection(b, -1, -1, -1), b -> endSourceSection(b, -1, -1, -1));
+        doTestSourceSectionUnavailable(b -> beginSourceSection(b, -1, -1, -1, -1), b -> endSourceSection(b, -1, -1, -1, -1));
+    }
+
+    private void doTestBadSourceSection(String invalidAttribute, Consumer<BasicInterpreterBuilder> beginBadSourceSection, Consumer<BasicInterpreterBuilder> endBadSourceSection) {
+        Source source = Source.newBuilder("test", "return 1", "test.test").build();
+        assertThrowsWithMessage("Invalid %s provided".formatted(invalidAttribute), IllegalArgumentException.class, () -> {
+            parseNodeWithSource("badSourceSection", b -> {
+                b.beginSource(source);
+                beginBadSourceSection.accept(b);
+                b.beginRoot();
+
+                b.endRoot();
+                endBadSourceSection.accept(b);
+                b.endSource();
+            });
+        });
+    }
+
+    @Test
+    public void testBadSourceSection() {
+        doTestBadSourceSection("line", b -> b.beginSourceSection(-2), b -> b.endSourceSection(-2));
+        doTestBadSourceSection("charIndex", b -> b.beginSourceSection(-2, 1), b -> b.endSourceSection(-2, 1));
+        doTestBadSourceSection("length", b -> b.beginSourceSection(0, -1), b -> b.endSourceSection(0, -1));
+        doTestBadSourceSection("startLine", b -> b.beginSourceSection(0, 1, 1), b -> b.endSourceSection(0, 1, 1));
+        doTestBadSourceSection("startColumn", b -> b.beginSourceSection(1, 0, 1), b -> b.endSourceSection(1, 0, 1));
+        doTestBadSourceSection("length", b -> b.beginSourceSection(1, 1, -1), b -> b.endSourceSection(1, 1, -1));
+        doTestBadSourceSection("startLine", b -> b.beginSourceSection(0, 1, 1, 1), b -> b.endSourceSection(0, 1, 1, 1));
+        doTestBadSourceSection("startColumn", b -> b.beginSourceSection(1, 0, 1, 1), b -> b.endSourceSection(1, 0, 1, 1));
+        doTestBadSourceSection("startColumn", b -> b.beginSourceSection(1, -2, 1, 1), b -> b.endSourceSection(1, -2, 1, 1));
+        doTestBadSourceSection("endLine", b -> b.beginSourceSection(1, 1, 0, 1), b -> b.endSourceSection(1, 1, 0, 1));
+        doTestBadSourceSection("endColumn", b -> b.beginSourceSection(1, 1, 1, 0), b -> b.endSourceSection(1, 1, 1, 0));
+        doTestBadSourceSection("endColumn", b -> b.beginSourceSection(1, 1, 1, -2), b -> b.endSourceSection(1, 1, 1, -2));
+        // -1 is a valid argument for columns if the source is CONTENT_NONE
+        Source source = Source.newBuilder("test", "", "test.test").content(Source.CONTENT_NONE).build();
+        parseNodeWithSource("acceptableSourceSection", b -> {
+            b.beginSource(source);
+            beginSourceSection(b, 1, -1, 1, -1);
+            b.beginRoot();
+
+            b.endRoot();
+            endSourceSection(b, 1, -1, 1, -1);
+            b.endSource();
+        });
     }
 
     @Test
@@ -1014,10 +1192,29 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertSourceSection(i.getLocation().getSourceLocation(), source, startIndex, length);
     }
 
-    private static void assertSourceSection(SourceSection section, Source source, int startIndex, int length) {
+    private static void assertSourceSection(SourceSection section, Source source, int... args) {
         assertSame(source, section.getSource());
-        assertEquals(startIndex, section.getCharIndex());
-        assertEquals(length, section.getCharLength());
+        switch (args.length) {
+            case 1 -> {
+                assertEquals(args[0], section.getStartLine());
+            }
+            case 2 -> {
+                assertEquals(args[0], section.getCharIndex());
+                assertEquals(args[1], section.getCharLength());
+            }
+            case 3 -> {
+                assertEquals(args[0], section.getStartLine());
+                assertEquals(args[1], section.getStartColumn());
+                assertEquals(args[2], section.getCharLength());
+            }
+            case 4 -> {
+                assertEquals(args[0], section.getStartLine());
+                assertEquals(args[1], section.getStartColumn());
+                assertEquals(args[2], section.getEndLine());
+                assertEquals(args[3], section.getEndColumn());
+            }
+            default -> throw new AssertionError("Unexpected argument length " + args.length);
+        }
     }
 
     private static void assertSourceSections(SourceSection[] sections, Source source, int... pairs) {

@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.diagnostic;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.sun.management.HotSpotDiagnosticMXBean;
 
 public final class HostedHeapDump {

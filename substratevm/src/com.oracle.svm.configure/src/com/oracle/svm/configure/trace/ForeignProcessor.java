@@ -32,7 +32,7 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ForeignConfiguration;
-import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.shared.util.LogUtils;
 
 import jdk.vm.ci.meta.MetaUtil;
 

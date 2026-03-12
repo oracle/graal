@@ -505,6 +505,10 @@ public class ObjectCopier {
             this.loader = loader;
         }
 
+        public Decoder(Class<?> clazz) {
+            this.loader = clazz.getClassLoader();
+        }
+
         public Class<?> loadClass(String className) {
             try {
                 return Class.forName(className, false, loader);

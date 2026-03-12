@@ -25,7 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.wasm.stack;
 
-import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.shared.util.ClassUtil;
 
 import jdk.vm.ci.meta.VMConstant;
 

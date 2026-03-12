@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,15 @@ import org.graalvm.jniutils.JNIEntryPoint;
 
 final class ForeignExceptionEndPoints {
 
+    private static final OutOfMemoryError OUT_OF_MEMORY = new OutOfMemoryError("Not enough memory in the host VM.") {
+
+        @Override
+        @SuppressWarnings("sync-override")
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+    };
+
     private ForeignExceptionEndPoints() {
     }
 
@@ -70,5 +79,10 @@ final class ForeignExceptionEndPoints {
     @JNIEntryPoint
     static Class<?> getStackOverflowErrorClass() {
         return StackOverflowError.class;
+    }
+
+    @JNIEntryPoint
+    static Throwable getOutOfMemoryError() {
+        return OUT_OF_MEMORY;
     }
 }

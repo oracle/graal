@@ -101,6 +101,15 @@ public final class StringConversion {
         this.toGuest = toGuest;
     }
 
+    static void checkConstants(int guestUTF16, int guestLATIN1) {
+        if (guestUTF16 != HostConstants.UTF16) {
+            throw EspressoError.shouldNotReachHere("UTF16 must match in host and guest (" + HostConstants.UTF16 + " vs " + guestUTF16 + ")");
+        }
+        if (guestLATIN1 != HostConstants.LATIN1) {
+            throw EspressoError.shouldNotReachHere("LATIN1 must match in host and guest (" + HostConstants.LATIN1 + " vs " + guestLATIN1 + ")");
+        }
+    }
+
     public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
         return fromGuest.extract(str, language, meta, maybeCopy) /*- Unpacks guest string into (bytes, hash, coder), copying if necessary. */
                         .toHost(toHost); /*- Repacks, taking care whether host has compact strings enabled. */
@@ -143,7 +152,16 @@ public final class StringConversion {
     }
 
     private static byte extractGuestCoder(Meta meta, StaticObject str) {
-        return meta.java_lang_String_coder.getByte(str);
+        var coderField = meta.java_lang_String_coder;
+        if (coderField == null) {
+            assert !meta.getJavaVersion().compactStringsEnabled();
+            return HostConstants.UTF16;
+        }
+        return coderField.getByte(str);
+    }
+
+    public static boolean isUTF16(Meta meta, StaticObject str) {
+        return extractGuestCoder(meta, str) == HostConstants.UTF16;
     }
 
     private static byte[] extractHostBytes(String str) {

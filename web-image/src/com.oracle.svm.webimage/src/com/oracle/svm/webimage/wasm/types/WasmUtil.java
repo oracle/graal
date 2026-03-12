@@ -30,7 +30,7 @@ import java.nio.ByteOrder;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.FloatStamp;

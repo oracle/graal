@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.webimage.name;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.webimage.JSNameGenerator;
 import com.oracle.svm.webimage.NamingConvention;
 
@@ -156,7 +156,7 @@ public final class WebImageNamingConvention implements NamingConvention {
 
         @Override
         public String identForType(ResolvedJavaType t) {
-            String name = t.getName();
+            String name = t.toClassName();
             /*
              * We prefix the reduced name with an underscore so that it can't conflict with one of
              * JavaScript's built-in objects.

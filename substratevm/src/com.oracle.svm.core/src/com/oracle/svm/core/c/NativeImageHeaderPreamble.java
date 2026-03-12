@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Provides access to a preamble for the C header file that is generated for the native image. This

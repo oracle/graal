@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.thirdparty.gson;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Optional;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-
-import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Support for the Gson library on SubstrateVM.
@@ -64,7 +64,27 @@ public final class GsonFeature implements Feature {
     private static void makeUnsafeReflectivelyAccessible(DuringAnalysisAccess a) {
         Class<?> unsafeClass = a.findClassByName("sun.misc.Unsafe");
         RuntimeReflection.register(unsafeClass);
-        RuntimeReflection.register(ReflectionUtil.lookupField(unsafeClass, "theUnsafe"));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(unsafeClass, "allocateInstance", Class.class));
+        RuntimeReflection.register(lookupField(unsafeClass, "theUnsafe"));
+        RuntimeReflection.register(lookupMethod(unsafeClass, "allocateInstance", Class.class));
+    }
+
+    private static Method lookupMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+        try {
+            Method result = declaringClass.getDeclaredMethod(methodName, parameterTypes);
+            result.setAccessible(true);
+            return result;
+        } catch (ReflectiveOperationException | LinkageError ex) {
+            throw new Error(ex);
+        }
+    }
+
+    private static Field lookupField(Class<?> declaringClass, String fieldName) {
+        try {
+            Field result = declaringClass.getDeclaredField(fieldName);
+            result.setAccessible(true);
+            return result;
+        } catch (ReflectiveOperationException ex) {
+            throw new Error(ex);
+        }
     }
 }

@@ -30,13 +30,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 import org.junit.Test;
 
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
-
-import jdk.graal.compiler.word.Word;
 
 public class NativeMemoryTrackingTests {
     private static final int K = 1024;

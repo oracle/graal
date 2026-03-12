@@ -58,7 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * and customization for pre-write and post-allocation initialization write behaviors.
  * <p>
  *
- * @see jdk.graal.compiler.core.common.memory.BarrierType
+ * @see BarrierType
  * @see jdk.graal.compiler.nodes.memory.FixedAccessNode
  * @see jdk.graal.compiler.nodes.java.AbstractNewObjectNode
  * @see jdk.graal.compiler.nodes.extended.ArrayRangeWrite

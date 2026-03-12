@@ -64,8 +64,6 @@ import com.google.javascript.jscomp.VariableRenamingPolicy;
 import com.google.javascript.rhino.StaticSourceFile;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.webimage.codegen.ClosureCompilerSupport;
@@ -73,6 +71,8 @@ import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.WebImageEntryFunctionLowerer;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Encapsulation for the optional Google Closure Compiler.
@@ -157,9 +157,9 @@ public class ClosureCompilerSupportImpl implements ClosureCompilerSupport {
         }
 
         if (!r.errors.isEmpty()) {
-            System.err.println("Errors:");
+            System.out.println("Errors:");
             for (JSError e : r.errors) {
-                System.err.println(e.toString());
+                System.out.println(e.toString());
             }
         }
 

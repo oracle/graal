@@ -201,11 +201,20 @@ class Runtime {
                 javaScriptNative: Symbol("__javascript_native__"),
 
                 /**
-                 * Key used to store a property value (inside a JavaScript object) that contains the Java-native object.
-                 *
-                 * Used by the JS annotation.
+                 * Key used by proxies around Java objects to extract the underlying Java object for internal processing.
                  */
                 javaNative: Symbol("__java_native__"),
+
+                /**
+                 * Property key that returns `true` when accessed on a proxy object, which proxies a native Java object.
+                 *
+                 * This property is advertised as an own property on the proxy (unlike `javaNative`) and can be looked
+                 * up using `Object.getOwnPropertyDescriptor`. Instead of directly trying to access `javaNative`, this
+                 * property should be looked up using `Object.getOwnPropertyDescriptor` first.
+                 * Frameworks like Vue may complain when accessing the `javaNative` property on arbitrary objects, using
+                 * `getOwnPropertyDescriptor` is a bit less intrusive and doesn't produce warnings in Vue.
+                 */
+                isProxy: Symbol("__is_java_proxy__"),
 
                 /**
                  * Key used to store the runtime-generated proxy handler inside the Java class.

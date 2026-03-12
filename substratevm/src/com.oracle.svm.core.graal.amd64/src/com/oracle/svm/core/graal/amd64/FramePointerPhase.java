@@ -27,7 +27,7 @@ package com.oracle.svm.core.graal.amd64;
 import java.util.ArrayList;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;

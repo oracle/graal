@@ -25,8 +25,8 @@
 package com.oracle.svm.core.methodhandles;
 
 import static com.oracle.svm.core.invoke.MethodHandleUtils.getResolvedMember;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
@@ -42,7 +42,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -56,11 +56,11 @@ import com.oracle.svm.core.hub.RuntimeClassLoading.WithRuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.UnsafeFieldUtil;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -142,7 +142,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             return -1L;
         }
         if (RuntimeClassLoading.isSupported() && self.resolved != null) {
-            return ((ResolvedJavaField) self.resolved).getOffset();
+            ResolvedJavaField field = (ResolvedJavaField) self.resolved;
+            int offset = field.getOffset();
+            if (offset < 0) {
+                throw new InternalError(field.format("Field %T.%n has no offset"));
+            }
+            return offset;
         }
         return UnsafeFieldUtil.getFieldOffset(SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class));
     }
@@ -160,7 +165,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             return -1L;
         }
         if (RuntimeClassLoading.isSupported() && self.resolved != null) {
-            return ((ResolvedJavaField) self.resolved).getOffset();
+            ResolvedJavaField field = (ResolvedJavaField) self.resolved;
+            int offset = field.getOffset();
+            if (offset < 0) {
+                throw new InternalError(field.format("Static field %T.%n has no offset"));
+            }
+            return offset;
         }
         return UnsafeFieldUtil.getFieldOffset(SubstrateUtil.cast(self.reflectAccess, Target_java_lang_reflect_Field.class));
     }

@@ -92,7 +92,7 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
             }
             assert stack.verify(meta, false);
             // Consume the stack.
-            meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, null, true);
+            meta.continuum.org_graalvm_continuations_ContinuationImpl_0frameRecord.setHiddenObject(self, null, true);
 
             // Try-with-resources generates a call to 'Throwable.addSuppressed()', which is
             // blocklisted by SVM.
@@ -107,7 +107,7 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
                 return false;
             } catch (UnwindContinuationException unwind) {
                 assert unwind.getContinuation() == self;
-                meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, unwind.head);
+                meta.continuum.org_graalvm_continuations_ContinuationImpl_0frameRecord.setHiddenObject(self, unwind.head);
                 // Allow reporting of stepping in this thread again. It was blocked by the call to
                 // suspend0()
                 tls.enableSingleStepping();
@@ -120,7 +120,7 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
         }
 
         private static HostFrameRecord getHFR(StaticObject self, Meta meta) {
-            return (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
+            return (HostFrameRecord) meta.continuum.org_graalvm_continuations_ContinuationImpl_0frameRecord.getHiddenObject(self, true);
         }
     }
 
@@ -154,7 +154,7 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
                 assert unwind.getContinuation() == self;
                 // Guest called suspend(). By the time we get here the frame info has been gathered
                 // up into host-side objects so we just need to copy the data into the guest world.
-                meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, unwind.head);
+                meta.continuum.org_graalvm_continuations_ContinuationImpl_0frameRecord.setHiddenObject(self, unwind.head);
                 // Allow reporting of stepping in this thread again. It was blocked by the call to
                 // suspend0()
                 tls.enableSingleStepping();
@@ -168,7 +168,7 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
 
     @Substitution(hasReceiver = true)
     static void materialize0(StaticObject self, @Inject Meta meta) {
-        HostFrameRecord hfr = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
+        HostFrameRecord hfr = (HostFrameRecord) meta.continuum.org_graalvm_continuations_ContinuationImpl_0frameRecord.getHiddenObject(self, true);
         if (hfr == null) {
             // no host frame to materialize
             return;
@@ -179,7 +179,7 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
         }
         StaticObject guestRecord = hfr.copyToGuest(meta);
         // If successful, we can clear the host record
-        meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, null, true);
+        meta.continuum.org_graalvm_continuations_ContinuationImpl_0frameRecord.setHiddenObject(self, null, true);
         meta.continuum.org_graalvm_continuations_ContinuationImpl_stackFrameHead.setObject(self, guestRecord);
     }
 
@@ -190,20 +190,20 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
             // no guest frame to dematerialize
             return;
         }
-        if (meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true) != null) {
+        if (meta.continuum.org_graalvm_continuations_ContinuationImpl_0frameRecord.getHiddenObject(self, true) != null) {
             throw meta.throwExceptionWithMessage(meta.continuum.org_graalvm_continuations_IllegalMaterializedRecordException,
                             "Somehow, both guest and host records are alive at the same time.");
         }
         HostFrameRecord hfr = HostFrameRecord.copyFromGuest(self, meta, context);
         // if successful, we can clear the guest side record
         meta.continuum.org_graalvm_continuations_ContinuationImpl_stackFrameHead.setObject(self, StaticObject.NULL);
-        meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, hfr, true);
+        meta.continuum.org_graalvm_continuations_ContinuationImpl_0frameRecord.setHiddenObject(self, hfr, true);
     }
 
     @Substitution(hasReceiver = true)
     @TruffleBoundary
     static @JavaType(StackTraceElement[].class) StaticObject getRecordedFrames0(StaticObject self, @Inject EspressoContext context, @Inject Meta meta) {
-        HostFrameRecord hfr = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
+        HostFrameRecord hfr = (HostFrameRecord) meta.continuum.org_graalvm_continuations_ContinuationImpl_0frameRecord.getHiddenObject(self, true);
         if (hfr == null) {
             // no frame to return.
             return StaticObject.NULL;

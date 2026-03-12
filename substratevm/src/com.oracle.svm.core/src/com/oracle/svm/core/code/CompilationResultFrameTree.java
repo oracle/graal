@@ -31,7 +31,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.SourceMapping;

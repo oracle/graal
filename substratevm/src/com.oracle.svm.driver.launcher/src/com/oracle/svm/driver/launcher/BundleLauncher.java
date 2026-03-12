@@ -408,7 +408,7 @@ public class BundleLauncher {
             }
         } catch (IOException e) {
             showMessage("Could not recursively delete path: " + toDelete);
-            e.printStackTrace();
+            e.printStackTrace(System.out);
         }
     }
 

@@ -62,12 +62,12 @@ import org.graalvm.collections.EconomicSet;
 
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSCodeGen;
 import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions.CompilerBackend;
 import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
+import com.oracle.svm.shared.option.HostedOptionValues;
 
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.options.OptionValues;

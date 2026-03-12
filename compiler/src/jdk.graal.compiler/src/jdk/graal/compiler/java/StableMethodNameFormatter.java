@@ -39,14 +39,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, String> {
 
     /**
-     * Separates method names and multi-method keys.
+     * Separates method names and method variant keys.
      *
      * For example, consider method {@code java.util.HashMap.size()}. A specialized variant of the
      * method may be created for different compilation scenarios. When a variant of the method is
      * created, it is named {@code java.util.HashMap.size%%key()}. The sequence after the separator
-     * ({@code "key"} in this case) is the multi-method key of the variant.
+     * ({@code "key"} in this case) is the method variant key.
      */
-    public static final String MULTI_METHOD_KEY_SEPARATOR = "%%";
+    public static final String METHOD_VARIANT_KEY_SEPARATOR = "%%";
 
     /**
      * The prefix of the unqualified name part of a hidden class name returned by

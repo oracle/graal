@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,30 +29,28 @@ import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.ANALY
 import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.HOSTED_METHODS;
 import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.HOSTED_TYPES;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.image.ImageHeapLayouter;
-import com.oracle.svm.webimage.wasm.types.WasmUtil;
-import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.webimage.api.JS;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.heap.BarrierSetProvider;
-import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.image.ImageHeapObjectSorter;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.ImageKindInfoSingleton;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.MainEntryPoint;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -72,7 +70,10 @@ import com.oracle.svm.hosted.webimage.logging.visualization.VisualizationSupport
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.annotation.WasmStartFunction;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmWebImage;
+import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.webimage.platform.WebImagePlatformConfigurationProvider;
+import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -80,7 +81,10 @@ import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class WebImageGenerator extends NativeImageGenerator {
     public static final String UNIVERSE_BUILD_SCOPE_NAME = "Universe-Build";
@@ -91,11 +95,11 @@ public class WebImageGenerator extends NativeImageGenerator {
     /**
      * This method becomes the main entry point for non-executable images (e.g. shared libraries).
      */
-    private final Method libraryInit;
+    private final ResolvedJavaMethod libraryInit;
 
     private AbstractImage.NativeImageKind imageKind;
 
-    public WebImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
+    public WebImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, MainEntryPoint mainEntryPoint, ProgressReporter reporter) {
         super(loader, optionProvider, mainEntryPoint, reporter);
 
         this.libraryInit = NativeImageWasmGeneratorRunner.getLibraryEntyPointMethod(loader);
@@ -107,7 +111,7 @@ public class WebImageGenerator extends NativeImageGenerator {
 
     @SuppressWarnings("try")
     @Override
-    protected void doRun(Map<Method, CEntryPointData> entryPoints,
+    protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints,
                     JavaMainWrapper.JavaMainSupport javaMainSupport, String imageName, AbstractImage.NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions) {
         OptionValues options = HostedOptionValues.singleton();
@@ -147,19 +151,20 @@ public class WebImageGenerator extends NativeImageGenerator {
          * For executable images, use the main entry point as provided by native image. Otherwise,
          * pass on the library initialization code as the main entry point.
          */
-        HostedMethod mainEntryPointMethod = hMetaAccess.lookupJavaMethod(k.isExecutable ? mainEntryPoint.getLeft() : libraryInit);
+        ResolvedJavaMethod method = k.isExecutable ? mainEntryPoint.method() : libraryInit;
+        HostedMethod mainEntryPointMethod = hUniverse.lookup(aUniverse.lookup(method));
         this.image = switch (WebImageOptions.getBackend()) {
-            // For now the WasmGC backend does not require its own specialized WebImage subclass and
-            // WasmWebImage has linear-memory specific code
-            case JS -> new WebImage(k, hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
-            case WASM, WASMGC -> new WasmWebImage(k, hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
+            case JS -> new WebImage(k, this.hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
+            case WASM, WASMGC -> new WasmWebImage(k, this.hUniverse, hMetaAccess, nativeLibraries, heap, heapLayout, codeCache, hostedEntryPoints, loader, mainEntryPointMethod);
         };
     }
 
     private static void setWebImageSystemProperties() {
         System.setProperty("svm.targetName", "Browser");
         System.setProperty("svm.targetArch", "ECMAScript 2015");
-        System.setProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
+        if (ImageLayerBuildingSupport.lastImageBuild()) {
+            ImageKindInfoSingleton.singleton().setImageKindInfoProperty(ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
+        }
     }
 
     @Override
@@ -170,23 +175,24 @@ public class WebImageGenerator extends NativeImageGenerator {
     }
 
     @Override
-    protected void registerEntryPoints(Map<Method, CEntryPointData> entryPoints) {
+    protected void registerEntryPoints(Map<ResolvedJavaMethod, CEntryPointData> entryPoints) {
         if (WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASM || WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASMGC) {
-            List<Method> startFunctions = loader.findAnnotatedMethods(WasmStartFunction.class);
+            List<ResolvedJavaMethod> startFunctions = loader.findAnnotatedResolvedJavaMethods(WasmStartFunction.class);
             GraalError.guarantee(startFunctions.size() <= 1, "Only a single start function must exist: %s", startFunctions);
 
             if (!startFunctions.isEmpty()) {
-                Method startFunction = startFunctions.getFirst();
-                GraalError.guarantee(Modifier.isStatic(startFunction.getModifiers()), "Start function %s.%s is not static.", startFunction.getDeclaringClass().getName(), startFunction.getName());
+                ResolvedJavaMethod startFunction = startFunctions.getFirst();
+                GraalError.guarantee(startFunction.isStatic(), "Start function %s.%s is not static.", startFunction.getDeclaringClass().toJavaName(), startFunction.getName());
 
-                GraalError.guarantee(startFunction.getParameterCount() == 0 && startFunction.getReturnType() == void.class, "Start function %s.%s must not have arguments or a return value.",
-                                startFunction.getDeclaringClass().getName(), startFunction.getName());
+                GraalError.guarantee(startFunction.getSignature().getParameterCount(false) == 0 && startFunction.getSignature().getReturnKind() == JavaKind.Void,
+                                "Start function %s.%s must not have arguments or a return value.",
+                                startFunction.getDeclaringClass().toJavaName(), startFunction.getName());
 
                 entryPoints.put(startFunction, null);
             }
 
-            for (Method m : loader.findAnnotatedMethods(WasmExport.class)) {
-                GraalError.guarantee(Modifier.isStatic(m.getModifiers()), "Exported method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().getName(), m.getName());
+            for (ResolvedJavaMethod m : loader.findAnnotatedResolvedJavaMethods(WasmExport.class)) {
+                GraalError.guarantee(m.isStatic(), "Exported method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().toJavaName(), m.getName());
                 entryPoints.put(m, null);
             }
         }
@@ -199,9 +205,9 @@ public class WebImageGenerator extends NativeImageGenerator {
             entryPoints.put(libraryInit, null);
         }
 
-        for (Class<?> c : loader.findAnnotatedClasses(JS.Export.class, false)) {
-            for (Method m : c.getDeclaredMethods()) {
-                if (Modifier.isAbstract(m.getModifiers())) {
+        for (ResolvedJavaType c : loader.findAnnotatedResolvedJavaTypes(JS.Export.class, false)) {
+            for (ResolvedJavaMethod m : c.getDeclaredMethods()) {
+                if (m.isAbstract()) {
                     entryPoints.put(m, null);
                 }
             }
@@ -209,9 +215,9 @@ public class WebImageGenerator extends NativeImageGenerator {
     }
 
     @Override
-    protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
+    protected void registerEntryPointStubs(Map<ResolvedJavaMethod, CEntryPointData> entryPoints) {
         entryPoints.forEach((method, entryPointData) -> {
-            bb.addRootMethod(method, true, "Entry point, registered in " + WebImageGenerator.class).registerAsNativeEntryPoint(new WebImageEntryPointData());
+            bb.addRootMethod(bb.getUniverse().lookup(method), true, "Entry point, registered in " + WebImageGenerator.class).registerAsNativeEntryPoint(new WebImageEntryPointData());
         });
     }
 
@@ -231,7 +237,8 @@ public class WebImageGenerator extends NativeImageGenerator {
 
     @Override
     protected ImageHeapLayoutInfo layoutNativeImageHeap(NativeImageHeap heap) {
-        return heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE, ImageHeapLayouter.ImageHeapLayouterCallback.NONE);
+        ImageHeapObjectSorter objectSorter = ImageSingletons.lookup(ImageHeapObjectSorter.class);
+        return heap.getLayouter().layout(heap, WasmUtil.PAGE_SIZE, objectSorter, ImageHeapLayouter.ImageHeapLayouterCallback.NONE);
     }
 
     @Override
@@ -240,7 +247,7 @@ public class WebImageGenerator extends NativeImageGenerator {
 
     @Override
     protected SubstrateTargetDescription createTarget() {
-        Architecture architecture = GraalAccess.getOriginalTarget().arch;
+        Architecture architecture = GuestAccess.get().getTarget().arch;
         return new SubstrateTargetDescription(architecture, false, 16, 0, null);
     }
 }

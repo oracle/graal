@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.replacements.classfile;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

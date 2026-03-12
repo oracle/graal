@@ -31,13 +31,13 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.core.option.OptionOrigin;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport.ExtendedOption;
 import com.oracle.svm.hosted.driver.LayerOptionsSupport.LayerOption;
-import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.shared.option.OptionOrigin;
+import com.oracle.svm.shared.option.OptionUtils;
+import com.oracle.svm.shared.util.LogUtils;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 

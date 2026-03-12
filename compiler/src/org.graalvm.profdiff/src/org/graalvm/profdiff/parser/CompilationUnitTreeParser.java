@@ -78,7 +78,7 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
     private static InliningTreeNode parseInliningTreeNode(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {
         String methodName = map.property(OptimizationLogImpl.METHOD_NAME_PROPERTY).asNullableString();
         if (methodName != null) {
-            methodName = Method.removeMultiMethodKey(methodName);
+            methodName = Method.removeMethodVariantKey(methodName);
         }
         int bci = map.property(OptimizationLogImpl.CALLSITE_BCI_PROPERTY).asInt();
         boolean positive = map.property(OptimizationLogImpl.INLINED_PROPERTY).asBoolean();
@@ -156,7 +156,7 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
                 if (!(cursor.getValue() instanceof Integer)) {
                     throw new ExperimentParserTypeError(experimentId, fileView.getSymbolicPath(), OptimizationLogImpl.POSITION_PROPERTY, Integer.class, cursor.getValue());
                 }
-                methodNames.add(Method.removeMultiMethodKey(cursor.getKey()));
+                methodNames.add(Method.removeMethodVariantKey(cursor.getKey()));
                 bcis.add((Integer) cursor.getValue());
             }
             position = Position.create(methodNames, bcis);

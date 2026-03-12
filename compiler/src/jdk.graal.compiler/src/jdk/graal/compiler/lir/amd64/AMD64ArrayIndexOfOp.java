@@ -659,7 +659,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         for (int i = 0; i < nVectorLoads; i++) {
             int base = i * nValues;
             for (int j = 0; j < (withMask || variant.isMatchRange() ? nValues / 2 : nValues); j++) {
-                emitArrayLoad(asm, vSize, vecArray[base + j], arrayPtr, index, getVectorOffset(nVectorLoads - (i + 1), j, vSize));
+                emitArrayLoad(asm, vSize, vecArray[base + j], arrayPtr, index, arrayIndexStride, getVectorOffset(nVectorLoads - (i + 1), j, vSize));
             }
         }
         switch (variant) {
@@ -845,8 +845,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
     }
 
     @SuppressWarnings("fallthrough")
-    private void emitArrayLoad(AMD64MacroAssembler asm, AVXSize targetVectorSize, Register vecDst, Register array, Register index, int displacement) {
-        AMD64Address src = new AMD64Address(array, index, arrayIndexStride, displacement);
+    static void emitArrayLoad(AMD64MacroAssembler asm, AVXSize targetVectorSize, Register vecDst, Register array, Register index, Stride stride, int displacement) {
+        AMD64Address src = new AMD64Address(array, index, stride, displacement);
         if (asm.supports(CPUFeature.AVX)) {
             switch (targetVectorSize) {
                 case DWORD:
@@ -884,7 +884,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static OperandSize getOpSize(Stride stride) {
+    static OperandSize getOpSize(Stride stride) {
         switch (stride) {
             case S1:
                 return OperandSize.BYTE;

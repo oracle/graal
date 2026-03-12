@@ -26,7 +26,7 @@ package com.oracle.svm.core.fieldvaluetransformer;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 /**
  * Creates a new instance by calling the no-args constructor of the original value's class.

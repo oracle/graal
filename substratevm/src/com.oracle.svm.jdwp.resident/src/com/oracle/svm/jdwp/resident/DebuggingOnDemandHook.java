@@ -25,7 +25,7 @@
 package com.oracle.svm.jdwp.resident;
 
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.jdwp.bridge.DebugOptions;
 

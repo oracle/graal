@@ -28,12 +28,12 @@ package com.oracle.svm.core.heap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Means for accessing object references, explicitly distinguishing between compressed and

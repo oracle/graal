@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.methodhandles;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -32,7 +32,7 @@ import java.lang.invoke.MethodHandles;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.RuntimeClassLoading.WithRuntimeClassLoading;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 /**
  * This is used in a special case of {@code BootstrapMethodInvoker.invoke} (See

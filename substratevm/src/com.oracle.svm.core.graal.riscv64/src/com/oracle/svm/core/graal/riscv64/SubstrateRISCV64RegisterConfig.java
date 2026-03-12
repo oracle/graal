@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.graal.riscv64;
 
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 import static jdk.vm.ci.riscv64.RISCV64.allRegisters;
 import static jdk.vm.ci.riscv64.RISCV64.f10;
 import static jdk.vm.ci.riscv64.RISCV64.f11;
@@ -84,7 +84,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;

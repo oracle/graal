@@ -26,7 +26,7 @@ package com.oracle.svm.hosted;
 
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;

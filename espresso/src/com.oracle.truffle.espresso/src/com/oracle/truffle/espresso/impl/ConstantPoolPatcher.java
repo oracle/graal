@@ -38,10 +38,10 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
+import com.oracle.truffle.espresso.libs.EspressoLibsFilter;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.LanguageFilter;
-import com.oracle.truffle.espresso.substitutions.libs.EspressoLibsFilter;
 
 public class ConstantPoolPatcher {
     private static final Map<Symbol<Type>, Patcher> patches = Map.ofEntries(

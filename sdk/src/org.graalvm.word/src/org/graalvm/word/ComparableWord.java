@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,7 @@ public interface ComparableWord extends WordBase {
      * Compares this word with the specified value.
      *
      * @param val value to which this word is to be compared.
-     * @return {@code this == val}
+     * @return {@code this.rawValue() == val.rawValue()}
      *
      * @since 19.0
      */
@@ -61,7 +61,7 @@ public interface ComparableWord extends WordBase {
      * Compares this word with the specified value.
      *
      * @param val value to which this word is to be compared.
-     * @return {@code this != val}
+     * @return {@code this.rawValue() != val.rawValue()}
      *
      * @since 19.0
      */

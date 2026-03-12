@@ -34,7 +34,7 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.BasedOnJDKClass;
+import com.oracle.svm.shared.util.BasedOnJDKClass;
 
 /**
  * Parses a string into a {@link MemoryLayout}. The syntax is as follows, modeled after

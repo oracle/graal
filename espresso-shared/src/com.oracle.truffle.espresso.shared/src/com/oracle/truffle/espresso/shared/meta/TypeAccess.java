@@ -68,7 +68,8 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
     C findLeastCommonAncestor(C other);
 
     /**
-     * Returns the superclass of this class, or {@code null} if this class is {@link Object}.
+     * Returns the superclass of this class, or {@code null} if this class is {@link Object}. For
+     * interface or array types, returns the type for {@link Object}.
      */
     C getSuperClass();
 

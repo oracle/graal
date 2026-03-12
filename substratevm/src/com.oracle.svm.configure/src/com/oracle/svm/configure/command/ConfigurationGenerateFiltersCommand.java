@@ -165,7 +165,7 @@ public final class ConfigurationGenerateFiltersCommand extends ConfigurationComm
                                                   specifies a file to which the output file is written.
                                                   If this parameter is not provided, the filter is
                                                   written to standard output.
-                        """.replaceAll("\n", System.lineSeparator());
+                        """.replace("\n", System.lineSeparator());
     }
 
     private static void printFilterToStream(ConfigurationFilter filter, OutputStream targetStream) throws IOException {

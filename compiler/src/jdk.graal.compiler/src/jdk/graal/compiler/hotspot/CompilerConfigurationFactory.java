@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.graal.compiler.core.common.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
+import static jdk.graal.compiler.options.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.ArrayList;
@@ -36,12 +36,12 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.Instrumentation;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.util.PhasePlan;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.EnumOptionKey;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;

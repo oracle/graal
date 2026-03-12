@@ -52,7 +52,7 @@ import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.c.function.CEntryPointActions;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
 

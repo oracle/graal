@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,11 @@ import jdk.vm.ci.meta.SpeculationLog;
  */
 @SuppressWarnings("deprecation")
 public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode implements ReplaceObserver {
+
+    /**
+     * Poll OSR compilation completion at the same interval as bytecode OSR.
+     */
+    private static final int OSR_POLL_INTERVAL = BytecodeOSRMetadata.OSR_POLL_INTERVAL;
 
     /**
      * If an OSR compilation is scheduled the corresponding call target is stored here.
@@ -213,21 +218,25 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
     private Object compilingLoop(VirtualFrame frame) {
         RepeatingNode loopBody = repeatingNode;
         long iterations = 0;
+        boolean pollCompilation = true;
         try {
             Object status;
             do {
-                OptimizedCallTarget target = compiledOSRLoop;
-                if (target == null) {
-                    return loopBody.initialLoopStatus();
-                }
-                if (!target.isSubmittedForCompilation()) {
-                    if (target.isValid()) {
-                        return callOSR(target, frame);
+                if (pollCompilation) {
+                    OptimizedCallTarget target = compiledOSRLoop;
+                    if (target == null) {
+                        return loopBody.initialLoopStatus();
                     }
-                    invalidateOSRTarget("OSR compilation failed or cancelled");
-                    return loopBody.initialLoopStatus();
+                    if (!target.isSubmittedForCompilation()) {
+                        if (target.isValid()) {
+                            return callOSR(target, frame);
+                        }
+                        invalidateOSRTarget("OSR compilation failed or cancelled");
+                        return loopBody.initialLoopStatus();
+                    }
                 }
                 iterations++;
+                pollCompilation = (iterations & (OSR_POLL_INTERVAL - 1)) == 0;
                 TruffleSafepoint.poll(this);
             } while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(frame)));
             return status;
@@ -385,7 +394,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
         @Override
         protected Object executeOSR(VirtualFrame frame) {
-            VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
+            VirtualFrame parentFrame = getFrame(frame);
             OptimizedOSRLoopNode loop = getLoopNode();
             RepeatingNode loopBody = loop.repeatingNode;
             Object status;
@@ -406,6 +415,11 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
                 }
             }
             return status;
+        }
+
+        @Override
+        protected final VirtualFrame getFrame(VirtualFrame frame) {
+            return clazz.cast(frame.getArguments()[0]);
         }
 
         @Override

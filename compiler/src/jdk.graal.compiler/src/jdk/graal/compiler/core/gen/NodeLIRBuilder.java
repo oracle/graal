@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import jdk.graal.compiler.lir.StandardOp;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 
@@ -65,6 +64,7 @@ import jdk.graal.compiler.lir.FullInfopointOp;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.StandardOp.JumpOp;
 import jdk.graal.compiler.lir.StandardOp.LabelOp;
 import jdk.graal.compiler.lir.SwitchStrategy;
@@ -95,6 +95,7 @@ import jdk.graal.compiler.nodes.LoweredCallTargetNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.PhiNode;
+import jdk.graal.compiler.nodes.ReadArgumentNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
@@ -643,7 +644,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                         callTarget.signature(), gen);
         frameMapBuilder.callsMethod(invokeCc);
 
-        Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());
+        Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments(), callTarget);
 
         LabelRef exceptionEdge = null;
         if (x instanceof InvokeWithExceptionNode) {
@@ -657,6 +658,12 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         if (isLegal(result)) {
             setResult(x.asNode(), gen.emitMove(result));
+        }
+
+        // Additional return values must be fetched immediately after the Invoke.
+        for (ReadArgumentNode readArgumentNode : x.asNode().usages().filter(ReadArgumentNode.class)) {
+            AllocatableValue allocatableValue = invokeCc.getArgument(readArgumentNode.getIndex());
+            setResult(readArgumentNode, gen.emitMove(allocatableValue));
         }
 
         if (x instanceof InvokeWithExceptionNode) {
@@ -692,6 +699,12 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             setResult(x.asNode(), result);
         }
 
+        // Additional return values must be fetched immediately after the foreign call.
+        for (ReadArgumentNode readArgumentNode : x.asNode().usages().filter(ReadArgumentNode.class)) {
+            AllocatableValue allocatableValue = linkage.getOutgoingCallingConvention().getArgument(readArgumentNode.getIndex());
+            setResult(readArgumentNode, gen.emitMove(allocatableValue));
+        }
+
         if (x instanceof WithExceptionNode) {
             gen.emitJump(getLIRBlock(((WithExceptionNode) x).next()));
         }
@@ -701,7 +714,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
+    public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments, @SuppressWarnings("unused") LoweredCallTargetNode callTargetNode) {
         // for each argument, load it into the correct location
         Value[] result = new Value[arguments.size()];
         int j = 0;

@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JByteArray;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JClass;
@@ -50,8 +51,6 @@ import com.oracle.svm.jdwp.bridge.nativebridge.NativeIsolate;
 import com.oracle.svm.jdwp.bridge.nativebridge.NativeIsolateThread;
 import com.oracle.svm.jdwp.bridge.nativebridge.NativeObjectHandles;
 
-import jdk.graal.compiler.word.Word;
-
 /* Checkout README.md before modifying */
 final class HSToNativeJDWPBridgeGen {
 
@@ -64,7 +63,7 @@ final class HSToNativeJDWPBridgeGen {
         private static final BinaryMarshaller<Packet> packetMarshaller;
         private static final BinaryMarshaller<StackFrame> stackFrameMarshaller;
         private static final BinaryMarshaller<Throwable> throwableMarshaller;
-        
+
         static  {
             JNIConfig config = JDWPJNIConfig.getInstance();
             packetMarshaller = config.lookupMarshaller(Packet.class);
@@ -75,7 +74,7 @@ final class HSToNativeJDWPBridgeGen {
         HSToNativeStartPoint(NativeIsolate isolate, long objectHandle) {
             super(isolate, objectHandle);
         }
-        
+
         @Override
         public void clearStepping(long threadId) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -87,7 +86,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public String currentWorkingDirectory() {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -99,7 +98,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public Packet dispatch(Packet packet) throws JDWPException {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -116,7 +115,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public int fieldRefIdToIndex(long fieldRefId) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -128,7 +127,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public long fieldRefIndexToId(int fieldRefIndex) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -140,7 +139,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public long getCurrentThis() {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -152,7 +151,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public String getSystemProperty(String key) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -164,7 +163,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public StackFrame[] getThreadFrames(long threadId) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -189,7 +188,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public int getThreadStatus(long threadId) throws JDWPException {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -201,7 +200,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public boolean isCurrentThreadVirtual() {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -213,7 +212,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public boolean isEventEnabled(long threadId, int eventKind) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -225,7 +224,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public int methodRefIdToIndex(long methodRefId) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -237,7 +236,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public long methodRefIndexToId(int methodRefIndex) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -249,7 +248,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public void setEventEnabled(long threadId, int eventKind, boolean enable) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -261,7 +260,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public void setStepping(long threadId, int depth, int size) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -273,7 +272,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public void setSteppingFromLocation(long threadId, int depth, int size, long methodId, int bci, int lineNumber) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -285,7 +284,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public void setThreadRequest(boolean start, boolean enable) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -297,7 +296,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public long threadResume(long suspendId) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -309,7 +308,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public long threadSuspend(long threadId) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -321,7 +320,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public void toggleBreakpoint(long methodId, int bci, boolean enable) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -333,7 +332,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public void toggleMethodEnterEvent(long clazzId, boolean enable) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -345,7 +344,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public void toggleMethodExitEvent(long clazzId, boolean enable) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -357,7 +356,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public int typeRefIdToIndex(long typeRefId) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -369,7 +368,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public long typeRefIndexToId(int typeRefIndex) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -381,7 +380,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public int[] typeStatus(long... typeIds) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -393,7 +392,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public void vmResume(long[] ignoredThreadIds) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -405,7 +404,7 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         @Override
         public long[] vmSuspend(long[] ignoredThreadIds) {
             NativeIsolateThread nativeIsolateThread = this.getIsolate().enter();
@@ -417,59 +416,59 @@ final class HSToNativeJDWPBridgeGen {
                 nativeIsolateThread.leave();
             }
         }
-        
+
         private static native void clearStepping0(long isolateThread, long objectId, long threadId);
-        
+
         private static native String currentWorkingDirectory0(long isolateThread, long objectId);
-        
+
         private static native byte[] dispatch0(long isolateThread, long objectId, byte[] marshalledData) throws JDWPException;
-        
+
         private static native int fieldRefIdToIndex0(long isolateThread, long objectId, long fieldRefId);
-        
+
         private static native long fieldRefIndexToId0(long isolateThread, long objectId, int fieldRefIndex);
-        
+
         private static native long getCurrentThis0(long isolateThread, long objectId);
-        
+
         private static native String getSystemProperty0(long isolateThread, long objectId, String key);
-        
+
         private static native byte[] getThreadFrames0(long isolateThread, long objectId, long threadId);
-        
+
         private static native int getThreadStatus0(long isolateThread, long objectId, long threadId) throws JDWPException;
-        
+
         private static native boolean isCurrentThreadVirtual0(long isolateThread, long objectId);
-        
+
         private static native boolean isEventEnabled0(long isolateThread, long objectId, long threadId, int eventKind);
-        
+
         private static native int methodRefIdToIndex0(long isolateThread, long objectId, long methodRefId);
-        
+
         private static native long methodRefIndexToId0(long isolateThread, long objectId, int methodRefIndex);
-        
+
         private static native void setEventEnabled0(long isolateThread, long objectId, long threadId, int eventKind, boolean enable);
-        
+
         private static native void setStepping0(long isolateThread, long objectId, long threadId, int depth, int size);
-        
+
         private static native void setSteppingFromLocation0(long isolateThread, long objectId, long threadId, int depth, int size, long methodId, int bci, int lineNumber);
-        
+
         private static native void setThreadRequest0(long isolateThread, long objectId, boolean start, boolean enable);
-        
+
         private static native long threadResume0(long isolateThread, long objectId, long suspendId);
-        
+
         private static native long threadSuspend0(long isolateThread, long objectId, long threadId);
-        
+
         private static native void toggleBreakpoint0(long isolateThread, long objectId, long methodId, int bci, boolean enable);
-        
+
         private static native void toggleMethodEnterEvent0(long isolateThread, long objectId, long clazzId, boolean enable);
-        
+
         private static native void toggleMethodExitEvent0(long isolateThread, long objectId, long clazzId, boolean enable);
-        
+
         private static native int typeRefIdToIndex0(long isolateThread, long objectId, long typeRefId);
-        
+
         private static native long typeRefIndexToId0(long isolateThread, long objectId, int typeRefIndex);
-        
+
         private static native int[] typeStatus0(long isolateThread, long objectId, long[] typeIds);
-        
+
         private static native void vmResume0(long isolateThread, long objectId, long[] ignoredThreadIds);
-        
+
         private static native long[] vmSuspend0(long isolateThread, long objectId, long[] ignoredThreadIds);
     }
 
@@ -485,7 +484,7 @@ final class HSToNativeJDWPBridgeGen {
             stackFrameMarshaller = config.lookupMarshaller(StackFrame.class);
             throwableMarshaller = config.lookupMarshaller(Throwable.class);
         }
-        
+
 
         @CEntryPoint(name = "Java_com_oracle_svm_jdwp_bridge_HSToNativeJDWPBridgeGen_00024HSToNativeStartPoint_clearStepping0", include = ResidentJDWPFeatureEnabled.class)
         @SuppressWarnings({"try", "unused"})

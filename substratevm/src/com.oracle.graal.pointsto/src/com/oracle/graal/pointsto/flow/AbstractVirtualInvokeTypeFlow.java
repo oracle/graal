@@ -38,7 +38,7 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
+import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -58,8 +58,8 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     @SuppressWarnings("unused") protected volatile Object invokeLocations;
 
     protected AbstractVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariant.MethodVariantKey callerMethodVariantKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMethodVariantKey);
     }
 
     protected AbstractVirtualInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractVirtualInvokeTypeFlow original) {

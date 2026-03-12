@@ -71,6 +71,7 @@ import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesMacroNode;
+import jdk.graal.compiler.replacements.nodes.IndexOfZeroMacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexMacroNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
@@ -288,7 +289,6 @@ public class TruffleInvocationPlugins {
                 return arrayUtilsIndexOf(b, JavaKind.Char, Stride.S2, ArrayIndexOfVariant.FindTwoConsecutive, array, fromIndex, maxIndex, v0, v1);
             }
         });
-
         r.register(new OptionalInlineOnlyInvocationPlugin("stubRegionEqualsS1", byte[].class, long.class, byte[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext graph, ResolvedJavaMethod targetMethod, Receiver receiver,
@@ -711,6 +711,15 @@ public class TruffleInvocationPlugins {
                     MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
                     b.addPush(JavaKind.Int,
                                     new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_16_FOREIGN_ENDIAN, inferLocationIdentity(isNative)));
+                    return true;
+                }
+            });
+        }
+        for (Stride stride : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
+            r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfZeroS" + stride.value, nodeType, long.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location, ValueNode array) {
+                    b.addPush(JavaKind.Long, new IndexOfZeroMacroNode(MacroNode.MacroParams.of(b, targetMethod, location, array), stride));
                     return true;
                 }
             });

@@ -27,10 +27,10 @@ package com.oracle.svm.core.jvmstat;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.impl.Word;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaKind;
 
 /**

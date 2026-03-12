@@ -30,7 +30,7 @@ import org.graalvm.webimage.api.JSValue;
 import org.graalvm.webimage.api.ThrownFromJavaScript;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.functionintrinsics.JSConversion;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;

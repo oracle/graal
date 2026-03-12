@@ -30,8 +30,8 @@ import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.internal.misc.Unsafe;
 
 /**

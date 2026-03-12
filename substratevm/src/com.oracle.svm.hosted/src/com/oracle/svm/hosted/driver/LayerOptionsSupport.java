@@ -28,9 +28,9 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.LayerArchiveSupport;
+import com.oracle.svm.shared.util.StringUtil;
+import com.oracle.svm.shared.util.VMError;
 
 public class LayerOptionsSupport extends IncludeOptionsSupport {
 
@@ -42,7 +42,7 @@ public class LayerOptionsSupport extends IncludeOptionsSupport {
             VMError.guarantee(!layerOptionValue.isEmpty());
             // Given an argument of form layer-file.nil,module=m1,package=p1
             // First get the list: [layer-file.nil, module=m1, package=p1]
-            return parse(List.of(SubstrateUtil.split(layerOptionValue, ",")));
+            return parse(List.of(StringUtil.split(layerOptionValue, ",")));
         }
 
         public static LayerOption parse(List<String> options) {

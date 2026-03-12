@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.option.OptionClassFilter;
+import com.oracle.svm.shared.option.OptionClassFilter;
 
 import jdk.graal.compiler.api.replacements.Fold;
 

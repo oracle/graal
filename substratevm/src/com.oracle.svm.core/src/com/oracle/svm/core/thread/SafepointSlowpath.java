@@ -28,7 +28,6 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.snippets.SafepointSnippets;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
@@ -41,7 +40,8 @@ import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTimer;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A safepoint check compares the value of the thread-local {@link SafepointCheckCounter} to 0. If
@@ -59,7 +59,7 @@ public class SafepointSlowpath {
     /*
      * For all safepoint-related foreign calls, we must assume that they kill the TLAB locations
      * because those might be modified by a GC. We ignore all other writes as those need to use
-     * volatile semantics anyways (to prevent normal race conditions). For performance reasons, we
+     * volatile semantics anyway (to prevent normal race conditions). For performance reasons, we
      * need to assume that recurring callbacks don't do any writes that interfere in a problematic
      * way with the read elimination that is done for the application (otherwise, we would have to
      * kill all memory locations at every safepoint).
@@ -67,25 +67,29 @@ public class SafepointSlowpath {
      * NOTE: all locations that are killed by safepoint slowpath calls must also be killed by most
      * other foreign calls because the call target may contain a safepoint.
      */
-    public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK = SnippetRuntime.findForeignCall(SafepointSlowpath.class,
-                    "enterSlowPathSafepointCheck", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK_CALLEE_SAVED_CCONV = SnippetRuntime.findForeignCall(SafepointSlowpath.class,
+                    "enterSlowPathSafepointCheckCalleeSavedCCONV", NO_SIDE_EFFECT);
+    static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK_REGULAR_CCONV = SnippetRuntime.findForeignCall(SafepointSlowpath.class,
+                    "enterSlowPathSafepointCheckRegularCCONV", NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS = SnippetRuntime.findForeignCall(SafepointSlowpath.class,
                     "enterSlowPathTransitionFromNativeToNewStatus", NO_SIDE_EFFECT);
     static final SubstrateForeignCallDescriptor SLOW_PATH_RUN_PENDING_ACTIONS = SnippetRuntime.findForeignCall(SafepointSlowpath.class,
                     "enterSlowPathRunPendingActions", NO_SIDE_EFFECT);
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
-                    ENTER_SLOW_PATH_SAFEPOINT_CHECK,
+                    ENTER_SLOW_PATH_SAFEPOINT_CHECK_CALLEE_SAVED_CCONV,
+                    ENTER_SLOW_PATH_SAFEPOINT_CHECK_REGULAR_CCONV,
                     ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS,
                     SLOW_PATH_RUN_PENDING_ACTIONS,
     };
 
     /**
      * Runs any {@link ActionOnTransitionToJavaSupport pending transition actions}.
-     *
+     * <p>
      * This method cannot use the {@link StubCallingConvention} with callee saved registers: the
      * reference map of the C call and this slow-path call must be the same. This is only guaranteed
      * when both the C call and the call to this slow path do not use callee saved registers.
+     * Otherwise, the reference map validation will fail at build-time.
      */
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     @Uninterruptible(reason = "Must not contain safepoint checks.")
@@ -97,7 +101,17 @@ public class SafepointSlowpath {
 
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     @Uninterruptible(reason = "Must not contain safepoint checks")
-    private static void enterSlowPathSafepointCheck() throws Throwable {
+    private static void enterSlowPathSafepointCheckCalleeSavedCCONV() throws Throwable {
+        slowPathSafepointCheck();
+    }
+
+    /**
+     * See {@link #enterSlowPathRunPendingActions} for more details on why this can't use the stub
+     * calling convention.
+     */
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    @Uninterruptible(reason = "Must not contain safepoint checks")
+    private static void enterSlowPathSafepointCheckRegularCCONV() throws Throwable {
         slowPathSafepointCheck();
     }
 
@@ -115,9 +129,8 @@ public class SafepointSlowpath {
     }
 
     /**
-     * This method cannot use the {@link StubCallingConvention} with callee saved registers: the
-     * reference map of the C call and this slow-path call must be the same. This is only guaranteed
-     * when both the C call and the call to this slow path do not use callee saved registers.
+     * See {@link #enterSlowPathRunPendingActions} for more details on why this can't use the stub
+     * calling convention.
      */
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Must not contain safepoint checks")
@@ -164,7 +177,7 @@ public class SafepointSlowpath {
             assert RecurringCallbackSupport.isCallbackUnsupportedOrTimerSuspended();
         } else {
             do {
-                if (Safepoint.singleton().isPendingOrInProgress() || ThreadSuspendSupport.isCurrentThreadSuspended()) {
+                if (Safepoint.singleton().isPendingOrInProgress() || ThreadSuspendSupport.shouldBlock()) {
                     freezeAtSafepoint(newStatus, callerHasJavaFrameAnchor);
                     assert StatusSupport.getStatusVolatile() == newStatus : "Transition to the new thread status must have been successful.";
                 }
@@ -250,13 +263,13 @@ public class SafepointSlowpath {
          * Release the mutex. This does not block, so it does not matter that we no longer have a
          * JavaFrameAnchor.
          */
-        VMThreads.THREAD_MUTEX.unlock();
+        VMThreads.SAFEPOINT_MUTEX.unlock();
     }
 
     @NeverInline("CFunctionPrologue and CFunctionEpilogue are placed around call to this function")
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     private static void notInlinedLockNoTransition() {
-        VMThreads.THREAD_MUTEX.lockNoTransition();
+        VMThreads.SAFEPOINT_MUTEX.lockNoTransition();
         ThreadSuspendSupport.blockCurrentThreadIfSuspended();
     }
 }

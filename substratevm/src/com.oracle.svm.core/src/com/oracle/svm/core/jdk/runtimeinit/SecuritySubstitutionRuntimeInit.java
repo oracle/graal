@@ -37,7 +37,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
@@ -167,7 +167,9 @@ final class Target_sun_security_jca_ProviderConfig {
                      */
                     if (debug != null) {
                         debug.println("Recursion loading provider: " + this);
-                        new Exception("Call trace").printStackTrace();
+                        // Checkstyle: allow System.err (for JDK compatibility)
+                        new Exception("Call trace").printStackTrace(System.err);
+                        // Checkstyle: disallow System.err
                     }
                     return null;
                 }

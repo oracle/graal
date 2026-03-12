@@ -59,6 +59,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.impl.LinkedKlassFieldLayout.HiddenField;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
@@ -68,6 +69,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe;
 
 /**
@@ -158,6 +160,9 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         return genericSignature;
     }
 
+    /**
+     * @see HiddenField
+     */
     public final boolean isHidden() {
         return linkedField.isHidden();
     }
@@ -223,16 +228,27 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         }
     }
 
-    public static Field getReflectiveFieldRoot(StaticObject seed, Meta meta) {
-        StaticObject curField = seed;
-        Field target = null;
-        while (target == null) {
-            target = (Field) meta.HIDDEN_FIELD_KEY.getHiddenObject(curField);
-            if (target == null) {
-                curField = meta.java_lang_reflect_Field_root.getObject(curField);
+    //@formatter:off
+    /// Gets the [Field] value associated with `reflectField`.
+    ///
+    /// ```
+    /// while (reflectField.0vmField == null) {
+    ///     reflectField = reflectField.root;
+    /// }
+    /// reflectField.0vmField
+    /// ```
+    //@formatter:on
+    public static Field getVMField(@JavaType(java.lang.reflect.Field.class) StaticObject reflectField, Meta meta) {
+        StaticObject curField = reflectField;
+        do {
+            Field target = (Field) meta.java_lang_reflect_Field_0vmField.getHiddenObject(curField);
+            if (target != null) {
+                return target;
             }
-        }
-        return target;
+            curField = meta.java_lang_reflect_Field_root.getObject(curField);
+        } while (StaticObject.notNull(curField));
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Could not find non-null Field.0vmField");
     }
 
     @Override
@@ -1046,8 +1062,8 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
                             /* signature */ meta.toGuestString(getGenericSignature()),
                             /* annotations */ runtimeVisibleAnnotations);
         }
-        meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, this);
-        meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        meta.java_lang_reflect_Field_0vmField.setHiddenObject(instance, this);
+        meta.java_lang_reflect_Field_0runtimeVisibleTypeAnnotations.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
         return instance;
     }
 
@@ -1110,6 +1126,8 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
                         ReadMember.OFFSET,
                         ReadMember.NAME,
                         ReadMember.TYPE,
+                        ReadMember.HOLDER,
+                        ReadMember.CONSTANT_VALUE_INDEX,
         };
         String[] invocableMembers = {
                         InvokeMember.READ,
@@ -1128,6 +1146,8 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         static final String OFFSET = "offset";
         static final String NAME = "name";
         static final String TYPE = "type";
+        static final String HOLDER = "holder";
+        static final String CONSTANT_VALUE_INDEX = "constantValueIndex";
 
         @Specialization(guards = "FLAGS.equals(member)")
         static int getFlags(Field receiver, @SuppressWarnings("unused") String member) {
@@ -1152,6 +1172,18 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         static String getType(Field receiver, @SuppressWarnings("unused") String member) {
             assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
             return receiver.getType().toString();
+        }
+
+        @Specialization(guards = "HOLDER.equals(member)")
+        static ObjectKlass holder(Field receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.getDeclaringKlass();
+        }
+
+        @Specialization(guards = "CONSTANT_VALUE_INDEX.equals(member)")
+        static int getConstantValueIndex(Field receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.getConstantValueIndex();
         }
 
         @Fallback

@@ -28,6 +28,8 @@ To update the documentation:
 A member from the GraalVM project team will review your PR and merge as appropriate.
 There is a CI pipeline which will pick up your change once merged to the master branch, and publish on the website.
 
+### Code of Conduct
+
 The GraalVM core and its projects are hosted in the Oracle organization on GitHub, so we except a contributor to abide by the [Contributor Covenant Code of Conduct](https://www.graalvm.org/community/conduct/).
 For more specific guidelines see [Contribute to GraalVM](https://www.graalvm.org/community/contributors/).
 

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCHeapWriter;
 
@@ -80,6 +81,10 @@ public class WasmGCPartition implements ImageHeapPartition {
         return isPseudo;
     }
 
+    public void sortObjects(ImageHeapObjectSorter sorter) {
+        sorter.sort(objects);
+    }
+
     public List<ImageHeapObject> getObjects() {
         return objects;
     }
@@ -101,7 +106,7 @@ public class WasmGCPartition implements ImageHeapPartition {
         return size;
     }
 
-    public void add(ImageHeapObject obj) {
+    public void assign(ImageHeapObject obj) {
         objects.add(obj);
         obj.setHeapPartition(this);
     }

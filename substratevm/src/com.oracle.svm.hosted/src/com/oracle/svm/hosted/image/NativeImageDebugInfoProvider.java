@@ -74,7 +74,6 @@ import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
@@ -98,8 +97,9 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.shared.util.ClassUtil;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -391,7 +391,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      */
     @Override
     protected Stream<Object> dataInfo() {
-        return heap.getObjects().stream().map(obj -> obj);
+        return heap.streamObjects().map(obj -> obj);
     }
 
     @Override
@@ -840,12 +840,12 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                  * EnumInfo should not reach here because it is no word base type. Create a pointer
                  * to a generic word type or void.
                  */
-                size = ConfigurationValues.getTarget().wordSize;
+                size = ConfigurationValues.getWordSize();
                 TypeEntry pointerToEntry = null;
 
                 // create a generic word type as base type or a void* if it is a pointer type
                 if (!nativeLibs.isPointerBase(type)) {
-                    int genericWordSize = ConfigurationValues.getTarget().wordSize;
+                    int genericWordSize = ConfigurationValues.getWordSize();
                     int genericWordBits = genericWordSize * 8;
                     String genericWordName = "uint" + genericWordBits + "_t";
                     long genericWordTypeSignature = getTypeSignature(genericWordName);

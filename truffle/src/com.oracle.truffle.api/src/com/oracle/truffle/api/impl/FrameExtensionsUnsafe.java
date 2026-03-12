@@ -150,4 +150,100 @@ final class FrameExtensionsUnsafe extends FrameExtensions {
     public void resetFrame(Frame frame) {
         ((FrameWithoutBoxing) frame).reset();
     }
+
+    @Override
+    public Object getObject(Frame frame, long slot) {
+        return ((FrameWithoutBoxing) frame).unsafeGetObject(slot);
+    }
+
+    @Override
+    public Object uncheckedGetObject(Frame frame, long slot) {
+        return ((FrameWithoutBoxing) frame).unsafeUncheckedGetObject(slot);
+    }
+
+    @Override
+    public void setObject(Frame frame, long slot, Object value) {
+        ((FrameWithoutBoxing) frame).unsafeSetObject(slot, value);
+    }
+
+    @Override
+    public void setInt(Frame frame, long slot, int value) {
+        ((FrameWithoutBoxing) frame).unsafeSetInt(slot, value);
+    }
+
+    @Override
+    public void setBoolean(Frame frame, long slot, boolean value) {
+        ((FrameWithoutBoxing) frame).unsafeSetBoolean(slot, value);
+    }
+
+    @Override
+    public void setByte(Frame frame, long slot, byte value) {
+        ((FrameWithoutBoxing) frame).unsafeSetByte(slot, value);
+    }
+
+    @Override
+    public void setLong(Frame frame, long slot, long value) {
+        ((FrameWithoutBoxing) frame).unsafeSetLong(slot, value);
+    }
+
+    @Override
+    public void setFloat(Frame frame, long slot, float value) {
+        ((FrameWithoutBoxing) frame).unsafeSetFloat(slot, value);
+    }
+
+    @Override
+    public void setDouble(Frame frame, long slot, double value) {
+        ((FrameWithoutBoxing) frame).unsafeSetDouble(slot, value);
+    }
+
+    @Override
+    public void copy(Frame frame, long srcSlot, long dstSlot) {
+        ((FrameWithoutBoxing) frame).unsafeCopy(srcSlot, dstSlot);
+    }
+
+    @Override
+    public void copyTo(Frame srcFrame, long srcOffset, Frame dstFrame, long dstOffset, long length) {
+        ((FrameWithoutBoxing) srcFrame).unsafeCopyTo(srcOffset, ((FrameWithoutBoxing) dstFrame), dstOffset, length);
+    }
+
+    @Override
+    public void clear(Frame frame, long slot) {
+        ((FrameWithoutBoxing) frame).unsafeClear(slot);
+    }
+
+    @Override
+    public boolean expectBoolean(Frame frame, long slot) throws UnexpectedResultException {
+        return ((FrameWithoutBoxing) frame).unsafeExpectBoolean(slot);
+    }
+
+    @Override
+    public byte expectByte(Frame frame, long slot) throws UnexpectedResultException {
+        return ((FrameWithoutBoxing) frame).unsafeExpectByte(slot);
+    }
+
+    @Override
+    public int expectInt(Frame frame, long slot) throws UnexpectedResultException {
+        return ((FrameWithoutBoxing) frame).unsafeExpectInt(slot);
+    }
+
+    @Override
+    public long expectLong(Frame frame, long slot) throws UnexpectedResultException {
+        return ((FrameWithoutBoxing) frame).unsafeExpectLong(slot);
+    }
+
+    @Override
+    public Object expectObject(Frame frame, long slot) throws UnexpectedResultException {
+        return ((FrameWithoutBoxing) frame).unsafeExpectObject(slot);
+    }
+
+    @Override
+    public float expectFloat(Frame frame, long slot) throws UnexpectedResultException {
+        return ((FrameWithoutBoxing) frame).unsafeExpectFloat(slot);
+    }
+
+    @Override
+    public double expectDouble(Frame frame, long slot) throws UnexpectedResultException {
+        return ((FrameWithoutBoxing) frame).unsafeExpectDouble(slot);
+    }
+
 }

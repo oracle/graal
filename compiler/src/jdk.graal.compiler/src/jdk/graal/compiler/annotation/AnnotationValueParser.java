@@ -33,7 +33,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;

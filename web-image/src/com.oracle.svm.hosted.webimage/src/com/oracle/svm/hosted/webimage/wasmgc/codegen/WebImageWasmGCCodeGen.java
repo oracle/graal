@@ -99,7 +99,7 @@ public class WebImageWasmGCCodeGen extends WebImageWasmCodeGen {
         for (Map.Entry<HostedMethod, String> entry : ((WebImageWasmGCCodeCache) codeCache).getExportedSingleAbstractMethods().entrySet()) {
             HostedMethod m = entry.getKey();
             String exportedName = entry.getValue();
-            module.addFunctionExport(getProviders().idFactory().forMethod(m), exportedName, "Single abstract method for " + m.getDeclaringClass().getName());
+            module.addFunctionExport(getProviders().idFactory().forMethod(m), exportedName, "Single abstract method for " + m.getDeclaringClass().toClassName());
         }
     }
 

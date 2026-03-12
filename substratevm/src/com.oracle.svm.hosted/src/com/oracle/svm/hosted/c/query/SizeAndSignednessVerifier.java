@@ -41,7 +41,7 @@ import com.oracle.svm.core.c.enums.CEnumMapLookup;
 import com.oracle.svm.core.c.enums.CEnumNoLookup;
 import com.oracle.svm.core.c.enums.CEnumRuntimeData;
 import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
@@ -53,8 +53,8 @@ import com.oracle.svm.hosted.c.info.SizableInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
+import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;

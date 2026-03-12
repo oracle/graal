@@ -481,7 +481,7 @@ public class PolyglotTypeMappings {
                 meta.java_lang_Throwable_depth.setInt(result, meta.java_lang_Throwable_depth.getInt(foreignException));
             }
             meta.java_lang_Throwable_stackTrace.setObject(result, StaticObject.NULL);
-            meta.HIDDEN_FRAMES.setHiddenObject(result, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
+            meta.java_lang_Throwable_0frames.setHiddenObject(result, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
 
             return result;
         }

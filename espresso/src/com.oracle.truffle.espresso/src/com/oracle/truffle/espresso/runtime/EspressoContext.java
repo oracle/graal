@@ -103,6 +103,8 @@ import com.oracle.truffle.espresso.libs.InformationLeak;
 import com.oracle.truffle.espresso.libs.JNU;
 import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
+import com.oracle.truffle.espresso.libs.libzip.LibZipState;
+import com.oracle.truffle.espresso.libs.libzip.PureJavaLibZipFilter;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
@@ -204,6 +206,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
 
     @CompilationFinal private TruffleIO truffleIO = null;
     @CompilationFinal private LibsState libsState = null;
+    @CompilationFinal private LibZipState libZipState = null;
     @CompilationFinal private LibsMeta libsMeta = null;
     @CompilationFinal private JNU jnu = null;
     @CompilationFinal private InformationLeak informationLeak = null;
@@ -333,10 +336,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
     }
 
     public void initializeContext() throws ContextPatchingException {
-        EspressoError.guarantee(getEnv().isNativeAccessAllowed(),
-                        "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
-                                        "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true). If you are attempting to pre-initialize " +
-                                        "an Espresso context, allow native access for pre-initialized languages through Truffle's image-build-time options.");
+        if (!getEnv().isNativeAccessAllowed()) {
+            getLogger().info("NativeAccess is not allowed. Functionality is limited (e.g. there is no access to LibAWT)!");
+        }
         assert !this.initialized;
         startupClockNanos = System.nanoTime();
 
@@ -406,6 +408,10 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
 
     public LibsState getLibsState() {
         return libsState;
+    }
+
+    public LibZipState getLibZipState() {
+        return libZipState;
     }
 
     public LibsMeta getLibsMeta() {
@@ -498,12 +504,16 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
 
             this.interpreterToVM = new InterpreterToVM(this);
             this.lazyCaches = new LazyContextCaches(this);
+            if (PureJavaLibZipFilter.INSTANCE.isValidFor(language)) {
+                this.libZipState = new LibZipState(meta);
+            }
             if (language.useEspressoLibs()) {
                 this.libsMeta = new LibsMeta(this);
                 this.libsState = new LibsState(this, libsMeta);
                 this.truffleIO = new TruffleIO(this);
                 this.informationLeak = new InformationLeak(this);
             }
+
             this.jnu = new JNU();
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
@@ -517,10 +527,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
                     initializeKnownClass(type);
                 }
             }
-
             if (meta.jdk_internal_misc_UnsafeConstants != null) {
                 initializeKnownClass(Types.jdk_internal_misc_UnsafeConstants);
-                UnsafeAccess.initializeGuestUnsafeConstants(meta);
+                UnsafeAccess.initializeGuestUnsafeConstants(meta, nativeAccess.nativeMemory());
             }
 
             // Create main thread as soon as Thread class is initialized.
@@ -585,9 +594,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             StaticObject outOfMemoryErrorInstance = meta.java_lang_OutOfMemoryError.allocateInstance(this);
 
             // Preemptively set stack trace.
-            meta.HIDDEN_FRAMES.setHiddenObject(stackOverflowErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_0frames.setHiddenObject(stackOverflowErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
             meta.java_lang_Throwable_backtrace.setObject(stackOverflowErrorInstance, stackOverflowErrorInstance);
-            meta.HIDDEN_FRAMES.setHiddenObject(outOfMemoryErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_0frames.setHiddenObject(outOfMemoryErrorInstance, VM.StackTrace.EMPTY_STACK_TRACE);
             meta.java_lang_Throwable_backtrace.setObject(outOfMemoryErrorInstance, outOfMemoryErrorInstance);
 
             this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance, meta);

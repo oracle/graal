@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,9 @@
  */
 package com.oracle.truffle.api.object;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.nativeimage.ImageInfo;
 
@@ -78,8 +79,15 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
 
     @CompilationFinal volatile AbstractAssumption finalAssumption;
 
-    private static final AtomicReferenceFieldUpdater<Location, AbstractAssumption> FINAL_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
-                    Location.class, AbstractAssumption.class, "finalAssumption");
+    private static final VarHandle FINAL_ASSUMPTION_UPDATER;
+
+    static {
+        try {
+            FINAL_ASSUMPTION_UPDATER = MethodHandles.lookup().findVarHandle(Location.class, "finalAssumption", AbstractAssumption.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 
     /**
      * Constructor for instance location.
@@ -208,6 +216,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
         DynamicObject receiver = unsafeNonNullCast(store);
         long idx = Integer.toUnsignedLong(index);
         FieldInfo field = this.field;
+        AbstractAssumption finalAssumption = CompilerDirectives.inCompiledCode() ? this.finalAssumption : null;
         if (this instanceof ObjectLocation objectLocation) {
             Object base;
             long offset;
@@ -215,11 +224,11 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
             if (field == null) {
                 base = getObjectArray(receiver, guard);
                 offset = computeObjectArrayOffset(idx);
-                value = UnsafeAccess.unsafeGetObject(base, offset, guard, this);
+                value = UnsafeAccess.unsafeGetFinalObject(base, offset, guard, this, expectedShape, finalAssumption);
             } else {
                 base = field.unsafeReceiverCast(receiver);
                 offset = field.offset();
-                value = UnsafeAccess.unsafeGetObject(base, offset, guard, this);
+                value = UnsafeAccess.unsafeGetFinalObject(base, offset, guard, this, expectedShape, finalAssumption);
             }
             return CompilerDirectives.inInterpreter() ? value : objectLocation.assumedTypeCast(value, guard);
         } else {
@@ -227,17 +236,17 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 Object array = getPrimitiveArray(receiver, guard);
                 long offset = computePrimitiveArrayOffset(idx);
                 if (isIntLocation()) {
-                    return UnsafeAccess.unsafeGetInt(array, offset, guard, this);
+                    return UnsafeAccess.unsafeGetFinalInt(array, offset, guard, this, expectedShape, finalAssumption);
                 } else if (isLongLocation()) {
-                    return UnsafeAccess.unsafeGetLong(array, offset, guard, this);
+                    return UnsafeAccess.unsafeGetFinalLong(array, offset, guard, this, expectedShape, finalAssumption);
                 } else if (isDoubleLocation()) {
-                    return UnsafeAccess.unsafeGetDouble(array, offset, guard, this);
+                    return UnsafeAccess.unsafeGetFinalDouble(array, offset, guard, this, expectedShape, finalAssumption);
                 } else {
                     return ((ConstantLocation) this).get(receiver, guard);
                 }
             } else {
                 Object base = field.unsafeReceiverCast(receiver);
-                long longValue = UnsafeAccess.unsafeGetLong(base, field.offset(), guard, this);
+                long longValue = UnsafeAccess.unsafeGetFinalLong(base, field.offset(), guard, this, expectedShape, finalAssumption);
                 if (this instanceof IntLocation) {
                     return (int) longValue;
                 } else if (this instanceof LongLocation) {
@@ -253,16 +262,18 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     /**
      * @see #getInternal(DynamicObject, Shape, boolean)
      */
+    @SuppressWarnings("hiding")
     final int getIntInternal(DynamicObject store, Shape expectedShape, boolean guard) throws UnexpectedResultException {
         DynamicObject receiver = unsafeNonNullCast(store);
+        AbstractAssumption finalAssumption = CompilerDirectives.inCompiledCode() ? this.finalAssumption : null;
         if (isIntLocation()) {
             if (field == null) {
                 Object array = getPrimitiveArray(receiver, guard);
                 long offset = getPrimitiveArrayOffset();
-                return UnsafeAccess.unsafeGetInt(array, offset, guard, this);
+                return UnsafeAccess.unsafeGetFinalInt(array, offset, guard, this, expectedShape, finalAssumption);
             } else {
                 Object base = field.unsafeReceiverCast(receiver);
-                long longValue = UnsafeAccess.unsafeGetLong(base, field.offset(), guard, this);
+                long longValue = UnsafeAccess.unsafeGetFinalLong(base, field.offset(), guard, this, expectedShape, finalAssumption);
                 return (int) longValue;
             }
         }
@@ -281,16 +292,18 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     /**
      * @see #getInternal(DynamicObject, Shape, boolean)
      */
+    @SuppressWarnings("hiding")
     final long getLongInternal(DynamicObject store, Shape expectedShape, boolean guard) throws UnexpectedResultException {
         DynamicObject receiver = unsafeNonNullCast(store);
+        AbstractAssumption finalAssumption = CompilerDirectives.inCompiledCode() ? this.finalAssumption : null;
         if (isLongLocation()) {
             if (field == null) {
                 Object array = getPrimitiveArray(receiver, guard);
                 long offset = getPrimitiveArrayOffset();
-                return UnsafeAccess.unsafeGetLong(array, offset, guard, this);
+                return UnsafeAccess.unsafeGetFinalLong(array, offset, guard, this, expectedShape, finalAssumption);
             } else {
                 Object base = field.unsafeReceiverCast(receiver);
-                return UnsafeAccess.unsafeGetLong(base, field.offset(), guard, this);
+                return UnsafeAccess.unsafeGetFinalLong(base, field.offset(), guard, this, expectedShape, finalAssumption);
             }
         }
         return getLongUnexpected(receiver, expectedShape, guard);
@@ -308,16 +321,18 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     /**
      * @see #getInternal(DynamicObject, Shape, boolean)
      */
+    @SuppressWarnings("hiding")
     final double getDoubleInternal(DynamicObject store, Shape expectedShape, boolean guard) throws UnexpectedResultException {
         DynamicObject receiver = unsafeNonNullCast(store);
+        AbstractAssumption finalAssumption = CompilerDirectives.inCompiledCode() ? this.finalAssumption : null;
         if (isDoubleLocation()) {
             if (field == null) {
                 Object array = getPrimitiveArray(receiver, guard);
                 long offset = getPrimitiveArrayOffset();
-                return UnsafeAccess.unsafeGetDouble(array, offset, guard, this);
+                return UnsafeAccess.unsafeGetFinalDouble(array, offset, guard, this, expectedShape, finalAssumption);
             } else {
                 Object base = field.unsafeReceiverCast(receiver);
-                long longValue = UnsafeAccess.unsafeGetLong(base, field.offset(), guard, this);
+                long longValue = UnsafeAccess.unsafeGetFinalLong(base, field.offset(), guard, this, expectedShape, finalAssumption);
                 return Double.longBitsToDouble(longValue);
             }
         }
@@ -930,7 +945,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
         AbstractAssumption assumption = lastAssumption;
         if (assumption == null) {
             while (!updater.compareAndSet(this, assumption, (AbstractAssumption) Assumption.NEVER_VALID)) {
-                assumption = updater.get(this);
+                assumption = (AbstractAssumption) updater.get(this);
                 if (assumption == Assumption.NEVER_VALID) {
                     break;
                 }
@@ -960,7 +975,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
             return newAssumption;
         } else {
             // if CAS failed, assumption is already initialized; cannot be null after that.
-            return Objects.requireNonNull(updater.get(this));
+            return Objects.requireNonNull((AbstractAssumption) updater.get(this));
         }
     }
 }

@@ -56,6 +56,7 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -254,10 +255,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         public boolean checkAssertions() {
             return true;
         }
-
-        public boolean shouldVerifyWordFactory(@SuppressWarnings("unused") ResolvedJavaMethod method) {
-            return true;
-        }
     }
 
     @Test
@@ -368,6 +365,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyUsageWithEquals(JavaType.class));
         verifiers.add(new VerifyUsageWithEquals(JavaMethod.class));
         verifiers.add(new VerifyUsageWithEquals(JavaField.class));
+        verifiers.add(new VerifyUsageWithEquals(JavaConstant.class));
         verifiers.add(new VerifyUsageWithEquals(LocationIdentity.class));
         verifiers.add(new VerifyUsageWithEquals(LIRKind.class));
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.class));
@@ -378,7 +376,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyDebugUsage());
         verifiers.add(new VerifyVirtualizableUsage());
         verifiers.add(new VerifyUpdateUsages());
-        verifiers.add(new VerifyWordFactoryUsage());
         verifiers.add(new VerifyBailoutUsage());
         verifiers.add(new VerifySystemPropertyUsage());
         verifiers.add(new VerifyInstanceOfUsage());
@@ -731,9 +728,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     private static void checkGraph(List<VerifyPhase<CoreProviders>> verifiers, HighTierContext context, StructuredGraph graph, InvariantsTool tool) {
         for (VerifyPhase<CoreProviders> verifier : verifiers) {
             if (verifier instanceof VerifyUsageWithEquals && !shouldVerifyEquals(graph.method())) {
-                continue;
-            }
-            if (verifier instanceof VerifyWordFactoryUsage && !tool.shouldVerifyWordFactory(graph.method())) {
                 continue;
             }
             verifier.apply(graph, context);

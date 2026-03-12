@@ -54,19 +54,15 @@ import java.nio.charset.StandardCharsets;
  */
 public final class TruffleVersions {
 
-    public static final int MIN_JDK_VERSION = 21;
-    public static final int MAX_JDK_VERSION = 29;
-    public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
-    public static final Version NEXT_VERSION_UPDATE = Version.create(29, 1);
+    public static final int MIN_JDK_VERSION = 25;
+    public static final int MAX_JDK_VERSION = 26;
+    public static final Version MIN_COMPILER_VERSION = Version.create(25, 1, 0);
+    public static final Version NEXT_VERSION_UPDATE = Version.create(25, 2);
     public static final Version TRUFFLE_API_VERSION;
     static {
         if (isVersionCheckEnabled()) {
-            InputStream in = TruffleVersions.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle/version");
-            if (in == null) {
-                throw new InternalError("Truffle API must have a version file.");
-            }
-            try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-                TRUFFLE_API_VERSION = Version.parse(r.readLine());
+            try {
+                TRUFFLE_API_VERSION = readTruffleAPIVersionImpl();
             } catch (IOException ioe) {
                 throw new InternalError(ioe);
             }
@@ -83,5 +79,43 @@ public final class TruffleVersions {
      */
     public static boolean isVersionCheckEnabled() {
         return !Boolean.getBoolean("polyglotimpl.DisableVersionChecks");
+    }
+
+    /**
+     * Returns the Truffle API version, reading it from the version resource if necessary.
+     *
+     * <p>
+     * Note that {@link #TRUFFLE_API_VERSION} is only initialized when version checks are
+     * {@link #isVersionCheckEnabled() enabled}, not to fail eagerly when the version resource is
+     * not available or cannot be read. This method always attempts to read the version, making it
+     * suitable for callers that need the version regardless of whether version checks are active.
+     * The result is cached after the first successful read.
+     *
+     * @return the Truffle API version, never {@code null}
+     * @throws IOException if the Truffle API version resource is missing or cannot be read
+     */
+    public static Version readTruffleAPIVersion() throws IOException {
+        Version result = cachedVersion;
+        if (result == null) {
+            if (TRUFFLE_API_VERSION != null) {
+                result = TRUFFLE_API_VERSION;
+            } else {
+                result = readTruffleAPIVersionImpl();
+            }
+            cachedVersion = result;
+        }
+        return result;
+    }
+
+    private static volatile Version cachedVersion;
+
+    private static Version readTruffleAPIVersionImpl() throws IOException {
+        InputStream in = TruffleVersions.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle/version");
+        if (in == null) {
+            throw new IOException("Truffle API must have a version file.");
+        }
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            return Version.parse(r.readLine());
+        }
     }
 }

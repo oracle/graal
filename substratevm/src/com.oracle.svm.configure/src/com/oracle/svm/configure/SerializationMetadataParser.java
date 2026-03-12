@@ -33,7 +33,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
-import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.shared.util.LogUtils;
 
 final class SerializationMetadataParser<C> extends SerializationConfigurationParser<C> {
 

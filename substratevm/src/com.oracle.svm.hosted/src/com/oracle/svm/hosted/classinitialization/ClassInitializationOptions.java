@@ -26,9 +26,9 @@ package com.oracle.svm.hosted.classinitialization;
 
 import java.util.function.Function;
 
-import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.APIOption;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.HostedOptionKey;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;

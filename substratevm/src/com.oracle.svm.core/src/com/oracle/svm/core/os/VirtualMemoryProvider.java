@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.os;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Primitive operations for low-level virtual memory management.

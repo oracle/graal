@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+23/src/hotspot/share/prims/jvmti.xml")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+11/src/hotspot/share/prims/jvmtiH.xsl")

@@ -124,7 +124,7 @@ public final class SLBytecodeSerialization {
     }
 
     public static BytecodeRootNodes<SLBytecodeRootNode> deserializeNodes(SLLanguage language, byte[] inputData) throws IOException {
-        Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(inputData));
+        Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(inputData));
         return BYTECODE.deserialize(language, BytecodeConfig.DEFAULT, input, (context, buffer) -> {
             byte tag;
             switch (tag = buffer.readByte()) {

@@ -30,7 +30,6 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
@@ -50,6 +49,7 @@ import jdk.graal.compiler.nodes.FrameState.StackState;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.internal.misc.Unsafe;

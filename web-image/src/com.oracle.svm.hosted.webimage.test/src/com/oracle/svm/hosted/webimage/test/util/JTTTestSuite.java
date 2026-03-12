@@ -51,12 +51,12 @@ import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
-import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.hosted.webimage.NativeImageWasmGeneratorRunner;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
-import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.shared.option.CommonOptionParser;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.ClassUtil;
 
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
@@ -67,7 +67,6 @@ import jdk.graal.compiler.test.AddExports;
 import jdk.vm.ci.common.JVMCIError;
 
 @AddExports({
-                "jdk.graal.compiler/jdk.graal.compiler.options",
                 "jdk.graal.compiler/jdk.graal.compiler.debug",
 })
 public abstract class JTTTestSuite {

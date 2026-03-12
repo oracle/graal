@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.runner.Description;
 import org.junit.runner.Request;
 
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.shared.util.ModuleSupport;
 
 public final class JUnitFeature implements Feature {
 
@@ -69,6 +69,7 @@ public final class JUnitFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         /* Open up builder to allow whitebox testing */
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, true, "org.graalvm.nativeimage.builder");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, true, "org.graalvm.nativeimage.shared");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, true, "jdk.graal.compiler");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, true, "jdk.internal.vm.ci");
         SVMJUnitRunner svmRunner = new SVMJUnitRunner(access);

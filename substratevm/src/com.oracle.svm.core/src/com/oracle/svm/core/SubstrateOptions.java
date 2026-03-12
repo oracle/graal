@@ -57,31 +57,30 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
-import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.APIOptionGroup;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.GCOptionValue;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.LayerVerifiedOption;
-import com.oracle.svm.core.option.LayerVerifiedOption.Kind;
-import com.oracle.svm.core.option.LayerVerifiedOption.Severity;
-import com.oracle.svm.core.option.OptionMigrationMessage;
-import com.oracle.svm.core.option.ReplacingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.option.APIOption;
+import com.oracle.svm.shared.option.APIOptionGroup;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.BundleMember;
+import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.option.LayerVerifiedOption;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Kind;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Severity;
+import com.oracle.svm.shared.option.OptionMigrationMessage;
+import com.oracle.svm.shared.option.ReplacingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
@@ -95,6 +94,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.CodeUtil;
 
 public class SubstrateOptions {
 
@@ -315,7 +315,7 @@ public class SubstrateOptions {
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
 
             if (newLevel == OptimizationLevel.SIZE) {
-                configureOs(values);
+                configureOptimizeForCodeSize(values, true, true);
             }
 
             if (optimizeValueUpdateHandler != null) {
@@ -325,19 +325,21 @@ public class SubstrateOptions {
         }
     };
 
-    public static void configureOs(EconomicMap<OptionKey<?>, Object> values) {
-        enableForOs(GraalOptions.ReduceCodeSize, values);
-        enableForOs(ReduceImplicitExceptionStackTraceInformation, values);
-        enableForOs(GraalOptions.OptimizeLongJumps, values);
+    public static void configureOptimizeForCodeSize(EconomicMap<OptionKey<?>, Object> values, boolean disableLoopOptimizations, boolean disablePEA) {
+        enable(GraalOptions.ReduceCodeSize, values);
+        enable(ReduceImplicitExceptionStackTraceInformation, values);
+        enable(GraalOptions.OptimizeLongJumps, values);
 
-        /*
-         * Remove all loop optimizations that can increase code size, i.e., duplicate a loop body
-         * somehow.
-         */
-        disableForOs(GraalOptions.LoopPeeling, values);
-        disableForOs(GraalOptions.LoopUnswitch, values);
-        disableForOs(GraalOptions.FullUnroll, values);
-        disableForOs(GraalOptions.PartialUnroll, values);
+        if (disableLoopOptimizations) {
+            /*
+             * Remove all loop optimizations that can increase code size, i.e., duplicate a loop
+             * body somehow.
+             */
+            disable(GraalOptions.LoopPeeling, values);
+            disable(GraalOptions.LoopUnswitch, values);
+            disable(GraalOptions.FullUnroll, values);
+            disable(GraalOptions.PartialUnroll, values);
+        }
 
         /*
          * Do not align code to further reduce code size.
@@ -347,17 +349,19 @@ public class SubstrateOptions {
         GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
         // We cannot check for architecture at the moment because ImageSingletons has not been
         // initialized yet
-        disableForOs(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
+        disable(AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, values);
 
-        /*
-         * Do not run PEA - it can fan out allocations too much.
-         */
-        disableForOs(GraalOptions.PartialEscapeAnalysis, values);
+        if (disablePEA) {
+            /*
+             * Do not run PEA - it can fan out allocations too much.
+             */
+            disable(GraalOptions.PartialEscapeAnalysis, values);
+        }
 
         /*
          * Do not fan out division.
          */
-        disableForOs(GraalOptions.OptimizeDiv, values);
+        disable(GraalOptions.OptimizeDiv, values);
 
         /*
          * Do more conditional elimination.
@@ -367,22 +371,22 @@ public class SubstrateOptions {
         /*
          * Every dead code elimination should be non-optional
          */
-        disableForOs(DeadCodeEliminationPhase.Options.ReduceDCE, values);
+        disable(DeadCodeEliminationPhase.Options.ReduceDCE, values);
     }
 
     /**
-     * Sets {@code key} to false in {@code values} as a consequence of {@code -Os} having been
-     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     * Sets {@code key} to false in {@code values}. This silently overrides any existing value for
+     * {@code key} in {@code values}.
      */
-    public static void disableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    public static void disable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, false);
     }
 
     /**
-     * Sets {@code key} to true in {@code values} as a consequence of {@code -Os} having been
-     * specified. This silently overrides any existing value for {@code key} in {@code values}.
+     * Sets {@code key} to true in {@code values}. This silently overrides any existing value for
+     * {@code key} in {@code values}.
      */
-    public static void enableForOs(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+    public static void enable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
         key.update(values, true);
     }
 
@@ -1144,12 +1148,7 @@ public class SubstrateOptions {
             if (values.containsKey(this)) {
                 return (Boolean) values.get(this);
             }
-            /*
-             * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an
-             * executable application layer is currently supported on Layered Images, the current
-             * solution is to enable this by default.
-             */
-            return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
+            return isExecutableHelper();
         }
 
         @Override
@@ -1228,7 +1227,7 @@ public class SubstrateOptions {
         /** Use {@link SubstrateOptions#getPageSize()} instead. */
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
-        protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
+        protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0, SubstrateOptions::validatePageSize);
 
         @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
@@ -1280,6 +1279,10 @@ public class SubstrateOptions {
             }
         });
 
+        /** Use {@link SubstrateOptions#isSignalHandlingAllowed()} instead. */
+        @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
+        public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, Immutable);
+
         /** Use {@link SubstrateOptions#useRistretto()} instead. */
         @Option(help = "Prepare native image to compile bytecodes at runtime.")//
         public static final HostedOptionKey<Boolean> GraalJITCompileAtRuntime = new HostedOptionKey<>(false, actualValue -> {
@@ -1296,27 +1299,6 @@ public class SubstrateOptions {
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
-
-    @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
-    public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, Immutable) {
-        @Override
-        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
-            if (values.containsKey(this)) {
-                return (Boolean) values.get(this);
-            }
-            /*
-             * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an
-             * executable application layer is currently supported on Layered Images, the current
-             * solution is to enable this by default.
-             */
-            return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
-        }
-
-        @Override
-        public Boolean getValue(OptionValues values) {
-            return getValueOrDefault(values.getMap());
-        }
-    };
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Determines if the system locale should be used at run-time. If this is disabled, the locale 'en-US' will be used instead.", stability = OptionStability.EXPERIMENTAL, type = Expert)//
@@ -1360,7 +1342,7 @@ public class SubstrateOptions {
         return getImagePath().resolve(reportsPath).toString();
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
     public static class ReportingSupport {
         Path reportsPath;
 
@@ -1368,6 +1350,12 @@ public class SubstrateOptions {
             this.reportsPath = reportingPath;
         }
     }
+
+    /**
+     * Minimum runtime page size for AMD64IndexOfZeroOp and AArch64IndexOfZeroOp. If we ever target
+     * a system with a smaller page size, this would need to be configurable.
+     */
+    public static final int MINIMUM_PAGE_SIZE = 4096;
 
     @Fold
     public static int getPageSize() {
@@ -1379,8 +1367,18 @@ public class SubstrateOptions {
              */
             return Math.max(64 * 1024, Unsafe.getUnsafe().pageSize());
         }
-        assert value > 0 : value;
+        VMError.guarantee(value >= MINIMUM_PAGE_SIZE && CodeUtil.isPowerOf2(value), "page size must be greater or equal to 4KB and a power of 2");
         return value;
+    }
+
+    private static void validatePageSize(HostedOptionKey<Integer> optionKey) {
+        int value = optionKey.getValue();
+        if (value == 0) {
+            return;
+        }
+        if (value < MINIMUM_PAGE_SIZE || !CodeUtil.isPowerOf2(value)) {
+            throw UserError.invalidOptionValue(ConcealedOptions.PageSize, value, "page size must be greater or equal to 4KB and a power of 2");
+        }
     }
 
     @Option(help = "Specifies how many details are printed for certain diagnostic thunks, e.g.: 'DumpThreads:1,DumpRegisters:2'. " +
@@ -1410,6 +1408,9 @@ public class SubstrateOptions {
     @APIOption(name = "configure-reflection-metadata", deprecated = "This option has no function anymore.")//
     @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert, deprecated = true)//
     public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
+
+    @Option(help = "Print a list of parsed metadata configuration files.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> ReportUsedMetadataFiles = new HostedOptionKey<>(false);
 
     @Option(help = "Include a list of methods included in the image for runtime inspection.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> IncludeMethodData = new HostedOptionKey<>(false);
@@ -1571,6 +1572,23 @@ public class SubstrateOptions {
         return InterfaceHashingMaxId.getValue();
     }
 
+    public static boolean isSignalHandlingAllowed() {
+        Boolean value = ConcealedOptions.EnableSignalHandling.getValue();
+        if (value != null) {
+            return value;
+        }
+        return isExecutableHelper();
+    }
+
+    /**
+     * When building the initial layer, it's impossible to know if the application layer will be an
+     * executable, or a shared library. For this reason, the exit handlers should always be
+     * installed in the initial layer and the decision to run it or not is delayed to run time.
+     */
+    private static boolean isExecutableHelper() {
+        return ImageLayerBuildingSupport.buildingInitialLayer() || ImageInfo.isExecutable();
+    }
+
     public static class TruffleStableOptions {
 
         @Option(help = "Automatically copy the necessary language resources to the resources directory next to the produced image.", type = User, stability = OptionStability.STABLE)//
@@ -1697,4 +1715,7 @@ public class SubstrateOptions {
         return ConcealedOptions.GraalJITCompileAtRuntime.getValue();
     }
 
+    @Option(type = Expert, help = "Support for continuations which are used by virtual threads. " +
+                    "If disabled, virtual threads can be started but each of them is backed by a platform thread.") //
+    public static final HostedOptionKey<Boolean> VMContinuations = new HostedOptionKey<>(true);
 }

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.heap.ReferenceInternals.getReferentFieldAddress;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -35,9 +35,10 @@ import java.lang.ref.SoftReference;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
@@ -47,8 +48,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UnsignedUtils;
-
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /** Discovers and handles {@link Reference} objects during garbage collection. */
 final class ReferenceObjectProcessing {
@@ -123,7 +123,7 @@ final class ReferenceObjectProcessing {
         Object refObject = referentAddr.toObjectNonNull();
         if (willSurviveThisCollection(refObject)) {
             // Either an object that got promoted without being moved or an object in the old gen.
-            RememberedSet.get().dirtyCardIfNecessary(dr, refObject, getReferentFieldAddress(dr));
+            RememberedSet.get().dirtyCardIfNecessaryInGC(dr, refObject, getReferentFieldAddress(dr));
             return;
         }
         if (!areAllSoftReferencesWeak() && dr instanceof SoftReference) {
@@ -188,7 +188,7 @@ final class ReferenceObjectProcessing {
     static void afterCollection(UnsignedWord freeBytes) {
         assert rememberedRefsList == null;
         UnsignedWord unused = freeBytes.unsignedDivide(1024 * 1024 /* MB */);
-        maxSoftRefAccessIntervalMs = unused.multiply(SerialGCOptions.SoftRefLRUPolicyMSPerMB.getValue());
+        maxSoftRefAccessIntervalMs = unused.multiply(SubstrateGCOptions.SoftRefLRUPolicyMSPerMB.getValue());
         ReferenceInternals.updateSoftReferenceClock();
         if (initialSoftRefClock == 0) {
             initialSoftRefClock = ReferenceInternals.getSoftReferenceClock();
@@ -205,6 +205,7 @@ final class ReferenceObjectProcessing {
         assert !HeapImpl.getHeapImpl().isInImageHeap(refPointer) : "Image heap referent: should not have been discovered";
 
         if (SerialGCOptions.useCompactingOldGen() && GCImpl.getGCImpl().isCompleteCollection()) {
+            // References have already been fixed up or nulled if the referent did not survive.
             assert refPointer.isNull() || !ObjectHeaderImpl.isPointerToForwardedObject(refPointer);
             return refPointer.isNonNull();
         }
@@ -215,7 +216,7 @@ final class ReferenceObjectProcessing {
         }
         Object refObject = refPointer.toObjectNonNull();
         if (willSurviveThisCollection(refObject)) {
-            RememberedSet.get().dirtyCardIfNecessary(dr, refObject, getReferentFieldAddress(dr));
+            RememberedSet.get().dirtyCardIfNecessaryInGC(dr, refObject, getReferentFieldAddress(dr));
             return true;
         }
         /*
@@ -243,9 +244,13 @@ final class ReferenceObjectProcessing {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean willSurviveThisCollection(Object obj) {
+        if (ObjectHeaderImpl.isMarked(obj)) {
+            // Note that marking is also used in copying collections for pinned objects.
+            return true;
+        }
         if (SerialGCOptions.useCompactingOldGen() && GCImpl.getGCImpl().isCompleteCollection()) {
-            // Only for discovery, during processing for enqueuing mark status is already cleared
-            return ObjectHeaderImpl.isMarked(obj);
+            // Note that when processing for enqueuing, mark status of objects is already cleared.
+            return false;
         }
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = HeapChunk.getSpace(chunk);

@@ -63,8 +63,14 @@ public final class Target_sun_nio_ch_Net {
     }
 
     @Substitution
-    public static boolean isIPv6Available0(@Inject InformationLeak iL, @Inject LibsState libsState) {
-        libsState.net.checkNetworkEnabled();
+    public static boolean isIPv6Available0(@Inject InformationLeak iL, @Inject EspressoContext context) {
+        /*
+         * This method is called in the static class initializer so we should not throw a
+         * SecurityException if SocketIO is not allowed.
+         */
+        if (!context.getEnv().isSocketIOAllowed()) {
+            return false;
+        }
         return iL.isIPv6Available();
     }
 
@@ -99,23 +105,38 @@ public final class Target_sun_nio_ch_Net {
     }
 
     @Substitution
-    public static int isExclusiveBindAvailable(@Inject InformationLeak iL, @Inject LibsState libsState) {
-        libsState.net.checkNetworkEnabled();
+    public static int isExclusiveBindAvailable(@Inject InformationLeak iL, @Inject EspressoContext context) {
+        /*
+         * This method is called in the static class initializer so we should not throw a
+         * SecurityException if SocketIO is not allowed.
+         */
+        if (!context.getEnv().isSocketIOAllowed()) {
+            return -1;
+        }
         return iL.isExclusiveBindAvailable();
     }
 
     @Substitution
-    public static boolean isReusePortAvailable0(@Inject InformationLeak iL, @Inject LibsState libsState) {
-        libsState.net.checkNetworkEnabled();
+    public static boolean isReusePortAvailable0(@Inject InformationLeak iL, @Inject EspressoContext context) {
+        /*
+         * This method is called in the static class initializer so we should not throw a
+         * SecurityException if SocketIO is not allowed.
+         */
+        if (!context.getEnv().isSocketIOAllowed()) {
+            return false;
+        }
         return iL.isReusePortAvailable0();
     }
 
     @Substitution
     public static int socket0(boolean preferIPv6, boolean stream, boolean reuse,
                     @SuppressWarnings("unused") boolean fastLoopback,
-                    @Inject TruffleIO io) {
-        // reuse also determines whether we are opening a server channel
-        // according to sun.nio.ch.Net.socket(java.net.ProtocolFamily,boolean)
+                    @Inject TruffleIO io, @Inject LibsState libsState) {
+        libsState.net.checkNetworkEnabled();
+        /*
+         * reuse also determines whether we are opening a server channel according to
+         * sun.nio.ch.Net.socket(java.net.ProtocolFamily,boolean)
+         */
         return io.openSocket(preferIPv6, stream, reuse, reuse);
     }
 
@@ -124,6 +145,7 @@ public final class Target_sun_nio_ch_Net {
     @TruffleBoundary
     public static int accept(@JavaType(FileDescriptor.class) StaticObject fd, @JavaType(FileDescriptor.class) StaticObject newfd, @JavaType(InetSocketAddress[].class) StaticObject isaa,
                     @Inject TruffleIO io, @Inject LibsState libsState, @Inject LibsMeta lMeta, @Inject EspressoContext ctx) {
+        libsState.net.checkNetworkEnabled();
         // accept connection & populate fd.
         SocketAddress[] clientSaArr = new SocketAddress[1];
         int retCode = io.accept(fd, FDAccess.forFileDescriptor(), newfd, clientSaArr);
@@ -161,6 +183,7 @@ public final class Target_sun_nio_ch_Net {
     public static int connect0(boolean preferIPv6, @JavaType(FileDescriptor.class) StaticObject fd,
                     @JavaType(InetAddress.class) StaticObject remote,
                     int remotePort, @Inject TruffleIO io, @Inject LibsState libsState) {
+        libsState.net.checkNetworkEnabled();
         InetAddress remoteAddress = libsState.net.fromGuestInetAddress(remote, preferIPv6);
         SocketAddress remoteSocket = new InetSocketAddress(remoteAddress, remotePort);
         return io.connect(fd, FDAccess.forFileDescriptor(), remoteSocket) ? 1 : io.ioStatusSync.UNAVAILABLE;
@@ -170,13 +193,15 @@ public final class Target_sun_nio_ch_Net {
     @Throws(IOException.class)
     @TruffleBoundary
     public static void shutdown(@JavaType(FileDescriptor.class) StaticObject fd, int how,
-                    @Inject TruffleIO io) {
+                    @Inject TruffleIO io, @Inject LibsState libsState) {
+        libsState.net.checkNetworkEnabled();
         io.shutdownSocketChannel(fd, FDAccess.forFileDescriptor(), how == io.netShutFlagsSync.SHUT_RDWR || how == io.netShutFlagsSync.SHUT_RD,
                         how == io.netShutFlagsSync.SHUT_WR || how == io.netShutFlagsSync.SHUT_RDWR);
     }
 
     @Substitution(languageFilter = VersionFilter.Java25OrLater.class)
     public static boolean shouldShutdownWriteBeforeClose0() {
+        // todo (GR-71965)
         // returns false on linux.
         return false;
     }
@@ -197,25 +222,29 @@ public final class Target_sun_nio_ch_Net {
          * useExclBind must be true. For any other host OS useExclBind will always be false and we
          * will propagate this to the guest by the aforementioned isExclusiveBindAvailable method.
          */
+        libsState.net.checkNetworkEnabled();
         io.bind(fd, FDAccess.forFileDescriptor(), preferIPv6, addr, port, libsState);
     }
 
     @Substitution
     @Throws(IOException.class)
     public static void listen(@JavaType(FileDescriptor.class) StaticObject fd, int backlog,
-                    @Inject TruffleIO io) {
+                    @Inject TruffleIO io, @Inject LibsState libsState) {
+        libsState.net.checkNetworkEnabled();
         io.listen(fd, FDAccess.forFileDescriptor(), backlog);
     }
 
     @Substitution
     @Throws(IOException.class)
-    public static @JavaType(InetAddress.class) StaticObject localInetAddress(@JavaType(FileDescriptor.class) StaticObject fd, @Inject TruffleIO io) {
+    public static @JavaType(InetAddress.class) StaticObject localInetAddress(@JavaType(FileDescriptor.class) StaticObject fd, @Inject TruffleIO io, @Inject LibsState libsState) {
+        libsState.net.checkNetworkEnabled();
         return io.getLocalAddress(fd, FDAccess.forFileDescriptor());
     }
 
     @Substitution
     @Throws(IOException.class)
-    public static int localPort(@JavaType(FileDescriptor.class) StaticObject fd, @Inject TruffleIO io) {
+    public static int localPort(@JavaType(FileDescriptor.class) StaticObject fd, @Inject TruffleIO io, @Inject LibsState libsState) {
+        libsState.net.checkNetworkEnabled();
         return io.getPort(fd, FDAccess.forFileDescriptor());
     }
 
@@ -225,7 +254,8 @@ public final class Target_sun_nio_ch_Net {
     @TruffleBoundary
     public static void setIntOption0(@JavaType(FileDescriptor.class) StaticObject fd, @SuppressWarnings("unused") boolean mayNeedConversion,
                     int level, int opt, int arg, @SuppressWarnings("unused") boolean isIPv6,
-                    @Inject EspressoContext ctx, @Inject TruffleIO io) {
+                    @Inject EspressoContext ctx, @Inject TruffleIO io, @Inject LibsState libsState) {
+        libsState.net.checkNetworkEnabled();
         // We set the option over the public NetworkChannel API, thus the low-level platform
         // specific arguments like mayNeedConversion and isIpv6 aren't needed
 
@@ -250,7 +280,8 @@ public final class Target_sun_nio_ch_Net {
     @TruffleBoundary
     public static int getIntOption0(@JavaType(FileDescriptor.class) StaticObject fd, @SuppressWarnings("unused") boolean mayNeedConversion,
                     int level, int opt,
-                    @Inject EspressoContext ctx, @Inject TruffleIO io) {
+                    @Inject EspressoContext ctx, @Inject TruffleIO io, @Inject LibsState libsState) {
+        libsState.net.checkNetworkEnabled();
         // We get the option over the public NetworkChannel API, thus the low-level platform
         // mayNeedConversion and isIpv6 aren't needed
 
@@ -276,7 +307,8 @@ public final class Target_sun_nio_ch_Net {
     }
 
     private static SocketOption<?> getSocketOption(int level, int opt, EspressoContext ctx) {
-        // GR-70147 todo: synchronize between host and guest
+        // todo (GR-70147): synchronize between host and guest
+        // be aware of GR-71965
         switch (level) {
             case 0:
                 switch (opt) {

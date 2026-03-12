@@ -28,12 +28,12 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.image.ImageHeapObject;
 
-import jdk.graal.compiler.word.Word;
 import sun.nio.ch.DirectBuffer;
 
 /** Chunk writer that uses the same methods as memory management during image runtime. */

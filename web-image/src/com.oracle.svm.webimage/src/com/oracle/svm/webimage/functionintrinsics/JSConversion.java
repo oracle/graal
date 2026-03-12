@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ import org.graalvm.webimage.api.JSUndefined;
 import org.graalvm.webimage.api.JSValue;
 import org.graalvm.webimage.api.ThrownFromJavaScript;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.JSExceptionSupport;
 import com.oracle.svm.webimage.JSNameGenerator;
 import com.oracle.svm.webimage.annotation.JSRawCall;
@@ -266,7 +266,7 @@ public abstract class JSConversion {
      * @return The underlying Java object or {@code null} if the object is not a proxy.
      */
     @JSRawCall
-    @JS("const javaNative = proxy[runtime.symbol.javaNative]; return javaNative === undefined ? null : javaNative;")
+    @JS("return conversion.unproxy(proxy);")
     public static native Object unproxy(Object proxy);
 
     // Constructors: JavaScript-to-Java converters.

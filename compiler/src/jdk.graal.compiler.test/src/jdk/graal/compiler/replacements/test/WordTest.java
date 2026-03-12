@@ -24,17 +24,18 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
+import org.graalvm.word.WordBase;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.Builder;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.word.Word;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordBase;
-import org.junit.Test;
 
 /**
  * Tests for the {@link Word} type.

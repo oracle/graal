@@ -25,6 +25,8 @@
 package org.graalvm.tools.insight.test;
 
 // @formatter:off // @replace regex='.*' replacement=''
+import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -250,6 +252,23 @@ public interface InsightAPI {
              * @since 1.0
              */
             <T> T iterateFrames(FramesIterator<T> it);
+
+            /** Returns additional attributes associated with this context.
+             * The actual arguments are <em>language and location</em> specific.
+             * Examples:
+             * <ul>
+             *   <li>In case of {@code reads: true} event, the attribute
+             * {@link ReadVariableTag#NAME} is available.</li>
+             *   <li>In case of {@code writes: true} event, the attribute
+             * {@link WriteVariableTag#NAME} is available</li>
+             * </ul>
+             *
+             * @return map of attributes or {@code null}
+             * @since 1.3
+             * @see OnConfig#reads
+             * @see OnConfig#writes
+             */
+            Map<String, Object> attributes();
         }
         void event(Context ctx, Map<String, Object> frame);
     }
@@ -274,6 +293,18 @@ public interface InsightAPI {
         public boolean expressions;
         public boolean statements;
         public boolean roots;
+        /** Enable Insight on local variable write locations. The {@link OnEventHandler.Context#attributes}
+         * shall then contain attribute named {@link WriteVariableTag#NAME}.
+         * @see OnEventHandler.Context#attributes
+         * @since 1.3
+         */
+        public boolean writes;
+        /** Enable insight on local variable reads locations. The {@link OnEventHandler.Context#attributes}
+         * shall then contain attribute named {@link ReadVariableTag#NAME}.
+         * @see OnEventHandler.Context#attributes
+         * @since 1.3
+         */
+        public boolean reads;
 
         /** String with a regular expression to match name of functions.
          * Prior to version 0.6 this had to be a

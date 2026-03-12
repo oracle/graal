@@ -40,13 +40,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 final class EspressoExternalSnippetReflectionProvider implements SnippetReflectionProvider {
     private final EspressoExternalVMAccess access;
-    private final Value byteArrayClass;
-    private final Value stringClass;
 
-    EspressoExternalSnippetReflectionProvider(EspressoExternalVMAccess access, EspressoExternalMetaAccessProvider metaAccess, EspressoExternalConstantReflectionProvider constantReflection) {
+    EspressoExternalSnippetReflectionProvider(EspressoExternalVMAccess access) {
         this.access = access;
-        byteArrayClass = constantReflection.asJavaClass(metaAccess.lookupJavaType(byte[].class)).getValue();
-        stringClass = constantReflection.asJavaClass(metaAccess.lookupJavaType(String.class)).getValue();
     }
 
     @Override
@@ -65,13 +61,13 @@ final class EspressoExternalSnippetReflectionProvider implements SnippetReflecti
         }
         Value value = objConstant.getValue();
         Value metaObject = value.getMetaObject();
-        if (stringClass.equals(metaObject)) {
+        if (access.java_lang_String_class.equals(metaObject)) {
             if (!type.isAssignableFrom(String.class)) {
                 return null;
             }
             return (T) value.asString();
         }
-        if (byteArrayClass.equals(metaObject)) {
+        if (access.byte_array_class.equals(metaObject)) {
             if (!type.isAssignableFrom(byte[].class)) {
                 return null;
             }
@@ -99,18 +95,18 @@ final class EspressoExternalSnippetReflectionProvider implements SnippetReflecti
     @Override
     public Class<?> originalClass(ResolvedJavaType type) {
         Objects.requireNonNull(type);
-        throw JVMCIError.shouldNotReachHere("Cannot extract class for external JVMCI");
+        throw JVMCIError.shouldNotReachHere("Cannot extract class for external JVMCI (" + type + ")");
     }
 
     @Override
     public Executable originalMethod(ResolvedJavaMethod method) {
         Objects.requireNonNull(method);
-        throw JVMCIError.shouldNotReachHere("Cannot extract method for external JVMCI");
+        throw JVMCIError.shouldNotReachHere("Cannot extract method for external JVMCI (" + method + ")");
     }
 
     @Override
     public Field originalField(ResolvedJavaField field) {
         Objects.requireNonNull(field);
-        throw JVMCIError.shouldNotReachHere("Cannot extract field for external JVMCI");
+        throw JVMCIError.shouldNotReachHere("Cannot extract field for external JVMCI (" + field + ")");
     }
 }

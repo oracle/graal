@@ -456,4 +456,9 @@ public class JsTests extends RegexTestBase {
         test(".*b(?!a_)", "", "_aabaaa_", 0, true, 0, 4);
         expectUnsupported(".*b(?!a_)", "", OPT_FORCE_LINEAR_EXECUTION);
     }
+
+    @Test
+    public void gr73305() {
+        expectUnsupported(String.format("(?<=(?:%s)*)b", "a".repeat(32768)));
+    }
 }

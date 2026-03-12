@@ -33,8 +33,7 @@ import com.oracle.svm.jdwp.bridge.jniutils.JNI.JClass;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JNIEnv;
 import com.oracle.svm.jdwp.bridge.jniutils.JNIExceptionWrapper;
 import com.oracle.svm.jdwp.bridge.jniutils.JNIUtil;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 /**
  * Support class for {@link JClass} lookup. JClass instances are cached as JNI globals. The cached

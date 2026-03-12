@@ -34,7 +34,7 @@ import java.nio.charset.CoderResult;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Buffers bytes written to it and decodes them back to characters.

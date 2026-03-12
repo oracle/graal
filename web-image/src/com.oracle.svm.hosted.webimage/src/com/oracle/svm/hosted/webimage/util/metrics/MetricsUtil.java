@@ -39,6 +39,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.svm.hosted.webimage.logging.LoggableMetric;
 import com.oracle.svm.hosted.webimage.logging.LoggerScope;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MetricKey;
 
 /**
@@ -64,8 +65,7 @@ public final class MetricsUtil {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            assert false : "Unexpected non-static field in a *MetricKeys class";
+            throw GraalError.shouldNotReachHere(e, "Error while retrieving static fields in " + clazz);
         }
         return metricKeys;
     }

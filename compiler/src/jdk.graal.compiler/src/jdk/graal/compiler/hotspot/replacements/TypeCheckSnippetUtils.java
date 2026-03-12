@@ -49,6 +49,8 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.util.Arrays;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.nodes.type.KlassPointerStamp;
 import jdk.graal.compiler.hotspot.stubs.LookUpSecondarySupersTableStub;
@@ -59,7 +61,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.TypeCheckHints;
 import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 

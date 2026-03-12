@@ -779,10 +779,10 @@ public class PolyglotGCTest {
 
     @Test
     public void testPreliminaryContextCollection() throws Exception {
-        // GR-57223: Test is very slow on polyglot isolate
-        TruffleTestAssumptions.assumeWeakEncapsulation();
         int numExecutionThreads = 20;
-        int numRepeats = 500;
+        // Reduce the repeat count for isolates to avoid spawning thousands of concurrent
+        // subprocesses.
+        int numRepeats = TruffleTestAssumptions.isIsolateEncapsulation() ? 5 : 500;
         ExecutorService threadPool = Executors.newFixedThreadPool(numExecutionThreads);
         try {
             for (int i = 0; i < numRepeats; i++) {
@@ -826,10 +826,10 @@ public class PolyglotGCTest {
 
     @Test
     public void testPreliminaryContextCollection2() throws Exception {
-        // GR-57223: Test is very slow on polyglot isolate
-        TruffleTestAssumptions.assumeWeakEncapsulation();
         int numExecutionThreads = 20;
-        int numRepeats = 500;
+        // Reduce the repeat count for isolates to avoid spawning thousands of concurrent
+        // subprocesses.
+        int numRepeats = TruffleTestAssumptions.isIsolateEncapsulation() ? 5 : 500;
         ExecutorService threadPool = Executors.newFixedThreadPool(numExecutionThreads);
         try {
             for (int i = 0; i < numRepeats; i++) {

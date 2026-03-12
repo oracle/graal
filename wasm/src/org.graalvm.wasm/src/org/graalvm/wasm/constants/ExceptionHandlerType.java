@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,22 @@
 
 package org.graalvm.wasm.constants;
 
+import org.graalvm.wasm.Assert;
+import org.graalvm.wasm.exception.Failure;
+
 public final class ExceptionHandlerType {
     public static final int CATCH = 0x00;
     public static final int CATCH_REF = 0x01;
     public static final int CATCH_ALL = 0x02;
     public static final int CATCH_ALL_REF = 0x03;
+
+    public static String toString(int type) {
+        return switch (type) {
+            case ExceptionHandlerType.CATCH -> "catch";
+            case ExceptionHandlerType.CATCH_REF -> "catch_ref";
+            case ExceptionHandlerType.CATCH_ALL -> "catch_all";
+            case ExceptionHandlerType.CATCH_ALL_REF -> "catch_all_ref";
+            default -> throw Assert.fail(Failure.MALFORMED_CATCH, "Invalid catch clause type: 0x%02X", type);
+        };
+    }
 }

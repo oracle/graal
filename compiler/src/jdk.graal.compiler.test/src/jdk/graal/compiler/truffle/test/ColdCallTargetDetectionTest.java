@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.truffle.test;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -35,8 +36,6 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.api.test.GCUtils;
-import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assume;
@@ -45,12 +44,14 @@ import org.junit.Test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
+import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 
 public class ColdCallTargetDetectionTest {
     private static final Pattern TARGET_NAME_PATTERN = Pattern.compile("ColdCallTargetDetection(\\d+)");
@@ -100,6 +101,7 @@ public class ColdCallTargetDetectionTest {
                             .option("engine.MultiTier", "false") //
                             .option("engine.SingleTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)) //
                             .option("engine.DynamicCompilationThresholds", "false") //
+                            .option("engine.TraversingQueueStaleTaskDelay", "0") //
                             .option("engine.CompilationFailureAction", "Silent") //
                             .option("engine.TraceCompilationDetails", "true").build()) {
                 Map<Integer, Source> sourceMap = new LinkedHashMap<>();
@@ -152,8 +154,11 @@ public class ColdCallTargetDetectionTest {
         AtomicInteger trialCounter = new AtomicInteger();
         do {
             SubprocessTestUtils.newBuilder(ColdCallTargetDetectionTest.class, test).//
-                            prefixVmOption("-XX:ReservedCodeCacheSize=" + codeCacheSize + "m", "-XX:NonNMethodCodeHeapSize=" + nonNmethodCodeHeapSize + "m").//
+                            failOnNonZeroExit(false).//
+                            prefixVmOption("-XX:ReservedCodeCacheSize=" + codeCacheSize + "m", "-XX:NonNMethodCodeHeapSize=" + nonNmethodCodeHeapSize + "m",
+                                            "-Dpolyglot.engine.TraversingQueueStaleTaskDelay=0").//
                             postfixVmOption("-Djdk.graal.CompilationFailureAction=Silent").//
+                            timeout(Duration.ofMinutes(10)).//
                             onExit((subprocess) -> {
                                 for (String line : subprocess.output) {
                                     if (line.contains(PROFILE_RESET_EVENT_STR)) {

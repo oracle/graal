@@ -245,7 +245,7 @@ class WasmGCConversion extends Conversion {
     }
 
     coerceJavaProxyToJavaScriptType(proxyHandler, proxy, tpe) {
-        const o = proxy[runtime.symbol.javaNative];
+        const o = this.unproxy(proxy);
         switch (tpe) {
             case "boolean":
                 // Due to Java booleans being numbers, the double-negation is necessary.

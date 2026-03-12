@@ -28,6 +28,9 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
@@ -39,8 +42,6 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * Zeros a chunk of memory.

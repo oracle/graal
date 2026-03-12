@@ -27,13 +27,14 @@ package com.oracle.svm.hosted.webimage.wasm.codegen;
 
 import java.util.List;
 
-import com.oracle.svm.core.BuildPhaseProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
@@ -45,7 +46,6 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.WebImageCodeCache;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
-import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.Data;
 import com.oracle.svm.hosted.webimage.wasm.ast.Export;
 import com.oracle.svm.hosted.webimage.wasm.ast.Global;
@@ -101,7 +101,7 @@ public class WebImageWasmLMCodeGen extends WebImageWasmCodeGen {
         int imageHeapSize = (int) heapLayout.getSize();
 
         EconomicMap<CGlobalData<?>, UnsignedWord> globalData = EconomicMap.create();
-        int memorySize = MemoryLayout.constructLayout(globalData, imageHeapSize, WebImageWasmOptions.StackSize.getValue());
+        int memorySize = MemoryLayout.constructLayout(globalData, imageHeapSize, getNumStackPages());
 
         processRelocations(heapSectionBuffer, heapStart, globalData);
         module.addActiveData(heapStart, heapSectionBuffer.getBackingArray());
@@ -110,6 +110,15 @@ public class WebImageWasmLMCodeGen extends WebImageWasmCodeGen {
         module.addExport(new Export(Export.Type.MEM, memId, "memory", "Main Memory"));
         // The memory size has to be given as a number of pages.
         module.setMemory(new Memory(memId, Limit.withoutMax(NumUtil.divideAndRoundUp(memorySize, WasmUtil.PAGE_SIZE)), null));
+    }
+
+    private static int getNumStackPages() {
+        long stackSize = SubstrateOptions.StackSize.getValue();
+        if (stackSize <= 0) {
+            return 16;
+        }
+
+        return NumUtil.divideAndRoundUp(NumUtil.safeToIntAE(stackSize), WasmUtil.PAGE_SIZE);
     }
 
     @Override

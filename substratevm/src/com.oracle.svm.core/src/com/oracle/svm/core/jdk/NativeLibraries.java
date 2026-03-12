@@ -31,16 +31,16 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.shared.util.StringUtil;
 
 /**
  * Base for holders of native libraries. The implemented methods provide different ways of loading a
@@ -116,7 +116,8 @@ public abstract class NativeLibraries {
              * case we effectively fall back to using only `usrPaths`.
              */
             sysPath = getImageDirectory();
-            String[] tokens = SubstrateUtil.split(System.getProperty("java.library.path", ""), File.pathSeparator);
+            String value = System.getProperty("java.library.path", "");
+            String[] tokens = StringUtil.split(value, File.pathSeparator);
             for (int i = 0; i < tokens.length; i++) {
                 if (tokens[i].isEmpty()) {
                     tokens[i] = ".";

@@ -71,7 +71,7 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
     private final PackageElement packageElement;
 
     private Name simpleName;
-    private final Name packageName;
+    private Name packageName;
     private Name qualifiedName;
 
     private final List<TypeMirror> implementsInterfaces = new ArrayList<>();
@@ -92,6 +92,11 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
         } else {
             this.packageName = CodeNames.of("default");
         }
+        this.qualifiedName = createQualifiedName();
+    }
+
+    public void setPackageName(Name packageName) {
+        this.packageName = packageName;
         this.qualifiedName = createQualifiedName();
     }
 

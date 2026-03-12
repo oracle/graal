@@ -25,7 +25,7 @@
  */
 package com.oracle.svm.core.jfr.logging;
 
-import com.oracle.svm.core.util.BasedOnJDKClass;
+import com.oracle.svm.shared.util.BasedOnJDKClass;
 
 /**
  * This enum contains all log tags that are in at least one {@link jdk.jfr.internal.LogTag}. This

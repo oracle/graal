@@ -62,6 +62,7 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -90,29 +91,29 @@ import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
-import com.oracle.svm.core.option.OptionOrigin;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.driver.LayerOptionsSupport;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
-import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.option.LocatableMultiOptionValue.ValueWithOrigin;
+import com.oracle.svm.shared.option.OptionOrigin;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.ClassUtil;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.StringUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.HostedModuleSupport;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionKey;
@@ -393,7 +394,7 @@ public final class NativeImageClassLoaderSupport {
                              The cause is one of the libraries on the classpath does not handle correctly when all elements are included in the image.
                             If this happens, please open an issue for the library whose field was containing forbidden types and correct the '--initialize-at-build-time' configuration for your build.
                             """
-                            .replaceAll("\n", System.lineSeparator())
+                            .replace("\n", System.lineSeparator())
                             .formatted(SubstrateOptionsParser.commandArgument(SubstrateOptions.Preserve, PreserveOptionsSupport.PRESERVE_ALL));
             LogUtils.warning(msg);
 
@@ -423,7 +424,7 @@ public final class NativeImageClassLoaderSupport {
             for (String fqn : loader.getClassModuleMap().keySet()) {
                 try {
                     var clazz = ((ClassLoader) loader).loadClass(fqn);
-                    imageClassLoader.registerType(GraalAccess.lookupType(clazz));
+                    imageClassLoader.registerType(GuestAccess.get().lookupType(clazz));
                 } catch (ClassNotFoundException e) {
                     throw GraalError.shouldNotReachHere(e, loader + " could not load class " + fqn);
                 }
@@ -441,7 +442,7 @@ public final class NativeImageClassLoaderSupport {
     private OptionValues parsedHostedOptions;
     private List<String> remainingArguments;
 
-    public void setupHostedOptionParser(List<String> arguments) {
+    public HostedOptionParser setupHostedOptionParser(List<String> arguments) {
         var optionParser = new HostedOptionParser(getClassLoader(), arguments);
         // Explicitly set the default value of Optimize as it can modify the default values of other
         // options
@@ -472,6 +473,7 @@ public final class NativeImageClassLoaderSupport {
             }
         }
         this.hostedOptionParser = optionParser;
+        return optionParser;
     }
 
     public HostedOptionParser getHostedOptionParser() {
@@ -620,7 +622,7 @@ public final class NativeImageClassLoaderSupport {
                 }
             }
         });
-        NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().stream().flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ","))).forEach(moduleName -> {
+        NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().stream().flatMap(m -> Arrays.stream(StringUtil.split(m, ","))).forEach(moduleName -> {
             if (ALL_UNNAMED.equals(moduleName)) {
                 ReflectionUtil.invokeMethod(implAddEnableNativeAccessToAllUnnamed, null);
             } else {
@@ -635,7 +637,9 @@ public final class NativeImageClassLoaderSupport {
      */
     private static void warn(String message) {
         // Checkstyle: Allow raw info or warning printing - begin
+        // Checkstyle: allow System.err (for JDK compatibility)
         System.err.println("WARNING: " + message);
+        // Checkstyle: disallow System.err
         // Checkstyle: Allow raw info or warning printing - end
     }
 
@@ -862,11 +866,6 @@ public final class NativeImageClassLoaderSupport {
         }
     }
 
-    static Optional<String> getMainClassFromModule(Object module) {
-        assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
-        return ((Module) module).getDescriptor().mainClass();
-    }
-
     private static UnmodifiableEconomicSet<Path> parseImageProvidedJarsProperty() {
         EconomicSet<Path> imageProvidedJars = EconomicSet.create();
         String args = System.getProperty(SharedConstants.IMAGE_PROVIDED_JARS_ENV_VARIABLE, "");
@@ -943,6 +942,7 @@ public final class NativeImageClassLoaderSupport {
                 }, 5, 1, TimeUnit.MINUTES);
 
                 var requiresInit = EconomicSet.create(List.of(
+                                "java.base",
                                 "jdk.internal.vm.ci",
                                 "jdk.graal.compiler",
                                 "com.oracle.graal.graal_enterprise",
@@ -960,7 +960,7 @@ public final class NativeImageClassLoaderSupport {
                                 .collect(Collectors.toSet());
                 requiresInit.addAll(additionalSystemModules);
 
-                Set<String> explicitlyAddedModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
+                Set<String> explicitlyAddedModules = HostedModuleSupport.parseModuleSetModifierProperty(HostedModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
 
                 for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
                     String moduleName = moduleReference.descriptor().name();
@@ -1006,11 +1006,34 @@ public final class NativeImageClassLoaderSupport {
             }
         }
 
+        /**
+         * Determines if {@code moduleReference} refers to a module that is visible to the guest
+         * context. This is a temporary measure for Terminus to limit scanning of classes to only
+         * those visible to the guest context when it differs from the host context.
+         */
+        private boolean isVisibleToGuest(ModuleReference moduleReference) {
+            if (imageClassLoader.vmAccess.getClass().getName().toLowerCase(Locale.ROOT).contains("host")) {
+                // Guest and host see the same paths
+                return true;
+            }
+            URI uri = moduleReference.location().get();
+            for (var jar : imageProvidedJars) {
+                if (jar.toUri().equals(uri)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void initModule(ModuleReference moduleReference, boolean moduleRequiresInit) {
             String moduleReferenceLocation = moduleReference.location().map(URI::toString).orElse("UnknownModuleReferenceLocation");
             currentlyProcessedEntry = moduleReferenceLocation;
             Optional<Module> optionalModule = findModule(moduleReference.descriptor().name());
             if (optionalModule.isEmpty()) {
+                return;
+            }
+
+            if (!isVisibleToGuest(moduleReference)) {
                 return;
             }
             try (ModuleReader moduleReader = moduleReference.open()) {
@@ -1238,7 +1261,7 @@ public final class NativeImageClassLoaderSupport {
                 type = imageClassLoader.typeForName(className);
             } catch (AssertionError error) {
                 VMError.shouldNotReachHere(error);
-            } catch (ClassNotFoundException | LinkageError t) {
+            } catch (ClassNotFoundException | SecurityException | LinkageError t) {
                 if (preserveReflectionMetadata) {
                     classNamesToPreserve.add(className);
                 }

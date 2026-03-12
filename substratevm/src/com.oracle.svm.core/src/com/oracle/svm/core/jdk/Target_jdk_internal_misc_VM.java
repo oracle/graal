@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.Map;
 
+import com.oracle.svm.core.JavaMainWrapper.ArgsSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -52,6 +53,15 @@ public final class Target_jdk_internal_misc_VM {
     @NeverInline("Starting a stack walk in the caller frame")
     public static ClassLoader latestUserDefinedLoader0() {
         return StackTraceUtils.latestUserDefinedClassLoader(KnownIntrinsics.readCallerStackPointer());
+    }
+
+    @Substitute
+    public static String[] getRuntimeArguments() {
+        /**
+         * This method is called by SourceLauncher to find arguments that the java launcher usually
+         * gives to the JVM rather than the application (--add-exports, --add-opens, etc).
+         */
+        return ArgsSupport.singleton().getInitialArgs();
     }
 
     /*

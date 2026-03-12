@@ -26,14 +26,20 @@
 
 package com.oracle.svm.test.jfr;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * Class to help run multiple threads executing some task.
  */
 public class Stressor {
-    public static void execute(int numberOfThreads, Runnable task) {
+    public static void execute(int numberOfThreads, Runnable task) throws Throwable {
         Thread[] threads = new Thread[numberOfThreads];
+        StoreUncaughtException[] uncaughtExceptions = new StoreUncaughtException[numberOfThreads];
+
         for (int i = 0; i < numberOfThreads; i++) {
             threads[i] = new Thread(task);
+            uncaughtExceptions[i] = new StoreUncaughtException();
+            threads[i].setUncaughtExceptionHandler(uncaughtExceptions[i]);
         }
 
         for (int i = 0; i < numberOfThreads; i++) {
@@ -43,9 +49,28 @@ public class Stressor {
         for (int i = 0; i < numberOfThreads; i++) {
             try {
                 threads[i].join();
+
+                /* Rethrow any uncaught exceptions. */
+                Throwable throwable = uncaughtExceptions[i].get();
+                if (throwable != null) {
+                    throw throwable;
+                }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    private static final class StoreUncaughtException implements Thread.UncaughtExceptionHandler {
+        private final AtomicReference<Throwable> throwable = new AtomicReference<>();
+
+        public Throwable get() {
+            return throwable.get();
+        }
+
+        @Override
+        public void uncaughtException(Thread t, Throwable e) {
+            this.throwable.set(e);
         }
     }
 }

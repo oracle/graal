@@ -156,6 +156,7 @@ final class PolyglotContextConfig {
         final ZoneId timeZone;
         final boolean allowValueSharing;
         final boolean useSystemExit;
+        final boolean allowExperimentalOptions;
 
         private PreinitConfig() {
             this(false);
@@ -170,6 +171,7 @@ final class PolyglotContextConfig {
             this.timeZone = null;
             this.allowValueSharing = true;
             this.useSystemExit = false;
+            this.allowExperimentalOptions = false;
         }
 
         /**
@@ -184,6 +186,7 @@ final class PolyglotContextConfig {
             this.timeZone = config.timeZone;
             this.allowValueSharing = config.allowValueSharing;
             this.useSystemExit = config.useSystemExit;
+            this.allowExperimentalOptions = config.allowExperimentalOptions;
         }
 
         /**
@@ -200,6 +203,7 @@ final class PolyglotContextConfig {
             this.timeZone = Objects.equals(prev.timeZone, config.timeZone) ? config.timeZone : DEFAULT.timeZone;
             this.allowValueSharing = prev.allowValueSharing == config.allowValueSharing ? config.allowValueSharing : DEFAULT.allowValueSharing;
             this.useSystemExit = prev.useSystemExit == config.useSystemExit ? config.useSystemExit : DEFAULT.useSystemExit;
+            this.allowExperimentalOptions = prev.allowExperimentalOptions == config.allowExperimentalOptions ? config.allowExperimentalOptions : DEFAULT.allowExperimentalOptions;
         }
 
         private static Map<String, String> computeCommonOptions(Map<String, String> options1, Map<String, String> options2) {
@@ -235,7 +239,7 @@ final class PolyglotContextConfig {
                         null,
                         false,
                         false,
-                        false,
+                        sharableConfig.allowExperimentalOptions,
                         null,
                         Collections.emptyMap(),
                         Collections.emptySet(),

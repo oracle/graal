@@ -33,14 +33,13 @@ import org.graalvm.nativeimage.c.CHeader;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.thread.VMThreads;
-
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 @CHeader(value = GraalIsolateHeader.class)
 public final class CEntryPointNativeFunctions {
@@ -179,8 +178,8 @@ public final class CEntryPointNativeFunctions {
                     THREAD_TERMINATION_NOTE,
     })
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
-    public static int tearDownIsolate(IsolateThread isolateThread) {
-        int result = CEntryPointActions.enter(isolateThread);
+    public static int tearDownIsolate(IsolateThread thread) {
+        int result = CEntryPointActions.enter(thread);
         if (result != 0) {
             return result;
         }
@@ -203,18 +202,13 @@ public final class CEntryPointNativeFunctions {
                     THREAD_TERMINATION_NOTE,
     })
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
-    public static int detachAllThreadsAndTearDownIsolate(IsolateThread isolateThread) {
-        int result = CEntryPointActions.enter(isolateThread);
+    public static int detachAllThreadsAndTearDownIsolate(IsolateThread thread) {
+        int result = CEntryPointActions.enter(thread);
         if (result != 0) {
             return result;
         }
-        detachAllThreadsAndTearDownIsolate0();
+        VMThreads.detachAllExternallyStartedThreadsWithoutCleanupForTearDown();
         return CEntryPointActions.leaveTearDownIsolate();
-    }
-
-    @Uninterruptible(reason = UNINTERRUPTIBLE_REASON, calleeMustBe = false)
-    private static void detachAllThreadsAndTearDownIsolate0() {
-        VMThreads.detachAllThreadsExceptCurrentWithoutCleanupForTearDown();
     }
 
     private CEntryPointNativeFunctions() {

@@ -143,7 +143,7 @@ final class InternalResourceCache {
                 synchronized (this) {
                     result = path;
                     if (result == null) {
-                        result = installResource((resource) -> EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> polyglotEngine.inEnginePreInitialization));
+                        result = installResource((resource) -> EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> polyglotEngine.inEnginePreInitialization, false));
                         path = result;
                     }
                 }
@@ -245,9 +245,9 @@ final class InternalResourceCache {
 
     private static InternalResource.Env createInternalResourceEnvReflectively(InternalResource resource) {
         try {
-            Constructor<InternalResource.Env> newEnv = InternalResource.Env.class.getDeclaredConstructor(InternalResource.class, BooleanSupplier.class);
+            Constructor<InternalResource.Env> newEnv = InternalResource.Env.class.getDeclaredConstructor(InternalResource.class, BooleanSupplier.class, boolean.class);
             newEnv.setAccessible(true);
-            return newEnv.newInstance(resource, (BooleanSupplier) () -> TruffleOptions.AOT);
+            return newEnv.newInstance(resource, (BooleanSupplier) () -> false, false);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("Failed to instantiate InternalResource.Env", e);
         }
@@ -260,7 +260,7 @@ final class InternalResourceCache {
         assert !ImageInfo.inImageRuntimeCode() || aggregatedFileListHash != null : "InternalResource#unpackFiles must not be called in the image execution time.";
         InternalResource resource = resourceFactory.get();
         InternalResource.Env env = resourceEnvProvider.apply(resource);
-        String versionHash = aggregatedFileListHash == null || env.inNativeImageBuild() ? resource.versionHash(env)
+        String versionHash = aggregatedFileListHash == null || ImageInfo.inImageBuildtimeCode() ? resource.versionHash(env)
                         : aggregatedFileListHash;
         if (versionHash.getBytes().length > 128) {
             throw new IOException("The version hash length is restricted to a maximum of 128 bytes.");
@@ -276,7 +276,7 @@ final class InternalResourceCache {
             }
             Path owner = Files.createDirectories(Objects.requireNonNull(parent));
             Path tmpDir = Files.createTempDirectory(owner, null);
-            if (aggregatedFileListResource == null || env.inNativeImageBuild()) {
+            if (aggregatedFileListResource == null || ImageInfo.inImageBuildtimeCode()) {
                 resource.unpackFiles(env, tmpDir);
             } else {
                 env.unpackResourceFiles(aggregatedFileListResource, tmpDir, Path.of("META-INF", "resources", sanitize(id), sanitize(resourceId)));
@@ -409,7 +409,7 @@ final class InternalResourceCache {
         unlink(root);
         Files.createDirectories(root);
         InternalResource resource = resourceFactory.get();
-        InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> false);
+        InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> false, true);
         resource.unpackFiles(env, root);
         if (isEmpty(root)) {
             Files.deleteIfExists(root);
@@ -453,7 +453,7 @@ final class InternalResourceCache {
         unlink(root);
         Files.createDirectories(root);
         InternalResource resource = resourceFactory.get();
-        InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> false);
+        InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> false, true);
         resource.unpackFiles(env, root);
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         StringBuilder fileList = new StringBuilder();

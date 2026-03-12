@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
-import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.shared.util.ClassUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalRuntime;

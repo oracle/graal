@@ -268,6 +268,21 @@ public class UnsafeNativeMemory implements NativeMemory {
         return buffer;
     }
 
+    @Override
+    public int addressSize() {
+        return UNSAFE.addressSize();
+    }
+
+    @Override
+    public long getAddress(long fromAddress) {
+        return UNSAFE.getAddress(fromAddress);
+    }
+
+    @Override
+    public void putAddress(long toAddress, long value) {
+        UNSAFE.putAddress(toAddress, value);
+    }
+
     @Collect(NativeMemory.class)
     public static final class Provider implements NativeMemory.Provider {
 

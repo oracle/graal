@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 
 package com.oracle.svm.webimage.hightiercodegen;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -101,21 +99,6 @@ public class Emitter implements IEmitter {
     public static Emitter of(ResolvedVar v) {
         Objects.requireNonNull(v);
         return new Emitter((t) -> t.getCodeBuffer().emitText(v.getName()));
-    }
-
-    public static Emitter of(Class<?> c) {
-        Objects.requireNonNull(c);
-        return new Emitter((t) -> t.genTypeName(c));
-    }
-
-    public static Emitter of(Method m) {
-        Objects.requireNonNull(m);
-        return new Emitter((t) -> t.genMethodName(m));
-    }
-
-    public static Emitter of(Field f) {
-        Objects.requireNonNull(f);
-        return new Emitter((t) -> t.genFieldName(f));
     }
 
     public static Emitter of(Integer i) {

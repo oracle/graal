@@ -1092,6 +1092,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         public static final SSEMROp MOVSD  = new SSEMROp("MOVSD",               P_0F, 0x11, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
 
         public static final SSEMROp MOVDQU = new SSEMROp("MOVDQU",              P_0F, 0x7F, PreferredNDS.NONE, OpAssertion.SingleAssertion);
+        public static final SSEMROp MOVUPD = new SSEMROp("MOVUPD", 0x66, P_0F, 0x11, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion);
         // @formatter:on
 
         private final PreferredNDS preferredNDS;
@@ -5789,8 +5790,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     public final void psllq(Register dst, Register shift) {
-        // Prefer AVX2 VPSLLVQ when available; fallback to SSE PSLLQ
-        simdOp(SSEOp.PSLLQ, OperandSize.PD, VexRVMOp.VPSLLVQ, AVXSize.XMM, dst, shift);
+        simdOp(SSEOp.PSLLQ, OperandSize.PD, VexShiftOp.VPSLLQ, AVXSize.XMM, dst, shift);
     }
 
     public final void psllq(Register dst, int imm8) {

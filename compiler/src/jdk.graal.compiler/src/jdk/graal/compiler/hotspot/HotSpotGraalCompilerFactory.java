@@ -29,10 +29,10 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import java.io.PrintStream;
 
 import jdk.graal.compiler.api.runtime.GraalRuntime;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;

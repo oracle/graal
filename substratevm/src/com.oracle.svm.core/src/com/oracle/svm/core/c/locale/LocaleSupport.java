@@ -24,38 +24,35 @@
  */
 package com.oracle.svm.core.c.locale;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.UserSystemProperty;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.nodes.PauseNode;
-import jdk.graal.compiler.word.Word;
 
 /**
  * The locale is a process-wide setting. This class uses {@link LocaleCHelper C code} to initialize
@@ -71,11 +68,10 @@ import jdk.graal.compiler.word.Word;
  * Note that the JavaDoc of {@link java.util.Locale} explains commonly used terms such as script,
  * display, format, variant, and extensions.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LocaleSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LocaleSupport.LayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 @AutomaticallyRegisteredImageSingleton
 public class LocaleSupport {
     private static final String LOCALE = "locale";
-
     private static final CGlobalData<Pointer> STATE = CGlobalDataFactory.createWord(State.UNINITIALIZED);
 
     private LocaleData locale;
@@ -90,6 +86,7 @@ public class LocaleSupport {
         return LibC.isSupported() && SubstrateOptions.UseSystemLocale.getValue();
     }
 
+    /** Called once per isolate. Only the first invocation executes the C++ code. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void initialize() {
         if (!isSystemSpecificLocaleSupported()) {
@@ -97,24 +94,19 @@ public class LocaleSupport {
         }
 
         Pointer statePtr = STATE.get();
-        UnsignedWord value = statePtr.compareAndSwapWord(0, State.UNINITIALIZED, State.INITIALIZING, LocationIdentity.ANY_LOCATION);
-        if (value == State.UNINITIALIZED) {
+        if (statePtr.readWord(0) == State.UNINITIALIZED) {
             int result = LocaleCHelper.initializeLocale();
             if (result == LocaleCHelper.SVM_LOCALE_INITIALIZATION_SUCCEEDED()) {
-                statePtr.writeWordVolatile(0, State.SUCCESS);
+                statePtr.writeWord(0, State.SUCCESS);
             } else if (result == LocaleCHelper.SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY()) {
-                statePtr.writeWordVolatile(0, State.OUT_OF_MEMORY);
+                statePtr.writeWord(0, State.OUT_OF_MEMORY);
             } else {
                 throw VMError.shouldNotReachHere("LocaleCHelper.initializeLocale() returned an unexpected result.");
-            }
-        } else {
-            while (value == State.INITIALIZING) {
-                PauseNode.pause();
-                value = statePtr.readWordVolatile(0, LocationIdentity.ANY_LOCATION);
             }
         }
     }
 
+    /** Called once per isolate. */
     public static void checkForError() {
         if (!isSystemSpecificLocaleSupported()) {
             return;
@@ -208,14 +200,13 @@ public class LocaleSupport {
 
     private static final class State {
         static final UnsignedWord UNINITIALIZED = Word.unsigned(0);
-        static final UnsignedWord INITIALIZING = Word.unsigned(1);
-        static final UnsignedWord SUCCESS = Word.unsigned(2);
-        static final UnsignedWord OUT_OF_MEMORY = Word.unsigned(3);
+        static final UnsignedWord SUCCESS = Word.unsigned(1);
+        static final UnsignedWord OUT_OF_MEMORY = Word.unsigned(2);
     }
 
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<LocaleSupport>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LocaleSupport singleton) {
@@ -235,7 +226,7 @@ public class LocaleSupport {
                     return localeData == null ? "null" : localeData.toString();
                 }
             };
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+            return new LayeredCallbacksSingletonTrait(action);
         }
     }
 }

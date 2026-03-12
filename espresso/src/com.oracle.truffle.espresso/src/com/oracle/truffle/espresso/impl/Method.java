@@ -77,6 +77,7 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -113,6 +114,7 @@ import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
+import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
@@ -141,6 +143,7 @@ import com.oracle.truffle.espresso.impl.jvmci.JVMCIIndyData;
 import com.oracle.truffle.espresso.impl.jvmci.external.ExceptionHandlerInteropWrapper;
 import com.oracle.truffle.espresso.impl.jvmci.external.InteropLineNumberTableHelper;
 import com.oracle.truffle.espresso.impl.jvmci.external.LocalInteropWrapper;
+import com.oracle.truffle.espresso.impl.jvmci.external.ParameterInteropWrapper;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
@@ -179,6 +182,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     public static final Method[] EMPTY_ARRAY = new Method[0];
     public static final MethodVersion[] EMPTY_VERSION_ARRAY = new MethodVersion[0];
+
+    private static final int UNINITIALIZED_DISPATCH_INDEX = -1;
 
     private static final byte GETTER_LENGTH = 5;
     private static final byte STATIC_GETTER_LENGTH = 4;
@@ -615,7 +620,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     @TruffleBoundary
     public Object invokeDirectVirtual(Object... args) {
-        assert getVTableIndex() >= 0;
+        assert isVTableIndexInitialized();
         StaticObject self = (StaticObject) args[0];
         return self.getKlass().vtableLookup(getVTableIndex()).invokeDirect(args);
     }
@@ -762,26 +767,51 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return getParameterCount() + (isStatic() ? 0 : 1);
     }
 
-    public static Method getHostReflectiveMethodRoot(StaticObject seed, Meta meta) {
-        assert seed.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(seed.getKlass());
-        StaticObject curMethod = seed;
+    //@formatter:off
+    /// Gets the [Method] value associated with `reflectMethod`.
+    ///
+    /// ```
+    /// while (reflectMethod.0vmMethod == null) {
+    ///     reflectMethod = reflectMethod.root;
+    /// }
+    /// reflectMethod.0vmMethod
+    /// ```
+    //@formatter:on
+    public static Method getVMMethod(@JavaType(java.lang.reflect.Method.class) StaticObject reflectMethod, Meta meta) {
+        assert reflectMethod.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(reflectMethod.getKlass());
+        StaticObject curMethod = reflectMethod;
         do {
-            Method target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
+            Method target = (Method) meta.java_lang_reflect_Method_0vmMethod.getHiddenObject(curMethod);
             if (target != null) {
                 return target;
             }
             curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
         } while (StaticObject.notNull(curMethod));
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Could not find HIDDEN_METHOD_KEY");
+        throw EspressoError.shouldNotReachHere("Could not find non-null Method.0vmMethod");
     }
 
-    public static Method getHostReflectiveConstructorRoot(StaticObject seed, Meta meta) {
-        assert seed.getKlass().getMeta().java_lang_reflect_Constructor.isAssignableFrom(seed.getKlass());
-        StaticObject curMethod = seed;
+    //@formatter:off
+    /// Gets the [Method] value associated with `reflectConstructor`.
+    ///
+    /// ```
+    /// var root;
+    /// do {
+    ///     if (reflectConstructor.0vmMethod != null) {
+    ///         return reflectConstructor.0vmMethod;
+    ///     }
+    ///     root = reflectConstructor;
+    ///     reflectConstructor = reflectConstructor.root;
+    /// } while (reflectConstructor != null);
+    /// return (root.0vmMethod = lookupDeclaredMethod(root.clazz, "<init>", root.parameterTypes));
+    /// ```
+    //@formatter:on
+    public static Method getVMMethodForConstructor(@JavaType(java.lang.reflect.Constructor.class) StaticObject reflectConstructor, Meta meta) {
+        assert reflectConstructor.getKlass().getMeta().java_lang_reflect_Constructor.isAssignableFrom(reflectConstructor.getKlass());
+        StaticObject curMethod = reflectConstructor;
         StaticObject rootMethod;
         do {
-            Method target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curMethod);
+            Method target = (Method) meta.java_lang_reflect_Constructor_0vmMethod.getHiddenObject(curMethod);
             if (target != null) {
                 return target;
             }
@@ -789,10 +819,10 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             curMethod = meta.java_lang_reflect_Constructor_root.getObject(curMethod);
         } while ((StaticObject.notNull(curMethod)));
         CompilerDirectives.transferToInterpreter();
-        // the root Constructor was not created by makeConstructor
-        // this can happen in ReflectionFactory#generateConstructor
-        // use the reflection data to find the constructor.
-        // the best would be to use the slot, but we don't have a redefinition-stable int that
+        // The root Constructor was not created by makeConstructor.
+        // This can happen in ReflectionFactory#generateConstructor.
+        // Use the reflection data to find the constructor.
+        // Best would be to use Constructor.slot, but we don't have a redefinition-stable int that
         // identifies the constructor.
         Klass holder = meta.java_lang_reflect_Constructor_clazz.getObject(rootMethod).getMirrorKlass(meta);
         Symbol<Signature> signature = rebuildConstructorSignature(meta, rootMethod);
@@ -800,7 +830,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         Method method = holder.lookupDeclaredMethod(Names._init_, signature, LookupMode.INSTANCE_ONLY);
         assert method != null;
         // remember the mapping for the next query
-        meta.HIDDEN_CONSTRUCTOR_KEY.setHiddenObject(rootMethod, method);
+        meta.java_lang_reflect_Constructor_0vmMethod.setHiddenObject(rootMethod, method);
         return method;
     }
 
@@ -858,9 +888,10 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
         Method m = new Method(this);
         m.getMethodVersion().setPoisonPill();
-        if (this.hasVTableIndex()) {
+        if (isVTableIndexInitialized()) {
             m.getMethodVersion().setVTableIndex(this.getVTableIndex());
         } else {
+            assert isITableIndexInitialized();
             m.getMethodVersion().setITableIndex(this.getITableIndex());
         }
         return m;
@@ -1147,8 +1178,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         /* annotations */ runtimeVisibleAnnotations,
                         /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
 
-        meta.HIDDEN_CONSTRUCTOR_KEY.setHiddenObject(instance, this);
-        meta.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        meta.java_lang_reflect_Constructor_0vmMethod.setHiddenObject(instance, this);
+        meta.java_lang_reflect_Constructor_0runtimeVisibleTypeAnnotations.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
 
         return instance;
     }
@@ -1215,8 +1246,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         /* annotations */ runtimeVisibleAnnotations,
                         /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
                         /* annotationDefault */ annotationDefault);
-        meta.HIDDEN_METHOD_KEY.setHiddenObject(instance, this);
-        meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        meta.java_lang_reflect_Method_0vmMethod.setHiddenObject(instance, this);
+        meta.java_lang_reflect_Method_0runtimeVisibleTypeAnnotations.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
         return instance;
     }
 
@@ -1250,15 +1281,47 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     @Override
-    public boolean hasVTableIndex() {
-        return getVTableIndex() != -1;
+    public boolean requiresInterfaceDispatch(Klass symbolicReceiver) {
+        /*
+         * We add implicit interface methods (aka miranda methods) to the vtables of concrete
+         * classes. These are added as proxies with a vtable index. Since v- and i-table indexes
+         * initialization is mutually exclusive, if symbolic resolution of a method did not resolve
+         * to such a proxy, then an itable dispatch is required.
+         */
+        return isITableIndexInitialized();
     }
 
+    public boolean isVTableIndexInitialized() {
+        assert !((getVTableIndex() != UNINITIALIZED_DISPATCH_INDEX) && (getITableIndex() != UNINITIALIZED_DISPATCH_INDEX));
+        return getVTableIndex() != UNINITIALIZED_DISPATCH_INDEX;
+    }
+
+    public boolean isITableIndexInitialized() {
+        assert !((getVTableIndex() != UNINITIALIZED_DISPATCH_INDEX) && (getITableIndex() != UNINITIALIZED_DISPATCH_INDEX));
+        return getITableIndex() != UNINITIALIZED_DISPATCH_INDEX;
+    }
+
+    /**
+     * Sets up the {@link #getVTableIndex() vtable index} for this method.
+     * <p>
+     * The logic works as follows:
+     * <ul>
+     * <li>If this method is an interface method:
+     * <p>
+     * the caller is trying to add this interface method to a non-interface VTable. We create a new
+     * proxy method, and set that proxy's vtable index before returning the proxy.</li>
+     * <li>Otherwise, this method is from a non-interface class:
+     * <p>
+     * We can directly set the vtable index of this method.</li>
+     * </ul>
+     * <p>
+     * It follows that any method may not have both their itable and vtable index initialized.
+     */
     @Override
     public PartialMethod<Klass, Method, Field> withVTableIndex(int index) {
-        assert getVTableIndex() == -1;
+        assert !isVTableIndexInitialized();
         if (getMethodVersion().isInterfaceMethod()) {
-            assert getITableIndex() != -1;
+            assert isITableIndexInitialized();
             Method proxied = new Method(this);
             proxied.getMethodVersion().setVTableIndex(index);
             return proxied;
@@ -1624,8 +1687,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         @CompilationFinal private CallTarget callTargetNoSubstitutions;
         @CompilationFinal private Continuum continuum;
 
-        @CompilationFinal private int vtableIndex = -1;
-        @CompilationFinal private int itableIndex = -1;
+        @CompilationFinal private int vtableIndex = UNINITIALIZED_DISPATCH_INDEX;
+        @CompilationFinal private int itableIndex = UNINITIALIZED_DISPATCH_INDEX;
 
         @CompilationFinal private byte refKind;
         @CompilationFinal private byte methodFlags;
@@ -1753,13 +1816,13 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
 
         void resetTableIndexes() {
-            this.vtableIndex = -1;
-            this.itableIndex = -1;
+            this.vtableIndex = UNINITIALIZED_DISPATCH_INDEX;
+            this.itableIndex = UNINITIALIZED_DISPATCH_INDEX;
         }
 
         void setVTableIndex(int i) {
-            assert vtableIndex == -1 || vtableIndex == i;
-            assert itableIndex == -1;
+            assert !isVTableIndexInitialized() || vtableIndex == i;
+            assert !isVTableIndexInitialized();
             CompilerAsserts.neverPartOfCompilation();
             this.vtableIndex = i;
         }
@@ -1769,8 +1832,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
 
         void setITableIndex(int i) {
-            assert (itableIndex == -1 || itableIndex == i);
-            assert vtableIndex == -1;
+            assert !isITableIndexInitialized() || itableIndex == i;
+            assert !isVTableIndexInitialized();
             CompilerAsserts.neverPartOfCompilation();
             this.itableIndex = i;
         }
@@ -2183,6 +2246,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         ReadMember.LEAF_METHOD,
                         ReadMember.HAS_POISON,
                         ReadMember.HOLDER,
+                        ReadMember.PARAMETERS,
+                        ReadMember.VTABLE_INDEX,
+                        ReadMember.METHOD_HANDLE_INTRINSIC,
         };
         ALL_MEMBERS = new KeysArray<>(readableMembers);
         ALL_MEMBERS_SET = Set.of(readableMembers);
@@ -2205,6 +2271,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         static final String LEAF_METHOD = "leafMethod";
         static final String HAS_POISON = "hasPoison";
         static final String HOLDER = "holder";
+        static final String PARAMETERS = "parameters";
+        static final String VTABLE_INDEX = "vtableIndex";
+        static final String METHOD_HANDLE_INTRINSIC = "methodHandleIntrinsic";
 
         @Specialization(guards = "FLAGS.equals(member)")
         static int getFlags(Method receiver, @SuppressWarnings("unused") String member) {
@@ -2351,6 +2420,47 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             return receiver.getDeclaringKlass();
         }
 
+        @Specialization(guards = "PARAMETERS.equals(member)")
+        static Object parameters(Method receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            MethodParametersAttribute methodParameters = receiver.getAttribute(MethodParametersAttribute.NAME, MethodParametersAttribute.class);
+            if (methodParameters == null) {
+                return StaticObject.NULL;
+            }
+            MethodParametersAttribute.Entry[] entries = methodParameters.getEntries();
+            ParameterInteropWrapper[] parameters = new ParameterInteropWrapper[entries.length];
+            ConstantPool constantPool = receiver.getConstantPool();
+            for (int i = 0; i < entries.length; i++) {
+                MethodParametersAttribute.Entry entry = entries[i];
+                parameters[i] = new ParameterInteropWrapper(constantPool.utf8At(entry.getNameIndex()), entry.getAccessFlags());
+            }
+            return new KeysArray<>(parameters);
+        }
+
+        @Specialization(guards = "VTABLE_INDEX.equals(member)")
+        static int getVTableIndex(Method receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.getVTableIndex();
+        }
+
+        @Specialization(guards = "METHOD_HANDLE_INTRINSIC.equals(member)")
+        static Object getMethodHandleIntrinsic(Method receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            SignaturePolymorphicIntrinsic id = SignaturePolymorphicIntrinsic.getId(receiver);
+            if (id == null) {
+                return StaticObject.NULL;
+            }
+            return switch (id) {
+                case InvokeBasic -> "INVOKE_BASIC";
+                case LinkToStatic -> "LINK_TO_STATIC";
+                case LinkToSpecial -> "LINK_TO_SPECIAL";
+                case LinkToVirtual -> "LINK_TO_VIRTUAL";
+                case LinkToInterface -> "LINK_TO_INTERFACE";
+                case LinkToNative -> "LINK_TO_NATIVE";
+                case InvokeGeneric -> StaticObject.NULL;
+            };
+        }
+
         @Fallback
         public static Object doUnknown(@SuppressWarnings("unused") Method receiver, String member) throws UnknownIdentifierException {
             throw UnknownIdentifierException.create(member);
@@ -2373,7 +2483,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                         @CachedLibrary(limit = "2") @Exclusive InteropLibrary interop,
                         @Cached @Exclusive InlinedBranchProfile typeError,
                         @Cached @Exclusive InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
-            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            EspressoLanguage language = EspressoLanguage.get(node);
+            assert language.isExternalJVMCIEnabled();
+            Meta meta = EspressoContext.get(node).getMeta();
             int argumentCount = receiver.getArgumentCount();
             if (argumentCount != arguments.length) {
                 arityError.enter(node);
@@ -2405,13 +2517,18 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                     if (interop.isNull(arguments[argumentIndex])) {
                         convertedArguments[argumentIndex] = StaticObject.NULL;
                     } else {
-                        if (!(arguments[argumentIndex] instanceof StaticObject object)) {
-                            typeError.enter(node);
-                            throw UnsupportedTypeException.create(arguments);
-                        }
                         Klass type = receiver.getMeta().resolveSymbolOrFail(typeSymbol,
                                         declaringKlass.getDefiningClassLoader(),
                                         declaringKlass.protectionDomain());
+                        StaticObject object;
+                        if (arguments[argumentIndex] instanceof StaticObject staticObject) {
+                            object = staticObject;
+                        } else if (type.isJavaLangObject()) {
+                            object = StaticObject.createForeign(language, meta.java_lang_Object, arguments[argumentIndex], interop);
+                        } else {
+                            typeError.enter(node);
+                            throw UnsupportedTypeException.create(arguments);
+                        }
                         if (!type.isAssignableFrom(object.getKlass())) {
                             typeError.enter(node);
                             throw UnsupportedTypeException.create(arguments);
@@ -2466,14 +2583,28 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                 }
             }
             Object result;
-            if (receiver.isStatic()) {
-                result = receiver.invokeDirectStatic(convertedArguments);
-            } else if (receiver.isConstructor()) {
-                result = receiver.invokeDirectSpecial(convertedArguments);
-            } else if (declaringKlass.isInterface()) {
-                result = receiver.invokeDirectInterface(convertedArguments);
-            } else {
-                result = receiver.invokeDirectVirtual(convertedArguments);
+            try {
+                if (receiver.isStatic()) {
+                    result = receiver.invokeDirectStatic(convertedArguments);
+                } else if (receiver.isConstructor() || receiver.isPrivate()) {
+                    result = receiver.invokeDirectSpecial(convertedArguments);
+                } else if (declaringKlass.isInterface()) {
+                    result = receiver.invokeDirectInterface(convertedArguments);
+                } else {
+                    result = receiver.invokeDirectVirtual(convertedArguments);
+                }
+            } catch (EspressoException e) {
+                if (InterpreterToVM.instanceOf(e.getGuestException(), meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException)) {
+                    StaticObject hostExceptionWrapper = (StaticObject) meta.com_oracle_truffle_espresso_vmaccess_guest_EspressoCallbackException_getHostException //
+                                    .invokeDirectVirtual(e.getGuestException());
+                    throw (AbstractTruffleException) hostExceptionWrapper.rawForeignObject(language);
+                }
+                throw e;
+            }
+            if (result instanceof StaticObject staticObject) {
+                if (staticObject.isForeignObject()) {
+                    return staticObject.rawForeignObject(language);
+                }
             }
             return result;
         }

@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import jdk.graal.compiler.word.Word;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.graalvm.word.impl.Word;
 
 @TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.NativeString", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_backend_libffi_NativeString {

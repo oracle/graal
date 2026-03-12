@@ -37,17 +37,15 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
-import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Unistd;
-
-import jdk.graal.compiler.word.Word;
 
 public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertiesSupport {
 
@@ -109,13 +107,6 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
         }
     }
 
-    /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
-    @Override
-    @SuppressWarnings("deprecation")
-    public String setLocale(String category, String locale) {
-        return PosixUtils.setLocale(category, locale);
-    }
-
     @Override
     public void exec(Path executable, String[] args) {
         if (!Files.isExecutable(executable)) {
@@ -125,8 +116,8 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
         try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
                         CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args)) {
             if (Unistd.execv(pathHolder.get(), argvHolder.get()) != 0) {
-                String msg = PosixUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " failed");
-                throw new RuntimeException(msg);
+                String errnoString = PosixUtils.strerrorErrno();
+                throw new RuntimeException(String.format("Executing %s with arguments %s failed: %s", executable, String.join(" ", args), errnoString));
             }
         }
     }
@@ -147,9 +138,9 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
                         CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args);
                         CTypeConversion.CCharPointerPointerHolder envpHolder = CTypeConversion.toCStrings(envArray)) {
             if (Unistd.execve(pathHolder.get(), argvHolder.get(), envpHolder.get()) != 0) {
+                String errnoString = PosixUtils.strerrorErrno();
                 String envString = env.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(" "));
-                String msg = PosixUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " and environment " + envString + " failed");
-                throw new RuntimeException(msg);
+                throw new RuntimeException(String.format("Executing %s with arguments %s and environment %s failed: %s", executable, String.join(" ", args), envString, errnoString));
             }
         }
     }

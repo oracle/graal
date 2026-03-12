@@ -28,14 +28,14 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;

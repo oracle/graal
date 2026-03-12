@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -393,6 +393,15 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
         } else {
             isolateVar = null;
         }
+        Map.Entry<CharSequence, TypeMirror> endPointResultVar;
+        if (resultMarshallerData.isCustom() || firstOutMarshalledParameter != null) {
+            endPointResultVar = new SimpleImmutableEntry<>("endPointResult", typeCache.jByteArray);
+        } else if (resultMarshallerData.isReference()) {
+            TypeMirror endPointResultType = resultMarshallerData.sameDirection ? Utilities.jniTypeForJavaType(returnType, types, typeCache) : typeCache.jLongArray;
+            endPointResultVar = new SimpleImmutableEntry<>("endPointResult", endPointResultType);
+        } else {
+            endPointResultVar = null;
+        }
         if (cacheData != null) {
             if (hasOutParameters) {
                 throw new IllegalStateException("Idempotent cannot be used with Out parameters.");
@@ -409,7 +418,7 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             Map<String, CharSequence> parameterValueOverrides = new HashMap<>();
             BinaryMarshallVariables binaryMarshallVars = generateBinaryMarshallProlog(builder, methodData, nonReceiverParameterStart,
                             binaryMarshalledParameters, staticMarshallBufferVar, staticBufferSize, firstOutMarshalledParameter != null,
-                            parameterValueOverrides);
+                            endPointResultVar, parameterValueOverrides);
             boolean hasPostMarshall = generatePreMarshall(builder, methodData, nonReceiverParameterStart, binaryMarshallVars != null ? binaryMarshallVars.outputVariable : null, env,
                             parameterValueOverrides);
             if (binaryMarshallVars != null) {
@@ -420,7 +429,8 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             CharSequence jniCall = callHotSpot(builder, methodData, env, args, resultMarshallerData);
             Map.Entry<CharSequence, CharSequence> binaryUnmarshallVars = null;
             PreUnmarshallResult preUnmarshallResult = generatePreUnmarshallResult(builder, resultMarshallerSnippets, binaryMarshallVars, returnType, jniCall, env,
-                            resultMarshallerData.isCustom(), staticMarshallBufferVar, staticBufferSize, isolateVar);
+                            resultMarshallerData.isCustom(), staticMarshallBufferVar, staticBufferSize, isolateVar,
+                            endPointResultVar != null ? endPointResultVar.getKey() : null);
             if (preUnmarshallResult.binaryInput != null) {
                 assert preUnmarshallResult.binaryInputResourcesToFree != null;
                 binaryUnmarshallVars = new SimpleImmutableEntry<>(preUnmarshallResult.binaryInputResourcesToFree, preUnmarshallResult.binaryInput);
@@ -435,9 +445,19 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             }
             builder.lineStart().write(cacheSnippets.writeCache(builder, cacheFieldName, receiver, resultVariable)).lineEnd(";");
             if (binaryMarshallVars != null) {
-                generateCleanupBinaryInputForJByteArray(builder, binaryMarshallVars.cBufferVariable, staticMarshallBufferVar);
-            } else if (binaryUnmarshallVars != null) {
-                generateCleanupBinaryInputForJByteArray(builder, binaryUnmarshallVars.getKey(), staticMarshallBufferVar);
+                List<CharSequence> locals = new ArrayList<>();
+                locals.add(binaryMarshallVars.jniBufferVariable);
+                if (endPointResultVar != null) {
+                    locals.add(endPointResultVar.getKey());
+                }
+                generateCleanupBinaryInputForJByteArray(builder, binaryMarshallVars.cBufferVariable, staticMarshallBufferVar, env, locals);
+            } else {
+                if (binaryUnmarshallVars != null) {
+                    generateCleanupBinaryInputForJByteArray(builder, binaryUnmarshallVars.getKey(), staticMarshallBufferVar, env, List.of());
+                }
+                if (endPointResultVar != null) {
+                    generateFreeResultJNILocal(builder, env, endPointResultVar.getKey());
+                }
             }
             builder.dedent();
             CharSequence foreignException = "foreignException";
@@ -456,7 +476,7 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             CharSequence staticMarshallBufferVar = generateStaticBuffer(builder, staticBufferSize);
             Map<String, CharSequence> parameterValueOverrides = new HashMap<>();
             BinaryMarshallVariables binaryMarshallVars = generateBinaryMarshallProlog(builder, methodData, nonReceiverParameterStart,
-                            binaryMarshalledParameters, staticMarshallBufferVar, staticBufferSize, firstOutMarshalledParameter != null,
+                            binaryMarshalledParameters, staticMarshallBufferVar, staticBufferSize, firstOutMarshalledParameter != null, endPointResultVar,
                             parameterValueOverrides);
             boolean hasPostMarshall = generatePreMarshall(builder, methodData, nonReceiverParameterStart, binaryMarshallVars != null ? binaryMarshallVars.outputVariable : null, env,
                             parameterValueOverrides);
@@ -471,7 +491,7 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
                 hasPostMarshall = true;
                 CharSequence jniCall = callHotSpot(builder, methodData, env, args, firstOutMarshalledParameter);
                 MarshallerSnippet customMarshalledSnippets = marshallerSnippets(firstOutMarshalledParameter);
-                CharSequence endPointResult = generateStoreEndPointResult(builder, customMarshalledSnippets, returnType, jniCall, env);
+                CharSequence endPointResult = generateStoreEndPointResult(builder, customMarshalledSnippets, returnType, jniCall, env, endPointResultVar.getKey());
                 binaryUnmarshallVars = generateCreateBinaryInputForJByteArray(builder, binaryMarshallVars, endPointResult, "marshalledResultInput", env, staticMarshallBufferVar, staticBufferSize);
                 if (!voidMethod) {
                     resultVariable = "result";
@@ -480,7 +500,8 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             } else {
                 CharSequence jniCall = callHotSpot(builder, methodData, env, args, resultMarshallerData);
                 PreUnmarshallResult preUnmarshallResult = generatePreUnmarshallResult(builder, resultMarshallerSnippets, binaryMarshallVars, returnType, jniCall, env,
-                                resultMarshallerData.isCustom(), staticMarshallBufferVar, staticBufferSize, isolateVar);
+                                resultMarshallerData.isCustom(), staticMarshallBufferVar, staticBufferSize, isolateVar,
+                                endPointResultVar != null ? endPointResultVar.getKey() : null);
                 if (preUnmarshallResult.binaryInput != null) {
                     assert preUnmarshallResult.binaryInputResourcesToFree != null;
                     binaryUnmarshallVars = new SimpleImmutableEntry<>(preUnmarshallResult.binaryInputResourcesToFree, preUnmarshallResult.binaryInput);
@@ -509,9 +530,19 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
                 builder.lineStart("return ").write(resultVariable).lineEnd(";");
             }
             if (binaryMarshallVars != null) {
-                generateCleanupBinaryInputForJByteArray(builder, binaryMarshallVars.cBufferVariable, staticMarshallBufferVar);
-            } else if (binaryUnmarshallVars != null) {
-                generateCleanupBinaryInputForJByteArray(builder, binaryUnmarshallVars.getKey(), staticMarshallBufferVar);
+                List<CharSequence> locals = new ArrayList<>();
+                locals.add(binaryMarshallVars.jniBufferVariable);
+                if (endPointResultVar != null) {
+                    locals.add(endPointResultVar.getKey());
+                }
+                generateCleanupBinaryInputForJByteArray(builder, binaryMarshallVars.cBufferVariable, staticMarshallBufferVar, env, locals);
+            } else {
+                if (binaryUnmarshallVars != null) {
+                    generateCleanupBinaryInputForJByteArray(builder, binaryUnmarshallVars.getKey(), staticMarshallBufferVar, env, List.of());
+                }
+                if (endPointResultVar != null) {
+                    generateFreeResultJNILocal(builder, env, endPointResultVar.getKey());
+                }
             }
             builder.dedent();
             CharSequence foreignException = "foreignException";
@@ -552,15 +583,17 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
         }
     }
 
-    private static CharSequence generateStoreEndPointResult(CodeBuilder builder, MarshallerSnippet snippets, TypeMirror returnType, CharSequence nativeCall, CharSequence jniEnvFieldName) {
-        return snippets.storeRawResult(builder, returnType, nativeCall, jniEnvFieldName);
+    private static CharSequence generateStoreEndPointResult(CodeBuilder builder, MarshallerSnippet snippets, TypeMirror returnType, CharSequence nativeCall, CharSequence jniEnvFieldName,
+                    CharSequence resultVariableName) {
+        return snippets.storeRawResult(builder, returnType, nativeCall, jniEnvFieldName, resultVariableName);
     }
 
     private PreUnmarshallResult generatePreUnmarshallResult(CodeBuilder builder, MarshallerSnippet snippets, BinaryMarshallVariables binaryMarshallVars, TypeMirror returnType,
                     CharSequence nativeCall, CharSequence jniEnvFieldName, boolean hasBinaryMarshalledResult,
-                    CharSequence staticMarshallBufferVar, int staticBufferSize, CharSequence isolateVar) {
+                    CharSequence staticMarshallBufferVar, int staticBufferSize, CharSequence isolateVar,
+                    CharSequence resultVariableName) {
         CharSequence result = nativeCall;
-        CharSequence endPointResultVariable = generateStoreEndPointResult(builder, snippets, returnType, nativeCall, jniEnvFieldName);
+        CharSequence endPointResultVariable = generateStoreEndPointResult(builder, snippets, returnType, nativeCall, jniEnvFieldName, resultVariableName);
         result = endPointResultVariable != null ? endPointResultVariable : result;
         Map.Entry<CharSequence, CharSequence> resourceInputPair = hasBinaryMarshalledResult
                         ? generateCreateBinaryInputForJByteArray(builder, binaryMarshallVars, result, "marshalledResultInput", jniEnvFieldName, staticMarshallBufferVar, staticBufferSize)
@@ -591,8 +624,13 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
 
     private BinaryMarshallVariables generateBinaryMarshallProlog(CodeBuilder builder, MethodData methodData, int nonReceiverParameterStart,
                     List<Integer> binaryMarshalledParameters, CharSequence staticBufferVar, int staticBufferLength, boolean reserveSpaceForResult,
-                    Map<String, CharSequence> parameterValueOverrides) {
+                    Map.Entry<CharSequence, TypeMirror> endPointResult, Map<String, CharSequence> parameterValueOverrides) {
         if (binaryMarshalledParameters.isEmpty()) {
+            if (endPointResult != null) {
+                builder.lineStart().write(endPointResult.getValue()).space().write(endPointResult.getKey()).write(" = ").invokeStatic(typeCache.wordFactory, "nullPointer").lineEnd(";");
+                builder.line("try {");
+                builder.indent();
+            }
             generatePreMarshallLocalVariables(builder, methodData, nonReceiverParameterStart, parameterValueOverrides);
         } else {
             CharSequence jniBufferVar = "marshalledParameters";
@@ -613,10 +651,13 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             builder.lineStart(sizeVar).write(" = ").write(Integer.toString(staticBufferLength)).lineEnd(";");
             builder.dedent();
             builder.line("}");
+            builder.lineStart().write(typeCache.jByteArray).space().write(jniBufferVar).write(" = ").invokeStatic(typeCache.wordFactory, "nullPointer").lineEnd(";");
+            if (endPointResult != null) {
+                builder.lineStart().write(endPointResult.getValue()).space().write(endPointResult.getKey()).write(" = ").invokeStatic(typeCache.wordFactory, "nullPointer").lineEnd(";");
+            }
             builder.line("try {");
             builder.indent();
             generatePreMarshallLocalVariables(builder, methodData, nonReceiverParameterStart, parameterValueOverrides);
-            builder.lineStart().write(typeCache.jByteArray).space().write(jniBufferVar).lineEnd(";");
             builder.lineStart("try (").write(typeCache.cCharPointerBinaryOutput).space().write(marshalledParametersOutputVar).write(" = ").invokeStatic(typeCache.binaryOutput, "create", cBufferVar,
                             sizeVar, "false").lineEnd(") {");
             builder.indent();
@@ -636,6 +677,11 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             jniBufferLength = marshalledParametersPositionVar;
         }
         builder.lineStart().write(binaryMarshallVars.jniBufferVariable).write(" = ").invokeStatic(typeCache.jniUtil, "NewByteArray", jniEnv, jniBufferLength).lineEnd(";");
+        builder.lineStart().write("if (").invoke(binaryMarshallVars.jniBufferVariable, "isNull").lineEnd(") {");
+        builder.indent();
+        builder.lineStart().write("throw ").newInstance(typeCache.outOfMemoryError, "\"Failed to allocate marshalling buffer in the host VM.\"").lineEnd(";");
+        builder.dedent();
+        builder.line("}");
         CharSequence address = new CodeBuilder(builder).invoke(binaryMarshallVars.outputVariable, "getAddress").build();
         builder.lineStart().invokeStatic(typeCache.jniUtil, "SetByteArrayRegion", jniEnv, binaryMarshallVars.jniBufferVariable, "0", marshalledParametersPositionVar, address).lineEnd(";");
         builder.dedent();
@@ -668,11 +714,24 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
         return new SimpleImmutableEntry<>(marshallBufferVar, marshalledResultInputVar);
     }
 
-    private void generateCleanupBinaryInputForJByteArray(CodeBuilder builder, CharSequence marshallBufferVar, CharSequence staticMarshallBufferVar) {
+    private void generateCleanupBinaryInputForJByteArray(CodeBuilder builder, CharSequence marshallBufferVar, CharSequence staticMarshallBufferVar,
+                    CharSequence jniEnv, List<CharSequence> jniLocalsToFree) {
         builder.dedent();
         builder.line("} finally {");
         builder.indent();
         generateUnmanagedFree(builder, marshallBufferVar, staticMarshallBufferVar);
+        for (CharSequence jniLocalToFree : jniLocalsToFree) {
+            builder.lineStart().invokeStatic(typeCache.jniUtil, "DeleteLocalRef", jniEnv, jniLocalToFree).lineEnd(";");
+        }
+        builder.dedent();
+        builder.line("}");
+    }
+
+    private void generateFreeResultJNILocal(CodeBuilder builder, CharSequence jniEnv, CharSequence endPointResultVar) {
+        builder.dedent();
+        builder.line("} finally {");
+        builder.indent();
+        builder.lineStart().invokeStatic(typeCache.jniUtil, "DeleteLocalRef", jniEnv, endPointResultVar).lineEnd(";");
         builder.dedent();
         builder.line("}");
     }
@@ -690,7 +749,7 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
         List<? extends TypeMirror> formalParameterTypes = methodData.type.getParameterTypes();
         for (int i = nonReceiverParameterStart; i < formalParameters.size(); i++) {
             MarshallerData marshaller = methodData.getParameterMarshaller(i);
-            marshallerSnippets(marshaller).declarePerMarshalledParameterVariable(builder, formalParameterTypes.get(i),
+            marshallerSnippets(marshaller).declarePreMarshalledParameterVariable(builder, formalParameterTypes.get(i),
                             formalParameters.get(i).getSimpleName(), parameterValueOverrides);
         }
     }
@@ -1136,7 +1195,7 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             }
 
             @Override
-            void declarePerMarshalledParameterVariable(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, Map<String, CharSequence> parameterValueOverrides) {
+            void declarePreMarshalledParameterVariable(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, Map<String, CharSequence> parameterValueOverrides) {
                 boolean hasDirectionModifiers = isArrayWithDirectionModifiers(parameterType);
                 if (hasDirectionModifiers) {
                     TypeMirror jniType = Utilities.jniTypeForJavaType(parameterType, types, cache);
@@ -1287,7 +1346,7 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             }
 
             @Override
-            void declarePerMarshalledParameterVariable(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, Map<String, CharSequence> parameterValueOverrides) {
+            void declarePreMarshalledParameterVariable(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, Map<String, CharSequence> parameterValueOverrides) {
                 if (parameterType.getKind() == TypeKind.ARRAY && marshallerData.sameDirection) {
                     TypeMirror hsParameterType = Utilities.jniTypeForJavaType(endPointMethodProvider.getEndPointMethodParameterType(marshallerData, parameterType), types, cache);
                     CharSequence targetArrayVariable = Utilities.javaMemberName("hs", parameterName);
@@ -1394,16 +1453,15 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             }
 
             @Override
-            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
-                CharSequence resultVariable = "endPointResult";
+            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName, CharSequence rawResultVariableName) {
                 if (marshallerData.sameDirection) {
-                    currentBuilder.lineStart().write(Utilities.jniTypeForJavaType(resultType, types, cache)).space().write(resultVariable).write(" = ").write(invocationSnippet).lineEnd(";");
-                    return resultVariable;
+                    currentBuilder.lineStart().write(rawResultVariableName).write(" = ").write(invocationSnippet).lineEnd(";");
+                    return rawResultVariableName;
                 } else if (resultType.getKind() == TypeKind.ARRAY) {
-                    CharSequence jLongArray = new CodeBuilder(currentBuilder).cast(cache.jLongArray, invocationSnippet).build();
+                    currentBuilder.lineStart().write(rawResultVariableName).write(" = ").cast(cache.jLongArray, invocationSnippet).lineEnd(";");
+                    CharSequence resultVariable = "nativeObjectHandles";
                     currentBuilder.lineStart().write(endPointMethodProvider.getEndPointMethodParameterType(marshallerData, resultType)).space().write(resultVariable).write(" = ").invokeStatic(
-                                    cache.jniUtil, "createArray", jniEnvFieldName,
-                                    jLongArray).lineEnd(";");
+                                    cache.jniUtil, "createArray", jniEnvFieldName, rawResultVariableName).lineEnd(";");
                     return resultVariable;
                 } else {
                     return null;
@@ -1662,10 +1720,9 @@ public class NativeToHotSpotServiceGenerator extends AbstractNativeServiceGenera
             }
 
             @Override
-            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName) {
-                CharSequence resultVariable = "endPointResult";
-                currentBuilder.lineStart().write(cache.jByteArray).space().write(resultVariable).write(" = ").write(invocationSnippet).lineEnd(";");
-                return resultVariable;
+            CharSequence storeRawResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence jniEnvFieldName, CharSequence rawResultVariableName) {
+                currentBuilder.lineStart().write(rawResultVariableName).write(" = ").write(invocationSnippet).lineEnd(";");
+                return rawResultVariableName;
             }
 
             @Override

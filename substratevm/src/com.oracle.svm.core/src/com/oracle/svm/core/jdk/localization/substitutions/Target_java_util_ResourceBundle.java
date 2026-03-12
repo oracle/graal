@@ -39,9 +39,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
 
 import jdk.internal.loader.BootLoader;
@@ -52,59 +50,6 @@ final class Target_java_util_ResourceBundle {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
     private static ConcurrentMap<?, ?> cacheList = new ConcurrentHashMap<>();
-
-    @TargetElement(onlyWith = OptimizedLocaleMode.class)
-    @Substitute
-    private static ResourceBundle getBundle(String baseName) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, Locale.getDefault());
-    }
-
-    @TargetElement(onlyWith = OptimizedLocaleMode.class)
-    @Substitute
-    private static ResourceBundle getBundle(String baseName, ResourceBundle.Control control) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, Locale.getDefault());
-    }
-
-    @TargetElement(onlyWith = OptimizedLocaleMode.class)
-    @Substitute
-    private static ResourceBundle getBundle(String baseName, Locale locale) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, locale);
-    }
-
-    @TargetElement(onlyWith = OptimizedLocaleMode.class)
-    @Substitute
-    private static ResourceBundle getBundle(String baseName, Locale targetLocale, ResourceBundle.Control control) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
-    }
-
-    @TargetElement(onlyWith = OptimizedLocaleMode.class)
-    @Substitute
-    private static ResourceBundle getBundle(String baseName, Locale locale, ClassLoader loader) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, locale);
-    }
-
-    @TargetElement(onlyWith = OptimizedLocaleMode.class)
-    @Substitute
-    private static ResourceBundle getBundle(String baseName, Locale targetLocale, ClassLoader loader, ResourceBundle.Control control) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
-    }
-
-    /**
-     * Currently there is no support for the module system at run time. Module arguments are
-     * therefore ignored.
-     */
-
-    @Substitute
-    @TargetElement(onlyWith = OptimizedLocaleMode.class)
-    private static ResourceBundle getBundle(String baseName, @SuppressWarnings("unused") Module module) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, Locale.getDefault());
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = OptimizedLocaleMode.class)
-    private static ResourceBundle getBundle(String baseName, Locale targetLocale, @SuppressWarnings("unused") Module module) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
-    }
 
     @Substitute
     private static ResourceBundle getBundleImpl(String baseName,

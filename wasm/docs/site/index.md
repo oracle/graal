@@ -7,7 +7,7 @@ layout: base
       <div class="container">
         <div class="hi__row">
           <div class="hi__body">
-            <h4 class="hi__title">A high-performance embeddable WebAssembly runtime for Java</h4>
+            <h4 class="hi__title">A high-performance embeddable WebAssembly runtime for the JVM</h4>
             <div class="hi__buttons">
               <a href="#getting-started" class="btn btn-primary">Quickstart</a>
               <a href="#demos" class="btn btn-primary">Demos</a>
@@ -34,7 +34,7 @@ layout: base
               <img src='{{ "/assets/img/icon-set-general/container-icon.svg" | relative_url }}' alt="access icon">
             </div>
             <div class="langbenefits__title">
-              <h4>WebAssembly for Java</h4>
+              <h4>WebAssembly the JVM</h4>
             </div>
             <div class="langpage__benefits-text">
               <h5><a href="#getting-started">Load and use Wasm modules</a> and functions directly in Java</h5>

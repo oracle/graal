@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -229,6 +229,7 @@ package org.graalvm.webimage.api;
  * {@code reset} method, and then prints {@code 0, 0}:
  *
  * <pre>
+ * &#64;JS.Coerce
  * &#64;JS("p.x = x; p.y = y;")
  * public static native void reset(Point p, double x, double y);
  *
@@ -244,6 +245,7 @@ package org.graalvm.webimage.api;
  * <b>Example:</b> the following code creates a {@code Point} object in JavaScript:
  *
  * <pre>
+ * &#64;JS.Coerce
  * &#64;JS("return new pointType(x, y);")
  * public static Point create(Class<Point> pointType, double x, double y);
  *
@@ -392,7 +394,7 @@ public class JSObject extends JSValue {
      *
      * @return an empty JavaScript object
      */
-    @JS("return conversion.createAnonymousJavaScriptObject();")
+    @JS("return {};")
     public static native JSObject create();
 
     @JS("return obj0 === obj1;")

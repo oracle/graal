@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,6 +73,7 @@ public final class ForeignException extends RuntimeException {
     static final byte GUEST_TO_HOST = 2;
     private static final ThreadLocal<ForeignException> pendingException = new ThreadLocal<>();
     private static final JNIMethodResolver CreateForeignException = new JNIMethodResolver("createForeignException", "([B)Ljava/lang/Throwable;");
+    private static final JNIMethodResolver GetOutOfMemoryError = new JNIMethodResolver("getOutOfMemoryError", "()Ljava/lang/Throwable;");
     private static final JNIMethodResolver ToByteArray = new JNIMethodResolver("toByteArray", "(Lorg/graalvm/nativebridge/ForeignException;)[B");
     private static final JNIMethodResolver GetStackOverflowErrorClass = new JNIMethodResolver("getStackOverflowErrorClass", "()Ljava/lang/Class;");
 
@@ -81,6 +82,7 @@ public final class ForeignException extends RuntimeException {
      */
     private static final ForeignException MARSHALLING_FAILED = new ForeignException(null, UNDEFINED, false);
     private static volatile JNICalls jniCalls;
+    private static volatile JThrowable hostOutOfMemory;
 
     private final byte kind;
     private final byte[] rawData;
@@ -97,7 +99,22 @@ public final class ForeignException extends RuntimeException {
      * code, but it's recommended to use the bridge processor.
      */
     public void throwUsingJNI(JNIEnv env) {
-        JNIUtil.Throw(env, callCreateForeignException(env, JNIUtil.createHSArray(env, rawData)));
+        JThrowable hostException;
+        try {
+            hostException = callCreateForeignException(env, JNIUtil.createHSArray(env, rawData));
+        } catch (OutOfMemoryError | JNIExceptionWrapper | InternalError e) {
+            /*
+             * Failed to allocate the ForeignException on the host side. Possible causes:
+             * OutOfMemoryError thrown by JNIUtil.createHSArray(...) if there is insufficient memory
+             * to allocate byte array to marshall the ForeignException. JNIExceptionWrapper thrown
+             * by callCreateForeignException(...) if there is insufficient memory to allocate the
+             * wrapper on the host. InternalError if the host cannot load the JNIExceptionWrapper
+             * entry point due to memory exhaustion. In all these cases, fall back to a
+             * pre-allocated OutOfMemoryError to guarantee that an exception can still be thrown.
+             */
+            hostException = hostOutOfMemory;
+        }
+        JNIUtil.Throw(env, hostException);
     }
 
     /**
@@ -160,24 +177,20 @@ public final class ForeignException extends RuntimeException {
         }
         ForeignException localException = pendingException.get();
         if (localException != null) {
-            StackMerger merger;
-            if (isolate instanceof ProcessIsolate) {
-                merger = ProcessIsolateStack::mergeStackTraces;
-            } else if (isolate instanceof NativeIsolate) {
-                merger = JNIExceptionWrapper::mergeStackTraces;
-            } else if (isolate instanceof HSIsolate) {
-                merger = JNIExceptionWrapper::mergeStackTraces;
-            } else {
-                throw new IllegalArgumentException("Unsupported isolate type: " + isolate);
-            }
+            StackMerger merger = StackMerger.forIsolate(isolate);
             return switch (localException.kind) {
-                case HOST_TO_GUEST -> merger.merge(localException.getStackTrace(), foreignExceptionStack, false);
-                case GUEST_TO_HOST -> merger.merge(foreignExceptionStack, localException.getStackTrace(), true);
+                case HOST_TO_GUEST -> merger.merge(localException.getStackTrace(), foreignExceptionStack, ExceptionKind.THROWN, false);
+                case GUEST_TO_HOST -> merger.merge(foreignExceptionStack, localException.getStackTrace(), ExceptionKind.THROWN, true);
                 default -> throw new IllegalStateException("Unsupported kind " + localException.kind);
             };
         } else {
             return foreignExceptionStack;
         }
+    }
+
+    public static StackTraceElement[] mergeStackTrace(Isolate<?> isolate, StackTraceElement[] hostStack, StackTraceElement[] isolateStack, ExceptionKind exceptionKind, boolean originatedInHost) {
+        StackMerger merger = StackMerger.forIsolate(isolate);
+        return merger.merge(hostStack, isolateStack, exceptionKind, originatedInHost);
     }
 
     /**
@@ -239,6 +252,7 @@ public final class ForeignException extends RuntimeException {
         if (jniCalls == null) {
             synchronized (ForeignException.class) {
                 if (jniCalls == null) {
+                    hostOutOfMemory = JNIUtil.NewGlobalRef(env, callGetOutOfMemoryError(env), "Pre-allocated Host OutOfMemoryError");
                     jniCalls = createJNICalls(env);
                 }
             }
@@ -274,6 +288,10 @@ public final class ForeignException extends RuntimeException {
         JValue args = StackValue.get(1, JValue.class);
         args.addressOf(0).setJObject(rawValue);
         return JNICalls.getDefault().callStaticJObject(env, CreateForeignException.getEntryPoints(env), CreateForeignException.resolve(env), args);
+    }
+
+    private static JThrowable callGetOutOfMemoryError(JNIEnv env) {
+        return JNICalls.getDefault().callStaticJObject(env, GetOutOfMemoryError.getEntryPoints(env), GetOutOfMemoryError.resolve(env), WordFactory.nullPointer());
     }
 
     private static JByteArray callToByteArray(JNIEnv env, JObject p0) {
@@ -374,6 +392,43 @@ public final class ForeignException extends RuntimeException {
 
     @FunctionalInterface
     private interface StackMerger {
-        StackTraceElement[] merge(StackTraceElement[] hostStack, StackTraceElement[] isolateStack, boolean originatedInHost);
+
+        StackTraceElement[] merge(StackTraceElement[] hostStack, StackTraceElement[] isolateStack, ExceptionKind exceptionKind, boolean originatedInHost);
+
+        static StackMerger forIsolate(Isolate<?> isolate) {
+            if (isolate instanceof ProcessIsolate) {
+                return ProcessIsolateStack::mergeStackTraces;
+            } else if (isolate instanceof NativeIsolate) {
+                return (hostStack, isolateStack, kind, fromHost) -> JNIExceptionWrapper.mergeStackTraces(hostStack, isolateStack, kind.translateToJNIExceptionKind(), fromHost);
+            } else if (isolate instanceof HSIsolate) {
+                return (hostStack, isolateStack, kind, fromHost) -> JNIExceptionWrapper.mergeStackTraces(hostStack, isolateStack, kind.translateToJNIExceptionKind(), fromHost);
+            } else {
+                throw new IllegalArgumentException("Unsupported isolate type: " + isolate);
+            }
+        }
+    }
+
+    /**
+     * Describes how an exception was delivered to the caller.
+     * <p>
+     * An exception may either be:
+     * <ul>
+     * <li>{@link #THROWN} - the exception is propagated using the Java {@code throw} statement and
+     * normal exception-handling semantics.</li>
+     * <li>{@link #RETURNED} - the exception is not thrown but instead returned as a regular
+     * value.</li>
+     * </ul>
+     * <p>
+     */
+    public enum ExceptionKind {
+        RETURNED,
+        THROWN;
+
+        private JNIExceptionWrapper.ExceptionKind translateToJNIExceptionKind() {
+            return switch (this) {
+                case RETURNED -> JNIExceptionWrapper.ExceptionKind.RETURNED;
+                case THROWN -> JNIExceptionWrapper.ExceptionKind.THROWN;
+            };
+        }
     }
 }

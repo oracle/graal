@@ -32,7 +32,7 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.attach.AttachListenerThread;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 public final class PosixAttachListenerThread extends AttachListenerThread {
     private final int listener;

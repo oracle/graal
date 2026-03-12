@@ -32,7 +32,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.nodes.ClusterNode;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;

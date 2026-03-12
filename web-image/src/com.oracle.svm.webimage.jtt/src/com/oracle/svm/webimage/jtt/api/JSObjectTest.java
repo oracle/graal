@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,28 +45,51 @@ public class JSObjectTest {
 
     public static void main(String[] args) {
         testPrototypeInheritance();
+        System.out.println("testPrototypeInheritance DONE");
         testCreateWithProperties();
+        System.out.println("testCreateWithProperties DONE");
         testDefineProperties();
+        System.out.println("testDefineProperties DONE");
         testDefinePropertyVariants();
+        System.out.println("testDefinePropertyVariants DONE");
         testEntries();
+        System.out.println("testEntries DONE");
         testFreeze();
+        System.out.println("testFreeze DONE");
         testFromEntries();
+        System.out.println("testFromEntries DONE");
         testGetOwnPropertyDescriptor();
+        System.out.println("testGetOwnPropertyDescriptor DONE");
         testGetOwnPropertyNames();
+        System.out.println("testGetOwnPropertyNames DONE");
         testGroupBy();
+        System.out.println("testGroupBy DONE");
         testHasOwn();
+        System.out.println("testHasOwn DONE");
         testIsEquality();
+        System.out.println("testIsEquality DONE");
         testIsExtensibleAndPreventExtensions();
+        System.out.println("testIsExtensibleAndPreventExtensions DONE");
         testIsFrozenAndFreeze();
+        System.out.println("testIsFrozenAndFreeze DONE");
         testPrototypeChain();
+        System.out.println("testPrototypeChain DONE");
         testSealAndMutation();
+        System.out.println("testSealAndMutation DONE");
         testKeysAndValues();
+        System.out.println("testKeysAndValues DONE");
         testPreventExtensions();
+        System.out.println("testPreventExtensions DONE");
         testPropertyIsEnumerable();
+        System.out.println("testPropertyIsEnumerable DONE");
         testPrototypeMethodBinding();
+        System.out.println("testPrototypeMethodBinding DONE");
         testToLocaleString();
+        System.out.println("testToLocaleString DONE");
         testValueOf();
+        System.out.println("testValueOf DONE");
         testValues();
+        System.out.println("testValues DONE");
     }
 
     public static void testPrototypeInheritance() {

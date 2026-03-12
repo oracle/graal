@@ -30,8 +30,8 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.Utf8;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;

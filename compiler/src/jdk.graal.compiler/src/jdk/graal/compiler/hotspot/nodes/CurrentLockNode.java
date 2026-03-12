@@ -27,6 +27,8 @@ package jdk.graal.compiler.hotspot.nodes;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.word.impl.Word;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
@@ -35,9 +37,7 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -47,7 +47,7 @@ import jdk.vm.ci.meta.Value;
 public final class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
     public static final NodeClass<CurrentLockNode> TYPE = NodeClass.create(CurrentLockNode.class);
 
-    protected int lockDepth;
+    private final int lockDepth;
 
     public CurrentLockNode(@InjectedNodeParameter WordTypes wordTypes, int lockDepth) {
         super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));

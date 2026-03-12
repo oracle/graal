@@ -48,7 +48,6 @@ import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.GraalCompilerOptions;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
@@ -59,6 +58,7 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.Platform;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.args.BooleanValue;
 import jdk.graal.compiler.util.args.Command;

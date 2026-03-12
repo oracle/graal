@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -45,8 +46,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-
-import jdk.graal.compiler.word.Word;
 
 /**
  * Verifies correctness of objects in the heap (see {@link #verifyObject}).
@@ -239,7 +238,7 @@ public class WasmHeapVerifier {
 
         @Override
         public void visitObject(Object object) {
-            Word pointer = Word.objectToUntrackedPointer(object);
+            Word pointer = Word.objectToUntrackedWord(object);
             if (!Heap.getHeap().isInImageHeap(object)) {
                 Log.log().string("Image heap object ").zhex(pointer).string(" is not considered as part of the image heap.").newline();
                 result = false;

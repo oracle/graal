@@ -27,8 +27,11 @@ package com.oracle.svm.hosted.webimage.wasmgc.codegen;
 
 import java.io.PrintStream;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.KnownIds;
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmIdFactory;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmCodeGenTool;
@@ -50,6 +53,10 @@ public class WebImageWasmGCProviders extends WebImageWasmProviders {
     public WebImageWasmGCProviders(RuntimeConfiguration runtimeConfig, CoreProviders underlyingProviders, PrintStream out, DebugContext debug) {
         super(runtimeConfig, underlyingProviders, out, debug);
         this.builder = new WasmGCBuilder(this);
+    }
+
+    public static WebImageWasmGCProviders singleton() {
+        return (WebImageWasmGCProviders) ImageSingletons.lookup(WebImageProviders.class);
     }
 
     /**

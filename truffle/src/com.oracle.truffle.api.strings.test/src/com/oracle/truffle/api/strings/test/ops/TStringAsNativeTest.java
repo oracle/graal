@@ -43,6 +43,7 @@ package com.oracle.truffle.api.strings.test.ops;
 
 import static org.junit.runners.Parameterized.Parameter;
 
+import java.lang.ref.Reference;
 import java.util.Arrays;
 
 import org.junit.Assert;
@@ -68,42 +69,47 @@ public class TStringAsNativeTest extends TStringTestBase {
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             if (a.isImmutable()) {
-                TruffleString compactNoCache = node.execute((TruffleString) a, PointerObject::create, encoding, true, false);
-                TruffleString inflateNoCache = node.execute((TruffleString) a, PointerObject::create, encoding, false, false);
-                TruffleString compact = node.execute((TruffleString) a, PointerObject::create, encoding, true, true);
-                TruffleString inflate = node.execute((TruffleString) a, PointerObject::create, encoding, false, true);
-                int strideA = a.getStringCompactionLevelUncached(encoding).getLog2();
-                int naturalStride = getNaturalStride(encoding);
-                int compactStride = getCompactStride(codeRange, encoding);
-                if (a.isNative()) {
-                    if (strideA == naturalStride) {
-                        Assert.assertSame(a, inflate);
-                        Assert.assertSame(a, inflateNoCache);
+                PointerObject nativeBuffer = PointerObject.create(a.byteLength(encoding) + 4);
+                try {
+                    TruffleString compactNoCache = node.execute((TruffleString) a, (size) -> nativeBuffer.asPointer(), encoding, true, false);
+                    TruffleString inflateNoCache = node.execute((TruffleString) a, PointerObject::create, encoding, false, false);
+                    TruffleString compact = node.execute((TruffleString) a, PointerObject::create, encoding, true, true);
+                    TruffleString inflate = node.execute((TruffleString) a, PointerObject::create, encoding, false, true);
+                    int strideA = a.getStringCompactionLevelUncached(encoding).getLog2();
+                    int naturalStride = getNaturalStride(encoding);
+                    int compactStride = getCompactStride(codeRange, encoding);
+                    if (a.isNative()) {
+                        if (strideA == naturalStride) {
+                            Assert.assertSame(a, inflate);
+                            Assert.assertSame(a, inflateNoCache);
+                        }
+                        if (strideA == compactStride) {
+                            Assert.assertSame(a, compact);
+                            Assert.assertSame(a, compactNoCache);
+                        }
+                    } else {
+                        Assert.assertNotSame(compactNoCache, compact);
+                        Assert.assertNotSame(inflateNoCache, inflate);
+                        Assert.assertSame(compact, node.execute((TruffleString) a, PointerObject::create, encoding, true, true));
+                        Assert.assertSame(inflate, node.execute((TruffleString) a, PointerObject::create, encoding, false, true));
+                        Assert.assertNotSame(compact, node.execute((TruffleString) a, PointerObject::create, encoding, true, false));
+                        Assert.assertNotSame(inflate, node.execute((TruffleString) a, PointerObject::create, encoding, false, false));
                     }
-                    if (strideA == compactStride) {
-                        Assert.assertSame(a, compact);
-                        Assert.assertSame(a, compactNoCache);
-                    }
-                } else {
-                    Assert.assertNotSame(compactNoCache, compact);
-                    Assert.assertNotSame(inflateNoCache, inflate);
-                    Assert.assertSame(compact, node.execute((TruffleString) a, PointerObject::create, encoding, true, true));
-                    Assert.assertSame(inflate, node.execute((TruffleString) a, PointerObject::create, encoding, false, true));
-                    Assert.assertNotSame(compact, node.execute((TruffleString) a, PointerObject::create, encoding, true, false));
-                    Assert.assertNotSame(inflate, node.execute((TruffleString) a, PointerObject::create, encoding, false, false));
+                    Assert.assertTrue(compact.isNative());
+                    Assert.assertTrue(inflate.isNative());
+                    Assert.assertTrue(compactNoCache.isNative());
+                    Assert.assertTrue(inflateNoCache.isNative());
+                    assertBytesEqual(compact, encoding, array);
+                    assertBytesEqual(inflate, encoding, array);
+                    assertBytesEqual(compactNoCache, encoding, array);
+                    assertBytesEqual(inflateNoCache, encoding, array);
+                    Assert.assertEquals(naturalStride, inflate.getStringCompactionLevelUncached(encoding).getLog2());
+                    Assert.assertEquals(naturalStride, inflateNoCache.getStringCompactionLevelUncached(encoding).getLog2());
+                    Assert.assertEquals(isCompactionSupported(encoding) ? compactStride : naturalStride, compact.getStringCompactionLevelUncached(encoding).getLog2());
+                    Assert.assertEquals(isCompactionSupported(encoding) ? compactStride : naturalStride, compactNoCache.getStringCompactionLevelUncached(encoding).getLog2());
+                } finally {
+                    Reference.reachabilityFence(nativeBuffer);
                 }
-                Assert.assertTrue(compact.isNative());
-                Assert.assertTrue(inflate.isNative());
-                Assert.assertTrue(compactNoCache.isNative());
-                Assert.assertTrue(inflateNoCache.isNative());
-                assertBytesEqual(compact, encoding, array);
-                assertBytesEqual(inflate, encoding, array);
-                assertBytesEqual(compactNoCache, encoding, array);
-                assertBytesEqual(inflateNoCache, encoding, array);
-                Assert.assertEquals(naturalStride, inflate.getStringCompactionLevelUncached(encoding).getLog2());
-                Assert.assertEquals(naturalStride, inflateNoCache.getStringCompactionLevelUncached(encoding).getLog2());
-                Assert.assertEquals(isCompactionSupported(encoding) ? compactStride : naturalStride, compact.getStringCompactionLevelUncached(encoding).getLog2());
-                Assert.assertEquals(isCompactionSupported(encoding) ? compactStride : naturalStride, compactNoCache.getStringCompactionLevelUncached(encoding).getLog2());
             }
         });
     }

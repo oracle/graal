@@ -50,7 +50,7 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
 
     private List<String> classpath;
     private List<String> modulepath;
-    private List<String> addModules;
+    private final List<String> addModules = new ArrayList<>();
     private boolean enableAssertions;
     private boolean enableSystemAssertions;
     private Map<String, String> systemProperties;
@@ -58,7 +58,7 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
 
     @Override
     public String getVMAccessName() {
-        return "espresso-context";
+        return "espresso";
     }
 
     @Override
@@ -75,7 +75,13 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
 
     @Override
     public VMAccess.Builder addModules(List<String> modules) {
-        this.addModules = modules;
+        this.addModules.addAll(modules);
+        return this;
+    }
+
+    @Override
+    public VMAccess.Builder addModule(String module) {
+        this.addModules.add(module);
         return this;
     }
 
@@ -122,7 +128,7 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
         if (modulepath != null) {
             builder.option("java.ModulePath", String.join(File.pathSeparator, modulepath));
         }
-        if (addModules != null) {
+        if (!addModules.isEmpty()) {
             builder.option("java.AddModules", String.join(File.pathSeparator, addModules));
         }
         if (systemProperties != null) {
@@ -270,6 +276,10 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
                             "jdk.vm.ci.aarch64",
                             "jdk.vm.ci.services",
                             "jdk.vm.ci.runtime");
+
+            ModuleSupport.addExports("jdk.graal.compiler.espresso", "jdk.internal.vm.ci",
+                            "jdk.vm.ci.meta");
+
             ModuleSupport.addExports("jdk.graal.compiler.espresso.vmaccess", "jdk.graal.compiler",
                             "jdk.graal.compiler.api.replacements",
                             "jdk.graal.compiler.core.common.spi",
@@ -299,7 +309,6 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
                             "jdk.graal.compiler.nodes.memory",
                             "jdk.graal.compiler.nodes.memory.address",
                             "jdk.graal.compiler.nodes.spi",
-                            "jdk.graal.compiler.options",
                             "jdk.graal.compiler.phases.tiers",
                             "jdk.graal.compiler.phases.util",
                             "jdk.graal.compiler.replacements",

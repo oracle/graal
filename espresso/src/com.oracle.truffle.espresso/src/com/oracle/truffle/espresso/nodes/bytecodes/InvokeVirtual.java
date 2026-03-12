@@ -64,7 +64,7 @@ public abstract class InvokeVirtual extends EspressoNode {
     final Method resolutionSeed;
 
     InvokeVirtual(Method resolutionSeed) {
-        assert resolutionSeed.getVTableIndex() >= 0;
+        assert resolutionSeed.isVTableIndexInitialized();
         this.resolutionSeed = resolutionSeed;
     }
 
@@ -91,7 +91,7 @@ public abstract class InvokeVirtual extends EspressoNode {
         final Method resolutionSeed;
 
         WithoutNullCheck(Method resolutionSeed) {
-            assert resolutionSeed.getVTableIndex() >= 0;
+            assert resolutionSeed.isVTableIndexInitialized();
             this.resolutionSeed = resolutionSeed;
         }
 

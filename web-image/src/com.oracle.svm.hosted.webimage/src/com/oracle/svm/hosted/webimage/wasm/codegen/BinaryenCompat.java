@@ -29,7 +29,7 @@ import java.util.Objects;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.visitors.WasmPrinter;

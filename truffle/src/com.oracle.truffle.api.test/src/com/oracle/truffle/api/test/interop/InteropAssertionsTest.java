@@ -979,6 +979,18 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
+    static final class Null implements TruffleObject {
+
+        static final Null INSTANCE = new Null();
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isNull() {
+            return true;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("serial")
     static final class ExceptionTest extends AbstractTruffleException {
 
@@ -1282,6 +1294,8 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         ExceptionTest cause = new ExceptionTest();
         exceptionTest.getExceptionCause = () -> cause;
         assertEquals(cause, exceptionLib.getExceptionCause(exceptionTest));
+        exceptionTest.getExceptionCause = () -> Null.INSTANCE;
+        assertEquals(Null.INSTANCE, exceptionLib.getExceptionCause(exceptionTest));
         exceptionTest.hasExceptionCause = false;
         assertFails(() -> exceptionLib.getExceptionCause(exceptionTest), AssertionError.class);
         exceptionTest.hasExceptionCause = true;

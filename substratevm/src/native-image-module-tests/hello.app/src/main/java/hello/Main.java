@@ -30,9 +30,12 @@ import java.io.IOException;
 import java.lang.module.Configuration;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import jdk.dynalink.StandardOperation;
 
 public class Main {
     public static void main(String[] args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
@@ -56,6 +59,9 @@ public class Main {
         testBootLayer(helloAppModule, helloLibModule);
 
         testResourceAccess(helloAppModule, helloLibModule);
+
+        /* Use classes from Java module jdk.dynalink (which the builder does NOT depend on) */
+        System.out.println("jdk.dynalink.StandardOperation enum values: " + String.join(" ", Arrays.stream(StandardOperation.values()).map(StandardOperation::toString).collect(Collectors.joining(" "))));
     }
 
     private static void failIfAssertionsAreDisabled() {

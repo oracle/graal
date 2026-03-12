@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.deopt;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * First stack slot is always reserved for injecting the DeoptimizationFrame in the SVM calling

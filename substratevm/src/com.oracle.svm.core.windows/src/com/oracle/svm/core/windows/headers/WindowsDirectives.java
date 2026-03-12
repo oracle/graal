@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public class WindowsDirectives implements CContext.Directives {
 

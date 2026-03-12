@@ -52,10 +52,6 @@ public class HeapHistogram {
         }
     }
 
-    public HeapHistogram() {
-        this.out = new PrintWriter(System.out);
-    }
-
     public HeapHistogram(PrintWriter out) {
         this.out = out;
     }

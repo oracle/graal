@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.c.util;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -41,7 +41,7 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 
 import jdk.graal.compiler.debug.DebugContext;

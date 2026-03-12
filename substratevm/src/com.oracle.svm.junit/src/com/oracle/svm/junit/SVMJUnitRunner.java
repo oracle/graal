@@ -45,10 +45,10 @@ import org.junit.runner.notification.Failure;
 import com.oracle.mxtool.junit.MxJUnitRequest;
 import com.oracle.mxtool.junit.MxJUnitWrapper;
 import com.oracle.mxtool.junit.MxJUnitWrapper.MxJUnitConfig;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.Option;
 import junit.runner.Version;

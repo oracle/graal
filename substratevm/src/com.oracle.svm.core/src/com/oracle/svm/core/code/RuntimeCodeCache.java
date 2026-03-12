@@ -30,9 +30,6 @@ import static com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode.WRIT
 import static com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode.CREATE_OR_REPLACE;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.RawFileOperationSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -42,28 +39,31 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.Word;
 
 public class RuntimeCodeCache {
 
@@ -97,7 +97,7 @@ public class RuntimeCodeCache {
     public RuntimeCodeCache() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     public final void tearDown() {
         NonmovableArrays.releaseUnmanagedArray(codeInfos);
         codeInfos = NonmovableArrays.nullArray();
@@ -115,7 +115,7 @@ public class RuntimeCodeCache {
      * ensures that we see one consistent snapshot of the array, without the possibility for a
      * concurrent modification.
      */
-    @Uninterruptible(reason = "codeInfos is accessed without holding a lock, so must not be interrupted by a safepoint that can add/remove code", callerMustBe = true)
+    @Uninterruptible(reason = "Prevent concurrent modifications.", callerMustBe = true)
     protected UntetheredCodeInfo lookupCodeInfo(CodePointer ip) {
         lookupMethodCount.inc();
         assert verifyTable();
@@ -147,7 +147,7 @@ public class RuntimeCodeCache {
     }
 
     /* Copied and adapted from Arrays.binarySearch. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent concurrent modifications.")
     private static int binarySearch(NonmovableArray<UntetheredCodeInfo> a, int fromIndex, int toIndex, CodePointer key) {
         int low = fromIndex;
         int high = toIndex - 1;
@@ -327,7 +327,7 @@ public class RuntimeCodeCache {
         assert verifyTable();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent concurrent modifications.")
     private boolean verifyTable() {
         if (codeInfos.isNull()) {
             assert numCodeInfos == 0 : "a1";

@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 

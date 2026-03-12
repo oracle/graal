@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 public final class ECMAScriptFlavor extends RegexFlavor {
 
     public static final ECMAScriptFlavor INSTANCE = new ECMAScriptFlavor();
-    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_16_0_0, 0, UnicodeProperties.NameMatchingMode.exact);
+    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_17_0_0, 0, UnicodeProperties.NameMatchingMode.exact);
 
     private ECMAScriptFlavor() {
         super(0);

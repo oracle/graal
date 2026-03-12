@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.interpreter;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

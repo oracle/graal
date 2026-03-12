@@ -26,7 +26,7 @@
 
 package com.oracle.graal.pointsto.util;
 
-import static com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat.PLUS_MINUS;
+import static com.oracle.svm.shared.option.CommonOptionParser.BooleanOptionFormat.PLUS_MINUS;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -34,19 +34,19 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 
-import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
-import com.oracle.svm.common.option.CommonOptionParser;
-import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
-import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
-import com.oracle.svm.common.option.UnsupportedOptionClassException;
+import com.oracle.svm.shared.option.CommonOptionParser;
+import com.oracle.svm.shared.option.CommonOptionParser.BooleanOptionFormat;
+import com.oracle.svm.shared.option.CommonOptionParser.OptionParseResult;
+import com.oracle.svm.shared.option.UnsupportedOptionClassException;
 
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import org.graalvm.collections.EconomicSet;
+import jdk.graal.compiler.options.OptionsContainer;
 
 public final class PointsToOptionParser {
 

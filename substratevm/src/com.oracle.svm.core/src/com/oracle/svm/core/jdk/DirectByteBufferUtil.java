@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 public class DirectByteBufferUtil {
     public static ByteBuffer allocate(long addr, long cap) {

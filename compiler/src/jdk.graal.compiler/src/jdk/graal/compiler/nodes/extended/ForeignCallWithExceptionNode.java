@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.nodes.extended;
 
+import static jdk.graal.compiler.nodeinfo.InputType.Association;
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.InputType.State;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
@@ -41,6 +42,7 @@ import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.ReadArgumentNode;
 import jdk.graal.compiler.nodes.UnreachableBeginNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.WithExceptionNode;
@@ -48,17 +50,18 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Node for a {@linkplain ForeignCallDescriptor foreign} call with an {@linkplain WithExceptionNode
  * exception edge}.
+ *
+ * It can be associated with {@link ReadArgumentNode}s.
  */
 // @formatter:off
 @NodeInfo(nameTemplate = "ForeignCallWithException#{p#descriptor/s}",
-          allowedUsageTypes = Memory,
+          allowedUsageTypes = {Memory, Association},
           cycles = CYCLES_2,
           cyclesRationale = "Rough estimation of the call operation itself.",
           size = SIZE_2,

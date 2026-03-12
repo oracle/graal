@@ -40,27 +40,28 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ContinuationsFeature.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ContinuationsFeature.LayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 public class ContinuationsFeature implements InternalFeature {
-    private boolean supported;
+    private Boolean supported;
+    private Boolean previousLayerSupported;
 
     public static boolean isSupported() {
-        return ImageSingletons.lookup(ContinuationsFeature.class).supported;
+        ContinuationsFeature feature = ImageSingletons.lookup(ContinuationsFeature.class);
+        VMError.guarantee(feature.supported != null, "Not initialized");
+        return feature.supported;
     }
 
     @Override
@@ -70,25 +71,32 @@ public class ContinuationsFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        boolean previousLayerSupported = supported;
+        VMError.guarantee(supported == null);
 
         /* If continuations are not supported, "virtual" threads are bound to platform threads. */
-        if (ContinuationSupport.Options.VMContinuations.getValue()) {
+        if (SubstrateOptions.VMContinuations.getValue()) {
             boolean hostSupport = jdk.internal.vm.ContinuationSupport.isSupported();
             if (!hostSupport) {
-                if (ContinuationSupport.Options.VMContinuations.hasBeenSet()) {
-                    throw UserError.abort("Continuation support has been explicitly enabled with option %s but is not available in the host VM", ContinuationSupport.Options.VMContinuations.getName());
+                if (SubstrateOptions.VMContinuations.hasBeenSet()) {
+                    throw UserError.abort("Continuation support has been explicitly enabled with option %s but is not available in the host VM", SubstrateOptions.VMContinuations.getName());
                 }
-                RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-                rci.initializeAtRunTime("jdk.internal.vm.Continuation", "Host continuations are not supported");
             }
             supported = hostSupport && !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && SubstrateControlFlowIntegrity.singleton().continuationsSupported();
-            UserError.guarantee(supported || !ContinuationSupport.Options.VMContinuations.hasBeenSet(),
+            UserError.guarantee(supported || !SubstrateOptions.VMContinuations.hasBeenSet(),
                             "Continuation support has been explicitly enabled with option %s but is not available " +
                                             "because of the runtime compilation, LLVM backend, or control flow integrity features.",
-                            ContinuationSupport.Options.VMContinuations.getName());
+                            SubstrateOptions.VMContinuations.getName());
         } else {
             supported = false;
+        }
+        if (!supported) {
+            /*
+             * Thread.ofVirtual() creates bound virtual threads, but VirtualThread code can also
+             * become reachable via the Preserve option or reflection. Ensure that calls at runtime
+             * fail in the Continuation initializer.
+             */
+            RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            rci.initializeAtRunTime("jdk.internal.vm.Continuation", "Host continuations are not supported");
         }
 
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
@@ -124,7 +132,7 @@ public class ContinuationsFeature implements InternalFeature {
 
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<ContinuationsFeature>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ContinuationsFeature singleton) {
@@ -134,10 +142,11 @@ public class ContinuationsFeature implements InternalFeature {
 
                 @Override
                 public void onSingletonRegistration(ImageSingletonLoader loader, ContinuationsFeature singleton) {
-                    singleton.supported = loader.readInt("supported") == 1;
+                    VMError.guarantee(singleton.previousLayerSupported == null);
+                    singleton.previousLayerSupported = loader.readInt("supported") == 1;
                 }
             };
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+            return new LayeredCallbacksSingletonTrait(action);
         }
     }
 }

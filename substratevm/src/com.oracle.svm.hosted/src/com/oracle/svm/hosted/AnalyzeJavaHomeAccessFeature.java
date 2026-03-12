@@ -33,17 +33,15 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.LogUtils;
 
 /**
  * This feature collects <code>System.getProperty("java.home")</code> usage information from the
@@ -51,7 +49,7 @@ import com.oracle.svm.util.LogUtils;
  * output.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = AnalyzeJavaHomeAccessFeature.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = AnalyzeJavaHomeAccessFeature.LayeredCallbacks.class)
 public class AnalyzeJavaHomeAccessFeature implements InternalFeature {
     private boolean javaHomeUsed = false;
     private Set<String> javaHomeUsageLocations = Collections.newSetFromMap(new ConcurrentSkipListMap<>());
@@ -87,8 +85,8 @@ public class AnalyzeJavaHomeAccessFeature implements InternalFeature {
         private static final String JAVA_HOME_USAGE_LOCATIONS = "javaHomeUsageLocations";
 
         @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<AnalyzeJavaHomeAccessFeature>() {
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<AnalyzeJavaHomeAccessFeature>() {
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, AnalyzeJavaHomeAccessFeature singleton) {
                     writer.writeInt(JAVA_HOME_USED, singleton.javaHomeUsed ? 1 : 0);

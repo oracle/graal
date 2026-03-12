@@ -201,7 +201,7 @@ public abstract class PartialEvaluator {
         }
         AnnotationValue cf = declaredAnnotationValues.get(unwrapType.apply(types.CompilerDirectives_CompilationFinal));
         if (cf != null) {
-            int dimensions = actualStableDimensions(field, cf.get("dimensions", Integer.class));
+            int dimensions = actualStableDimensions(field, cf.getInt("dimensions"));
             return ConstantFieldInfo.forDimensions(dimensions);
         }
         return null;
@@ -252,7 +252,7 @@ public abstract class PartialEvaluator {
         if (value == null) {
             return LoopExplosionKind.NONE;
         }
-        EnumElement enumElement = value.get("kind", EnumElement.class);
+        EnumElement enumElement = value.getEnum("kind");
         if (!expectedType.equals(enumElement.enumType)) {
             throw new IllegalStateException("Incompatible ExplodeLoop change. ExplodeLoop.kind must be LoopExplosionKind.");
         }
@@ -268,12 +268,12 @@ public abstract class PartialEvaluator {
                 // by the partial evaluator, we want to prevent inlining across the boundary during
                 // partial evaluation,
                 // even if the TruffleBoundary allows inlining after partial evaluation.
-                if (truffleBoundary.get("transferToInterpreterOnException", Boolean.class)) {
+                if (truffleBoundary.getBoolean("transferToInterpreterOnException")) {
                     return InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION;
                 } else {
                     return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
                 }
-            } else if (!truffleBoundary.get("allowInlining", Boolean.class)) {
+            } else if (!truffleBoundary.getBoolean("allowInlining")) {
                 return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
             }
         } else if (truffleCallBoundary != null) {

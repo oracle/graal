@@ -24,17 +24,34 @@
  */
 package com.oracle.svm.interpreter.ristretto.compile;
 
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
+
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Ristretto (native image bytecode based JIT) specific implementation of the bytecode parser.
+ */
 public class RistrettoParser extends BytecodeParser {
+    private MetaAccessProvider cachedMetaAccess;
 
     public RistrettoParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                     IntrinsicContext intrinsicContext) {
         super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
     }
 
+    @Override
+    public MetaAccessProvider getMetaAccess() {
+        if (cachedMetaAccess != null) {
+            return cachedMetaAccess;
+        }
+        MetaAccessProvider original = super.getMetaAccess();
+        assert original != null;
+        cachedMetaAccess = new RistrettoMetaAccess(original);
+        return cachedMetaAccess;
+    }
 }

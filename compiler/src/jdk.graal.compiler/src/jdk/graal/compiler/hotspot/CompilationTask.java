@@ -45,7 +45,6 @@ import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.CompilationWrapper;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -63,6 +62,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider.TypeFilter;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -351,7 +351,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
          */
         private void performRecompilationCheck(OptionValues options, HotSpotResolvedJavaMethod method) {
             if (checkRecompileCycle && (MethodRecompilationLimit.getValue(options) >= 0 && decompileCount >= MethodRecompilationLimit.getValue(options))) {
-                ProfilingInfo info = profileProvider.getProfilingInfo(method);
+                ProfilingInfo info = profileProvider.getProfilingInfo(null, method);
                 throw new ForceDeoptSpeculationPhase.TooManyDeoptimizationsError("too many decompiles: " + decompileCount + " " + ForceDeoptSpeculationPhase.getDeoptSummary(info));
             }
         }

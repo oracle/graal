@@ -83,13 +83,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 @SuppressWarnings("serial")
 public final class TruffleStackTrace extends Exception {
 
-    private static final TruffleStackTrace EMPTY = new TruffleStackTrace(Collections.emptyList(), 0);
+    static final TruffleStackTrace EMPTY = new TruffleStackTrace(Collections.emptyList(), 0);
 
-    private List<TruffleStackTraceElement> frames;
+    private final List<TruffleStackTraceElement> frames;
     private final int lazyFrames;
 
     // contains host exception frames
     private Throwable materializedHostException;
+    private boolean originatedInHostLanguage;
 
     private TruffleStackTrace(List<TruffleStackTraceElement> frames, int lazyFrames) {
         this.frames = frames;
@@ -104,9 +105,19 @@ public final class TruffleStackTrace extends Exception {
      * internal error then the exception (e.g. NullPointerException) has already captured the host
      * stack trace and this host exception stack trace is not used.
      */
-    private void materializeHostException() {
+    private void materializeHostException(Throwable throwable) {
         if (this.materializedHostException == null) {
-            this.materializedHostException = new Exception();
+            Throwable base = null;
+            boolean fromHostLanguage = true;
+            if (LanguageAccessor.ENGINE.isHostException(throwable)) {
+                base = LanguageAccessor.ENGINE.asHostException(throwable);
+            }
+            if (base == null) {
+                base = new Exception();
+                fromHostLanguage = false;
+            }
+            this.materializedHostException = LanguageAccessor.ENGINE.updateHostException(throwable, base);
+            this.originatedInHostLanguage = fromHostLanguage;
         }
     }
 
@@ -125,7 +136,7 @@ public final class TruffleStackTrace extends Exception {
             hostException = this;
         }
         StackTraceElement[] hostFrames = hostException.getStackTrace();
-        if (lazyFrames == 0) {
+        if (lazyFrames == 0 || originatedInHostLanguage) {
             return hostFrames;
         } else {
             StackTraceElement[] extended = new StackTraceElement[hostFrames.length + lazyFrames];
@@ -242,34 +253,55 @@ public final class TruffleStackTrace extends Exception {
         }
 
         List<TruffleStackTraceElement> frames = new ArrayList<>();
+        MaterializedFrame osrFrame = null;
+        // Iterate through the lazily captured stack frames from top to bottom.
         for (ListIterator<TracebackElement> iterator = elements.listIterator(elements.size()); iterator.hasPrevious();) {
             TracebackElement element = iterator.previous();
             if (element.root != null) {
-                int bytecodeIndex = LanguageAccessor.NODES.findBytecodeIndex(element.root.getRootNode(), topCallSite, element.frame);
-                frames.add(new TruffleStackTraceElement(topCallSite, element.root, element.frame, bytecodeIndex));
+                RootNode rootNode = element.root.getRootNode();
+                if (LanguageAccessor.RUNTIME.isOSRRootNode(rootNode)) {
+                    /*
+                     * Special case: OSR triggers and we have multiple traceback elements for one
+                     * logical "frame". The logical frame comprises the top-most OSR frame and
+                     * location plus the non-OSR call target. We remember the OSR frame here. (The
+                     * location, topCallSite, will be unchanged when we reach the non-OSR element
+                     * because it triggers OSR without performing a call in between.)
+                     */
+                    if (osrFrame == null) {
+                        osrFrame = element.frame;
+                    }
+                    continue;
+                }
+                MaterializedFrame frame;
+                if (osrFrame == null) {
+                    frame = element.frame;
+                } else {
+                    frame = osrFrame;
+                    osrFrame = null;
+                }
+                int bytecodeIndex = LanguageAccessor.NODES.findBytecodeIndex(rootNode, topCallSite, frame);
+                frames.add(new TruffleStackTraceElement(topCallSite, element.root, frame, bytecodeIndex));
                 topCallSite = null;
+
             }
             if (element.callNode != null) {
+                // This is the location for the next stack trace element.
                 topCallSite = element.callNode;
             }
         }
         int lazyFrames = frames.size();
 
         // attach the remaining stack trace elements
-        addFramesByStackWalking(stackFrameLimit, topCallSite, frames);
+        addFramesByStackWalking(stackFrameLimit, topCallSite, osrFrame, frames);
 
         TruffleStackTrace fullStackTrace = new TruffleStackTrace(frames, lazyFrames);
         // capture host stack trace for guest language exceptions;
         // internal and host language exceptions already have a stack trace attached.
-        if (isTruffleException && !isHostException(throwable)) {
-            fullStackTrace.materializeHostException();
+        if (isTruffleException) {
+            fullStackTrace.materializeHostException(throwable);
         }
         lazy.stackTrace = fullStackTrace;
         return fullStackTrace;
-    }
-
-    private static boolean isHostException(Throwable throwable) {
-        return LanguageAccessor.ENGINE.isHostException(throwable);
     }
 
     private static final class TracebackElement {
@@ -417,7 +449,7 @@ public final class TruffleStackTrace extends Exception {
         }
     }
 
-    private static void addFramesByStackWalking(int stackFrameLimit, final Node topCallSite, List<TruffleStackTraceElement> frames) {
+    private static void addFramesByStackWalking(int stackFrameLimit, final Node topCallSite, final MaterializedFrame osrFrame, List<TruffleStackTraceElement> frames) {
         int lazyFrames = frames.size();
         if (stackFrameLimit >= 0 && lazyFrames >= stackFrameLimit) {
             // early exit: avoid costly iterateFrames call if enough frames have been recorded
@@ -434,17 +466,20 @@ public final class TruffleStackTrace extends Exception {
                     // no more frames to create
                     return frameInstance;
                 }
+                RootCallTarget target = ((RootCallTarget) frameInstance.getCallTarget());
+                RootNode root = target.getRootNode();
+
                 Node callNode;
+                Frame frame;
                 if (first) {
                     callNode = topCallSite;
+                    frame = osrFrame == null ? captureFrame(frameInstance, root) : osrFrame;
                     first = false;
                 } else {
                     callNode = frameInstance.getCallNode();
+                    frame = captureFrame(frameInstance, root);
                 }
 
-                RootCallTarget target = ((RootCallTarget) frameInstance.getCallTarget());
-                RootNode root = target.getRootNode();
-                Frame frame = captureFrame(frameInstance, root);
                 int bytecodeIndex = LanguageAccessor.NODES.findBytecodeIndex(root, callNode, frame);
                 frames.add(new TruffleStackTraceElement(callNode, target, frame, bytecodeIndex));
                 if (target != null && LanguageAccessor.ACCESSOR.nodeSupport().countsTowardsStackTraceLimit(target.getRootNode())) {
@@ -458,5 +493,4 @@ public final class TruffleStackTrace extends Exception {
     private static Frame captureFrame(FrameInstance frame, RootNode rootNode) {
         return LanguageAccessor.NODES.isCaptureFramesForTrace(rootNode, frame.getCompilationTier() > 0) ? frame.getFrame(FrameAccess.READ_ONLY) : null;
     }
-
 }

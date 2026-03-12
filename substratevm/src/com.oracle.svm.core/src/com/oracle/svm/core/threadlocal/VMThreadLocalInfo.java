@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.threadlocal;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.function.IntSupplier;
 

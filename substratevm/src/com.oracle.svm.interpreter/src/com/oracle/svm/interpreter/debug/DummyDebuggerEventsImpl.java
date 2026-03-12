@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.interpreter.debug;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.Interpreter;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;

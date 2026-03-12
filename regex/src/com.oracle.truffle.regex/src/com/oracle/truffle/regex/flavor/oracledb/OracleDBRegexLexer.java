@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,14 @@ public final class OracleDBRegexLexer extends RegexLexer {
     public OracleDBRegexLexer(RegexSource source, OracleDBFlags flags, CompilationBuffer compilationBuffer) {
         super(source, compilationBuffer);
         this.flags = flags;
+    }
+
+    /**
+     * OracleDB quirk: on UTF-16 and collation=BINARY, character ranges' lower and upper bounds are
+     * compared byte-by-byte in their UTF-16 encoded form. Does not apply to ignore-case mode.
+     */
+    boolean emulateUTF16RangeQuirk() {
+        return getEncoding() == Encoding.UTF_16BE;
     }
 
     @Override
@@ -312,8 +320,11 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected RegexSyntaxException handleCCRangeOutOfOrder(int startPos) {
-        return syntaxError(OracleDBErrorMessages.INVALID_RANGE, ErrorCode.InvalidCharacterClass);
+    protected ClassSetContents handleCCRangeOutOfOrder(int startPos, int lo, int hi) {
+        if (emulateUTF16RangeQuirk() && lo > Character.MAX_VALUE && hi > Character.MAX_SURROGATE && hi <= Character.MAX_VALUE && Character.highSurrogate(lo) <= hi) {
+            return ClassSetContents.createBrokenRange(lo, hi);
+        }
+        throw syntaxError(OracleDBErrorMessages.INVALID_RANGE, ErrorCode.InvalidCharacterClass);
     }
 
     @Override

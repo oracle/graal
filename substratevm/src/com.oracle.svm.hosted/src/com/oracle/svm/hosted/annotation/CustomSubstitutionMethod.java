@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 
 import java.lang.reflect.Type;
 

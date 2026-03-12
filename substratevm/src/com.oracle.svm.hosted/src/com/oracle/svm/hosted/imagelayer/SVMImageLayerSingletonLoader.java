@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY_TRAIT;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
@@ -37,17 +38,17 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonKey;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonObject;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.SingletonInfo;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -81,7 +82,13 @@ public class SVMImageLayerSingletonLoader {
         return new ImageSingletonLoaderImpl(keyStore, snapshot);
     }
 
-    public Map<Object, EconomicSet<Class<?>>> loadImageSingletons(Function<SingletonTrait[], Object> forbiddenObjectCreator) {
+    /**
+     * Load singletons installed in previous layers.
+     * 
+     * @return a mapping from singleton objects or {@link SingletonInfo} placeholders to all the
+     *         keys they should be mapped to.
+     */
+    public Map<Object, EconomicSet<Class<?>>> loadImageSingletons() {
         ArrayList<Object> singletonObjects = new ArrayList<>(snapshot.getSingletonObjects().size());
         Map<Class<?>, Integer> initialLayerKeyToIdMap = new HashMap<>();
         Map<Class<?>, Integer> singletonKeyToKeyStoreIdMap = new HashMap<>();
@@ -109,7 +116,7 @@ public class SVMImageLayerSingletonLoader {
         }
 
         Map<Object, EconomicSet<Class<?>>> singletonInitializationMap = new HashMap<>();
-        SingletonTrait[] initialLayerOnly = new SingletonTrait[]{SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY};
+        LayeredInstallationKindSingletonTrait[] initialLayerOnly = new LayeredInstallationKindSingletonTrait[]{INITIAL_LAYER_ONLY_TRAIT};
         for (ImageSingletonKey.Reader entry : snapshot.getSingletonKeys()) {
             String className = entry.getKeyClassName().toString();
             LayeredPersistFlags persistFlags = LayeredPersistFlags.values()[entry.getPersistFlag()];
@@ -124,13 +131,13 @@ public class SVMImageLayerSingletonLoader {
                 assert singletonObjId == SVMImageLayerSnapshotUtil.UNDEFINED_SINGLETON_OBJ_ID : "Unrestored image singleton should not be linked to an object";
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
 
-                Object forbiddenObject;
+                SingletonInfo forbiddenObject;
                 if (entry.getIsInitialLayerOnly()) {
                     int constantId = entry.getConstantId();
                     initialLayerKeyToIdMap.put(clazz, constantId);
-                    forbiddenObject = forbiddenObjectCreator.apply(initialLayerOnly);
+                    forbiddenObject = SingletonInfo.forbiddenSingletonInfo(initialLayerOnly);
                 } else {
-                    forbiddenObject = forbiddenObjectCreator.apply(SingletonTrait.EMPTY_ARRAY);
+                    forbiddenObject = SingletonInfo.forbiddenSingletonInfo();
                 }
                 singletonInitializationMap.computeIfAbsent(forbiddenObject, _ -> EconomicSet.create());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);

@@ -29,7 +29,8 @@ import java.util.Collections;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.OptionKey;
 import jdk.vm.ci.meta.ResolvedJavaField;

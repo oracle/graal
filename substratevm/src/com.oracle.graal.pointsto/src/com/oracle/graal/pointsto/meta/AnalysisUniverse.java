@@ -81,6 +81,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
+/**
+ * See javadoc for {@code HostedUniverse}.
+ */
 public class AnalysisUniverse implements Universe {
 
     protected final HostVM hostVM;
@@ -469,6 +472,24 @@ public class AnalysisUniverse implements Universe {
                 }
             }
         }
+    }
+
+    public AnalysisType[] lookup(ResolvedJavaType[] inputs) {
+        List<AnalysisType> result = new ArrayList<>(inputs.length);
+        for (ResolvedJavaType type : inputs) {
+            if (hostVM.platformSupported(type)) {
+                AnalysisType aType = null;
+                try {
+                    aType = lookup(type);
+                } catch (UnsupportedFeatureException ignored) {
+                    /* Unsupported elements should not prevent querying other members of the type */
+                }
+                if (aType != null) {
+                    result.add(aType);
+                }
+            }
+        }
+        return result.toArray(AnalysisType.EMPTY_ARRAY);
     }
 
     public AnalysisMethod[] lookup(JavaMethod[] inputs) {

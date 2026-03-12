@@ -31,8 +31,8 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.shared.util.ClassUtil;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Fields that contain native pointers can not be part of the image heap, because the native

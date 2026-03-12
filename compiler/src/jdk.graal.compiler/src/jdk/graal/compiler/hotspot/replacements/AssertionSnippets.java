@@ -48,7 +48,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class AssertionSnippets implements Snippets {
 

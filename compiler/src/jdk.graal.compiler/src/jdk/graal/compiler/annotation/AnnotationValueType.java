@@ -43,9 +43,26 @@ public final class AnnotationValueType {
     /**
      * Gets the {@link AnnotationValueType} for {@code annotationClass}.
      */
-    public static AnnotationValueType getInstance(
-                    ResolvedJavaType annotationClass) {
-        return ANNOTATION_TYPES.computeIfAbsent(annotationClass, AnnotationValueType::new);
+    public static AnnotationValueType getInstance(ResolvedJavaType annotationClass) {
+        /*
+         * Cannot use ConcurrentHashMap.computeIfAbsent() as there are recursive calls to
+         * getInstance when processing an annotation type that has an annotation type member with a
+         * default value. For example:
+         *
+         * @interface Named { String value(); }
+         *
+         * @interface Anno { Named named() default @Named("foo"); }
+         *
+         * Creating the AnnotationValueType for Anno will recursively call getInstance to create the
+         * AnnotationValueType for Named.
+         */
+        AnnotationValueType value = ANNOTATION_TYPES.get(annotationClass);
+        if (value != null) {
+            return value;
+        }
+        AnnotationValueType created = new AnnotationValueType(annotationClass);
+        AnnotationValueType existing = ANNOTATION_TYPES.putIfAbsent(annotationClass, created);
+        return existing != null ? existing : created;
     }
 
     private AnnotationValueType(ResolvedJavaType annotationClass) {

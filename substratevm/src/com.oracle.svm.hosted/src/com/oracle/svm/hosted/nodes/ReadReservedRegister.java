@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.nodes;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFixedNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFloatingNode;
-import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -36,30 +35,27 @@ import jdk.vm.ci.code.Register;
 public class ReadReservedRegister {
 
     public static ValueNode createReadStackPointerNode(StructuredGraph graph) {
-        return createReadNode(graph, ReservedRegisters.singleton().getFrameRegister());
+        var rr = ReservedRegisters.singleton();
+        return createReadNode(rr.mustUseFixedRead(graph), rr.getFrameRegister());
     }
 
     public static ValueNode createReadIsolateThreadNode(StructuredGraph graph) {
-        return createReadNode(graph, ReservedRegisters.singleton().getThreadRegister());
+        var rr = ReservedRegisters.singleton();
+        return createReadNode(rr.mustUseFixedRead(graph), rr.getThreadRegister());
     }
 
     public static ValueNode createReadHeapBaseNode(StructuredGraph graph) {
-        return createReadNode(graph, ReservedRegisters.singleton().getHeapBaseRegister());
+        var rr = ReservedRegisters.singleton();
+        return createReadNode(rr.mustUseFixedRead(graph), rr.getHeapBaseRegister());
     }
 
     public static ValueNode createReadCodeBaseNode(StructuredGraph graph) {
-        return createReadNode(graph, ReservedRegisters.singleton().getCodeBaseRegister());
+        var rr = ReservedRegisters.singleton();
+        return createReadNode(rr.mustUseFixedRead(graph), rr.getCodeBaseRegister());
     }
 
-    private static ValueNode createReadNode(StructuredGraph graph, Register register) {
-        /*
-         * A floating node to access the register is more efficient: it allows value numbering of
-         * multiple accesses, including floating nodes that use it as an input. But for
-         * deoptimization target methods, we must not do value numbering because there is no
-         * proxying at deoptimization entry points for this node, so the value is not restored
-         * during deoptimization.
-         */
-        if (SubstrateCompilationDirectives.isDeoptTarget(graph.method())) {
+    private static ValueNode createReadNode(boolean useFixedRead, Register register) {
+        if (useFixedRead) {
             return new ReadReservedRegisterFixedNode(register);
         } else {
             return new ReadReservedRegisterFloatingNode(register);

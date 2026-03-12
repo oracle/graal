@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -329,19 +329,67 @@ final class UnsafeAccess {
         UNSAFE.putObject(receiver, offset, value);
     }
 
-    static int unsafeGetFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
+    /**
+     * Reads an int value from an object, with optional location identity, guarding condition,
+     * expected object shape, and final assumption.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @param expectedShape expected receiver shape, or null if unknown
+     * @param assumption final {@link com.oracle.truffle.api.Assumption assumption}, or null
+     * @return the accessed value
+     */
+    public static int unsafeGetFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity, Shape expectedShape, Object assumption) {
         return unsafeGetInt(receiver, offset, condition, locationIdentity);
     }
 
-    static long unsafeGetFinalLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
+    /**
+     * Reads a long value from an object, with optional location identity, guarding condition,
+     * expected object shape, and final assumption.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @param expectedShape expected receiver shape, or null if unknown
+     * @param assumption final {@link com.oracle.truffle.api.Assumption assumption}, or null
+     * @return the accessed value
+     */
+    public static long unsafeGetFinalLong(Object receiver, long offset, boolean condition, Object locationIdentity, Shape expectedShape, Object assumption) {
         return unsafeGetLong(receiver, offset, condition, locationIdentity);
     }
 
-    static double unsafeGetFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
+    /**
+     * Reads a double value from an object, with optional location identity, guarding condition,
+     * expected object shape, and final assumption.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @param expectedShape expected receiver shape, or null if unknown
+     * @param assumption final {@link com.oracle.truffle.api.Assumption assumption}, or null
+     * @return the accessed value
+     */
+    public static double unsafeGetFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity, Shape expectedShape, Object assumption) {
         return unsafeGetDouble(receiver, offset, condition, locationIdentity);
     }
 
-    static Object unsafeGetFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
+    /**
+     * Reads an Object value from an object, with optional location identity, guarding condition,
+     * expected object shape, and final assumption.
+     *
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that guards this access, or {@code false}
+     * @param locationIdentity the location identity token, or {@link #ANY_LOCATION}, or null
+     * @param expectedShape expected receiver shape, or null if unknown
+     * @param assumption final {@link com.oracle.truffle.api.Assumption assumption}, or null
+     * @return the accessed value
+     */
+    public static Object unsafeGetFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity, Shape expectedShape, Object assumption) {
         return unsafeGetObject(receiver, offset, condition, locationIdentity);
     }
 

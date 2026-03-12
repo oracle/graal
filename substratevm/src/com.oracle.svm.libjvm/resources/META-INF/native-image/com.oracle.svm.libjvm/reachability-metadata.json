@@ -1,0 +1,46 @@
+{
+  "reflection": [
+    {
+      "type": "javax.tools.JavaCompiler$CompilationTask"
+    },
+    {
+      "type": "com.sun.tools.javac.api.JavacTrees",
+      "methods": [
+        {
+          "name": "instance",
+          "parameterTypes": [
+            "javax.tools.JavaCompiler$CompilationTask"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.launcher.LauncherHelper",
+      "jniAccessible": true,
+      "allDeclaredConstructors": true,
+      "allDeclaredMethods": true,
+      "allDeclaredFields": true
+    },
+    {
+      "type": "com.sun.tools.javac.launcher.SourceLauncher",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "main",
+          "parameterTypes": [
+            "java.lang.String[]"
+          ]
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "glob": "META-INF/services/javax.tools.JavaCompiler"
+    },
+    { "module": "java.base", "bundle": "sun.launcher.resources.launcher" },
+    { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.compiler" },
+    { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.launcher" },
+    { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.javac" }
+  ]
+}

@@ -38,7 +38,6 @@ import java.util.function.ToIntFunction;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
@@ -53,6 +52,7 @@ import com.oracle.svm.hosted.webimage.logging.LoggerContext;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.util.metrics.BootHeapMetricsCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 import com.oracle.svm.webimage.hightiercodegen.Emitter;
 import com.oracle.svm.webimage.hightiercodegen.IEmitter;

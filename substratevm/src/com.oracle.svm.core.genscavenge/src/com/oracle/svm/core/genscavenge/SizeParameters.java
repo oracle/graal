@@ -24,24 +24,24 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.genscavenge.AbstractCollectionPolicy.isAligned;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Once a {@link RawSizeParameters} struct is visible to other threads (see {@link #update}), it may
@@ -102,6 +102,7 @@ final class SizeParameters {
         return sizes.getInitialSurvivorSize();
     }
 
+    @NeverInline("Must not be inlined into callers that are annotated with 'mayBeInlined = true'.")
     @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
     public UnsignedWord getSurvivorSize() {
         assert isInitialized();

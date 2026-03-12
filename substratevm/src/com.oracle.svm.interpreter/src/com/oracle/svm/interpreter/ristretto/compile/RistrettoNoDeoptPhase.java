@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.interpreter.ristretto.compile;
 
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.graph.Node;
@@ -49,7 +49,8 @@ public class RistrettoNoDeoptPhase extends Phase {
                  * TODO GR-72047 - this will be a non-permanent bailout until ristretto support
                  * permanent bailouts
                  */
-                throw new PermanentBailoutException("Ristretto must not use deoptimization when " + DeoptOptionName + " is disabled, but found node " + n);
+                throw new PermanentBailoutException(
+                                "Ristretto must not use deoptimization when " + DeoptOptionName + " is disabled, but found node " + n + " in method " + graph.method().format("%h.%n(%p)"));
             }
         }
     }

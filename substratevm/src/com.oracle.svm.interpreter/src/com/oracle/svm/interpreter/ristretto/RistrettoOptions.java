@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.interpreter.ristretto;
 
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
 import jdk.graal.compiler.api.replacements.Fold;

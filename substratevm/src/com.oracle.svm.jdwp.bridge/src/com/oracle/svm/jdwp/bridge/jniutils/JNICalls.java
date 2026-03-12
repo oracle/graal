@@ -36,13 +36,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.Objects;
 
+import org.graalvm.word.impl.Word;
+
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JClass;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JMethodID;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JNIEnv;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JObject;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JValue;
 import com.oracle.svm.jdwp.bridge.jniutils.JNIExceptionWrapper.ExceptionHandler;
-import org.graalvm.word.WordFactory;
 
 /**
  * Support for calling into HotSpot using JNI. In addition to calling a method using JNI, the
@@ -317,8 +318,8 @@ public final class JNICalls {
          * Finds a {@link JNIMethod} in given {@link JClass clazz} with given name and signature. If
          * such a method does not exist and {@code required} is {@code true}, it throws
          * {@link JNIExceptionWrapper} wrapping a {@link NoSuchMethodError}. If {@code required} is
-         * {@code false} it clears the pending JNI exception and returns a
-         * {@link WordFactory#nullPointer() C NULL pointer}.
+         * {@code false} it clears the pending JNI exception and returns a {@link Word#nullPointer()
+         * C NULL pointer}.
          */
         static JNIMethod findMethod(JNIEnv env, JClass clazz, boolean staticMethod, boolean required, String methodName, String methodSignature) {
             JMethodID methodID = JNIUtil.findMethod(env, clazz, staticMethod, required, methodName, methodSignature);

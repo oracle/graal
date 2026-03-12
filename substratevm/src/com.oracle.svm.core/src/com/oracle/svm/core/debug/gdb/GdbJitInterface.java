@@ -40,15 +40,14 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CUnsigned;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.ProjectHeaderFile;
 import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
-
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * This interface is based on the <a href=
@@ -172,7 +171,7 @@ public class GdbJitInterface {
      * <li>Set {@link JITDescriptor#setActionFlag action_flag} to {@link JITActions#JIT_REGISTER}
      * <li>Set the {@code JITCodeEntry} as {@link JITDescriptor#setRelevantEntry relevant_entry}
      * </ul>
-     * 
+     *
      * @param addr the address of the in-memory run-time debug info object file
      * @param size the size of the in-memory run-time debug info object file
      * @param entry the {@code JITCodeEntry} to fill and pass to {@code GDB}.
@@ -211,7 +210,8 @@ public class GdbJitInterface {
      *
      * @param entry the {@code JITCodeEntry} to pass to {@code GDB}.
      */
-    @Uninterruptible(reason = "Called with raw object pointer.", calleeMustBe = false)
+    /* This should not execute interruptible code, see GR-73898. */
+    @Uninterruptible(reason = "Called with raw object pointer.", mayBeInlined = true, calleeMustBe = false)
     public static void unregisterJITCode(JITCodeEntry entry) {
         JITCodeEntry prevEntry = entry.getPrevEntry();
         JITCodeEntry nextEntry = entry.getNextEntry();

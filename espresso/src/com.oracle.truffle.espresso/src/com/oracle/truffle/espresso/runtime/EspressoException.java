@@ -53,17 +53,17 @@ public final class EspressoException extends AbstractTruffleException {
         }
         // we must only have one wrapper per thrown exception for truffle's stack trace
         // mechanisms to work.
-        EspressoException wrapper = (EspressoException) meta.HIDDEN_EXCEPTION_WRAPPER.getHiddenObject(throwable);
+        EspressoException wrapper = (EspressoException) meta.java_lang_Throwable_0exceptionWrapper.getHiddenObject(throwable);
         if (wrapper != null) {
             return wrapper;
         }
         wrapper = new EspressoException(throwable);
-        meta.HIDDEN_EXCEPTION_WRAPPER.setHiddenObject(throwable, wrapper);
+        meta.java_lang_Throwable_0exceptionWrapper.setHiddenObject(throwable, wrapper);
         return wrapper;
     }
 
     public static VM.StackTrace getFrames(StaticObject exception, Meta meta) {
-        return (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(exception);
+        return (VM.StackTrace) meta.java_lang_Throwable_0frames.getHiddenObject(exception);
     }
 
     @Override

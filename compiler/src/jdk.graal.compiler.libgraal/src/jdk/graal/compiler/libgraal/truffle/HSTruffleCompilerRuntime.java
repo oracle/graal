@@ -57,7 +57,6 @@ import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 import jdk.graal.compiler.libgraal.LibGraalFeature;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
@@ -70,6 +69,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.impl.Word;
 
 public final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
 

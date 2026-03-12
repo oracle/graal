@@ -29,20 +29,21 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
+
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 
 /**
  * Represents a named Java method, which may have been compiled by Graal several times. The class is
  * a container for the list of compilations of the method.
  *
- * Native Image can create multi-methods, i.e., specialized variants of methods for different
- * compilation scenarios. Each multi-method is associated with a multi-method key. This class
- * represents a method rather than a multi-method. As a consequence, the name of this method does
- * not contain a multi-method key. Instead, this instance comprises all multi-methods created from
- * this method.
+ * Native Image can create method variants, i.e., specialized versions of methods for different
+ * compilation scenarios. Each method variant is associated with a method variant key. This class
+ * represents a method rather than a method variant. As a consequence, the name of this method does
+ * not contain a method variant key. Instead, this instance comprises all method variants created
+ * from this method.
  */
 public class Method {
     /**
@@ -73,8 +74,8 @@ public class Method {
      * @param experiment the experiment to which the method belongs
      */
     public Method(String methodName, Experiment experiment) {
-        if (methodName.contains(StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR)) {
-            throw new IllegalArgumentException("The provided argument is a multi-method name: " + methodName);
+        if (methodName.contains(StableMethodNameFormatter.METHOD_VARIANT_KEY_SEPARATOR)) {
+            throw new IllegalArgumentException("The provided argument is a method variant name: " + methodName);
         }
         compilationUnits = new ArrayList<>();
         this.methodName = methodName;
@@ -110,12 +111,12 @@ public class Method {
      *
      * @param compilationId the compilation ID of the compilation unit
      * @param treeLoader a loader of the compilation unit's optimization and inlining tree
-     * @param multiMethodKey the multi-method key if it is a compilation of a multi-method,
+     * @param methodVariantKey the method variant key if it is a compilation of a method variant,
      *            otherwise {@code null}
      * @return the added compilation unit
      */
-    public CompilationUnit addCompilationUnit(String compilationId, long period, CompilationUnit.TreeLoader treeLoader, String multiMethodKey) {
-        CompilationUnit compilationUnit = new CompilationUnit(this, compilationId, period, treeLoader, multiMethodKey);
+    public CompilationUnit addCompilationUnit(String compilationId, long period, CompilationUnit.TreeLoader treeLoader, String methodVariantKey) {
+        CompilationUnit compilationUnit = new CompilationUnit(this, compilationId, period, treeLoader, methodVariantKey);
         compilationUnits.add(compilationUnit);
         totalPeriod += period;
         return compilationUnit;
@@ -190,9 +191,9 @@ public class Method {
         Iterable<CompilationUnit> sortedCompilationUnits = () -> compilationUnits.stream().sorted(Comparator.comparingLong(compilationUnit -> -compilationUnit.getPeriod())).iterator();
         for (CompilationUnit compilationUnit : sortedCompilationUnits) {
             writer.write(String.format("%5s", compilationUnit.getCompilationId()));
-            if (compilationUnit.getMultiMethodKey() != null) {
-                writer.write(" of multi-method ");
-                writer.write(compilationUnit.getMultiMethodKey());
+            if (compilationUnit.getMethodVariantKey() != null) {
+                writer.write(" of method variant ");
+                writer.write(compilationUnit.getMethodVariantKey());
             }
             if (experiment.isProfileAvailable()) {
                 writer.write(" consumed ");
@@ -236,39 +237,40 @@ public class Method {
     }
 
     /**
-     * Splits the given multi-method name into a method name and multi-method key.
+     * Splits the given method variant name into a method name and method variant key.
      *
      * For example, if the argument is {@code java.util.HashMap.size%%key()}, this method returns
      * {@code java.util.HashMap.size()} and {@code key}.
      *
-     * If the provided method name does not contain a multi-method key, {@code null} is returned in
-     * place of the multi-method key.
+     * If the provided method name does not contain a method variant key, {@code null} is returned
+     * in place of the method variant key.
      *
-     * @param multiMethodName a multi-method name
-     * @return the method name and multi-method key
+     * @param methodVariantName a method variant name
+     * @return the method name and method variant key
      */
-    public static Pair<String, String> splitMultiMethodName(String multiMethodName) {
-        int separatorBegin = multiMethodName.indexOf(StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR);
+    public static Pair<String, String> splitMethodVariantName(String methodVariantName) {
+        int separatorBegin = methodVariantName.indexOf(StableMethodNameFormatter.METHOD_VARIANT_KEY_SEPARATOR);
         if (separatorBegin == -1) {
-            return Pair.create(multiMethodName, null);
+            return Pair.create(methodVariantName, null);
         }
-        int keyBegin = separatorBegin + StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR.length();
-        int keyEnd = multiMethodName.lastIndexOf('(');
+        int keyBegin = separatorBegin + StableMethodNameFormatter.METHOD_VARIANT_KEY_SEPARATOR.length();
+        int keyEnd = methodVariantName.lastIndexOf('(');
         if (keyEnd == -1 || keyBegin > keyEnd) {
-            throw new IllegalArgumentException("Malformed multi-method name: " + multiMethodName);
+            throw new IllegalArgumentException("Malformed method variant name: " + methodVariantName);
         }
-        String methodName = multiMethodName.substring(0, separatorBegin) + multiMethodName.substring(keyEnd);
-        String multiMethodKey = multiMethodName.substring(keyBegin, keyEnd);
-        return Pair.create(methodName, multiMethodKey);
+        String methodName = methodVariantName.substring(0, separatorBegin) + methodVariantName.substring(keyEnd);
+        String methodVariantKey = methodVariantName.substring(keyBegin, keyEnd);
+        return Pair.create(methodName, methodVariantKey);
     }
 
     /**
-     * Returns a method name (removing the multi-method key) from the given multi-method name.
+     * Returns a method name (removing the method variant key) from the given method variant name.
      *
-     * @param multiMethodName the name of a multi method (optionally containing a multi-method key)
-     * @return method name corresponding to the given multi-method
+     * @param methodVariantName name of a method variant (optionally containing a method variant
+     *            key)
+     * @return method name corresponding to the given method variant
      */
-    public static String removeMultiMethodKey(String multiMethodName) {
-        return splitMultiMethodName(multiMethodName).getLeft();
+    public static String removeMethodVariantKey(String methodVariantName) {
+        return splitMethodVariantName(methodVariantName).getLeft();
     }
 }

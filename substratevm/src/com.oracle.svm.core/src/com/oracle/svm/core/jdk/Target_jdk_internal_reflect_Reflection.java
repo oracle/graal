@@ -35,7 +35,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 @TargetClass(value = jdk.internal.reflect.Reflection.class)
-final class Target_jdk_internal_reflect_Reflection {
+public final class Target_jdk_internal_reflect_Reflection {
 
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
@@ -56,4 +56,7 @@ final class Target_jdk_internal_reflect_Reflection {
 
     @Alias
     public static native void ensureNativeAccess(Class<?> currentClass, Class<?> owner, String methodName, boolean jni);
+
+    @Alias
+    public static native boolean verifyModuleAccess(Module currentModule, Class<?> memberClass);
 }

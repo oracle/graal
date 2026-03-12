@@ -46,11 +46,11 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
@@ -121,7 +121,6 @@ public class ServiceLoaderFeature implements InternalFeature {
                      * initialized at image build time.
                      */
                     RandomGenerator.class,
-                    LocaleDataMetaInfo.class,            // see LocaleSubstitutions
 
                     /* Graal hotspot-specific services */
                     HotSpotJVMCIBackendFactory.class,
@@ -156,6 +155,9 @@ public class ServiceLoaderFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             servicesToSkip.add(java.security.Provider.class.getName());
+        }
+        if (!FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
+            servicesToSkip.add(LocaleDataMetaInfo.class.getName());
         }
         servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
         serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
@@ -314,7 +316,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         ResolvedJavaMethod nullaryProviderMethod = null;
         try {
             /* Only look for a provider() method if provider class is in an explicit module. */
-            if (JVMCIReflectionUtil.getModule(providerClass).isNamed() && !JVMCIReflectionUtil.getModule(providerClass).getDescriptor().isAutomatic()) {
+            if (JVMCIReflectionUtil.getModule(providerClass).isNamed() && !JVMCIReflectionUtil.getModule(providerClass).isAutomatic()) {
                 for (ResolvedJavaMethod method : providerClass.getDeclaredMethods(false)) {
                     if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
                                     method.getSignature().getParameterCount(false) == 0 && method.getName().equals("provider")) {

@@ -25,6 +25,7 @@
 
 from __future__ import print_function
 import os
+import sys
 from functools import total_ordering, lru_cache
 from os.path import join, exists, basename, dirname, isdir
 import argparse
@@ -176,7 +177,14 @@ def _check_jvmci_version(jdk):
     """
     def _capture_jvmci_version(args=None):
         out = mx.OutputCapture()
-        _run_jvmci_version_check(args, jdk=jdk, out=out)
+        err = mx.OutputCapture()
+        rc = _run_jvmci_version_check(args, jdk=jdk, out=out, err=err, nonZeroIsFatal=False)
+        if rc != 0:
+            errmsg = err.data
+            if "JVMCI_VERSION_CHECK" in err.data:
+                errmsg += "HINT: Run `mx -y fetch-jdk default` to install a compatible JDK and re-try with `--java-home=lookup:default`"
+            print(errmsg, file=sys.stderr)
+            mx.abort(rc)
         if out.data:
             try:
                 (jdk_version, release_name, jvmci_build) = out.data.split(',')
@@ -598,21 +606,26 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
     dacapo_gate_iterations.update({'fop': 8})
-    for name in dacapo_suite.benchmarkList(bmSuiteArgs):
+    dacapo_benchmarks = dacapo_suite.benchmarkList(bmSuiteArgs)
+    if "jython" in dacapo_benchmarks:
+        # jython is causing transient errors making the output validation fail
+        # GH dacapobench/dacapobench issue #360
+        dacapo_benchmarks.remove("jython")
+    for name in dacapo_benchmarks:
         iterations = dacapo_gate_iterations.get(name, -1)
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark daily workload', tasks, tags=['dacapo_daily'], report=task_report_component) as t:
         if t:
-            for name in dacapo_suite.benchmarkList(bmSuiteArgs):
+            for name in dacapo_benchmarks:
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * dacapo_daily_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark weekly workload', tasks, tags=['dacapo_weekly'], report=task_report_component) as t:
         if t:
-            for name in dacapo_suite.benchmarkList(bmSuiteArgs):
+            for name in dacapo_benchmarks:
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * dacapo_weekly_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
@@ -664,6 +677,9 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     # Renaissance is missing the msvc redistributable on Windows [GR-50132]
     if not mx.is_windows():
         for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+            if name == 'akka-uct':
+                # akka-uct doesn't always shutdown cleanly GR-72720
+                continue
             iterations = renaissance_gate_iterations.get(name, -1)
             with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
                 if t:
@@ -886,6 +902,11 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
         # TODO: GR-31197, this should be removed.
         vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
         vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
+
+        # Add support for PanamaDisassemblerVisitor
+        vmArgs.append(f"-Dtest.jdk.graal.compiler.disassembler.path={mx_graal_tools.get_hsdis_lib()}")
+        vmArgs.append("--enable-native-access=ALL-UNNAMED")
+
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -1526,6 +1547,7 @@ def _graal_config():
 # The jars needed for jargraal.
 def _jvmci_jars():
     return [
+        'compiler:GRAAL_OPTIONS',
         'compiler:GRAAL',
         'compiler:GRAAL_MANAGEMENT',
     ]

@@ -26,6 +26,7 @@ package com.oracle.svm.core.util;
 
 import java.util.function.Supplier;
 
+import com.oracle.svm.shared.util.VMError;
 import jdk.internal.misc.Unsafe;
 
 /**

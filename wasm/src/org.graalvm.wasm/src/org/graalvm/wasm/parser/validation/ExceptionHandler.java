@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,18 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import org.graalvm.wasm.constants.ExceptionHandlerType;
+
 /**
  * Representation of an exception handler during parsing.
  */
 public final class ExceptionHandler {
+    /** {@link ExceptionHandlerType}. */
     private final int type;
+    /** Tag index. */
     private final int tag;
-    private int target;
+    /** Target label bytecode offset. */
+    private int target = -1;
 
     public ExceptionHandler(int type, int tag) {
         this.type = type;
@@ -68,5 +73,10 @@ public final class ExceptionHandler {
 
     public void setTarget(int target) {
         this.target = target;
+    }
+
+    @Override
+    public String toString() {
+        return ExceptionHandlerType.toString(type) + (tag != -1 ? "(tag=" + tag + ")" : "") + "->" + target;
     }
 }

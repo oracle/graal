@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,7 +76,11 @@ public final class Threading {
      * case, the values of {@code interval} and {@code unit} are ignored).
      *
      * @since 19.0
+     * @deprecated in 25.1 without replacement. This method is inherently unsafe as it can interfere
+     *             with other code.
      */
+    @Deprecated(since = "25.1")
+    @SuppressWarnings("deprecation")
     public static void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
         ImageSingletons.lookup(ThreadingSupport.class).registerRecurringCallback(interval, unit, callback);
     }

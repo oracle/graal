@@ -28,7 +28,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.jniutils.JNI.JClass;
@@ -36,6 +35,7 @@ import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.word.impl.Word;
 
 /**
  * This handles the Truffle host environment lookup on HotSpot with Libgraal.

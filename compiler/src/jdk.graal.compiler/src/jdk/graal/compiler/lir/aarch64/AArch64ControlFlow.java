@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.lir.aarch64;
 
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
@@ -58,6 +59,7 @@ import jdk.graal.compiler.lir.SwitchStrategy;
 import jdk.graal.compiler.lir.SwitchStrategy.BaseSwitchClosure;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -70,16 +72,31 @@ public class AArch64ControlFlow {
     public static final class ReturnOp extends AArch64BlockEndOp {
         public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
         @Use({REG, ILLEGAL}) protected Value x;
+        @Alive({REG, ILLEGAL}) protected Value tailCallTarget;
+        @Alive({REG, STACK}) private AllocatableValue[] additionalReturns;
+        @Temp private AllocatableValue[] killed;
 
-        public ReturnOp(Value x) {
+        public ReturnOp(Value x, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns) {
             super(TYPE);
             this.x = x;
+            this.tailCallTarget = tailCallTarget;
+            this.additionalReturns = additionalReturns;
+            /*
+             * Avoid allocating r29 (frame pointer, keep this in sync with
+             * AArch64HotSpotRegisterConfig.fp and SubstrateAArch64RegisterConfig.fp) and lr for
+             * tailCallTarget and additionalReturns.
+             */
+            this.killed = new AllocatableValue[]{AArch64.r29.asValue(), AArch64.lr.asValue()};
         }
 
         @Override
         protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             crb.frameContext.leave(crb);
-            masm.ret(lr);
+            if (Value.ILLEGAL.equals(tailCallTarget)) {
+                masm.ret(lr);
+            } else {
+                masm.jmp(asRegister(tailCallTarget));
+            }
             crb.frameContext.returned(crb);
         }
     }

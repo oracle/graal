@@ -29,7 +29,7 @@ package com.oracle.svm.core.jfr.traceid;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.jfr.internal.Type;
 
@@ -76,7 +76,7 @@ public class JfrTraceId {
         return id >>> TRACE_ID_SHIFT;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public static long load(Class<?> clazz) {
         assert clazz != null;
         JfrTraceId.setUsedThisEpoch(clazz);

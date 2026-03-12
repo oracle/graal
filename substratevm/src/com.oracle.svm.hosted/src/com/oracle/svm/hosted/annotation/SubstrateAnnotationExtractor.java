@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import static com.oracle.svm.util.GraalAccess.toAnnotated;
-
 import java.lang.annotation.Annotation;
 import java.lang.annotation.AnnotationFormatError;
 import java.lang.reflect.AnnotatedElement;
@@ -34,11 +32,11 @@ import java.util.Objects;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.AnnotatedObjectAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -53,13 +51,13 @@ import jdk.graal.compiler.annotation.AnnotationValue;
  * never be used during Native Image generation because it initializes all annotation classes and
  * their dependencies.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implements AnnotationExtractor {
 
     @Override
     public <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly) {
         try {
-            return getAnnotation(toAnnotated(element), annotationType, declaredOnly);
+            return getAnnotation(GuestAccess.get().toAnnotated(element), annotationType, declaredOnly);
         } catch (LinkageError | AnnotationFormatError e) {
             /*
              * Returning null essentially means that the element doesn't declare the annotationType,
@@ -74,7 +72,7 @@ public class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implemen
     @Override
     public boolean hasAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType) {
         try {
-            return hasAnnotation(toAnnotated(element), annotationType);
+            return hasAnnotation(GuestAccess.get().toAnnotated(element), annotationType);
         } catch (LinkageError | AnnotationFormatError e) {
             /*
              * Returning false essentially means that the element doesn't declare the
@@ -89,7 +87,7 @@ public class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implemen
     @SuppressWarnings("unchecked")
     @Override
     public Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
-        return getAnnotationValues(toAnnotated(element), false).values().stream() //
+        return getAnnotationValues(GuestAccess.get().toAnnotated(element), false).values().stream() //
                         .map(AnnotationValue::getAnnotationType) //
                         .map(OriginalClassProvider::getJavaClass) //
                         .filter(Objects::nonNull) //

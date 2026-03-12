@@ -32,6 +32,11 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
  * A class file element may contain named attributes.
  */
 public interface AttributedElement {
+    /**
+     * Gets the named attributes.
+     *
+     * @return a non-null value
+     */
     Attribute[] getAttributes();
 
     /**

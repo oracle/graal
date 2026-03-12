@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.meta;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 /**

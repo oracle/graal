@@ -61,6 +61,9 @@ import com.oracle.truffle.api.nodes.RootNode;
                                                 int.class, boolean.class})),
                 @Variant(suffix = "ThreadedAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
                                 enableThreadedSwitch = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
+                                                int.class, boolean.class})),
+                @Variant(suffix = "TailCallAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                                enableTailCallHandlers = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
                                                 int.class, boolean.class}))
 })
 public abstract class BytecodeDSLBenchmarkRootNode extends RootNode implements BytecodeRootNode {

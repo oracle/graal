@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EST_NO_ENTRY;
 
 import java.io.BufferedInputStream;
@@ -52,8 +52,8 @@ import java.util.zip.CRC32C;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -267,7 +267,7 @@ public final class InterpreterUniverseImpl implements InterpreterUniverse {
                         holder.setConstantPool(constantPool);
                     } else if (value instanceof InterpreterResolvedObjectType.VTableHolder vTableHolder) {
                         InterpreterResolvedObjectType holder = vTableHolder.holder;
-                        holder.setVtable(vTableHolder.vtable);
+                        holder.setVtable(vTableHolder.vtable, vTableHolder.classVtableLength);
                     } else if (value instanceof InterpreterResolvedJavaMethod.InlinedBy inlinedBy) {
                         InterpreterResolvedJavaMethod holder = inlinedBy.holder;
                         for (InterpreterResolvedJavaMethod m : inlinedBy.inliners) {

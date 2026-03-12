@@ -43,7 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
+import com.oracle.svm.common.meta.MethodVariant.MethodVariantKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -65,8 +65,8 @@ final class BytecodeSensitiveVirtualInvokeTypeFlow extends AbstractVirtualInvoke
     private final AnalysisContext callerContext;
 
     BytecodeSensitiveVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariantKey callerMethodVariantKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMethodVariantKey);
         callerContext = null;
     }
 
@@ -119,8 +119,8 @@ final class BytecodeSensitiveVirtualInvokeTypeFlow extends AbstractVirtualInvoke
 
             assert !Modifier.isAbstract(method.getModifiers()) : method;
 
-            Collection<PointsToAnalysisMethod> calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(method),
-                            targetMethod, callerMultiMethodKey, this);
+            Collection<PointsToAnalysisMethod> calleeList = bb.getHostVM().getMethodVariantsAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(method),
+                            targetMethod, callerMethodVariantKey, this);
             for (PointsToAnalysisMethod callee : calleeList) {
                 if (!callee.isOriginalMethod() && allOriginalCallees) {
                     allOriginalCallees = false;

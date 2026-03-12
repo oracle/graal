@@ -35,10 +35,10 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs;
+import com.oracle.svm.core.graal.amd64.SubstrateAMD64Backend;
 import com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -78,7 +78,7 @@ public class AMD64InterpreterStubSection extends InterpreterStubSection {
             recordEnterTrampoline(method, masm.position());
 
             /* pass the method index, the reference is obtained in enterInterpreterStub */
-            masm.movq(AMD64InterpreterStubs.TRAMPOLINE_ARGUMENT, method.getEnterStubOffset());
+            masm.movq(SubstrateAMD64Backend.HIDDEN_ARGUMENT_REGISTER, method.getEnterStubOffset());
 
             masm.jmp(interpEnterStub);
         }
@@ -88,7 +88,7 @@ public class AMD64InterpreterStubSection extends InterpreterStubSection {
 
     @Override
     public int getVTableStubSize() {
-        int branchTargetAlignment = ConfigurationValues.getTarget().wordSize * 2;
+        int branchTargetAlignment = ConfigurationValues.getWordSize() * 2;
         int stubSize = 10;
 
         return NumUtil.roundUp(stubSize, branchTargetAlignment);
@@ -115,7 +115,7 @@ public class AMD64InterpreterStubSection extends InterpreterStubSection {
             int expectedStubEnd = masm.position() + getVTableStubSize();
 
             /* pass current vTable index as hidden argument */
-            masm.moveInt(AMD64InterpreterStubs.TRAMPOLINE_ARGUMENT, vTableIndex);
+            masm.moveInt(SubstrateAMD64Backend.HIDDEN_ARGUMENT_REGISTER, vTableIndex);
 
             masm.jmp(interpEnterStub);
 

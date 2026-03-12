@@ -39,13 +39,13 @@ import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 
 import jdk.graal.compiler.core.ArchitectureSpecific;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.internal.misc.VM;
 import jdk.vm.ci.code.Architecture;

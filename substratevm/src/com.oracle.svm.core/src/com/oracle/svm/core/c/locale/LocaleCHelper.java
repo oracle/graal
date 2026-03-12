@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 @CContext(LocaleDirectives.class)
 @CLibrary(value = "libchelper", requireStatic = true, dependsOn = "java")
@@ -59,7 +59,7 @@ class LocaleCHelper {
      *         {@link #SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY}.
      */
     @CFunction(value = "svm_initialize_locale", transition = NO_TRANSITION)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+17/src/java.base/unix/native/libjava/java_props_md.c#L71-L357")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+7/src/java.base/unix/native/libjava/java_props_md.c#L71-L359")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+17/src/java.base/unix/native/libjava/java_props_md.c#L436-L460")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/windows/native/libjava/java_props_md.c#L263-L721")
     static native int initializeLocale();

@@ -29,7 +29,7 @@ import java.util.List;
 
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.webimage.codegen.lowerer.CommitAllocationLowerer;
 
 import jdk.graal.compiler.debug.DebugCloseable;

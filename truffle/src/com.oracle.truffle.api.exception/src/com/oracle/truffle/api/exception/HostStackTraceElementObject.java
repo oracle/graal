@@ -82,7 +82,7 @@ final class HostStackTraceElementObject implements TruffleObject {
         int lineNumber = stackTraceElement.getLineNumber();
         if (lineNumber >= 0) {
             Source dummySource = Source.newBuilder("host", "", stackTraceElement.getFileName()).content(Source.CONTENT_NONE).cached(false).build();
-            return dummySource.createSection(lineNumber);
+            return dummySource.createSection(lineNumber, 1, lineNumber, 1);
         }
         throw UnsupportedMessageException.create();
     }
@@ -96,6 +96,17 @@ final class HostStackTraceElementObject implements TruffleObject {
     @ExportMessage
     Object getDeclaringMetaObject() {
         return new DeclaringMetaObject();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isHostObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object asHostObject() {
+        return stackTraceElement;
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -128,5 +139,10 @@ final class HostStackTraceElementObject implements TruffleObject {
             return instance == HostStackTraceElementObject.this;
         }
 
+    }
+
+    @Override
+    public String toString() {
+        return String.valueOf(stackTraceElement);
     }
 }

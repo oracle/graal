@@ -411,8 +411,8 @@ public final class InterpreterToVM extends ContextAccessImpl {
             StaticObject thread = context.getCurrentPlatformThread();
             if (context.getEspressoEnv().EnableManagement) {
                 // Locks bookkeeping.
-                meta.HIDDEN_THREAD_PENDING_MONITOR.setHiddenObject(thread, obj);
-                Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
+                meta.java_lang_Thread_0pendingMonitor.setHiddenObject(thread, obj);
+                Field blockedCount = meta.java_lang_Thread_0blockedCount;
                 Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
             }
             final boolean report = context.shouldReportVMEvents();
@@ -424,7 +424,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                 context.reportOnContendedMonitorEntered(obj);
             }
             if (context.getEspressoEnv().EnableManagement) {
-                meta.HIDDEN_THREAD_PENDING_MONITOR.setHiddenObject(thread, null);
+                meta.java_lang_Thread_0pendingMonitor.setHiddenObject(thread, null);
             }
         } finally {
             transition.restore(meta);
@@ -581,14 +581,14 @@ public final class InterpreterToVM extends ContextAccessImpl {
      */
     public static StaticObject fillInStackTraceLazy(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
         // Inlined calls to help StackOverflows.
-        VM.StackTrace frames = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwable);
+        VM.StackTrace frames = (VM.StackTrace) meta.java_lang_Throwable_0frames.getHiddenObject(throwable);
         if (frames != null) {
             return throwable;
         }
         EspressoException e = EspressoException.wrap(throwable, meta);
         List<TruffleStackTraceElement> trace = TruffleStackTrace.getStackTrace(e);
         if (trace == null) {
-            meta.HIDDEN_FRAMES.setHiddenObject(throwable, VM.StackTrace.EMPTY_STACK_TRACE);
+            meta.java_lang_Throwable_0frames.setHiddenObject(throwable, VM.StackTrace.EMPTY_STACK_TRACE);
             meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
             return throwable;
         }
@@ -607,7 +607,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                 }
             }
         }
-        meta.HIDDEN_FRAMES.setHiddenObject(throwable, frames);
+        meta.java_lang_Throwable_0frames.setHiddenObject(throwable, frames);
         meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
         return throwable;
     }
@@ -616,7 +616,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
     public static StaticObject fillInStackTrace(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
         int maxDepth = meta.getLanguage().getMaxStackTraceDepth();
         VM.StackTrace frames = getStackTrace(new FillInStackTraceFramesFilter(), maxDepth);
-        meta.HIDDEN_FRAMES.setHiddenObject(throwable, frames);
+        meta.java_lang_Throwable_0frames.setHiddenObject(throwable, frames);
         meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
         if (meta.getJavaVersion().java9OrLater()) {
             meta.java_lang_Throwable_depth.setInt(throwable, frames.size);

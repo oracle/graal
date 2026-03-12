@@ -27,10 +27,9 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.genscavenge.AbstractCollectionPolicy.isAligned;
 
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.ReferenceAccess;
-
-import jdk.graal.compiler.word.Word;
 
 /**
  * The methods in this class may only be used on {@link RawSizeParameters} that are allocated on the

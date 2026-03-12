@@ -62,7 +62,6 @@ public final class ModuleExtension {
                                                     "jdk.graal.compiler.nodes.loop",
                                                     "jdk.graal.compiler.nodes.memory",
                                                     "jdk.graal.compiler.nodes.spi",
-                                                    "jdk.graal.compiler.options",
                                                     "jdk.graal.compiler.phases.tiers",
                                                     "jdk.graal.compiler.phases.util",
                                                     "jdk.graal.compiler.runtime",
@@ -81,6 +80,12 @@ public final class ModuleExtension {
                                                                     "jdk.vm.ci.meta",
                                                                     "jdk.vm.ci.meta.annotation",
                                                                     "jdk.vm.ci.runtime")))  //
+                                    .build(),
+                    new Builder("jdk.graal.compiler.espresso.vmaccess.guest", "espresso-vmaccess-guest.jar", (context) -> context.getLanguage().isExternalJVMCIEnabled())  //
+                                    .setAutoAdd(true)  //
+                                    .build(),
+                    new Builder("jdk.graal.compiler.vmaccess.guest", "vmaccess-guest.jar", (context) -> context.getLanguage().isExternalJVMCIEnabled())  //
+                                    .setAutoAdd(true)  //
                                     .build(),
     };
 

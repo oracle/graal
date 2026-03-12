@@ -39,7 +39,7 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 @TargetClass(className = "jdk.internal.vm.Continuation")
 public final class Target_jdk_internal_vm_Continuation {
@@ -125,6 +125,11 @@ public final class Target_jdk_internal_vm_Continuation {
     @Substitute
     static void enterSpecial(Target_jdk_internal_vm_Continuation c, @SuppressWarnings("unused") boolean isContinue, boolean isVirtualThread) {
         assert isVirtualThread;
+        if (!ContinuationSupport.isSupported()) {
+            // We should always fail earlier in the Continuation class initializer.
+            // This is only to make the code below and its callees unreachable.
+            throw VMError.shouldNotReachHereAtRuntime();
+        }
 
         int stateBefore = StackOverflowCheck.singleton().getState();
         VMError.guarantee(!StackOverflowCheck.singleton().isYellowZoneAvailable());
@@ -147,6 +152,12 @@ public final class Target_jdk_internal_vm_Continuation {
 
     @Substitute
     private static int doYield() {
+        if (!ContinuationSupport.isSupported()) {
+            // We should always fail earlier in the Continuation class initializer.
+            // This is only to make the code below and its callees unreachable.
+            throw VMError.shouldNotReachHereAtRuntime();
+        }
+
         Target_jdk_internal_vm_Continuation cont = ContinuationInternals.getContinuationFromCarrier();
         int pinnedReason = isPinned0(cont.getScope());
         if (pinnedReason != 0) {
@@ -213,6 +224,10 @@ public final class Target_jdk_internal_vm_Continuation {
 }
 
 @TargetClass(className = "jdk.internal.vm.StackChunk")
-@Delete
+@Substitute
 final class Target_jdk_internal_vm_StackChunk {
+    @Substitute
+    static void init() {
+        // Called from Continuation initializer.
+    }
 }

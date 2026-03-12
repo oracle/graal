@@ -42,20 +42,20 @@ import static org.junit.Assert.assertTrue;
 
 public class MethodTest {
     @Test
-    public void multiMethodSplit() {
-        Pair<String, String> pair1 = Method.splitMultiMethodName("foo.bar.Baz()");
+    public void methodVariantSplit() {
+        Pair<String, String> pair1 = Method.splitMethodVariantName("foo.bar.Baz()");
         assertEquals("foo.bar.Baz()", pair1.getLeft());
         assertNull(pair1.getRight());
 
-        Pair<String, String> pair2 = Method.splitMultiMethodName("baz.bar.Foo%%Baz()");
+        Pair<String, String> pair2 = Method.splitMethodVariantName("baz.bar.Foo%%Baz()");
         assertEquals("baz.bar.Foo()", pair2.getLeft());
         assertEquals("Baz", pair2.getRight());
     }
 
     @Test
-    public void removeMultiMethodKey() {
-        assertEquals("foo.Bar(Baz)", Method.removeMultiMethodKey("foo.Bar%%RemoveMe(Baz)"));
-        assertEquals("Foo()", Method.removeMultiMethodKey("Foo()"));
+    public void removeMethodVariantKey() {
+        assertEquals("foo.Bar(Baz)", Method.removeMethodVariantKey("foo.Bar%%RemoveMe(Baz)"));
+        assertEquals("Foo()", Method.removeMethodVariantKey("Foo()"));
     }
 
     @Test

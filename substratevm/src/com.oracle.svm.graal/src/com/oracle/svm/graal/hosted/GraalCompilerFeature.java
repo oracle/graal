@@ -39,7 +39,7 @@ import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;

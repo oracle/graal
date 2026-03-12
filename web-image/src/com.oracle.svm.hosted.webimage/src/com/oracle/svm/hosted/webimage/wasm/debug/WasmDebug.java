@@ -35,7 +35,7 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -43,7 +43,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.nodes.WasmTrapNode;
 import com.oracle.svm.hosted.webimage.wasm.phases.StackPointerVerificationPhase;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
@@ -143,13 +143,15 @@ public class WasmDebug {
             }
         }
 
+        // Checkstyle: allow System.err (run time code)
         System.err.println(header);
         for (String s : extraInfo) {
             System.err.println("\t" + s);
         }
 
         if (o instanceof Throwable throwable) {
-            throwable.printStackTrace();
+            throwable.printStackTrace(System.err);
         }
+        // Checkstyle: disallow System.err
     }
 }

@@ -32,6 +32,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -607,6 +608,7 @@ public abstract class ClassRegistry {
             LinkedKlass linkedSuperKlass = superKlass == null ? null : superKlass.getLinkedKlass();
             LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(env, env.getLanguage(), getClassLoader(), parserKlass, linkedSuperKlass, linkedInterfaces, info);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
+            klass.getContext().getLogger().log(Level.FINEST, "Created: {0}", klass.getNameAsString());
         }
 
         if (superKlass != null) {

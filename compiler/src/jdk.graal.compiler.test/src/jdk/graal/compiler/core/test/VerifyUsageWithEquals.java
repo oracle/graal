@@ -94,10 +94,10 @@ public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
     }
 
     private static void checkRestrictedClass(Class<?> restrictedClass) {
-        assert !restrictedClass.isInterface() || isTrustedInterface(restrictedClass) : "the restricted class must not be an untrusted interface";
+        assert !restrictedClass.isInterface() || isTrustedInterface(restrictedClass) : "the restricted class %s must not be an untrusted interface".formatted(restrictedClass.getName());
     }
 
-    private static final Class<?>[] trustedInterfaceTypes = {JavaType.class, JavaField.class, JavaMethod.class};
+    private static final Class<?>[] trustedInterfaceTypes = {JavaType.class, JavaField.class, JavaMethod.class, JavaConstant.class};
 
     private static boolean isTrustedInterface(Class<?> cls) {
         for (Class<?> trusted : trustedInterfaceTypes) {

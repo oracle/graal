@@ -31,7 +31,7 @@ import com.oracle.svm.core.pltgot.aarch64.AArch64ExitMethodAddressResolutionOp;
 import com.oracle.svm.core.pltgot.aarch64.AArch64MethodAddressResolutionDispatcher;
 import com.oracle.svm.hosted.pltgot.HostedPLTGOTConfiguration;
 import com.oracle.svm.hosted.pltgot.PLTStubGenerator;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.vm.ci.code.Register;

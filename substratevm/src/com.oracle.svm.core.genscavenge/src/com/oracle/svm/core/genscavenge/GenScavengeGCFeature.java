@@ -65,10 +65,10 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.OSCommittedMemoryProvider;
+import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.graph.Node;
@@ -110,6 +110,10 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
+        if (SubstrateGCOptions.VerifyHeap.getValue()) {
+            ImageSingletons.add(HeapVerifier.class, new HeapVerifier());
+        }
+
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             TlabOptionCache tlabOptionCache = new TlabOptionCache();
             ImageSingletons.add(TlabOptionCache.class, tlabOptionCache);
@@ -119,12 +123,8 @@ class GenScavengeGCFeature implements InternalFeature {
                 ImageSingletons.lookup(PerfManager.class).register(createPerfData());
             }
         }
+
         TlabOptionCache.validateHostedOptionValues();
-
-        if (SubstrateGCOptions.VerifyHeap.getValue()) {
-            ImageSingletons.add(HeapVerifier.class, new HeapVerifier());
-        }
-
         HeapParameters.initialize();
     }
 

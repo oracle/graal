@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.espresso.libs.libzip;
 
+import java.util.ArrayList;
+
 import com.oracle.truffle.espresso.libs.Lib;
 import com.oracle.truffle.espresso.libs.Libs;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.Collect;
-import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
 @Collect(Libs.class)
 public final class LibZip implements Lib.Factory {
@@ -37,6 +38,13 @@ public final class LibZip implements Lib.Factory {
 
     @Override
     public Lib create(EspressoContext ctx) {
-        return new Lib(ctx, LibZipCollector.getInstances(JavaSubstitution.Factory.class), name());
+        /*
+         * We currently always substitute the native methods of LibZip (except on SVM, which does
+         * not support EspressoLibs). However, in no-native mode we need to return non-null as in
+         * com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess.loadLibrary the delegate will
+         * always throw. That is why we just return a dummy libs object with an empty list as
+         * collector.
+         */
+        return new Lib(ctx, new ArrayList<>(), name());
     }
 }

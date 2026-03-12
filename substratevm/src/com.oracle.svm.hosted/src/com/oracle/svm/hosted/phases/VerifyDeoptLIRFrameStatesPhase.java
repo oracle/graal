@@ -30,7 +30,7 @@ import java.util.Map;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.graal.lir.DeoptEntryOp;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;

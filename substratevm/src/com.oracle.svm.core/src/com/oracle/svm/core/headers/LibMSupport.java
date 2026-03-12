@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.headers;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 public interface LibMSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

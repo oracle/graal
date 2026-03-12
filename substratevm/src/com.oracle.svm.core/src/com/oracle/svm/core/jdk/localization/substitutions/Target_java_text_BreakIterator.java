@@ -26,11 +26,12 @@ package com.oracle.svm.core.jdk.localization.substitutions;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.ResourceBundlesAtBuildTime;
 
 import java.text.BreakIterator;
 import java.util.Locale;
 
-@TargetClass(java.text.BreakIterator.class)
+@TargetClass(value = java.text.BreakIterator.class, onlyWith = ResourceBundlesAtBuildTime.class)
 final class Target_java_text_BreakIterator {
 
     @Substitute

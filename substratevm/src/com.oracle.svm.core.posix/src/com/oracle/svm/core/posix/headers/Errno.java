@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.UnsignedWord;
 
 // Checkstyle: stop
 
@@ -65,5 +66,5 @@ public class Errno {
     public static native int EINVAL();
 
     @CFunction
-    public static native CCharPointer strerror(int errnum);
+    public static native CCharPointer strerror_r(int errnum, CCharPointer buf, UnsignedWord size);
 }

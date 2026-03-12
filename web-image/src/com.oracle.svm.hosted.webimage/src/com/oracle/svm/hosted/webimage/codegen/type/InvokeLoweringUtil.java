@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.hosted.webimage.codegen.type;
 
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;

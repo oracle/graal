@@ -157,6 +157,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #hasExceptionCause(Object) exception cause}
  * <li>{@link #hasExceptionStackTrace(Object) exception stack trace}
  * <li>{@link #hasIterator(Object) iterator}
+ * <li>{@link #hasBytecodeIndex(Object) bytecode index}
  * </ul>
  * <h3>Naive and aware dates and times</h3>
  * <p>
@@ -289,6 +290,7 @@ public abstract class InteropLibrary extends Library {
      * Returns executable name of the receiver. Throws {@code UnsupportedMessageException} when the
      * receiver is has no {@link #hasExecutableName(Object) executable name}. The return value is an
      * interop value that is guaranteed to return <code>true</code> for {@link #isString(Object)}.
+     * This method must not cause any observable side-effects.
      *
      * @see #hasExecutableName(Object)
      * @since 20.3
@@ -691,6 +693,45 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"getMembers", "isMemberReadable", "readMember", "isMemberModifiable", "isMemberInsertable", "writeMember", "isMemberRemovable", "removeMember", "isMemberInvocable",
                     "invokeMember", "isMemberInternal", "hasMemberReadSideEffects", "hasMemberWriteSideEffects", "isScope"})
     public boolean hasMembers(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Determines whether the given receiver provides a bytecode index. For example, a stack frame
+     * object may provide a bytecode index. Calling this message does not produce any observable
+     * side effects. The default implementation returns {@code false}.
+     *
+     * @see #getBytecodeIndex(Object)
+     * @since 25.1
+     */
+    @Abstract(ifExported = {"getBytecodeIndex"})
+    public boolean hasBytecodeIndex(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns bytecode index of the receiver. Throws {@code UnsupportedMessageException} when the
+     * receiver does not provide a {@link #hasBytecodeIndex(Object) bytecode index} or has no
+     * bytecode index.
+     *
+     * @see #hasBytecodeIndex(Object)
+     * @since 25.1
+     */
+    @Abstract(ifExported = {"hasBytecodeIndex"})
+    public int getBytecodeIndex(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Determines whether the given receiver represents an internal object. For example, a stack
+     * frame object may be marked as internal so that it can be excluded from a stack trace shown to
+     * the user. Calling this message does not produce any observable side effects. The default
+     * implementation returns {@code false}.
+     *
+     * @see #getLanguageId(Object)
+     * @since 25.1
+     */
+    public boolean isInternal(Object receiver) {
         return false;
     }
 
@@ -2154,11 +2195,12 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns the internal cause of the receiver. Throws {@code UnsupportedMessageException} when
-     * the receiver is not an {@link #isException(Object) exception} or has no internal cause. The
-     * return value of this message is guaranteed to return <code>true</code> for
-     * {@link #isException(Object)}.
-     *
-     *
+     * the receiver is not an {@link #isException(Object) exception} or if the exception does not
+     * support an exception cause. The returned value of this message is guaranteed to represent
+     * either an {@link #isException(Object) exception} or an {@link #isNull(Object) null} object.
+     * An null object is returned if the exception supports a cause but the cause itself is
+     * {@code null}.
+     * 
      * @see #isException(Object)
      * @see #hasExceptionCause(Object)
      * @since 20.3
@@ -2251,7 +2293,7 @@ public abstract class InteropLibrary extends Library {
     public Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
-            return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver, null);
+            return InteropAccessor.EXCEPTION.getExceptionStackTrace((Throwable) receiver, null);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -4950,7 +4992,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 Object result = delegate.getExceptionCause(receiver);
                 assert wasHasExceptionCause : violationInvariant(receiver);
-                assert assertException(receiver, result);
+                assert assertExceptionOrNull(receiver, result);
                 assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
@@ -4960,9 +5002,9 @@ public abstract class InteropLibrary extends Library {
             }
         }
 
-        private static boolean assertException(Object receiver, Object exception) {
+        private static boolean assertExceptionOrNull(Object receiver, Object exception) {
             InteropLibrary uncached = InteropLibrary.getUncached(exception);
-            assert uncached.isException(exception) : violationPost(receiver, exception);
+            assert uncached.isException(exception) || uncached.isNull(exception) : violationPost(receiver, exception);
             return true;
         }
 
@@ -5734,6 +5776,36 @@ public abstract class InteropLibrary extends Library {
                 assert e instanceof HeapIsolationException : violationInvariant(receiver);
                 throw e;
             }
+        }
+
+        @Override
+        public boolean hasBytecodeIndex(Object receiver) {
+            assert preCondition(receiver);
+            return delegate.hasBytecodeIndex(receiver);
+        }
+
+        @Override
+        public int getBytecodeIndex(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getBytecodeIndex(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasHasBytecodeIndex = delegate.hasBytecodeIndex(receiver);
+            try {
+                int result = delegate.getBytecodeIndex(receiver);
+                assert wasHasBytecodeIndex : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasHasBytecodeIndex : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isInternal(Object receiver) {
+            assert preCondition(receiver);
+            return delegate.isInternal(receiver);
         }
     }
 }

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ from os.path import exists, basename
 from pathlib import Path
 from traceback import print_tb
 from typing import List, Optional, Set, Collection, Union, Iterable, Sequence, Callable, TextIO, Tuple, Generator, Any
+from string import Template
 
 import mx
 import mx_benchmark
@@ -72,7 +73,7 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_util
 from mx_util import Stage, StageName, Layer
-from mx_benchmark import BenchmarkDispatcher, BenchmarkDispatcherState, BenchmarkExecutionConfiguration, BenchmarkSuite, bm_exec_context, ConstantContextValueManager, DataPoints, DataPoint, ForkInfo, SingleBenchmarkManager
+from mx_benchmark import BenchmarkDispatcher, BenchmarkDispatcherState, BenchmarkExecutionConfiguration, BenchmarkSuite, bm_exec_context, ConstantContextValueManager, DataPoints, DataPoint, ForkInfo, SingleBenchmarkManager, ConstantContextValue
 from mx_sdk_vm_impl import svm_experimental_options
 
 _suite = mx.suite('sdk')
@@ -420,10 +421,14 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['-H:+GraalOS']
         if vm.use_string_inlining:
             base_image_build_args += ['-H:+UseStringInlining']
+        if vm.static:
+            base_image_build_args += ['--static', '--libc=musl']
+        if vm.mostly_static:
+            base_image_build_args += ['--static-nolibc']
         if vm.use_open_type_world:
             base_image_build_args += ['-H:-ClosedTypeWorld']
-        if vm.use_compacting_gc:
-            base_image_build_args += ['-H:+CompactingOldGen']
+        if vm.copyingoldgen_oldpolicy: # for later removal: GR-73132
+            base_image_build_args += ['-H:-CompactingOldGen','-H:InitialCollectionPolicy=Adaptive']
         if vm.is_llvm:
             base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['--tool:llvm-backend',
                                                                                           '-H:DeadlockWatchdogInterval=0']
@@ -511,9 +516,6 @@ class NativeImageBenchmarkConfig:
         return self.image_build_reports_directory / f"image_build_statistics-{suffix}.json"
 
     def check_runnable(self):
-        # TODO remove once there is load available for the specified benchmarks
-        if self.benchmark_suite_name in ["mushop", "quarkus"]:
-            return False
         return True
 
     def get_bundle_path_if_present(self) -> Optional[Path]:
@@ -867,6 +869,8 @@ class NativeImageVM(StageAwareGraalVm):
         self.pie = False
         self.layered = False
         self.use_string_inlining = False
+        self.static = False
+        self.mostly_static = False
         self.is_llvm = False
         self.gc = None
         self.native_architecture = False
@@ -876,7 +880,7 @@ class NativeImageVM(StageAwareGraalVm):
         self.future_defaults_all = False
         self.use_upx = False
         self.use_open_type_world = False
-        self.use_compacting_gc = False
+        self.copyingoldgen_oldpolicy = False # for later removal: GR-73132
         self.graalvm_edition = None
         self.config: Optional[NativeImageBenchmarkConfig] = None
         self.stages: Optional[StagesContext] = None
@@ -916,10 +920,14 @@ class NativeImageVM(StageAwareGraalVm):
             config += ["crema"]
         if self.use_string_inlining is True:
             config += ["string-inlining"]
+        if self.static is True:
+            config += ["static"]
+        if self.mostly_static is True:
+            config += ["mostly-static"]
         if self.use_open_type_world is True:
             config += ["otw"]
-        if self.use_compacting_gc is True:
-            config += ["compacting-gc"]
+        if self.copyingoldgen_oldpolicy is True: # for later removal: GR-73132
+            config += ["copyingoldgen-oldpolicy"]
         if self.preserve_all is True:
             config += ["preserve-all"]
         if self.preserve_classpath is True:
@@ -1012,8 +1020,8 @@ class NativeImageVM(StageAwareGraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         # Note: the order of entries here must match the order of statements in NativeImageVM.config_name()
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<crema>crema-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
-               r'(?P<graalos>graalos-)?(?P<graalhost_graalos>graalhost-graalos-)?(?P<pie>pie-)?(?P<layered>layered-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<static>mostly-static-|static-)?(?P<otw>otw-)?(?P<copyingoldgen_oldpolicy>copyingoldgen-oldpolicy-)?(?P<crema>crema-)?' \
+               r'(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?(?P<graalos>graalos-)?(?P<graalhost_graalos>graalhost-graalos-)?(?P<pie>pie-)?(?P<layered>layered-)?' \
                r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
                r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
@@ -1066,6 +1074,17 @@ class NativeImageVM(StageAwareGraalVm):
             mx.logv(f"'string-inlining' is enabled for {config_name}")
             self.use_string_inlining = True
 
+        if matching.group("static") is not None:
+            static_mode = matching.group("static")[:-1]
+            if static_mode == "static":
+                mx.logv(f"'static' is enabled for {config_name}")
+                self.static = True
+            elif static_mode == "mostly-static":
+                mx.logv(f"'mostly-static' is enabled for {config_name}")
+                self.mostly_static = True
+            else:
+                mx.abort(f"Unknown static mode: {static_mode}")
+
         if matching.group("gate") is not None:
             mx.logv(f"'gate' mode is enabled for {config_name}")
             self.is_gate = True
@@ -1078,9 +1097,9 @@ class NativeImageVM(StageAwareGraalVm):
             mx.logv(f"'otw' is enabled for {config_name}")
             self.use_open_type_world = True
 
-        if matching.group("compacting_gc") is not None:
-            mx.logv(f"'compacting-gc' is enabled for {config_name}")
-            self.use_compacting_gc = True
+        if matching.group("copyingoldgen_oldpolicy") is not None: # for later removal (including above): GR-73132
+            mx.logv(f"'copyingoldgen_oldpolicy' is enabled for {config_name}")
+            self.copyingoldgen_oldpolicy = True
 
         if matching.group("quickbuild") is not None:
             mx.logv(f"'quickbuild' is enabled for {config_name}")
@@ -1973,10 +1992,14 @@ class PolyBenchStagingVm(StageAwareGraalVm):
         self.launcher: str = launcher
         self.ext: str = ext
         self.stages_context: Optional[StagesContext] = None
+        self.output_dir: Optional[Path] = None
         self.staged_program_file_path: Optional[Path] = None
         self.staging_args: List[str] = []
 
     def _prepare_for_running(self, args, out, err, cwd, nonZeroIsFatal):
+        self.launcher = self._resolve_possible_env_var(self.launcher)
+        if shutil.which(self.launcher) is None:
+            raise ValueError(f"Launcher '{self.launcher}' does not resolve to an executable file!")
         self.stages_context = StagesContext(self, out, err, nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
         file_name = f"staged-benchmark.{self.ext}"
         output_dir = self.bmSuite.get_image_output_dir(
@@ -1986,6 +2009,7 @@ class PolyBenchStagingVm(StageAwareGraalVm):
         if self.language == "Python":
             # C-extension-module micros would break if they did not have 'graalpython' somewhere in the path
             output_dir = output_dir / "graalpython"
+        self.output_dir = output_dir
         self.staged_program_file_path = output_dir / file_name
         self.staged_program_file_path.parent.mkdir(parents=True, exist_ok=True)
         self.staging_args = args + [
@@ -1996,6 +2020,26 @@ class PolyBenchStagingVm(StageAwareGraalVm):
             "--log-staged-program",
             "True",
         ]
+
+    @staticmethod
+    def _resolve_possible_env_var(text: str) -> str:
+        """
+        If the text matches an env var name then returns the env var value, otherwise just returns the text.
+
+        For the purposes of this method, an env var name must start with '$' and contain a non-zero-length
+        string afterwards comprising only upper-case letters, numbers, underscores, and dashes.
+
+        Aborts if the text matches an env var name but that env var is unset.
+        """
+        env_var_pattern = r"^\$([A-Z0-9_-]+)$"
+        m = re.match(env_var_pattern, text)
+        if not m:
+            return text
+        env_var_name = m.group(1)
+        env_var_val = os.getenv(env_var_name)
+        if env_var_val is None:
+            mx.abort(f"Environment variable '{text}' is unset!")
+        return env_var_val
 
     def run_single_stage(self):
         stage_to_run = self.stages_info.current_stage.stage_name
@@ -2018,6 +2062,121 @@ class PolyBenchStagingVm(StageAwareGraalVm):
 
     def get_stage_runner(self) -> SimpleStageRunner:
         return SimpleStageRunner(self.stages_info, self.bmSuite, self.stages_context)
+
+
+class GraalHostPolyBenchStagingVm(PolyBenchStagingVm):
+    """
+    Stages a PolyBench benchmark and configures a GraalHost boot script that runs the benchmark.
+    * In the image stage: First stages the benchmark to the target language and then runs
+                          the graalos-run-config tool to create a boot script that executes the staged
+                          benchmark with GraalHost.
+    * In the run stage:   Executes the GraalHost boot script.
+
+    Relies on the following environment variables:
+    * GRAALOS_BUILD pointing to the GraalOS build directdory.
+    * ROOTFS pointing to the GraalOS language launcher (e.g. CPython) file-system root.
+      This directory should contain a venv/bin subdirectory containing the graalos-run-config tool.
+    """
+    GRAALHOST_FSMAPPING_TEMPLATE: Template = Template("""
+    {
+      "fsmappings": [
+        {"concrete": "${path}", "virt": "${path}"}
+      ]
+    }
+    """)
+
+    def __init__(self, name, config_name, language, launcher, ext, extra_java_args=None, extra_launcher_args=None):
+        super().__init__(name, config_name, language, launcher, ext, extra_java_args, extra_launcher_args)
+        self.run_script_file_name: Optional[str] = None
+
+    def _prepare_for_running(self, args, out, err, cwd, nonZeroIsFatal):
+        super()._prepare_for_running(args, out, err, cwd, nonZeroIsFatal)
+        benchmark: str = bm_exec_context().get("benchmark")
+        if benchmark.startswith("interpreter/c-"):
+            # Disable C-native-extension benchmarks on GraalOS due to os.symlink not being supported (GR-71952)
+            mx.abort(f"Benchmark '{benchmark}' (and all other C-native-extension benchmarks) is not supported on GraalHost!")
+
+    def run_stage_image(self):
+        # Start with resolving prerequisite environment variables
+        build_dir = self._resolve_graalos_build_dir()
+        graalos_run_config = self._resolve_graalos_configuration_script()
+        # Stage benchmark
+        super().run_stage_image()
+        # Prepare command that will configure graalhost to run staged benchmark
+        bench_dir_mapping_config = self._create_staged_benchmark_fs_mapping_file()
+        graalos_run_config_cmd = [str(graalos_run_config), "--graalos-build-path", str(build_dir)]
+        graalos_run_config_cmd += ["--extra-config-path", str(bench_dir_mapping_config)]
+        graalos_run_config_cmd += [self.launcher, str(self.staged_program_file_path)]
+        # Run the graalhost configuration and handle output
+        out = mx.OutputCapture()
+        err = mx.OutputCapture()
+        rc = mx.run(graalos_run_config_cmd, out=out, err=err, nonZeroIsFatal=False)
+        mx.log(out.data)
+        if rc != 0:
+            mx.log(err.data)
+            raise ChildProcessError(f"GraalHost configuration command finished unsuccessfully with return code {rc}!")
+        m = re.search(fr"^run script: (.+)$", out.data)
+        if m:
+            self.run_script_file_name = m.group(1)
+
+    @staticmethod
+    def _resolve_graalos_build_dir() -> Path:
+        """Verifies that the GRAALOS_BUILD env var is set and points to a directory. Returns the directory path."""
+        graalos_build_env_var = os.getenv("GRAALOS_BUILD")
+        if graalos_build_env_var is None:
+            raise ValueError("Environment variable 'GRAALOS_BUILD' is unset! It must point to the GraalOS build directory!")
+        build_dir = Path(graalos_build_env_var).resolve()
+        if not build_dir.is_dir():
+            raise ValueError(f"Environment variable 'GRAALOS_BUILD' points to '{build_dir}' which is not a directory!")
+        return build_dir
+
+    def _resolve_graalos_configuration_script(self) -> Path:
+        """
+        Verifies that the ROOTFS env var is set and points to a directory containing a valid 'venv' subdirectory.
+        Returns the path to the virtual environment's 'graalos-run-config' tool.
+        """
+        rootfs_env_var = os.getenv("ROOTFS")
+        if rootfs_env_var is None:
+            raise ValueError("Environment variable 'ROOTFS' is unset! It must point to the CPython file-system root!")
+        rootfs = Path(rootfs_env_var).resolve()
+        if not rootfs.is_dir():
+            raise ValueError(f"Environment variable 'ROOTFS' points to '{rootfs}' which is not a directory!")
+        venv_bin = rootfs / "venv" / "bin"
+        if not venv_bin.is_dir():
+            raise ValueError(f"Environment variable 'ROOTFS' points to '{rootfs}' which does not contain a 'venv/bin' subdirectory!")
+        graalos_run_config = venv_bin / "graalos-run-config"
+        if not graalos_run_config.is_file():
+            raise ValueError(f"Environment variable 'ROOTFS' points to '{rootfs}' which does not contain a 'graalos-run-config' file in its 'venv/bin' subdirectory!")
+        return graalos_run_config
+
+    def _create_staged_benchmark_fs_mapping_file(self) -> Path:
+        """
+        Create a graalhost configuration file that contains a single fs-mapping entry,
+        exposing the staged benchmark directory to the isolate.
+        """
+        file_name = "staged_benchmark_fs_mapping.json"
+        file_path = self.output_dir / file_name
+        with open(file_path, "w") as f:
+            fs_mapping = self.GRAALHOST_FSMAPPING_TEMPLATE.substitute(path=self.output_dir)
+            f.write(fs_mapping)
+        return file_path
+
+    def _get_run_script_file_name(self):
+        """Returns the name of the run script - the script that starts graalhost and runs the staged benchmark on it."""
+        if self.run_script_file_name is not None:
+            return self.run_script_file_name
+        # Fallback value to enable running just the 'run' stage of the benchmark
+        launcher_file_name = Path(self.launcher).name
+        return f"run_config_{launcher_file_name}.sh"
+
+    def run_stage_run(self):
+        with self.get_stage_runner() as s:
+            # Unfortunately, the 'graalos-run-config' tool always outputs the run script into the working dir and
+            # does not allow modifying the output path.
+            # Both the run script and the accompanying graalhost configuration file end up in the current working
+            # directory.
+            run_script_file_path = str(Path.cwd() / self._get_run_script_file_name())
+            s.execute_command(self, [run_script_file_path])
 
 
 def register_graalvm_vms():
@@ -2048,6 +2207,8 @@ def register_graalvm_vms():
     # and executes that staged program in the run stage.
     # The assumption is made here that 'python' resolves to the CPython implementation.
     mx_benchmark.add_java_vm(PolyBenchStagingVm('cpython', 'default', "Python", "python", "py"), _suite, 2)
+    mx_benchmark.add_java_vm(PolyBenchStagingVm('cpython', 'graalos-ee', "Python", "$GRAALOS_CPYTHON", "py"), _suite, 2)
+    mx_benchmark.add_java_vm(GraalHostPolyBenchStagingVm('cpython', 'graalhost-graalos-ee', "Python", "$GRAALOS_CPYTHON", "py"), _suite, 2)
 
 
 class ObjdumpSectionRule(mx_benchmark.StdOutRule):
@@ -3176,6 +3337,10 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     If you want to run something like `hwloc-bind` or `taskset` prefixed before the app, you should use the '--cmd-app-prefix' Barista harness option.
     If you want to pass options to the app, you should use the '--app-args' Barista harness option.
     """
+    BARISTA_HOME = "BaristaBenchmarkSuite.repo-home"
+    ENV = "BaristaBenchmarkSuite.env"
+    JARS = "BaristaBenchmarkSuite.jar-paths"
+
     def __init__(self, custom_harness_command: mx_benchmark.CustomHarnessCommand = None):
         if custom_harness_command is None:
             custom_harness_command = BaristaBenchmarkSuite.BaristaCommand()
@@ -3226,32 +3391,49 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def completeBenchmarkList(self, bmSuiteArgs):
         return _baristaConfig["benchmarks"].keys()
 
-    def baristaDirectoryPath(self):
-        barista_home = mx.get_env("BARISTA_HOME")
-        if barista_home is None or not os.path.isdir(barista_home):
-            mx.abort("Please set the BARISTA_HOME environment variable to a " +
-                     "Barista benchmark suite directory.")
-        return barista_home
+    def baristaDirectoryPath(self) -> Path:
+        if bm_exec_context().get_opt(self.BARISTA_HOME) is None:
+            self._load_barista_home()
+        return bm_exec_context().get_opt(self.BARISTA_HOME)
+
+    def _load_barista_home(self):
+        if mx.get_env("BARISTA_HOME") is not None:
+            mx.warn("The use of the 'BARISTA_HOME' env var has been deprecated. "
+                    "The Barista repository is now automatically installed as a sibling directory to Graal. "
+                    "The env var will be ignored.")
+        target_dir = Path(mx.primary_suite().vc_dir).parent / "barista"
+        try:
+            barista_suite = mx.suite("barista", fatalIfMissing=False)
+            if barista_suite is None:
+                barista_suite = mx.primary_suite().clone_foreign_suite("barista", clone_binary_first=False)
+            bm_exec_context().add_context_value(self.BARISTA_HOME, ConstantContextValue(Path(barista_suite.dir)))
+        except StopIteration:
+            mx.abort("Cloning of 'barista' as a sibling of the current suite has failed!\n"
+                     f"Please manually clone it to '{target_dir}'.")
 
     def baristaApplicationDirectoryPath(self, benchmark: str) -> Path:
-        return Path(self.baristaDirectoryPath()) / "benchmarks" / benchmark
+        return self.baristaDirectoryPath() / "benchmarks" / benchmark
 
-    def baristaFilePath(self, file_name):
-        barista_home = self.baristaDirectoryPath()
-        file_path = os.path.abspath(os.path.join(barista_home, file_name))
-        if not os.path.isfile(file_path):
-            raise FileNotFoundError("The BARISTA_HOME environment variable points to a directory " +
-                                    f"that does not contain a '{file_name}' file.")
+    def baristaFilePath(self, path_components: List[str]) -> Path:
+        file_path = self.baristaDirectoryPath()
+        for component in path_components:
+            file_path = file_path / component
+        file_path = file_path.resolve()
+        if not file_path.is_file():
+            raise FileNotFoundError(f"The Barista repository does not contain a {path_components} file!")
         return file_path
 
-    def baristaProjectConfigurationPath(self):
-        return self.baristaFilePath("pyproject.toml")
+    def baristaProjectConfigurationPath(self) -> Path:
+        return self.baristaFilePath(["pyproject.toml"])
 
-    def baristaBuilderPath(self):
-        return self.baristaFilePath("build")
+    def baristaBuilderPath(self) -> Path:
+        return self.baristaFilePath(["build"])
 
-    def baristaHarnessPath(self):
-        return self.baristaFilePath("barista")
+    def baristaHarnessPath(self) -> Path:
+        return self.baristaFilePath(["barista"])
+
+    def barista_install_script(self) -> Path:
+        return self.baristaFilePath(["deps", "install.py"])
 
     def baristaHarnessBenchmarkName(self):
         return _baristaConfig["benchmarks"][self.benchmarkName()].get("barista-bench-name", self.benchmarkName())
@@ -3262,9 +3444,97 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def validateEnvironment(self):
         self.baristaProjectConfigurationPath()
         self.baristaHarnessPath()
+        self._warn_barista_source()
+        self._install_barista()
+
+    def _warn_barista_source(self):
+        """
+        Check if the Barista repository was cloned from the open-source repo and warn the user if that is the case.
+
+        NOTE: There is nothing wrong with using the open-source repo - it is nearly identical to the internal repo.
+        However, the internal repo provides a slightly extended benchmark set so users that have access to the internal
+        repo should be using it.
+        """
+        out = mx.OutputCapture()
+        err = mx.OutputCapture()
+        try:
+            mx.run(["git", "remote", "-v"], cwd=self.baristaDirectoryPath(), out=out, err=err)
+            if re.search(r"github\.com/barista-benchmarks/barista", out.data):
+                mx.warn("The local Barista repository has been cloned from the original open-source repository.\n"
+                        "Some users might prefer to use a fork which could offer an extended set of benchmarks.\n"
+                        "To ensure you are using the repository from the URL of your choice, you can delete\n"
+                        "your local repository and:\n"
+                        "* Rerun the benchmark after setting the appropriate rewrite using MX_URLREWRITES.\n"
+                        "* Clone the Barista from the desired URL manually.")
+        except:
+            mx.log(err.data)
+            mx.log("Barista repository remote check failed! Ignoring the failure and proceeding.")
+
+    def _install_barista(self):
+        """Best-effort attempt at installing the 'barista' project and its dependencies."""
+        install_script = self.barista_install_script()
+        install_cmd = [str(install_script)]
+        mx.log(f"Installing 'barista' with: {install_cmd}")
+        try:
+            mx.run(install_cmd)
+        except BaseException as e:
+            if isinstance(e, SystemExit):
+                mx.abort(f"Installing 'barista' failed with exit code {e}!")
+            else:
+                mx.abort(f"{e}\nInstalling 'barista' failed!")
+
+    def _ensure_necessary_benchmark_files_exist(self):
+        """Checks if the necessary benchmark files exist, generating them if they don't."""
+        self._ensure_jar_exists(self.benchmarkName())
+
+    def _ensure_jar_exists(self, benchmark: str):
+        """Checks if the benchmark JAR exists and generates it if it doesn't."""
+        jar_path = self._get_jar_path(benchmark)
+        if not Path(jar_path).is_file():
+            self._generate_jar(benchmark)
+
+    def _get_jar_path(self, benchmark: str) -> str:
+        if benchmark not in bm_exec_context().get(self.JARS):
+            self._acquire_jar_path(benchmark)
+        return bm_exec_context().get(self.JARS)[benchmark]
+
+    def _acquire_jar_path(self, benchmark: str):
+        jar_path_cmd = [f"{self.baristaBuilderPath()}", "--get-jar", benchmark]
+        out = mx.OutputCapture()
+        mx.run(jar_path_cmd, out=out)
+        # Capture the application jar from the Barista 'build' script output
+        jar_pattern = r"application jar file path is: ([^\n]+)\n"
+        jar_match = re.search(jar_pattern, out.data)
+        if not jar_match:
+            raise ValueError(f"Could not extract the jar file path from the command output! Expected to match pattern {repr(jar_pattern)}.")
+        # Cache for future access
+        bm_exec_context().get(self.JARS)[benchmark] = jar_match.group(1)
+
+    def _generate_jar(self, benchmark: str):
+        """Generates the benchmark JAR file."""
+        jar_generation_cmd = [str(self.baristaBuilderPath()), "--skip-nib-generation", benchmark]
+        mx.log(f"Generating the JAR file by running {jar_generation_cmd}. This can take a while.")
+        try:
+            mx.run(jar_generation_cmd)
+        except BaseException as e:
+            if isinstance(e, SystemExit):
+                mx.abort(f"Generating the JAR file failed with exit code {e}!")
+            else:
+                mx.abort(f"{e}\nGenerating the JAR file failed!")
+
+    def before(self, bmSuiteArgs):
+        super().before(bmSuiteArgs)
+        bm_exec_context().add_context_value(self.ENV, ConstantContextValue(os.environ.copy()))
+        bm_exec_context().add_context_value(self.JARS, ConstantContextValue({}))
+
+    def after(self, bmSuiteArgs):
+        bm_exec_context().remove(self.JARS)
+        bm_exec_context().remove(self.ENV)
+        super().after(bmSuiteArgs)
 
     def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         with SingleBenchmarkManager(self):
+            self._ensure_necessary_benchmark_files_exist()
             return super().run(benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
@@ -3539,7 +3809,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             barista_workload = suite.baristaHarnessBenchmarkWorkload()
 
             # Construct the Barista command
-            barista_cmd = [suite.baristaHarnessPath()]
+            barista_cmd = [str(suite.baristaHarnessPath())]
             barista_cmd.append(f"--java-home={java_exe_match.group(1)}")
             if barista_workload is not None:
                 barista_cmd.append(f"--config={barista_workload}")
@@ -3642,7 +3912,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["0.14.1", "0.15.0", "0.16.0"]
+        return ["0.14.1", "0.15.0", "0.16.0", "0.16.1"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -5212,839 +5482,6 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         results = results[:len(results) - self.tailDatapointsToSkip(results)]
         self.addAverageAcrossLatestResults(results, "throughput")
         return results
-
-class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
-    """Base class for Wrk based benchmark suites."""
-
-    def loadConfiguration(self, groupKey):
-        """Returns a json object that describes the Wrk configuration. The following syntax is expected:
-        {
-          "target-url" : <URL to target, for example "http://localhost:8080">,
-          "connections" : <number of connections to keep open>,
-          "threads" : <number of threads to use>,
-          "throughput" : {
-            "script" : <path to lua script to be used>,
-            "warmup-requests-per-second" : <requests per second during the warmup run>,
-            "warmup-duration" : <duration of the warmup run, for example "30s">,
-            "duration" : <duration of the test, for example "30s">,
-          },
-          "latency" : {
-            "script" : [<lua scripts that will be executed sequentially>],
-            "warmup-requests-per-second" : [<requests per second during the warmup run (one entry per lua script)>],
-            "warmup-duration" : [<duration of the warmup run (one entry per lua script)>],
-            "requests-per-second" : [<requests per second during the run> (one entry per lua script)>],
-            "duration" : [<duration of the test (one entry per lua script)>]
-          }
-        }
-
-        All json fields are required.
-
-        :return: Configuration json.
-        :rtype: json
-        """
-        with open(self.workloadConfigurationPath()) as configFile:
-            config = json.load(configFile)
-            mx.log("Loading configuration file for {0}: {1}".format(BaseWrkBenchmarkSuite.__name__, configFile.name))
-
-            targetUrl = self.readConfig(config, "target-url")
-            connections = self.readConfig(config, "connections")
-            threads = self.readConfig(config, "threads")
-
-            group = self.readConfig(config, groupKey)
-            script = self.readConfig(group, "script")
-            warmupRequestsPerSecond = self.readConfig(group, "warmup-requests-per-second")
-            warmupDuration = self.readConfig(group, "warmup-duration")
-            requestsPerSecond = self.readConfig(group, "requests-per-second", optional=True)
-            duration = self.readConfig(group, "duration")
-
-            scalarScriptValue = self.isScalarValue(script)
-            if scalarScriptValue != self.isScalarValue(warmupRequestsPerSecond) or scalarScriptValue != self.isScalarValue(warmupDuration) or scalarScriptValue != self.isScalarValue(duration):
-                mx.abort("The configuration elements 'script', 'warmup-requests-per-second', 'warmup-duration', and 'duration' must have the same number of elements.")
-
-            results = []
-            if scalarScriptValue:
-                result = {}
-                result["target-url"] = targetUrl
-                result["connections"] = connections
-                result["threads"] = threads
-                result["script"] = script
-                result["warmup-requests-per-second"] = warmupRequestsPerSecond
-                result["warmup-duration"] = warmupDuration
-                result["duration"] = duration
-                if requestsPerSecond:
-                    result["requests-per-second"] = requestsPerSecond
-                results.append(result)
-            else:
-                count = len(script)
-                if count != len(warmupRequestsPerSecond) or count != len(warmupDuration) or count != len(duration):
-                    mx.abort("The configuration elements 'script', 'warmup-requests-per-second', 'warmup-duration', and 'duration' must have the same number of elements.")
-
-                for i in range(count):
-                    result = {}
-                    result["target-url"] = targetUrl
-                    result["connections"] = connections
-                    result["threads"] = threads
-                    result["script"] = script[i]
-                    result["warmup-requests-per-second"] = warmupRequestsPerSecond[i]
-                    result["warmup-duration"] = warmupDuration[i]
-                    result["duration"] = duration[i]
-                    if requestsPerSecond:
-                        result["requests-per-second"] = requestsPerSecond[i]
-                    results.append(result)
-
-            return results
-
-    def readConfig(self, config, key, optional=False):
-        if key in config:
-            return config[key]
-        elif optional:
-            return None
-        else:
-            mx.abort(f"Mandatory entry {key} not specified in Wrk configuration.")
-
-    def isScalarValue(self, value):
-        return type(value) in (int, float, bool) or isinstance(value, ("".__class__, u"".__class__)) # pylint: disable=unidiomatic-typecheck
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
-
-    def testStartupPerformance(self):
-        configs = self.loadConfiguration("throughput")
-        if len(configs) != 1:
-            mx.abort("Expected exactly one lua script in the throughput configuration.")
-
-        # Measure throughput for 15 seconds without warmup.
-        config = configs[0]
-        wrkFlags = self.getStartupFlags(config)
-        output = self.runWrk1(wrkFlags)
-        self.startupOutput = self.writeWrk1Results('startup-throughput', 'startup-latency-co', output)
-
-    def testPeakPerformance(self, warmup):
-        configs = self.loadConfiguration("throughput")
-        if len(configs) != 1:
-            mx.abort("Expected exactly one lua script in the throughput configuration.")
-
-        config = configs[0]
-        if warmup:
-            # Warmup with a fixed number of requests.
-            wrkFlags = self.getWarmupFlags(config)
-            warmupOutput = self.runWrk2(wrkFlags)
-            self.verifyWarmup(warmupOutput, config)
-
-        # Measure peak performance.
-        wrkFlags = self.getThroughputFlags(config)
-        peakOutput = self.runWrk1(wrkFlags)
-        self.peakOutput = self.writeWrk1Results('peak-throughput', 'peak-latency-co', peakOutput)
-
-    def calibrateLatencyTest(self):
-        configs = self.loadConfiguration("latency")
-        numScripts = len(configs)
-        if numScripts < 1:
-            mx.abort("Expected at least one lua script in the latency configuration.")
-
-        for i in range(numScripts):
-            # Warmup with a fixed number of requests.
-            config = configs[i]
-            wrkFlags = self.getWarmupFlags(config)
-            warmupOutput = self.runWrk2(wrkFlags)
-            self.verifyWarmup(warmupOutput, config)
-
-        self.calibratedThroughput = []
-        for i in range(numScripts):
-            # Measure the maximum throughput.
-            config = configs[i]
-            wrkFlags = self.getThroughputFlags(config)
-            throughputOutput = self.runWrk1(wrkFlags)
-            self.calibratedThroughput.append(self.extractThroughput(throughputOutput))
-
-    def testLatency(self):
-        configs = self.loadConfiguration("latency")
-        numScripts = len(configs)
-        if numScripts < 1:
-            mx.abort("Expected at least one lua script in the latency configuration.")
-
-        for i in range(numScripts):
-            # Warmup with a fixed number of requests.
-            config = configs[i]
-            wrkFlags = self.getWarmupFlags(config)
-            warmupOutput = self.runWrk2(wrkFlags)
-            self.verifyWarmup(warmupOutput, config)
-
-        results = []
-        for i in range(numScripts):
-            # Measure latency using a constant rate (based on the previously measured max throughput).
-            config = configs[i]
-            if configs[i].get("requests-per-second"):
-                expectedRate = configs[i]["requests-per-second"]
-                mx.log(f"Using configured fixed throughput {expectedRate} ops/s for latency measurements.")
-            else:
-                expectedRate = int(self.calibratedThroughput[i] * 0.75)
-                mx.log(f"Using dynamically computed throughput {expectedRate} ops/s for latency measurements (75% of max throughput).")
-            wrkFlags = self.getLatencyFlags(config, expectedRate)
-            constantRateOutput = self.runWrk2(wrkFlags)
-            self.verifyThroughput(constantRateOutput, expectedRate)
-            results.append(self.extractWrk2Results(constantRateOutput))
-
-        self.latencyOutput = self.writeWrk2Results('throughput-for-peak-latency', 'peak-latency', results)
-
-    def extractThroughput(self, output):
-        matches = re.findall(r"^Requests/sec:\s*(\d*[.,]?\d*)\s*$", output, re.MULTILINE)
-        if len(matches) != 1:
-            mx.abort("Expected exactly one throughput result in the output: " + str(matches))
-
-        return float(matches[0])
-
-    def extractWrk2Results(self, output):
-        result = {}
-        result["throughput"] = self.extractThroughput(output)
-
-        matches = re.findall(r"^\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)\s*$", output, re.MULTILINE)
-        if len(matches) <= 0:
-            mx.abort("No latency results found in output")
-
-        for match in matches:
-            val = convertValue(timeUnitTable, float(match[1]), match[2], 'ms')
-            result[match[0]] = val
-
-        return result
-
-    def writeWrk2Results(self, throughputPrefix, latencyPrefix, results):
-        average = self.computeAverage(results)
-
-        output = []
-        for key, value in average.items():
-            if key == 'throughput':
-                output.append("{} Requests/sec: {:f}".format(throughputPrefix, value))
-            else:
-                output.append("{} {} {:f}ms".format(latencyPrefix, key, value))
-
-        return '\n'.join(output)
-
-    def computeAverage(self, results):
-        count = len(results)
-        if count < 1:
-            mx.abort("Expected at least one wrk2 result: " + str(count))
-        elif count == 1:
-            return results[0]
-
-        average = results[0]
-        averageKeys = set(average.keys())
-        for i in range(1, count):
-            result = results[i]
-            if averageKeys != set(result.keys()):
-                mx.abort("There is a mismatch between the keys of multiple wrk2 runs: " + str(averageKeys) + " vs. " + str(set(result.keys())))
-
-            for key, value in result.items():
-                average[key] += result[key]
-
-        for key, value in average.items():
-            average[key] = value / count
-
-        return average
-
-    def writeWrk1Results(self, throughputPrefix, latencyPrefix, output):
-        result = []
-        matches = re.findall(r"^Requests/sec:\s*\d*[.,]?\d*\s*$", output, re.MULTILINE)
-        if len(matches) != 1:
-            mx.abort("Expected exactly one throughput result in the output: " + str(matches))
-
-        result.append(throughputPrefix + " " + matches[0])
-
-        matches = re.findall(r"^\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)\s*$", output, re.MULTILINE)
-        if len(matches) <= 0:
-            mx.abort("No latency results found in output")
-
-        for match in matches:
-            val = convertValue(timeUnitTable, float(match[1]), match[2], 'ms')
-            result.append(latencyPrefix + " {} {:f}ms".format(match[0], val))
-
-        return '\n'.join(result)
-
-    def verifyWarmup(self, output, config):
-        expectedThroughput = float(config['warmup-requests-per-second'])
-        self.verifyThroughput(output, expectedThroughput)
-
-    def verifyThroughput(self, output, expectedThroughput):
-        matches = re.findall(r"^Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)\s*$", output, re.MULTILINE)
-        if len(matches) != 1:
-            mx.abort("Expected exactly one throughput result in the output: " + str(matches))
-
-        actualThroughput = float(matches[0])
-        if actualThroughput < expectedThroughput * 0.97 or actualThroughput > expectedThroughput * 1.03:
-            mx.warn("Throughput verification failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
-
-    def runWrk1(self, wrkFlags):
-        distro = self.getOS()
-        arch = mx.get_arch()
-        wrkDirectory = mx.library('WRK_MULTIARCH', True).get_path(True)
-        wrkPath = os.path.join(wrkDirectory, "wrk-{os}-{arch}".format(os=distro, arch=arch))
-
-        if not os.path.exists(wrkPath):
-            raise ValueError("Unsupported OS or arch. Binary doesn't exist: {}".format(wrkPath))
-
-        runWrkCmd = [wrkPath] + wrkFlags
-        mx.log("Running Wrk: {0}".format(runWrkCmd))
-        output = mx.TeeOutputCapture(mx.OutputCapture())
-        mx.run(runWrkCmd, out=output, err=output)
-        return output.underlying.data
-
-    def runWrk2(self, wrkFlags):
-        distro = self.getOS()
-        arch = mx.get_arch()
-        wrkDirectory = mx.library('WRK2_MULTIARCH', True).get_path(True)
-        wrkPath = os.path.join(wrkDirectory, "wrk-{os}-{arch}".format(os=distro, arch=arch))
-
-        if not os.path.exists(wrkPath):
-            raise ValueError("Unsupported OS or arch. Binary doesn't exist: {}".format(wrkPath))
-
-        runWrkCmd = [wrkPath] + wrkFlags
-        mx.log("Running Wrk2: {0}".format(runWrkCmd))
-        output = mx.TeeOutputCapture(mx.OutputCapture())
-        mx.run(runWrkCmd, out=output, err=output)
-        return output.underlying.data
-
-    def getStartupFlags(self, config):
-        wrkFlags = ['--duration', '15']
-        wrkFlags += self.getWrkFlags(config, True)
-        return wrkFlags
-
-    def getWarmupFlags(self, config):
-        wrkFlags = []
-        wrkFlags += ['--duration', str(config['warmup-duration'])]
-        wrkFlags += ['--rate', str(config['warmup-requests-per-second'])]
-        wrkFlags += self.getWrkFlags(config, False)
-        return wrkFlags
-
-    def getThroughputFlags(self, config):
-        wrkFlags = []
-        wrkFlags += ['--duration', str(config['duration'])]
-        wrkFlags += self.getWrkFlags(config, True)
-        return wrkFlags
-
-    def getLatencyFlags(self, config, rate):
-        wrkFlags = ['--rate', str(rate)]
-        wrkFlags += self.getThroughputFlags(config)
-        return wrkFlags
-
-    def getWrkFlags(self, config, latency):
-        args = []
-        if latency:
-            args += ['--latency']
-
-        args += ['--connections', str(config['connections'])]
-        args += ['--threads', str(config['threads'])]
-        args += ['--script', str(self.getScriptPath(config))]
-        args.append(str(config['target-url']))
-        args += ['--', str(config['threads'])]
-        return args
-
-    def getOS(self):
-        if mx.get_os() == 'linux':
-            return 'linux'
-        elif mx.get_os() == 'darwin':
-            return 'macos'
-        else:
-            mx.abort("{0} not supported in {1}.".format(BaseWrkBenchmarkSuite.__name__, mx.get_os()))
-
-    def run(self, benchmarks, bmSuiteArgs):
-        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        # Example of wrk output:
-        # "Requests/sec:   5453.61"
-        return [
-            mx_benchmark.StdOutRule(
-                r"^startup-throughput Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)\s*$",
-                {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
-                    "metric.name": "startup-throughput",
-                    "metric.value": ("<throughput>", float),
-                    "metric.unit": "op/s",
-                    "metric.better": "higher",
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"^peak-throughput Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)\s*$",
-                {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
-                    "metric.name": "peak-throughput",
-                    "metric.value": ("<throughput>", float),
-                    "metric.unit": "op/s",
-                    "metric.better": "higher",
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"^throughput-for-peak-latency Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)\s*$",
-                {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
-                    "metric.name": "throughput-for-peak-latency",
-                    "metric.value": ("<throughput>", float),
-                    "metric.unit": "op/s",
-                    "metric.better": "higher",
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"^startup-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)\s*$",
-                {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
-                    "metric.name": "startup-latency-co",
-                    "metric.value": ("<latency>", float),
-                    "metric.unit": ("ms", str),
-                    "metric.better": "lower",
-                    "metric.percentile": ("<percentile>", float),
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"^peak-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)\s*$",
-                {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
-                    "metric.name": "peak-latency-co",
-                    "metric.value": ("<latency>", float),
-                    "metric.unit": ("ms", str),
-                    "metric.better": "lower",
-                    "metric.percentile": ("<percentile>", float),
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"^peak-latency\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)\s*$",
-                {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
-                    "metric.name": "peak-latency",
-                    "metric.value": ("<latency>", float),
-                    "metric.unit": ("ms", str),
-                    "metric.better": "lower",
-                    "metric.percentile": ("<percentile>", float),
-                }
-            )
-        ] + super(BaseWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-
-class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
-
-    def get_application_startup_regex(self):
-        # Example of SpringBoot 3 startup log:
-        # 2023-05-16T14:08:54.033+02:00  INFO 24381 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 3.774 seconds (process running for 4.1)
-        return r"Started [^ ]+ in (?P<appstartup>\d*[.,]?\d*) seconds \(process running for (?P<startup>\d*[.,]?\d*)\)$"
-
-    def get_application_startup_units(self):
-        return 's'
-
-    def get_image_env(self):
-        # Disable experimental option checking.
-        return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
-
-    def default_stages(self):
-        return ['instrument-image', 'instrument-run', 'image', 'run']
-
-    def uses_bundles(self):
-        return True
-
-
-class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
-    def version(self):
-        return "3.0.1"
-
-    def applicationDist(self):
-        return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
-
-    def extra_image_build_argument(self, benchmark, args):
-        additional_configuration = os.path.join(getattr(self, '.mxsuite').mxDir, "petclinic-config")
-        return [
-            f"-H:ConfigurationFileDirectories={additional_configuration}",
-        ] + super(BasePetClinicBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
-
-
-class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, BaseWrkBenchmarkSuite):
-    """PetClinic benchmark suite that measures throughput using Wrk."""
-
-    def name(self):
-        return "petclinic-wrk"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
-
-
-class BaseSpringHelloWorldBenchmarkSuite(BaseSpringBenchmarkSuite):
-    def version(self):
-        return "3.0.6"
-
-    def applicationDist(self):
-        return mx.library("SPRING_HW_" + self.version(), True).get_path(True)
-
-
-class SpringHelloWorldWrkBenchmarkSuite(BaseSpringHelloWorldBenchmarkSuite, BaseWrkBenchmarkSuite):
-    def name(self):
-        return "spring-helloworld-wrk"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["helloworld"]
-
-    def serviceEndpoint(self):
-        return 'hello'
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(SpringHelloWorldWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-
-mx_benchmark.add_bm_suite(SpringHelloWorldWrkBenchmarkSuite())
-
-
-class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
-    def get_application_startup_regex(self):
-        # Example of Quarkus startup log:
-        # "2021-03-17 20:03:33,893 INFO  [io.quarkus] (main) tika-quickstart 1.0.0-SNAPSHOT on JVM (powered by Quarkus 1.12.1.Final) started in 1.210s. Listening on: <url>"
-        return r"started in (?P<startup>\d*[.,]?\d*)s."
-
-    def get_application_startup_units(self):
-        return 's'
-
-    def get_image_env(self):
-        # Disable experimental option checking.
-        return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
-
-    def default_stages(self):
-        return ['instrument-image', 'instrument-run', 'image', 'run']
-
-
-class BaseQuarkusBundleBenchmarkSuite(BaseQuarkusBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
-    def uses_bundles(self):
-        return True
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
-
-
-class BaseTikaBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
-    def version(self):
-        return "1.0.11"
-
-    def applicationDist(self):
-        return mx.library("TIKA_" + self.version(), True).get_path(True)
-
-    def applicationPath(self):
-        return os.path.join(self.applicationDist(), "tika-quickstart-" + self.version() + "-runner.jar")
-
-    def serviceEndpoint(self):
-        return 'parse'
-
-    def extra_image_build_argument(self, benchmark, args):
-        # Older JDK versions would need -H:NativeLinkerOption=libharfbuzz as an extra build argument.
-        expectedJdkVersion = mx.VersionSpec("11.0.13")
-        if mx.get_jdk().version < expectedJdkVersion:
-            mx.abort(benchmark + " needs at least JDK version " + str(expectedJdkVersion))
-        tika_build_time_init = [
-            "org.apache.pdfbox.rendering.ImageType",
-            "org.apache.pdfbox.rendering.ImageType$1",
-            "org.apache.pdfbox.rendering.ImageType$2",
-            "org.apache.pdfbox.rendering.ImageType$3",
-            "org.apache.pdfbox.rendering.ImageType$4",
-            "org.apache.xmlbeans.XmlObject",
-            "org.apache.xmlbeans.metadata.system.sXMLCONFIG.TypeSystemHolder",
-            "org.apache.xmlbeans.metadata.system.sXMLLANG.TypeSystemHolder",
-            "org.apache.xmlbeans.metadata.system.sXMLSCHEMA.TypeSystemHolder"
-        ]
-        tika_run_time_init = [
-            # Prevents build-time initialization of sun.awt.datatransfer.DesktopDatatransferServiceImpl through DefaultDesktopDatatransferService.INSTANCE
-            # This class is made reachable through DragSource.<init>, which is reachable because XToolkit.createDragGestureRecognizer is registered for reflective querying
-            "sun.datatransfer.DataFlavorUtil$DefaultDesktopDatatransferService"
-        ]
-        return [
-            f"--initialize-at-build-time={','.join(tika_build_time_init)}",
-            f"--initialize-at-run-time={','.join(tika_run_time_init)}",
-        ] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
-
-
-class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, BaseWrkBenchmarkSuite):
-    """Tika benchmark suite that measures throughput using Wrk."""
-
-    def name(self):
-        return "tika-wrk"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["odt-tiny", "odt-small", "odt-medium", "odt-large", "odt-huge", "pdf-tiny", "pdf-small", "pdf-medium", "pdf-large", "pdf-huge"]
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
-
-
-class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
-    def version(self):
-        return "1.0.6"
-
-    def applicationDist(self):
-        return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
-
-    def applicationPath(self):
-        return os.path.join(self.applicationDist(), "quarkus-hello-world-" + self.version() + "-runner.jar")
-
-    def serviceEndpoint(self):
-        return 'hello'
-
-
-class QuarkusHelloWorldWrkBenchmarkSuite(BaseQuarkusHelloWorldBenchmarkSuite, BaseWrkBenchmarkSuite):
-    """Quarkus benchmark suite that measures latency using Wrk2."""
-
-    def name(self):
-        return "quarkus-helloworld-wrk"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["helloworld"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(QuarkusHelloWorldWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-
-mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
-
-
-class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
-    def get_application_startup_regex(self):
-        # Example of Micronaut startup log (there can be some formatting in between):
-        # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
-        return r"^.*\[main\].*INFO.*io.micronaut.runtime.Micronaut.*- Startup completed in (?P<startup>\d+)ms."
-
-    def get_application_startup_units(self):
-        return 'ms'
-
-    def get_image_env(self):
-        # Disable experimental option checking.
-        return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
-
-    def build_assertions(self, benchmark, is_gate):
-        # This method overrides NativeImageMixin.build_assertions
-        return []  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
-
-    def default_stages(self):
-        return ['instrument-image', 'instrument-run', 'image', 'run']
-
-
-class BaseMicronautBundleBenchmarkSuite(BaseMicronautBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
-    def uses_bundles(self):
-        return True
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
-
-
-class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, BaseMicroserviceBenchmarkSuite):
-    """
-    This benchmark is used to measure the precision and performance of the static analysis in Native Image,
-    so there is no runtime load, that's why the default stage is just image.
-    """
-
-    def version(self):
-        return "0.0.2"
-
-    def name(self):
-        return "quarkus"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["registry"]
-
-    def default_stages(self):
-        return ['image']
-
-    def run(self, benchmarks, bmSuiteArgs):
-        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if benchmarks is None:
-            mx.abort("Suite can only run a single benchmark per VM instance.")
-        elif len(benchmarks) != 1:
-            mx.abort("Must specify exactly one benchmark.")
-        else:
-            benchmark = benchmarks[0]
-        return self.vmArgs(bmSuiteArgs) + ["-jar",  os.path.join(self.applicationDist(), benchmark + ".jar")]
-
-    def applicationDist(self):
-        return mx.library("QUARKUS_REGISTRY_" + self.version(), True).get_path(True)
-
-    def extra_image_build_argument(self, benchmark, args):
-        quarkus_registry_features = [
-            "io.quarkus.jdbc.postgresql.runtime.graal.SQLXMLFeature",
-            "org.hibernate.graalvm.internal.GraalVMStaticFeature",
-            "io.quarkus.hibernate.validator.runtime.DisableLoggingFeature",
-            "io.quarkus.hibernate.orm.runtime.graal.DisableLoggingFeature",
-            "io.quarkus.runner.Feature",
-            "io.quarkus.runtime.graal.DisableLoggingFeature",
-            "io.quarkus.caffeine.runtime.graal.CacheConstructorsFeature"
-        ]
-        return ['-J-Dlogging.initial-configurator.min-level=500',
-                '-J-Dio.quarkus.caffeine.graalvm.recordStats=true',
-                '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
-                '-J-Dsun.nio.ch.maxUpdateArraySize=100',
-                '-J-DCoordinatorEnvironmentBean.transactionStatusManagerEnable=false',
-                '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
-                '-J-Dvertx.disableDnsResolver=true',
-                '-J-Dio.netty.leakDetection.level=DISABLED',
-                '-J-Dio.netty.allocator.maxOrder=3',
-                '-J-Duser.language=en',
-                '-J-Duser.country=GB',
-                '-J-Dfile.encoding=UTF-8',
-                f"--features={','.join(quarkus_registry_features)}",
-                '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
-                '-J--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
-                '-J--add-opens=java.base/java.text=ALL-UNNAMED',
-                '-J--add-opens=java.base/java.io=ALL-UNNAMED',
-                '-J--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
-                '-J--add-opens=java.base/java.util=ALL-UNNAMED',
-                '-H:+AllowFoldMethods',
-                '-J-Djava.awt.headless=true',
-                '--link-at-build-time',
-                '-H:+ReportExceptionStackTraces',
-                '-H:-AddAllCharsets',
-                '--enable-url-protocols=http,https',
-                '-H:-UseServiceLoaderFeature',
-                '--exclude-config',
-                r'io\.netty\.netty-codec',
-                r'/META-INF/native-image/io\.netty/netty-codec/generated/handlers/reflect-config\.json',
-                '--exclude-config',
-                r'io\.netty\.netty-handler',
-                r'/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json',
-                ] + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)  # pylint: disable=bad-super-call
-
-mx_benchmark.add_bm_suite(BaseQuarkusRegistryBenchmark())
-
-_mushopConfig = {
-    'order': ['--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder,java.sql.DriverInfo,kotlin.coroutines.intrinsics.CoroutineSingletons'],
-    'user': ['--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder,java.sql.DriverInfo'],
-    'payment': ['--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder']
-}
-
-class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, BaseMicroserviceBenchmarkSuite):
-    """
-    This benchmark suite is used to measure the precision and performance of the static analysis in Native Image,
-    so there is no runtime load, that's why the default stage is just image.
-    """
-
-    def version(self):
-        return "0.0.2"
-
-    def name(self):
-        return "mushop"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["user", "order", "payment"]
-
-    def default_stages(self):
-        return ['image']
-
-    def run(self, benchmarks, bmSuiteArgs):
-        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if benchmarks is None:
-            mx.abort("Suite can only run a single benchmark per VM instance.")
-        elif len(benchmarks) != 1:
-            mx.abort("Must specify exactly one benchmark.")
-        else:
-            benchmark = benchmarks[0]
-        return self.vmArgs(bmSuiteArgs) + ["-jar",  os.path.join(self.applicationDist(), benchmark + ".jar")]
-
-    def applicationDist(self):
-        return mx.library("MICRONAUT_MUSHOP_" + self.version(), True).get_path(True)
-
-    def extra_image_build_argument(self, benchmark, args):
-        return ([
-                    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-                    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
-                    '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED']
-                + _mushopConfig[benchmark] + super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(benchmark, args))  # pylint: disable=bad-super-call
-
-mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
-
-
-class BaseShopCartBenchmarkSuite(BaseMicronautBundleBenchmarkSuite):
-    def version(self):
-        return "0.3.10"
-
-    def applicationDist(self):
-        return mx.library("SHOPCART_" + self.version(), True).get_path(True)
-
-    def applicationPath(self):
-        return os.path.join(self.applicationDist(), "shopcart-" + self.version() + ".jar")
-
-    def serviceEndpoint(self):
-        return 'clients'
-
-
-class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, BaseWrkBenchmarkSuite):
-    """ShopCart benchmark suite that measures throughput using Wrk."""
-
-    def name(self):
-        return "shopcart-wrk"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
-
-
-class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBundleBenchmarkSuite):
-    def version(self):
-        return "1.0.7"
-
-    def applicationDist(self):
-        return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)
-
-    def applicationPath(self):
-        return os.path.join(self.applicationDist(), "micronaut-hello-world-" + self.version() + ".jar")
-
-    def serviceEndpoint(self):
-        return 'hello'
-
-
-class MicronautHelloWorldWrkBenchmarkSuite(BaseMicronautHelloWorldBenchmarkSuite, BaseWrkBenchmarkSuite):
-    def name(self):
-        return "micronaut-helloworld-wrk"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["helloworld"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(MicronautHelloWorldWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-
-mx_benchmark.add_bm_suite(MicronautHelloWorldWrkBenchmarkSuite())
 
 
 class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, NativeImageBenchmarkMixin):

@@ -94,7 +94,7 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
         b.startReturn().string("0").end();
         b.end();
-        b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_START_BCI]").end();
+        b.startReturn().tree(parent.sourceInfoTable.loadStartBci("bytecode.sourceInfo", "baseIndex")).end();
         return ex;
     }
 
@@ -104,7 +104,7 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
         b.startReturn().string("bytecode.bytecodes.length").end();
         b.end();
-        b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_END_BCI]").end();
+        b.startReturn().tree(parent.sourceInfoTable.loadEndBci("bytecode.sourceInfo", "baseIndex")).end();
         return ex;
     }
 
@@ -114,7 +114,12 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
         b.startReturn().string("null").end();
         b.end();
-        b.statement("return AbstractBytecodeNode.createSourceSection(bytecode.sources, bytecode.sourceInfo, baseIndex)");
+
+        b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection);
+        b.string("bytecode.sources");
+        b.string("bytecode.sourceInfo");
+        b.string("baseIndex");
+        b.end(2);
         return ex;
     }
 
@@ -161,7 +166,7 @@ final class SourceInformationTreeImplElement extends AbstractElement {
         b.declaration(generic(ArrayDeque.class, this.asType()), "stack", "new ArrayDeque<>()");
         b.startDoBlock();
         // Create the next node.
-        b.statement("baseIndex -= SOURCE_INFO_LENGTH");
+        b.startStatement().string("baseIndex -= ").variable(parent.sourceInfoTable.entryLengthVariable).end();
         b.startDeclaration(this.asType(), "newNode");
         b.startNew(this.asType()).string("bytecode").string("baseIndex").end();
         b.end();

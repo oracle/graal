@@ -30,13 +30,13 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /** Visits surviving objects before compaction to update their references. */
 public final class ObjectFixupVisitor implements UninterruptibleObjectVisitor {

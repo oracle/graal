@@ -36,8 +36,8 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
+import com.oracle.svm.common.meta.MethodVariant;
+import com.oracle.svm.common.meta.MethodVariant.MethodVariantKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -60,9 +60,9 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     protected boolean isContextInsensitive;
 
     /**
-     * The multi-method key for the method which contains this invoke type flow.
+     * The method variant key for the method which contains this invoke type flow.
      */
-    protected final MultiMethodKey callerMultiMethodKey;
+    protected final MethodVariant.MethodVariantKey callerMethodVariantKey;
 
     /**
      * Flag to monitor whether all callees are original or not. This is used to optimize
@@ -72,14 +72,14 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
     @SuppressWarnings("this-escape")
     protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MethodVariantKey callerMethodVariantKey) {
         super(invokeLocation, null);
         this.originalInvoke = null;
         this.receiverType = receiverType;
         this.targetMethod = targetMethod;
         this.actualParameters = actualParameters;
         this.actualReturn = actualReturn;
-        this.callerMultiMethodKey = callerMultiMethodKey;
+        this.callerMethodVariantKey = callerMethodVariantKey;
 
         getTargetMethod().registerAsInvoked(this);
     }
@@ -90,7 +90,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         this.originalInvoke = original;
         this.receiverType = original.receiverType;
         this.targetMethod = original.targetMethod;
-        this.callerMultiMethodKey = original.callerMultiMethodKey;
+        this.callerMethodVariantKey = original.callerMethodVariantKey;
 
         actualReturn = original.getActualReturn() != null ? (ActualReturnTypeFlow) methodFlows.lookupCloneOf(bb, original.getActualReturn()) : null;
 
@@ -204,16 +204,16 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraphInfo calleeFlows, TypeState receiverTypeState) {
-        var analysisPolicy = bb.getHostVM().getMultiMethodAnalysisPolicy();
-        var calleeKey = calleeFlows.getMethod().getMultiMethodKey();
-        if (analysisPolicy.performParameterLinking(callerMultiMethodKey, calleeKey)) {
+        var analysisPolicy = bb.getHostVM().getMethodVariantsAnalysisPolicy();
+        var calleeKey = calleeFlows.getMethod().getMethodVariantKey();
+        if (analysisPolicy.performParameterLinking(callerMethodVariantKey, calleeKey)) {
             FormalReceiverTypeFlow formalReceiverFlow = calleeFlows.getFormalReceiver();
             if (formalReceiverFlow != null) {
                 formalReceiverFlow.addReceiverState(bb, receiverTypeState);
             }
         }
 
-        if (analysisPolicy.performReturnLinking(callerMultiMethodKey, calleeKey) && !analysisPolicy.unknownReturnValue(bb, callerMultiMethodKey, calleeFlows.getMethod())) {
+        if (analysisPolicy.performReturnLinking(callerMethodVariantKey, calleeKey) && !analysisPolicy.unknownReturnValue(bb, callerMethodVariantKey, calleeFlows.getMethod())) {
             if (bb.optimizeReturnedParameter()) {
                 int paramIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
                 if (actualReturn != null && paramIndex == 0) {
@@ -230,7 +230,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
     protected void linkCallee(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraphInfo calleeFlows) {
 
-        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performParameterLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+        if (bb.getHostVM().getMethodVariantsAnalysisPolicy().performParameterLinking(callerMethodVariantKey, calleeFlows.getMethod().getMethodVariantKey())) {
             // iterate over the actual parameters in caller context
             for (int i = 0; i < actualParameters.length; i++) {
                 TypeFlow<?> actualParam = actualParameters[i];
@@ -303,8 +303,8 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
          * If actualReturn is null, then there is no linking necessary. Later, if a typeflow is
          * created for the return, then {@code setActualReturn} will perform all necessary linking.
          */
-        if (actualReturn != null && bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
-            if (bb.getHostVM().getMultiMethodAnalysisPolicy().unknownReturnValue(bb, callerMultiMethodKey, calleeFlows.getMethod())) {
+        if (actualReturn != null && bb.getHostVM().getMethodVariantsAnalysisPolicy().performReturnLinking(callerMethodVariantKey, calleeFlows.getMethod().getMethodVariantKey())) {
+            if (bb.getHostVM().getMethodVariantsAnalysisPolicy().unknownReturnValue(bb, callerMethodVariantKey, calleeFlows.getMethod())) {
                 /*
                  * When there is an unknown return value we must be conservative.
                  */
@@ -423,12 +423,12 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
      * Returns the context sensitive method flows for the callees resolved for the invoke type flow
      * which are not still in stub form. That means that for each callee only those method flows
      * corresponding to contexts reached from this invoke are returned. Note that callee flows in
-     * this list can have a MultiMethodKey different from {@link MultiMethod#ORIGINAL_METHOD}.
+     * this list can have a MethodVariantKey different from {@link MethodVariant#ORIGINAL_METHOD}.
      */
     public abstract Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb);
 
-    public MultiMethodKey getCallerMultiMethodKey() {
-        return callerMultiMethodKey;
+    public MethodVariantKey getCallerMethodVariantKey() {
+        return callerMethodVariantKey;
     }
 
     /**

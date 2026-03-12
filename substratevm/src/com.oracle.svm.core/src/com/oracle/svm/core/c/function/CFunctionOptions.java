@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
 
 import org.graalvm.nativeimage.c.function.CFunction;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 
 /**

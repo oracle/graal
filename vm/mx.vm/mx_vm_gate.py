@@ -399,6 +399,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
                   f'{P}CompileImmediately=true',
                   f'{P}BackgroundCompilation=false',
                   f'-Dpolyglot.log.file={truffle_log_file}',
+                   '-Dpolyglot.sl.UseBytecode=false', # Bytecode interpreter not ready for immediate compilation
                    '-Ddebug.graal.CompilationWatchDog=true', # helps debug failure
                    '-Dgraalvm.locatorDisabled=true',
                    '-XX:-UseJVMCICompiler',       # Stop compilation timeout being applied to JIT
@@ -744,13 +745,14 @@ def gate_truffle_native_tck_wasm(tasks):
             wasm_language = mx.distribution('wasm:WASM', fatalIfMissing=False)
             if not wasm_language:
                 mx.abort("Cannot resolve the `wasm:WASM` language distribution. To resolve this, import the wasm suite using `--dynamicimports /wasm`.")
+            wasm_extensions = wasm_language.suite.extensions
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, 'wasm', wasm_language,
                                  # native-image sets -Djdk.internal.lambda.disableEagerInitialization=true by default,
                                  # which breaks Vector API's isNonCapturingLambda assertion. We override this property
                                  # for the GraalWasm Truffle Native TCK.
-                                 additional_options=['-Djdk.internal.lambda.disableEagerInitialization=false'])
+                                 additional_options=['-Djdk.internal.lambda.disableEagerInitialization=false'] + wasm_extensions.libwasmvm_dynamic_build_args())
 
 def gate_maven_downloader(tasks):
     with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:

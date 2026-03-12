@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,22 @@
  */
 package org.graalvm.word;
 
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.impl.WordFactoryOpcode;
 import org.graalvm.word.impl.WordFactoryOperation;
 
 /**
  * Provides factory method to create machine-word-sized values.
+ * <p>
+ * In an execution environment where value returned by this factory words are boxed values (e.g. not
+ * in Native Image runtime), a {@link Pointer} value will throw {@link UnsatisfiedLinkError} if any
+ * of its memory access operations (i.e., read, write, compare-and-swap etc.) or
+ * conversion-to-Object operations (i.e., toObject) are invoked.
+ * <p>
+ * In a Native Image runtime, {@linkplain WordBase word} values are distinct from Object values. To
+ * avoid problems related to this, word values must never be used as Objects, even when
+ * {@code javac} would allow it (e.g., {@code Map<Long, Pointer>}). The Native Image builder will
+ * detect such usages and raise an error.
  *
  * @since 19.0
  */
@@ -63,44 +74,39 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.ZERO)
     public static <T extends WordBase> T zero() {
-        return Word.box(0L);
+        return Word.zero();
     }
 
     /**
-     * The null pointer, i.e., the pointer with no bits set. There is no difference to a signed or
-     * unsigned {@link #zero}.
+     * The null pointer, i.e., a word with all bits set to 0. There is no difference between a
+     * signed or unsigned {@link #zero}.
      *
-     * @return the null pointer.
+     * @return a word value representing the null pointer
      *
      * @since 19.0
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.ZERO)
     public static <T extends PointerBase> T nullPointer() {
-        return Word.box(0L);
+        return Word.nullPointer();
     }
 
     /**
-     * Unsafe conversion from a Java long value to a Word. The parameter is treated as an unsigned
-     * 64-bit value (in contrast to the semantics of a Java long).
+     * Creates a word whose value is supplied by {@code val} which is (lossily) narrowed on a 32-bit
+     * platform.
      *
-     * @param val a 64 bit unsigned value
+     * @param val a 64-bit unsigned value
      * @return the value cast to Word
      *
      * @since 19.0
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_UNSIGNED)
     public static <T extends UnsignedWord> T unsigned(long val) {
-        return Word.box(val);
+        return Word.unsigned(val);
     }
 
     /**
      * Unsafe conversion from a Java long value to a {@link PointerBase pointer}. The parameter is
      * treated as an unsigned 64-bit value (in contrast to the semantics of a Java long).
-     *
-     * In an execution environment where this method returns a boxed value (e.g. not in Native
-     * Image), the returned value will throw {@link UnsatisfiedLinkError} if any of the
-     * {@link Pointer} memory access operations (i.e., read, write, compare-and-swap etc.) are
-     * invoked on it.
      *
      * @param val a 64 bit unsigned value
      * @return the value cast to PointerBase
@@ -109,12 +115,12 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_UNSIGNED)
     public static <T extends PointerBase> T pointer(long val) {
-        return Word.box(val);
+        return Word.pointer(val);
     }
 
     /**
-     * Unsafe conversion from a Java int value to a Word. The parameter is treated as an unsigned
-     * 32-bit value (in contrast to the semantics of a Java int).
+     * Creates a word whose value is supplied by {@code val} which is zero-extended on a 64-bit
+     * platform.
      *
      * @param val a 32 bit unsigned value
      * @return the value cast to Word
@@ -123,35 +129,33 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_UNSIGNED)
     public static <T extends UnsignedWord> T unsigned(int val) {
-        return Word.box(val & 0xffffffffL);
+        return Word.unsigned(val);
     }
 
     /**
-     * Unsafe conversion from a Java long value to a Word. The parameter is treated as a signed
-     * 64-bit value (unchanged semantics of a Java long).
+     * Creates a word whose value is supplied by {@code val}.
      *
-     * @param val a 64 bit signed value
+     * @param val a 64-bit signed value
      * @return the value cast to Word
      *
      * @since 19.0
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_SIGNED)
     public static <T extends SignedWord> T signed(long val) {
-        return Word.box(val);
+        return Word.signed(val);
     }
 
     /**
-     * Unsafe conversion from a Java int value to a Word. The parameter is treated as a signed
-     * 32-bit value (unchanged semantics of a Java int).
+     * Creates a word whose value is supplied by a {@code val} which is sign-extended on a 64-bit
+     * platform.
      *
-     * @param val a 32 bit signed value
+     * @param val a 32-bit signed value
      * @return the value cast to Word
      *
      * @since 19.0
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_SIGNED)
     public static <T extends SignedWord> T signed(int val) {
-        return Word.box(val);
+        return Word.signed(val);
     }
-
 }

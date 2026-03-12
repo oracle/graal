@@ -637,7 +637,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     @SuppressWarnings("static-method")
-    public static final class MultiMethod1 {
+    public static final class MethodVariant1 {
         @Export
         public TargetClass1 m(TargetClass1 arg0) {
             return arg0;
@@ -650,7 +650,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     @SuppressWarnings("static-method")
-    public static final class MultiMethod2 {
+    public static final class MethodVariant2 {
         @Export
         public Object m(@SuppressWarnings("unused") TargetClass1 arg0, Object arg1) {
             return arg1;
@@ -697,7 +697,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.equals("42"), (v) -> new TargetClass1(v));
         builder.targetTypeMapping(String.class, TargetClass2.class, (v) -> v.equals("43"), (v) -> new TargetClass2(v));
         setupEnv(builder);
-        methods = context.asValue(new MultiMethod1());
+        methods = context.asValue(new MethodVariant1());
         assertEquals(TargetClass1.class, methods.invokeMember("m", "42").asHostObject().getClass());
         assertEquals(TargetClass2.class, methods.invokeMember("m", "43").asHostObject().getClass());
 
@@ -706,7 +706,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         builder.targetTypeMapping(String.class, TargetClass1.class, (v) -> v.equals("42"), (v) -> new TargetClass1(v));
         builder.targetTypeMapping(String.class, TargetClass2.class, (v) -> v.equals("42"), (v) -> new TargetClass2(v));
         setupEnv(builder);
-        methods = context.asValue(new MultiMethod1());
+        methods = context.asValue(new MethodVariant1());
         try {
             methods.invokeMember("m", "42");
             fail();
@@ -717,7 +717,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         builder = HostAccess.newBuilder();
         builder.targetTypeMapping(String.class, TargetClass1.class, null, (v) -> new TargetClass1(v));
         setupEnv(builder);
-        methods = context.asValue(new MultiMethod2());
+        methods = context.asValue(new MethodVariant2());
         assertEquals("42", methods.invokeMember("m", "42", "42").asString());
         assertEquals(42, methods.invokeMember("m", "42", 42).asInt());
     }

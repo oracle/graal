@@ -55,7 +55,7 @@ public class VerifyProfileMethodUsage extends VerifyPhase<CoreProviders> {
         } catch (NoSuchMethodException e) {
             throw new GraalError(e);
         }
-
+        ALLOWED_CLASSES.add(StableProfileProvider.class);
         ALLOWED_CLASSES.add(StableProfileProvider.CachingProfilingInfo.class);
         ALLOWED_CLASSES.add(ResolvedJavaMethodProfileProvider.class);
         ALLOWED_CLASSES.add(ResolvedJavaMethod.class);

@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.deopt;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.ref.WeakReference;
 
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -45,9 +45,9 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -269,7 +269,7 @@ public final class DeoptimizedFrame {
 
     protected static DeoptimizedFrame factory(int targetContentSize, long sourceEncodedFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame,
                     RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean rethrowException, boolean isEagerDeopt) {
-        final TargetContent targetContentBuffer = new TargetContent(targetContentSize, ConfigurationValues.getTarget().arch.getByteOrder());
+        final TargetContent targetContentBuffer = new TargetContent(targetContentSize, ConfigurationValues.getByteOrder());
         return new DeoptimizedFrame(sourceEncodedFrameSize, sourceInstalledCode, topFrame, targetContentBuffer, relockedObjects, sourcePC, rethrowException, isEagerDeopt);
     }
 
@@ -352,7 +352,7 @@ public final class DeoptimizedFrame {
      * GC when walking the stack after being installed during eager deoptimization. For lazy
      * deoptimization, the pin is not needed, and in that case this method must not be called.
      */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Object pinning internals must never end up in interruptible code.")
     public void unpin() {
         assert pin != null;
         pin.close();
@@ -427,7 +427,7 @@ public final class DeoptimizedFrame {
         firstAddressEntry.returnAddress += handler;
     }
 
-    @Uninterruptible(reason = "Does not need to be uninterruptible because it throws a fatal error.", calleeMustBe = false)
+    @Uninterruptible(reason = "Does not need to be uninterruptible because it throws a fatal error.", mayBeInlined = true, calleeMustBe = false)
     private static void throwMissingExceptionHandler(CodeInfo info, ReturnAddress firstAddressEntry) {
         throwMissingExceptionHandler0(info, firstAddressEntry);
     }

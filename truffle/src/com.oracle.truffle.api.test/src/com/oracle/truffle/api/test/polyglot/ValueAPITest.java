@@ -73,6 +73,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.Serial;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -131,6 +132,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -2912,4 +2914,122 @@ public class ValueAPITest {
         assertFails(() -> Value.fromNativeString(1L, -1, 0, StringEncoding.UTF_8, true), IndexOutOfBoundsException.class, null);
     }
 
+    @Test
+    public void testTruffleNumberObject() {
+        try (Context c = Context.create()) {
+            Value val = c.asValue(new TruffleByteObject((byte) 42));
+            Object numberObj = val.as(Object.class);
+            assertTrue(numberObj instanceof Byte);
+            assertEquals(42, (byte) numberObj);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method"})
+    static class TruffleByteObject extends Number implements TruffleObject {
+
+        @Serial private static final long serialVersionUID = 1922664232217003500L;
+
+        private final byte byteValue;
+
+        TruffleByteObject(byte byteValue) {
+            this.byteValue = byteValue;
+        }
+
+        @ExportMessage
+        boolean isNumber() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean fitsInByte() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean fitsInShort() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean fitsInInt() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean fitsInLong() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean fitsInFloat() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean fitsInDouble() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean fitsInBigInteger() {
+            return true;
+        }
+
+        @ExportMessage
+        byte asByte() {
+            return byteValue;
+        }
+
+        @ExportMessage
+        short asShort() {
+            return byteValue;
+        }
+
+        @ExportMessage
+        int asInt() {
+            return byteValue;
+        }
+
+        @ExportMessage
+        long asLong() {
+            return byteValue;
+        }
+
+        @ExportMessage
+        float asFloat() {
+            return byteValue;
+        }
+
+        @ExportMessage
+        double asDouble() {
+            return byteValue;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        BigInteger asBigInteger() {
+            return BigInteger.valueOf(byteValue);
+        }
+
+        @Override
+        public int intValue() {
+            return byteValue;
+        }
+
+        @Override
+        public long longValue() {
+            return byteValue;
+        }
+
+        @Override
+        public float floatValue() {
+            return byteValue;
+        }
+
+        @Override
+        public double doubleValue() {
+            return byteValue;
+        }
+    }
 }

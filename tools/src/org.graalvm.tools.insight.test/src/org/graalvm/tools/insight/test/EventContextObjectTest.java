@@ -83,7 +83,8 @@ public class EventContextObjectTest {
                         "name", "source", "characters",
                         "line", "startLine", "endLine",
                         "column", "startColumn", "endColumn",
-                        "charIndex", "charLength", "charEndIndex"
+                        "charIndex", "charLength", "charEndIndex",
+                        "attributes",
         };
 
         assertEquals(expectedNames.length, iop.getArraySize(members));

@@ -32,7 +32,7 @@ import java.util.Arrays;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 final class OutStream {

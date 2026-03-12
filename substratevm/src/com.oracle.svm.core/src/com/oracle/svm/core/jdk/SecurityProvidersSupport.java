@@ -40,7 +40,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.ImageHeapMap;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import sun.security.util.Debug;
@@ -164,7 +164,9 @@ public final class SecurityProvidersSupport {
                 } catch (Exception ex) {
                     if (debug != null) {
                         debug.println("Error loading provider Apple");
-                        ex.printStackTrace();
+                        // Checkstyle: allow System.err (for JDK compatibility)
+                        ex.printStackTrace(System.err);
+                        // Checkstyle: disallow System.err
                     }
                 }
                 yield null;

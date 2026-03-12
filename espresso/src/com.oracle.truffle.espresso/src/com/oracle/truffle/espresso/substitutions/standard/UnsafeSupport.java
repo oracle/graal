@@ -30,6 +30,7 @@ import java.nio.ByteOrder;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
 
@@ -43,17 +44,7 @@ import sun.misc.Unsafe;
  * better performance.
  */
 final class UnsafeSupport {
-    private static final Unsafe UNSAFE;
-
-    static {
-        try {
-            java.lang.reflect.Field f = Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            UNSAFE = (Unsafe) f.get(null);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new InternalError();
-        }
-    }
+    private static final Unsafe UNSAFE = UnsafeAccess.get();
 
     private UnsafeSupport() {
     }

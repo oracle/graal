@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,13 +34,15 @@ import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
@@ -49,7 +51,9 @@ import com.oracle.svm.core.graal.nodes.LoadMethodByIndexNode;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFloatingNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -58,7 +62,7 @@ import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -115,7 +119,6 @@ import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -340,7 +343,8 @@ public abstract class NonSnippetLowerings {
                 }
                 SharedMethod method = (SharedMethod) callTarget.targetMethod();
                 JavaType[] signature = method.getSignature().toParameterTypes(callTarget.isStatic() ? null : method.getDeclaringClass());
-                CallingConvention.Type callType = method.getCallingConventionKind().toType(true);
+                SubstrateCallingConventionKind callKind = method.getCallingConventionKind();
+                CallingConvention.Type callType = callKind.isCustom() ? method.getCustomCallingConventionType() : callKind.toType(true);
                 InvokeKind invokeKind = callTarget.invokeKind();
                 SharedMethod[] implementations = method.getImplementations();
 
@@ -419,19 +423,51 @@ public abstract class NonSnippetLowerings {
                     } else if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = createDirectCall(graph, callTarget, parameters, signature, callType, invokeKind, targetMethod, node);
                     } else if (!targetMethod.hasImageCodeOffset()) {
-                        /*
-                         * The target method is not included in the image. This means that it was
-                         * also not needed for the deoptimization entry point. Thus, we are certain
-                         * that this branch will fold away. If not, we will fail later on.
-                         *
-                         * Also lower the MethodCallTarget below to avoid recursive lowering error
-                         * messages. The invoke and call target are actually dead and will be
-                         * removed by a subsequent dead code elimination pass.
-                         */
-                        loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
+                        ResolvedJavaMethod targetInterpreterMethod = targetMethod.getInterpreterMethod();
+                        if (targetInterpreterMethod == null) {
+                            /*
+                             * The target method is not included in the image. This means that it
+                             * was also not needed for the deoptimization entry point. Thus, we are
+                             * certain that this branch will fold away. If not, we will fail later
+                             * on.
+                             *
+                             * Also lower the MethodCallTarget below to avoid recursive lowering
+                             * error messages. The invoke and call target are actually dead and will
+                             * be removed by a subsequent dead code elimination pass.
+                             */
+                            loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
+                        } else if (!SubstrateUtil.HOSTED && SubstrateOptions.useRistretto()) {
+                            /*
+                             * The target method is not included in the image. However, a
+                             * runtime-loaded variant of it is.
+                             *
+                             * We call the "EnterDirectInterpreterStub" like a regular compiled
+                             * entry point. The stub understands the calling convention. Thus, it is
+                             * able to collect the arguments of the invocation and then either calls
+                             * into the interpreter or, if already available, the JIT compiled
+                             * variant of it.
+                             *
+                             * In order to dispatch to the correct target method, a hidden argument
+                             * is injected at the call-site.
+                             */
+
+                            JavaConstant targetInterpreterMethodConstant = SubstrateObjectConstant.forObject(targetInterpreterMethod);
+                            ValueNode targetInterpreterMethodNode = ConstantNode.forConstant(targetInterpreterMethodConstant, tool.getMetaAccess(), graph);
+
+                            /*
+                             * The "EnterDirectInterpreterStub" is included as AOT method, therefore
+                             * its address cannot change.
+                             */
+                            ConstantNode stubEntryPointNode = ConstantNode.forLong(CremaSupport.singleton().getEnterDirectInterpreterStubEntryPoint().rawValue(), graph);
+                            ValueNode base = graph.addWithoutUnique(new FloatingWordCastNode(tool.getStampProvider().createMethodStamp(), stubEntryPointNode));
+
+                            loweredCallTarget = graph.add(new SubstrateIndirectCallTargetNode(
+                                            base, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature,
+                                            targetMethod, callType, invokeKind, null, targetInterpreterMethodNode));
+                        } else {
+                            throw VMError.shouldNotReachHereAtRuntime();
+                        }
                     } else {
-                        // This needs to have a static type of CFunctionPointer to workaround
-                        // GR-72464
                         CFunctionPointer rawAdrConstant = targetMethod.getAOTEntrypoint();
                         assert !SubstrateUtil.HOSTED;
                         if (rawAdrConstant == Word.nullPointer()) {
@@ -633,13 +669,14 @@ public abstract class NonSnippetLowerings {
 
             ValueNode virtualMethodAddress;
             if (relativeCodePointers) {
-                /*
-                 * GR-64589: this can be a floating read outside of deoptimization target methods,
-                 * but this code has no knowledge of deoptimization (class ReadReservedRegister).
-                 */
-                FixedWithNextNode codeBase = graph.add(new ReadReservedRegisterFixedNode(ReservedRegisters.singleton().getCodeBaseRegister()));
-                graph.addBeforeFixed(prependTo, codeBase);
-
+                ValueNode codeBase;
+                ReservedRegisters rr = ReservedRegisters.singleton();
+                if (rr.mustUseFixedRead(graph)) {
+                    codeBase = graph.add(new ReadReservedRegisterFixedNode(rr.getCodeBaseRegister()));
+                    graph.addBeforeFixed(prependTo, (FixedWithNextNode) codeBase);
+                } else {
+                    codeBase = graph.unique(new ReadReservedRegisterFloatingNode(rr.getCodeBaseRegister()));
+                }
                 virtualMethodAddress = graph.unique(new AddNode(vtableEntry, codeBase));
             } else {
                 virtualMethodAddress = vtableEntry;

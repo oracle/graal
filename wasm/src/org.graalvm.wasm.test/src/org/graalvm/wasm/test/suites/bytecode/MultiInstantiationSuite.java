@@ -60,16 +60,17 @@ import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmTag;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
-import org.graalvm.wasm.api.FuncType;
 import org.graalvm.wasm.api.Sequence;
-import org.graalvm.wasm.api.TableKind;
-import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.test.WasmTestUtils;
+import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.NumberType;
+import org.graalvm.wasm.types.ReferenceType;
+import org.graalvm.wasm.types.ValueType;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.junit.Assert;
 import org.junit.Test;
@@ -192,7 +193,7 @@ public class MultiInstantiationSuite {
 
             a.addMember("f", new Executable(args -> 42));
 
-            final WasmTable t = wasm.tableAlloc(2, 2, TableKind.anyfunc, tableFun);
+            final WasmTable t = wasm.tableAlloc(2, 2, ReferenceType.FUNCREF, tableFun);
             a.addMember("t", t);
 
             final WasmMemory m = WebAssembly.memAlloc(1, 1, false);
@@ -200,10 +201,10 @@ public class MultiInstantiationSuite {
             memoryLib.store_i32_8(m, null, 0, (byte) 5);
             a.addMember("m", m);
 
-            final WasmGlobal g = wasm.globalAlloc(ValueType.i32, false, 4);
+            final WasmGlobal g = wasm.globalAlloc(NumberType.I32, false, 4);
             a.addMember("g", g);
 
-            final WasmTag e = WebAssembly.tagAlloc(FuncType.fromString("()"));
+            final WasmTag e = wasm.tagAlloc(new FunctionType(ValueType.EMPTY, ValueType.EMPTY));
             a.addMember("e", e);
 
             imports.addMember("a", a);
@@ -264,7 +265,7 @@ public class MultiInstantiationSuite {
                         )
                         """);
         test(source, wasm -> {
-            WasmGlobal g = wasm.globalAlloc(ValueType.i32, false, 16);
+            WasmGlobal g = wasm.globalAlloc(NumberType.I32, false, 16);
             return Dictionary.create(new Object[]{"a", Dictionary.create(new Object[]{"g", g})});
         }, (wasm, i) -> {
             InteropLibrary lib = InteropLibrary.getUncached();

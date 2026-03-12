@@ -46,6 +46,7 @@ import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.impl.TruffleVersions;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -312,7 +313,11 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
     public String getVersion() {
         final String version = cache.getVersion();
         if (version.equals("inherit")) {
-            return engine.getVersion();
+            try {
+                return TruffleVersions.readTruffleAPIVersion().toString();
+            } catch (Throwable t) {
+                throw PolyglotImpl.guestToHostException(engine, t);
+            }
         } else {
             return version;
         }

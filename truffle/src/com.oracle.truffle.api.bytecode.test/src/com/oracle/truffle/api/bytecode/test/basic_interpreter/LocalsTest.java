@@ -47,6 +47,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -739,6 +740,66 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
 
         // Outer should still execute even with updated tags.
         assertEquals(42L, outer.getCallTarget().call(false));
+    }
+
+    @Test
+    public void testGR73539() {
+        assumeTrue(run.hasBoxingElimination());
+        // Regression test for a bug where the materialized store slow-path would try to load the
+        // materialized frame after the fast path cleared it from the operand stack.
+        // @formatter:off
+        // def outer():
+        //   x = 42L
+        //   def inner(newValue):
+        //     x = newValue;
+        //   inner(123L)
+        //   x = "hello"
+        //   inner(456L)
+        //   return x
+        // @formatter:on
+        BytecodeRootNodes<BasicInterpreter> roots = createNodes(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal("x", null);
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.beginRoot();
+            b.beginStoreLocalMaterialized(x);
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endStoreLocalMaterialized();
+            BasicInterpreter inner = b.endRoot();
+
+            b.beginInvoke();
+            b.emitLoadConstant(inner);
+            b.emitMaterializeFrame();
+            b.emitLoadConstant(123L);
+            b.endInvoke();
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant("hello");
+            b.endStoreLocal();
+
+            b.beginInvoke();
+            b.emitLoadConstant(inner);
+            b.emitMaterializeFrame();
+            b.emitLoadConstant(456L);
+            b.endInvoke();
+
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+
+            b.endRoot();
+        });
+        BasicInterpreter outer = roots.getNode(0);
+        BasicInterpreter inner = roots.getNode(1);
+        outer.getBytecodeNode().setUncachedThreshold(0);
+        inner.getBytecodeNode().setUncachedThreshold(0);
+
+        assertEquals(456L, outer.getCallTarget().call());
     }
 
     @Test

@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.graal.compiler.core.common.LibGraalSupport.inLibGraalRuntime;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 import static jdk.graal.compiler.hotspot.EncodedSnippets.isAfterSnippetEncoding;
+import static jdk.graal.compiler.options.LibGraalSupport.inLibGraalRuntime;
 
 import java.util.BitSet;
 
@@ -36,7 +36,6 @@ import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -58,6 +57,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.util.Providers;

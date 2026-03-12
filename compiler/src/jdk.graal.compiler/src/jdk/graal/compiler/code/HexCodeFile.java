@@ -24,83 +24,194 @@
  */
 package jdk.graal.compiler.code;
 
-import static jdk.graal.compiler.code.CompilationResult.JumpTable.EntryFormat.OFFSET_ONLY;
-import static jdk.graal.compiler.code.CompilationResult.JumpTable.EntryFormat.VALUE_AND_OFFSET;
-
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
-import jdk.graal.compiler.code.CompilationResult.CodeComment;
-import jdk.graal.compiler.code.CompilationResult.JumpTable;
-import jdk.graal.compiler.code.CompilationResult.JumpTable.EntryFormat;
 import jdk.graal.compiler.debug.Assertions;
 
-/**
- * A HexCodeFile is a textual format for representing a chunk of machine code along with extra
- * information that can be used to enhance a disassembly of the code.
- *
- * A pseudo grammar for a HexCodeFile is given below.
- *
- * <pre>
- *     HexCodeFile ::= Platform Delim HexCode Delim (OptionalSection Delim)*
- *
- *     OptionalSection ::= Comment | OperandComment | JumpTable | LookupTable
- *
- *     Platform ::= "Platform" ISA WordWidth
- *
- *     HexCode ::= "HexCode" StartAddress HexDigits
- *
- *     Comment ::= "Comment" Position String
- *
- *     OperandComment ::= "OperandComment" Position String
- *
- *     EntryFormat ::= 4 | 8 | "OFFSET" | "KEY2_OFFSET"
- *
- *     JumpTable ::= "JumpTable" Position EntryFormat Low High
- *
- *     LookupTable ::= "LookupTable" Position NPairs KeySize OffsetSize
- *
- *     Position, EntrySize, Low, High, NPairs KeySize OffsetSize ::= int
- *
- *     Delim := "&lt;||@"
- * </pre>
- *
- * There must be exactly one HexCode and Platform part in a HexCodeFile. The length of HexDigits
- * must be even as each pair of digits represents a single byte.
- * <p>
- * Below is an example of a valid Code input:
- *
- * <pre>
- *
- *  Platform AMD64 64  &lt;||@
- *  HexCode 0 e8000000009090904883ec084889842410d0ffff48893c24e800000000488b3c24488bf0e8000000004883c408c3  &lt;||@
- *  Comment 24 frame-ref-map: +0 {0}
- *  at java.lang.String.toLowerCase(String.java:2496) [bci: 1]
- *              |0
- *     locals:  |stack:0:a
- *     stack:   |stack:0:a
- *    &lt;||@
- *  OperandComment 24 {java.util.Locale.getDefault()}  &lt;||@
- *  Comment 36 frame-ref-map: +0 {0}
- *  at java.lang.String.toLowerCase(String.java:2496) [bci: 4]
- *              |0
- *     locals:  |stack:0:a
- *    &lt;||@
- *  OperandComment 36 {java.lang.String.toLowerCase(Locale)}  lt;||@
- *
- * </pre>
- */
+/// A HexCodeFile is a textual format for representing a chunk of machine code along with extra
+/// information that can be used to enhance a disassembly of the code.
+///
+/// A pseudo grammar for a HexCodeFile is given below.
+/// <pre>
+///     HexCodeFile ::= Platform Delim HexCode Delim (OptionalSection Delim)*
+///
+///     OptionalSection ::= Comment | OperandComment | JumpTable | LookupTable
+///
+///     Platform ::= "Platform" ISA WordWidth
+///
+///     HexCode ::= "HexCode" StartAddress HexDigits
+///
+///     Comment ::= "Comment" Position String
+///
+///     OperandComment ::= "OperandComment" Position String
+///
+///     EntryFormat ::= 4 | 8 | "OFFSET" | "KEY2_OFFSET"
+///
+///     JumpTable ::= "JumpTable" Position EntryFormat Low High
+///
+///     LookupTable ::= "LookupTable" Position NPairs KeySize OffsetSize
+///
+///     Position, EntrySize, Low, High, NPairs KeySize OffsetSize ::= int
+///
+///     Delim := "<||@"
+/// </pre>
+///
+/// There must be exactly one HexCode and Platform part in a HexCodeFile. The length of HexDigits
+/// must be even as each pair of digits represents a single byte.
+///
+/// Below is an example of a valid Code input:
+///
+/// ```
+///  Platform AMD64 64  <||@
+///  HexCode 0 e8000000009090904883ec084889842410d0ffff48893c24e800000000488b3c24488bf0e8000000004883c408c3  <||@
+///  Comment 24 frame-ref-map: +0 {0}
+///  at java.lang.String.toLowerCase(String.java:2496) [bci: 1]
+///              |0
+///     locals:  |stack:0:a
+///     stack:   |stack:0:a
+///    <||@
+///  OperandComment 24 {java.util.Locale.getDefault()}  <||@
+///  Comment 36 frame-ref-map: +0 {0}
+///  at java.lang.String.toLowerCase(String.java:2496) [bci: 4]
+///              |0
+///     locals:  |stack:0:a
+///    <||@
+///  OperandComment 36 {java.lang.String.toLowerCase(Locale)}  <||@
+///
+/// ```
 public class HexCodeFile {
+    /**
+     * Provides extra information about instructions or data at specific positions in the target
+     * code. This is optional information that can be used to enhance a disassembly of the code.
+     */
+    public abstract static class CodeAnnotation implements Serializable {
+        private static final long serialVersionUID = 928798596620568715L;
+        public final int position;
 
-    public static final String NEW_LINE = System.lineSeparator();
+        public CodeAnnotation(int position) {
+            this.position = position;
+        }
+
+        public int getPosition() {
+            return position;
+        }
+    }
+
+    /**
+     * Describes a table of signed offsets embedded in the code. The offsets are relative to the
+     * starting address of the table. This type of table maybe generated when translating a
+     * multi-way branch based on a key value from a dense value set (e.g. the {@code tableswitch}
+     * JVM instruction).
+     * <p>
+     * The table is indexed by the contiguous range of integers from {@link #low} to {@link #high}
+     * inclusive.
+     */
+    public static final class JumpTable extends CodeAnnotation {
+        private static final long serialVersionUID = -6520017513070589383L;
+
+        /**
+         * Constants denoting the format and size of each entry in a jump table.
+         */
+        public enum EntryFormat {
+            /**
+             * Each entry is a 4 byte offset. The base of the offset is platform dependent.
+             */
+            OFFSET(4),
+
+            /**
+             * Each entry is a secondary key value followed by a 4 byte offset. The base of the
+             * offset is platform dependent.
+             */
+            KEY2_OFFSET(8);
+
+            EntryFormat(int size) {
+                this.size = size;
+            }
+
+            /**
+             * Gets the size of an entry in bytes.
+             */
+            public final int size;
+        }
+
+        /**
+         * The low value in the key range (inclusive).
+         */
+        public final int low;
+
+        /**
+         * The high value in the key range (inclusive).
+         */
+        public final int high;
+
+        /**
+         * The size (in bytes) of each table entry.
+         */
+        public final EntryFormat entryFormat;
+
+        public JumpTable(int position, int low, int high, EntryFormat entryFormat) {
+            super(position);
+            if (high <= low) {
+                throw new IllegalArgumentException(String.format("low (%d) is not less than high(%d)", low, high));
+            }
+            this.low = low;
+            this.high = high;
+            this.entryFormat = entryFormat;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + "@" + position + ": [" + low + " .. " + high + "]";
+        }
+    }
+
+    /**
+     * Describes a table of key and offset pairs. The offset in each table entry is relative to the
+     * address of the table. This type of table maybe generated when translating a multi-way branch
+     * based on a key value from a sparse value set (e.g. the {@code lookupswitch} JVM instruction).
+     */
+    public static final class LookupTable extends CodeAnnotation {
+        private static final long serialVersionUID = 6797908737446993328L;
+        /**
+         * The number of entries in the table.
+         */
+        public final int npairs;
+
+        /**
+         * The size (in bytes) of entry's key.
+         */
+        public final int keySize;
+
+        /**
+         * The size (in bytes) of entry's offset value.
+         */
+        public final int offsetSize;
+
+        public LookupTable(int position, int npairs, int keySize, int offsetSize) {
+            super(position);
+            this.npairs = npairs;
+            this.keySize = keySize;
+            this.offsetSize = offsetSize;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + "@" + position + ": [npairs=" + npairs + ", keySize=" + keySize + ", offsetSize=" + offsetSize + "]";
+        }
+    }
+
+    public static final String NEW_LINE = "\n";
     public static final String SECTION_DELIM = " <||@";
     public static final String COLUMN_END = " <|@";
     public static final Pattern SECTION = Pattern.compile("(\\S+)\\s+(.*)", Pattern.DOTALL);
@@ -136,6 +247,8 @@ public class HexCodeFile {
 
     public final ArrayList<JumpTable> jumpTables = new ArrayList<>();
 
+    public final ArrayList<LookupTable> lookupTables = new ArrayList<>();
+
     public final String isa;
 
     public final int wordWidth;
@@ -145,7 +258,7 @@ public class HexCodeFile {
     public HexCodeFile(byte[] code, long startAddress, String isa, int wordWidth) {
         this.code = code;
         this.startAddress = startAddress;
-        this.isa = isa;
+        this.isa = isa.toLowerCase(Locale.ROOT);
         this.wordWidth = wordWidth;
     }
 
@@ -158,8 +271,7 @@ public class HexCodeFile {
     }
 
     /**
-     * Formats this HexCodeFile as a string that can be parsed with
-     * {@link #parse(String, int, String, String)}.
+     * Formats this HexCodeFile as a string that can be parsed with {@link #parse}.
      */
     @Override
     public String toString() {
@@ -178,10 +290,11 @@ public class HexCodeFile {
         ps.printf("HexCode %x %s %s%n", startAddress, HexCodeFile.hexCodeString(code), SECTION_DELIM);
 
         for (JumpTable table : jumpTables) {
-            EntryFormat ef = table.entryFormat;
-            // Backwards compatibility support for old versions of C1Visualizer
-            String efString = ef == OFFSET_ONLY || ef == VALUE_AND_OFFSET ? String.valueOf(ef.size) : ef.name();
-            ps.printf("JumpTable %d %s %d %d %s%n", table.getPosition(), efString, table.low, table.high, SECTION_DELIM);
+            ps.printf("JumpTable %d %d %d %d %s%n", table.position, table.entryFormat, table.low, table.high, SECTION_DELIM);
+        }
+
+        for (LookupTable table : lookupTables) {
+            ps.printf("LookupTable %d %d %d %d %s%n", table.position, table.npairs, table.keySize, table.keySize, SECTION_DELIM);
         }
 
         for (Map.Entry<Integer, List<String>> e : comments.entrySet()) {
@@ -192,8 +305,9 @@ public class HexCodeFile {
         }
 
         for (Map.Entry<Integer, List<String>> e : operandComments.entrySet()) {
-            for (String c : e.getValue()) {
-                ps.printf("OperandComment %d %s %s%n", e.getKey(), c, SECTION_DELIM);
+            int pos = e.getKey();
+            for (String comment : e.getValue()) {
+                ps.printf("OperandComment %d %s %s%n", pos, comment, SECTION_DELIM);
             }
         }
         ps.flush();
@@ -222,42 +336,16 @@ public class HexCodeFile {
      * Adds a comment to the list of comments for a given position.
      */
     public void addComment(int pos, String comment) {
-        List<String> list = comments.get(pos);
-        if (list == null) {
-            list = new ArrayList<>();
-            comments.put(pos, list);
-        }
+        List<String> list = comments.computeIfAbsent(pos, x -> new ArrayList<>());
         list.add(encodeString(comment));
     }
 
     /**
-     * Adds an operand comment for a given position.
+     * Sets an operand comment for a given position.
      */
     public void addOperandComment(int pos, String comment) {
-        List<String> list = comments.get(pos);
-        if (list == null) {
-            list = new ArrayList<>(1);
-            comments.put(pos, list);
-        }
+        List<String> list = operandComments.computeIfAbsent(pos, x -> new ArrayList<>());
         list.add(encodeString(comment));
-    }
-
-    /**
-     * Adds any jump tables, lookup tables or code comments from a list of code annotations.
-     */
-    public static void addAnnotations(HexCodeFile hcf, List<CodeAnnotation> annotations) {
-        if (annotations == null || annotations.isEmpty()) {
-            return;
-        }
-        for (CodeAnnotation a : annotations) {
-            if (a instanceof JumpTable) {
-                JumpTable table = (JumpTable) a;
-                hcf.jumpTables.add(table);
-            } else if (a instanceof CodeComment) {
-                CodeComment comment = (CodeComment) a;
-                hcf.addComment(comment.getPosition(), comment.value);
-            }
-        }
     }
 
     /**
@@ -310,7 +398,7 @@ public class HexCodeFile {
 
         void check(boolean condition, int offset, String message) {
             if (!condition) {
-                error(offset, message);
+                throw error(offset, message);
             }
         }
 
@@ -328,7 +416,6 @@ public class HexCodeFile {
         }
 
         static class InputPos {
-
             final int line;
             final int col;
 
@@ -342,12 +429,7 @@ public class HexCodeFile {
             assert input != null;
             int lineStart = input.lastIndexOf(HexCodeFile.NEW_LINE, index) + 1;
 
-            String l = input.substring(lineStart, lineStart + 10);
-            PrintStream out = System.out;
-            out.println("YYY" + input.substring(index, index + 10) + "...");
-            out.println("XXX" + l + "...");
-
-            int pos = input.indexOf(HexCodeFile.NEW_LINE, 0);
+            int pos = input.indexOf(HexCodeFile.NEW_LINE);
             int line = 1;
             while (pos > 0 && pos < index) {
                 line++;
@@ -392,56 +474,76 @@ public class HexCodeFile {
             int headerOffset = offset + m.start(1);
             int bodyOffset = offset + m.start(2);
 
-            if (header.equals("Platform")) {
-                check(isa == null, bodyOffset, "Duplicate Platform section found");
-                m = HexCodeFile.PLATFORM.matcher(body);
-                check(m.matches(), bodyOffset, "Platform does not match pattern " + HexCodeFile.PLATFORM);
-                isa = m.group(1);
-                wordWidth = parseInt(bodyOffset + m.start(2), m.group(2));
-                makeHCF();
-            } else if (header.equals("HexCode")) {
-                check(code == null, bodyOffset, "Duplicate Code section found");
-                m = HexCodeFile.HEX_CODE.matcher(body);
-                check(m.matches(), bodyOffset, "Code does not match pattern " + HexCodeFile.HEX_CODE);
-                String hexAddress = m.group(1);
-                startAddress = Long.valueOf(hexAddress, 16);
-                String hexCode = m.group(2);
-                if (hexCode == null) {
-                    code = new byte[0];
-                } else {
-                    check((hexCode.length() % 2) == 0, bodyOffset, "Hex code length must be even");
-                    code = new byte[hexCode.length() / 2];
-                    for (int i = 0; i < code.length; i++) {
-                        String hexByte = hexCode.substring(i * 2, (i + 1) * 2);
-                        code[i] = (byte) Integer.parseInt(hexByte, 16);
+            switch (header) {
+                case "Platform":
+                    check(isa == null, bodyOffset, "Duplicate Platform section found");
+                    m = HexCodeFile.PLATFORM.matcher(body);
+                    check(m.matches(), bodyOffset, "Platform does not match pattern " + HexCodeFile.PLATFORM);
+                    isa = m.group(1);
+                    wordWidth = parseInt(bodyOffset + m.start(2), m.group(2));
+                    makeHCF();
+                    break;
+                case "HexCode":
+                    check(code == null, bodyOffset, "Duplicate Code section found");
+                    m = HexCodeFile.HEX_CODE.matcher(body);
+                    check(m.matches(), bodyOffset, "Code does not match pattern " + HexCodeFile.HEX_CODE);
+                    String hexAddress = m.group(1);
+                    startAddress = new BigInteger(hexAddress, 16).longValue();
+                    String hexCode = m.group(2);
+                    if (hexCode == null) {
+                        code = new byte[0];
+                    } else {
+                        check((hexCode.length() % 2) == 0, bodyOffset, "Hex code length must be even");
+                        code = new byte[hexCode.length() / 2];
+                        for (int i = 0; i < code.length; i++) {
+                            String hexByte = hexCode.substring(i * 2, (i + 1) * 2);
+                            code[i] = (byte) Integer.parseInt(hexByte, 16);
+                        }
                     }
+                    makeHCF();
+                    break;
+                case "Comment": {
+                    checkHCF("Comment", headerOffset);
+                    m = HexCodeFile.COMMENT.matcher(body);
+                    check(m.matches(), bodyOffset, "Comment does not match pattern " + HexCodeFile.COMMENT);
+                    int pos = parseInt(bodyOffset + m.start(1), m.group(1));
+                    String comment = m.group(2);
+                    hcf.addComment(pos, comment);
+                    break;
                 }
-                makeHCF();
-            } else if (header.equals("Comment")) {
-                checkHCF("Comment", headerOffset);
-                m = HexCodeFile.COMMENT.matcher(body);
-                check(m.matches(), bodyOffset, "Comment does not match pattern " + HexCodeFile.COMMENT);
-                int pos = parseInt(bodyOffset + m.start(1), m.group(1));
-                String comment = m.group(2);
-                hcf.addComment(pos, comment);
-            } else if (header.equals("OperandComment")) {
-                checkHCF("OperandComment", headerOffset);
-                m = HexCodeFile.OPERAND_COMMENT.matcher(body);
-                check(m.matches(), bodyOffset, "OperandComment does not match pattern " + HexCodeFile.OPERAND_COMMENT);
-                int pos = parseInt(bodyOffset + m.start(1), m.group(1));
-                String comment = m.group(2);
-                hcf.addOperandComment(pos, comment);
-            } else if (header.equals("JumpTable")) {
-                checkHCF("JumpTable", headerOffset);
-                m = HexCodeFile.JUMP_TABLE.matcher(body);
-                check(m.matches(), bodyOffset, "JumpTable does not match pattern " + HexCodeFile.JUMP_TABLE);
-                int pos = parseInt(bodyOffset + m.start(1), m.group(1));
-                JumpTable.EntryFormat entryFormat = parseJumpTableEntryFormat(m, bodyOffset);
-                int low = parseInt(bodyOffset + m.start(3), m.group(3));
-                int high = parseInt(bodyOffset + m.start(4), m.group(4));
-                hcf.jumpTables.add(new JumpTable(pos, low, high, entryFormat));
-            } else {
-                error(offset, "Unknown section header: " + header);
+                case "OperandComment": {
+                    checkHCF("OperandComment", headerOffset);
+                    m = HexCodeFile.OPERAND_COMMENT.matcher(body);
+                    check(m.matches(), bodyOffset, "OperandComment does not match pattern " + HexCodeFile.OPERAND_COMMENT);
+                    int pos = parseInt(bodyOffset + m.start(1), m.group(1));
+                    String comment = m.group(2);
+                    hcf.addOperandComment(pos, comment);
+                    break;
+                }
+                case "JumpTable": {
+                    checkHCF("JumpTable", headerOffset);
+                    m = HexCodeFile.JUMP_TABLE.matcher(body);
+                    check(m.matches(), bodyOffset, "JumpTable does not match pattern " + HexCodeFile.JUMP_TABLE);
+                    int pos = parseInt(bodyOffset + m.start(1), m.group(1));
+                    JumpTable.EntryFormat entryFormat = parseJumpTableEntryFormat(m, bodyOffset);
+                    int low = parseInt(bodyOffset + m.start(3), m.group(3));
+                    int high = parseInt(bodyOffset + m.start(4), m.group(4));
+                    hcf.jumpTables.add(new JumpTable(pos, low, high, entryFormat));
+                    break;
+                }
+                case "LookupTable": {
+                    checkHCF("LookupTable", headerOffset);
+                    m = HexCodeFile.LOOKUP_TABLE.matcher(body);
+                    check(m.matches(), bodyOffset, "LookupTable does not match pattern " + HexCodeFile.LOOKUP_TABLE);
+                    int pos = parseInt(bodyOffset + m.start(1), m.group(1));
+                    int npairs = parseInt(bodyOffset + m.start(2), m.group(2));
+                    int keySize = parseInt(bodyOffset + m.start(3), m.group(3));
+                    int offsetSize = parseInt(bodyOffset + m.start(4), m.group(4));
+                    hcf.lookupTables.add(new LookupTable(pos, npairs, keySize, offsetSize));
+                    break;
+                }
+                default:
+                    throw error(offset, "Unknown section header: " + header);
             }
         }
 
@@ -449,17 +551,18 @@ public class HexCodeFile {
             String entryFormatName = m.group(2);
             JumpTable.EntryFormat entryFormat;
             if ("4".equals(entryFormatName)) {
-                entryFormat = EntryFormat.OFFSET_ONLY;
+                entryFormat = JumpTable.EntryFormat.OFFSET;
             } else if ("8".equals(entryFormatName)) {
-                entryFormat = EntryFormat.VALUE_AND_OFFSET;
+                entryFormat = JumpTable.EntryFormat.KEY2_OFFSET;
             } else {
                 try {
-                    entryFormat = EntryFormat.valueOf(entryFormatName);
+                    entryFormat = JumpTable.EntryFormat.valueOf(entryFormatName);
                 } catch (IllegalArgumentException e) {
-                    throw error(bodyOffset + m.start(2), "Not a valid " + EntryFormat.class.getSimpleName() + " value: " + entryFormatName);
+                    throw error(bodyOffset + m.start(2), "Not a valid " + JumpTable.EntryFormat.class.getSimpleName() + " value: " + entryFormatName);
                 }
             }
             return entryFormat;
         }
+
     }
 }

@@ -37,13 +37,13 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.util.RuntimeAnnotated;
 
@@ -289,7 +289,7 @@ public class SubstrateType implements SharedType, RuntimeAnnotated {
         return result;
     }
 
-    private SubstrateType getSuperType() {
+    protected SubstrateType getSuperType() {
         if (isArray() || isInterface()) {
             return SubstrateMetaAccess.singleton().lookupJavaType(Object.class);
         } else {

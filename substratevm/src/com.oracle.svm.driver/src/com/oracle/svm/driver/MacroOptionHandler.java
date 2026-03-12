@@ -27,14 +27,15 @@ package com.oracle.svm.driver;
 import java.io.File;
 import java.nio.file.Path;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.svm.core.OS;
-import com.oracle.svm.core.option.OptionOrigin;
-import com.oracle.svm.core.option.OptionUtils.InvalidMacroException;
 import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.driver.NativeImage.BuildConfiguration;
-import org.graalvm.collections.EconomicSet;
+import com.oracle.svm.shared.option.OptionOrigin;
+import com.oracle.svm.shared.option.OptionUtils.InvalidMacroException;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 

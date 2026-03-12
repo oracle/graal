@@ -28,11 +28,11 @@ import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerAssumptionDependency;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.word.impl.Word;
 
 import java.util.function.Consumer;
 

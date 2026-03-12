@@ -219,7 +219,7 @@ public abstract class RegexTestBase {
         test(context, pattern, flags, options(), encoding, input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
 
-    static void test(Context ctx, String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, boolean isMatch,
+    public static void test(Context ctx, String pattern, String flags, Map<String, String> options, Encoding encoding, String input, int fromIndex, boolean isMatch,
                     int... captureGroupBoundsAndLastGroup) {
         try {
             Value compiledRegex = compileRegex(ctx, pattern, flags, options, encoding);
@@ -370,6 +370,21 @@ public abstract class RegexTestBase {
             compileRegex(ctx, pattern, flags, options, encoding);
         } catch (PolyglotException e) {
             String msg = e.getMessage();
+            if (!e.isSyntaxError()) {
+                printTable(pattern, flags, encoding, "", 0, syntaxErrorToString(expectedMessage), syntaxErrorToString(msg));
+                if (ASSERTS) {
+                    StringBuilder sb = new StringBuilder();
+                    for (var st : e.getPolyglotStackTrace()) {
+                        sb.append(st.getRootName());
+                        if (st.isHostFrame()) {
+                            StackTraceElement hostFrame = st.toHostFrame();
+                            sb.append('(').append(hostFrame.getFileName()).append(':').append(hostFrame.getLineNumber()).append(')');
+                        }
+                        sb.append("\n         ");
+                    }
+                    Assert.fail(String.format("/%s/%s : expected syntax error, but got a different exception: %s\n  cause: %s", pattern, flags, e, sb));
+                }
+            }
             int pos = e.getSourceLocation().getCharIndex();
             if (!msg.contains(expectedMessage)) {
                 printTable(pattern, flags, encoding, "", 0, syntaxErrorToString(expectedMessage), syntaxErrorToString(msg));

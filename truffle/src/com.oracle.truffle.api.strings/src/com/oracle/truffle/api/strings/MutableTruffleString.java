@@ -218,6 +218,15 @@ public final class MutableTruffleString extends AbstractTruffleString {
          * native pointer's life time, convert it to a managed string via
          * {@link MutableTruffleString.AsManagedNode} <b>before the native pointer is freed</b>.
          * </p>
+         *
+         * <p>
+         * Since GraalVM version 25.1, the native pointer may also be passed as a boxed long value
+         * in place of {@code pointerObject}. Note that in this case, the resulting
+         * {@link MutableTruffleString} cannot keep a reference an associated object for life-time
+         * tracking. The user is responsible for making sure the native buffer is not freed as long
+         * as the {@link MutableTruffleString} object is alive.
+         * </p>
+         *
          * <p>
          * If {@code copy} is {@code true}, the pointer's contents are copied to a Java byte array,
          * and the pointer can be freed safely after the operation completes.
@@ -231,9 +240,10 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         @Specialization
         MutableTruffleString fromNativePointer(Object pointerObject, int byteOffset, int byteLength, Encoding enc, boolean copy,
-                        @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary) {
+                        @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary,
+                        @Cached InlinedConditionProfile rawPointerProfile) {
             checkByteLength(byteLength, enc);
-            NativePointer nativePointer = NativePointer.create(this, pointerObject, interopLibrary);
+            NativePointer nativePointer = NativePointer.create(this, pointerObject, interopLibrary, rawPointerProfile);
             final Object data;
             final int offset;
             if (copy) {

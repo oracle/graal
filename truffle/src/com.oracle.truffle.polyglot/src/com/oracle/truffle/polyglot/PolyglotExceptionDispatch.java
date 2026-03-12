@@ -123,6 +123,11 @@ final class PolyglotExceptionDispatch extends AbstractExceptionDispatch {
     }
 
     @Override
+    public Object getCauseImpl(Object receiver) {
+        return ((PolyglotExceptionImpl) receiver).getCause();
+    }
+
+    @Override
     public boolean isHostException(Object receiver) {
         return ((PolyglotExceptionImpl) receiver).isHostException();
     }

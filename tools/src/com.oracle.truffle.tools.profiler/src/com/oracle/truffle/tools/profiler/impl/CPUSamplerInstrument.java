@@ -32,6 +32,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUSampler;
@@ -107,18 +108,29 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     protected void onCreate(Env env) {
         sampler = factory.create(env);
         OptionValues options = env.getOptions();
+
+        long dumpInterval = options.get(CPUSamplerCLI.DUMP_INTERVAL).toMillis();
+        if (dumpInterval > 0) {
+            /*
+             * If a dump interval is specified, the interval-based dumping should work even if the
+             * sampler is enabled later via CPUSampler#setCollecting. There is no hook to add the
+             * listener later, so we add it here regardless of whether the sampler is enabled.
+             */
+            sampler.addProcessSampleListener(new DumpingProcessSampleListener(env, dumpInterval, options.get(CPUSamplerCLI.RESET_AFTER_INTERVAL_DUMP)));
+        }
+
         CPUSamplerCLI.EnableOptionData enableOptionData = options.get(CPUSamplerCLI.ENABLED);
         if (enableOptionData.enabled) {
-            sampler.setPeriod(options.get(CPUSamplerCLI.SAMPLE_PERIOD));
-            sampler.setDelay(options.get(CPUSamplerCLI.DELAY_PERIOD));
+            sampler.setPeriod(options.get(CPUSamplerCLI.SAMPLE_PERIOD).toMillis());
+            sampler.setDelay(options.get(CPUSamplerCLI.DELAY_PERIOD).toMillis());
             sampler.setStackLimit(options.get(CPUSamplerCLI.STACK_LIMIT));
             sampler.setFilter(getSourceSectionFilter(env));
             sampler.setGatherSelfHitTimes(options.get(CPUSamplerCLI.GATHER_HIT_TIMES));
             sampler.setSampleContextInitialization(options.get(CPUSamplerCLI.SAMPLE_CONTEXT_INITIALIZATION));
             sampler.setGatherAsyncStackTrace(options.get(CPUSamplerCLI.GATHER_ASYNC_STACK_TRACE));
-            sampler.setCollecting(true);
             String outputPath = CPUSamplerCLI.getOutputPath(options);
             absoluteOutputPath = (outputPath != null) ? new File(outputPath).getAbsolutePath() : null;
+            sampler.setCollecting(true);
         }
         env.registerService(sampler);
     }
@@ -159,5 +171,34 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         sampler.close();
+    }
+
+    private final class DumpingProcessSampleListener implements CPUSampler.ProcessSampleListener {
+        private final Env env;
+        private final long dumpInterval;
+        private final boolean resetAfterIntervalDump;
+        long lastDump;
+
+        DumpingProcessSampleListener(Env env, long dumpInterval, boolean resetAfterIntervalDump) {
+            this.env = env;
+            this.dumpInterval = dumpInterval;
+            this.resetAfterIntervalDump = resetAfterIntervalDump;
+            this.lastDump = -1;
+        }
+
+        @Override
+        public void onSampleProcessed(TruffleContext context) {
+            long currentTime = System.currentTimeMillis();
+            if (lastDump < 0) {
+                lastDump = currentTime + sampler.getDelay();
+            }
+            if (currentTime > lastDump + dumpInterval) {
+                lastDump = currentTime;
+                CPUSamplerCLI.handleOutput(env, sampler, absoluteOutputPath);
+                if (resetAfterIntervalDump) {
+                    sampler.clearData();
+                }
+            }
+        }
     }
 }

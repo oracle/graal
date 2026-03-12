@@ -24,23 +24,31 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
-
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
- * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
- * for newly-allocated or promoted objects.
+ * This old generation has two spaces, {@link #fromSpace} for all objects, and {@link #toSpace}, to
+ * which live objects are copied during a collection (at the end of which, the spaces are swapped).
+ *
+ * Unlike with survivor spaces in the young generation, {@link AbstractCollectionPolicy} does not
+ * reserve half of the old generation size for {@link #toSpace}, so a collection can temporarily
+ * exceed the maximum old generation or maximum heap size by up to {@link #fromSpace}'s size.
+ *
+ * In other words, in extreme cases, memory consumption during a collection can be up to 2x of the
+ * current heap size, or even the configured maximum heap size.
  */
 final class CopyingOldGeneration extends OldGeneration {
     /* These Spaces are final and are flipped by transferring chunks from one to the other. */
@@ -57,7 +65,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Tear-down in progress.")
     void tearDown() {
         fromSpace.tearDown();
         toSpace.tearDown();
@@ -71,7 +79,7 @@ final class CopyingOldGeneration extends OldGeneration {
 
     /** Promote an Object to ToSpace if it is not already in ToSpace. */
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
@@ -88,15 +96,17 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean promotePinnedObject(Object obj, HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
+    @Uninterruptible(reason = CORE_GC_CODE)
+    protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
-        if (isAligned) {
-            ObjectPromoter.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace, getToSpace());
-        } else {
-            ObjectPromoter.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace, getToSpace());
-        }
+        ObjectPromoter.promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace, getToSpace());
         return true;
+    }
+
+    @Override
+    @Uninterruptible(reason = CORE_GC_CODE)
+    protected void promoteAndSweepAlignedChunksWithPinnedObjectsInFromSpaces(SweepAndPromotePinnedChunkVisitor visitor) {
+        fromSpace.walkAlignedHeapChunks(visitor);
     }
 
     @Override
@@ -105,7 +115,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void beginPromotion(boolean completeCollection) {
         if (!completeCollection) {
             emptyFromSpaceIntoToSpace();
@@ -152,7 +162,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor, GreyToBlackObjRefVisitor refVisitor) {
         RememberedSet.get().walkDirtyObjects(toSpace.getFirstAlignedHeapChunk(), toSpace.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, refVisitor, true);
     }
@@ -188,16 +198,8 @@ final class CopyingOldGeneration extends OldGeneration {
         return success;
     }
 
-    @Override
-    void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser) {
-        /*
-         * Compaction occurred implicitly by copying live objects one after another. Sweeping could
-         * be done on dead objects in pinned chunks, but is currently not implemented.
-         */
-    }
-
     /* Extract all the HeapChunks from FromSpace and append them to ToSpace. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     void emptyFromSpaceIntoToSpace() {
         getToSpace().absorb(getFromSpace());
     }

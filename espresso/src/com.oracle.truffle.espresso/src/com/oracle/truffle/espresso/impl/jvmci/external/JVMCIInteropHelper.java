@@ -68,8 +68,10 @@ import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.continuations.Target_org_graalvm_continuations_IdentityHashCodes;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
@@ -109,6 +111,23 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.HAS_ANNOTATIONS,
                         InvokeMember.GET_DECLARED_TYPES,
                         InvokeMember.COPY_BYTE_ARRAY,
+                        InvokeMember.GET_VM_FIELD,
+                        InvokeMember.GET_VM_METHOD,
+                        InvokeMember.GET_ENCLOSING_TYPE,
+                        InvokeMember.HAS_ENCLOSING_METHOD_INFO,
+                        InvokeMember.HAS_SIMPLE_BINARY_NAME,
+                        InvokeMember.GET_TYPE_FOR_STATIC_BASE,
+                        InvokeMember.IS_RECORD,
+                        InvokeMember.GET_VTABLE_LENGTH,
+                        InvokeMember.RESOLVE_METHOD,
+                        InvokeMember.GET_VTABLE_INDEX_FOR_INTERFACE_METHOD,
+                        InvokeMember.RESOLVE_INVOKE_BASIC_TARGET,
+                        InvokeMember.RESOLVE_LINK_TO_TARGET,
+                        InvokeMember.GET_REFLECT_FIELD,
+                        InvokeMember.GET_REFLECT_EXECUTABLE,
+                        InvokeMember.READ_OBJECT_ARRAY_ELEMENT,
+                        InvokeMember.GET_EXCEPTION_OBJECT,
+                        InvokeMember.WRITE_FIELD,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -158,6 +177,23 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String HAS_ANNOTATIONS = "hasAnnotations";
         static final String GET_DECLARED_TYPES = "getDeclaredTypes";
         static final String COPY_BYTE_ARRAY = "copyByteArray";
+        static final String GET_VM_FIELD = "getVMField";
+        static final String GET_VM_METHOD = "getVMMethod";
+        static final String GET_ENCLOSING_TYPE = "getEnclosingType";
+        static final String HAS_ENCLOSING_METHOD_INFO = "hasEnclosingMethodInfo";
+        static final String HAS_SIMPLE_BINARY_NAME = "hasSimpleBinaryName";
+        static final String GET_TYPE_FOR_STATIC_BASE = "getTypeForStaticBase";
+        static final String IS_RECORD = "isRecord";
+        static final String GET_VTABLE_LENGTH = "getVTableLength";
+        static final String RESOLVE_METHOD = "resolveMethod";
+        static final String GET_VTABLE_INDEX_FOR_INTERFACE_METHOD = "getVtableIndexForInterfaceMethod";
+        static final String RESOLVE_INVOKE_BASIC_TARGET = "resolveInvokeBasicTarget";
+        static final String RESOLVE_LINK_TO_TARGET = "resolveLinkToTarget";
+        static final String GET_REFLECT_FIELD = "getReflectField";
+        static final String GET_REFLECT_EXECUTABLE = "getReflectExecutable";
+        static final String READ_OBJECT_ARRAY_ELEMENT = "readObjectArrayElement";
+        static final String GET_EXCEPTION_OBJECT = "getExceptionObject";
+        static final String WRITE_FIELD = "writeField";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -217,7 +253,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static Object lookupInstanceType(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
                         @Bind Node node,
                         @CachedLibrary(limit = "1") @Shared InteropLibrary stringInterop,
-                        @CachedLibrary(limit = "1") @Exclusive InteropLibrary booleanInterop,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary booleanInterop,
                         @Cached @Shared InlinedBranchProfile typeError,
                         @Cached @Shared InlinedBranchProfile arityError,
                         @Cached @Shared InlinedBranchProfile valueError) throws ArityException, UnsupportedTypeException {
@@ -393,6 +429,104 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             return new KeysArray<>(methods);
         }
 
+        /**
+         * Gets the {@link java.lang.reflect.Field} value for the {@link Field} guest value in
+         * {@code arguments[0]}.
+         */
+        @Specialization(guards = "GET_REFLECT_FIELD.equals(member)")
+        static Object getReflectField(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            Field field = getSingleArgument(Field.class, arguments, node, typeError, arityError);
+            if (field.isHidden()) {
+                return StaticObject.NULL;
+            }
+            Meta meta = receiver.context.getMeta();
+            return field.makeMirror(meta);
+        }
+
+        /**
+         * Gets the {@link java.lang.reflect.Executable} value for the {@link Method} guest value in
+         * {@code arguments[0]}.
+         */
+        @Specialization(guards = "GET_REFLECT_EXECUTABLE.equals(member)")
+        static Object getReflectExecutable(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            Method method = getSingleArgument(Method.class, arguments, node, typeError, arityError);
+            if (method.isClassInitializer()) {
+                return StaticObject.NULL;
+            }
+            Meta meta = receiver.context.getMeta();
+            return method.makeMirror(meta);
+        }
+
+        /**
+         * Gets the {@link Field} value for the {@link java.lang.reflect.Field} guest value in
+         * {@code arguments[0]}.
+         */
+        @Specialization(guards = "GET_VM_FIELD.equals(member)")
+        static Object getVMField(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            Meta meta = receiver.context.getMeta();
+            StaticObject reflectField = getSingleReflectFieldArgument(arguments, node, typeError, arityError, meta);
+            return Field.getVMField(reflectField, meta);
+        }
+
+        /**
+         * Gets the {@link Method} value for the {@link java.lang.reflect.Executable} guest value in
+         * {@code arguments[0]}.
+         */
+        @Specialization(guards = "GET_VM_METHOD.equals(member)")
+        static Object getVMMethod(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            return getSingleReflectMethodArgument(arguments, node, typeError, arityError);
+        }
+
+        @Specialization(guards = "GET_ENCLOSING_TYPE.equals(member)")
+        static Object getEnclosingType(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            Klass enclosingType = klass.getEnclosingType();
+            if (enclosingType == null) {
+                return StaticObject.NULL;
+            }
+            return enclosingType;
+        }
+
+        @Specialization(guards = "HAS_ENCLOSING_METHOD_INFO.equals(member)")
+        static boolean hasEnclosingMethodInfo(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            return klass.getEnclosingMethod() != null;
+        }
+
+        @Specialization(guards = "HAS_SIMPLE_BINARY_NAME.equals(member)")
+        static boolean hasSimpleBinaryName(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            return klass.getSimpleBinaryName() != null;
+        }
+
         // This would be less awkward if we could return Klass as non-statics JVMCI object like
         // field and method
         @Specialization(guards = "GET_ANNOTATION_DATA.equals(member)")
@@ -539,7 +673,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 return context.getMeta().toGuestString(string);
             } catch (UnsupportedMessageException e) {
                 typeError.enter(node);
-                throw UnsupportedTypeException.create(arguments, "Expected an string");
+                throw UnsupportedTypeException.create(arguments, "Expected a string");
             }
         }
 
@@ -796,24 +930,330 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             return StaticObject.NULL;
         }
 
+        @Specialization(guards = "GET_TYPE_FOR_STATIC_BASE.equals(member)")
+        static Object getTypeForStaticBase(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 1) {
+                arityError.enter(node);
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject staticBase)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an espresso object");
+            }
+            if (!staticBase.isStaticStorage()) {
+                return StaticObject.NULL;
+            }
+            return staticBase.getKlass();
+        }
+
+        @Specialization(guards = "IS_RECORD.equals(member)")
+        static boolean isRecord(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            return klass.isRecord();
+        }
+
+        @Specialization(guards = "GET_VTABLE_LENGTH.equals(member)")
+        static int getVTableLength(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            ObjectKlass klass = getSingleKlassArgument(arguments, node, typeError, arityError);
+            if (klass.isInterface()) {
+                return 0;
+            }
+            return klass.getVTable().length;
+        }
+
+        @Specialization(guards = "RESOLVE_METHOD.equals(member)")
+        static Object resolveMethod(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 3) {
+                arityError.enter(node);
+                throw ArityException.create(3, 3, arguments.length);
+            }
+            if (!(arguments[0] instanceof ObjectKlass receiverType)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as first argument");
+            }
+            if (!(arguments[1] instanceof Method method)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a method as second argument");
+            }
+            if (!(arguments[2] instanceof ObjectKlass callerType)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as third argument");
+            }
+            Method resolved = JVMCIUtils.resolveMethod(receiverType, method, callerType);
+            if (resolved == null) {
+                return StaticObject.NULL;
+            }
+            return resolved.identity();
+        }
+
+        @Specialization(guards = "GET_VTABLE_INDEX_FOR_INTERFACE_METHOD.equals(member)")
+        static int getVtableIndexForInterfaceMethod(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 2) {
+                arityError.enter(node);
+                throw ArityException.create(2, 2, arguments.length);
+            }
+            if (!(arguments[0] instanceof Method method)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a method as first argument");
+            }
+            if (!(arguments[1] instanceof ObjectKlass klass)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as second argument");
+            }
+            return JVMCIUtils.getVtableIndexForInterfaceMethod(method, klass);
+        }
+
+        @Specialization(guards = "RESOLVE_INVOKE_BASIC_TARGET.equals(member)")
+        static Object resolveInvokeBasicTarget(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary booleanInterop,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 2) {
+                arityError.enter(node);
+                throw ArityException.create(2, 2, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject methodHandle)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an object as first argument");
+            }
+            boolean forceBytecodeGeneration;
+            try {
+                forceBytecodeGeneration = booleanInterop.asBoolean(arguments[1]);
+            } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a boolean as second argument");
+            }
+            Meta meta = EspressoContext.get(node).getMeta();
+            Method method = JVMCIUtils.resolveInvokeBasicTarget(methodHandle, forceBytecodeGeneration, meta);
+            if (method == null) {
+                return StaticObject.NULL;
+            }
+            return method;
+        }
+
+        @Specialization(guards = "RESOLVE_LINK_TO_TARGET.equals(member)")
+        static Object resolveLinkToTarget(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 1) {
+                arityError.enter(node);
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject memberName)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an object as first argument");
+            }
+            Meta meta = EspressoContext.get(node).getMeta();
+            if (!InterpreterToVM.instanceOf(memberName, meta.java_lang_invoke_MemberName)) {
+                return "Constant is not a MemberName";
+            }
+            Method method = (Method) meta.java_lang_invoke_MemberName_0vmTarget.getHiddenObject(memberName);
+            if (method == null) {
+                return StaticObject.NULL;
+            }
+            return method;
+        }
+
+        @Specialization(guards = "READ_OBJECT_ARRAY_ELEMENT.equals(member)")
+        static Object readObjectArrayElement(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary intInterop,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError,
+                        @Cached @Shared InlinedBranchProfile indexError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            EspressoLanguage language = EspressoLanguage.get(node);
+            assert language.isExternalJVMCIEnabled();
+            if (arguments.length != 2) {
+                arityError.enter(node);
+                throw ArityException.create(2, 2, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject staticObject && staticObject.isArray())) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an array as first argument");
+            }
+            int index;
+            try {
+                index = intInterop.asInt(arguments[1]);
+            } catch (UnsupportedMessageException e) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an integer as second argument");
+            }
+            if (index < 0 || index >= staticObject.length(language)) {
+                indexError.enter(node);
+                throw EspressoContext.get(node).getMeta().throwArrayIndexOutOfBounds(index, staticObject.length(language));
+            }
+            return staticObject.<StaticObject[]> unwrap(language)[index];
+        }
+
+        @Specialization(guards = "GET_EXCEPTION_OBJECT.equals(member)")
+        static Object getExceptionObject(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 1) {
+                arityError.enter(node);
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (arguments[0] instanceof EspressoException exception) {
+                return exception.getGuestException();
+            }
+            if (arguments[0] instanceof StaticObject exception) {
+                Meta meta = EspressoContext.get(node).getMeta();
+                if (!InterpreterToVM.instanceOf(exception, meta.java_lang_Throwable)) {
+                    typeError.enter(node);
+                    throw UnsupportedTypeException.create(arguments, "Expected an guest object of type Throwable");
+                }
+                return exception;
+            }
+            typeError.enter(node);
+            throw UnsupportedTypeException.create(arguments, "Expected an EspressoException or a guest object of type Throwable");
+        }
+
         @Fallback
         @SuppressWarnings("unused")
         static Object doUnknown(JVMCIInteropHelper receiver, String member, Object[] arguments) throws UnknownIdentifierException {
             throw UnknownIdentifierException.create(member);
         }
 
-        private static ObjectKlass getSingleKlassArgument(Object[] arguments, Node node, InlinedBranchProfile typeError, InlinedBranchProfile arityError)
+        private static <T> T getSingleArgument(Class<T> type, Object[] arguments, Node node, InlinedBranchProfile typeError, InlinedBranchProfile arityError)
                         throws ArityException, UnsupportedTypeException {
             assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
             if (arguments.length != 1) {
                 arityError.enter(node);
                 throw ArityException.create(1, 1, arguments.length);
             }
-            if (!(arguments[0] instanceof ObjectKlass klass)) {
+            if (!type.isInstance(arguments[0])) {
                 typeError.enter(node);
-                throw UnsupportedTypeException.create(arguments, "Expected an instance type");
+                throw UnsupportedTypeException.create(arguments, concat("Expected a ", type.getName(), " as first argument"));
             }
-            return klass;
+            return type.cast(arguments[0]);
+        }
+
+        /**
+         * TruffleFeature requires that string concatenation is behind a TruffleBoundary.
+         */
+        @TruffleBoundary
+        private static String concat(String... args) {
+            return String.join("", args);
+        }
+
+        private static ObjectKlass getSingleKlassArgument(Object[] arguments, Node node, InlinedBranchProfile typeError, InlinedBranchProfile arityError)
+                        throws ArityException, UnsupportedTypeException {
+            return getSingleArgument(ObjectKlass.class, arguments, node, typeError, arityError);
+        }
+
+        private static StaticObject getSingleReflectFieldArgument(Object[] arguments, Node node, InlinedBranchProfile typeError, InlinedBranchProfile arityError, Meta meta)
+                        throws ArityException, UnsupportedTypeException {
+            StaticObject reflectField = getSingleArgument(StaticObject.class, arguments, node, typeError, arityError);
+            if (!meta.java_lang_reflect_Field.isAssignableFrom(reflectField.getKlass())) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a java.lang.reflect.Field object");
+            }
+            return reflectField;
+        }
+
+        private static Method getSingleReflectMethodArgument(Object[] arguments, Node node, InlinedBranchProfile typeError, InlinedBranchProfile arityError)
+                        throws ArityException, UnsupportedTypeException {
+            StaticObject reflectExecutable = getSingleArgument(StaticObject.class, arguments, node, typeError, arityError);
+            EspressoContext context = EspressoContext.get(node);
+            Meta meta = context.getMeta();
+            Klass reflectExecutableKlass = reflectExecutable.getKlass();
+            if (meta.java_lang_reflect_Method.isAssignableFrom(reflectExecutableKlass)) {
+                return Method.getVMMethod(reflectExecutable, meta);
+            }
+            if (meta.java_lang_reflect_Constructor.isAssignableFrom(reflectExecutableKlass)) {
+                return Method.getVMMethodForConstructor(reflectExecutable, meta);
+            }
+            typeError.enter(node);
+            throw UnsupportedTypeException.create(arguments, "Expected a java.lang.reflect.Executable object");
+        }
+
+        @Specialization(guards = "WRITE_FIELD.equals(member)")
+        static Object writeField(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached @Exclusive InlinedBranchProfile typeError,
+                        @Cached @Exclusive InlinedBranchProfile arityError,
+                        @Cached @Exclusive InlinedConditionProfile isStatic) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            if (arguments.length != 3) {
+                arityError.enter(node);
+                throw ArityException.create(3, 3, arguments.length);
+            }
+            if (!(arguments[0] instanceof Field field)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected a com.oracle.truffle.espresso.impl.Field");
+            }
+            StaticObject receiverObj;
+            Object valueObj = arguments[2];
+
+            if (isStatic.profile(node, field.isStatic())) {
+                receiverObj = field.getDeclaringKlass().tryInitializeAndGetStatics();
+            } else {
+                if (arguments[1] instanceof StaticObject so) {
+                    if (!field.getDeclaringKlass().isAssignableFrom(so.getKlass())) {
+                        typeError.enter(node);
+                        throw UnsupportedTypeException.create(arguments, concat("Expected receiver of type ", field.getDeclaringKlass().getJavaName()));
+                    }
+                    receiverObj = so;
+                } else {
+                    typeError.enter(node);
+                    throw UnsupportedTypeException.create(arguments, "Expected a com.oracle.truffle.espresso.runtime.staticobject.StaticObject receiver");
+                }
+            }
+            switch (field.getKind()) {
+                case Boolean -> field.setBoolean(receiverObj, (boolean) valueObj);
+                case Byte -> field.setByte(receiverObj, (byte) valueObj);
+                case Char -> field.setChar(receiverObj, (char) valueObj);
+                case Short -> field.setShort(receiverObj, (short) valueObj);
+                case Int -> field.setInt(receiverObj, (int) valueObj);
+                case Long -> field.setLong(receiverObj, (long) valueObj);
+                case Float -> field.setFloat(receiverObj, (float) valueObj);
+                case Double -> field.setDouble(receiverObj, (double) valueObj);
+                case Object -> {
+                    if (!(valueObj instanceof StaticObject valueStaticObject)) {
+                        typeError.enter(node);
+                        throw UnsupportedTypeException.create(arguments, "Expected a com.oracle.truffle.espresso.runtime.staticobject.StaticObject value");
+                    }
+                    var fieldType = field.resolveTypeKlass();
+                    // interface fields can contain any object
+                    if (!fieldType.isInterface() && !fieldType.isAssignableFrom(valueStaticObject.getKlass())) {
+                        typeError.enter(node);
+                        throw UnsupportedTypeException.create(arguments, concat("Expected object of type ", fieldType.getJavaName()));
+                    }
+                    field.setObject(receiverObj, valueObj);
+                }
+                default -> {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere();
+                }
+            }
+            return receiverObj;
         }
     }
 

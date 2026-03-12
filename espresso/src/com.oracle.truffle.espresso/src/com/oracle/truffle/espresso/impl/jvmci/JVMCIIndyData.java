@@ -88,7 +88,7 @@ public final class JVMCIIndyData {
     }
 
     public static JVMCIIndyData maybeGetExisting(ObjectKlass klass, Meta meta) {
-        return (JVMCIIndyData) meta.HIDDEN_JVMCIINDY.getHiddenObject(klass.mirror());
+        return (JVMCIIndyData) meta.java_lang_Class_0jvmciIndy.getHiddenObject(klass.mirror());
     }
 
     public static JVMCIIndyData getExisting(ObjectKlass klass, Meta meta) {
@@ -99,10 +99,10 @@ public final class JVMCIIndyData {
 
     public static JVMCIIndyData getOrCreate(ObjectKlass klass, Meta meta) {
         StaticObject mirror = klass.mirror();
-        JVMCIIndyData result = (JVMCIIndyData) meta.HIDDEN_JVMCIINDY.getHiddenObject(mirror, true);
+        JVMCIIndyData result = (JVMCIIndyData) meta.java_lang_Class_0jvmciIndy.getHiddenObject(mirror, true);
         if (result == null) {
             result = create(klass);
-            JVMCIIndyData old = (JVMCIIndyData) meta.HIDDEN_JVMCIINDY.compareAndExchangeHiddenObject(mirror, null, result);
+            JVMCIIndyData old = (JVMCIIndyData) meta.java_lang_Class_0jvmciIndy.compareAndExchangeHiddenObject(mirror, null, result);
             if (old != null) {
                 return old;
             }

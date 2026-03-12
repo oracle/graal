@@ -49,7 +49,8 @@ public final class ExceptionHandler {
      * @param endBCI the end index of the protected range
      * @param catchBCI the index of the handler
      * @param catchTypeCPI the index of the throwable class in the constant pool
-     * @param catchType the type caught by this exception handler
+     * @param catchType the type caught by this exception handler. May be {@code null} which means
+     *            "catch any" ({@link Throwable}).
      */
     public ExceptionHandler(int startBCI, int endBCI, int catchBCI, int catchTypeCPI, Symbol<Type> catchType) {
         this.startBCI = (char) startBCI;
@@ -106,7 +107,8 @@ public final class ExceptionHandler {
     }
 
     /**
-     * Returns the type of exception caught by this exception handler.
+     * Returns the type of exception caught by this exception handler. May be {@code null} which
+     * means "catch any" ({@link Throwable}).
      */
     public Symbol<Type> getCatchType() {
         return catchType;

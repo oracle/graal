@@ -22,12 +22,17 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
 
 @ExportLibrary(InteropLibrary.class)
@@ -75,5 +80,44 @@ public final class ForeignStackTraceElementObject implements TruffleObject {
     @ExportMessage
     Object getDeclaringMetaObject() {
         return method.getDeclaringKlass().mirror();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasLanguageId() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    String getLanguageId() {
+        return EspressoLanguage.ID;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('<').append(getLanguageId()).append("> ");
+        sb.append(method.getDeclaringKlass().getExternalName()).append('.').append(method.getName()).append('(');
+        if (sourceSection != null) {
+            String fileName = sourceSection.getSource().getPath();
+            try {
+                Path fileNamePath = Path.of(fileName).getFileName();
+                if (fileNamePath != null && !fileNamePath.toString().isEmpty()) {
+                    fileName = fileNamePath.toString();
+                }
+            } catch (InvalidPathException e) {
+                // ignore
+            }
+            sb.append(fileName);
+            if (sourceSection.hasLines()) {
+                sb.append(':').append(sourceSection.getStartLine());
+            }
+        } else {
+            sb.append("Unknown Source");
+        }
+        sb.append(')');
+        return sb.toString();
     }
 }

@@ -26,7 +26,7 @@
 package com.oracle.svm.core.dcmd;
 
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_dcmd_AbstractDCmd;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Base class for JFR-related diagnostic commands. Note that the JDK already implements those

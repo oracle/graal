@@ -1051,7 +1051,7 @@ public final class ClassfileParser {
                 }
             }
             attributeCount = stream.readU2();
-            methodAttributes = spawnAttributesArray(attributeCount);
+            methodAttributes = makeAttributesArray(attributeCount);
         }
 
         CodeAttribute codeAttribute = null;
@@ -1126,7 +1126,10 @@ public final class ClassfileParser {
         return ParserMethod.create(methodFlags, name, signature, methodAttributes);
     }
 
-    private static Attribute[] spawnAttributesArray(int attributeCount) {
+    /**
+     * @return a new array if {@code attributeCount != 0} else {@link Attribute#EMPTY_ARRAY}
+     */
+    private static Attribute[] makeAttributesArray(int attributeCount) {
         return attributeCount == 0 ? Attribute.EMPTY_ARRAY : new Attribute[attributeCount];
     }
 
@@ -1206,7 +1209,7 @@ public final class ClassfileParser {
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Class);
 
-        final Attribute[] classAttributes = spawnAttributesArray(attributeCount);
+        final Attribute[] classAttributes = makeAttributesArray(attributeCount);
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = (Symbol<Name>) pool.utf8At(attributeNameIndex, "attribute name");
@@ -1714,7 +1717,7 @@ public final class ClassfileParser {
         }
 
         int attributeCount = stream.readU2();
-        final Attribute[] codeAttributes = spawnAttributesArray(attributeCount);
+        final Attribute[] codeAttributes = makeAttributesArray(attributeCount);
         int totalLocalTableCount = 0;
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Code);
@@ -1856,7 +1859,7 @@ public final class ClassfileParser {
         final Symbol<Type> descriptor = validateType(pool.utf8At(typeIndex, "field descriptor"), false);
 
         final int attributeCount = stream.readU2();
-        final Attribute[] fieldAttributes = spawnAttributesArray(attributeCount);
+        final Attribute[] fieldAttributes = makeAttributesArray(attributeCount);
 
         ConstantValueAttribute constantValue = null;
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Field);

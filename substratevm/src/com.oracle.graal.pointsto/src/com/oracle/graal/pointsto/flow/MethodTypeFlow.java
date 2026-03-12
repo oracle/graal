@@ -158,6 +158,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             AnalysisError.guarantee(reason == null || reason.getSource() == null ||
                             !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself: %s", method);
 
+            method.checkGuaranteeFolded();
+
             parsingReason = reason;
             method.setParsingReason(PointsToAnalysisMethod.unwrapInvokeReason(reason));
             try {
@@ -170,7 +172,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 }
                 bb.numParsedGraphs.incrementAndGet();
 
-                boolean computeIndex = !method.hasOpaqueReturn() && bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
+                boolean computeIndex = !method.hasOpaqueReturn() && bb.getHostVM().getMethodVariantsAnalysisPolicy().canComputeReturnedParameterIndex(method.getMethodVariantKey());
                 returnedParameterIndex = computeIndex ? computeReturnedParameterIndex(builder.graph) : -1;
 
                 /* Set the flows graph after fully built. */

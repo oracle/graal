@@ -495,7 +495,8 @@ public class OptimizedBlockNodeTest {
         final int testBlockSize = 128;
         final int targetBlocks = 4;
 
-        setup(testBlockSize);
+        // Only the AST interpreter uses block nodes.
+        setup(testBlockSize, 10000, "sl.UseBytecode", "false");
         int emptyNodeCount = generateSLFunction(context, "empty", BlockNode.NO_ARGUMENT).getNonTrivialNodeCount();
         int singleNodeCount = generateSLFunction(context, "single", 1).getNonTrivialNodeCount();
         int twoNodeCount = generateSLFunction(context, "two", 2).getNonTrivialNodeCount();

@@ -76,7 +76,7 @@ public class PLTSectionSupport {
         for (SharedMethod method : got) {
             HostedMethod m = (HostedMethod) method;
             int offset = getMethodPLTStubStart(m);
-            objectFile.createDefinedSymbol(pltSymbolNameForMethod(m), pltSection, offset, ConfigurationValues.getTarget().wordSize, true,
+            objectFile.createDefinedSymbol(pltSymbolNameForMethod(m), pltSection, offset, ConfigurationValues.getWordSize(), true,
                             SubstrateOptions.InternalSymbolsAreGlobal.getValue());
         }
 

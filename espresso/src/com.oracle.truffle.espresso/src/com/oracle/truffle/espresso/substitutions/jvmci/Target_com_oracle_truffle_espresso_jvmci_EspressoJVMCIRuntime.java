@@ -31,7 +31,6 @@ import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType.toJVMCIMethod;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_jdk_vm_ci_runtime_JVMCI.checkJVMCIAvailable;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -40,11 +39,11 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
-import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -104,7 +103,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
             }
             String type = meta.toHostString(guestTypeString);
             LOGGER.finer(() -> "lookupType " + type + " resolved:" + resolve);
-            ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(accessingClass);
+            ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(accessingClass);
             return lookupType(type, accessingKlass, resolve, objectTypeConstructor, arrayTypeConstructor, forBasicType, createUnresolved, context, meta);
         }
     }
@@ -159,35 +158,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
             if (StaticObject.isNull(receiver) || StaticObject.isNull(accessingClass) || StaticObject.isNull(jvmciMethod)) {
                 throw meta.throwNullPointerExceptionBoundary();
             }
-            ObjectKlass receiverKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(receiver);
-            Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(jvmciMethod);
-            ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(accessingClass);
+            ObjectKlass receiverKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(receiver);
+            Method method = (Method) meta.jvmci.EspressoResolvedJavaMethod_0vmMethod.getHiddenObject(jvmciMethod);
+            ObjectKlass accessingKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(accessingClass);
             LOGGER.finer(() -> "resolveMethod " + method + " on " + receiverKlass + " as seen from " + accessingKlass);
-            if (method.isDeclaredSignaturePolymorphic() || !receiverKlass.isLinked() || receiverKlass.isInterface() || method.isStatic()) {
-                return StaticObject.NULL;
-            }
-
-            ObjectKlass declaringKlass = method.getDeclaringKlass();
-            if (!checkAccess(accessingKlass, declaringKlass, method)) {
-                return StaticObject.NULL;
-            }
-
-            Method resolved;
-            if (method.isPrivate()) {
-                resolved = method;
-            } else if (declaringKlass.isInterface()) {
-                if (!declaringKlass.isAssignableFrom(receiverKlass)) {
-                    return StaticObject.NULL;
-                }
-                assert method.getITableIndex() >= 0 : method;
-                resolved = receiverKlass.itableLookupOrNull(declaringKlass, method.getITableIndex());
-                if (resolved != null && !resolved.isPublic()) {
-                    return StaticObject.NULL;
-                }
-            } else {
-                assert method.getVTableIndex() >= 0 : method;
-                resolved = receiverKlass.vtableLookup(method.getVTableIndex());
-            }
+            Method resolved = JVMCIUtils.resolveMethod(receiverKlass, method, accessingKlass);
             if (resolved == null) {
                 return StaticObject.NULL;
             }
@@ -200,11 +175,6 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
                 jvmciHolder = toJVMCIInstanceType(resolved.getDeclaringKlass(), objectTypeConstructor, context, meta);
             }
             return toJVMCIMethod(resolved, jvmciHolder, methodConstructor, context, meta);
-        }
-
-        @TruffleBoundary
-        private static boolean checkAccess(ObjectKlass accessingKlass, ObjectKlass declaringKlass, Method method) {
-            return RuntimeConstantPool.memberCheckAccess(accessingKlass, declaringKlass, method);
         }
     }
 }

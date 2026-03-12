@@ -39,9 +39,14 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.BarrieredAccess;
+import org.graalvm.word.impl.ObjectAccess;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateGCOptions.TLABPolicy;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
@@ -60,13 +65,16 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.ContinuationSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -112,13 +120,11 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class SubstrateAllocationSnippets extends AllocationSnippets {
     public static final LocationIdentity TLAB_START_IDENTITY = NamedLocationIdentity.mutable("TLAB.start");
     public static final LocationIdentity TLAB_TOP_IDENTITY = NamedLocationIdentity.mutable("TLAB.top");
@@ -146,31 +152,31 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     @Snippet
     protected Object allocateInstance(@NonNullParameter DynamicHub hub,
                     @ConstantParameter long size,
-                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), Word.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), Word.unsigned(size), useTLAB, fillContents, emitMemoryBarrier, true, profilingData, withException);
         return piCastToSnippetReplaceeStamp(result);
     }
 
     @Snippet
     protected Object allocateInstanceConstantHeader(long objectHeader,
                     @ConstantParameter long size,
-                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateInstanceImpl(Word.unsigned(objectHeader), Word.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
+        Object result = allocateInstanceImpl(Word.unsigned(objectHeader), Word.unsigned(size), useTLAB, fillContents, emitMemoryBarrier, true, profilingData, withException);
         return piCastToSnippetReplaceeStamp(result);
     }
 
     @Snippet
     public Object allocateArray(@NonNullParameter DynamicHub hub,
                     int length,
-                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter int arrayBaseOffset,
                     @ConstantParameter int log2ElementSize,
                     @ConstantParameter FillContent fillContents,
@@ -180,7 +186,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(hub), length, forceSlowPath, arrayBaseOffset, log2ElementSize, fillContents,
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(hub), length, useTLAB, arrayBaseOffset, log2ElementSize, fillContents,
                         afterArrayLengthOffset(), emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -188,7 +194,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     @Snippet
     public Object allocateArrayConstantHeader(long objectHeader,
                     int length,
-                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter int arrayBaseOffset,
                     @ConstantParameter int log2ElementSize,
                     @ConstantParameter FillContent fillContents,
@@ -198,7 +204,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateArrayImpl(Word.unsigned(objectHeader), length, forceSlowPath, arrayBaseOffset, log2ElementSize, fillContents,
+        Object result = allocateArrayImpl(Word.unsigned(objectHeader), length, useTLAB, arrayBaseOffset, log2ElementSize, fillContents,
                         afterArrayLengthOffset(), emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -206,7 +212,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     @Snippet
     public Object allocateStoredContinuation(@NonNullParameter DynamicHub hub,
                     int length,
-                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter int arrayBaseOffset,
                     @ConstantParameter int log2ElementSize,
                     @ConstantParameter long ipOffset,
@@ -223,7 +229,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         Word newTop = top.add(allocationSize);
 
         Object result;
-        if (!forceSlowPath && useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+        if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
             result = formatStoredContinuation(encodeAsTLABObjectHeader(hub), allocationSize, length, top, emitMemoryBarrier, ipOffset, profilingData.snippetCounters);
@@ -238,7 +244,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     @Snippet
     public Object allocatePod(@NonNullParameter DynamicHub hub,
                     int arrayLength,
-                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter boolean useTLAB,
                     byte[] referenceMap,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean maybeUnroll,
@@ -257,7 +263,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         Word newTop = top.add(allocationSize);
 
         Object result;
-        if (!forceSlowPath && useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+        if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
             result = formatPod(encodeAsTLABObjectHeader(hub), hub, allocationSize, arrayLength, referenceMap, top, AllocationSnippets.FillContent.WITH_ZEROES,
@@ -272,28 +278,28 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub,
-                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean supportsBulkZeroing,
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        return allocateInstanceDynamicImpl(hub, forceSlowPath, fillContents, emitMemoryBarrier, supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
+        return allocateInstanceDynamicImpl(hub, useTLAB, fillContents, emitMemoryBarrier, supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
     }
 
-    protected Object allocateInstanceDynamicImpl(DynamicHub hub, boolean forceSlowPath, FillContent fillContents, boolean emitMemoryBarrier, @SuppressWarnings("unused") boolean supportsBulkZeroing,
+    protected Object allocateInstanceDynamicImpl(DynamicHub hub, boolean useTLAB, FillContent fillContents, boolean emitMemoryBarrier, @SuppressWarnings("unused") boolean supportsBulkZeroing,
                     @SuppressWarnings("unused") boolean supportsOptimizedFilling, AllocationProfilingData profilingData, boolean withException) {
         // The hub was already verified by a ValidateNewInstanceClassNode.
         UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, forceSlowPath, fillContents, emitMemoryBarrier, false, profilingData, withException);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, useTLAB, fillContents, emitMemoryBarrier, false, profilingData, withException);
         return piCastToSnippetReplaceeStamp(result);
     }
 
     @Snippet
     public Object allocateArrayDynamic(DynamicHub elementType,
                     int length,
-                    @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter boolean useTLAB,
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean supportsBulkZeroing,
@@ -306,7 +312,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
         int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), length, forceSlowPath, arrayBaseOffset, log2ElementSize, fillContents,
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), length, useTLAB, arrayBaseOffset, log2ElementSize, fillContents,
                         arrayBaseOffset, emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, profilingData, withException);
 
         return piArrayCastToSnippetReplaceeStamp(result, length);
@@ -314,7 +320,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     protected Object newmultiarray(DynamicHub hub, @ConstantParameter int rank, @ConstantParameter boolean withException, @VarargsParameter int[] dimensions) {
-        return newMultiArrayImpl(Word.objectToUntrackedPointer(hub), rank, withException, dimensions);
+        return newMultiArrayImpl(Word.objectToUntrackedWord(hub), rank, withException, dimensions);
     }
 
     @Snippet
@@ -382,7 +388,6 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             throw new InstantiationException("Cannot allocate objects of special hybrid types: " + DynamicHub.toClass(hub).getTypeName());
         } else {
             if (hub.canUnsafeInstantiateAsInstanceSlowPath()) {
-                hub.setCanUnsafeAllocate();
                 return hub;
             } else {
                 if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
@@ -603,11 +608,6 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    public boolean useTLAB() {
-        return gcAllocationSupport().useTLAB();
-    }
-
-    @Override
     protected boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray) {
         return gcAllocationSupport().shouldAllocateInTLAB(size, isArray);
     }
@@ -825,8 +825,24 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             return allocationSite.createCounter(counterName);
         }
 
-        private static boolean shouldForceSlowPath(StructuredGraph graph) {
-            return GraalOptions.ReduceCodeSize.getValue(graph.getOptions());
+        public static boolean shouldUseTLAB(StructuredGraph graph) {
+            Boolean useTLAB = SubstrateGCOptions.UseTLAB.getValue();
+            if (!useTLAB) {
+                /* Never use a TLAB. */
+                return false;
+            }
+
+            TLABPolicy policy = SubstrateGCOptions.TLABUsagePolicy.getValue();
+            if (policy == TLABPolicy.Always) {
+                return true;
+            }
+
+            /*
+             * Use a TLAB by default, except when we optimize for code size or when we do an image
+             * build for a non-native platform.
+             */
+            assert policy == TLABPolicy.Auto;
+            return !GraalOptions.ReduceCodeSize.getValue(graph.getOptions());
         }
 
         private final class NewInstanceLowering implements NodeLoweringProvider<FixedNode> {
@@ -870,7 +886,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 args.add("size", size);
-                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("useTLAB", shouldUseTLAB(graph));
                 args.add("fillContents", FillContent.fromBoolean(fillContents));
                 args.add("emitMemoryBarrier", emitMemoryBarrier);
                 args.add("profilingData", getProfilingData(node, type));
@@ -902,7 +918,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("useTLAB", shouldUseTLAB(graph));
                 args.add("arrayBaseOffset", arrayBaseOffset);
                 args.add("log2ElementSize", log2ElementSize);
                 args.add("fillContents", FillContent.fromBoolean(fillContents));
@@ -937,7 +953,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateStoredContinuation, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("useTLAB", shouldUseTLAB(graph));
                 args.add("arrayBaseOffset", arrayBaseOffset);
                 args.add("log2ElementSize", log2ElementSize);
                 args.add("ipOffset", ContinuationSupport.singleton().getIPOffset());
@@ -994,7 +1010,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("useTLAB", shouldUseTLAB(graph));
                 args.add("arrayBaseOffset", arrayBaseOffset);
                 args.add("log2ElementSize", log2ElementSize);
                 args.add("fillContents", FillContent.fromBoolean(fillContents));
@@ -1073,7 +1089,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstanceDynamic, graph, tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
-                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("useTLAB", shouldUseTLAB(graph));
                 args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.add("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
@@ -1095,7 +1111,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstanceDynamic, graph, tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
-                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("useTLAB", shouldUseTLAB(graph));
                 args.add("fillContents", FillContent.fromBoolean(true));
                 args.add("emitMemoryBarrier", true/* barriers */);
                 args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
@@ -1118,7 +1134,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArrayDynamic, graph, tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
-                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("useTLAB", shouldUseTLAB(graph));
                 args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.add("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
@@ -1141,7 +1157,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArrayDynamic, graph, tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
-                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("useTLAB", shouldUseTLAB(graph));
                 args.add("fillContents", FillContent.fromBoolean(true));
                 args.add("emitMemoryBarrier", true/* barriers */);
                 args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
@@ -1180,7 +1196,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocatePod, graph, tool.getLoweringStage());
                 args.add("hub", node.getHub());
                 args.add("arrayLength", node.getArrayLength());
-                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("useTLAB", shouldUseTLAB(graph));
                 args.add("referenceMap", node.getReferenceMap());
                 args.add("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.add("maybeUnroll", node.getArrayLength().isConstant());

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.debug;
 
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.InstructionTracer;
 
 /**
  * Base interface for a bytecode root node to get additional debug event that are normally not
@@ -88,7 +89,9 @@ public interface BytecodeDebugListener {
      * evaluated code paths.
      *
      * @since 24.2
+     * @deprecated no longer supported. Use {@link InstructionTracer} instead.
      */
+    @Deprecated(since = "25.1")
     default void beforeInstructionExecute(Instruction instruction) {
     }
 
@@ -98,7 +101,9 @@ public interface BytecodeDebugListener {
      * evaluated code paths.
      *
      * @since 24.2
+     * @deprecated no longer supported. Use {@link InstructionTracer} instead.
      */
+    @Deprecated(since = "25.1")
     default void afterInstructionExecute(Instruction instruction, Throwable exception) {
     }
 

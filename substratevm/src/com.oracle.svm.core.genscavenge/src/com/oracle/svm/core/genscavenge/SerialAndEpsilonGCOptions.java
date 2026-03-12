@@ -26,7 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;

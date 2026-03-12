@@ -24,12 +24,12 @@
 > cat > ${TMP_DIR}/test.py
 < print('Ahoj')
 > graalpy --insight=agent-python.py --experimental-options ${TMP_DIR}/test.py
-Python: Insight version 1.2 is launching
+Python: Insight version 1.3 is launching
 Python: Hooks are ready!
 Python: observed loading of test.py
 Ahoj
 > js --jvm --polyglot --insight=agent-python.py --experimental-options agent-fib.js
-Python: Insight version 1.2 is launching
+Python: Insight version 1.3 is launching
 Python: Hooks are ready!
 Python: observed loading of agent-fib.js
 minusOne class-based filter 4

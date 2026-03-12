@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import java.util.List;
 
@@ -32,16 +33,16 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
-import com.oracle.svm.core.genscavenge.SerialGCOptions;
+import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
 import com.oracle.svm.core.heap.Heap;
@@ -56,10 +57,11 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -160,6 +162,9 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean hasRememberedSet(UnsignedWord header) {
+        if (!GraalDirectives.inIntrinsic()) { // too expensive and not necessary in write barriers
+            assert !ObjectHeaderImpl.isMarkedHeader(header) : "use hasRememberedSetInGC";
+        }
         return ObjectHeaderImpl.hasRememberedSet(header);
     }
 
@@ -187,14 +192,14 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void dirtyCardIfNecessary(Object holderObject, Object object, Pointer objRef) {
+    public void dirtyCardIfNecessaryInGC(Object holderObject, Object object, Pointer objRef) {
         if (holderObject == null || object == null) {
             return;
         }
 
         assert !HeapImpl.getHeapImpl().isInImageHeap(object) : "should never be called for references to image heap objects";
 
-        if (cardNeedsDirtying(holderObject, object)) {
+        if (cardNeedsDirtyingInGC(holderObject, object)) {
             if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
                 AlignedChunkRememberedSet.dirtyCardForObject(holderObject, false);
             } else {
@@ -206,7 +211,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private boolean cardNeedsDirtying(Object holderObject, Object object) {
+    private static boolean cardNeedsDirtyingInGC(Object holderObject, Object object) {
         assert holderObject != null && object != null;
 
         if (GCImpl.getGCImpl().isCompleteCollection()) {
@@ -217,7 +222,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
              * remark those only during complete collections.
              */
             return HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(holderObject) ||
-                            SerialGCOptions.useRememberedSet() && Metaspace.singleton().isInAddressSpace(holderObject);
+                            Metaspace.singleton().isInAddressSpace(holderObject);
         }
 
         /*
@@ -232,12 +237,43 @@ public class CardTableBasedRememberedSet implements RememberedSet {
          * Dirty the card table for references from the image heap, metaspace, or old generation to
          * the young generation.
          */
-        if (HeapImpl.getHeapImpl().getYoungGeneration().contains(object)) {
-            ObjectHeader oh = Heap.getHeap().getObjectHeader();
-            UnsignedWord objectHeader = oh.readHeaderFromObject(holderObject);
-            return hasRememberedSet(objectHeader);
+        if (!isInYoungGenerationInGC(object)) {
+            return false;
         }
-        return false;
+        return hasRememberedSetInGC(holderObject);
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean isInYoungGenerationInGC(Object object) {
+        Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object));
+        if (!HeapImpl.usesImageHeapCardMarking()) {
+            return space.isYoungSpace();
+        }
+        /* If the object has no remembered set (bit), it must be in the young generation. */
+        UnsignedWord header = Heap.getHeap().getObjectHeader().readHeaderFromObject(object);
+        if (ObjectHeaderImpl.isMarkedHeader(header)) {
+            /* Cannot tell from a marked object header, so we need to access the chunk's Space. */
+            return space.isYoungSpace();
+        }
+        boolean young = !ObjectHeaderImpl.hasRememberedSet(header);
+        assert young == space.isYoungSpace();
+        return young;
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean hasRememberedSetInGC(Object holderObject) {
+        UnsignedWord holderHeader = Heap.getHeap().getObjectHeader().readHeaderFromObject(holderObject);
+        if (ObjectHeaderImpl.isMarkedHeader(holderHeader)) {
+            /* Cannot tell from a marked object header, so we need to access the chunk's Space. */
+            Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(holderObject));
+            boolean isInImageHeap = (space == null);
+            assert !isInImageHeap : "image heap objects should never be marked";
+            /* All objects outside of the young generation (or image heap) have a remembered set. */
+            return !space.isYoungSpace();
+        }
+        return ObjectHeaderImpl.hasRememberedSet(holderHeader);
     }
 
     @Override
@@ -275,7 +311,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     public void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor,
                     UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         AlignedHeader aChunk = firstAlignedChunk;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,44 +24,27 @@
  */
 package com.oracle.svm.webimage.thirdparty;
 
-import java.lang.reflect.Method;
-
-import org.graalvm.nativeimage.AnnotationAccess;
-
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.AnalysisUtil;
-import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.JSIntrinsifyFile;
 import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 import net.java.html.js.JavaScriptBody;
 
 public class JavaScriptBodyIntrinsification {
-    /**
-     * Intrinsify the body of a JavaScriptBody and JS annotations.
-     *
-     * @param name A name for the annotation for debugging purposes
-     * @param body body of JavaScriptBody (or JS)
-     * @param jsLTools loweringTool
-     * @return intrinsified body
-     */
-    public static JSIntrinsifyFile.FileData processJavaScriptBody(String name, String body, JSCodeGenTool jsLTools) {
-        JSIntrinsifyFile.FileData fileData = new JSIntrinsifyFile.FileData(name, body);
-        collectJSBody(fileData);
-        JSIntrinsifyFile.process(fileData, jsLTools.getJSProviders(), JavaScriptBodyIntrinsification::intrinsifyMethod);
-        return fileData;
-    }
 
     /**
      * Parse the contents of the given file data and extract intrinsifications using the jsbody
      * syntax.
      */
-    public static JSIntrinsifyFile.FileData collectJSBody(JSIntrinsifyFile.FileData fileData) throws IllegalArgumentException {
+    public static void collectJSBody(JSIntrinsifyFile.FileData fileData) throws IllegalArgumentException {
         String body = fileData.content;
         int where = -1;
         for (;;) {
@@ -96,7 +79,6 @@ public class JavaScriptBodyIntrinsification {
 
             where = endSig;
         }
-        return fileData;
     }
 
     public static void intrinsifyMethod(WebImageJSProviders providers, StringBuilder sb, JSIntrinsifyFile.MethodIntrinsification methodIntrinsification, HostedMethod method, String ident) {
@@ -139,23 +121,27 @@ public class JavaScriptBodyIntrinsification {
     }
 
     static void findJSMethods(FeatureImpl.DuringAnalysisAccessImpl access) {
-        for (Method m : access.findAnnotatedMethods(JavaScriptBody.class)) {
-            JavaScriptBody jsb = AnnotationAccess.getAnnotation(m, JavaScriptBody.class);
-            JSBody.JSCode jsCode = new JSBody.JSCode(jsb.args(), jsb.body());
+        for (ResolvedJavaMethod m : access.getImageClassLoader().findAnnotatedResolvedJavaMethods(JavaScriptBody.class)) {
+            AnalysisMethod aMethod = access.getUniverse().lookup(m);
+            JSBodyStubMethod stubMethod = (JSBodyStubMethod) aMethod.getWrapped();
+            JSBody.JSCode jsCode = stubMethod.getJsCode();
 
             int numAnnotationArgs = jsCode.getArgs().length;
-            int numMethodArgs = m.getParameterCount();
+            int numMethodArgs = aMethod.getSignature().getParameterCount(false);
 
             if (numMethodArgs != numAnnotationArgs) {
-                throw new GraalError("Method %s and its annotation @%s do not have the same number of arguments (%d vs %d)", m, JavaScriptBody.class.getCanonicalName(), numMethodArgs,
+                throw new GraalError("Method %s and its annotation @%s do not have the same number of arguments (%d vs %d)", aMethod, JavaScriptBody.class.getCanonicalName(), numMethodArgs,
                                 numAnnotationArgs);
             }
-            if (!jsb.javacall() || !access.isReachable(m)) {
+
+            if (!access.isReachable(aMethod)) {
                 continue;
             }
-            JSIntrinsifyFile.FileData data = collectJSBody(new JSIntrinsifyFile.FileData(m.toString(), jsCode.getBody()));
-            if (AnalysisUtil.processFileData(access, data)) {
-                access.requireAnalysisIteration();
+
+            if (stubMethod.isJavaCall()) {
+                if (AnalysisUtil.processFileData(access, stubMethod.getFileData())) {
+                    access.requireAnalysisIteration();
+                }
             }
         }
     }

@@ -128,13 +128,13 @@ public abstract class TruffleLocator {
 
     @SuppressWarnings("unused")
     private static void initializeNativeImageState() {
-        assert TruffleOptions.AOT : "Only supported during image generation";
+        assert ImageInfo.inImageBuildtimeCode() : "Only supported during image generation";
         nativeImageLocator = Truffle.getRuntime().getCapability(TruffleLocator.class);
     }
 
     @SuppressWarnings("unused")
     private static void resetNativeImageState() {
-        assert TruffleOptions.AOT : "Only supported during image generation";
+        assert ImageInfo.inImageBuildtimeCode() : "Only supported during image generation";
         nativeImageLocator = null;
     }
 }

@@ -29,6 +29,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageInfo;
@@ -37,6 +38,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
+
+import com.oracle.svm.shared.util.ModuleSupport;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueType;
@@ -108,6 +111,14 @@ public final class AnnotationUtil {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Map<ResolvedJavaType, AnnotationValue> getDeclaredAnnotationValues(Annotated annotated) {
         return instance().getDeclaredAnnotationValues(annotated);
+    }
+
+    /**
+     * Gets the annotation of type {@code annotationType} from {@code element} as an
+     * {@link AnnotationValue} object if such an annotation is present, else null.
+     */
+    public static <T extends Annotation> AnnotationValue getAnnotationValue(Annotated element, Class<T> annotationType) {
+        return instance().getAnnotationValue(element, annotationType);
     }
 
     /**
@@ -193,6 +204,15 @@ public final class AnnotationUtil {
     }
 
     /**
+     * Determines if an annotation of type {@code annotationType} is present on {@code element}.
+     */
+    @SuppressWarnings("unchecked")
+    public static boolean isAnnotationPresent(Annotated element, ResolvedJavaType annotationType) {
+        Objects.requireNonNull(annotationType, "annotationType must not be null");
+        return isAnnotationPresent(element, (Class<? extends Annotation>) OriginalClassProvider.getJavaClass(annotationType));
+    }
+
+    /**
      * Creates an {@link Annotation} for the given annotation type and element values.
      *
      * @param elements a sequence of (name,value) pairs where each name must denote an existing
@@ -216,11 +236,23 @@ public final class AnnotationUtil {
      *            {@link ResolvedJavaType} values respectively.
      */
     public static <T extends Annotation> AnnotationValue newAnnotationValue(Class<T> annotationType, Object... elements) {
+        return newAnnotationValue(GuestAccess.get().lookupType(annotationType), elements);
+    }
+
+    /**
+     * Creates an {@link AnnotationValue} for the given annotation type and element values.
+     *
+     * @param elements a sequence of (name,value) pairs where name must denote an existing element
+     *            of the annotation type and value must have a type according to
+     *            {@link AnnotationValueType#matchesElementType}. Note that {@link Enum} and
+     *            {@link Class} values are automatically converted to {@link EnumElement} and
+     *            {@link ResolvedJavaType} values respectively.
+     */
+    public static <T extends Annotation> AnnotationValue newAnnotationValue(ResolvedJavaType annotationType, Object... elements) {
         if ((elements.length % 2) != 0) {
             throw new IllegalArgumentException("Elements must be a sequence of (name,value) pairs");
         }
-        ResolvedJavaType jvmciAnnotationType = GraalAccess.lookupType(annotationType);
-        AnnotationValueType annotationValueType = AnnotationValueType.getInstance(jvmciAnnotationType);
+        AnnotationValueType annotationValueType = AnnotationValueType.getInstance(annotationType);
         var elementTypes = annotationValueType.memberTypes();
         Map<String, Object> elementsMap = new EconomicHashMap<>(annotationValueType.memberDefaults());
         for (int i = 0; i < elements.length; i += 2) {
@@ -233,14 +265,14 @@ public final class AnnotationUtil {
             }
             ResolvedJavaType elementType = elementTypes.get(name);
             if (elementType == null) {
-                throw new IllegalArgumentException(String.format("%s does not define an element named %s", annotationType.getName(), name));
+                throw new IllegalArgumentException(String.format("%s does not define an element named %s", annotationType.toClassName(), name));
             }
             if (elementValue instanceof Class<?> c) {
                 String internalName = "L" + c.getName().replace(".", "/") + ";";
-                elementValue = UnresolvedJavaType.create(internalName).resolve(jvmciAnnotationType);
+                elementValue = UnresolvedJavaType.create(internalName).resolve(annotationType);
             } else if (elementValue instanceof Enum<?> e) {
                 String internalName = "L" + e.getClass().getName().replace(".", "/") + ";";
-                ResolvedJavaType enumType = UnresolvedJavaType.create(internalName).resolve(jvmciAnnotationType);
+                ResolvedJavaType enumType = UnresolvedJavaType.create(internalName).resolve(annotationType);
                 elementValue = new EnumElement(enumType, e.name());
             }
             if (!AnnotationValueType.matchesElementType(elementValue, elementType)) {
@@ -248,6 +280,6 @@ public final class AnnotationUtil {
             }
             elementsMap.put(name, elementValue);
         }
-        return new AnnotationValue(jvmciAnnotationType, elementsMap);
+        return new AnnotationValue(annotationType, elementsMap);
     }
 }

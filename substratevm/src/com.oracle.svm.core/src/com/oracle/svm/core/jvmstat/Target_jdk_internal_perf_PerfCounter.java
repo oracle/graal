@@ -29,7 +29,7 @@ import java.nio.LongBuffer;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * {@code PerfCounter} objects created at build time and written in the image heap reference an

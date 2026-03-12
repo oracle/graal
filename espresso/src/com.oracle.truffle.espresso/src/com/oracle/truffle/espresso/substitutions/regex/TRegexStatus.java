@@ -40,7 +40,7 @@ public enum TRegexStatus {
 
         private static final int GUEST_COMPILED =       0b01_0000;
         private static final int INITALIZED =           0b10_0000;
-        
+
         private static final int TREGEX_AVAILABLE_MASK = MATCH_AVAILABLE | FULLMATCH_AVAILABLE | SEARCH_AVAILABLE;
         private static final int VALID_GROUPCOUNT_MASK = TREGEX_AVAILABLE_MASK | GUEST_COMPILED;
         // @formatter:on
@@ -59,8 +59,8 @@ public enum TRegexStatus {
     }
 
     public static int get(Meta meta, StaticObject pattern) {
-        assert meta.tRegexSupport != null && meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_status != null;
-        return meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_status.getInt(pattern);
+        assert meta.tRegexSupport != null && meta.tRegexSupport.java_util_regex_Pattern_0status != null;
+        return meta.tRegexSupport.java_util_regex_Pattern_0status.getInt(pattern);
     }
 
     public static void init(Meta meta, StaticObject pattern) {
@@ -85,7 +85,7 @@ public enum TRegexStatus {
             int old = get(meta, pattern);
             int newValue = (old | state);
             if (old != newValue) {
-                success = meta.tRegexSupport.java_util_regex_Pattern_HIDDEN_status.compareAndSwapInt(pattern, old, newValue);
+                success = meta.tRegexSupport.java_util_regex_Pattern_0status.compareAndSwapInt(pattern, old, newValue);
             }
         }
     }

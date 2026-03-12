@@ -421,9 +421,7 @@ final class TStringInternalNodes {
                         @Cached InlinedConditionProfile nativeProfileA,
                         @Cached InlinedConditionProfile calcCodePointLengthProfile,
                         @Cached InlinedConditionProfile impreciseProfile,
-                        @Cached InlinedConditionProfile utf16CompactProfile,
-                        @Cached InlinedConditionProfile utf32Compact0Profile,
-                        @Cached InlinedConditionProfile utf32Compact1Profile) {
+                        @Cached InlinedConditionProfile utf16CompactProfile) {
             Object dataA = a.data();
             assert dataA instanceof byte[] || dataA instanceof NativePointer;
             try {
@@ -454,6 +452,8 @@ final class TStringInternalNodes {
                 if (encoding == Encoding.UTF_16) {
                     stride = Stride.fromCodeRangeUTF16(codeRange);
                     array = new byte[length << stride];
+                    // gets intrinsified to two direct stub calls for copy with and without
+                    // compaction
                     if (utf16CompactProfile.profile(node, strideA == 1 && stride == 0)) {
                         TStringOps.arraycopyWithStride(node, arrayA, offsetA, 1, 0, array, offset, 0, 0, length);
                     } else {
@@ -463,17 +463,14 @@ final class TStringInternalNodes {
                 } else if (encoding == Encoding.UTF_32) {
                     stride = Stride.fromCodeRangeUTF32(codeRange);
                     array = new byte[length << stride];
-                    if (utf32Compact0Profile.profile(node, strideA == 2 && stride == 0)) {
-                        TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, offset, 0, 0, length);
-                    } else if (utf32Compact1Profile.profile(node, strideA == 2 && stride == 1)) {
-                        TStringOps.arraycopyWithStride(node, arrayA, offsetA, 2, 0, array, offset, 1, 0, length);
-                    } else {
-                        assert stride == strideA;
-                        TStringOps.arraycopyWithStride(node, arrayA, offsetA, 0, 0, array, offset, 0, 0, length << stride);
-                    }
+                    // In the UTF-32 case, the number of copy variants increases to four: regular
+                    // copy and compaction from stride 2->0, 2->1 and 1->0. Instead of compiling
+                    // four distinct stub calls, we call a stub version with an internal jump table.
+                    TStringOps.arraycopyWithStride(node, arrayA, offsetA, strideA, 0, array, offset, stride, 0, length);
                 } else {
                     stride = encoding.naturalStride;
                     assert a.stride() == stride;
+                    // in all other cases compaction is unsupported
                     array = TStringOps.arraycopyOfWithStride(node, arrayA, offsetA, length << stride, 0, length << stride, 0);
                 }
                 int codePointLength = getCodePointLength(node, a, arrayA, offsetA, encoding, calcCodePointLengthProfile);

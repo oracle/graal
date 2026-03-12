@@ -25,12 +25,11 @@
 
 package com.oracle.svm.hosted.webimage.codegen;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
 import java.util.Set;
 
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -58,23 +57,27 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticallyRegisteredFeature
 @Platforms(WebImagePlatform.class)
 public class JSBodyTypeFlowFeature implements InternalFeature {
-    /**
-     * The set of methods that are potentially overridden by a JS-annotated method.
-     * <p>
-     * Any call to such a method needs to have a {@link InterceptJSInvokeNode} attached to it.
-     */
-    private Set<Method> jsOverridden;
+    private ImageClassLoader imageClassLoader;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
-        ImageClassLoader imageClassLoader = accessImpl.getImageClassLoader();
-        jsOverridden = ReflectUtil.findBaseMethodsOfJSAnnotated(imageClassLoader);
+        this.imageClassLoader = ((FeatureImpl.AfterRegistrationAccessImpl) access).getImageClassLoader();
     }
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         plugins.appendNodePlugin(new NodePlugin() {
+            /**
+             * The set of methods that are potentially overridden by a JS-annotated method.
+             * <p>
+             * Any call to such a method needs to have a {@link InterceptJSInvokeNode} attached to
+             * it.
+             * <p>
+             * Calculated on-demand because a functioning {@link AnalysisMetaAccess} is not
+             * available earlier.
+             */
+            private Set<AnalysisMethod> jsOverridden = null;
+
             @Override
             public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
                 if (canBeJavaScriptCall((AnalysisMethod) method)) {
@@ -87,26 +90,14 @@ public class JSBodyTypeFlowFeature implements InternalFeature {
             }
 
             private boolean canBeJavaScriptCall(AnalysisMethod method) {
-                Executable executable;
-                try {
-                    executable = method.getJavaMethod();
-                } catch (Throwable e) {
-                    // Either a substituted method, or a method with a malformed bytecode signature.
-                    // This is most likely not a JS-annotated method.
-                    return false;
+                synchronized (this) {
+                    if (jsOverridden == null) {
+                        jsOverridden = ReflectUtil.findBaseMethodsOfJSAnnotated((AnalysisMetaAccess) providers.getMetaAccess(), imageClassLoader);
+                    }
                 }
-                if (executable instanceof Method) {
-                    return jsOverridden.contains(executable);
-                }
-                // Not a normal method (constructor).
-                return false;
+                return jsOverridden.contains(method);
             }
 
         });
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        jsOverridden = null;
     }
 }

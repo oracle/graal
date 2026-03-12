@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,11 +64,29 @@ import org.graalvm.word.PointerBase;
 public interface PinnedObject extends AutoCloseable {
 
     /**
+     * Whether pinned objects are supported in the selected Native Image backend. The default
+     * backend supports pinned objects, experimental backends may not.
+     * <p>
+     * If this method returns {@code false}, {@link #create(Object)} will throw an
+     * {@link UnsupportedOperationException}.
+     *
+     * @since 25.1.0
+     */
+    static boolean isSupported() {
+        return ImageSingletons.contains(PinnedObjectSupport.class);
+    }
+
+    /**
      * Create an open PinnedObject.
      *
+     * @throws UnsupportedOperationException if pinned objects are not supported as determined by
+     *             {@link #isSupported()}.
      * @since 19.0
      */
     static PinnedObject create(Object object) {
+        if (!isSupported()) {
+            throw new UnsupportedOperationException("Pinning objects is not supported in this image");
+        }
         return ImageSingletons.lookup(PinnedObjectSupport.class).create(object);
     }
 

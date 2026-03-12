@@ -217,12 +217,20 @@ public class MultiBitSet {
     }
 
     public CodeTree createExtractInteger(FrameState frameState, StateQuery element) {
+        BitSet set = findSet(element);
+        if (set == null) {
+            throw new AssertionError("element not contained");
+        }
+        return set.createExtractInteger(frameState, element);
+    }
+
+    public BitSet findSet(StateQuery element) {
         for (BitSet set : sets) {
             if (set.contains(element)) {
-                return set.createExtractInteger(frameState, element);
+                return set;
             }
         }
-        throw new AssertionError("element not contained");
+        return null;
     }
 
     public CodeTree createNotContains(FrameState frameState, StateQuery elements) {

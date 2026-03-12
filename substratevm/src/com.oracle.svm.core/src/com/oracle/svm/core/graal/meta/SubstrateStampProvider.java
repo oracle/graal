@@ -25,16 +25,16 @@
 package com.oracle.svm.core.graal.meta;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.nodes.spi.StampProvider;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateStampProvider implements StampProvider {
 
@@ -65,6 +65,6 @@ public class SubstrateStampProvider implements StampProvider {
 
     @Override
     public Constant methodPointerAlwaysNullConstant() {
-        return SubstrateMethodPointerConstant.ALWAYS_NULL;
+        return JavaConstant.NULL_POINTER;
     }
 }

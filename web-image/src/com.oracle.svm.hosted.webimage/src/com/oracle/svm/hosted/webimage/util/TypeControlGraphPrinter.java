@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.codegen.WebImageTypeControl;
 import com.oracle.svm.hosted.webimage.metrickeys.MethodMetricKeys;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
-import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping.IdentityNode;
 import com.oracle.svm.webimage.object.ObjectInspector.ObjectDefinition;
 
@@ -120,8 +120,7 @@ public class TypeControlGraphPrinter {
 
         @Override
         public String[] getValues() {
-            Class<?> clazz = obj.getJavaClass();
-            return new String[]{String.valueOf(id), ClassUtil.getUnqualifiedName(clazz), clazz.getName()};
+            return new String[]{String.valueOf(id), obj.toJavaName(false), obj.toClassName()};
         }
     }
 

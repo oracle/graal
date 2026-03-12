@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -54,7 +55,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -66,7 +67,6 @@ import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 
 public final class IsolatedGraalUtils {
@@ -135,7 +135,7 @@ public final class IsolatedGraalUtils {
         appendArgument(builder, SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, false);
 
         /* Disable signal handling for compilation isolates. */
-        appendArgument(builder, SubstrateOptions.EnableSignalHandling, false);
+        appendArgument(builder, SubstrateOptions.ConcealedOptions.EnableSignalHandling, false);
         appendArgument(builder, SubstrateSegfaultHandler.Options.InstallSegfaultHandler, false);
     }
 

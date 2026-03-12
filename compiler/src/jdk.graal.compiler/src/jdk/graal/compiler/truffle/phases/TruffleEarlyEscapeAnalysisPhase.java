@@ -25,12 +25,16 @@
 package jdk.graal.compiler.truffle.phases;
 
 import java.util.Map;
+import java.util.function.Function;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.truffle.nodes.TruffleEarlyEscapeAnchorNode;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -61,5 +65,14 @@ public final class TruffleEarlyEscapeAnalysisPhase extends PartialEscapePhase {
         // we do not respect the PE only option for Truffle because PE depends on escape analysis
         // semantics.
         return true;
+    }
+
+    @Override
+    protected Function<VirtualObjectNode, FixedWithNextNode> virtualAnchorSupplier() {
+        /*
+         * Introduce anchors to prevent VirtualObjects from floating into a merge exploded loops.
+         * This would cause PE to duplicate virtual instances.
+         */
+        return TruffleEarlyEscapeAnchorNode::new;
     }
 }

@@ -27,9 +27,9 @@ import java.lang.reflect.Type;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
+import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType;
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaMethod;
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoSignature;
-import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType;
 
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.common.JVMCIError;
@@ -41,22 +41,39 @@ import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 
-final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJavaMethod {
+final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJavaMethod implements EspressoExternalVMAccess.Element {
     static final EspressoExternalResolvedJavaMethod[] EMPTY_ARRAY = new EspressoExternalResolvedJavaMethod[0];
     private static final ExceptionHandler[] NO_HANDLERS = new ExceptionHandler[0];
     private static final LocalVariableTable EMPTY_LVT = new LocalVariableTable(new Local[0]);
 
-    private final Value methodMirror;
+    /**
+     * The guest {@code com.oracle.truffle.espresso.impl.Method} value associated with this method.
+     */
+    private final Value vmMethodMirror;
+
+    /**
+     * Value of {@code com.oracle.truffle.espresso.impl.Method.rawFlags}.
+     */
     private final int flags;
 
-    EspressoExternalResolvedJavaMethod(EspressoExternalResolvedInstanceType holder, Value methodMirror) {
-        super(holder, methodMirror.getMember("hasPoison").asBoolean());
-        this.methodMirror = methodMirror;
-        this.flags = methodMirror.getMember("flags").asInt();
+    /**
+     * A guest {@link java.lang.reflect.Executable} value associated with this method.
+     */
+    private Value reflectExecutableMirror;
+
+    EspressoExternalResolvedJavaMethod(Value vmMethodMirror, EspressoExternalVMAccess access) {
+        this(new EspressoExternalResolvedInstanceType(access, vmMethodMirror.getMember("holder")), vmMethodMirror, null);
+    }
+
+    EspressoExternalResolvedJavaMethod(EspressoExternalResolvedInstanceType holder, Value vmMethodMirror, Value reflectExecutableMirror) {
+        super(holder, vmMethodMirror.getMember("hasPoison").asBoolean());
+        this.vmMethodMirror = vmMethodMirror;
+        this.reflectExecutableMirror = reflectExecutableMirror;
+        this.flags = vmMethodMirror.getMember("flags").asInt();
     }
 
     Value getMirror() {
-        return methodMirror;
+        return vmMethodMirror;
     }
 
     private EspressoExternalVMAccess getAccess() {
@@ -65,7 +82,7 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     @Override
     protected byte[] getCode0() {
-        Value value = methodMirror.getMember("code");
+        Value value = vmMethodMirror.getMember("code");
         int size = Math.toIntExact(value.getBufferSize());
         byte[] buf = new byte[size];
         value.readBuffer(0, buf, 0, size);
@@ -74,17 +91,17 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     @Override
     protected int getCodeSize0() {
-        return methodMirror.getMember("codeSize").asInt();
+        return vmMethodMirror.getMember("codeSize").asInt();
     }
 
     @Override
     protected String getName0() {
-        return methodMirror.getMember("name").asString();
+        return vmMethodMirror.getMember("name").asString();
     }
 
     @Override
     protected AbstractEspressoSignature getSignature0() {
-        return new EspressoExternalSignature(getAccess(), methodMirror.getMember("rawSignature").asString());
+        return new EspressoExternalSignature(getAccess(), vmMethodMirror.getMember("rawSignature").asString());
     }
 
     @Override
@@ -93,28 +110,28 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
     }
 
     @Override
-    protected int getVtableIndexForInterfaceMethod(EspressoResolvedInstanceType resolved) {
-        return 0;
+    protected int getVtableIndexForInterfaceMethod(AbstractEspressoResolvedInstanceType resolved) {
+        return getAccess().invokeJVMCIHelper("getVtableIndexForInterfaceMethod", getMirror(), ((EspressoExternalResolvedInstanceType) resolved).getMetaObject()).asInt();
     }
 
     @Override
     protected int getVtableIndex() {
-        return 0;
+        return vmMethodMirror.getMember("vtableIndex").asInt();
     }
 
     @Override
     public int getMaxLocals() {
-        return methodMirror.getMember("maxLocals").asInt();
+        return vmMethodMirror.getMember("maxLocals").asInt();
     }
 
     @Override
     public int getMaxStackSize() {
-        return methodMirror.getMember("maxStackSize").asInt();
+        return vmMethodMirror.getMember("maxStackSize").asInt();
     }
 
     @Override
     public ExceptionHandler[] getExceptionHandlers() {
-        Value handlers = methodMirror.getMember("exceptionHandlers");
+        Value handlers = vmMethodMirror.getMember("exceptionHandlers");
         if (handlers.isNull()) {
             return NO_HANDLERS;
         }
@@ -126,8 +143,17 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
             int endBCI = handler.getMember("endBCI").asInt();
             int handlerBCI = handler.getMember("handlerBCI").asInt();
             int catchTypeCPI = handler.getMember("catchTypeCPI").asInt();
-            String catchTypeName = handler.getMember("catchType").asString();
-            JavaType catchType = getAccess().lookupType(catchTypeName, getDeclaringClass(), false);
+            Value catchTypeName = handler.getMember("catchType");
+            JavaType catchType;
+            if (catchTypeCPI == 0 || catchTypeName.isNull()) {
+                catchType = null;
+            } else {
+                catchType = getAccess().lookupType(catchTypeName.asString(), getDeclaringClass(), false);
+                if (getAccess().java_lang_Throwable.equals(catchType)) {
+                    // For consistency with HotSpotResolvedJavaMethodImpl#getExceptionHandlers
+                    catchType = null;
+                }
+            }
             result[i] = new ExceptionHandler(startBCI, endBCI, handlerBCI, catchTypeCPI, catchType);
         }
         return result;
@@ -140,7 +166,7 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
             line = -2;
         } else {
             LineNumberTable lineNumberTable = getLineNumberTable();
-            if (lineNumberTable == null) {
+            if (lineNumberTable == null || bci < 0) {
                 line = -1;
             } else {
                 line = lineNumberTable.getLineNumber(bci);
@@ -157,16 +183,19 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     @Override
     public boolean hasNeverInlineDirective() {
-        return methodMirror.getMember("neverInline").asBoolean();
+        return vmMethodMirror.getMember("neverInline").asBoolean();
     }
 
     @Override
     public LineNumberTable getLineNumberTable() {
-        Value rawData = methodMirror.getMember("lineNumberTable");
+        Value rawData = vmMethodMirror.getMember("lineNumberTable");
         if (rawData.isNull()) {
             return null;
         }
         int size = Math.toIntExact(rawData.getArraySize() / 2);
+        if (size == 0) {
+            return null;
+        }
         int[] lineNumbers = new int[size];
         int[] bcis = new int[size];
         for (int i = 0; i < size; i++) {
@@ -178,19 +207,19 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     @Override
     public LocalVariableTable getLocalVariableTable() {
-        Value table = methodMirror.getMember("localVariableTable");
+        Value table = vmMethodMirror.getMember("localVariableTable");
         if (table.isNull()) {
             return EMPTY_LVT;
         }
         int size = Math.toIntExact(table.getArraySize());
         Local[] result = new Local[size];
         for (int i = 0; i < size; i++) {
-            Value handler = table.getArrayElement(i);
-            String name = handler.getMember("name").asString();
-            int startBCI = handler.getMember("startBCI").asInt();
-            int endBCI = handler.getMember("endBCI").asInt();
-            int slot = handler.getMember("slot").asInt();
-            String typeName = handler.getMember("catchType").asString();
+            Value local = table.getArrayElement(i);
+            String name = local.getMember("name").asString();
+            int startBCI = local.getMember("startBCI").asInt();
+            int endBCI = local.getMember("endBCI").asInt();
+            int slot = local.getMember("slot").asInt();
+            String typeName = local.getMember("type").asString();
             JavaType type = getAccess().lookupType(typeName, getDeclaringClass(), false);
             result[i] = new Local(name, type, startBCI, endBCI, slot);
         }
@@ -204,40 +233,52 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     @Override
     public Parameter[] getParameters() {
-        if (getSignature().getParameterCount(false) == 0) {
+        Value table = vmMethodMirror.getMember("parameters");
+        if (table.isNull()) {
             return NO_PARAMETERS;
         }
-        throw JVMCIError.unimplemented();
+        int size = Math.toIntExact(table.getArraySize());
+        Parameter[] result = new Parameter[size];
+        for (int i = 0; i < size; i++) {
+            Value parameter = table.getArrayElement(i);
+            String name = parameter.getMember("name").asString();
+            int modifiers = parameter.getMember("modifiers").asInt();
+            result[i] = new Parameter(name, modifiers, this, i);
+        }
+        return result;
     }
 
     @Override
     public boolean isLeafMethod() {
-        return methodMirror.getMember("leafMethod").asBoolean();
+        return vmMethodMirror.getMember("leafMethod").asBoolean();
     }
 
     @Override
     protected byte[] getRawAnnotationBytes(int category) {
-        return getAccess().getRawAnnotationBytes(methodMirror, category);
+        return getAccess().getRawAnnotationBytes(vmMethodMirror, category);
     }
 
     @Override
     protected boolean hasAnnotations() {
-        return getAccess().hasAnnotations(methodMirror);
+        return getAccess().hasAnnotations(vmMethodMirror);
     }
 
     @Override
     protected boolean equals0(AbstractEspressoResolvedJavaMethod that) {
         if (that instanceof EspressoExternalResolvedJavaMethod espressoMethod) {
-            return this.methodMirror.equals(espressoMethod.methodMirror);
+            return this.vmMethodMirror.equals(espressoMethod.vmMethodMirror);
         }
         return false;
     }
 
     @Override
     protected int hashCode0() {
-        return methodMirror.hashCode();
+        return vmMethodMirror.hashCode();
     }
 
+    /// Adapts a call to a guest Espresso method, converting between [JavaConstant] values and
+    /// the polyglot [Value]s, and back. The interop implementation in the Espresso is
+    /// `com.oracle.truffle.espresso.impl.Method.Execute#invoke`.
     JavaConstant invoke(JavaConstant receiver, JavaConstant... arguments) {
         if (isStatic() || isConstructor()) {
             if (receiver != null) {
@@ -333,9 +374,24 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
         }
         Value result;
         try {
-            result = methodMirror.execute(args);
+            result = vmMethodMirror.execute(args);
         } catch (PolyglotException e) {
-            throw new InvocationException(new EspressoExternalObjectConstant(access, e.getGuestObject()), e);
+            if (e.isHostException()) {
+                Throwable hostException = e.asHostException();
+                hostException.setStackTrace(e.getStackTrace());
+                throw new InvocationException(hostException);
+            }
+            Value guestException = e.getGuestObject();
+            if (guestException == null || guestException.isNull()) {
+                throw e;
+            }
+            /*
+             * `guestException` might be a handle to the exception carrier (`EspressoException`) but
+             * we want a handle to the exception object (`StaticObject` of guest type `Throwable`)
+             */
+            guestException = access.invokeJVMCIHelper("getExceptionObject", guestException);
+            assert access.maybeUnwrapHostException(guestException) == null;
+            throw new InvocationException(new EspressoExternalObjectConstant(access, guestException), e);
         }
         if (isConstructor()) {
             return new EspressoExternalObjectConstant(access, (Value) args[0]);
@@ -345,5 +401,18 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
             return null;
         }
         return EspressoExternalConstantReflectionProvider.asJavaConstant(result, returnKind, access);
+    }
+
+    /**
+     * Gets a guest {@link java.lang.reflect.Executable} value associated with this method, creating
+     * it first if necessary.
+     */
+    Value getReflectExecutableMirror() {
+        Value value = reflectExecutableMirror;
+        if (value == null) {
+            value = getAccess().invokeJVMCIHelper("getReflectExecutable", vmMethodMirror);
+            reflectExecutableMirror = value;
+        }
+        return value;
     }
 }

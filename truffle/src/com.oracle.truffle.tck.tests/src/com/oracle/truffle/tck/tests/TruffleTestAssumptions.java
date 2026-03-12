@@ -42,13 +42,13 @@ package com.oracle.truffle.tck.tests;
 
 import java.util.regex.Pattern;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Engine;
 import org.junit.Assume;
 
 public class TruffleTestAssumptions {
     private static final boolean spawnIsolate = Boolean.getBoolean("polyglot.engine.SpawnIsolate");
     private static final boolean externalIsolate = "external".equals(System.getProperty("polyglot.engine.IsolateMode"));
-    private static final boolean aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
     public static void assumeWeakEncapsulation() {
         assumeNoIsolateEncapsulation();
@@ -129,19 +129,19 @@ public class TruffleTestAssumptions {
     }
 
     public static void assumeAOT() {
-        Assume.assumeTrue(aot);
+        Assume.assumeTrue(ImageInfo.inImageRuntimeCode());
     }
 
     public static void assumeNotAOT() {
-        Assume.assumeFalse(aot);
+        Assume.assumeFalse(ImageInfo.inImageRuntimeCode());
     }
 
     public static boolean isAOT() {
-        return aot;
+        return ImageInfo.inImageRuntimeCode();
     }
 
     public static boolean isNotAOT() {
-        return !aot;
+        return !ImageInfo.inImageRuntimeCode();
     }
 
     public static boolean isDeoptLoopDetectionAvailable() {

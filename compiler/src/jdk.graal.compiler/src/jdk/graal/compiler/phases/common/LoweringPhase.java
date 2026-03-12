@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -236,8 +236,8 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                 if (!(pred instanceof FixedWithNextNode)) {
                     // insert begin node to have a valid FixedWithNextNode to insert after
                     AbstractBeginNode begin = nextFixedNode.graph().add(new BeginNode());
-                    pred.replaceFirstSuccessor(lastFixedNode, begin);
-                    begin.setNext(lastFixedNode);
+                    pred.replaceFirstSuccessor(nextFixedNode, begin);
+                    begin.setNext(nextFixedNode);
                     lastFixedNode = begin;
                 } else {
                     lastFixedNode = (FixedWithNextNode) pred;

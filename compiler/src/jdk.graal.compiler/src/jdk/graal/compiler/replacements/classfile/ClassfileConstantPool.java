@@ -31,8 +31,8 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.List;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.ClassRef;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.ExecutableRef;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.FieldRef;

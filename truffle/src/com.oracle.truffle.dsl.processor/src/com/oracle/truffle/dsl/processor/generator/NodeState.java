@@ -224,7 +224,7 @@ public final class NodeState {
                     }
 
                     SpecializationData excludeSpecialization = null;
-                    if (cache.isUsedInGuard()) {
+                    if (cache.isUsedInGuard() || cache.isUsedInCache()) {
                         /*
                          * Inlined caches that are bound in guards must not be in the same state
                          * bitset as the dependent specialization bits. At the end of slow-path

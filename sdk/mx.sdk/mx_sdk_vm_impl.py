@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -1232,7 +1232,7 @@ class GraalVmNativeProperties(GraalVmProject):
 
 class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
-    implicit_excludes = ['substratevm:LIBRARY_SUPPORT']
+    implicit_excludes = ['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST', 'substratevm:SVM']
 
     def __init__(self, subject, args):
         """
@@ -1376,7 +1376,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             build_with_module_path = image_config.use_modules == 'image'
             if build_with_module_path:
-                export_deps_to_exclude = [str(dep) for dep in mx.classpath_entries(['substratevm:LIBRARY_SUPPORT'])] + list(_known_missing_jars)
+                export_deps_to_exclude = [str(dep) for dep in mx.classpath_entries(NativePropertiesBuildTask.implicit_excludes)] + list(_known_missing_jars)
                 build_args += image_config.get_add_exports(set(export_deps_to_exclude))
 
             requires = [arg[2:] for arg in build_args if arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:')]
@@ -2336,10 +2336,14 @@ def _get_jvm_cfg_contents(cfgs_to_add):
     }
 
     new_lines = []
+    added_lines = set()
     for _, cfg in sorted(all_cfgs.items()):
         for config in cfg['configs']:
             validate_cfg_line(config, cfg['source'])
-            new_lines.append(config.strip() + os.linesep)
+            line_to_add = config.strip()
+            if line_to_add not in added_lines:
+                new_lines.append(line_to_add + os.linesep)
+                added_lines.add(line_to_add)
     # escape things that look like string substitutions
     return re.sub(r'<[\w\-]+?(:(.+?))?>', lambda m: '<esc:' + m.group(0)[1:], ''.join(new_lines))
 

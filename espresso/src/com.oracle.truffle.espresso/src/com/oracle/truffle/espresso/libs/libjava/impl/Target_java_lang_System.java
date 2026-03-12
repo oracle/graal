@@ -81,7 +81,8 @@ public final class Target_java_lang_System {
         @TruffleBoundary
         public static @JavaType(String[].class) StaticObject platformProperties(@Inject EspressoContext ctx, @Inject TruffleIO io) {
             // Import properties from host.
-            // todo(GR-70658) add to InformationLeak.
+            // todo (GR-70658) add to InformationLeak.
+            // todo (GR-71965) we are exposing the host system
             Props props = new Props(ctx);
             String[] known = new String[props.fixedLength];
             known[props.userHomeNdx] = java.lang.System.getProperty("user.home");

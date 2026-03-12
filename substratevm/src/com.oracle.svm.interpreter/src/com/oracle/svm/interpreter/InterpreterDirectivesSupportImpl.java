@@ -34,22 +34,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.GOTHeapSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @InternalVMMethod
@@ -72,10 +72,10 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
 
         /* arguments to Log methods might have side-effects */
         if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
-            traceInterpreter("[forceInterpreterExecution] ").string(interpreterMethod.toString()).newline();
+            traceInterpreter().string("[forceInterpreterExecution] ").string(interpreterMethod.toString()).newline();
         }
 
-        int estOffset = ConfigurationValues.getTarget().wordSize * interpreterMethod.getEnterStubOffset();
+        int estOffset = ConfigurationValues.getWordSize() * interpreterMethod.getEnterStubOffset();
         Pointer estBase = InterpreterStubTable.getBaseForEnterStubTable();
         UnsignedWord estEntry = estBase.add(estOffset).readWord(0);
 
@@ -129,7 +129,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
 
         /* arguments to Log methods might have side-effects */
         if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
-            traceInterpreter("[ensureInterpreterExecution] ").string(interpreterMethod.toString()).newline();
+            traceInterpreter().string("[ensureInterpreterExecution] ").string(interpreterMethod.toString()).newline();
         }
 
         for (InterpreterResolvedJavaMethod inliner : interpreterMethod.getInlinedBy()) {
@@ -176,7 +176,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
     @Override
     public Object callIntoUnknown(Object method, Object... args) {
         InterpreterResolvedJavaMethod interpreterMethod = getInterpreterMethod(method);
-        MethodPointer calleeFtnPtr = interpreterMethod.getNativeEntryPoint();
+        CFunctionPointer calleeFtnPtr = interpreterMethod.getNativeEntryPoint();
         try {
             return InterpreterStubSection.leaveInterpreter(calleeFtnPtr, interpreterMethod, args);
         } catch (Throwable e) {

@@ -54,6 +54,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.visitors.WasmGCElementCreator;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
 import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
 import com.oracle.svm.webimage.wasm.types.WasmUtil;
@@ -241,7 +242,7 @@ public class WasmGCCloneSupport {
 
         @Override
         protected String getFunctionName(HostedInstanceClass clazz) {
-            return "clone.object." + clazz.getJavaClass().getTypeName();
+            return "clone.object." + JVMCIReflectionUtil.getTypeName(clazz);
         }
 
         @Override
@@ -253,7 +254,7 @@ public class WasmGCCloneSupport {
             WebImageWasmGCIds.JavaStruct struct = idFactory.newJavaStruct(type);
             WasmRefType wasmType = struct.asNonNull();
 
-            Function f = Function.create(idFactory, context.getId(), knownIds.cloneFieldType, getCloneFieldTypeUse(util), "Clones object of type " + type.getJavaClass().getTypeName());
+            Function f = Function.create(idFactory, context.getId(), knownIds.cloneFieldType, getCloneFieldTypeUse(util), "Clones object of type " + JVMCIReflectionUtil.getTypeName(type));
             WasmId.Local objectRef = idFactory.newTemporaryVariable(wasmType);
 
             f.getInstructions().add(objectRef.setter(new Instruction.RefCast(f.getParam(0).getter(), wasmType)));

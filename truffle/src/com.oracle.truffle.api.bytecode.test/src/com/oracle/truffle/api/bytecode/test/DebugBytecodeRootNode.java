@@ -55,7 +55,6 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
 
     static boolean traceQuickening = false;
     static boolean traceInstrumentation = false;
-    @CompilationFinal static boolean traceInstructions = false;
     @CompilationFinal static boolean traceRoots = false;
     static RootInfo currentRoot;
     static final AtomicInteger ROOT_EXECUTION_INDEX = new AtomicInteger();
@@ -70,7 +69,7 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
 
     @Override
     public void beforeRootExecute(Instruction instruction) {
-        if (traceInstructions || traceRoots) {
+        if (traceRoots) {
             currentRoot = new RootInfo(currentRoot);
         }
         if (traceRoots) {
@@ -83,7 +82,7 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
         if (traceRoots) {
             traceRootLeave(leaveInstruction, returnValue, t);
         }
-        if (traceInstructions || traceRoots) {
+        if (traceRoots) {
             currentRoot = currentRoot.prev;
         }
     }
@@ -106,20 +105,6 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
                         t == null ? returnValue : t,
                         currentRoot.instructionCount,
                         instruction);
-    }
-
-    public void beforeInstructionExecute(Instruction instruction) {
-        if (traceInstructions) {
-            traceInstruction(instruction);
-        }
-        if (traceInstructions || traceRoots) {
-            currentRoot.instructionCount++;
-        }
-    }
-
-    @TruffleBoundary
-    private static void traceInstruction(Instruction instruction) {
-        System.out.printf("  Instruction %4s %s%n", "[" + currentRoot.instructionCount + "]", instruction);
     }
 
     public void onBytecodeStackTransition(Instruction source, Instruction target) {

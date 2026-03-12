@@ -36,7 +36,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
@@ -44,11 +43,12 @@ import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.common.meta.MethodVariant;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.common.Fields;
@@ -227,10 +227,10 @@ public class AnalysisToHostedGraphTransplanter {
                 /*
                  * Queries to the HostedUniverse must be made on the original method.
                  */
-                AnalysisMethod aOrig = aMethod.getMultiMethod(MultiMethod.ORIGINAL_METHOD);
+                AnalysisMethod aOrig = aMethod.getMethodVariant(MethodVariant.ORIGINAL_METHOD);
                 assert aOrig != null;
                 HostedMethod hOrig = universe.lookup(aOrig);
-                HostedMethod hMethod = hOrig.getMultiMethod(aMethod.getMultiMethodKey());
+                HostedMethod hMethod = hOrig.getMethodVariant(aMethod.getMethodVariantKey());
                 assert hMethod != null;
                 return hMethod;
             }
@@ -339,7 +339,7 @@ public class AnalysisToHostedGraphTransplanter {
             MethodPointer methodPointer = methodPointerConstant.pointer();
             ResolvedJavaMethod method = methodPointer.getMethod();
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
-            newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod));
+            newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod, methodPointer.permitsRewriteToPLT()));
 
         } else if (obj.getClass() == SubstrateMethodOffsetConstant.class) {
             SubstrateMethodOffsetConstant methodOffsetConstant = (SubstrateMethodOffsetConstant) obj;

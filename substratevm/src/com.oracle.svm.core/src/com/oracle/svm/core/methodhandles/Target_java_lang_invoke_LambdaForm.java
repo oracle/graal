@@ -33,7 +33,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 @TargetClass(className = "java.lang.invoke.LambdaForm")
 public final class Target_java_lang_invoke_LambdaForm {

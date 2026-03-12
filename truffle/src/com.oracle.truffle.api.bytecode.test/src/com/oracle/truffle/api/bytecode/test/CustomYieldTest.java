@@ -76,8 +76,8 @@ import com.oracle.truffle.api.bytecode.Yield;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
-import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.ErrorLanguage;
+import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -88,8 +88,8 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -133,7 +133,7 @@ public class CustomYieldTest {
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         nodes.serialize(new DataOutputStream(output), SERIALIZER);
-        Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+        Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
         BytecodeRootNodes<CustomYieldTestRootNode> deserialized = CustomYieldTestRootNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
         CustomYieldTestRootNode root = deserialized.getNode(0);
 
@@ -218,7 +218,8 @@ public class CustomYieldTest {
             assertEquals(BytecodeTier.UNCACHED, result.root().getSourceRootNode().getBytecodeNode().getTier());
             assertEquals(123, result.continueWith(123));
         }
-        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
+        // After 5 calls + resumes, the node will transition to cached on the next call.
+        assertEquals(BytecodeTier.UNCACHED, root.getBytecodeNode().getTier());
         CustomYieldResult result = (CustomYieldResult) root.getCallTarget().call(42);
         assertEquals(42, result.value());
         assertEquals(BytecodeTier.CACHED, result.root().getSourceRootNode().getBytecodeNode().getTier());
@@ -360,7 +361,7 @@ public class CustomYieldTest {
         assertEquals(BytecodeTier.UNCACHED, result.root().getSourceRootNode().getBytecodeNode().getTier());
         assertEquals(123, result.continueWith(123));
 
-        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
+        assertEquals(BytecodeTier.UNCACHED, root.getBytecodeNode().getTier());
         result = (CustomYieldResult) root.getCallTarget().call(21);
         assertEquals(42, result.value());
         assertEquals(BytecodeTier.CACHED, result.root().getSourceRootNode().getBytecodeNode().getTier());
@@ -457,7 +458,7 @@ public class CustomYieldTest {
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         nodes.serialize(new DataOutputStream(output), SERIALIZER);
-        Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+        Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
         BytecodeRootNodes<ComplexCustomYieldTestRootNode> deserialized = ComplexCustomYieldTestRootNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
         ComplexCustomYieldTestRootNode root = deserialized.getNode(0);
 
@@ -548,8 +549,8 @@ public class CustomYieldTest {
         ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(2);
         assertEquals(42, cont.getResult());
         AbstractInstructionTest.assertInstructions(root,
-                        "load.argument$Int",
-                        "c.AddConstantsYield$Int",
+                        "load.argument",
+                        "c.AddConstantsYield",
                         "return");
         assertEquals(123, cont.continueWith(123));
 
@@ -596,7 +597,7 @@ public class CustomYieldTest {
             assertEquals(BytecodeTier.UNCACHED, result.root().getSourceRootNode().getBytecodeNode().getTier());
             assertEquals(123, result.continueWith(123));
 
-            assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
+            assertEquals(BytecodeTier.UNCACHED, root.getBytecodeNode().getTier());
             result = (CustomYieldResult) root.getCallTarget().call(19);
             assertEquals("no result", result.value());
             assertEquals(BytecodeTier.CACHED, result.root().getSourceRootNode().getBytecodeNode().getTier());
@@ -641,7 +642,7 @@ public class CustomYieldTest {
             assertEquals(BytecodeTier.UNCACHED, cont.getContinuationRootNode().getSourceRootNode().getBytecodeNode().getTier());
             assertEquals(123, cont.continueWith(123));
 
-            assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
+            assertEquals(BytecodeTier.UNCACHED, root.getBytecodeNode().getTier());
             cont = (ContinuationResult) root.getCallTarget().call(19);
             assertEquals(21, cont.getResult());
             assertEquals(BytecodeTier.CACHED, cont.getContinuationRootNode().getSourceRootNode().getBytecodeNode().getTier());
@@ -678,6 +679,7 @@ public class CustomYieldTest {
 
             ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(0);
             assertEquals(2, cont.getResult());
+
             assertEquals(123, cont.continueWith(123));
 
             cont = (ContinuationResult) root.getCallTarget().call(0);

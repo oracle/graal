@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.HeapChunk;
@@ -39,9 +40,9 @@ import com.oracle.svm.core.genscavenge.remset.AlignedChunkRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 
 /**
  * {@link PlanningVisitor} decides where objects will be moved and uses the methods of this class to
@@ -67,7 +68,7 @@ import jdk.graal.compiler.word.Word;
  * </ul>
  * The binary layout is as follows, with sizes given for both 8-byte/4-byte object references. The
  * fields are arranged so that accesses to them are aligned.
- * 
+ *
  * <pre>
  * ------------------------+======================+==============+=========================+-------------------
  *  ... gap (unused bytes) | new location (8B/4B) | size (4B/2B) | next seq offset (4B/2B) | live objects ...
@@ -168,7 +169,7 @@ public final class ObjectMoveInfo {
      * @see HeapChunk#walkObjectsFrom
      * @see AlignedHeapChunk#walkObjects
      */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     public static void walkObjectsForFixup(AlignedHeapChunk.AlignedHeader chunk, ObjectFixupVisitor visitor) {
         FirstObjectTable.initializeTable(AlignedChunkRememberedSet.getFirstObjectTableStart(chunk), AlignedChunkRememberedSet.getFirstObjectTableSize());
 
@@ -200,7 +201,7 @@ public final class ObjectMoveInfo {
                 visitor.visitObject(obj);
                 p = p.add(objSize);
             }
-            if (nextObjSeq.isNonNull() && chunk.getShouldSweepInsteadOfCompact()) {
+            if (nextObjSeq.isNonNull() && chunk.getSweep()) {
                 // We will write a filler object here, add the location to the first object table.
                 assert p.belowThan(nextObjSeq);
                 UnsignedWord offset = p.subtract(AlignedHeapChunk.getObjectsStart(chunk));

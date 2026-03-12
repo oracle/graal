@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,17 +26,13 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import static com.oracle.svm.webimage.functionintrinsics.JSCallNode.SHOULD_NOT_REACH_HERE;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.webimage.api.JSValue;
 
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
 import com.oracle.svm.hosted.webimage.LowerableFile;
@@ -44,6 +40,7 @@ import com.oracle.svm.hosted.webimage.WebImageHostedConfiguration;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSKeyword;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.webimage.annotation.WebImage;
 import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
@@ -140,9 +137,9 @@ public class JSCodeGenTool extends CodeGenTool {
         genComment(type.toJavaName(true), WebImageOptions.CommentVerbosity.MINIMAL);
         if (WebImageOptions.ClosureCompiler.getValue()) {
             MetaAccessProvider meta = getProviders().getMetaAccess();
-            if (meta.lookupJavaType(JSValue.class).isAssignableFrom(type) || meta.lookupJavaType(Class.class).equals(type)) {
-                // We assign the javaNative property to JSValue instances and to certain hub
-                // objects, so we need bracket access.
+            if (meta.lookupJavaType(Class.class).equals(type)) {
+                // We assign various hidden fields to Class instances (e.g. the symbol of the JS
+                // class or the corresponding boxed hub)
                 codeBuffer.emitText("/** @unrestricted */");
                 codeBuffer.emitNewLine();
             }
@@ -389,28 +386,13 @@ public class JSCodeGenTool extends CodeGenTool {
     }
 
     @Override
-    public void genFieldName(Field field) {
-        genFieldName(getProviders().getMetaAccess().lookupJavaField(field));
-    }
-
-    @Override
     public void genTypeName(ResolvedJavaType type) {
         codeBuffer.emitText(getJSProviders().typeControl().requestTypeName(type));
     }
 
     @Override
-    public void genTypeName(Class<?> type) {
-        genTypeName(getProviders().getMetaAccess().lookupJavaType(type));
-    }
-
-    @Override
     public void genMethodName(ResolvedJavaMethod method) {
         codeBuffer.emitText(getJSProviders().typeControl().requestMethodName(method));
-    }
-
-    @Override
-    public void genMethodName(Method method) {
-        genMethodName(getProviders().getMetaAccess().lookupJavaMethod(method));
     }
 
     @Override

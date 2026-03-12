@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.svm.core.code.InstalledCodeObserver;
@@ -44,7 +45,6 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.posix.debug.jitdump.JitdumpProvider;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.word.Word;
 
 public class PosixPerfSubstrateDebugInfoWriter implements SubstrateDebugInfoWriter {
 

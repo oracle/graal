@@ -42,21 +42,21 @@ import java.util.stream.Stream;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 
-import com.oracle.svm.core.option.LayerVerifiedOption;
-import com.oracle.svm.core.option.LayerVerifiedOption.Kind;
-import com.oracle.svm.core.option.LayerVerifiedOption.Severity;
-import com.oracle.svm.core.option.OptionOrigin;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.EnvVariableUtils;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport.OptionLayerVerificationRequests;
 import com.oracle.svm.hosted.imagelayer.LoadLayerArchiveSupport.ArgumentOrigin.NameValue;
 import com.oracle.svm.hosted.util.DiffTool;
 import com.oracle.svm.hosted.util.DiffTool.DiffResult;
-import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.shared.option.LayerVerifiedOption;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Kind;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Severity;
+import com.oracle.svm.shared.option.OptionOrigin;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.VMError;
 
 public class LoadLayerArchiveSupport extends LayerArchiveSupport {
 

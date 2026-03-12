@@ -28,7 +28,7 @@ import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer.Options;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;

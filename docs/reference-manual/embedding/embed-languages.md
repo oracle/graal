@@ -406,29 +406,28 @@ Polyglot Truffle runtimes can be used on several host virtual machines with vary
 Runtime optimization of guest application code is crucial for the efficient execution of embedded guest applications.
 This table shows the level of optimizations the Java runtimes currently provide:
 
-| Java Runtime                                  | Runtime Optimization Level                          |
-|-----------------------------------------------|-----------------------------------------------------|
-| Oracle GraalVM                                | Best (includes additional compiler optimizations)   |
-| GraalVM Community Edition                     | Optimized                                           |
-| Oracle JDK                                    | Optimized via VM option                             |
-| OpenJDK                                       | Optimized via VM option and `--upgrade-module-path` |
-| JDK without JVMCI capability                  | No runtime optimizations (interpreter-only)         |
+| Java Runtime                                  | Runtime Optimization Level                            |
+|-----------------------------------------------|-------------------------------------------------------|
+| Oracle GraalVM                                | Best (includes additional compiler optimizations)     |
+| GraalVM Community Edition                     | Optimized                                             |
+| Oracle JDK                                    | Optimized via VM option (up to 25.0 LTS)              |
+| OpenJDK                                       | Optimized via VM option and `--upgrade-module-path` (up to 25.0 LTS) |
+| JDK without JVMCI capability                  | No runtime optimizations (interpreter-only)           |
 
 ### Explanations
 
 * **Optimized:** Executed guest application code can be compiled and executed as highly efficient machine code at run time.
 * **Optimized with additional compiler passes:** Oracle GraalVM implements additional optimizations performed during runtime compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better runtime performance and memory consumption.
-* **Optimized via VM option:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher.
-* **Optimized via VM option and `--upgrade-module-path`:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher. Additionally, the Graal compiler must be downloaded as a JAR file and specified to the `java` launcher with `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application.
+* **Optimized via VM option:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher. This configuration is supported up to Polyglot 25.0 LTS. Starting with Polyglot 25.1, plain Oracle JDK uses the fallback runtime instead.
+* **Optimized via VM option and `--upgrade-module-path`:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher. Additionally, the Graal compiler must be downloaded as a JAR file and specified to the `java` launcher with `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application. This configuration is supported up to Polyglot 25.0 LTS. Starting with Polyglot 25.1, plain OpenJDK uses the fallback runtime instead.
 * **No runtime optimizations:** With no runtime optimizations or if JVMCI is not enabled, the guest application code is executed in interpreter-only mode.
 * **JVMCI:** Refers to the [Java-Level JVM Compiler Interface](https://openjdk.org/jeps/243) supported by most Java runtimes.
 
-A project has been created to enable runtime optimization by default for Oracle JDK and OpenJDK.
-See [Project Galahad](https://openjdk.org/projects/galahad/) for further details.
-
 ### Enable Optimization on OpenJDK and Oracle JDK
 
-When running on a JDK runtime optimization enabled by default, such as OpenJDK, you might see a warning like this:
+The configurations described below are supported up to Polyglot 25.0 LTS. Starting with Polyglot 25.1, plain OpenJDK and Oracle JDK no longer support the optimizing Truffle runtime and use the fallback runtime instead. If you need the optimizing runtime on these JDKs, continue using the 25.0 LTS release.
+
+When running on OpenJDK or Oracle JDK with Polyglot 25.1 or later, you might see a warning like this:
 
 ```
 [engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to machine code.
@@ -437,13 +436,13 @@ Execution without runtime compilation will negatively impact the guest applicati
 
 This indicates that the guest application is executed with no runtime optimizations enabled.
 The warning can be suppressed by either suppressing using the `--engine.WarnInterpreterOnly=false` option or the `-Dpolyglot.engine.WarnInterpreterOnly=false` system property.
-In addition, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`.
+If you are using Polyglot 25.0 LTS or earlier, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`.
 Note that `compiler.jar` must *not* be put on the module or class path.
 Refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) for an example configuration using Maven or Gradle.
 
 ### Switching to the Fallback Engine
 
-If the need arises, for example, running only trivial scripts or in the resource-constrained systems, you may want to switch to the fallback engine without runtime optimizations.
+If the need arises, for example, when running only trivial scripts or on resource-constrained systems, you may want to switch to the fallback engine without runtime optimizations.
 Since Polyglot version 23.1, the fallback engine can be activated by removing the `truffle-runtime` and `truffle-enterprise` modules from the class or module path.
 
 This can be achieved with Maven like this:

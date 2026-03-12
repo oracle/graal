@@ -29,17 +29,17 @@ import static jdk.graal.compiler.core.common.calc.UnsignedMath.aboveThan;
 import static jdk.graal.compiler.core.common.calc.UnsignedMath.belowOrEqual;
 import static jdk.graal.compiler.core.common.calc.UnsignedMath.belowThan;
 
-import jdk.graal.compiler.word.Word;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.util.List;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
+
+import org.graalvm.word.Pointer;
+import org.graalvm.word.SignedWord;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
+import org.graalvm.word.WordFactory;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * Tests word operations on boxed values produced by {@link WordFactory} and {@link Word}.
@@ -75,13 +75,13 @@ public class WordTests {
     }
 
     static List<SignedWord> signedWords = Stream.concat(
-                    LongStream.of(words).mapToObj(org.graalvm.word.WordFactory::signed),
+                    LongStream.of(words).mapToObj(Word::signed),
                     LongStream.of(words).mapToObj(WordTests::graalSigned)).toList();
     static List<UnsignedWord> unsignedWords = Stream.concat(
-                    LongStream.of(words).mapToObj(org.graalvm.word.WordFactory::unsigned),
+                    LongStream.of(words).mapToObj(Word::unsigned),
                     LongStream.of(words).mapToObj(WordTests::graalUnsigned)).toList();
     static List<Pointer> pointers = Stream.concat(
-                    LongStream.of(words).mapToObj(org.graalvm.word.WordFactory::pointer),
+                    LongStream.of(words).mapToObj(Word::pointer),
                     LongStream.of(words).mapToObj(WordTests::graalPointer)).toList();
 
     @Test

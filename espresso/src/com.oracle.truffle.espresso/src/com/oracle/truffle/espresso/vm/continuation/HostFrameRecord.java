@@ -223,7 +223,7 @@ public final class HostFrameRecord {
 
             StaticObject[] pointers = pointersGuest.unwrap(language);
             long[] primitives = primitivesGuest.unwrap(language);
-            Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
+            Method method = Method.getVMMethod(methodGuest, meta);
             EspressoFrameDescriptor fd = method.getMethodVersion().getFrameDescriptor(bci);
 
             HostFrameRecord next = new HostFrameRecord(fd,

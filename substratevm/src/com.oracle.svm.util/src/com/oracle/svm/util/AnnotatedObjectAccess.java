@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import com.oracle.svm.shared.util.ReflectionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -64,6 +65,22 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 public class AnnotatedObjectAccess {
 
     /**
+     * Gets the annotation of type {@code annotationType} from {@code element} as an
+     * {@link AnnotationValue} object.
+     *
+     * @param element the annotated element to retrieve the annotation value from
+     * @param annotationType the type of annotation to retrieve
+     * @return the annotation value of the specified type, or null if no such annotation exists
+     */
+    public <T extends Annotation> AnnotationValue getAnnotationValue(Annotated element, Class<T> annotationType) {
+        // Checkstyle: allow direct annotation access
+        Inherited inherited = annotationType.getAnnotation(Inherited.class);
+        // Checkstyle: disallow direct annotation access
+        Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
+        return annotationValues.get(GuestAccess.get().lookupType(annotationType));
+    }
+
+    /**
      * Gets the annotation of type {@code annotationType} from {@code element}.
      *
      * @param element the annotated element to retrieve the annotation value from
@@ -71,11 +88,7 @@ public class AnnotatedObjectAccess {
      * @return the annotation value of the specified type, or null if no such annotation exists
      */
     public <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
-        // Checkstyle: allow direct annotation access
-        Inherited inherited = annotationType.getAnnotation(Inherited.class);
-        // Checkstyle: disallow direct annotation access
-        Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
-        AnnotationValue annotationValue = annotationValues.get(GraalAccess.lookupType(annotationType));
+        AnnotationValue annotationValue = getAnnotationValue(element, annotationType);
         if (annotationValue != null) {
             return asAnnotation(annotationValue, annotationType);
         }
@@ -84,7 +97,8 @@ public class AnnotatedObjectAccess {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static AnnotationValue toAnnotationValue(Annotation annotation) {
-        ResolvedJavaType type = GraalAccess.lookupType(annotation.annotationType());
+        Class<?> cls = annotation.annotationType();
+        ResolvedJavaType type = GuestAccess.get().lookupType(cls);
         Map<String, Object> values = AnnotationSupport.memberValues(annotation);
         Map.Entry<String, Object>[] elements = new Map.Entry[values.size()];
         int i = 0;
@@ -112,9 +126,10 @@ public class AnnotatedObjectAccess {
      * @return the JVMCI representation of the same value
      */
     private static Object toAnnotationValueElement(Object aElement) {
+        final GuestAccess access = GuestAccess.get();
         return switch (aElement) {
-            case Enum<?> ev -> new EnumElement(GraalAccess.lookupType(aElement.getClass()), ev.name());
-            case Class<?> cls -> GraalAccess.lookupType(cls);
+            case Enum<?> ev -> new EnumElement(access.lookupType(aElement.getClass()), ev.name());
+            case Class<?> cls -> access.lookupType(cls);
             case Annotation a -> toAnnotationValue(a);
             case TypeNotPresentExceptionProxy proxy -> new MissingType(proxy.typeName(), proxy.getCause());
             default -> {
@@ -264,7 +279,7 @@ public class AnnotatedObjectAccess {
     @SuppressWarnings("unchecked")
     protected <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType, boolean declaredOnly) {
         Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, declaredOnly);
-        AnnotationValue annotation = annotationValues.get(GraalAccess.lookupType(annotationType));
+        AnnotationValue annotation = annotationValues.get(GuestAccess.get().lookupType(annotationType));
         if (annotation != null) {
             return toAnnotation(annotation, annotationType);
         }
@@ -290,7 +305,7 @@ public class AnnotatedObjectAccess {
             // Checkstyle: allow direct annotation access
             Inherited inherited = annotationType.getAnnotation(Inherited.class);
             // Checkstyle: disallow direct annotation access
-            return getAnnotationValues(element, inherited == null).containsKey(GraalAccess.lookupType(annotationType));
+            return getAnnotationValues(element, inherited == null).containsKey(GuestAccess.get().lookupType(annotationType));
         } catch (LinkageError e) {
             /*
              * Returning false essentially means that the element doesn't declare the
@@ -314,13 +329,12 @@ public class AnnotatedObjectAccess {
         List<AnnotationValue> annotationValues = new ArrayList<>();
         Annotated root = unwrap(element, annotationValues);
         if (root instanceof AnnotationsContainer ac) {
-            List<Annotation> annotations = ac.getContainedAnnotations();
-            if (annotations.isEmpty()) {
+            List<AnnotationValue> containedAnnotations = ac.getContainedAnnotations();
+            if (containedAnnotations.isEmpty()) {
                 return Map.of();
             }
-            result = new EconomicHashMap<>(annotations.size());
-            for (var a : annotations) {
-                AnnotationValue annotationValue = toAnnotationValue(a);
+            result = new EconomicHashMap<>(containedAnnotations.size());
+            for (var annotationValue : containedAnnotations) {
                 result.put(annotationValue.getAnnotationType(), annotationValue);
             }
         } else {
@@ -334,7 +348,7 @@ public class AnnotatedObjectAccess {
             if (!annotationValues.isEmpty()) {
                 result = new EconomicHashMap<>(annotationValues.size());
                 for (AnnotationValue a : annotationValues) {
-                    ResolvedJavaType annotationType = a.isError() ? ANNOTATION_FORMAT_ERROR_TYPE : a.getAnnotationType();
+                    ResolvedJavaType annotationType = a.isError() ? getAnnotationFormatErrorType() : a.getAnnotationType();
                     result.put(annotationType, a);
                 }
             }
@@ -393,9 +407,12 @@ public class AnnotatedObjectAccess {
     }
 
     /**
-     * Annotation type for a {@link AnnotationValue#isError() value representing a parse error}.
+     * Gets the annotation type for a {@link AnnotationValue#isError() value representing a parse
+     * error}.
      */
-    public static final ResolvedJavaType ANNOTATION_FORMAT_ERROR_TYPE = GraalAccess.lookupType(Void.TYPE);
+    private static ResolvedJavaType getAnnotationFormatErrorType() {
+        return GuestAccess.get().lookupType(Void.TYPE);
+    }
 
     /**
      * Annotation parser function stored as a singleton as recommended by
@@ -409,9 +426,9 @@ public class AnnotatedObjectAccess {
         try {
             return AnnotationValueParser.parseAnnotations(info.bytes(), info.constPool(), container);
         } catch (AnnotationFormatError e) {
-            return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(e));
+            return Map.of(getAnnotationFormatErrorType(), new AnnotationValue(e));
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
-            return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(new AnnotationFormatError(e)));
+            return Map.of(getAnnotationFormatErrorType(), new AnnotationValue(new AnnotationFormatError(e)));
         }
     };
 

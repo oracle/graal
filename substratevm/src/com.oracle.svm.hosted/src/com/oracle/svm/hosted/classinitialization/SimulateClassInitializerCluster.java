@@ -29,7 +29,7 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
 
 /**
  * See {@link SimulateClassInitializerSupport} for an overview of class initializer simulation.
@@ -43,6 +43,6 @@ public final class SimulateClassInitializerCluster {
     SimulateClassInitializerCluster(SimulateClassInitializerSupport support, BigBang bb) {
         this.support = support;
         this.bb = bb;
-        this.providers = bb.getProviders(MultiMethod.ORIGINAL_METHOD);
+        this.providers = bb.getProviders(MethodVariant.ORIGINAL_METHOD);
     }
 }

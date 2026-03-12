@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
-
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Apply an ObjectVisitor to all the new Objects in a Space since a snapshot.
@@ -75,7 +76,7 @@ final class GreyObjectsWalker {
     }
 
     @NeverInline("Split the GC into reasonable compilation units")
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = CORE_GC_CODE)
     void walkGreyObjects() {
         while (haveGreyObjects()) {
             walkAlignedGreyObjects();
@@ -84,7 +85,7 @@ final class GreyObjectsWalker {
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     private void walkAlignedGreyObjects() {
         AlignedHeapChunk.AlignedHeader aChunk;
         Pointer aStart;

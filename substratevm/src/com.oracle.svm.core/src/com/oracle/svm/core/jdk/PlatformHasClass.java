@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.function.Predicate;
 
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 /** A predicate to tell whether this platform includes the argument class. */
 final class PlatformHasClass implements Predicate<String> {

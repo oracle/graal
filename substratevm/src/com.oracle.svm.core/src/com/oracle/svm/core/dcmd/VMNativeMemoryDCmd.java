@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 public class VMNativeMemoryDCmd extends AbstractDCmd {
     private static final DCmdOption<Boolean> SUMMARY = new DCmdOption<>(Boolean.class, "summary",

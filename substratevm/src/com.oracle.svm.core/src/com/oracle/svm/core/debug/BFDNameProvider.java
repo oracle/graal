@@ -31,12 +31,13 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.List;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -83,7 +84,7 @@ public class BFDNameProvider implements UniqueShortNameProvider {
         if (isGraalImageLoader(loader)) {
             return "";
         }
-        String name = SubstrateUtil.runtimeClassLoaderNameAndId(loader);
+        String name = BuilderUtil.runtimeClassLoaderNameAndId(loader);
         // name will look like "org.foo.bar.FooBarClassLoader @1234"
         // trim it down to something more manageable
         // escaping quotes in the classlaoder name does not work in GDB
@@ -378,7 +379,7 @@ public class BFDNameProvider implements UniqueShortNameProvider {
          *
          * int Arrays.NaturalOrder.compare(Object first, Object second)
          *      -> _ZN19Arrays$NaturalOrder7compareEJiPP16java.lang.ObjectPS_2
-         * 
+         *
          * In this case the class name symbol 19Arrays$NaturalOrder binds $_ to Arrays$NaturalOrder,
          * the method name symbol 7compare binds $1_ to Arrays$NaturalOrder::compareTo and the
          * first parameter type name symbol 16java.lang.Object binds $2_ to java.lang.Object.

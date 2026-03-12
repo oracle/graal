@@ -29,9 +29,11 @@ import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.shared.resolver.CallKind;
 import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
 
 /**
@@ -63,9 +65,19 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
     boolean shouldSkipLoadingConstraints();
 
     /**
-     * Whether this method appears in a VTable, and its VTable index is initialized.
+     * Returns whether interface dispatching is required when executing a
+     * {@linkplain CallKind#isDirectCall() non-direct} call-site whose declared holder is
+     * {@code symbolicReceiver}.
+     * <p>
+     * For {@linkplain Bytecodes#isInvoke invoke bytecodes} call-sites, the declared holder is the
+     * class referenced in the constant pool by the {@code CONSTANT_MethodRef_info} this call-site
+     * references (see jvms-4.4.2).
+     *
+     * @implNote A simple implementation is checking that this method has an initialized virtual
+     *           dispatch index, and that the entry in the virtual table of {@code symbolicReceiver}
+     *           at that index represents this method.
      */
-    boolean hasVTableIndex();
+    boolean requiresInterfaceDispatch(C symbolicReceiver);
 
     /**
      * The {@link CodeAttribute} associated with this method.

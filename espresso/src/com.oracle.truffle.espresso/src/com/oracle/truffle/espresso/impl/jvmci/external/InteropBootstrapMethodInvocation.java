@@ -45,6 +45,28 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.jvmci.JVMCIConstantPoolUtils.BootstrapMethodInvocationBuilder;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
+/**
+ * Interop object used to build {@code BootstrapMethodInvocation} objects in
+ * {@code EspressoExternalConstantPool}.
+ * <p>
+ * Bootstrap static arguments are encoded into the {@linkplain InteropLibrary#hasArrayElements array
+ * trait} of this object. Other implementations may signal an unresolved entry by producing a raw
+ * {@link Integer} corresponding to the unresolved entry's constant pool index. Since it is
+ * difficult to distinguish a host {@link Integer} from a guest {@link Integer} over the interop
+ * boundary, we need another way to distinguish an unresolved entry from a resolved {@code Integer}
+ * entry. The following scheme is used:
+ * <ul>
+ * <li>If static argument {@code i} is resolved, it will be available as array element {@code 2 * i}
+ * and array element {@code 2 * i + 1} will be {@linkplain InteropLibrary#isNull null}.</li>
+ * <li>Otherwise the constant pool index of that static argument will be available as array element
+ * {@code 2 * i + 1} and array element {@code 2 * i} will be {@linkplain InteropLibrary#isNull
+ * null}.</li>
+ * </ul>
+ * Note that {@linkplain InteropLibrary#isNull null} might be a valid, resolved, static argument
+ * value (e.g., as a constant-dynamic result). As a result the only safe way to distinguish a
+ * resolved and an unresolved case is to check whether {@code 2 * i + 1} is
+ * {@linkplain InteropLibrary#isNull null}.
+ */
 @ExportLibrary(InteropLibrary.class)
 public final class InteropBootstrapMethodInvocation implements TruffleObject, BootstrapMethodInvocationBuilder {
     private static final KeysArray<String> ALL_MEMBERS;
@@ -56,33 +78,41 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
                         ReadMember.IS_INDY,
                         ReadMember.NAME,
                         ReadMember.BOOTSTRAP_METHOD,
+                        ReadMember.CPI,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
     }
 
+    private final int entryCpi;
     private Object[] staticArguments;
     private boolean isIndy;
     private Method bootstrapMethod;
     private Symbol<Name> name;
     private StaticObject type;
 
+    InteropBootstrapMethodInvocation(int entryCpi) {
+        this.entryCpi = entryCpi;
+    }
+
     @Override
     public void setupStaticArguments(int length) {
         assert staticArguments == null;
-        staticArguments = new Object[length];
+        staticArguments = new Object[length * 2];
     }
 
     @Override
     public void staticArgument(int i, StaticObject value) {
-        assert staticArguments[i] == null;
-        staticArguments[i] = value;
+        assert staticArguments[i * 2] == null && staticArguments[i * 2 + 1] == null : "staticArguments@%d = [%s, %s]".formatted(i * 2, staticArguments[i * 2], staticArguments[i * 2 + 1]);
+        staticArguments[i * 2] = value;
+        staticArguments[i * 2 + 1] = StaticObject.NULL;
     }
 
     @Override
     public void staticArgumentUnresolvedDynamic(int i, int cpi) {
-        assert staticArguments[i] == null;
-        staticArguments[i] = i;
+        assert staticArguments[i * 2] == null && staticArguments[i * 2 + 1] == null : "staticArguments@%d = [%s, %s]".formatted(i * 2, staticArguments[i * 2], staticArguments[i * 2 + 1]);
+        staticArguments[i * 2] = StaticObject.NULL;
+        staticArguments[i * 2 + 1] = cpi;
     }
 
     @Override
@@ -107,6 +137,7 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
         static final String IS_INDY = "isIndy";
         static final String NAME = "name";
         static final String BOOTSTRAP_METHOD = "bootstrapMethod";
+        static final String CPI = "cpi";
 
         @Specialization(guards = "TYPE.equals(member)")
         static StaticObject type(InteropBootstrapMethodInvocation receiver, @SuppressWarnings("unused") String member) {
@@ -130,6 +161,12 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
         static Method bootstrapMethod(InteropBootstrapMethodInvocation receiver, @SuppressWarnings("unused") String member) {
             assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
             return receiver.bootstrapMethod;
+        }
+
+        @Specialization(guards = "CPI.equals(member)")
+        static int cpi(InteropBootstrapMethodInvocation receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.entryCpi;
         }
 
         @Fallback

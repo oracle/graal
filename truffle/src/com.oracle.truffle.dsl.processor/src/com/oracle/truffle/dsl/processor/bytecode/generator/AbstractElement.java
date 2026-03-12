@@ -51,6 +51,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -92,6 +93,10 @@ abstract class AbstractElement extends CodeTypeElement implements ElementHelpers
 
     protected final DeclaredType declaredType(Class<?> t) {
         return context.getDeclaredType(t);
+    }
+
+    protected final BytecodeDSLModel model() {
+        return parent.model;
     }
 
 }

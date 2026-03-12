@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.c.query;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;

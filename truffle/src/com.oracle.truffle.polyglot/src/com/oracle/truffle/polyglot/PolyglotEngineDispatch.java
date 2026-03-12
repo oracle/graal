@@ -53,6 +53,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.impl.TruffleVersions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -202,7 +203,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     public String getVersion(Object oreceiver) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
-            return receiver.getVersion();
+            return TruffleVersions.readTruffleAPIVersion().toString();
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(receiver, t);
         }

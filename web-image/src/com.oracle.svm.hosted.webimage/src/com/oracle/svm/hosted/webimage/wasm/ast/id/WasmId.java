@@ -31,7 +31,7 @@ import com.oracle.svm.hosted.webimage.wasm.ast.ImportDescriptor;
 import com.oracle.svm.hosted.webimage.wasm.ast.Instruction;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
-import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.NumUtil;

@@ -22,8 +22,9 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import org.graalvm.nativeimage.ImageInfo;
+
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 
 /**
@@ -34,7 +35,7 @@ import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 public class DisableSignals {
     // avoid the installation of a signal handler except on SVM and not with llvm or espresso libs
     public static boolean standardFilter(EspressoLanguage language) {
-        return language.useEspressoLibs() || !EspressoOptions.RUNNING_ON_SVM || (language.nativeBackendId().equals(NFISulongNativeAccess.Provider.ID));
+        return language.useEspressoLibs() || !ImageInfo.inImageRuntimeCode() || language.nativeBackendId().equals(NFISulongNativeAccess.Provider.ID);
     }
 
     // various filters

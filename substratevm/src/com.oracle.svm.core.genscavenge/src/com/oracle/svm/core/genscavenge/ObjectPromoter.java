@@ -24,16 +24,17 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CORE_GC_CODE;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.ObjectAccess;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -42,31 +43,30 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.thread.VMOperation;
-
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /** Promotes individual objects or whole heap chunks to a target {@link Space}. */
 public class ObjectPromoter {
     /** Promote an aligned Object to the target Space. */
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     static Object copyAlignedObject(Object original, Space originalSpace, Space targetSpace) {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert originalSpace.isFromSpace() || (originalSpace == targetSpace && targetSpace.isCompactingOldSpace());
 
         Object copy = copyAlignedObject(original, targetSpace);
         if (copy != null) {
-            ObjectHeaderImpl.getObjectHeaderImpl().installForwardingPointer(original, copy);
+            ObjectHeaderImpl.installForwardingPointer(original, copy);
         }
         return copy;
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     private static Object copyAlignedObject(Object originalObj, Space targetSpace) {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
+        assert !ObjectHeaderImpl.isMarked(originalObj) : "must never copy a marked object";
 
         UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, false);
         UnsignedWord copySize = originalSize;
@@ -120,26 +120,19 @@ public class ObjectPromoter {
         return copy;
     }
 
-    /** Promote an AlignedHeapChunk by moving it to the target space. */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace, Space targetSpace) {
+    @Uninterruptible(reason = CORE_GC_CODE)
+    static void promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace, Space targetSpace) {
         assert targetSpace != originalSpace && originalSpace.isFromSpace();
+        assert chunk.getObjectPinCount() != 0 : "should be used only with pinned objects";
 
         originalSpace.extractAlignedHeapChunk(chunk);
         targetSpace.appendAlignedHeapChunk(chunk);
 
-        if (targetSpace.isOldSpace()) {
-            if (originalSpace.isYoungSpace()) {
-                RememberedSet.get().enableRememberedSetForChunk(chunk);
-            } else {
-                assert originalSpace.isOldSpace();
-                RememberedSet.get().clearRememberedSet(chunk);
-            }
-        }
+        /* If necessary, the remembered set will be rebuilt while sweeping. */
     }
 
     /** Promote an UnalignedHeapChunk by moving it to the target Space. */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     static void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace, Space targetSpace) {
         assert targetSpace != originalSpace && originalSpace.isFromSpace();
 
@@ -160,7 +153,7 @@ public class ObjectPromoter {
      * Allocate memory from an AlignedHeapChunk in the target Space.
      */
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     private static Pointer allocateMemory(UnsignedWord objectSize, Space targetSpace) {
         Pointer result = Word.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
@@ -175,7 +168,7 @@ public class ObjectPromoter {
         return allocateInNewChunk(objectSize, targetSpace);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private static Pointer allocateInNewChunk(UnsignedWord objectSize, Space targetSpace) {
         AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk(targetSpace);
         if (newChunk.isNonNull()) {
@@ -184,7 +177,7 @@ public class ObjectPromoter {
         return Word.nullPointer();
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = CORE_GC_CODE)
     private static AlignedHeapChunk.AlignedHeader requestAlignedHeapChunk(Space targetSpace) {
         AlignedHeapChunk.AlignedHeader chunk;
         if (targetSpace.isYoungSpace()) {

@@ -43,7 +43,7 @@ public final class Target_sun_nio_fs_TruffleFileStore {
     @Substitution
     public static boolean isReadOnly0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path,
                     @Inject TruffleIO io, @Inject EspressoContext context) {
-        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path);
+        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path);
         try {
             return tf.getFileStoreInfo().isReadOnly();
         } catch (IOException e) {
@@ -54,7 +54,7 @@ public final class Target_sun_nio_fs_TruffleFileStore {
     @Substitution
     public static long totalSpace0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path,
                     @Inject TruffleIO io, @Inject EspressoContext context) {
-        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path);
+        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path);
         try {
             return tf.getFileStoreInfo().getTotalSpace();
         } catch (IOException e) {
@@ -65,7 +65,7 @@ public final class Target_sun_nio_fs_TruffleFileStore {
     @Substitution
     public static long getUsableSpace0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path,
                     @Inject TruffleIO io, @Inject EspressoContext context) {
-        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path);
+        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path);
         try {
             return tf.getFileStoreInfo().getUsableSpace();
         } catch (IOException e) {
@@ -76,7 +76,7 @@ public final class Target_sun_nio_fs_TruffleFileStore {
     @Substitution
     public static long getUnallocatedSpace0(@JavaType(internalName = TRUFFLE_PATH) StaticObject path,
                     @Inject TruffleIO io, @Inject EspressoContext context) {
-        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(path);
+        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(path);
         try {
             return tf.getFileStoreInfo().getUnallocatedSpace();
         } catch (IOException e) {

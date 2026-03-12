@@ -276,7 +276,7 @@
     "compiler-test-labsjdk-latest-windows-amd64": {},
 
     "compiler-test_zgc-labsjdk-latest-darwin-aarch64": {},
-    "compiler-test_zgc-labsjdk-latest-linux-aarch64": {},
+    "compiler-test_zgc-labsjdk-latest-linux-aarch64": t("2:30:00"),
     "compiler-test_zgc-labsjdk-latest-linux-amd64": {},
 
     "compiler-ctw-labsjdk-latest-darwin-aarch64": {},

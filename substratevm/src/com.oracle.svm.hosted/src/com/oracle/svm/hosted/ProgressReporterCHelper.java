@@ -29,7 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.shared.util.LogUtils;
 
 public final class ProgressReporterCHelper {
     private static final int DEFAULT_CHARACTERS_PER_LINE = 80;

@@ -28,9 +28,9 @@ package com.oracle.svm.core.jfr.oldobject;
 
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.internal.misc.Unsafe;
 import jdk.jfr.internal.LogLevel;
@@ -78,7 +78,7 @@ public final class JfrOldObjectProfiler {
         return sample0(obj, allocatedSize, arrayLength);
     }
 
-    @Uninterruptible(reason = "Must not safepoint while holding the lock.")
+    @Uninterruptible(reason = "Must not safepoint while holding the object profiler lock.")
     private boolean sample0(Object obj, UnsignedWord allocatedSize, int arrayLength) {
         assert allocatedSize.aboveThan(0);
         assert arrayLength >= 0 || arrayLength == Integer.MIN_VALUE;
@@ -96,7 +96,7 @@ public final class JfrOldObjectProfiler {
         }
     }
 
-    @Uninterruptible(reason = "Must not safepoint while holding the lock.")
+    @Uninterruptible(reason = "Must not safepoint while holding the object profiler lock.")
     public void emit(long cutoff, boolean emitAll, boolean skipBFS) {
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {

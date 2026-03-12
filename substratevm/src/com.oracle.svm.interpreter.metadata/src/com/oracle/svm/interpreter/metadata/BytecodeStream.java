@@ -47,7 +47,7 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.WIDE;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * A utility class that makes iterating over bytecodes and reading operands simpler and less

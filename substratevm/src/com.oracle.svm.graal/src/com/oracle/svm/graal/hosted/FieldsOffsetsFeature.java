@@ -38,7 +38,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -62,6 +62,7 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 public class FieldsOffsetsFeature implements Feature {
 
     public static class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-72589: Migrate GraalCompilerFeature to terminus
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.meta;
 
-import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.shared.util.ClassUtil;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.vm.ci.meta.Constant;
@@ -148,10 +148,19 @@ public abstract class SubstrateObjectConstant implements JavaConstant, Compressi
         return JavaKind.Object;
     }
 
+    /**
+     * Returns {@code obj == this}.
+     * <p>
+     * This is a workaround needed by implementations of {@link ObjectConstantEquality#test} for the
+     * {@code VerifyUsageWithEquals} check run by {@code CheckSVMInvariants}.
+     */
+    public final boolean identicalTo(Object obj) {
+        return this == obj;
+    }
+
     @Override
     public final boolean equals(Object obj) {
-        if (obj != this && obj instanceof SubstrateObjectConstant) {
-            SubstrateObjectConstant other = (SubstrateObjectConstant) obj;
+        if (obj != this && obj instanceof SubstrateObjectConstant other) {
             return isCompressed() == other.isCompressed() && ObjectConstantEquality.get().test(this, other);
         }
         return obj == this;

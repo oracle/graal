@@ -1,13 +1,13 @@
 # For Contributors
 
-GraalVM welcomes contributors to the core platform and projects that extend that
-platform. There have been significant contributions from both industry
-and academia so far and we thank you for considering to contribute your changes!
+GraalVM welcomes contributors to the core platform and projects that extend that platform.
+There have been significant contributions from both industry and academia so far and we thank you for considering to contribute your changes!
 
-### How to Contribute
+## How to Contribute
 
 - Learn [how to become a GraalVM contributor](https://www.graalvm.org/community/contributors/).
-  - Check individual README.md and CONTRIBUTING.md files in the subprojects to learn how to build and import them into your IDE (for example, [the compiler README.md](compiler/README.md))
+- See [instructions for building GraalVM from source](vm/README.md).
+  - Check individual README.md and CONTRIBUTING.md files in the subprojects to learn how to build and import them into your IDE (for example, [the compiler README.md](compiler/README.md).)
 - Subscribe and post to [graalvm-dev@oss.oracle.com](https://oss.oracle.com/mailman/listinfo/graalvm-dev) for questions related to working with the sources or extending the GraalVM ecosystem by creating new languages, tools, or embeddings.
 
 ### Contributor Roles
@@ -15,7 +15,7 @@ and academia so far and we thank you for considering to contribute your changes!
 There are different roles for contributors of the project. Find a list of current contributors in [CENSUS.md](CENSUS.md).
 
 * Committer
-  * Has Signed the [Oracle Contributor Agreement](https://oca.opensource.oracle.com/), which is a prerequisite for contributing to the project
+  * Has signed the [Oracle Contributor Agreement](https://oca.opensource.oracle.com/), which is a prerequisite for contributing to the project
   * At least one pull request authored by the individual has been merged
 
 * Code Owner

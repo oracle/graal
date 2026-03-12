@@ -77,7 +77,12 @@ public class TestJfrStreamingBasic extends JfrStreamingTest {
         stream.onFlush(() -> {
             if (firstFlush) {
                 firstFlush = false;
-                Stressor.execute(THREADS, eventEmitter);
+
+                try {
+                    Stressor.execute(THREADS, eventEmitter);
+                } catch (Throwable throwable) {
+                    throw new RuntimeException(throwable);
+                }
             }
         });
 

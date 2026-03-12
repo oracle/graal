@@ -34,7 +34,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
@@ -48,6 +47,7 @@ import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -85,9 +85,9 @@ final class PodFactorySubstitutionProcessor extends SubstitutionProcessor {
 final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
     private static class DeoptInfoProvider {
-        final MultiMethod method;
+        final MethodVariant method;
 
-        DeoptInfoProvider(MultiMethod method) {
+        DeoptInfoProvider(MethodVariant method) {
             this.method = method;
         }
 

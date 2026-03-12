@@ -28,8 +28,10 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
+import jdk.graal.compiler.code.CompilationResult.CodeComment;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
@@ -69,6 +71,25 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
         return installedCode.isValid() ? disassemble(codeCache, compResult, installedCode) : null;
     }
 
+    /**
+     * Adds any jump tables, lookup tables or code comments from a list of code annotations.
+     */
+    public static void addAnnotations(HexCodeFile hcf, List<CompilationResult.CodeAnnotation> annotations) {
+        if (annotations == null || annotations.isEmpty()) {
+            return;
+        }
+        for (CompilationResult.CodeAnnotation a : annotations) {
+            if (a instanceof CompilationResult.JumpTable) {
+                CompilationResult.JumpTable table = (CompilationResult.JumpTable) a;
+                hcf.jumpTables.add(new HexCodeFile.JumpTable(table.getPosition(), table.low, table.high,
+                                table.entryFormat.size == 4 ? HexCodeFile.JumpTable.EntryFormat.OFFSET : HexCodeFile.JumpTable.EntryFormat.KEY2_OFFSET));
+            } else if (a instanceof CodeComment) {
+                CodeComment comment = (CodeComment) a;
+                hcf.addComment(comment.getPosition(), comment.value);
+            }
+        }
+    }
+
     private static String disassemble(CodeCacheProvider codeCache, CompilationResult compResult, InstalledCode installedCode) {
         TargetDescription target = codeCache.getTarget();
         RegisterConfig regConfig = codeCache.getRegisterConfig();
@@ -80,7 +101,7 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
         long start = installedCode == null ? 0L : installedCode.getStart();
         HexCodeFile hcf = new HexCodeFile(code, start, target.arch.getName(), target.wordSize * 8);
         if (compResult != null) {
-            HexCodeFile.addAnnotations(hcf, compResult.getCodeAnnotations());
+            addAnnotations(hcf, compResult.getCodeAnnotations());
             addExceptionHandlersComment(compResult, hcf);
             Register fp = regConfig.getFrameRegister();
             RefMapFormatter slotFormatter = new DefaultRefMapFormatter(target.wordSize, fp, 0);

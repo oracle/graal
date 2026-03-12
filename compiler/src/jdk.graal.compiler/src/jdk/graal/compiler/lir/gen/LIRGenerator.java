@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -430,6 +430,10 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
 
     public void emitIncomingValues(Value[] params) {
         ((StandardOp.LabelOp) res.getLIR().getLIRforBlock(getCurrentBlock()).get(0)).setIncomingValues(params);
+    }
+
+    public void addIncomingValues(Value[] params) {
+        ((StandardOp.LabelOp) res.getLIR().getLIRforBlock(getCurrentBlock()).get(0)).addIncomingValues(params);
     }
 
     @Override

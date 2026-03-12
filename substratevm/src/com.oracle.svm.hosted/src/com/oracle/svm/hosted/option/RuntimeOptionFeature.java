@@ -43,15 +43,14 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag;
 import com.oracle.svm.core.option.RuntimeOptionParser;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.AppLayerCGlobalTracking;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -64,7 +63,7 @@ import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentParser.DefaultValuesProvider {
 
     private static final String LAYERED_DEFAULT_VALUES_NAME = "__svm_layer_default_isolate_option_values";
@@ -148,9 +147,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         if (firstImage) {
             IsolateArgumentParser.singleton().sealOptions();
         } else {
-            /*
-             * Ensure that the defaults values are registered and seen by the analysis.
-             */
+            /* Ensure that the default values are registered and seen by the analysis. */
             CGlobalDataFeature.singleton().registerWithGlobalSymbol(defaultValues);
             var universe = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getUniverse();
             LayeredImageUtils.registerObjectAsEmbeddedRoot(universe, defaultValues);

@@ -33,8 +33,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import jdk.jfr.Recording;
+import org.graalvm.word.impl.Word;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;

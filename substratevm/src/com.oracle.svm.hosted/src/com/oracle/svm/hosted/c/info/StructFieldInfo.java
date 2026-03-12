@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.c.info;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import org.graalvm.word.LocationIdentity;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import org.graalvm.webimage.api.JSObject;
 
 public class JSObjectConversionTest {
     public static final String[] OUTPUT = {
-                    "JavaScript<object; [object Object]>", "[object Object]", "JavaScript<object; [object Object]>", "true", "true", "false",
+                    "JavaScript<object; [object Object]>", "[object Object]", "JavaScript<object; [object Object]>", "false", "false", "false",
                     "JavaScript<function;", "JavaScript<function;", "5", "JavaScript<number; 5>", "JavaScript<number; 12>",
                     "12",
                     "js value",

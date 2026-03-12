@@ -60,26 +60,40 @@ public final class CGlobalDataImpl<T extends PointerBase> extends CGlobalData<T>
     public final Supplier<byte[]> bytesSupplier;
     @Platforms(Platform.HOSTED_ONLY.class) //
     public final IntSupplier sizeSupplier;
+
+    /**
+     * Whether to defer the execution of {@link #bytesSupplier} right before writing. The size
+     * returned by {@link #sizeSupplier} must be coherent with the data returned by
+     * {@link #bytesSupplier}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public final boolean deferred;
+
     public final boolean nonConstant;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName, Supplier<byte[]> bytesSupplier) {
-        this(symbolName, bytesSupplier, null, false); // pre-existing data
+        this(symbolName, bytesSupplier, null, false, false); // pre-existing data
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    CGlobalDataImpl(String symbolName, Supplier<byte[]> bytesSupplier, IntSupplier sizeSupplier) {
+        this(symbolName, bytesSupplier, sizeSupplier, false, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName, Supplier<byte[]> bytesSupplier, boolean nonConstant) {
-        this(symbolName, bytesSupplier, null, nonConstant);
+        this(symbolName, bytesSupplier, null, nonConstant, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName, IntSupplier sizeSupplier) {
-        this(symbolName, null, sizeSupplier, false); // zero-initialized data
+        this(symbolName, null, sizeSupplier, false, false); // zero-initialized data
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName) {
-        this(symbolName, null, null, false); // reference to symbol
+        this(symbolName, null, null, false, false); // reference to symbol
     }
 
     /**
@@ -88,7 +102,7 @@ public final class CGlobalDataImpl<T extends PointerBase> extends CGlobalData<T>
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName, boolean nonConstant) {
-        this(symbolName, null, null, nonConstant);
+        this(symbolName, null, null, nonConstant, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -97,12 +111,14 @@ public final class CGlobalDataImpl<T extends PointerBase> extends CGlobalData<T>
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private CGlobalDataImpl(String symbolName, Supplier<byte[]> bytesSupplier, IntSupplier sizeSupplier, boolean nonConstant) {
-        assert !(bytesSupplier != null && sizeSupplier != null);
+    private CGlobalDataImpl(String symbolName, Supplier<byte[]> bytesSupplier, IntSupplier sizeSupplier, boolean nonConstant, boolean deferred) {
+        assert deferred && bytesSupplier != null && sizeSupplier != null ||
+                        !deferred && !(bytesSupplier != null && sizeSupplier != null);
         this.symbolName = symbolName;
         this.bytesSupplier = bytesSupplier;
         this.sizeSupplier = sizeSupplier;
         this.nonConstant = nonConstant;
+        this.deferred = deferred;
         /*
          * Note the uniqueness of code locations is checked in
          * CGlobalDataFeature#createCGlobalDataInfo.

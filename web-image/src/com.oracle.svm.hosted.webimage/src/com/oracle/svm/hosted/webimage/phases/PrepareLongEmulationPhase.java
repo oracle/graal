@@ -41,6 +41,8 @@ import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This phase strengthens the stamps of all {@link ValueNode} that produce a {@link Long64} that is
@@ -60,16 +62,17 @@ public class PrepareLongEmulationPhase extends BasePhase<CoreProviders> {
     protected void run(StructuredGraph graph, CoreProviders context) {
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before prepare Long emulation");
         Stamp nonNull = StampFactory.objectNonNull();
+        MetaAccessProvider metaAccess = context.getMetaAccess();
+        ResolvedJavaType long64Type = metaAccess.lookupJavaType(Long64.class);
         for (Node n : graph.getNodes()) {
-            if (n instanceof ValueNode && ((ValueNode) n).stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
-                ValueNode vn = (ValueNode) n;
-                if (vn.stamp(NodeView.DEFAULT).javaType(context.getMetaAccess()).equals(context.getMetaAccess().lookupJavaType(Long64.class))) {
-                    ObjectStamp vnStamp = (ObjectStamp) vn.stamp(NodeView.DEFAULT);
-                    vn.setStamp(vnStamp.join(nonNull));
-                }
+            if (n instanceof ValueNode vn &&
+                            vn.stamp(NodeView.DEFAULT) instanceof ObjectStamp vnStamp &&
+                            vnStamp.javaType(metaAccess).equals(long64Type)) {
+                vn.setStamp(vnStamp.join(nonNull));
             }
+
         }
-        if (graph.method().getDeclaringClass().equals(context.getMetaAccess().lookupJavaType(Long64.class))) {
+        if (graph.method().getDeclaringClass().equals(long64Type)) {
             for (InvokeWithExceptionNode inv : graph.getNodes(InvokeWithExceptionNode.TYPE)) {
                 inv.replaceWithInvoke();
             }

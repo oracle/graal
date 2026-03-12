@@ -49,7 +49,6 @@ import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
@@ -71,9 +70,9 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MethodVariant;
+import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -86,6 +85,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     /** The type of {@link Object}. */
@@ -352,39 +352,40 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MethodVariant.MethodVariantKey... otherRoots) {
         return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, reason, otherRoots);
     }
 
     @Override
-    public AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
-        AnalysisError.guarantee(isBaseLayerAnalysisEnabled() || hostVM.buildingImageLayer());
-        registerDefaultMethod(method, reason);
+    public AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MethodVariant.MethodVariantKey... otherRoots) {
+        registerConcreteMethodInAbstractType(method, reason);
         PointsToAnalysisMethod analysisMethod = assertPointsToAnalysisMethod(method);
-        postTask(ignore -> {
-            MethodTypeFlow typeFlow = analysisMethod.getTypeFlow();
-            /*
-             * Calling MethodTypeFlow#ensureFlowsGraphCreated ensures that the method is not
-             * optimized away by the analysis.
-             */
-            typeFlow.ensureFlowsGraphCreated(this, null);
-        });
-        return addRootMethod(analysisMethod, invokeSpecial, reason, otherRoots);
+        /* Trigger method analysis when the analysis engine starts. */
+        postTask(ignore -> analysisPolicy.getOrCreateMethodGraph(this, analysisMethod));
+        return addRootMethod(method, invokeSpecial, reason, otherRoots);
     }
 
     /**
-     * Non-abstract methods from an abstract class or default methods from an interface are not
-     * registered as implementation invoked by the analysis because their declaring class cannot be
-     * marked as instantiated and {@link AnalysisType#getTypeFlow(BigBang, boolean)} only includes
-     * instantiated types (see {@link TypeFlow#addObserver(PointsToAnalysis, TypeFlow)}). To ensure
-     * these methods are included in the image they are manually registered as implementation
-     * invoked.
+     * Ensure that concrete methods from abstract classes and default methods from interfaces are
+     * included in the image by manually registering them as implementation-invoked. They are not
+     * normally seen as implementation-invoked by the analysis because the analysis logic
+     * ({@link AnalysisType#getTypeFlow}) relies on instantiated types, and abstract types are never
+     * directly instantiated.
      */
-    private static void registerDefaultMethod(AnalysisMethod method, Object reason) {
-        if (!method.isAbstract() && (method.getDeclaringClass().isInterface() || method.getDeclaringClass().isAbstract())) {
+    private static void registerConcreteMethodInAbstractType(AnalysisMethod method, Object reason) {
+        if (isConcreteMethodInAbstractType(method)) {
             method.registerAsDirectRootMethod(reason);
             method.registerAsImplementationInvoked(reason);
         }
+    }
+
+    /**
+     * Returns true if the method is a concrete implementation residing within an abstract type
+     * (abstract class or interface). Note that according to the JLS (Section 9.1.1), interfaces are
+     * implicitly abstract.
+     */
+    public static boolean isConcreteMethodInAbstractType(ResolvedJavaMethod method) {
+        return method.getDeclaringClass().isAbstract() && !method.isAbstract() || method.getDeclaringClass().isInterface() && method.isDefault();
     }
 
     protected void validateRootMethodRegistration(AnalysisMethod aMethod, boolean invokeSpecial) {
@@ -395,7 +396,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     @SuppressWarnings("try")
-    public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+    public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MethodVariant.MethodVariantKey... otherRoots) {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         validateRootMethodRegistration(aMethod, invokeSpecial);
         AnalysisError.guarantee(aMethod.isOriginalMethod());
@@ -406,11 +407,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
         if (isStatic) {
             /*
-             * For static methods trigger analysis in the empty context. This will trigger parsing
-             * and return the method flows graph. Then the method parameter type flows are
-             * initialized with the corresponding parameter declared type.
+             * If the target method is static trigger parsing and type flow graph creation. Then
+             * initialize the method parameter type flows with the corresponding parameter declared
+             * type to simulate linking the method at call sites.
              */
-            Consumer<PointsToAnalysisMethod> triggerStaticMethodFlow = (pointsToMethod) -> {
+            Consumer<PointsToAnalysisMethod> triggerAnalysis = (pointsToMethod) -> {
                 /*
                  * Make sure that the method is registered as root immediately, so that a potential
                  * subsequent registration as native entrypoint does not fail.
@@ -418,7 +419,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 pointsToMethod.registerAsDirectRootMethod(reason);
                 postTask(() -> {
                     pointsToMethod.registerAsImplementationInvoked(reason.toString());
-                    MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
+                    MethodFlowsGraphInfo flowInfo = analysisPolicy.getOrCreateMethodGraph(this, pointsToMethod);
                     for (int idx = 0; idx < paramCount; idx++) {
                         AnalysisType declaredParamType = aMethod.getSignature().getParameterType(idx);
                         FormalParamTypeFlow parameter = flowInfo.getParameter(idx);
@@ -426,11 +427,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                     }
                 });
             };
-            triggerStaticMethodFlow.accept(originalPTAMethod);
-            for (MultiMethod.MultiMethodKey key : otherRoots) {
-                assert key != MultiMethod.ORIGINAL_METHOD : key;
-                PointsToAnalysisMethod ptaMethod = assertPointsToAnalysisMethod(originalPTAMethod.getMultiMethod(key));
-                triggerStaticMethodFlow.accept(ptaMethod);
+            triggerAnalysis.accept(originalPTAMethod);
+            for (MethodVariant.MethodVariantKey key : otherRoots) {
+                assert key != MethodVariant.ORIGINAL_METHOD : key;
+                PointsToAnalysisMethod ptaMethod = assertPointsToAnalysisMethod(originalPTAMethod.getMethodVariant(key));
+                triggerAnalysis.accept(ptaMethod);
             }
         } else {
             /*
@@ -464,15 +465,12 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 } else {
                     originalPTAMethod.registerAsVirtualRootMethod(reason);
                 }
-                InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, overrideInvokeSpecial, MultiMethod.ORIGINAL_METHOD);
+                InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, overrideInvokeSpecial, MethodVariant.ORIGINAL_METHOD);
                 /*
                  * Initialize the type flow of the invoke's actual parameters with the corresponding
                  * parameter declared type. Thus, when the invoke links callees it will propagate
-                 * the parameter types too.
-                 *
-                 * The parameter iteration skips the primitive parameters, as these are not modeled.
-                 * The type flow of the receiver is set to the receiver type already when the invoke
-                 * is created.
+                 * the parameter types too. The type flow of the receiver is set to the receiver
+                 * type already when the invoke is created.
                  */
                 for (int idx = 1; idx < paramCount; idx++) {
                     /*

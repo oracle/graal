@@ -56,7 +56,16 @@ Run `native-image --help` for help on build options.
 * `--exact-reachability-metadata`: enables exact and user-friendly handling of reflection, resources, JNI, and serialization
 * `--exact-reachability-metadata-path`: trigger exact handling of reflection, resources, JNI, and serialization from all types in the given class-path or module-path entries
 * `--features`: a comma-separated list of fully qualified [Feature implementation classes](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/nativeimage/hosted/Feature.html)
-* `--future-defaults`: enable options that are planned to become defaults in future releases. A comma-separated list can contain `all`, `run-time-initialized-jdk`, `none`.
+* `--future-defaults`: enable options that are planned to become defaults in future releases. A comma-separated list can contain `all`, `none`, `run-time-initialize-jdk`, `class-for-name-respects-class-loader`, `run-time-initialize-file-system-providers`, `run-time-initialize-security-providers`, `run-time-initialize-resource-bundles`. The preferred usage is `--future-defaults=all`.
+  - `all`: enables all other future default behaviors (preferred option)
+  - `none`: forcefully disables all enabled options (can only be used from the command line to override choices taken by inaccessible parts of the build process)
+  - `run-time-initialize-jdk`: enables all behaviors related to run-time initialization of the JDK (includes `run-time-initialize-security-providers`, `run-time-initialize-file-system-providers`, `run-time-initialize-resource-bundles`)
+  - `class-for-name-respects-class-loader`: `Class#forName` and `ClassLoader#loadClass` respect their class loader argument. Instead of one flat namespace, each class loader has its own namespace and may delegate to other class loaders
+  - `run-time-initialize-security-providers`: shifts away from build-time initialization for `java.security.Provider`. Unless you store `java.security.Provider`-related classes in the image heap, this option should not affect you
+  - `run-time-initialize-file-system-providers`: shifts away from build-time initialization for `java.nio.file.spi.FileSystemProvider`. Unless you store `FileSystemProvider`-related classes in the image heap, this option should not affect you
+  - `run-time-initialize-resource-bundles`: shifts away from build-time initialization for `java.util.ResourceBundle`. Unless you store `ResourceBundle`-related classes in the image heap, this option should not affect you
+
+  Test your application with `--future-defaults=all` to make sure it is compatible with future releases of GraalVM and upcoming semantic changes.
 * `--gc=<value>`: select a Native Image garbage collector implementation. Allowed options for `<value>` are: `G1` for G1 garbage collector (not available in GraalVM Community Edition); `epsilon` for Epsilon garbage collector; `serial` for Serial garbage collector (default).
 * `--initialize-at-build-time`: a comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during generation of a native executable. An empty string designates all packages.
 * `--initialize-at-run-time`: a comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at run time and not during generation. An empty string is currently not supported.

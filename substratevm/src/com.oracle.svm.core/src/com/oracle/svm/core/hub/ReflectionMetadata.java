@@ -29,6 +29,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+
 interface ReflectionMetadata {
     int getClassFlags();
 
@@ -39,4 +41,6 @@ interface ReflectionMetadata {
     Constructor<?>[] getDeclaredConstructors(DynamicHub declaringClass, boolean publicOnly, int layerNum);
 
     RecordComponent[] getRecordComponents(DynamicHub dynamicHub, int layerNum);
+
+    RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(DynamicHub dynamicHub, int layerNum);
 }

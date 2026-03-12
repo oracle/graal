@@ -29,11 +29,11 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
@@ -42,10 +42,10 @@ import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Centralized management of {@linkplain JNIObjectHandle JNI handles for Java objects}. There are
@@ -150,7 +150,7 @@ public final class JNIObjectHandles {
         return getObjectSlowInterruptibly(handle);
     }
 
-    @Uninterruptible(reason = "Not really, but our caller is to allow inlining and we must be safe at this point.", calleeMustBe = false)
+    @Uninterruptible(reason = "Not really, but our caller is to allow inlining and we must be safe at this point.", mayBeInlined = true, calleeMustBe = false)
     private static <T> T getObjectSlowInterruptibly(JNIObjectHandle handle) {
         return getObjectSlowInterruptibly0(handle);
     }
@@ -198,7 +198,7 @@ public final class JNIObjectHandles {
         return createLocalSlow(obj);
     }
 
-    @Uninterruptible(reason = "Not really, but our caller is uninterruptible for inlining and we must be safe at this point.", calleeMustBe = false)
+    @Uninterruptible(reason = "Not really, but our caller is uninterruptible for inlining and we must be safe at this point.", mayBeInlined = true, calleeMustBe = false)
     private static JNIObjectHandle createLocalSlow(Object obj) {
         return createLocalSlow0(obj);
     }
@@ -318,7 +318,7 @@ final class JNIGlobalHandles {
     }
 
     private static JNIObjectHandle encode(ObjectHandle handle) {
-        SignedWord h = (Word) handle;
+        SignedWord h = (SignedWord) handle;
         if (JNIObjectHandles.haveAssertions()) {
             assert h.and(HANDLE_BITS_MASK).equal(h) : "unencoded handle must fit in range";
             Word v = isolateHash().shiftLeft(VALIDATION_BITS_SHIFT);
@@ -332,9 +332,10 @@ final class JNIGlobalHandles {
 
     private static ObjectHandle decode(JNIObjectHandle handle) {
         assert isInRange(handle);
-        assert ((Word) handle).and(VALIDATION_BITS_MASK).unsignedShiftRight(VALIDATION_BITS_SHIFT)
+        SignedWord h = (SignedWord) handle;
+        assert ((Word) h).and(VALIDATION_BITS_MASK).unsignedShiftRight(VALIDATION_BITS_SHIFT)
                         .equal(isolateHash()) : "mismatching validation value -- passed a handle from a different isolate?";
-        return (ObjectHandle) HANDLE_BITS_MASK.and((Word) handle);
+        return (ObjectHandle) HANDLE_BITS_MASK.and(h);
     }
 
     static <T> T getObject(JNIObjectHandle handle) {
@@ -409,7 +410,7 @@ final class JNIImageHeapHandles {
     static JNIObjectHandle asLocal(Object target) {
         assert isInImageHeap(target);
         SignedWord base = (SignedWord) KnownIntrinsics.heapBase();
-        SignedWord offset = Word.objectToUntrackedPointer(target).subtract(base);
+        SignedWord offset = Word.objectToUntrackedWord(target).subtract(base);
         // NOTE: we could support further bits due to the object alignment in the image heap
         assert offset.and(OBJ_OFFSET_BITS_MASK).equal(offset) : "does not fit in range";
         return (JNIObjectHandle) LOCAL_RANGE_MIN.add(offset);

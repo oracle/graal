@@ -25,19 +25,19 @@
 
 package com.oracle.svm.core.sampler;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Keeps track of {@link #availableBuffers available} and {@link #fullBuffers full} buffers. If
@@ -78,7 +78,7 @@ public class SamplerBufferPool {
         return availableBuffers.isLockedByCurrentThread() || fullBuffers.isLockedByCurrentThread();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
     public SamplerBuffer acquireBuffer(boolean allowAllocation) {
         SamplerBuffer buffer = availableBuffers.popBuffer();
         if (buffer.isNull() && allowAllocation) {
@@ -87,19 +87,19 @@ public class SamplerBufferPool {
         return buffer;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
     public void releaseBuffer(SamplerBuffer buffer) {
         SamplerBufferAccess.reinitialize(buffer);
         availableBuffers.pushBuffer(buffer);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
     public void pushFullBuffer(SamplerBuffer buffer) {
         fullBuffers.pushBuffer(buffer);
         SubstrateJVM.getRecorderThread().signal();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
     public SamplerBuffer popFullBuffer() {
         return fullBuffers.popBuffer();
     }
@@ -145,7 +145,7 @@ public class SamplerBufferPool {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
     private boolean allocateAndPush() {
         assert bufferCount >= 0;
         SamplerBuffer buffer = tryAllocateBuffer0();
@@ -156,7 +156,7 @@ public class SamplerBufferPool {
         return false;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
     private SamplerBuffer tryAllocateBuffer0() {
         UnsignedWord dataSize = SubstrateJVM.getThreadLocal().getThreadLocalBufferSize();
         SamplerBuffer result = NullableNativeMemory.malloc(SamplerBufferAccess.getTotalBufferSize(dataSize), NmtCategory.JFR);
@@ -169,7 +169,7 @@ public class SamplerBufferPool {
         return result;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
     private boolean popAndFree() {
         assert bufferCount > 0;
         SamplerBuffer buffer = availableBuffers.popBuffer();
@@ -180,13 +180,13 @@ public class SamplerBufferPool {
         return false;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
     private void free(SamplerBuffer buffer) {
         NullableNativeMemory.free(buffer);
         bufferCount--;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent VM operations that modify execution sampling.")
     private int diff() {
         if (JfrExecutionSampler.singleton().isSampling()) {
             /* Cache buffers for the sampler. */

@@ -47,7 +47,7 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.dynamicaccessinference.dataflow.AbstractFrame;
 import com.oracle.svm.hosted.dynamicaccessinference.dataflow.AbstractInterpreter;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.nodes.spi.CoreProviders;

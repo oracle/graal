@@ -26,7 +26,7 @@ package com.oracle.svm.core.deopt;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache;

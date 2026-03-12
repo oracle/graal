@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.os;
 
-import static jdk.graal.compiler.word.Word.nullPointer;
-import static jdk.graal.compiler.word.Word.zero;
+import static org.graalvm.word.impl.Word.nullPointer;
+import static org.graalvm.word.impl.Word.zero;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,13 +37,12 @@ import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UnsignedUtils;
-
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.impl.Word;
 
 public class OSCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider {
     @Platforms(Platform.HOSTED_ONLY.class)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -116,6 +117,9 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         // @formatter:off
         @Option(help = "Select a compiler configuration for Truffle compilation (default: use Graal system compiler configuration).")
         public static final OptionKey<String> TruffleCompilerConfiguration = new OptionKey<>(null);
+
+        @Option(help = "Force outlining of @BytecodeInterpreterHandler annotated methods (default: false).", type = OptionType.Debug) //
+        public static final OptionKey<Boolean> OutlineTruffleInterpreterBytecodeHandler = new OptionKey<>(false);
         // @formatter:on
     }
 

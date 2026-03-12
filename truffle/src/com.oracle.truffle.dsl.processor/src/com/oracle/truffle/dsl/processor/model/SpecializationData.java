@@ -464,17 +464,17 @@ public final class SpecializationData extends TemplateMethod {
         return false;
     }
 
-    public Set<CacheExpression> getBoundCaches(DSLExpression guardExpression, boolean transitiveCached) {
-        return getBoundCachesImpl(new LinkedHashSet<>(), guardExpression, transitiveCached);
+    public Set<CacheExpression> getBoundCaches(DSLExpression expression, boolean transitiveCached) {
+        return getBoundCachesImpl(new LinkedHashSet<>(), expression, transitiveCached);
     }
 
-    private Set<CacheExpression> getBoundCachesImpl(Set<DSLExpression> visitedExpressions, DSLExpression guardExpression, boolean transitiveCached) {
+    private Set<CacheExpression> getBoundCachesImpl(Set<DSLExpression> visitedExpressions, DSLExpression expression, boolean transitiveCached) {
         List<CacheExpression> resolvedCaches = getCaches();
         if (resolvedCaches.isEmpty()) {
             return Collections.emptySet();
         }
-        visitedExpressions.add(guardExpression);
-        Set<VariableElement> boundVars = guardExpression.findBoundVariableElements();
+        visitedExpressions.add(expression);
+        Set<VariableElement> boundVars = expression.findBoundVariableElements();
         Set<CacheExpression> foundCaches = new LinkedHashSet<>();
         for (CacheExpression cache : resolvedCaches) {
             VariableElement cacheVar = cache.getParameter().getVariableElement();

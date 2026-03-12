@@ -276,7 +276,7 @@ suite = {
         # Configure launcher
         "-Dorg.graalvm.launcher.class=org.graalvm.wasm.launcher.WasmLauncher",
       ],
-      "dynamicBuildArgs": "libwasmvm_build_args",
+      "dynamicBuildArgs": "libwasmvm_dynamic_build_args",
     },
   },
 
@@ -304,6 +304,10 @@ suite = {
         "requires": [
           "org.graalvm.collections",
           "static jdk.incubator.vector", # Vector API
+        ],
+        "exports" : [
+          # Export WasmStruct supertype to Truffle Static Object class generator
+          "org.graalvm.wasm.struct",
         ],
       },
       "subDir" : "src",

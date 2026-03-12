@@ -3069,6 +3069,21 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                     PolyglotFastThreadLocals.cleanup(thread.fastThreadLocals);
                 }
                 localsCleared = true;
+                if (engine.inEnginePreInitialization) {
+                    /*
+                     * Remove references to the current thread from a closed inner context created
+                     * during context pre-initialization. Threads reachable from the image heap
+                     * cause native-image build failures, as build-time threads do not exist at
+                     * image runtime. Note: The top-level context remains active after
+                     * pre-initialization completes and its reference to the pre-initialization
+                     * thread is removed separately by leaveThreadChanged(prev, entered=true,
+                     * finalizeAndDispose=true) called from the preinitialize method.
+                     */
+                    PolyglotThreadInfo threadInfo = threads.get(Thread.currentThread());
+                    if (threadInfo != null) {
+                        finishThreadDispose(Thread.currentThread(), threadInfo, null);
+                    }
+                }
             }
         }
         Object defaultLoggers = EngineAccessor.LANGUAGE.getDefaultLoggers();
@@ -3883,6 +3898,21 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                     context.leaveThreadChanged(prev, true, true);
                 }
             }
+            /*
+             * Inner contexts created during pre-initialization must be closed before the image heap
+             * is snapshotted. An unclosed context retains references to threads active during image
+             * build, which are invalid at image runtime and will cause native-image build failures.
+             */
+            synchronized (context) {
+                if (!context.childContexts.isEmpty()) {
+                    PolyglotContextImpl childContext = context.childContexts.get(0);
+                    throw new IllegalStateException(String.format(
+                                    "An inner context created during context pre-initialization was not closed before " +
+                                                    "pre-initialization completed. All inner contexts must be explicitly closed. " +
+                                                    "Unclosed context: %s",
+                                    childContext));
+                }
+            }
             return context;
         } finally {
             Reference.reachabilityFence(apiContext);
@@ -3954,7 +3984,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     private static boolean overridesPatchContext(String languageId) {
         if (TruffleOptions.AOT) {
-            return LanguageCache.overridesPathContext(languageId);
+            return LanguageCache.overridesPatchContext(languageId);
         } else {
             // Used by context pre-initialization tests on HotSpot
             LanguageCache cache = LanguageCache.languages().get(languageId);

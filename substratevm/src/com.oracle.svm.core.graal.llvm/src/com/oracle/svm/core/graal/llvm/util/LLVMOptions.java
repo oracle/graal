@@ -30,7 +30,7 @@ import java.util.List;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
 
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 
 public class LLVMOptions {
 

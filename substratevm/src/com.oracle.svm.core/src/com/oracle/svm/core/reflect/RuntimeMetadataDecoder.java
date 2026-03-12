@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
@@ -69,6 +70,8 @@ public interface RuntimeMetadataDecoder {
     Object[] parseEnclosingMethod(int index, DynamicHub declaringType);
 
     byte[] parseByteArray(int index, DynamicHub declaringType);
+
+    RuntimeDynamicAccessMetadata parseDynamicAccessMetadata(int index, int layerId);
 
     boolean isHiding(int modifiers);
 

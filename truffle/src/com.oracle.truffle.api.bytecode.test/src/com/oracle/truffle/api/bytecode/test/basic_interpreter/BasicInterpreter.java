@@ -58,9 +58,11 @@ import com.oracle.truffle.api.bytecode.BytecodeFrame;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
+import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -95,6 +97,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -195,7 +198,19 @@ import com.oracle.truffle.api.source.SourceSection;
                                 defaultUncachedThreshold = "defaultUncachedThreshold", //
                                 enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
-                                variadicStackLimit = "16"))
+                                variadicStackLimit = "16")),
+                @Variant(suffix = "ProductionRootScopingTailCall", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                additionalAssertions = true, //
+                                enableYield = true, //
+                                enableMaterializedLocalAccesses = true, //
+                                enableSerialization = true, //
+                                enableBlockScoping = false, //
+                                enableTagInstrumentation = true, //
+                                enableUncachedInterpreter = true, //
+                                defaultUncachedThreshold = "defaultUncachedThreshold", //
+                                enableSpecializationIntrospection = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                enableTailCallHandlers = true, variadicStackLimit = "16"))
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")
@@ -216,6 +231,11 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Throwable interceptInternalException(Throwable t, VirtualFrame frame, BytecodeNode bytecodeNode, int bytecodeIndex) {
+        t.addSuppressed(new AssertionError("Attached Bytecode dump: " + bytecodeNode.dump(bytecodeIndex)));
+        return t;
     }
 
     @Override
@@ -274,7 +294,15 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
     @Operation(javadoc = "Adds the two operand values, which must either be longs or Strings.")
     static final class Add {
+
         @Specialization
+        @ForceQuickening("add")
+        public static long addInts(int lhs, int rhs) {
+            return lhs + rhs;
+        }
+
+        @Specialization
+        @ForceQuickening("add")
         public static long addLongs(long lhs, long rhs) {
             return lhs + rhs;
         }
@@ -575,6 +603,14 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
     }
 
+    @Operation(storeBytecodeIndex = false)
+    public static final class MaterializeSources {
+        @Specialization
+        public static void materialize(@Bind BytecodeNode bytecodeNode) {
+            bytecodeNode.ensureSourceInformation();
+        }
+    }
+
     @Operation
     public static final class CreateClosure {
         @Specialization
@@ -624,8 +660,10 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static SourceSection doOperation(VirtualFrame frame, boolean ensure,
                         @Bind Node node,
                         @Bind BytecodeNode bytecode) {
-            // Put this branch in the operation itself so that the bytecode branch profile doesn't
-            // mark this path unreached during compilation.
+            /*
+             * Put this branch in the operation itself so that the bytecode branch profile doesn't
+             * mark this path unreached during compilation.
+             */
             if (ensure) {
                 return bytecode.ensureSourceInformation().getSourceLocation(frame, node);
             } else {
@@ -839,6 +877,21 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
     }
 
+    @Instrumentation(storeBytecodeIndex = false)
+    @ConstantOperand(type = LocalAccessor.class)
+    public static final class IncrementLocal {
+        @Specialization
+        public static void doIncrement(VirtualFrame frame,
+                        LocalAccessor accessor,
+                        @Bind BytecodeNode bytecode) {
+            try {
+                accessor.setLong(bytecode, frame, 1L + accessor.getLong(bytecode, frame));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+    }
+
     @Instrumentation(javadoc = "Increments the instrumented value by 1.")
     public static final class IncrementValue {
         @Specialization
@@ -853,6 +906,24 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static long doDouble(long value) {
             return value << 1;
         }
+    }
+
+    @Operation(storeBytecodeIndex = false)
+    public static final class EnableIncrementLocalInstrumentation {
+        @Specialization
+        public static void doEnable(
+                        @Bind BasicInterpreter root,
+                        @Cached(value = "getConfig(root)", allowUncached = true, neverDefault = true) BytecodeConfig config) {
+            root.getRootNodes().update(config);
+        }
+
+        @TruffleBoundary
+        protected static BytecodeConfig getConfig(BasicInterpreter root) {
+            BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.lookupVariant(root).newConfigBuilder();
+            configBuilder.addInstrumentation(IncrementLocal.class);
+            return configBuilder.build();
+        }
+
     }
 
     @Operation(storeBytecodeIndex = false)
@@ -883,7 +954,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     @Operation
     static final class Less {
         @Specialization
-        static boolean doInts(long left, long right) {
+        static boolean doLongs(long left, long right) {
             return left < right;
         }
     }
@@ -904,6 +975,14 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
             return configBuilder.build();
         }
 
+    }
+
+    @Operation(storeBytecodeIndex = false)
+    public static final class IsUncached {
+        @Specialization
+        public static boolean perform(@Bind BytecodeTier tier) {
+            return tier == BytecodeTier.UNCACHED;
+        }
     }
 
     record Bindings(

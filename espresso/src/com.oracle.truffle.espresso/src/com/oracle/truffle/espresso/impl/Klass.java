@@ -699,8 +699,11 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @CompilationFinal //
     private ArrayKlass arrayKlass;
 
+    /**
+     * The guest {@link Class} mirror associated with this {@link Klass} instance.
+     */
     @CompilationFinal //
-    private StaticObject espressoClass;
+    private StaticObject guestClassMirror;
 
     @CompilationFinal //
     private Class<?> dispatch;
@@ -732,7 +735,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @TruffleBoundary
     public StaticObject createGuestTypeLiteral() {
         StaticObject result = getContext().getAllocator().createNew(getMeta().polyglot.TypeLiteral$InternalTypeLiteral);
-        getMeta().polyglot.HIDDEN_TypeLiteral_internalType.setHiddenObject(result, this);
+        getMeta().polyglot.TypeLiteral_0internalType.setHiddenObject(result, this);
         getMeta().polyglot.TypeLiteral_rawType.setObject(result, this.mirror());
         return result;
     }
@@ -886,7 +889,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
      * Returns the guest {@link Class} object associated with this {@link Klass} instance.
      */
     public final @JavaType(Class.class) StaticObject mirror() {
-        StaticObject result = this.espressoClass;
+        StaticObject result = this.guestClassMirror;
         assert result != null;
         assert getMeta().java_lang_Class != null;
         return result;
@@ -895,14 +898,14 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
                     justification = "espressoClass is deliberately non-volatile since it uses \"Unsafe Local DCL + Safe Singleton\" as described in https://shipilev.net/blog/2014/safe-public-construction\n" +
                                     "A static hasFinalInstanceField(StaticObject.class) assertion ensures correctness.")
-    public final StaticObject initializeEspressoClass() {
+    public final StaticObject initializeGuestClassMirror() {
         CompilerAsserts.neverPartOfCompilation();
-        StaticObject result = this.espressoClass;
+        StaticObject result = this.guestClassMirror;
         if (result == null) {
             synchronized (this) {
-                result = this.espressoClass;
+                result = this.guestClassMirror;
                 if (result == null) {
-                    this.espressoClass = result = getAllocator().createClass(this);
+                    this.guestClassMirror = result = getAllocator().createClass(this);
                 }
             }
         }
@@ -1212,9 +1215,9 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     /**
-     * Gets the super class of this type. If this type represents either the {@code Object} class,
-     * an interface, a primitive type, or void, then null is returned. If this object represents an
-     * array class then the type object representing the {@code Object} class is returned.
+     * Gets the super class of this type. If this type represents either the {@code Object} class, a
+     * primitive type, or void, then null is returned. If this object represents an array class or
+     * an interface type then the type object representing the {@code Object} class is returned.
      */
     public ObjectKlass getSuperKlass() {
         return null;
@@ -1231,16 +1234,6 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     public abstract Klass getElementalType();
-
-    /**
-     * Returns {@code true} if the type is a local type.
-     */
-    public abstract boolean isLocal();
-
-    /**
-     * Returns {@code true} if the type is a member type.
-     */
-    public abstract boolean isMember();
 
     /**
      * Returns the enclosing type of this type, if it exists, or {@code null}.
@@ -1757,7 +1750,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     public StaticObject protectionDomain() {
-        return getMeta().HIDDEN_PROTECTION_DOMAIN.getMaybeHiddenObject(mirror());
+        return getMeta().java_lang_Class_0protectedDomain.getMaybeHiddenObject(mirror());
     }
 
     /**

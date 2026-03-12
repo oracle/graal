@@ -55,14 +55,14 @@ public final class Target_sun_nio_fs_TruffleFilteredDirectoryStream {
                     @Inject TruffleIO io,
                     @Inject EspressoContext context,
                     @Inject LibsMeta lMeta) {
-        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE.getHiddenObject(dir);
+        TruffleFile tf = (TruffleFile) io.sun_nio_fs_TrufflePath_0file.getHiddenObject(dir);
         try {
             DirectoryStream<TruffleFile> hostStream = tf.newDirectoryStream();
 
             StaticObject guestStream = lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream.allocateInstance(context);
             lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_init.invokeDirectSpecial(
                             /* this */ guestStream);
-            lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_HIDDEN_HOST_REFERENCE.setHiddenObject(guestStream, hostStream);
+            lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_0hostReference.setHiddenObject(guestStream, hostStream);
             return guestStream;
         } catch (IOException e) {
             throw Throw.throwIOException(e, context);
@@ -73,7 +73,7 @@ public final class Target_sun_nio_fs_TruffleFilteredDirectoryStream {
     @SuppressWarnings({"unused", "unchecked"})
     @TruffleBoundary
     public static boolean hasNext0(@JavaType(Iterator.class) StaticObject iterator, @Inject LibsState libsState, @Inject EspressoContext ctx, @Inject LibsMeta lMeta) {
-        Iterator<TruffleFile> hostIterator = (Iterator<TruffleFile>) lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_HIDDEN_HOST_REFERENCE.getHiddenObject(iterator);
+        Iterator<TruffleFile> hostIterator = (Iterator<TruffleFile>) lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_0hostReference.getHiddenObject(iterator);
         if (hostIterator == null) {
             throw Throw.throwIllegalArgumentException("iterator", ctx);
         }
@@ -86,7 +86,7 @@ public final class Target_sun_nio_fs_TruffleFilteredDirectoryStream {
     public static @JavaType(String.class) StaticObject next0(@JavaType(Iterator.class) StaticObject iterator, @Inject LibsState libsState,
                     @Inject EspressoContext ctx,
                     @Inject LibsMeta lMeta) {
-        Iterator<TruffleFile> hostIterator = (Iterator<TruffleFile>) lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_HIDDEN_HOST_REFERENCE.getHiddenObject(iterator);
+        Iterator<TruffleFile> hostIterator = (Iterator<TruffleFile>) lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_0hostReference.getHiddenObject(iterator);
         if (hostIterator == null) {
             throw Throw.throwIllegalArgumentException("iterator", ctx);
         }
@@ -98,7 +98,7 @@ public final class Target_sun_nio_fs_TruffleFilteredDirectoryStream {
     @SuppressWarnings({"unused", "unchecked"})
     @TruffleBoundary
     public static void close0(@JavaType(DirectoryStream.class) StaticObject directoryStream, @Inject LibsState libsState, @Inject EspressoContext ctx, @Inject LibsMeta lMeta) {
-        DirectoryStream<TruffleFile> hostStream = (DirectoryStream<TruffleFile>) lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_HIDDEN_HOST_REFERENCE.getHiddenObject(
+        DirectoryStream<TruffleFile> hostStream = (DirectoryStream<TruffleFile>) lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_0hostReference.getHiddenObject(
                         directoryStream);
         if (hostStream == null) {
             throw Throw.throwIllegalArgumentException("directoryStream", ctx);
@@ -118,7 +118,7 @@ public final class Target_sun_nio_fs_TruffleFilteredDirectoryStream {
                     @Inject EspressoContext ctx, @Inject LibsState libsState,
                     @Inject LibsMeta lMeta) {
         // retrieve host stream
-        DirectoryStream<TruffleFile> hostStream = (DirectoryStream<TruffleFile>) lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_HIDDEN_HOST_REFERENCE.getHiddenObject(
+        DirectoryStream<TruffleFile> hostStream = (DirectoryStream<TruffleFile>) lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream_0hostReference.getHiddenObject(
                         directoryStream);
         if (hostStream == null) {
             throw Throw.throwIllegalArgumentException("directoryStream", ctx);
@@ -128,7 +128,7 @@ public final class Target_sun_nio_fs_TruffleFilteredDirectoryStream {
         lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_init.invokeDirectSpecial(
                         /* this */ guestIterator);
         // link guest and host iterator
-        lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_HIDDEN_HOST_REFERENCE.setHiddenObject(guestIterator, hostStream.iterator());
+        lMeta.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator_0hostReference.setHiddenObject(guestIterator, hostStream.iterator());
         return guestIterator;
     }
 

@@ -30,6 +30,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SingleTierCompi
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -55,6 +56,9 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -536,6 +540,34 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         target.call(1);
     }
 
+    /**
+     * Test that stack traces thrown out of loop OSR capture the effective execution frame.
+     */
+    @Theory
+    public void testGetStackTraceThrownOutOfOSR(OSRLoopFactory factory) {
+        ThrowOutOfOSRStackTrace repeating = new ThrowOutOfOSRStackTrace();
+        TestRootNode rootNode = TestRootNode.create(osrThreshold, factory, repeating);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+
+        rootNode.forceOSR();
+        assertCompiled(rootNode.getOSRTarget());
+
+        try {
+            target.call(1);
+            Assert.fail("No exception was thrown.");
+        } catch (OSRLoopStackTraceException e) {
+            List<TruffleStackTraceElement> trace = TruffleStackTrace.getStackTrace(e);
+            Assert.assertEquals(1, trace.size());
+            Assert.assertSame(target, trace.getFirst().getTarget());
+            Assert.assertSame(repeating, trace.getFirst().getLocation());
+            try {
+                Assert.assertEquals(ThrowOutOfOSRStackTrace.OSR_VALUE, trace.getFirst().getFrame().getInt(rootNode.param2));
+            } catch (FrameSlotTypeException ex) {
+                throw new AssertionError("OSR frame should expose int slot value.", ex);
+            }
+        }
+    }
+
     /*
      * Test that thread local actions never expose the OSR root node.
      */
@@ -632,6 +664,32 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     }
 
+    @SuppressWarnings("serial")
+    private static final class OSRLoopStackTraceException extends AbstractTruffleException {
+        OSRLoopStackTraceException(Node location) {
+            super(location);
+        }
+    }
+
+    private static final class ThrowOutOfOSRStackTrace extends TestRepeatingNode {
+        static final int OSR_VALUE = 42;
+
+        @Override
+        public boolean executeRepeating(VirtualFrame frame) {
+            super.executeRepeating(frame);
+            if (CompilerDirectives.inCompiledCode()) {
+                frame.setInt(param2, OSR_VALUE);
+                throwException();
+            }
+            return true;
+        }
+
+        @TruffleBoundary
+        private void throwException() {
+            throw new OSRLoopStackTraceException(this);
+        }
+    }
+
     /* Useful to test no dependencies on a root call target. */
     private static void executeNoCallTarget(TestRootNode rootNode, int count) {
         rootNode.adoptChildren();
@@ -698,6 +756,11 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
         public OptimizedCallTarget getOSRTarget() {
             return loopNode.getCompiledOSRLoop();
+        }
+
+        @Override
+        protected boolean isCaptureFramesForTrace(boolean compiledFrame) {
+            return true;
         }
 
         public boolean wasRepeatingCalledCompiled() {

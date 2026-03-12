@@ -62,7 +62,7 @@ import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.jvmtiagentbase.AgentIsolate;
 import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
@@ -94,6 +94,8 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
  * {@link NativeImageDiagnosticsAgent#maybeInstrumentClassWithClinit(String, byte[])}.
  */
 public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagnosticsAgentJNIHandleSet> {
+    // Checkstyle: allow System.err (agent class)
+
     private static final CEntryPointLiteral<CFunctionPointer> ON_CLASS_PREPARE = CEntryPointLiteral.create(NativeImageDiagnosticsAgent.class, "onClassPrepare",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
 

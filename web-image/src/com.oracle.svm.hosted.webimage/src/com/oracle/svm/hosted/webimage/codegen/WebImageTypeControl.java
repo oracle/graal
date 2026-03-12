@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -369,7 +369,7 @@ public class WebImageTypeControl implements Iterator<HostedType>, TypeControl {
              * with InvalidVTableEntryHandler. The vtable from Object can only reference Object or
              * InvalidVTableEntryHandler.
              */
-            if (!t.getWrapped().getJavaClass().equals(Object.class)) {
+            if (!t.isJavaLangObject()) {
                 for (HostedMethod m : t.getVTable()) {
                     HostedType declaring = m.getDeclaringClass();
 

@@ -30,7 +30,12 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFloatingNode;
+import com.oracle.svm.core.meta.SharedMethod;
+
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaValue;
@@ -101,5 +106,21 @@ public abstract class ReservedRegisters {
 
     public boolean isReservedRegister(Register r) {
         return r.equals(frameRegister) || r.equals(heapBaseRegister) || r.equals(threadRegister) || r.equals(codeBaseRegister);
+    }
+
+    /**
+     * Determines whether a graph must use fixed read nodes for a reserved register or can use
+     * floating reads instead.
+     *
+     * A floating node to access the register is more efficient: it allows value numbering of
+     * multiple accesses, including floating nodes that use it as an input. But for deoptimization
+     * target methods, we must not do value numbering because there is no proxying at deoptimization
+     * entry points for this node, so the value is not restored during deoptimization.
+     *
+     * @see ReadReservedRegisterFixedNode
+     * @see ReadReservedRegisterFloatingNode
+     */
+    public boolean mustUseFixedRead(StructuredGraph graph) {
+        return graph.method() instanceof SharedMethod m && m.isDeoptTarget();
     }
 }

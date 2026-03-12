@@ -50,7 +50,6 @@ import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.SEALED;
 import static javax.lang.model.element.Modifier.STATIC;
 
-import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -86,6 +85,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     final CodeExecutableElement getCachedLocalTagInternal;
     final CodeExecutableElement setCachedLocalTagInternal;
     final CodeExecutableElement checkStableTagsAssumption;
+    final BranchBackwardReturnExceptionElement branchBackwardReturnException;
 
     AbstractBytecodeNodeElement(BytecodeRootNodeElement parent) {
         super(parent, Set.of(PRIVATE, STATIC, ABSTRACT, SEALED), ElementKind.CLASS, null, "AbstractBytecodeNode");
@@ -98,6 +98,12 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         add(parent.compFinal(1, new CodeVariableElement(Set.of(FINAL), type(int[].class), "sourceInfo")));
         add(new CodeVariableElement(Set.of(FINAL), generic(type(List.class), types.Source), "sources"));
         add(new CodeVariableElement(Set.of(FINAL), type(int.class), "numNodes"));
+
+        if (model().enableTailCallHandlers) {
+            this.branchBackwardReturnException = add(new BranchBackwardReturnExceptionElement(parent));
+        } else {
+            this.branchBackwardReturnException = null;
+        }
 
         if (parent.model.enableTagInstrumentation) {
             parent.child(add(new CodeVariableElement(Set.of(), parent.tagRootNode.asType(), "tagRoot")));
@@ -162,6 +168,8 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         }
 
         if (parent.model.isBytecodeUpdatable()) {
+            this.add(createAllocateOldBytecodesBox());
+            this.add(createPublishOldBytecodes());
             this.add(createInvalidate());
         }
 
@@ -194,7 +202,6 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         this.add(createGetSourceSection());
         this.add(createGetSourceLocation());
         this.add(createGetSourceLocations());
-        this.add(createCreateSourceSection());
         this.add(createFindInstruction());
         this.add(createValidateBytecodeIndex());
         this.add(createGetSourceInformation());
@@ -243,7 +250,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         }
 
         this.add(createTranslateBytecodeIndex());
-        if (parent.model.isBytecodeUpdatable() || parent.model.hasYieldOperation()) {
+        if (parent.model.needsTransition()) {
             this.add(createTransition());
         }
         if (parent.model.hasYieldOperation() && parent.model.enableInstructionTracing) {
@@ -366,7 +373,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.string(" == ");
             b.staticReference(parent.frameTagsElement.getIllegal());
             b.end().startBlock();
-            BytecodeNodeElement.emitThrowIllegalLocalException(parent.model, b, null, CodeTreeBuilder.singleString("this"), CodeTreeBuilder.singleString("localIndex"), true);
+            parent.emitThrowIllegalLocalException(b, null, CodeTreeBuilder.singleString("this"), CodeTreeBuilder.singleString("localIndex"), true);
             b.end();
         }
 
@@ -455,7 +462,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
     private CodeExecutableElement createLocalIndexToTableIndex() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PROTECTED, FINAL), type(int.class), "localIndexToTableIndex");
-        ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+        ex.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "bci"));
         ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
         ex.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
         CodeTreeBuilder b = ex.createBuilder();
@@ -500,21 +507,21 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(boolean.class), "validateLocalLivenessInternal");
         ex.addParameter(new CodeVariableElement(types.Frame, "frame"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
+        ex.addParameter(new CodeVariableElement(parent.getStackPointerType(), "frameIndex"));
         ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
         ex.addParameter(new CodeVariableElement(types.Frame, "stackFrame"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "stackFrameBci"));
+        ex.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "stackFrameBci"));
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(type(int.class), "bci");
+        b.declaration(parent.getBytecodeIndexType(), "bci");
         b.startIf().string("frame == stackFrame").end().startBlock();
         b.lineComment("Loading a value from the current frame. Use the precise bci (the frame is only updated when control escapes).");
-        b.statement("bci = stackFrameBci");
+        b.statement("bci = ", parent.castBytecodeIndexToInt("stackFrameBci"));
         b.end();
         b.end().startElseBlock();
         b.startAssign("bci");
-        BytecodeRootNodeElement.startGetFrame(b, "frame", type(int.class), false).string("BCI_INDEX").end();
+        parent.emitReadBytecodeIndexFromFrame(b, "frame", false);
         b.end();
         b.end();
 
@@ -999,10 +1006,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.declaration(generic(declaredType(List.class), types.Source), "localSources", "this.sources");
 
         b.startIf().string("info != null").end().startBlock();
-        b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-        b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
-        b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
-        b.declaration(type(int.class), "sourceIndex", "info[i + SOURCE_INFO_OFFSET_SOURCE]");
+        b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
+        b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
+        b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
+        b.declaration(type(int.class), "sourceIndex", parent.sourceInfoTable.loadSource("info", "i"));
         b.startIf().string("startBci > endBci").end().startBlock();
         b.tree(createValidationError("source bci range is malformed"));
         b.end().startElseIf().string("sourceIndex < 0 || sourceIndex > localSources.size()").end().startBlock();
@@ -1145,7 +1152,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                         Set.of(FINAL),
                         type(int.class), "readValidBytecode",
                         new CodeVariableElement(type(byte[].class), "bc"),
-                        new CodeVariableElement(type(int.class), "bci"));
+                        new CodeVariableElement(parent.getBytecodeIndexType(), "bci"));
         CodeTreeBuilder b = method.createBuilder();
         if (parent.model.isBytecodeUpdatable()) {
             b.declaration(type(int.class), "op", BytecodeRootNodeElement.readInstruction("bc", "bci"));
@@ -1157,6 +1164,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.lineComment("While we were processing the exception handler the code invalidated.");
             b.lineComment("We need to re-read the op from the old bytecodes.");
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.declaration(arrayOf(type(byte.class)), "oldBytecodes", "oldBytecodesBox.value");
+            b.startIf().string("oldBytecodes == null").end().startBlock();
+            b.startThrow().startNew(type(AssertionError.class)).doubleQuote("bytecode was invalidated but old bytecode is unavailable").end(2);
+            b.end();
             b.startReturn().tree(BytecodeRootNodeElement.readInstruction("oldBytecodes", "bci")).end();
             b.end(); // case
             b.caseDefault().startCaseBlock();
@@ -1181,24 +1192,29 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "translateBytecodeIndex", new String[]{"newNode", "bytecodeIndex"});
         CodeTreeBuilder b = ex.createBuilder();
         if (parent.model.isBytecodeUpdatable()) {
-
-            CodeTreeBuilder tb = CodeTreeBuilder.createBuilder();
-            tb.startCall("transition");
-            tb.startGroup();
-            tb.cast(this.asType());
-            tb.string("newNode");
-            tb.end();
-            tb.string(parent.encodeState("bytecodeIndex", null));
-            if (parent.model.hasYieldOperation()) {
-                tb.string("null");
-            }
-            tb.end();
-
-            b.startReturn();
-            b.string(BytecodeRootNodeElement.decodeBci(tb.build().toString()));
+            b.startDeclaration(this.asType(), "newBytecode").cast(this.asType()).string("newNode").end();
+            b.declaration(arrayOf(type(byte.class)), "newBc", "newBytecode.bytecodes");
+            b.startIf().string("this == newBytecode || this.bytecodes == newBc").end().startBlock();
+            b.lineComment("No change in bytecodes.");
+            b.startReturn().string("bytecodeIndex").end();
             b.end();
+
+            b.declaration(arrayOf(type(byte.class)), "oldBc", "oldBytecodesBox.value");
+            b.startIf().string("oldBc == null").end().startBlock();
+            b.startThrow().startNew(type(AssertionError.class)).doubleQuote("old bytecode is unavailable").end(2);
+            b.end();
+
+            b.startDeclaration(parent.getBytecodeIndexType(), "newBci");
+            b.startCall("computeNewBci").string("bytecodeIndex").string("oldBc").string("newBc");
+            if (parent.model.enableTagInstrumentation) {
+                b.string("this.getTagNodes()");
+                b.string("newBytecode.getTagNodes()");
+            }
+            b.end();
+            b.end();
+            b.startReturn().string(parent.castBytecodeIndexToInt("newBci")).end();
         } else {
-            b.statement("return bytecodeIndex");
+            b.startReturn().string("bytecodeIndex").end();
         }
         return ex;
     }
@@ -1206,11 +1222,13 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     private CodeExecutableElement createTransition() {
         // Returns updated state long, if updatable.
         TypeMirror returnType = parent.model.isBytecodeUpdatable() ? type(long.class) : type(void.class);
-
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), returnType, "transition");
         ex.addParameter(new CodeVariableElement(this.asType(), "newBytecode"));
-        if (parent.model.isBytecodeUpdatable()) {
+        if (parent.model.isBytecodeUpdatable() || parent.model.needsCachedTagsTransition()) {
             ex.addParameter(new CodeVariableElement(type(long.class), "state"));
+        }
+        if (parent.model.needsCachedTagsTransition()) {
+            ex.addParameter(new CodeVariableElement(types.Frame, "frame"));
         }
         if (parent.model.hasYieldOperation()) {
             ex.addParameter(new CodeVariableElement(parent.continuationRootNodeImpl.asType(), "continuationRootNode"));
@@ -1220,14 +1238,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         if (parent.model.hasYieldOperation()) {
             /*
-             * We can be here for one of two reasons:
-             *
-             * 1. We transitioned from uncached/uninitialized to cached. In this case, we update the
-             * ContinuationRootNode so future calls will start executing the cached interpreter.
-             *
-             * 2. Bytecode was rewritten. In this case, since the bytecode invalidation logic
-             * patches all ContinuationRootNodes with the new bytecode, we don't have to update
-             * anything.
+             * There are two kinds of transitions: from uncached/uninitialized to cached, and from
+             * one bytecode array to another. We handle the former case for ContinuationRootNode
+             * here. We already handle the latter case during reparsing.
              */
             b.startIf().string("continuationRootNode != null && this.getTier() == ").staticReference(types.BytecodeTier, "UNCACHED").end().startBlock();
             b.lineComment("Transition continuationRootNode to cached.");
@@ -1245,28 +1258,37 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.end(2);
 
             b.end();
+            b.newLine();
         }
 
         if (parent.model.isBytecodeUpdatable()) {
-            b.declaration(arrayOf(type(byte.class)), "oldBc", "this.oldBytecodes");
+            // Compute the new bci to continue executing from.
             b.declaration(arrayOf(type(byte.class)), "newBc", "newBytecode.bytecodes");
-            b.startIf().string("oldBc == null || this == newBytecode || this.bytecodes == newBc").end().startBlock();
+            b.declaration(parent.getBytecodeIndexType(), "newBci");
+            b.declaration(type(long.class), "newState");
+
+            b.startIf().string("this == newBytecode || this.bytecodes == newBc").end().startBlock();
+
             b.lineComment("No change in bytecodes.");
-            b.startReturn().string("state").end();
+            b.startAssign("newBci").string(BytecodeRootNodeElement.decodeBci("state")).end();
+            b.statement("newState = state");
+
+            b.end(); // case: bytecode not updated
+            b.startElseBlock();
+
+            b.lineComment("Bytecodes updated. Translate current bci to new bytecode array.");
+            b.declaration(arrayOf(type(byte.class)), "oldBc", "oldBytecodesBox.value");
+            b.startIf().string("oldBc == null").end().startBlock();
+            b.startThrow().startNew(type(AssertionError.class)).doubleQuote("old bytecode is unavailable").end(2);
             b.end();
-
-            b.declaration(type(int.class), "oldBci", BytecodeRootNodeElement.decodeBci("state"));
-
-            b.startDeclaration(type(int.class), "newBci");
-            b.startCall("computeNewBci").string("oldBci").string("oldBc").string("newBc");
+            b.declaration(parent.getBytecodeIndexType(), "oldBci", BytecodeRootNodeElement.decodeBci("state"));
+            b.startAssign("newBci").startCall("computeNewBci").string("oldBci").string("oldBc").string("newBc");
             if (parent.model.enableTagInstrumentation) {
                 b.string("this.getTagNodes()");
                 b.string("newBytecode.getTagNodes()");
             }
-            b.end(); // call
-
-            b.end();
-
+            b.end(2);
+            b.startAssign("newState").string(BytecodeRootNodeElement.encodeNewBci("newBci", "state")).end();
             if (parent.model.overridesBytecodeDebugListenerMethod("onBytecodeStackTransition")) {
                 b.startStatement();
                 b.startCall("getRoot().onBytecodeStackTransition");
@@ -1275,22 +1297,59 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                 b.end().end();
             }
 
-            b.startReturn().string(BytecodeRootNodeElement.encodeNewBci("newBci", "state")).end();
+            b.end(); // case: bytecode updated
+        }
+
+        if (parent.model.needsCachedTagsTransition()) {
+            b.newLine();
+            // When transitioning from uncached to cached we need to update local tags.
+            String newBci;
+            if (parent.model.isBytecodeUpdatable()) {
+                newBci = "newBci"; // already calculated
+            } else {
+                b.declaration(parent.getBytecodeIndexType(), "currentBci", BytecodeRootNodeElement.decodeBci("state"));
+                newBci = "currentBci";
+            }
+            b.startIf().string(newBci).string(" > 0 && this.getTier().ordinal() < newBytecode.getTier().ordinal()").end().startBlock();
+            b.lineComment("Populate cached tags for any locals already stored in the frame.");
+
+            b.startDeclaration(type(int.class), "localCount").startCall("newBytecode.getLocalCount").string(parent.castBytecodeIndexToInt(newBci)).end(2);
+            b.startFor().string("int localOffset = 0; localOffset < localCount; localOffset++").end().startBlock();
+            b.startIf().startCall("FRAMES.getTag").string("frame").string(BytecodeRootNodeElement.USER_LOCALS_START_INDEX + " + localOffset").end().string(" == ").staticReference(
+                            parent.frameTagsElement.getIllegal()).end().startBlock();
+            // Setting the cached tag for a cleared slot would pollute the tag to generic.
+            b.statement("continue");
+            b.end();
+
+            b.startStatement().startCall("newBytecode.setLocalValue");
+            b.string(parent.castBytecodeIndexToInt(newBci));
+            b.string("frame");
+            b.string("localOffset");
+            b.startCall("newBytecode.getLocalValue").string(parent.castBytecodeIndexToInt(newBci)).string("frame").string("localOffset").end();
+            b.end(2);
+            b.end();
+            b.end();
+            b.newLine();
+        }
+
+        if (parent.model.isBytecodeUpdatable()) {
+            // Return the new state.
+            b.startReturn().string("newState").end();
         }
 
         return ex;
     }
 
-    record InstrumentationGroup(int instructionLength, boolean instrumentation, boolean tagInstrumentation, InstructionImmediate tagNodeImmediate)
-                    implements
-                        Comparable<AbstractBytecodeNodeElement.InstrumentationGroup> {
+    record InstrumentationGroup(int instructionLength, boolean instrumentation,
+                    boolean tagInstrumentation, InstructionImmediate tagNodeImmediate) implements Comparable<InstrumentationGroup> {
+
         InstrumentationGroup(InstructionModel instr) {
             this(instr.getInstructionLength(), instr.isInstrumentation(), instr.isTagInstrumentation(),
                             instr.isTagInstrumentation() ? instr.getImmediate(ImmediateKind.TAG_NODE) : null);
         }
 
         @Override
-        public int compareTo(AbstractBytecodeNodeElement.InstrumentationGroup o) {
+        public int compareTo(InstrumentationGroup o) {
             int compare = Boolean.compare(this.instrumentation, o.instrumentation);
             if (compare != 0) {
                 return compare;
@@ -1318,19 +1377,19 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
     private CodeExecutableElement createTransitionInstrumentationIndex() {
 
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "transitionInstrumentationIndex");
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), parent.getBytecodeIndexType(), "transitionInstrumentationIndex");
         ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "oldBc"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "oldBciBase"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "oldBciTarget"));
+        ex.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "oldBciBase"));
+        ex.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "oldBciTarget"));
         ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "newBc"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "newBciBase"));
+        ex.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "newBciBase"));
         if (parent.model.enableTagInstrumentation) {
             ex.addParameter(new CodeVariableElement(arrayOf(parent.tagNode.asType()), "oldTagNodes"));
             ex.addParameter(new CodeVariableElement(arrayOf(parent.tagNode.asType()), "newTagNodes"));
         }
         CodeTreeBuilder b = ex.createBuilder();
-        b.declaration(type(int.class), "oldBci", "oldBciBase");
-        b.declaration(type(int.class), "newBci", "newBciBase");
+        b.declaration(parent.getBytecodeIndexType(), "oldBci", "oldBciBase");
+        b.declaration(parent.getBytecodeIndexType(), "newBci", "newBciBase");
         b.lineComment("Find the last instrumentation instruction executed before oldBciTarget.");
         b.lineComment("The new bci should point directly after this reference instruction in the new bytecode.");
         b.declaration(type(short.class), "searchOp", "-1");
@@ -1466,8 +1525,8 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     }
 
     private CodeExecutableElement createComputeNewBci() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL, STATIC), type(int.class), "computeNewBci");
-        ex.addParameter(new CodeVariableElement(type(int.class), "oldBci"));
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL, STATIC), parent.getBytecodeIndexType(), "computeNewBci");
+        ex.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "oldBci"));
         ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "oldBc"));
         ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "newBc"));
         if (parent.model.enableTagInstrumentation) {
@@ -1476,9 +1535,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         }
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(type(int.class), "stableBci", "toStableBytecodeIndex(oldBc, oldBci)");
-        b.declaration(type(int.class), "newBci", "fromStableBytecodeIndex(newBc, stableBci)");
-        b.declaration(type(int.class), "oldBciBase", "fromStableBytecodeIndex(oldBc, stableBci)");
+        b.declaration(parent.getBytecodeIndexType(), "stableBci", "toStableBytecodeIndex(oldBc, oldBci)");
+        b.declaration(parent.getBytecodeIndexType(), "newBci", "fromStableBytecodeIndex(newBc, stableBci)");
+        b.declaration(parent.getBytecodeIndexType(), "oldBciBase", "fromStableBytecodeIndex(oldBc, stableBci)");
 
         b.startIf().string("oldBci != oldBciBase").end().startBlock();
         b.lineComment("Transition within an in instrumentation bytecode.");
@@ -1530,8 +1589,8 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
      * @param toStableValue whether to return the stable value or the internal bci.
      */
     private void emitStableBytecodeSearch(CodeTreeBuilder b, String targetVariable, String stableVariable, boolean toStableValue) {
-        b.declaration(type(int.class), "bci", "0");
-        b.declaration(type(int.class), stableVariable, "0");
+        b.declaration(parent.getBytecodeIndexType(), "bci", "0");
+        b.declaration(parent.getBytecodeIndexType(), stableVariable, "0");
 
         String resultVariable;
         String searchVariable;
@@ -1586,19 +1645,44 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     }
 
     private CodeExecutableElement createToStableBytecodeIndex() {
-        CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "toStableBytecodeIndex");
+        CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), parent.getBytecodeIndexType(), "toStableBytecodeIndex");
         translate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "bc"));
-        translate.addParameter(new CodeVariableElement(type(int.class), "searchBci"));
+        translate.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "searchBci"));
         emitStableBytecodeSearch(translate.createBuilder(), "searchBci", "stableBci", true);
         return translate;
     }
 
     private CodeExecutableElement createFromStableBytecodeIndex() {
-        CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "fromStableBytecodeIndex");
+        CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), parent.getBytecodeIndexType(), "fromStableBytecodeIndex");
         translate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "bc"));
-        translate.addParameter(new CodeVariableElement(type(int.class), "stableSearchBci"));
+        translate.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "stableSearchBci"));
         emitStableBytecodeSearch(translate.createBuilder(), "stableSearchBci", "stableBci", false);
         return translate;
+    }
+
+    private CodeExecutableElement createAllocateOldBytecodesBox() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), parent.oldBytecodesBoxElement.asType(), "allocateOldBytecodesBox");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.declaration(parent.oldBytecodesBoxElement.asType(), "oldBytecodesBox_", "this.oldBytecodesBox");
+        b.startIf().string("oldBytecodesBox_ == null").end().startBlock();
+        b.startAssign("oldBytecodesBox_").string("this.oldBytecodesBox = ").startNew(parent.oldBytecodesBoxElement.asType()).end(2);
+        b.end();
+        b.startReturn().string("oldBytecodesBox_").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createPublishOldBytecodes() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(void.class), "publishOldBytecodes");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.declaration(parent.oldBytecodesBoxElement.asType(), "oldBytecodesBox_", "allocateOldBytecodesBox()");
+        b.startIf().string("oldBytecodesBox_.value == null").end().startBlock();
+        b.startAssign("oldBytecodesBox_.value").startStaticCall(type(Arrays.class), "copyOf").string("bytecodes").string("bytecodes.length").end(2);
+        b.end();
+
+        return ex;
     }
 
     private CodeExecutableElement createInvalidate() {
@@ -1608,19 +1692,14 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeTreeBuilder b = invalidate.createBuilder();
 
         b.declaration(arrayOf(type(byte.class)), "bc", "this.bytecodes");
-        b.declaration(type(int.class), "bci", "0");
+        b.declaration(parent.getBytecodeIndexType(), "bci", "0");
         if (parent.model.hasYieldOperation()) {
             b.declaration(type(int.class), "continuationIndex", "0");
         }
 
-        b.startAssign("this.oldBytecodes").startStaticCall(type(Arrays.class), "copyOf").string("bc").string("bc.length").end().end();
-
-        b.startStatement().startStaticCall(type(VarHandle.class), "loadLoadFence").end().end();
-
         b.startWhile().string("bci < bc.length").end().startBlock();
         b.declaration(type(short.class), "op", BytecodeRootNodeElement.readInstruction("bc", "bci"));
         b.startSwitch().string("op").end().startBlock();
-
         for (List<InstructionModel> instructions : BytecodeRootNodeElement.groupInstructionsByLength(parent.model.getInstructions())) {
             for (InstructionModel instruction : instructions) {
                 b.startCase().tree(parent.createInstructionConstant(instruction)).end();
@@ -1662,12 +1741,14 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.startReturn().string("null").end();
         b.end();
 
-        b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-        b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
-        b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
+        b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
+        b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
+        b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
 
         b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
-        b.startReturn().string("createSourceSection(sources, info, i)").end();
+        b.startReturn();
+        b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("i").end();
+        b.end();
         b.end();
 
         b.end();
@@ -1691,9 +1772,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.declaration(type(int.class), "sectionIndex", "0");
         b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
 
-        b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-        b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
-        b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
+        b.startFor().string("int i = 0; i < info.length; i += ").variable(parent.sourceInfoTable.entryLengthVariable).end().startBlock();
+        b.declaration(type(int.class), "startBci", parent.sourceInfoTable.loadStartBci("info", "i"));
+        b.declaration(type(int.class), "endBci", parent.sourceInfoTable.loadEndBci("info", "i"));
 
         b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
 
@@ -1701,38 +1782,22 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.startAssign("sections").startStaticCall(type(Arrays.class), "copyOf");
         b.string("sections");
         // Double the size of the array, but cap it at the number of source section entries.
-        b.startStaticCall(type(Math.class), "min").string("sections.length * 2").string("info.length / SOURCE_INFO_LENGTH").end();
+        b.startStaticCall(type(Math.class), "min");
+        b.string("sections.length * 2");
+        b.startGroup().string("info.length / ").variable(parent.sourceInfoTable.entryLengthVariable).end();
+        b.end(); // call
         b.end(2); // assign
         b.end(); // if
 
-        b.startStatement().string("sections[sectionIndex++] = createSourceSection(sources, info, i)").end();
+        b.startAssign("sections[sectionIndex++]");
+        b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("i").end();
+        b.end();
 
         b.end(); // if
 
         b.end(); // for block
 
         b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("sections").string("sectionIndex").end().end();
-        return ex;
-    }
-
-    private CodeExecutableElement createCreateSourceSection() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), types.SourceSection, "createSourceSection");
-        ex.addParameter(new CodeVariableElement(generic(List.class, types.Source), "sources"));
-        ex.addParameter(new CodeVariableElement(type(int[].class), "info"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "index"));
-
-        CodeTreeBuilder b = ex.createBuilder();
-        b.declaration(type(int.class), "sourceIndex", "info[index + SOURCE_INFO_OFFSET_SOURCE]");
-        b.declaration(type(int.class), "start", "info[index + SOURCE_INFO_OFFSET_START]");
-        b.declaration(type(int.class), "length", "info[index + SOURCE_INFO_OFFSET_LENGTH]");
-
-        b.startIf().string("start == -1 && length == -1").end().startBlock();
-        b.startReturn().string("sources.get(sourceIndex).createUnavailableSection()").end();
-        b.end();
-
-        b.startAssert().string("start >= 0 : ").doubleQuote("invalid source start index").end();
-        b.startAssert().string("length >= 0 : ").doubleQuote("invalid source length").end();
-        b.startReturn().string("sources.get(sourceIndex).createSection(start, length)").end();
         return ex;
     }
 
@@ -1746,13 +1811,15 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.startReturn().string("null").end();
         b.end();
 
-        b.declaration(type(int.class), "lastEntry", "info.length - SOURCE_INFO_LENGTH");
+        b.startDeclaration(type(int.class), "lastEntry");
+        b.string("info.length - ").variable(parent.sourceInfoTable.entryLengthVariable);
+        b.end();
         b.startIf();
-        b.string("info[lastEntry + SOURCE_INFO_OFFSET_START_BCI] == 0 &&").startIndention().newLine();
-        b.string("info[lastEntry + SOURCE_INFO_OFFSET_END_BCI] == bytecodes.length").end();
+        b.tree(parent.sourceInfoTable.loadStartBci("info", "lastEntry")).string(" == 0 &&").startIndention().newLine();
+        b.tree(parent.sourceInfoTable.loadEndBci("info", "lastEntry")).string(" == bytecodes.length").end();
         b.end().startBlock();
         b.startReturn();
-        b.string("createSourceSection(sources, info, lastEntry)");
+        b.startStaticCall(parent.sourceInfoTable.createSourceSection).string("sources").string("info").string("lastEntry").end();
         b.end();
         b.end(); // if
 

@@ -90,10 +90,12 @@ public class JmxTest {
     static final String TRUSTSTORE_PROPERTY = "javax.net.ssl.trustStore";
     static final String REGISTRY_SSL_PROPERTY = "com.sun.management.jmxremote.registry.ssl";
     static final String SOCKET_FACTORY_PROPERTY = "com.sun.jndi.rmi.factory.socket";
+    static final String RMI_ENABLE_ENDPOINT_IDENTIFICATION_PROPERTY = "jdk.rmi.ssl.client.enableEndpointIdentification";
     static final String TEST_PORT = "12345";
     static final String TEST_ROLE = "myTestRole";
     static final String TEST_ROLE_PASSWORD = "MYTESTP@SSWORD";
     static final String TRUE = "true";
+    static final String FALSE = "false";
 
     private static Path tempDirectory;
 
@@ -108,6 +110,7 @@ public class JmxTest {
         System.setProperty(CLIENT_AUTH_PROPERTY, TRUE);
         System.setProperty(SSL_PROPERTY, TRUE);
         System.setProperty(REGISTRY_SSL_PROPERTY, TRUE);
+        System.setProperty(RMI_ENABLE_ENDPOINT_IDENTIFICATION_PROPERTY, FALSE);
 
         // Prepare temp directory with files required for testing authentication.
         tempDirectory = Files.createTempDirectory("jmxtest");

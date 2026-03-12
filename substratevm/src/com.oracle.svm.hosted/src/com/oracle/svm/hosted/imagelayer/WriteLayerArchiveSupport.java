@@ -38,11 +38,11 @@ import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
 
 /* Builds an image layer, either initial or intermediate. */
 public class WriteLayerArchiveSupport extends LayerArchiveSupport {

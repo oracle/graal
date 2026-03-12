@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.List;
 
@@ -35,7 +35,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.BarrierSetProvider;
@@ -43,6 +42,7 @@ import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -161,13 +161,12 @@ public interface RememberedSet extends BarrierSetProvider {
     void dirtyCardRangeForUnalignedObject(Object object, Pointer startAddress, Pointer endAddress);
 
     /**
-     * Marks the {@code holderObject} as dirty if needed according to the location of
-     * {@code object}. May only be called for {@code holderObject}s for which remembered set
-     * tracking is enabled.
+     * Marks the {@code holderObject} as dirty if needed according to the location of {@code object}
+     * and {@code holderObject}.
      */
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void dirtyCardIfNecessary(Object holderObject, Object object, Pointer objRef);
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void dirtyCardIfNecessaryInGC(Object holderObject, Object object, Pointer objRef);
 
     /**
      * If remembered set tracking is enabled for the given object, this method ensures that all

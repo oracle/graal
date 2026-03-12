@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.jvmci.meta;
 
-import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
 import static com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType.ANNOTATION_DEFAULT_VALUE;
 import static com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType.DECLARED_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType.PARAMETER_ANNOTATIONS;
@@ -205,15 +204,15 @@ public abstract class AbstractEspressoResolvedJavaMethod extends AbstractAnnotat
 
     @Override
     public final boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        EspressoResolvedInstanceType espressoResolved;
-        if (resolved instanceof EspressoResolvedInstanceType) {
-            espressoResolved = (EspressoResolvedInstanceType) resolved;
-        } else if (resolved instanceof EspressoResolvedArrayType) {
-            espressoResolved = runtime().getJavaLangObject();
+        AbstractEspressoResolvedInstanceType espressoResolved;
+        if (resolved instanceof AbstractEspressoResolvedInstanceType) {
+            espressoResolved = (AbstractEspressoResolvedInstanceType) resolved;
+        } else if (resolved instanceof AbstractEspressoResolvedArrayType) {
+            espressoResolved = getDeclaringClass().getJavaLangObject();
         } else {
             return false;
         }
-        int vtableIndex = getVtableIndex(espressoResolved);
+        int vtableIndex = getVtableIndex((EspressoResolvedObjectType) resolved);
         return vtableIndex >= 0 && vtableIndex < espressoResolved.getVtableLength();
     }
 
@@ -222,21 +221,21 @@ public abstract class AbstractEspressoResolvedJavaMethod extends AbstractAnnotat
             return -1;
         }
         if (holder.isInterface()) {
-            if (resolved.isInterface() || !resolved.isLinked() || !getDeclaringClass().isAssignableFrom(resolved)) {
+            if (resolved.isInterface() || !resolved.isLinked() || !holder.isAssignableFrom(resolved)) {
                 return -1;
             }
-            EspressoResolvedInstanceType type;
-            if (resolved instanceof EspressoResolvedArrayType) {
-                type = runtime().getJavaLangObject();
+            AbstractEspressoResolvedInstanceType type;
+            if (resolved.isArray()) {
+                type = getDeclaringClass().getJavaLangObject();
             } else {
-                type = (EspressoResolvedInstanceType) resolved;
+                type = (AbstractEspressoResolvedInstanceType) resolved;
             }
             return getVtableIndexForInterfaceMethod(type);
         }
         return getVtableIndex();
     }
 
-    protected abstract int getVtableIndexForInterfaceMethod(EspressoResolvedInstanceType resolved);
+    protected abstract int getVtableIndexForInterfaceMethod(AbstractEspressoResolvedInstanceType resolved);
 
     protected abstract int getVtableIndex();
 

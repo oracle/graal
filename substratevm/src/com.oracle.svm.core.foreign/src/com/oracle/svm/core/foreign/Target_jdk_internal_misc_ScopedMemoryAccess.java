@@ -36,7 +36,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.foreign.ForeignAPIPredicates.SharedArenasDisabled;
 import com.oracle.svm.core.foreign.ForeignAPIPredicates.SharedArenasEnabled;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
-import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.internal.access.foreign.MappedMemoryUtilsProxy;
 import jdk.internal.foreign.AbstractMemorySegmentImpl;

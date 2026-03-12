@@ -35,7 +35,7 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile.LLVMSection;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 public class LLVMUserDefinedSection extends LLVMSection implements ObjectFile.RelocatableSectionImpl {
     protected ElementImpl impl;

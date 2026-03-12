@@ -24,13 +24,17 @@
  */
 package com.oracle.svm.core.option;
 
+import com.oracle.svm.shared.option.APIOption;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicSet;
+
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.shared.option.OptionUtils;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionsContainer;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.UnmodifiableEconomicSet;
 
 public enum GCOptionValue {
     Serial("serial"),

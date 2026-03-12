@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 

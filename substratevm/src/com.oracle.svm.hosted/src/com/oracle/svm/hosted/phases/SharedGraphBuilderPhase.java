@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import static com.oracle.svm.core.SubstrateUtil.toUnboxedClass;
+import static com.oracle.svm.shared.util.SubstrateUtil.toUnboxedClass;
 import static jdk.graal.compiler.bytecode.Bytecodes.LDC2_W;
 
 import java.lang.classfile.Opcode;
@@ -50,12 +50,11 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.ForeignSupport;
-import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
-import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration.BootstrapMethodRecord;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo.ExceptionWrapper;
+import com.oracle.svm.core.bootstrap.BootstrapMethodInfoCache;
+import com.oracle.svm.core.bootstrap.BootstrapMethodInfoCache.BootstrapMethodRecord;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
@@ -68,18 +67,20 @@ import com.oracle.svm.core.nodes.foreign.ScopedMethodNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.SharedArenaSupport;
+import com.oracle.svm.hosted.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.common.meta.MethodVariant;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.calc.Condition;
@@ -852,7 +853,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (linkAtBuildTime) {
                 reportUnresolvedElement("type", type.toJavaName());
             } else {
-                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
+                String message = type.toJavaName();
+                if (lastUnresolvedElementException != null && lastUnresolvedElementException.getCause() != null) {
+                    message += " [" + lastUnresolvedElementException.getCause() + "]";
+                }
+                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, message);
             }
         }
 
@@ -1223,8 +1228,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * Only methods which can deoptimize need to consider live locals from asynchronous
              * exception handlers.
              */
-            if (method instanceof MultiMethod) {
-                return ((MultiMethod) method).getMultiMethodKey() == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+            if (method instanceof MethodVariant) {
+                return ((MethodVariant) method).getMethodVariantKey() == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
             }
 
             /*
@@ -1442,7 +1447,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         }
                     }
 
-                    if (!BootstrapMethodConfiguration.singleton().isCondyAllowedAtBuildTime(bootstrapMethod)) {
+                    if (!BootstrapMethodConfiguration.singleton().isCondyAllowedAtBuildTime(bootstrap.getMethod())) {
                         int parameterLength = bootstrap.getMethod().getParameters().length;
                         List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
                         boolean isVarargs = bootstrap.getMethod().isVarArgs();
@@ -1512,8 +1517,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
                 /* Step 1: Initialize the BootstrapMethodInfo. */
 
-                BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD));
-                BootstrapMethodInfo bootstrapMethodInfo = BootstrapMethodConfiguration.singleton().getBootstrapMethodInfoCache().computeIfAbsent(bootstrapMethodRecord,
+                BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMethodVariant(MethodVariant.ORIGINAL_METHOD));
+                BootstrapMethodInfo bootstrapMethodInfo = BootstrapMethodInfoCache.singleton().getBootstrapMethodInfoCache().computeIfAbsent(bootstrapMethodRecord,
                                 _ -> new BootstrapMethodInfo());
                 ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(getSnippetReflection().forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());
 

@@ -115,7 +115,7 @@ public class InstructionRewriterTestParser extends AbstractParser<GenerateInstru
             throw new AssertionError("invalid stack effect " + stackEffect);
         }
         int numParams = 1 - stackEffect;
-        return new Signature(context.getDeclaredType(Object.class), Collections.nCopies(numParams, context.getDeclaredType(Object.class)));
+        return new Signature(context.getDeclaredType(Object.class), Signature.createDefaultOperands(Collections.nCopies(numParams, context.getDeclaredType(Object.class))));
     }
 
     private static InstructionRewriteRuleModel parseInstructionRewriteRule(AnnotationMirror rewriteRuleMirror, Map<String, InstructionModel> instructionSet) {

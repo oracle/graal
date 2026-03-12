@@ -35,10 +35,10 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
@@ -136,7 +136,7 @@ public class ClassLoaderFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        var packagesField = JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(ClassLoader.class), "packages");
+        var packagesField = JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(ClassLoader.class), "packages");
         if (!ImageLayerBuildingSupport.buildingImageLayer()) {
             config.registerFieldValueTransformer(packagesField, new TraditionalPackageMapTransformer());
         } else {
@@ -181,6 +181,7 @@ public class ClassLoaderFeature implements InternalFeature {
     }
 
     abstract static class PackageMapTransformer implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-72593: Migrate ClassLoaderFeature to terminus
 
         @Override
         public boolean isAvailable() {

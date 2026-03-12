@@ -489,9 +489,9 @@ public final class Management extends NativeEnv {
                 StaticObject lockObj = StaticObject.NULL;
                 StaticObject lockOwner = StaticObject.NULL;
                 if (ThreadState.isBlocked(threadStatus)) {
-                    lockObj = (StaticObject) meta.HIDDEN_THREAD_PENDING_MONITOR.getHiddenObject(thread);
+                    lockObj = (StaticObject) meta.java_lang_Thread_0pendingMonitor.getHiddenObject(thread);
                 } else if (ThreadState.hasBlockingObject(threadStatus)) {
-                    lockObj = (StaticObject) meta.HIDDEN_THREAD_WAITING_MONITOR.getHiddenObject(thread);
+                    lockObj = (StaticObject) meta.java_lang_Thread_0waitingMonitor.getHiddenObject(thread);
                 }
                 if (lockObj == null) {
                     lockObj = StaticObject.NULL;
@@ -507,8 +507,8 @@ public final class Management extends NativeEnv {
                     }
                 }
 
-                long blockedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_BLOCKED_COUNT);
-                long waitedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_WAITED_COUNT);
+                long blockedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.java_lang_Thread_0blockedCount);
+                long waitedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.java_lang_Thread_0waitedCount);
 
                 StaticObject stackTrace = traces[i] == null ? StaticObject.NULL : traces[i].toGuest(getContext());
 

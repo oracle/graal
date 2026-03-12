@@ -47,8 +47,8 @@ import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.util.ExitStatus;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.StringUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.shared.util.StringUtil;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.json.JsonPrettyWriter;

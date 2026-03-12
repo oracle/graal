@@ -28,7 +28,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.util.Counter;

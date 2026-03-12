@@ -25,5 +25,6 @@
 module moduletests.hello.app {
     exports hello;
     requires moduletests.hello.lib;
+    requires jdk.dynalink;
 }
 

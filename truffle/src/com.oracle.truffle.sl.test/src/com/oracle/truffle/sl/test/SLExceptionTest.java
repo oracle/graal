@@ -45,7 +45,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -79,7 +78,7 @@ public class SLExceptionTest extends AbstractSLTest {
 
     @Before
     public void setUp() {
-        this.ctx = Context.create("sl");
+        this.ctx = newContextBuilder().build();
     }
 
     @After
@@ -278,7 +277,7 @@ public class SLExceptionTest extends AbstractSLTest {
         assertEquals(info, "host", frame.getLanguage().getId());
         assertEquals(info, "Host", frame.getLanguage().getName());
         assertEquals(info, className + "." + methodName, frame.getRootName());
-        assertNull(info, frame.getSourceLocation());
+        assertNotNull(info, frame.getSourceLocation());
         assertNotNull(frame.toString());
 
         StackTraceElement hostFrame = frame.toHostFrame();
@@ -334,7 +333,7 @@ public class SLExceptionTest extends AbstractSLTest {
 
     @Test
     public void testGuestOverHostPropagation() {
-        Context context = Context.newBuilder("sl").allowAllAccess(true).build();
+        Context context = newContextBuilder().allowAllAccess(true).build();
         String code = "" +
                         "function other(x) {" +
                         "   return invalidFunction();" +

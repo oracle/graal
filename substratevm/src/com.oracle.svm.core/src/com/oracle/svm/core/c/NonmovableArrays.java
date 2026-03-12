@@ -34,11 +34,12 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.JavaMemoryUtil;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
@@ -51,11 +52,10 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Support for allocating and accessing non-moving arrays. Such arrays are safe to access during
@@ -386,7 +386,7 @@ public final class NonmovableArrays {
             hosted[index] = value;
             return;
         }
-        assert matches(array, true, ConfigurationValues.getTarget().wordSize);
+        assert matches(array, true, ConfigurationValues.getWordSize());
         ((Pointer) addressOf(array, index)).writeWord(0, value);
     }
 
@@ -397,7 +397,7 @@ public final class NonmovableArrays {
             T[] hosted = getHostedArray(array);
             return hosted[index];
         }
-        assert matches(array, true, ConfigurationValues.getTarget().wordSize);
+        assert matches(array, true, ConfigurationValues.getWordSize());
         return ((Pointer) addressOf(array, index)).readWord(0);
     }
 

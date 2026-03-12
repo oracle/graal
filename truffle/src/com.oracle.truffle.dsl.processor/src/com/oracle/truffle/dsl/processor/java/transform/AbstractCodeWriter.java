@@ -624,15 +624,30 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
         @Override
         public Void visitEnumConstant(VariableElement c, Void p) {
-            write(useImport(enclosedElement, c.asType(), true));
-            write(".");
-            write(c.getSimpleName().toString());
+            TypeMirror enumClass = ProcessorContext.getInstance().getDeclaredType(Enum.class);
+            if (ElementUtils.isAssignable(c.asType(), enumClass)) {
+                write(useImport(enclosedElement, c.asType(), true));
+                write(".");
+                write(c.getSimpleName().toString());
+            } else if (c.getModifiers().contains(Modifier.STATIC)) {
+                // we also do support integer constants. Technically it is out of spec
+                // since integer constants are just integer values, but for code generation
+                // purposes this is quite convenient.
+                write(useImport(enclosedElement, c.getEnclosingElement().asType(), true));
+                write(".");
+                write(c.getSimpleName().toString());
+            } else {
+                throw new AssertionError("Invalid enum constant " + c);
+            }
             return null;
         }
 
         @Override
         public Void visitAnnotation(AnnotationMirror a, Void p) {
+            writeLn("");
+            AbstractCodeWriter.this.indent(1);
             AbstractCodeWriter.this.visitAnnotation(enclosedElement, a);
+            AbstractCodeWriter.this.dedent(1);
             return null;
         }
 

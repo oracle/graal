@@ -36,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -46,13 +47,12 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.layered.LayeredFieldValue;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.FieldValueComputer;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerImpl;
@@ -60,19 +60,19 @@ import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;
+import com.oracle.svm.shared.util.ClassUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -128,7 +128,7 @@ public final class FieldValueInterceptionSupport {
      * per field, if there is already a transformation in place, a {@link UserError} is reported.
      */
     public void registerLegacyFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
-        registerLegacyFieldValueTransformer(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
+        registerLegacyFieldValueTransformer(GuestAccess.get().getProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
     }
 
     /**
@@ -299,7 +299,7 @@ public final class FieldValueInterceptionSupport {
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
             var transformer = transformation.getFieldValueTransformer();
-            if (transformer instanceof FieldValueTransformerWithReceiverBasedAvailability transformerWithReceiver) {
+            if (transformer instanceof JVMCIFieldValueTransformerWithReceiverBasedAvailability transformerWithReceiver) {
                 assert unknownReceiver || (!field.isStatic() && receiver != null) : Assertions.errorMessage("Missing receiver", field, receiver);
                 if (unknownReceiver) {
                     // Receiver is unknown - we cannot resolve this query
@@ -413,7 +413,7 @@ public final class FieldValueInterceptionSupport {
             if (oField == null) {
                 throw VMError.shouldNotReachHere("Cannot read value of field that has no host value: " + field.format("%H.%n"));
             }
-            value = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(oField, receiver);
+            value = GuestAccess.get().getProviders().getConstantReflection().readFieldValue(oField, receiver);
         }
 
         return interceptValue(field, value);

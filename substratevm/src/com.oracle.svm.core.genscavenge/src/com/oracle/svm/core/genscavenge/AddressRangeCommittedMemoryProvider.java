@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
-import static com.oracle.svm.core.util.VMError.guarantee;
-import static jdk.graal.compiler.word.Word.nullPointer;
-import static jdk.graal.compiler.word.Word.unsigned;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.util.VMError.guarantee;
+import static org.graalvm.word.impl.Word.nullPointer;
+import static org.graalvm.word.impl.Word.unsigned;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.IsolateArgumentAccess;
 import com.oracle.svm.core.IsolateArgumentParser;
@@ -50,7 +51,6 @@ import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
@@ -73,10 +73,10 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 
 /**
  * Reserves a fixed-size address range and provides memory from it by committing and uncommitting
@@ -419,7 +419,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
         WordPointer allocOut = UnsafeStackValue.get(WordPointer.class);
         int error = allocateInHeapAddressSpace(nbytes, alignment, allocOut);
@@ -444,7 +444,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
         WordPointer allocOut = UnsafeStackValue.get(WordPointer.class);
         int error = allocateInHeapAddressSpace(nbytes, getAlignmentForUnalignedChunks(), allocOut);
@@ -666,7 +666,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
             NativeMemoryTracking.singleton().trackUncommit(nbytes, NmtCategory.JavaHeap);
@@ -675,7 +675,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     public void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes) {
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
             NativeMemoryTracking.singleton().trackUncommit(nbytes, NmtCategory.JavaHeap);
@@ -771,7 +771,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         }
     }
 
-    @Uninterruptible(reason = "Switch to interruptible code for error reporting.", calleeMustBe = false)
+    @Uninterruptible(reason = "Switch to interruptible code for error reporting.", mayBeInlined = true, calleeMustBe = false)
     private static RuntimeException reportUncommitFailed(Pointer mapBegin, UnsignedWord mappingSize) {
         throw reportUncommitFailedInterruptibly(mapBegin, mappingSize);
     }

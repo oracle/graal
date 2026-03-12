@@ -53,15 +53,19 @@ public interface ReflectionRegistry {
 
     void register(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void register(AccessCondition condition, boolean queriedOnly, boolean preserved, Executable... methods);
+    default void register(AccessCondition condition, boolean preserved, Executable... methods) {
+        Arrays.stream(methods).forEach(method -> register(condition, preserved, method));
+    }
 
-    void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field... fields);
+    void register(AccessCondition condition, boolean preserved, Executable methods);
+
+    default void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field... fields) {
+        Arrays.stream(fields).forEach(field -> register(condition, finalIsWritable, preserved, field));
+    }
+
+    void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field fields);
 
     void registerClassLookup(AccessCondition condition, boolean preserved, String typeName);
 
     void registerFieldLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String fieldName);
-
-    void registerMethodLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String methodName, Class<?>... parameterTypes);
-
-    void registerConstructorLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, Class<?>... parameterTypes);
 }

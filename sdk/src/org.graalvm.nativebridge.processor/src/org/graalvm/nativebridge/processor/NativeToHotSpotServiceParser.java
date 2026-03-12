@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,6 +92,7 @@ public final class NativeToHotSpotServiceParser extends AbstractNativeServicePar
         final DeclaredType jNIMethod;
         final DeclaredType jValue;
         final DeclaredType notIncludedAutomatically;
+        final DeclaredType outOfMemoryError;
         final DeclaredType runtimeException;
 
         TypeCache(NativeBridgeProcessor processor) {
@@ -107,6 +108,7 @@ public final class NativeToHotSpotServiceParser extends AbstractNativeServicePar
             this.jNIMethod = (DeclaredType) processor.getType("org.graalvm.jniutils.JNICalls.JNIMethod");
             this.jValue = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JValue");
             this.notIncludedAutomatically = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically");
+            this.outOfMemoryError = (DeclaredType) processor.getType("java.lang.OutOfMemoryError");
             this.runtimeException = (DeclaredType) processor.getType("java.lang.RuntimeException");
         }
     }

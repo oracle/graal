@@ -26,6 +26,8 @@ package com.oracle.svm.hosted.code;
 
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 
+import java.io.File;
+import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,11 +45,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.deopt.Specialize;
@@ -65,9 +67,7 @@ import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -80,10 +80,13 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
+import com.oracle.svm.common.meta.MethodVariant;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
-import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -409,7 +412,7 @@ public class CompileQueue {
         this.defaultParseHooks = new ParseHooks(this);
 
         callForReplacements(debug, runtimeConfig);
-        generatedFoldInvocationPluginType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(GeneratedFoldInvocationPlugin.class);
+        generatedFoldInvocationPluginType = GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(GeneratedFoldInvocationPlugin.class);
     }
 
     protected AnalysisToHostedGraphTransplanter createGraphTransplanter() {
@@ -584,6 +587,11 @@ public class CompileQueue {
     }
 
     private void printMethodHistogram() {
+        File file = ReportUtils.reportFile(SubstrateOptions.reportsPath(), "methodhistogram", "txt");
+        ReportUtils.report("methodhistogram", file.toPath(), this::printMethodHistogramIntl);
+    }
+
+    private void printMethodHistogramIntl(PrintWriter out) {
         long sizeAllMethods = 0;
         long sizeDeoptMethods = 0;
         long sizeDeoptMethodsInNonDeopt = 0;
@@ -594,7 +602,7 @@ public class CompileQueue {
         long totalNumDeoptEntryPoints = 0;
         long totalNumDuringCallEntryPoints = 0;
 
-        System.out.format("Code Size; Nodes Parsing; Nodes Before; Nodes After; Is Trivial;" +
+        out.format("Code Size; Nodes Parsing; Nodes Before; Nodes After; Is Trivial;" +
                         " Deopt Target; Code Size; Nodes Parsing; Nodes Before; Nodes After; Deopt Entries; Deopt During Call;" +
                         " Entry Points; Direct Calls; Virtual Calls; Method%n");
 
@@ -609,11 +617,11 @@ public class CompileQueue {
             if (!method.isDeoptTarget()) {
                 numberOfMethods += 1;
                 sizeAllMethods += result.getTargetCodeSize();
-                System.out.format("%8d; %5d; %5d; %5d; %s;", result.getTargetCodeSize(), ci.numNodesAfterParsing, ci.numNodesBeforeCompilation, ci.numNodesAfterCompilation,
+                out.format("%8d; %5d; %5d; %5d; %s;", result.getTargetCodeSize(), ci.numNodesAfterParsing, ci.numNodesBeforeCompilation, ci.numNodesAfterCompilation,
                                 ci.isTrivialMethod ? "T" : " ");
 
                 int deoptMethodSize = 0;
-                HostedMethod deoptTargetMethod = method.getMultiMethod(DEOPT_TARGET_METHOD);
+                HostedMethod deoptTargetMethod = method.getMethodVariant(DEOPT_TARGET_METHOD);
                 if (deoptTargetMethod != null && isRegisteredDeoptTarget(deoptTargetMethod)) {
                     CompilationInfo dci = deoptTargetMethod.compilationInfo;
 
@@ -624,29 +632,29 @@ public class CompileQueue {
                     totalNumDeoptEntryPoints += dci.numDeoptEntryPoints;
                     totalNumDuringCallEntryPoints += dci.numDuringCallEntryPoints;
 
-                    System.out.format(" D; %6d; %5d; %5d; %5d; %4d; %4d;", deoptMethodSize, dci.numNodesAfterParsing, dci.numNodesBeforeCompilation, dci.numNodesAfterCompilation,
+                    out.format(" D; %6d; %5d; %5d; %5d; %4d; %4d;", deoptMethodSize, dci.numNodesAfterParsing, dci.numNodesBeforeCompilation, dci.numNodesAfterCompilation,
                                     dci.numDeoptEntryPoints,
                                     dci.numDuringCallEntryPoints);
 
                 } else {
                     sizeNonDeoptMethods += result.getTargetCodeSize();
                     numberOfNonDeopt += 1;
-                    System.out.format("  ; %6d; %5d; %5d; %5d; %4d; %4d;", 0, 0, 0, 0, 0, 0);
+                    out.format("  ; %6d; %5d; %5d; %5d; %4d; %4d;", 0, 0, 0, 0, 0, 0);
                 }
 
-                System.out.format(" %4d; %4d; %4d; %s%n", ci.numEntryPointCalls.get(), ci.numDirectCalls.get(), ci.numVirtualCalls.get(), method.format("%H.%n(%p) %r"));
+                out.format(" %4d; %4d; %4d; %s%n", ci.numEntryPointCalls.get(), ci.numDirectCalls.get(), ci.numVirtualCalls.get(), method.format("%H.%n(%p) %r"));
             }
         }
-        System.out.println();
-        System.out.println("Size all methods                           ; " + sizeAllMethods);
-        System.out.println("Size deopt methods                         ; " + sizeDeoptMethods);
-        System.out.println("Size deopt methods in non-deopt mode       ; " + sizeDeoptMethodsInNonDeopt);
-        System.out.println("Size non-deopt method                      ; " + sizeNonDeoptMethods);
-        System.out.println("Number of methods                          ; " + numberOfMethods);
-        System.out.println("Number of non-deopt methods                ; " + numberOfNonDeopt);
-        System.out.println("Number of deopt methods                    ; " + numberOfDeopt);
-        System.out.println("Number of deopt entry points               ; " + totalNumDeoptEntryPoints);
-        System.out.println("Number of deopt during calls entries       ; " + totalNumDuringCallEntryPoints);
+        out.println();
+        out.println("Size all methods                           ; " + sizeAllMethods);
+        out.println("Size deopt methods                         ; " + sizeDeoptMethods);
+        out.println("Size deopt methods in non-deopt mode       ; " + sizeDeoptMethodsInNonDeopt);
+        out.println("Size non-deopt method                      ; " + sizeNonDeoptMethods);
+        out.println("Number of methods                          ; " + numberOfMethods);
+        out.println("Number of non-deopt methods                ; " + numberOfNonDeopt);
+        out.println("Number of deopt methods                    ; " + numberOfDeopt);
+        out.println("Number of deopt entry points               ; " + totalNumDeoptEntryPoints);
+        out.println("Number of deopt during calls entries       ; " + totalNumDuringCallEntryPoints);
     }
 
     public CompletionExecutor getExecutor() {
@@ -681,11 +689,11 @@ public class CompileQueue {
         for (HostedMethod method : universe.getMethods()) {
             if (SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method)) {
                 method.compilationInfo.canDeoptForTesting = true;
-                assert SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method.getMultiMethod(DEOPT_TARGET_METHOD));
+                assert SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method.getMethodVariant(DEOPT_TARGET_METHOD));
             }
 
-            for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                HostedMethod hMethod = (HostedMethod) multiMethod;
+            for (MethodVariant methodVariant : method.getAllMethodVariants()) {
+                HostedMethod hMethod = (HostedMethod) methodVariant;
                 if (hMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(hMethod)) {
                     /*
                      * Deoptimization targets are parsed in a later phase.
@@ -738,7 +746,7 @@ public class CompileQueue {
          * Deoptimization target code for all methods that were manually marked as deoptimization
          * targets.
          */
-        universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(deoptMethod -> {
+        universe.getMethods().stream().map(method -> method.getMethodVariant(DEOPT_TARGET_METHOD)).filter(deoptMethod -> {
             if (deoptMethod != null) {
                 return isRegisteredDeoptTarget(deoptMethod);
             }
@@ -762,8 +770,8 @@ public class CompileQueue {
                 runOnExecutor(() -> {
                     universe.getMethods().forEach(method -> {
                         assert method.isOriginalMethod();
-                        for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                            HostedMethod hMethod = (HostedMethod) multiMethod;
+                        for (MethodVariant methodVariant : method.getAllMethodVariants()) {
+                            HostedMethod hMethod = (HostedMethod) methodVariant;
                             if (hMethod.compilationInfo.getCompilationGraph() != null) {
                                 executor.execute(new TrivialInlineTask(hMethod));
                             }
@@ -981,8 +989,8 @@ public class CompileQueue {
 
     public void scheduleEntryPoints() {
         for (HostedMethod method : universe.getMethods()) {
-            for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                HostedMethod hMethod = (HostedMethod) multiMethod;
+            for (MethodVariant methodVariant : method.getAllMethodVariants()) {
+                HostedMethod hMethod = (HostedMethod) methodVariant;
                 if (hMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(hMethod)) {
                     /*
                      * Deoptimization targets are parsed in a later phase.
@@ -1007,7 +1015,7 @@ public class CompileQueue {
                     ensureCompiled(hMethod, new EntryPointReason());
                 }
                 if (hMethod.wrapped.isVirtualRootMethod()) {
-                    MultiMethod.MultiMethodKey key = hMethod.getMultiMethodKey();
+                    MethodVariant.MethodVariantKey key = hMethod.getMethodVariantKey();
                     assert key != DEOPT_TARGET_METHOD && key != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD : "unexpected method as virtual root " + hMethod;
                     for (HostedMethod impl : hMethod.getImplementations()) {
                         VMError.guarantee(impl.wrapped.isImplementationInvoked());
@@ -1025,7 +1033,7 @@ public class CompileQueue {
 
     public void scheduleDeoptTargets() {
         for (HostedMethod method : universe.getMethods()) {
-            HostedMethod deoptTarget = method.getMultiMethod(DEOPT_TARGET_METHOD);
+            HostedMethod deoptTarget = method.getMethodVariant(DEOPT_TARGET_METHOD);
             if (deoptTarget != null) {
                 /*
                  * Not all methods will be deopt targets since the optimization of runtime compiled
@@ -1053,12 +1061,13 @@ public class CompileQueue {
             return;
         }
 
-        if (!allowFoldMethods && AnnotationUtil.getAnnotation(method, Fold.class) != null && !isFoldInvocationPluginMethod(callerMethod)) {
+        if (!allowFoldMethods && AnnotationUtil.isAnnotationPresent(method, Fold.class) && !isFoldInvocationPluginMethod(callerMethod)) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @%s: %s. " +
                             "This could happen if either: the Graal annotation processor was not executed on the parent-project of the method's declaring class, " +
                             "the arguments passed to the method were not compile-time constants, or the plugin was disabled by the corresponding %s.",
                             Fold.class.getSimpleName(), method.format("%H.%n(%p)"), GraphBuilderContext.class.getSimpleName());
         }
+        method.wrapped.checkGuaranteeFolded();
         if (!method.compilationInfo.inParseQueue.getAndSet(true)) {
             executor.execute(new ParseTask(method, reason));
         }
@@ -1220,7 +1229,7 @@ public class CompileQueue {
             return false;
         }
 
-        if (!Uninterruptible.Utils.inliningAllowed(caller, callee)) {
+        if (!UninterruptibleAnnotationUtils.inliningAllowed(caller, callee)) {
             return false;
         }
         if (!mustNotAllocateCallee(caller) && mustNotAllocate(callee)) {
@@ -1278,7 +1287,7 @@ public class CompileQueue {
         }
 
         CompilationInfo compilationInfo = method.compilationInfo;
-        assert method.getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+        assert method.getMethodVariantKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
         if (printMethodHistogram) {
             if (reason instanceof DirectCallReason) {

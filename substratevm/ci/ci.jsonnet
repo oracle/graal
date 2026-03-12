@@ -62,6 +62,11 @@
     },
   }),
 
+  local terminus = task_spec({
+    mxgate_dy+: ["/espresso-compiler-stub"],
+    mxgate_extra_args+: ["-B=--targets=GRAALVM"],
+  }),
+
   // JDKs
   local jdk_name_to_dict = {
     "jdk21"+: common.labsjdk21,
@@ -124,6 +129,9 @@
   // START MAIN BUILD DEFINITION
   local task_dict = {
     "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + spotbugs + maven + mx_build_exploded + gdb("14.2") + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk-latest": tier1 + t("30:00"),
+    }),
+    "terminus": mxgate("build,terminus") + terminus + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": tier1 + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,native_unittests,standalone_pointsto_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent,condconfig") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({

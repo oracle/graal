@@ -279,11 +279,12 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
         }
 
         static int readBCI(VirtualFrame frame) {
-            if (!frame.isInt(BCI_INDEX)) {
-                // its invalid if its never set
-                return -1;
+            if (frame.isInt(BCI_INDEX)) {
+                return frame.getInt(BCI_INDEX);
+            } else if (frame.isLong(BCI_INDEX)) {
+                return (int) frame.getLong(BCI_INDEX);
             }
-            return frame.getInt(BCI_INDEX);
+            return -1;
         }
 
         protected StoreBytecodeEliminationRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

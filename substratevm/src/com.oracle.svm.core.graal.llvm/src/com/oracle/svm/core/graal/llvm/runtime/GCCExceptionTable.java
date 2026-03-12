@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm.runtime;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.Arrays;
 

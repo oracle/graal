@@ -26,16 +26,15 @@ package com.oracle.svm.core.pltgot.amd64;
 
 import static com.oracle.svm.core.pltgot.ExitMethodAddressResolutionNode.exitMethodAddressResolution;
 
-import jdk.graal.compiler.word.Word;
-
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.pltgot.MethodAddressResolutionDispatcher;
 
 import jdk.graal.compiler.nodes.UnreachableNode;
+import org.graalvm.word.impl.Word;
 
 public final class AMD64MethodAddressResolutionDispatcher extends MethodAddressResolutionDispatcher {
     /**

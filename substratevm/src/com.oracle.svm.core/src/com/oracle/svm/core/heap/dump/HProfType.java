@@ -60,7 +60,7 @@ public enum HProfType {
 
     public int getSize() {
         if (size == 0) {
-            return ConfigurationValues.getTarget().wordSize;
+            return ConfigurationValues.getWordSize();
         }
         return size;
     }

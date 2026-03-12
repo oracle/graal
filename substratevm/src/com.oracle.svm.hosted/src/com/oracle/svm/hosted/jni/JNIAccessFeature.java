@@ -74,15 +74,14 @@ import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethodDescriptor;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -106,16 +105,16 @@ import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.impl.Word;
 
 /**
  * Prepares classes, methods and fields before and during the analysis so that they are accessible
@@ -226,7 +225,7 @@ public class JNIAccessFeature implements Feature {
         reflectivityFilter = SubstitutionReflectivityFilter.singleton();
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
     private final class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry
                     implements RuntimeJNIAccessSupport {
 
@@ -238,30 +237,24 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void register(AccessCondition condition, boolean queriedOnly, boolean preserved, Executable... executables) {
-            requireNonNull(executables, "executable", "JNI access");
+        public void register(AccessCondition condition, boolean preserved, Executable executable) {
+            Objects.requireNonNull(executable, () -> nullErrorMessage("executable", "JNI access"));
             abortIfSealed();
-            if (!queriedOnly) {
-                registerConditionalConfiguration(condition, _ -> {
-                    for (Executable executable : executables) {
-                        newMethods.add(new RegistrationWithPreserved<>(executable, preserved));
-                    }
-                });
-            }
+            registerConditionalConfiguration(condition, _ -> {
+                newMethods.add(new RegistrationWithPreserved<>(executable, preserved));
+            });
         }
 
         @Override
-        public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field... fields) {
-            requireNonNull(fields, "field", "JNI access");
+        public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field field) {
+            Objects.requireNonNull(field, () -> nullErrorMessage("field", "JNI access"));
             abortIfSealed();
-            registerConditionalConfiguration(condition, _ -> registerFields(finalIsWritable, preserved, fields));
+            registerConditionalConfiguration(condition, _ -> registerField(finalIsWritable, preserved, field));
         }
 
-        private void registerFields(boolean finalIsWritable, boolean preserved, Field[] fields) {
-            for (Field field : fields) {
-                boolean writable = finalIsWritable || !Modifier.isFinal(field.getModifiers());
-                newFields.put(new RegistrationWithPreserved<>(field, preserved), writable);
-            }
+        private void registerField(boolean finalIsWritable, boolean preserved, Field field) {
+            boolean writable = finalIsWritable || !Modifier.isFinal(field.getModifiers());
+            newFields.put(new RegistrationWithPreserved<>(field, preserved), writable);
         }
 
         @Override
@@ -286,7 +279,7 @@ public class JNIAccessFeature implements Feature {
         @Override
         public void registerMethodLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
             try {
-                register(condition, false, preserved, declaringClass.getDeclaredMethod(methodName, parameterTypes));
+                register(condition, preserved, declaringClass.getDeclaredMethod(methodName, parameterTypes));
             } catch (NoSuchMethodException e) {
                 newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create(methodName, parameterTypes)); // noEconomicSet
             }
@@ -295,7 +288,7 @@ public class JNIAccessFeature implements Feature {
         @Override
         public void registerConstructorLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, Class<?>... parameterTypes) {
             try {
-                register(condition, false, preserved, declaringClass.getDeclaredConstructor(parameterTypes));
+                register(condition, preserved, declaringClass.getDeclaredConstructor(parameterTypes));
             } catch (NoSuchMethodException e) {
                 newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create("<init>", parameterTypes)); // noEconomicSet
             }
@@ -537,7 +530,7 @@ public class JNIAccessFeature implements Feature {
     @Override
     @SuppressWarnings("unused")
     public void afterAnalysis(AfterAnalysisAccess access) {
-        runtimeSupport.sealed();
+        runtimeSupport.seal();
         if (wereElementsAdded()) {
             runtimeSupport.abortIfSealed();
         }

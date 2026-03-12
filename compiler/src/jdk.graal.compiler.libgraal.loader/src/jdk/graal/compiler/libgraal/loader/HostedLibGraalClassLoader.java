@@ -179,6 +179,7 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     private static final Set<String> LIBGRAAL_MODULES = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(
                     "jdk.internal.vm.ci",
                     "jdk.graal.compiler",
+                    "jdk.graal.compiler.options",
                     "jdk.graal.compiler.management",
                     "jdk.graal.compiler.libgraal",
                     "org.graalvm.truffle.compiler",

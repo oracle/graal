@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.UnsafeMemorySupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
 import com.oracle.svm.webimage.substitute.WebImageUtil;
 

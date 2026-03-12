@@ -63,7 +63,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                 return meta.jvmci.JavaConstant_NULL_POINTER.getObject(meta.jvmci.JavaConstant.tryInitializeAndGetStatics());
             }
             StaticObject result = meta.jvmci.EspressoObjectConstant.allocateInstance(context);
-            meta.jvmci.HIDDEN_OBJECT_CONSTANT.setHiddenObject(result, object);
+            meta.jvmci.EspressoObjectConstant_0object.setHiddenObject(result, object);
             constantObjectConstructor.call(result);
             return result;
         }
@@ -74,7 +74,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
             return meta.jvmci.JavaConstant_NULL_POINTER.getObject(meta.jvmci.JavaConstant.tryInitializeAndGetStatics());
         }
         StaticObject result = meta.jvmci.EspressoObjectConstant.allocateInstance(meta.getContext());
-        meta.jvmci.HIDDEN_OBJECT_CONSTANT.setHiddenObject(result, object);
+        meta.jvmci.EspressoObjectConstant_0object.setHiddenObject(result, object);
         meta.jvmci.EspressoObjectConstant_init.invokeDirectSpecial(result);
         return result;
     }
@@ -85,7 +85,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        return (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(wrapped);
+        return (StaticObject) meta.jvmci.EspressoObjectConstant_0object.getHiddenObject(wrapped);
     }
 
     @Substitution(hasReceiver = true)
@@ -95,7 +95,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert InterpreterToVM.instanceOf(receiver, field.getDeclaringKlass());
         return field.getBoolean(receiver);
     }
@@ -107,7 +107,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert InterpreterToVM.instanceOf(receiver, field.getDeclaringKlass());
         return field.getByte(receiver);
     }
@@ -119,7 +119,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert InterpreterToVM.instanceOf(receiver, field.getDeclaringKlass());
         return field.getShort(receiver);
     }
@@ -131,7 +131,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert InterpreterToVM.instanceOf(receiver, field.getDeclaringKlass());
         return field.getChar(receiver);
     }
@@ -143,7 +143,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert InterpreterToVM.instanceOf(receiver, field.getDeclaringKlass());
         return field.getInt(receiver);
     }
@@ -155,7 +155,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert InterpreterToVM.instanceOf(receiver, field.getDeclaringKlass());
         return field.getFloat(receiver);
     }
@@ -167,7 +167,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert InterpreterToVM.instanceOf(receiver, field.getDeclaringKlass());
         return field.getLong(receiver);
     }
@@ -179,7 +179,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert InterpreterToVM.instanceOf(receiver, field.getDeclaringKlass());
         return field.getDouble(receiver);
     }
@@ -190,7 +190,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert InterpreterToVM.instanceOf(receiver, field.getDeclaringKlass());
         return field.getObject(receiver);
     }
@@ -201,7 +201,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert field.getDeclaringKlass().isInitialized();
         return field.getBoolean(field.getDeclaringKlass().getStatics());
     }
@@ -212,7 +212,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert field.getDeclaringKlass().isInitialized();
         return field.getByte(field.getDeclaringKlass().getStatics());
     }
@@ -223,7 +223,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert field.getDeclaringKlass().isInitialized();
         return field.getShort(field.getDeclaringKlass().getStatics());
     }
@@ -234,7 +234,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert field.getDeclaringKlass().isInitialized();
         return field.getChar(field.getDeclaringKlass().getStatics());
     }
@@ -245,7 +245,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert field.getDeclaringKlass().isInitialized();
         return field.getInt(field.getDeclaringKlass().getStatics());
     }
@@ -256,7 +256,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert field.getDeclaringKlass().isInitialized();
         return field.getFloat(field.getDeclaringKlass().getStatics());
     }
@@ -267,7 +267,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert field.getDeclaringKlass().isInitialized();
         return field.getLong(field.getDeclaringKlass().getStatics());
     }
@@ -278,7 +278,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert field.getDeclaringKlass().isInitialized();
         return field.getDouble(field.getDeclaringKlass().getStatics());
     }
@@ -289,7 +289,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                     @Inject EspressoContext context) {
         checkJVMCIAvailable(context.getLanguage());
         Meta meta = context.getMeta();
-        Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(fieldMirror);
+        Field field = (Field) meta.jvmci.EspressoResolvedJavaField_0vmField.getHiddenObject(fieldMirror);
         assert field.getDeclaringKlass().isInitialized();
         return field.getObject(field.getDeclaringKlass().getStatics());
     }
@@ -305,7 +305,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
                         @Cached("create(context.getMeta().jvmci.EspressoResolvedInstanceType_init.getCallTarget())") DirectCallNode objectTypeConstructor) {
             checkJVMCIAvailable(context.getLanguage());
             Meta meta = context.getMeta();
-            StaticObject staticBase = (StaticObject) meta.jvmci.HIDDEN_OBJECT_CONSTANT.getHiddenObject(staticBaseMirror);
+            StaticObject staticBase = (StaticObject) meta.jvmci.EspressoObjectConstant_0object.getHiddenObject(staticBaseMirror);
             if (!staticBase.isStaticStorage()) {
                 return StaticObject.NULL;
             }

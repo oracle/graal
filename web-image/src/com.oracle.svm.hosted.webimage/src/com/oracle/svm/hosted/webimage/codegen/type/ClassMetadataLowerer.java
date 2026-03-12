@@ -42,7 +42,7 @@ import org.graalvm.webimage.api.JSObject;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
@@ -140,19 +140,18 @@ public class ClassMetadataLowerer {
         // Maps field offsets to field names
         HashMap<Integer, String> fieldMap = new HashMap<>();
 
-        for (HostedField f : t.getInstanceFields(true)) {
-            if (JSObject.class.isAssignableFrom(t.getJavaClass())) {
-                continue;
+        if (!tools.getProviders().getMetaAccess().lookupJavaType(JSObject.class).isAssignableFrom(t)) {
+            for (HostedField f : t.getInstanceFields(true)) {
+
+                int offset = getFieldOffset(f);
+
+                if (offset < 0) {
+                    continue;
+                }
+
+                String fieldName = tools.getJSProviders().typeControl().requestFieldName(f);
+                fieldMap.put(offset, fieldName);
             }
-
-            int offset = getFieldOffset(f);
-
-            if (offset < 0) {
-                continue;
-            }
-
-            String fieldName = tools.getJSProviders().typeControl().requestFieldName(f);
-            fieldMap.put(offset, fieldName);
         }
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();

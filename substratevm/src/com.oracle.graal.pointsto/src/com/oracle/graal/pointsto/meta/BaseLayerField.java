@@ -24,10 +24,9 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.annotation.Annotation;
-
 import com.oracle.svm.util.AnnotationsContainer;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -48,7 +47,7 @@ public class BaseLayerField extends AnnotationsContainer implements ResolvedJava
     private final boolean isSynthetic;
     private final int modifiers;
 
-    public BaseLayerField(int id, String name, ResolvedJavaType declaringClass, ResolvedJavaType type, boolean isInternal, boolean isSynthetic, int modifiers, Annotation[] annotations) {
+    public BaseLayerField(int id, String name, ResolvedJavaType declaringClass, ResolvedJavaType type, boolean isInternal, boolean isSynthetic, int modifiers, AnnotationValue[] annotations) {
         super(annotations);
         this.id = id;
         this.name = name;

@@ -92,6 +92,54 @@ public abstract class FrameExtensions {
      */
     public abstract void setLong(Frame frame, int slot, long value);
 
+    public final void setLongOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Long l) {
+            setLong(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setIntOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Integer l) {
+            setInt(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setByteOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Byte l) {
+            setByte(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setBooleanOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Boolean l) {
+            setBoolean(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setFloatOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Float l) {
+            setFloat(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
+    public final void setDoubleOrObject(Frame frame, int slot, Object value) {
+        if (value instanceof Double l) {
+            setDouble(frame, slot, l);
+        } else {
+            setObject(frame, slot, value);
+        }
+    }
+
     /**
      * Stores a float into the frame.
      *
@@ -214,5 +262,223 @@ public abstract class FrameExtensions {
     }
 
     public abstract void resetFrame(Frame frame);
+
+    /**
+     * Reads an object from the frame.
+     *
+     * @since 25.1
+     */
+    public Object getObject(Frame frame, long slot) throws FrameSlotTypeException {
+        return getObject(frame, (int) slot);
+    }
+
+    /**
+     * Stores an Object into the frame.
+     *
+     * @since 25.1
+     */
+    public void setObject(Frame frame, long slot, Object value) {
+        setObject(frame, (int) slot, value);
+    }
+
+    /**
+     * Stores a boolean into the frame.
+     *
+     * @since 25.1
+     */
+    public void setBoolean(Frame frame, long slot, boolean value) {
+        setBoolean(frame, (int) slot, value);
+    }
+
+    /**
+     * Stores a byte into the frame.
+     *
+     * @since 25.1
+     */
+    public void setByte(Frame frame, long slot, byte value) {
+        setByte(frame, (int) slot, value);
+    }
+
+    /**
+     * Stores an int into the frame.
+     *
+     * @since 25.1
+     */
+    public void setInt(Frame frame, long slot, int value) {
+        setInt(frame, (int) slot, value);
+    }
+
+    /**
+     * Stores a long into the frame.
+     *
+     * @since 25.1
+     */
+    public void setLong(Frame frame, long slot, long value) {
+        setLong(frame, (int) slot, value);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void setLongOrObject(Frame frame, long slot, Object value) {
+        setLongOrObject(frame, (int) slot, value);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void setIntOrObject(Frame frame, long slot, Object value) {
+        setIntOrObject(frame, (int) slot, value);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void setByteOrObject(Frame frame, long slot, Object value) {
+        setByteOrObject(frame, (int) slot, value);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void setBooleanOrObject(Frame frame, long slot, Object value) {
+        setBooleanOrObject(frame, (int) slot, value);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void setFloatOrObject(Frame frame, long slot, Object value) {
+        setFloatOrObject(frame, (int) slot, value);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void setDoubleOrObject(Frame frame, long slot, Object value) {
+        setDoubleOrObject(frame, (int) slot, value);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void setFloat(Frame frame, long slot, float value) {
+        setFloat(frame, (int) slot, value);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void setDouble(Frame frame, long slot, double value) {
+        setDouble(frame, (int) slot, value);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public boolean expectBoolean(Frame frame, long slot) throws UnexpectedResultException {
+        return expectBoolean(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public byte expectByte(Frame frame, long slot) throws UnexpectedResultException {
+        return expectByte(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public int expectInt(Frame frame, long slot) throws UnexpectedResultException {
+        return expectInt(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public long expectLong(Frame frame, long slot) throws UnexpectedResultException {
+        return expectLong(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public Object expectObject(Frame frame, long slot) throws UnexpectedResultException {
+        return expectObject(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public float expectFloat(Frame frame, long slot) throws UnexpectedResultException {
+        return expectFloat(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public double expectDouble(Frame frame, long slot) throws UnexpectedResultException {
+        return expectDouble(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public Object requireObject(Frame frame, long slot) {
+        return requireObject(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public Object uncheckedGetObject(Frame frame, long slot) {
+        return uncheckedGetObject(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    @SuppressWarnings("static-method")
+    public byte getTag(Frame frame, long slot) {
+        return frame.getTag((int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    @SuppressWarnings("static-method")
+    public byte getTag(Frame frame, int slot) {
+        return frame.getTag(slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void copy(Frame frame, long srcSlot, long dstSlot) {
+        copy(frame, (int) srcSlot, (int) dstSlot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void copyTo(Frame srcFrame, long srcOffset, Frame dstFrame, long dstOffset, long length) {
+        copyTo(srcFrame, (int) srcOffset, dstFrame, (int) dstOffset, (int) length);
+    }
+
+    /**
+     * @since 25.1
+     */
+    public void clear(Frame frame, long slot) {
+        clear(frame, (int) slot);
+    }
+
+    /**
+     * @since 25.1
+     */
+    @SuppressWarnings("static-method")
+    public Object getValue(Frame frame, long slot) {
+        return getValue(frame, (int) slot);
+    }
 
 }

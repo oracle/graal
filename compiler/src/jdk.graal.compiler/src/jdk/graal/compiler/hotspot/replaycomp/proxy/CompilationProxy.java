@@ -32,8 +32,8 @@ import java.util.Arrays;
 import java.util.function.Predicate;
 
 import jdk.graal.compiler.core.common.CompilerProfiler;
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotMemoryAccessProvider;

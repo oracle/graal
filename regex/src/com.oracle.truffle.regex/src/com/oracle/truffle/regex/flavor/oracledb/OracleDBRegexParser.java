@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -232,7 +232,92 @@ public final class OracleDBRegexParser implements RegexParser {
         if (contents.isPosixCollationEquivalenceClass()) {
             addCCAtomMultiCharExpansion(contents, CaseFoldAlgorithm.OracleDBAI);
         } else {
-            addCCAtomCodePointSet(contents.getCodePointSet());
+            final CodePointSet cps;
+            if (lexer.emulateUTF16RangeQuirk() && (contents.isRangeOrBrokenRange())) {
+                cps = utf16RangeQuirkTransform(contents);
+            } else {
+                cps = contents.getCodePointSet();
+            }
+            addCCAtomCodePointSet(cps);
+        }
+    }
+
+    /**
+     * OracleDB's regex engine compares UTF-16BE ranges byte-wise in their encoded form when the
+     * {@code ignore-case} flag is not set. This leads to some non-intuitive behavior, especially
+     * when compared to the behavior on UTF-8:
+     *
+     * <pre>
+     * .al32utf8:
+     *
+     * Pattern                      Matching Codepoints
+     * ------------------------------------------------------
+     * /[\\u{d7ff}-\\u{10000}]/:    0x00d7ff, 0x00e000-0x010000
+     * /[\\u{d7ff}-\\u{10000}]/i:   0x00d7ff, 0x00e000-0x010000
+     * /[\\u{f000}-\\u{10000}]/:    0x00f000-0x010000
+     * /[\\u{f000}-\\u{10000}]/i:   0x00f000-0x010000
+     * /[\\u{10000}-\\u{f000}]/:    syntax error
+     * /[\\u{10000}-\\u{f000}]/i:   syntax error
+     * /[\\u{d7ff}-\\u{e000}]/:     0x00d7ff, 0x00e000
+     * /[\\u{d7ff}-\\u{e000}]/i:    0x00d7ff, 0x00e000
+     *
+     *
+     * .AL16UTF16:
+     *
+     * Pattern                      Matching Codepoints
+     * ------------------------------------------------------
+     * /[\\u{d7ff}-\\u{10000}]/:    0x00d7ff, 0x010000
+     * /[\\u{d7ff}-\\u{10000}]/i:   0x00d7ff, 0x00e000-0x010000
+     * /[\\u{f000}-\\u{10000}]/:    syntax error
+     * /[\\u{f000}-\\u{10000}]/i:   syntax error
+     * /[\\u{10000}-\\u{f000}]/:    0x00e000-0x00f000, 0x010000-0x10ffff
+     * /[\\u{10000}-\\u{f000}]/i:   0x010000
+     * /[\\u{d7ff}-\\u{e000}]/:     0x00d7ff, 0x00e000, 0x010000-0x10ffff
+     * /[\\u{d7ff}-\\u{e000}]/i:    0x00d7ff, 0x00e000
+     * </pre>
+     *
+     * This function transforms a given range to match LXR's behavior in case-sensitive mode.
+     */
+    private CodePointSet utf16RangeQuirkTransform(ClassSetContents contents) {
+        int lo = contents.getRangeLo();
+        int hi = contents.getRangeHi();
+        if (contents.isBrokenRange()) {
+            assert lo > Character.MAX_VALUE && hi > Character.MAX_SURROGATE && hi <= Character.MAX_VALUE && Character.highSurrogate(lo) <= hi;
+            if (hi + 1 == lo) {
+                return CodePointSet.createNoDedup(Character.MAX_SURROGATE + 1, Character.MAX_CODE_POINT);
+            } else {
+                return CodePointSet.createNoDedup(Character.MAX_SURROGATE + 1, hi, lo, Character.MAX_CODE_POINT);
+            }
+        }
+        if (hi < Character.MIN_SURROGATE) {
+            return contents.getCodePointSet();
+        }
+        if (Character.MIN_SURROGATE <= lo && lo <= Character.MAX_SURROGATE || hi <= Character.MAX_SURROGATE) {
+            throw new UnsupportedRegexException("UTF-16 range with surrogate values as upper or lower bound");
+        }
+        if (lo < Character.MIN_SURROGATE) {
+            if (hi == Character.MAX_VALUE) {
+                // range contains the surrogate range => surrogate pairs will match as well.
+                return CodePointSet.create(lo, Character.MAX_CODE_POINT);
+            } else if (hi < Character.MAX_VALUE) {
+                // range contains the surrogate range => surrogate pairs will match as well.
+                return CodePointSet.create(lo, hi, Character.MAX_VALUE + 1, Character.MAX_CODE_POINT);
+            } else {
+                // lower bound is less than surrogate range and upper bound is a surrogate
+                // pair => exclude the range from surrogate range to 0xffff.
+                return CodePointSet.create(lo, Character.MIN_SURROGATE - 1, Character.MAX_VALUE + 1, hi);
+            }
+        } else {
+            if (hi <= Character.MAX_VALUE || lo > Character.MAX_VALUE) {
+                // either both values are encoded as a surrogate pair or both are single
+                // char values
+                return contents.getCodePointSet();
+            } else {
+                // lower bound is greater than surrogate range and upper bound will be
+                // encoded as a surrogate pair => considered invalid because lower bound
+                // is greater than upper bound's high surrogate
+                throw syntaxError(OracleDBErrorMessages.INVALID_RANGE, ErrorCode.InvalidCharacterClass);
+            }
         }
     }
 
@@ -247,8 +332,14 @@ public final class OracleDBRegexParser implements RegexParser {
     private void addCCAtomIgnoreCase(ClassSetContents contents) {
         if (contents.isPosixCollationEquivalenceClass()) {
             addCCAtomMultiCharExpansion(contents, CaseFoldAlgorithm.OracleDBAI);
-        } else if (contents.isRange()) {
-            CodePointSet range = ccAtomRangeIgnoreCase(contents.getCodePointSet());
+        } else if (contents.isRange() || contents.isBrokenRange()) {
+            assert !contents.isBrokenRange() || lexer.emulateUTF16RangeQuirk();
+            int lo = contents.getRangeLo();
+            int hi = contents.getRangeHi();
+            if (lexer.emulateUTF16RangeQuirk() && contents.isRange() && lo > Character.MAX_SURROGATE && lo <= Character.MAX_VALUE && hi > Character.MAX_VALUE) {
+                throw syntaxError(OracleDBErrorMessages.INVALID_RANGE, ErrorCode.InvalidCharacterClass);
+            }
+            CodePointSet range = ccAtomRangeIgnoreCase(lo, hi);
             addCCAtomCodePointSet(range);
         } else if (contents.isCharacterClass()) {
             addCCAtomCodePointSet(contents.getCodePointSet());
@@ -279,11 +370,8 @@ public final class OracleDBRegexParser implements RegexParser {
         MultiCharacterCaseFolding.caseClosure(algorithm, charClassTmpCaseClosure, charClassTmp2, (a, b) -> true, Encoding.UTF_8.getFullSet(), false);
     }
 
-    private CodePointSet ccAtomRangeIgnoreCase(CodePointSet parsedRange) {
-        assert parsedRange.size() == 1;
+    private CodePointSet ccAtomRangeIgnoreCase(int lo, int hi) {
         assert flags.isIgnoreCase();
-        int lo = parsedRange.getMin();
-        int hi = parsedRange.getMax();
         CaseFoldData.CaseFoldTable caseFoldTable = CaseFoldData.getTable(CaseFoldAlgorithm.OracleDBSimple);
         int loLC = caseFoldSingle(caseFoldTable, lo);
         int hiLC = caseFoldSingle(caseFoldTable, hi);

@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -40,12 +40,12 @@ import com.oracle.svm.core.graal.isolated.CompilerHandle;
 import com.oracle.svm.core.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
 
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
+import org.graalvm.word.impl.Word;
 
 /**
  * A helper to pass information for installing code in the compilation client through a Truffle

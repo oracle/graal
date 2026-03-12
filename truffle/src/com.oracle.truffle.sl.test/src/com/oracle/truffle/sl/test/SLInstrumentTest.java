@@ -865,7 +865,7 @@ public class SLInstrumentTest extends AbstractSLTest {
                         "}\n";
         final Source source = Source.newBuilder("sl", code, "testing").build();
         SourceSection ss = DebuggerTester.getSourceImpl(source).createSection(24, 5);
-        Context context = Context.create();
+        Context context = newContextBuilder().build();
         NewReplacedInstrument replaced = context.getEngine().getInstruments().get("testNewNodeReplaced").lookup(NewReplacedInstrument.class);
         replaced.attachAt(ss);
 
@@ -994,7 +994,7 @@ public class SLInstrumentTest extends AbstractSLTest {
                         "  }\n" +
                         "}\n";
         final Source source = Source.newBuilder("sl", code, "testing").build();
-        Context context = Context.create();
+        Context context = newContextBuilder().build();
         IncreaseArgOnErrorInstrument incOnError = context.getEngine().getInstruments().get("testIncreaseArgumentOnError").lookup(IncreaseArgOnErrorInstrument.class);
         incOnError.attachOn("A bad error");
 

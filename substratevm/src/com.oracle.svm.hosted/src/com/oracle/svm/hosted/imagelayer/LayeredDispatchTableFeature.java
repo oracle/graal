@@ -58,11 +58,10 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodRef;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.code.FactoryMethod;
@@ -73,12 +72,14 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.VTableBuilder;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -100,7 +101,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link #beforeAnalysis}.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class LayeredDispatchTableFeature implements InternalFeature {
     private final boolean buildingSharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
     private final boolean buildingInitialLayer = buildingSharedLayer && ImageLayerBuildingSupport.buildingInitialLayer();
@@ -136,7 +137,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     /**
      * Cache of builderModules. Set in {@link #beforeCompilation}.
      */
-    private Set<Module> builderModules;
+    private Set<ResolvedJavaModule> builderModules;
 
     static final int INVALID_HOSTED_METHOD_INDEX = -1;
 
@@ -149,7 +150,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
-        wordSize = ConfigurationValues.getTarget().wordSize;
+        wordSize = ConfigurationValues.getWordSize();
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
             getPriorVirtualCallTargets().forEach(aMethod -> {
@@ -247,7 +248,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
         return ImageSingletons.lookup(LayeredDispatchTableFeature.class);
     }
 
-    void installBuilderModules(Set<Module> newCoreTypes) {
+    void installBuilderModules(Set<ResolvedJavaModule> newCoreTypes) {
         assert builderModules == null : builderModules;
         builderModules = newCoreTypes;
     }
@@ -257,8 +258,9 @@ public class LayeredDispatchTableFeature implements InternalFeature {
      * we filter our all calls either originating from or targeting a {@link #builderModules}.
      */
     public void recordVirtualCallTarget(HostedMethod caller, HostedMethod callee) {
-        Module callerModule = caller.getDeclaringClass().getJavaClass().getModule();
-        Module calleeModule = callee.getDeclaringClass().getJavaClass().getModule();
+        GuestAccess guestAccess = GuestAccess.get();
+        ResolvedJavaModule callerModule = guestAccess.getModule(OriginalClassProvider.getOriginalType(caller.getDeclaringClass()));
+        ResolvedJavaModule calleeModule = guestAccess.getModule(OriginalClassProvider.getOriginalType(callee.getDeclaringClass()));
         if (!(builderModules.contains(callerModule) && !isFactoryMethod(caller)) && !builderModules.contains(calleeModule)) {
             virtualCallTargets.add(callee);
         }

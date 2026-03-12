@@ -23,6 +23,7 @@ This provides ultimate insights into the execution and behavior of your program 
 - [Insights with R](#insights-with-r)
 - [Insight into C Code](#insight-into-c-code)
 - [Inspecting Values](#inspecting-values)
+- [Tracking reads and writes of local variables](#tracking-local-variables)
 - [Modifying Local Variables](#modifying-local-variables)
 - [Insight to a Specific Location](#insight-to-a-specific-location)
 - [Delaying Insight Initialization in Node.JS](#delaying-insight-initialization-in-nodejs)
@@ -457,6 +458,79 @@ Two is the result 2
 ```
 
 To summarize this section, GraalVM Insight is a useful tool for polyglot, language agnostic aspect oriented programming.
+
+## Tracking Local Variables
+
+GraalVM Insight can monitor variable access patterns in your code. 
+Beyond simply reading variable values, you can track when variables are written to or read from, enabling data flow analysis and dependency tracking.
+Consider this function that performs a calculation with intermediate variables:
+
+```js
+function main(n) {
+    let a = n + 2;
+    let b = n * 3;
+    let r = b - a;
+    return r;
+}
+print(main(5));
+```
+
+This function takes an input `n` (value 5), creates intermediate variables `a` and `b`, then computes the result `r`. The output is `8`.
+To track variable dependencies in the `main` function, create this Insight script and save it as `vars.js`:
+
+```js
+// Track variable writes (assignments)
+insight.on('enter', (ctx, frame) => {
+    print(`writeVariableNameEnter ${ctx.attributes.writeVariableName}`);
+}, {
+    writes: true,
+    rootNameFilter: 'main'
+});
+
+// Track completion of variable writes with their values
+insight.on('return', (ctx, frame) => {
+    print(`writeVariableNameReturn ${ctx.attributes.writeVariableName} = ${ctx.returnValue(frame)}`);
+}, {
+    writes: true,
+    rootNameFilter: 'main'
+});
+
+// Track variable reads (access)
+insight.on('return', (ctx, frame) => {
+    print(`  readVariableName ${ctx.attributes.readVariableName} = ${ctx.returnValue(frame)}`);
+}, {
+    reads: true,
+    rootNameFilter: 'main'
+});
+```
+
+When you run the script with:
+```bash
+js --insight=vars.js main.js
+```
+The output reveals the complete data flow:
+
+```
+writeVariableNameEnter a
+  readVariableName n = 5
+writeVariableNameReturn a = 7
+writeVariableNameEnter b
+  readVariableName n = 5
+writeVariableNameReturn b = 15
+writeVariableNameEnter r
+  readVariableName b = 15
+  readVariableName a = 7
+writeVariableNameReturn r = 8
+  readVariableName r = 8
+8
+```
+
+This outputs shows that:
+- Variables `a` and `b` both depend on input parameter `n`
+- Variable `r` depends on both `a` and `b`
+- The final result depends on all intermediate computations```
+You can use variable tracking for security checks, understanding code dependencies, and debugging data problems. 
+You can see how data moves through your code, find slow variable operations, and track down where wrong values come from.
 
 ## Modifying Local Variables
 

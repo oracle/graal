@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.reflect.target;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.shared.util.VMError;
 
 class ReflectionHelper {
     static Target_java_lang_reflect_Executable getHolder(Target_java_lang_reflect_Executable executable) {

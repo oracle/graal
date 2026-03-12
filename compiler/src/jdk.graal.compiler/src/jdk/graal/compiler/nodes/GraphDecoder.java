@@ -63,6 +63,10 @@ import jdk.graal.compiler.nodes.GraphDecoder.MethodScope;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import jdk.graal.compiler.nodes.virtual.EscapeObjectState;
+import jdk.graal.compiler.nodes.virtual.MaterializedObjectState;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import jdk.vm.ci.code.Architecture;
@@ -528,20 +532,30 @@ public class GraphDecoder {
         public final FrameState state;
         public final MergeNode merge;
         public final int hashCode;
+        private final boolean considerVirtualStateAfterPEA;
 
         protected LoopExplosionState(FrameState state, MergeNode merge) {
             this.state = state;
             this.merge = merge;
 
+            boolean effectiveConsiderVirtualStateAfterPEA = false;
             int h = 0;
             for (ValueNode value : state.values()) {
                 if (value == null) {
                     h = h * 31 + 1234;
                 } else {
+                    if (value instanceof VirtualObjectNode) {
+                        // ignore virtual object node parts of the hash - they are treated specially
+                        // in the equals logic
+                        effectiveConsiderVirtualStateAfterPEA = true;
+                        continue;
+                    }
+
                     h = h * 31 + value.hashCode();
                 }
             }
             this.hashCode = h;
+            this.considerVirtualStateAfterPEA = effectiveConsiderVirtualStateAfterPEA;
         }
 
         @Override
@@ -549,33 +563,48 @@ public class GraphDecoder {
             if (!(obj instanceof LoopExplosionState other)) {
                 return false;
             }
-
             // Check the hash code first to avoid iterating the frame states.
             if (hashCode != other.hashCode) {
                 return false;
             }
-
             final FrameState thisState = state;
             final FrameState otherState = other.state;
             assert thisState.outerFrameState() == otherState.outerFrameState() : Assertions.errorMessage(thisState, thisState.outerFrameState(), otherState, otherState.outerFrameState());
-
             final NodeInputList<ValueNode> thisValues = thisState.values();
             final NodeInputList<ValueNode> otherValues = otherState.values();
-
-            final int size = thisValues.size();
-            if (size != otherValues.size()) {
+            if (!peNodeInputListEquals(thisValues, otherValues, considerVirtualStateAfterPEA)) {
                 return false;
             }
-
-            for (int i = 0; i < size; i++) {
-                final ValueNode thisValue = thisValues.get(i);
-                final ValueNode otherValue = otherValues.get(i);
-
-                if (thisValue != otherValue) {
+            if (thisState.virtualObjectMappingCount() != otherState.virtualObjectMappingCount()) {
+                return false;
+            }
+            for (int i = 0; i < thisState.virtualObjectMappingCount(); i++) {
+                final EscapeObjectState thisEscapeState = thisState.virtualObjectMappings().get(i);
+                final EscapeObjectState otherEscapeState = otherState.virtualObjectMappings().get(i);
+                if (!compareStateValues(thisEscapeState.object(), otherEscapeState.object(), considerVirtualStateAfterPEA)) {
                     return false;
                 }
+                if (!thisEscapeState.getClass().equals(otherEscapeState.getClass())) {
+                    return false;
+                }
+                if (thisEscapeState instanceof MaterializedObjectState) {
+                    MaterializedObjectState thisMaterializedObjectState = (MaterializedObjectState) thisEscapeState;
+                    MaterializedObjectState otherMaterializedObjectState = (MaterializedObjectState) otherEscapeState;
+                    if (!thisMaterializedObjectState.materializedValue().equals(otherMaterializedObjectState.materializedValue())) {
+                        return false;
+                    }
+                } else if (thisEscapeState instanceof VirtualObjectState) {
+                    VirtualObjectState thisVirtualObjectState = (VirtualObjectState) thisEscapeState;
+                    VirtualObjectState otherVirtualObjectState = (VirtualObjectState) otherEscapeState;
+                    final NodeInputList<ValueNode> thisVirtualValues = thisVirtualObjectState.values();
+                    final NodeInputList<ValueNode> otherVirtualValues = otherVirtualObjectState.values();
+                    if (!peNodeInputListEquals(thisVirtualValues, otherVirtualValues, considerVirtualStateAfterPEA)) {
+                        return false;
+                    }
+                } else {
+                    throw GraalError.shouldNotReachHere("Unknown subclass of virtual object state " + thisEscapeState);
+                }
             }
-
             return true;
         }
 
@@ -583,6 +612,41 @@ public class GraphDecoder {
         public int hashCode() {
             return hashCode;
         }
+    }
+
+    private static boolean peNodeInputListEquals(NodeInputList<ValueNode> thisValues, NodeInputList<ValueNode> otherValues, boolean considerVirtualStateAfterPEA) {
+        final int size = thisValues.size();
+        if (size != otherValues.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < size; i++) {
+            final ValueNode thisValue = thisValues.get(i);
+            final ValueNode otherValue = otherValues.get(i);
+            if (!compareStateValues(thisValue, otherValue, considerVirtualStateAfterPEA)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean compareStateValues(ValueNode thisValue, ValueNode otherValue, boolean considerPEA) {
+        if (considerPEA) {
+            // we cannot compare virtual object nodes by ID - they are always created
+            // freshly but we can compare by data fields
+            if (thisValue instanceof VirtualObjectNode && otherValue instanceof VirtualObjectNode) {
+                if (thisValue.getClass().equals(otherValue.getClass())) {
+                    if (thisValue.getNodeClass().dataEquals(thisValue, otherValue)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        if (thisValue != otherValue) {
+            return false;
+        }
+        return true;
     }
 
     protected static class InvokableData<T extends Invokable> {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,7 +97,6 @@ public abstract class Launcher {
      */
     public static final int LAUNCHER_OPTIONS_INDENT = 45;
 
-    static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
     @Deprecated(since = "22.2", forRemoval = true) private static final String HELP_INTERNAL = "--help:internal";
     @Deprecated(since = "22.2", forRemoval = true) private static final String HELP_EXPERT = "--help:expert";
 
@@ -143,7 +142,7 @@ public abstract class Launcher {
 
     protected Launcher() {
         verbose = STATIC_VERBOSE || Boolean.parseBoolean(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
-        if (IS_AOT) {
+        if (ImageInfo.inImageRuntimeCode()) {
             nativeAccess = new Native();
         } else {
             nativeAccess = null;
@@ -540,7 +539,7 @@ public abstract class Launcher {
      * Returns true if the current launcher was compiled ahead-of-time to native code.
      */
     public static boolean isAOT() {
-        return IS_AOT;
+        return ImageInfo.inImageRuntimeCode();
     }
 
     private boolean isVerbose() {
@@ -1223,7 +1222,7 @@ public abstract class Launcher {
      * @since 20.0
      */
     protected final void maybeNativeExec(List<String> originalArgs, List<String> unrecognizedArgs, @SuppressWarnings("unused") boolean isPolyglotLauncher) {
-        if (!IS_AOT) {
+        if (!ImageInfo.inImageRuntimeCode()) {
             return;
         }
         maybeExec(originalArgs, unrecognizedArgs, getDefaultVMType(), false);

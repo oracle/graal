@@ -25,24 +25,22 @@
 
 package com.oracle.svm.hosted.webimage;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.webimage.codegen.JSIntrinsifyFile;
 import com.oracle.svm.hosted.webimage.codegen.JSIntrinsifyFile.FileData;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Utility class for code that influences the points-to-analysis (e.g. beforeAnalysis and
@@ -63,72 +61,69 @@ public class AnalysisUtil {
     public static boolean processFileData(BeforeAnalysisAccessImpl access, FileData data) {
         boolean didRegister = false;
         for (JSIntrinsifyFile.JSIntrinsification i : data.intrinsics) {
-            if (i instanceof JSIntrinsifyFile.MethodIntrinsification) {
-                JSIntrinsifyFile.MethodIntrinsification mi = (JSIntrinsifyFile.MethodIntrinsification) i;
-                Class<?> clazz = access.findClassByName(mi.precedingType.name);
+            switch (i) {
+                case JSIntrinsifyFile.MethodIntrinsification mi -> {
+                    AnalysisType type = mi.precedingType.analysisType;
 
-                if (clazz == null) {
-                    continue;
+                    GraalError.guarantee(type != null, "Found method intrinsification with uninitialized preceding type");
+
+                    /*
+                     * We need to register the method as accessed in this class and all subclasses
+                     * because we don't know which of the methods may actually be invoked at
+                     * runtime.
+                     */
+                    for (AnalysisType subType : AnalysisUniverse.reachableSubtypes(type)) {
+                        if (registerAccessToMethods(access, subType, mi)) {
+                            didRegister = true;
+                        }
+                    }
                 }
-
-                /*
-                 * We need to register the method as accessed in this class and all subclasses
-                 * because we don't know which of the methods may actually be invoked at runtime.
-                 */
-                for (Class<?> c : access.reachableSubtypes(clazz)) {
-                    if (registerAccessToMethods(access, c, mi)) {
+                case JSIntrinsifyFile.TypeIntrinsification ti -> {
+                    ti.analysisType = access.findTypeByName(ti.name);
+                    if (ti.analysisType.registerAsReachable("is used by TypeIntrinsifications in Web Image")) {
                         didRegister = true;
                     }
                 }
-            } else if (i instanceof JSIntrinsifyFile.TypeIntrinsification) {
-                JSIntrinsifyFile.TypeIntrinsification ti = (JSIntrinsifyFile.TypeIntrinsification) i;
+                case JSIntrinsifyFile.FieldIntrinsification fi -> {
+                    AnalysisType t = fi.precedingType.analysisType;
 
-                Class<?> clazz = access.findClassByName(ti.name);
-                AnalysisType t = access.getMetaAccess().lookupJavaType(clazz);
-                if (t.registerAsReachable("is used by TypeIntrinsifications in Web Image")) {
-                    didRegister = true;
-                }
-            } else if (i instanceof JSIntrinsifyFile.FieldIntrinsification) {
-                JSIntrinsifyFile.FieldIntrinsification fi = (JSIntrinsifyFile.FieldIntrinsification) i;
+                    GraalError.guarantee(t != null, "Found field intrinsification with uninitialized preceding type");
 
-                Class<?> clazz = access.findClassByName(fi.precedingType.name);
-                AnalysisType t = access.getMetaAccess().lookupJavaType(clazz);
+                    ResolvedJavaField[] instanceFields = t.getInstanceFields(false);
+                    ResolvedJavaField[] staticFields = t.getStaticFields();
 
-                ResolvedJavaField[] instanceFields = t.getInstanceFields(false);
-                ResolvedJavaField[] staticFields = t.getStaticFields();
+                    List<ResolvedJavaField> fields = Stream.concat(Arrays.stream(instanceFields), Arrays.stream(staticFields)).toList();
 
-                List<ResolvedJavaField> fields = Stream.concat(Arrays.stream(instanceFields), Arrays.stream(staticFields)).collect(Collectors.toList());
-
-                for (ResolvedJavaField field : fields) {
-                    if (field.getName().equals(fi.name)) {
-                        if (((AnalysisField) field).registerAsAccessed("is used by FieldIntrinsification in Web Image")) {
-                            didRegister = true;
+                    for (ResolvedJavaField field : fields) {
+                        if (field.getName().equals(fi.name)) {
+                            if (((AnalysisField) field).registerAsAccessed("is used by FieldIntrinsification in Web Image")) {
+                                didRegister = true;
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
-            } else {
-                GraalError.shouldNotReachHere(i.toString()); // ExcludeFromJacocoGeneratedReport
+                default -> {
+                    GraalError.shouldNotReachHere(i.toString()); // ExcludeFromJacocoGeneratedReport
+                }
             }
         }
 
         return didRegister;
     }
 
-    private static boolean registerAccessToMethods(BeforeAnalysisAccessImpl access, Class<?> clazz, JSIntrinsifyFile.MethodIntrinsification mi) {
-        AnalysisMetaAccess meta = access.getMetaAccess();
-
+    private static boolean registerAccessToMethods(BeforeAnalysisAccessImpl access, AnalysisType type, JSIntrinsifyFile.MethodIntrinsification mi) {
         boolean didRegister = false;
 
         if (mi.name.equals("<init>")) {
             assert mi.sig != null;
             // only register the constructor that matches the signature
-            Constructor<?>[] constructors = clazz.getConstructors();
-            for (Constructor<?> constructor : constructors) {
+            ResolvedJavaMethod[] constructors = JVMCIReflectionUtil.getConstructors(type);
+            for (ResolvedJavaMethod c : constructors) {
+                AnalysisMethod constructor = (AnalysisMethod) c;
                 String signature = getSignatureString(constructor);
                 if (signature.equals(mi.sig)) {
-                    AnalysisMethod analysisMethod = meta.lookupJavaMethod(constructor);
-                    if (!analysisMethod.isInvoked()) {
+                    if (!constructor.isInvoked()) {
                         access.registerAsRoot(constructor, false, "Constructor accessed reflectively from JS, registered in " + AnalysisUtil.class);
                         didRegister = true;
                     }
@@ -136,15 +131,13 @@ public class AnalysisUtil {
                 }
             }
         } else {
-            for (Method candidate : clazz.getDeclaredMethods()) {
+            for (AnalysisMethod candidate : type.getDeclaredMethods(false)) {
                 if (candidate.getName().equals(mi.name)) {
-                    AnalysisMethod aMethod = meta.lookupJavaMethod(candidate);
-
-                    if (Modifier.isAbstract(aMethod.getModifiers()) || aMethod.isInvoked()) {
+                    if (candidate.isAbstract() || candidate.isInvoked()) {
                         continue;
                     }
 
-                    access.registerAsRoot(aMethod, false, "Methods accessed reflectively from JS, registered in " + AnalysisUtil.class);
+                    access.registerAsRoot(candidate, false, "Methods accessed reflectively from JS, registered in " + AnalysisUtil.class);
                     didRegister = true;
                 }
             }
@@ -157,11 +150,11 @@ public class AnalysisUtil {
      * Gets the signature string of a constructor. For example, for {@link String#String(char[])}
      * this returns {@code [C}
      */
-    private static String getSignatureString(Constructor<?> constructor) {
+    private static String getSignatureString(ResolvedJavaMethod constructor) {
         StringBuilder sb = new StringBuilder();
-        Class<?>[] parameters = constructor.getParameterTypes();
-        for (Class<?> parameter : parameters) {
-            sb.append(parameter.getName());
+        ResolvedJavaMethod.Parameter[] parameters = constructor.getParameters();
+        for (var parameter : parameters) {
+            sb.append(parameter.getType().toClassName());
         }
         return sb.toString();
     }

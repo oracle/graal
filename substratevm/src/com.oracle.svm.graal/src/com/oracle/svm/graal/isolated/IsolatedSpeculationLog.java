@@ -38,7 +38,7 @@ import com.oracle.svm.core.graal.isolated.ClientIsolateThread;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.serviceprovider.UnencodedSpeculationReason;
 import jdk.vm.ci.meta.JavaConstant;

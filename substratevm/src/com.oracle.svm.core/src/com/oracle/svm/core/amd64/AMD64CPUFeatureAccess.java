@@ -35,16 +35,15 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.CPUFeatureAccessImpl;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.JVMCISubstitutions;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.Duplicable;
-import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
@@ -58,8 +57,7 @@ import jdk.vm.ci.code.Architecture;
  * singleton. It is currently too strict, as different CPUFeatures are allowed in different layers,
  * but at runtime, all the CPUFeatures used during all builds need to be supported.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = CPUFeatureAccessImpl.LayeredCallbacks.class, layeredInstallationKind = Independent.class, other = {Duplicable.class,
-                PartiallyLayerAware.class})
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = CPUFeatureAccessImpl.LayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)

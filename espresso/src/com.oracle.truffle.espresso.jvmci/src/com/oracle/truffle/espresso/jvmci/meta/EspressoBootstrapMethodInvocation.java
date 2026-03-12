@@ -45,7 +45,7 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
     private final int cpi;
     private final AbstractEspressoConstantPool constantPool;
 
-    EspressoBootstrapMethodInvocation(boolean indy, AbstractEspressoResolvedJavaMethod method, String name, JavaConstant type, JavaConstant[] staticArguments, int cpi,
+    public EspressoBootstrapMethodInvocation(boolean indy, AbstractEspressoResolvedJavaMethod method, String name, JavaConstant type, JavaConstant[] staticArguments, int cpi,
                     AbstractEspressoConstantPool constantPool) {
         this.indy = indy;
         this.method = method;

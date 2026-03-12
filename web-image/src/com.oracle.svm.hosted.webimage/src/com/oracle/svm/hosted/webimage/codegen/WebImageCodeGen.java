@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,13 +35,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -131,7 +131,7 @@ public abstract class WebImageCodeGen {
 
     protected WebImageCodeGen(WebImageCodeCache codeCache, ImageHeapLayoutInfo heapLayout, List<HostedMethod> hostedEntryPoints, HostedMethod mainEntryPoint, WebImageProviders providers,
                     DebugContext debug, WebImageHostedConfiguration config) {
-        this.hMetaAccess = (HostedMetaAccess) providers.getMetaAccess();
+        this.hMetaAccess = providers.getMetaAccess();
         this.codeCache = codeCache;
         this.heapLayout = heapLayout;
         this.compilations = codeCache.webImageCompilationResults;

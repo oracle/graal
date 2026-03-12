@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoState.NO_SUCCESSOR_INDEX_MARKER;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.Arrays;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -42,7 +41,8 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.NonmovableByteArrayTypeReader;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.util.TypeConversion;
@@ -372,7 +372,7 @@ public class FrameInfoDecoder {
         return result;
     }
 
-    @Uninterruptible(reason = "Some allocators are interruptible.", calleeMustBe = false)
+    @Uninterruptible(reason = "Some allocators are interruptible.", mayBeInlined = true, calleeMustBe = false)
     private static FrameInfoQueryResult newFrameInfoQueryResult(FrameInfoQueryResultAllocator resultAllocator) {
         return resultAllocator.newFrameInfoQueryResult();
     }
@@ -483,7 +483,7 @@ public class FrameInfoDecoder {
         return result;
     }
 
-    @Uninterruptible(reason = "Some allocators are interruptible.", calleeMustBe = false)
+    @Uninterruptible(reason = "Some allocators are interruptible.", mayBeInlined = true, calleeMustBe = false)
     private static ValueInfo[][] newValueInfoArrayArray(ValueInfoAllocator valueInfoAllocator, int numVirtualObjects) {
         return valueInfoAllocator.newValueInfoArrayArray(numVirtualObjects);
     }
@@ -519,17 +519,17 @@ public class FrameInfoDecoder {
         return valueInfos;
     }
 
-    @Uninterruptible(reason = "Some allocators are interruptible.", calleeMustBe = false)
+    @Uninterruptible(reason = "Some allocators are interruptible.", mayBeInlined = true, calleeMustBe = false)
     private static void decodeConstant(ValueInfoAllocator valueInfoAllocator, ConstantAccess constantAccess, NonmovableObjectArray<?> frameInfoObjectConstants, ValueInfo valueInfo) {
         valueInfoAllocator.decodeConstant(valueInfo, frameInfoObjectConstants, constantAccess);
     }
 
-    @Uninterruptible(reason = "Some allocators are interruptible.", calleeMustBe = false)
+    @Uninterruptible(reason = "Some allocators are interruptible.", mayBeInlined = true, calleeMustBe = false)
     private static ValueInfo[] newValueInfoArray(ValueInfoAllocator valueInfoAllocator, int numValues) {
         return valueInfoAllocator.newValueInfoArray(numValues);
     }
 
-    @Uninterruptible(reason = "Some allocators are interruptible.", calleeMustBe = false)
+    @Uninterruptible(reason = "Some allocators are interruptible.", mayBeInlined = true, calleeMustBe = false)
     private static ValueInfo newValueInfo(ValueInfoAllocator valueInfoAllocator) {
         return valueInfoAllocator.newValueInfo();
     }

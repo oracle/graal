@@ -468,7 +468,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     }
 
     private EspressoLock getCurrentPendingMonitor(StaticObject thread) {
-        StaticObject obj = (StaticObject) getMeta().HIDDEN_THREAD_PENDING_MONITOR.getHiddenObject(thread);
+        StaticObject obj = (StaticObject) getMeta().java_lang_Thread_0pendingMonitor.getHiddenObject(thread);
         if (obj == null) {
             return null;
         }

@@ -25,8 +25,8 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
-import static com.oracle.svm.core.SubstrateUtil.mangleName;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.shared.util.SubstrateUtil.mangleName;
+import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -76,7 +77,6 @@ import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
@@ -90,23 +90,16 @@ import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -126,9 +119,14 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.code.CompilationResult;
@@ -169,7 +167,7 @@ public abstract class NativeImage extends AbstractImage {
 
         int pageSize = SubstrateOptions.getPageSize();
         objectFile = ObjectFileFactory.singleton().newObjectFile(pageSize, ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory(), universe.getBigBang());
-        objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
+        objectFile.setByteOrder(ConfigurationValues.getByteOrder());
         wordSize = FrameAccess.wordSize();
         assert objectFile.getWordSizeInBytes() == wordSize;
         assert objectFile.getPageSize() == heapLayout.getPageSize();
@@ -553,7 +551,7 @@ public abstract class NativeImage extends AbstractImage {
 
             // We print the heap statistics after the heap was successfully written because this
             // could modify objects that will be part of the image heap.
-            printHeapStatistics(heap.getLayouter().getPartitions());
+            HeapHistogramPrinter.print(heap, heap.getLayouter().getPartitions());
             heap.dumpMetadata(heapLayout);
         }
     }
@@ -605,7 +603,7 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     private static boolean checkCodeRelocationKind(Info info) {
-        int wordSize = ConfigurationValues.getTarget().arch.getWordSize();
+        int wordSize = ConfigurationValues.getWordSize();
         int relocationSize = info.getRelocationSize();
         RelocationKind relocationKind = info.getRelocationKind();
 
@@ -808,7 +806,7 @@ public abstract class NativeImage extends AbstractImage {
                 name = hMethod.getUniqueShortName();
             }
         } else {
-            name = SubstrateUtil.uniqueShortName(sm);
+            name = BuilderUtil.uniqueShortName(sm);
         }
 
         return name;
@@ -840,7 +838,7 @@ public abstract class NativeImage extends AbstractImage {
      *         does)
      */
     public static String globalSymbolNameForMethod(java.lang.reflect.Method m) {
-        return mangleName(SubstrateUtil.uniqueShortName(m));
+        return mangleName(BuilderUtil.uniqueShortName(m));
     }
 
     /**
@@ -867,73 +865,6 @@ public abstract class NativeImage extends AbstractImage {
     public ObjectFile getObjectFile() {
         assert objectFile != null : "objectFile accessed before set";
         return objectFile;
-    }
-
-    private void printHeapStatistics(ImageHeapPartition[] partitions) {
-        if (NativeImageOptions.PrintHeapHistogram.getValue()) {
-            // A histogram for the whole heap.
-            ObjectGroupHistogram.print(heap);
-            // Histograms for each partition.
-            printHistogram(partitions);
-        }
-        if (NativeImageOptions.PrintImageHeapPartitionSizes.getValue()) {
-            printSizes(partitions);
-        }
-    }
-
-    private void printHistogram(ImageHeapPartition[] partitions) {
-        for (ImageHeapPartition partition : partitions) {
-            printHistogram(partition, heap.getObjects());
-        }
-    }
-
-    private static void printSizes(ImageHeapPartition[] partitions) {
-        for (ImageHeapPartition partition : partitions) {
-            printSize(partition);
-        }
-    }
-
-    private static void printHistogram(ImageHeapPartition partition, Iterable<ObjectInfo> objects) {
-        HeapHistogram histogram = new HeapHistogram();
-        EconomicSet<ObjectInfo> uniqueObjectInfo = EconomicSet.create();
-
-        long uniqueCount = 0L;
-        long uniqueSize = 0L;
-        long canonicalizedCount = 0L;
-        long canonicalizedSize = 0L;
-        for (ObjectInfo info : objects) {
-            if (info.getConstant().isWrittenInPreviousLayer()) {
-                continue;
-            }
-            if (partition == info.getPartition()) {
-                if (uniqueObjectInfo.add(info)) {
-                    histogram.add(info, info.getSize());
-                    uniqueCount += 1L;
-                    uniqueSize += info.getSize();
-                } else {
-                    canonicalizedCount += 1L;
-                    canonicalizedSize += info.getSize();
-                }
-            }
-        }
-
-        long nonuniqueCount = uniqueCount + canonicalizedCount;
-        long nonuniqueSize = uniqueSize + canonicalizedSize;
-        assert partition.getSize() >= nonuniqueSize : "the total size can contain some overhead";
-
-        double countPercent = 100.0D * ((double) uniqueCount / (double) nonuniqueCount);
-        double sizePercent = 100.0D * ((double) uniqueSize / (double) nonuniqueSize);
-        double sizeOverheadPercent = 100.0D * (1.0D - ((double) partition.getSize() / (double) nonuniqueSize));
-        histogram.printHeadings(String.format("=== Partition: %s   count: %d / %d = %.1f%%  object size: %d / %d = %.1f%%  total size: %d (%.1f%% overhead) ===", //
-                        partition.getName(), //
-                        uniqueCount, nonuniqueCount, countPercent, //
-                        uniqueSize, nonuniqueSize, sizePercent, //
-                        partition.getSize(), sizeOverheadPercent));
-        histogram.print();
-    }
-
-    private static void printSize(ImageHeapPartition partition) {
-        System.out.printf("PrintImageHeapPartitionSizes:  partition: %s  size: %d%n", partition.getName(), partition.getSize());
     }
 
     public abstract static class NativeTextSectionImpl extends BasicProgbitsSectionImpl {
@@ -1093,7 +1024,7 @@ public abstract class NativeImage extends AbstractImage {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 final class MethodPointerInvalidHandlerFeature implements InternalFeature {
     @Override
@@ -1104,6 +1035,7 @@ final class MethodPointerInvalidHandlerFeature implements InternalFeature {
             access.registerAsRoot(invalidCodeAddressHandler, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
         }
         access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
+        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
     }
 
     static Method getInvalidCodeAddressHandler() {

@@ -39,7 +39,6 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.CSVUtil;
 import jdk.graal.compiler.debug.GraalError;
@@ -47,11 +46,11 @@ import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.nodes.debug.DynamicCounterNode;
+import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 //JaCoCo Exclude

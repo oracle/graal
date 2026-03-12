@@ -29,7 +29,8 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * Exception thrown when a method invoked through {@link VMAccess#invoke} throws an exception.
  * <p>
- * The thrown exception can be retrieved with {@link #getExceptionObject()}.
+ * The thrown exception can be retrieved with {@link #getExceptionObject()} if it is a "guest"
+ * exception.
  */
 @SuppressWarnings("serial")
 public class InvocationException extends RuntimeException {
@@ -63,7 +64,22 @@ public class InvocationException extends RuntimeException {
     }
 
     /**
+     * Constructs an {@link InvocationException} for the given exception.
+     *
+     * @param cause the host exception that was thrown in a {@linkplain VMAccess#createCallback
+     *            callback}.
+     */
+    public InvocationException(Throwable cause) {
+        super(cause);
+        assert cause != null;
+        this.exceptionObject = null;
+    }
+
+    /**
      * Returns a {@link JavaConstant} representing the exception object that was thrown.
+     * <p>
+     * If the exception was thrown in a {@linkplain VMAccess#createCallback callback} this might be
+     * null and the {@linkplain #getCause() cause} of this exception should be checked instead.
      */
     public JavaConstant getExceptionObject() {
         return exceptionObject;

@@ -48,12 +48,12 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.jdk.VectorAPISupport;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jdk.VarHandleFeature;
-import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.phases.util.Providers;
@@ -63,6 +63,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 @AutomaticallyRegisteredFeature
 public class VectorAPIFeature implements InternalFeature {
+    // JVMCI migration blocked by GR-72591: Migrate VectorAPIFeature to terminus
 
     public static final String VECTOR_API_PACKAGE_NAME = "jdk.incubator.vector";
     public static final Class<?> PAYLOAD_CLASS = ReflectionUtil.lookupClass("jdk.internal.vm.vector.VectorSupport$VectorPayload");
@@ -94,7 +95,7 @@ public class VectorAPIFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(VectorAPIFeature::eagerlyInitializeValueLayout);
+        access.registerObjectReachabilityHandler(VectorAPIFeature::eagerlyInitializeValueLayout, valueLayoutClass);
     }
 
     @Override
@@ -325,12 +326,11 @@ public class VectorAPIFeature implements InternalFeature {
     private static final Class<?> valueLayoutClass = ReflectionUtil.lookupClass("java.lang.foreign.ValueLayout");
     private static final Method valueLayoutVarHandle = ReflectionUtil.lookupMethod(valueLayoutClass, "varHandle");
 
-    private static Object eagerlyInitializeValueLayout(Object valueLayout) {
-        if (valueLayoutClass.isInstance(valueLayout)) {
-            VarHandle varHandle = ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
-            VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
-        }
-        return valueLayout;
+    private static void eagerlyInitializeValueLayout(Object valueLayout) {
+        VMError.guarantee(valueLayoutClass.isInstance(valueLayout));
+        VarHandle varHandle = ReflectionUtil.invokeMethod(valueLayoutVarHandle, valueLayout);
+        VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
+
     }
 
     private static Class<?> vectorClass(LaneType laneType, Shape shape) {

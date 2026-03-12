@@ -33,7 +33,7 @@ import java.util.Set;
 
 import javax.lang.model.SourceVersion;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 public final class ModuleNative {
     private ModuleNative() {
@@ -254,6 +254,11 @@ public final class ModuleNative {
                         .stream()
                         .filter(m -> getPackages(m).contains(pn))
                         .findFirst().orElse(null);
+    }
+
+    public static Module findModule(ClassLoader loader, String pkgName) {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        return SubstrateUtil.cast(getModuleContainingPackage(loader, pkgName), Module.class);
     }
 
     public static boolean bootLayerContainsModule(String name) {

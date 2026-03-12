@@ -24,25 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.svm.core.BuildArtifacts;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.TrackDynamicAccessEnabled;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
-import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.ImageSingletons;
+import static com.oracle.svm.hosted.driver.IncludeOptionsSupport.parseIncludeSelector;
+import static java.lang.System.lineSeparator;
 
 import java.io.File;
 import java.io.IOException;
@@ -51,16 +34,34 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Set;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.oracle.svm.hosted.driver.IncludeOptionsSupport.parseIncludeSelector;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import static java.lang.System.lineSeparator;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.TrackDynamicAccessEnabled;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
+import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.option.LocatableMultiOptionValue;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
+
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 
 /**
  * This is a support class that keeps track of dynamic access calls requiring metadata usage

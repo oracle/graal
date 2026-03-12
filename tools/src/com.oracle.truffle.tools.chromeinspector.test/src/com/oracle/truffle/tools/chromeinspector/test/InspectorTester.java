@@ -30,6 +30,7 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
@@ -66,7 +67,11 @@ public final class InspectorTester {
     }
 
     public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) throws InterruptedException {
-        return start(new Options(suspend, inspectInternal, inspectInitialization));
+        return start(suspend, inspectInternal, inspectInitialization, Map.of());
+    }
+
+    public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, Map<String, String> contextOptions) throws InterruptedException {
+        return start(new Options(suspend, inspectInternal, inspectInitialization, contextOptions));
     }
 
     public static InspectorTester start(Options options)
@@ -75,7 +80,7 @@ public final class InspectorTester {
         ExceptionDetails.resetIDs();
         InspectorExecutionContext.resetIDs();
         InspectExecThread exec = new InspectExecThread(options.isSuspend(), options.isInspectInternal(), options.isInspectInitialization(), options.getSourcePath(), options.getProlog(),
-                        options.getSuspensionTimeout());
+                        options.getSuspensionTimeout(), options.getContextOptions());
         exec.start();
         exec.initialized.acquire();
         return new InspectorTester(exec);
@@ -268,15 +273,21 @@ public final class InspectorTester {
         private List<URI> sourcePath = Collections.emptyList();
         private Consumer<Context> prolog;
         private Long suspensionTimeout;
+        private Map<String, String> contextOptions = Map.of();
 
         public Options(boolean suspend) {
             this.suspend = suspend;
         }
 
         public Options(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) {
+            this(suspend, inspectInternal, inspectInitialization, Map.of());
+        }
+
+        public Options(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, Map<String, String> contextOptions) {
             this.suspend = suspend;
             this.inspectInternal = inspectInternal;
             this.inspectInitialization = inspectInitialization;
+            this.contextOptions = contextOptions;
         }
 
         public boolean isSuspend() {
@@ -332,6 +343,10 @@ public final class InspectorTester {
             this.suspensionTimeout = suspensionTimeout;
             return this;
         }
+
+        public Map<String, String> getContextOptions() {
+            return contextOptions;
+        }
     }
 
     private static class InspectExecThread extends Thread implements MessageEndpoint {
@@ -342,6 +357,7 @@ public final class InspectorTester {
         private final List<URI> sourcePath;
         private final Consumer<Context> prolog;
         private final Long suspensionTimeout;
+        private final Map<String, String> contextOptions;
         private InspectServerSession inspect;
         private ConnectionWatcher connectionWatcher;
         private long contextId;
@@ -356,7 +372,8 @@ public final class InspectorTester {
         final ProxyOutputStream err = new ProxyOutputStream(System.err);
         private final EnginesGCedTest.GCCheck gcCheck;
 
-        InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath, Consumer<Context> prolog, Long suspensionTimeout) {
+        InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath, Consumer<Context> prolog, Long suspensionTimeout,
+                        Map<String, String> contextOptions) {
             super("Inspector Executor");
             this.suspend = suspend;
             this.inspectInternal = inspectInternal;
@@ -364,6 +381,7 @@ public final class InspectorTester {
             this.sourcePath = sourcePath;
             this.prolog = prolog;
             this.suspensionTimeout = suspensionTimeout;
+            this.contextOptions = contextOptions;
             this.gcCheck = new EnginesGCedTest.GCCheck();
         }
 
@@ -371,7 +389,7 @@ public final class InspectorTester {
         public void run() {
             Engine engine = Engine.newBuilder().err(err).build();
             gcCheck.addReference(engine);
-            Context context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
+            Context context = Context.newBuilder().options(contextOptions).engine(engine).allowAllAccess(true).build();
             if (prolog != null) {
                 prolog.accept(context);
             }
