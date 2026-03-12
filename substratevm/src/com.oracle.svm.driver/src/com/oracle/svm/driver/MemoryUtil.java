@@ -36,16 +36,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.Pair;
+
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.HostFlags;
 import com.oracle.svm.driver.NativeImage.NativeImageError;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.jfr.internal.JVM;
-import org.graalvm.collections.Pair;
 
 public final class MemoryUtil {
     public static final long KiB_TO_BYTES = 1024L;
@@ -304,51 +305,28 @@ public final class MemoryUtil {
 
     /**
      * Returns the total amount of available memory in bytes on Darwin based on
-     * <code>vm_stat</code>, otherwise <code>-1</code>.
-     *
-     * @see <a href=
-     *      "https://opensource.apple.com/source/system_cmds/system_cmds-496/vm_stat.tproj/vm_stat.c.auto.html">vm_stat.c</a>
+     * <code>memory_pressure</code>, otherwise <code>-1</code>.
      */
     private static long getAvailableMemorySizeDarwin() {
         try {
-            Process p = Runtime.getRuntime().exec(new String[]{"vm_stat"});
+            Process p = Runtime.getRuntime().exec(new String[]{"memory_pressure"});
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                String line1 = reader.readLine();
-                if (line1 == null) {
+                String line = reader.readLine();
+                Matcher totalMatcher = Pattern.compile("^The system has (\\d+) .*").matcher(line);
+                if (!totalMatcher.matches()) {
                     return -1;
                 }
-                Matcher m1 = Pattern.compile("^Mach Virtual Memory Statistics: \\(page size of (\\d+) bytes\\)").matcher(line1);
-                long pageSize = -1;
-                if (m1.matches()) {
-                    pageSize = Long.parseLong(m1.group(1));
+                long total = Long.parseLong(totalMatcher.group(1));
+                assert total >= 0;
+                Pattern freePercentagePattern = Pattern.compile("^System-wide memory free percentage: (\\d+)%");
+                while ((line = reader.readLine()) != null) {
+                    Matcher percentageMatcher = freePercentagePattern.matcher(line);
+                    if (percentageMatcher.matches()) {
+                        long freePercentage = Long.parseLong(percentageMatcher.group(1));
+                        assert 0 <= freePercentage && freePercentage <= 100;
+                        return total * freePercentage / 100;
+                    }
                 }
-                if (pageSize <= 0) {
-                    return -1;
-                }
-                String line2 = reader.readLine();
-                Matcher m2 = Pattern.compile("^Pages free:\\s+(\\d+).").matcher(line2);
-                long freePages = -1;
-                if (m2.matches()) {
-                    freePages = Long.parseLong(m2.group(1));
-                }
-                if (freePages <= 0) {
-                    return -1;
-                }
-                String line3 = reader.readLine();
-                if (!line3.startsWith("Pages active")) {
-                    return -1;
-                }
-                String line4 = reader.readLine();
-                Matcher m4 = Pattern.compile("^Pages inactive:\\s+(\\d+).").matcher(line4);
-                long inactivePages = -1;
-                if (m4.matches()) {
-                    inactivePages = Long.parseLong(m4.group(1));
-                }
-                if (inactivePages <= 0) {
-                    return -1;
-                }
-                assert freePages > 0 && inactivePages > 0 && pageSize > 0;
-                return (freePages + inactivePages) * pageSize;
             } finally {
                 p.waitFor();
             }
