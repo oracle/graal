@@ -471,7 +471,7 @@ suite = {
             "javaCompliance" : "17+",
             "spotbugs" : "false",
             "shadedDependencies" : [
-                "truffle:ASM_9.7.1",
+                "truffle:ASM_9.8",
             ],
             "class" : "ShadedLibraryProject",
             "shade" : {
