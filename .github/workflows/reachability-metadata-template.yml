@@ -87,8 +87,8 @@ jobs:
 
   test-all-metadata:
     name: ${{ matrix.coordinates }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ contains(inputs.NATIVE_IMAGE_OPTIONS || '', '-H:Preserve=all') && 'ubuntu-8core-32gb' || 'ubuntu-latest' }}
+    timeout-minutes: 45
     needs: [build-graalvm, populate-matrix]
     strategy:
         fail-fast: false
