@@ -84,6 +84,7 @@ meth public static void interpreterOnly(java.lang.Runnable)
 meth public static void materialize(java.lang.Object)
 meth public static void transferToInterpreter()
 meth public static void transferToInterpreterAndInvalidate()
+meth public static int mergeExplodeKey(int)
 supr java.lang.Object
 hcls ShouldNotReachHere
 
