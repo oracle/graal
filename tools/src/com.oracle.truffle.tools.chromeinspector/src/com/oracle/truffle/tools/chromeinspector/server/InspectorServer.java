@@ -24,16 +24,11 @@
  */
 package com.oracle.truffle.tools.chromeinspector.server;
 
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.SelectionKey;
@@ -43,9 +38,6 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnsupportedCharsetException;
-import java.security.GeneralSecurityException;
-import java.security.KeyStore;
-import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -59,15 +51,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
 
 import org.graalvm.polyglot.io.MessageEndpoint;
 
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
-import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
 import com.oracle.truffle.tools.chromeinspector.instrument.Token;
 import com.oracle.truffle.tools.utils.java_websocket.WebSocket;
 import com.oracle.truffle.tools.utils.java_websocket.WebSocketAdapter;
@@ -77,7 +65,6 @@ import com.oracle.truffle.tools.utils.java_websocket.drafts.Draft;
 import com.oracle.truffle.tools.utils.java_websocket.framing.Framedata;
 import com.oracle.truffle.tools.utils.java_websocket.framing.PingFrame;
 import com.oracle.truffle.tools.utils.java_websocket.handshake.ClientHandshake;
-import com.oracle.truffle.tools.utils.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.server.DefaultWebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.server.WebSocketServer;
 import org.graalvm.shadowed.org.json.JSONArray;
@@ -91,65 +78,21 @@ import org.graalvm.shadowed.org.json.JSONObject;
 public final class InspectorServer extends WebSocketServer implements InspectorWSConnection {
 
     private static final String WS_PREFIX = "ws://";
-    private static final String WS_PREFIX_SECURE = "wss://";
     private static final String DEV_TOOLS_PREFIX = "devtools://devtools/bundled/js_app.html?";
     private static final Map<InetSocketAddress, InspectorServer> SERVERS = new HashMap<>();
 
-    private final boolean secure;
     private final Map<Token, ServerPathSession> sessions = new ConcurrentHashMap<>();
     private final Map<WebSocket, InspectWebSocketHandler> socketConnectionHandlers = new ConcurrentHashMap<>();
     private final CountDownLatch started = new CountDownLatch(1);
 
-    private InspectorServer(InetSocketAddress isa, KeyStoreOptions keyStoreOptions) throws IOException {
+    private InspectorServer(InetSocketAddress isa) {
         super(isa, 2); // 2 websocket workers to process the network data
-        // Note that the DNS rebind attack protection does not apply to WebSockets, because they are
-        // handled with a higher-priority HTTP interceptor. We probably could add the protection in
-        // openWebSocket method, but it is not needed, because WebSockets are already protected by
-        // secret URLs. Also, protecting WebSockets from DNS rebind attacks is not much useful,
-        // since they are not protected by same-origin policy.
-        // See DNSRebindProtectionHandler in WrappingSocketServerFactory
 
         // Disable Lost connection detection, Chrome Inspector does not send PONG response reliably.
         setConnectionLostTimeout(0);
-        WebSocketServerFactory wssf;
-        if (keyStoreOptions != null) {
-            wssf = new WrappingSocketServerFactory(new DefaultSSLWebSocketServerFactory(sslContext(keyStoreOptions)));
-        } else {
-            wssf = new WrappingSocketServerFactory(new DefaultWebSocketServerFactory());
-        }
+        WebSocketServerFactory wssf = new WrappingSocketServerFactory(new DefaultWebSocketServerFactory());
         setWebSocketFactory(wssf);
         setReuseAddr(true);
-        secure = keyStoreOptions != null;
-    }
-
-    private static SSLContext sslContext(KeyStoreOptions keyStoreOptions) throws IOException {
-        String keyStoreFile = keyStoreOptions.getKeyStore();
-        if (keyStoreFile != null) {
-            String filePasswordProperty = keyStoreOptions.getKeyStorePassword();
-            char[] filePassword = filePasswordProperty == null ? "".toCharArray() : filePasswordProperty.toCharArray();
-            SSLContext sslContext;
-            try {
-                KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-                try (InputStream in = new FileInputStream(keyStoreFile)) {
-                    keystore.load(in, filePassword);
-                }
-                KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-                keyManagerFactory.init(keystore, filePassword);
-
-                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-                trustManagerFactory.init(keystore);
-
-                sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(keyManagerFactory.getKeyManagers(),
-                                trustManagerFactory.getTrustManagers(),
-                                new SecureRandom());
-            } catch (GeneralSecurityException ex) {
-                throw new IOException(ex);
-            }
-            return sslContext;
-        } else {
-            throw new IOException("Use options to specify the keystore");
-        }
     }
 
     private class WrappingSocketServerFactory implements WebSocketServerFactory {
@@ -173,7 +116,7 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
         @Override
         @SuppressWarnings("unchecked")
         public ByteChannel wrapChannel(SocketChannel channel, SelectionKey key) throws IOException {
-            return new HTTPChannelWrapper(channel, new DNSRebindProtectionHandler(), new JSONHandler());
+            return new HTTPChannelWrapper(channel, new JSONHandler());
         }
 
         @Override
@@ -184,14 +127,13 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
     }
 
     public static InspectorServer get(InetSocketAddress isa, Token token, String pathContainingToken, InspectorExecutionContext context, boolean debugBrk,
-                    boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher,
-                    InspectServerSession initialSession) throws IOException {
+                    ConnectionWatcher connectionWatcher, InspectServerSession initialSession) throws IOException {
         InspectorServer wss;
         boolean startServer = false;
         synchronized (SERVERS) {
             wss = SERVERS.get(isa);
             if (wss == null) {
-                wss = new InspectorServer(isa, secure ? keyStoreOptions : null);
+                wss = new InspectorServer(isa);
                 context.logMessage("", "New WebSocketServer at " + isa);
                 startServer = true;
                 SERVERS.put(isa, wss);
@@ -208,93 +150,18 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
         return wss;
     }
 
-    /**
-     * DNS rebind attack uses victim's web browser as a proxy in order to access servers in local
-     * network or even on localhost. The web browser works with a DNS name the attacker can control
-     * (say evil.example.com), which suddenly starts being resolved to a local IP (even to
-     * 127.0.0.1). This technique allows the attacker to partially circumvent the same-origin
-     * policy. That is, the attacker will be able to connect to the server, but the browser will
-     * consider it as evil.example.com. As a result, the browser sends the attacker's domain name
-     * (e.g., evil.example.com) in the Host header. Also, the attacker does not get access to
-     * cookies or other locally-stored data for the website, as the browser considers it as a
-     * different domain.
-     *
-     * So, the attacker circumvents just the network restriction, and even this is limited: The
-     * protocol has to be based on HTTP (or HTTPS with likely invalid certificate) and the Host
-     * header will point to an attacker-controlled domain. Note that browsers prevent webpages to
-     * override values of this header: https://fetch.spec.whatwg.org/#forbidden-header-name
-     *
-     * In order to prevent the attack, we check the Host header:
-     * <ul>
-     * <li>If there is a valid IP address (IPv4 or IPv6), it can't be a DNS rebind attack, as no DNS
-     * name was used.</li>
-     * <li>If there is a whitelisted domain name (one that attacker can't control), it is OK. We
-     * assume that the attacker can control DNS records for everything but localhost. This matches
-     * both standard practice and RFC 6761.</li>
-     * <li>For everything else (including missing host header), we deny the request.</li>
-     * </ul>
-     */
-    private final class DNSRebindProtectionHandler implements Function<HttpRequest, HttpResponse> {
-
-        @Override
-        public HttpResponse apply(HttpRequest request) {
-            return handleDnsRebind(request);
-        }
-
-    }
-
-    private HttpResponse handleDnsRebind(HttpRequest request) {
-        String host = request.getHeaders().get("host");
-        if (!isHostOk(host)) {
-            String badHost = host != null ? "Bad host " + host + ". Please use IP address." : "Missing host header. Use an up-to-date client.";
-            String message = badHost + " This request cannot be served because it looks like DNS rebind attack.";
-            Iterator<ServerPathSession> sessionIterator = sessions.values().iterator();
-            if (sessionIterator.hasNext()) {
-                sessionIterator.next().getContext().getErr().println("Bad connection from " + request.getRemoteAddress() + ". " + message);
-            }
-            return new HttpResponse("400 Bad Request", "text/plain", "UTF-8", message);
-        } else {
-            return null;
-        }
-    }
-
-    private static boolean isHostOk(String host) {
-        if (host == null) {
-            return false;
-        } else {
-            final String bareHost = host.replaceFirst(":([0-9]+)$", "");
-            return (bareHost.equals("localhost") || isValidIp(bareHost));
-        }
-    }
-
-    private static boolean isValidIp(String host) {
-        boolean ipv6 = host.startsWith("[") && host.endsWith("]");
-        String h = host;
-        if (ipv6) {
-            h = h.substring(1, h.length() - 1);
-        }
-        InetAddress address;
-        try {
-            address = InetAddress.getByName(h);
-        } catch (UnknownHostException ex) {
-            return false;
-        }
-        return address instanceof Inet4Address == !ipv6;
-    }
-
     public String getWSAddress(Token token) {
         ServerPathSession serverSession = sessions.get(token);
         return getWSAddress(serverSession);
     }
 
     private String getWSAddress(ServerPathSession serverSession) {
-        String prefix = secure ? WS_PREFIX_SECURE : WS_PREFIX;
         try {
             // Wait for the server to start to be able to provide the actual port number.
             started.await();
         } catch (InterruptedException ex) {
         }
-        return prefix + getAddress().getAddress().getHostAddress() + ":" + getPort() + serverSession.pathContainingToken;
+        return WS_PREFIX + getAddress().getAddress().getHostAddress() + ":" + getPort() + serverSession.pathContainingToken;
     }
 
     public String getDevtoolsAddress(Token token) {
