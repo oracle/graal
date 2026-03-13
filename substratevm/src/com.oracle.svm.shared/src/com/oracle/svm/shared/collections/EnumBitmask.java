@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.shared.collections;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import com.oracle.svm.shared.Uninterruptible;
+
 public final class EnumBitmask {
     private EnumBitmask() {
     }
@@ -37,10 +41,12 @@ public final class EnumBitmask {
         return result;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean hasBit(int bitmask, Enum<?> flag) {
         return (bitmask & flagBit(flag)) != 0;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int flagBit(Enum<?> flag) {
         assert flag.ordinal() < 32;
         return 1 << flag.ordinal();

@@ -34,7 +34,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.thread.IsolateThreadCache;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.nodes.PauseNode;
 

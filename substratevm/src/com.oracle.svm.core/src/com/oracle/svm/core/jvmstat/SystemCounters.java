@@ -42,7 +42,7 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationListener;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.sun.management.OperatingSystemMXBean;
 
 /**

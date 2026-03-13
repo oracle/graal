@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.isolated;
+package com.oracle.svm.guest.staging;
 
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.graal.isolated.IsolatedHandle;
-import com.oracle.svm.core.handles.ThreadLocalHandles;
-
-public final class IsolatedHandles {
-    @SuppressWarnings("unchecked")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T, H extends IsolatedHandle<? extends T>> H nullHandle() {
-        return ThreadLocalHandles.nullHandle();
-    }
-
-    private IsolatedHandles() {
+/**
+ * Marker type that keeps the transitional guest-staging root package non-empty, otherwise mx would
+ * complain.
+ */
+final class GuestStaging {
+    private GuestStaging() {
     }
 }

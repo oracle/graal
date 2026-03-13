@@ -25,7 +25,7 @@
 
 package com.oracle.svm.webimage.jtt.javascriptbody;
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 
 import net.java.html.js.JavaScriptBody;
 import net.java.html.js.JavaScriptResource;

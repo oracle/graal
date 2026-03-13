@@ -37,6 +37,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.meta.GuaranteeFolded;
 
 public class SubstrateUtil {
@@ -115,6 +117,8 @@ public class SubstrateUtil {
      * should always be at the beginning of a method. It is not supposed to mark conditional code
      * branches. It always indicates that the whole containing method is run-time only.
      */
+    @AlwaysInline("Should be eliminated")
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void guaranteeRuntimeOnly() {
         if (HOSTED) {
             throw VMError.shouldNotReachHere("Should only be called at run time");
@@ -124,6 +128,7 @@ public class SubstrateUtil {
     /**
      * Returns the length of a C {@code char*} string.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
         UnsignedWord n = Word.zero();
         while (((Pointer) str).readByte(n) != 0) {
@@ -135,6 +140,7 @@ public class SubstrateUtil {
     /**
      * Returns a pointer to the matched character or NULL if the character is not found.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CCharPointer strchr(CCharPointer str, int c) {
         int index = 0;
         while (true) {
@@ -159,6 +165,8 @@ public class SubstrateUtil {
      * are actually the same class.
      */
     @SuppressWarnings({"unused", "unchecked"})
+    @AlwaysInline("Some callers rely on this never becoming an actual method call.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> T cast(Object obj, Class<T> toType) {
         return (T) obj;
     }
@@ -169,12 +177,14 @@ public class SubstrateUtil {
      * @return true if assertions are enabled.
      */
     @SuppressWarnings("all")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean assertionsEnabled() {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;
         return assertionsEnabled;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isPowerOf2(long value) {
         return (value & (value - 1)) == 0;
     }

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * Epoch-based storage for metadata. Switching the epoch may only be done at a safepoint. All

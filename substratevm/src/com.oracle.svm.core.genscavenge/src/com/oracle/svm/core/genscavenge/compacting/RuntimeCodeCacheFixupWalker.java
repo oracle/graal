@@ -31,7 +31,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /** Before compaction, updates references from {@link CodeInfo} structures. */
 public final class RuntimeCodeCacheFixupWalker implements CodeInfoVisitor {

@@ -30,7 +30,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.internal.misc.Unsafe;
 import jdk.jfr.internal.LogLevel;

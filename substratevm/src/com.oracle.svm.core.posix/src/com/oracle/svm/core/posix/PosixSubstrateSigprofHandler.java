@@ -43,7 +43,7 @@ import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 
 import jdk.graal.compiler.options.Option;

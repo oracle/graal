@@ -25,7 +25,7 @@
  */
 package com.oracle.svm.core.nmt;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 /** Categories for native memory tracking. */
 public enum NmtCategory {

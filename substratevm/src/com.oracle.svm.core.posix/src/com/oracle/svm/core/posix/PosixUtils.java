@@ -25,7 +25,7 @@
 package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.FileDescriptor;
 
@@ -63,7 +63,7 @@ import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 public class PosixUtils {
     @TargetClass(java.io.FileDescriptor.class)

@@ -27,7 +27,7 @@ package com.oracle.svm.core.foreign;
 import java.io.FileDescriptor;
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.ArenaIntrinsics;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.annotate.Substitute;

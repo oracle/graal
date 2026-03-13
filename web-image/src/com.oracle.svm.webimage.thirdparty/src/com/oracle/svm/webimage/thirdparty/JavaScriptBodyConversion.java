@@ -29,7 +29,7 @@ import java.math.BigInteger;
 
 import org.graalvm.webimage.api.JS;
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.webimage.JSNameGenerator;
 import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;

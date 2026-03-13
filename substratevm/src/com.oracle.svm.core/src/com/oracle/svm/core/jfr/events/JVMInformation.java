@@ -29,7 +29,7 @@ import java.lang.management.ManagementFactory;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.JavaMainWrapper;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 
 public class JVMInformation {
 

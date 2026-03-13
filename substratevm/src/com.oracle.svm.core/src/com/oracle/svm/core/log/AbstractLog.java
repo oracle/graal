@@ -29,7 +29,7 @@ import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.abs;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.max;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.Math.min;
 import static com.oracle.svm.core.jdk.UninterruptibleUtils.String.charAt;
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.nio.charset.StandardCharsets;
 
@@ -45,7 +45,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDKUtils;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;

@@ -25,7 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.wasmgc;
 
-import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.SnippetRuntime;
