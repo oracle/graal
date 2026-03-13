@@ -55,6 +55,7 @@ public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType BytecodeInterpreterHandler = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandler");
     public final ResolvedJavaType BytecodeInterpreterHandlerConfig = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig");
     public final ResolvedJavaType BytecodeInterpreterFetchOpcode = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterFetchOpcode");
+    public final ResolvedJavaType BytecodeInterpreterDefaultHandler = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterDefaultHandler");
     public final ResolvedJavaType BytecodeInterpreterSwitchBoundary = lookupType("com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitchBoundary");
     public final ResolvedJavaType InliningCutoff = lookupType("com.oracle.truffle.api.HostCompilerDirectives$InliningCutoff");
     public final ResolvedJavaType InliningRoot = lookupTypeOptional("com.oracle.truffle.api.HostCompilerDirectives$InliningRoot");

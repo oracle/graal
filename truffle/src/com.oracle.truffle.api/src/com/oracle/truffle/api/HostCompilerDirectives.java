@@ -332,6 +332,16 @@ public final class HostCompilerDirectives {
                  * primitive fields.
                  */
                 boolean nonNull() default true;
+
+                /**
+                 * Marks the expanded field as the template variable used to apply specialization on
+                 * the template variants and select the template variant of the next threaded
+                 * bytecode handler. Only one template variable is permitted per bytecode handler.
+                 * <p>
+                 * The field must be an {@code int} field of a {@link ExpansionKind#VIRTUAL}
+                 * argument.
+                 */
+                boolean templateVariable() default false;
             }
 
             /**
@@ -371,6 +381,20 @@ public final class HostCompilerDirectives {
          * corresponds to the receiver.
          */
         Argument[] arguments();
+
+        /**
+         * Number of template variants generated for each bytecode handler.
+         * <p>
+         * For each variant, the field marked with {@link Argument.Field#templateVariable()} is
+         * rewritten to a constant {@code int} equal to that variant index, enabling constant
+         * propagation and specialization.
+         * <p>
+         * When tail call threading is enabled, execution enters template variant {@code 0} at the
+         * threading entry point. The interpreter may update the field marked with
+         * {@link Argument.Field#templateVariable()} to select the template variant for the next
+         * handler.
+         */
+        int templates() default 1;
     }
 
     /**
@@ -384,5 +408,21 @@ public final class HostCompilerDirectives {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD})
     public @interface BytecodeInterpreterFetchOpcode {
+    }
+
+    /**
+     * Annotates a callback method that is invoked by the generated default bytecode handler stub
+     * before control returns to the switch-loop for re-dispatch.
+     * <p>
+     * The annotated method must have the same parameter list as
+     * {@link BytecodeInterpreterHandler}-annotated methods in the same enclosing class, and return
+     * {@code void}. The callback can be used to materialize virtualized interpreter state before
+     * re-entering threaded dispatch.
+     *
+     * @since 25.1
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.METHOD})
+    public @interface BytecodeInterpreterDefaultHandler {
     }
 }

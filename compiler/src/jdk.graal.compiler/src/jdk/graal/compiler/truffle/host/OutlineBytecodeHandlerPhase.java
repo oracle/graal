@@ -61,11 +61,12 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
         return new TruffleBytecodeHandlerTypes(truffleKnownHostTypes.BytecodeInterpreterSwitch,
                         truffleKnownHostTypes.BytecodeInterpreterHandlerConfig,
                         truffleKnownHostTypes.BytecodeInterpreterHandler,
-                        truffleKnownHostTypes.BytecodeInterpreterFetchOpcode);
+                        truffleKnownHostTypes.BytecodeInterpreterFetchOpcode,
+                        truffleKnownHostTypes.BytecodeInterpreterDefaultHandler);
     }
 
     protected TruffleBytecodeHandlerCallsite getTruffleBytecodeHandlerCallsite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod, TruffleBytecodeHandlerTypes truffleTypes) {
-        return new TruffleBytecodeHandlerCallsite(enclosingMethod, bci, targetMethod, truffleTypes);
+        return new TruffleBytecodeHandlerCallsite(enclosingMethod, bci, targetMethod, 0, truffleTypes);
     }
 
     protected Function<ResolvedJavaField, ResolvedJavaField> getFieldMap(@SuppressWarnings("unused") MetaAccessProvider metaAccess) {

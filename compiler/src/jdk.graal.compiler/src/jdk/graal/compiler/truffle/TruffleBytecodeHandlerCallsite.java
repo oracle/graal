@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -42,6 +42,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -97,7 +98,8 @@ public final class TruffleBytecodeHandlerCallsite {
                     ResolvedJavaField field, // valid iff isExpanded is true
                     boolean isOwnerVirtual, // valid iff isExpanded is true
                     boolean isImmutable,
-                    boolean nonNull) {
+                    boolean nonNull,
+                    boolean isTemplateVariable) {
     }
 
     /**
@@ -106,27 +108,35 @@ public final class TruffleBytecodeHandlerCallsite {
     public record TruffleBytecodeHandlerTypes(ResolvedJavaType typeBytecodeInterpreterSwitch,
                     ResolvedJavaType typeBytecodeInterpreterHandlerConfig,
                     ResolvedJavaType typeBytecodeInterpreterHandler,
-                    ResolvedJavaType typeBytecodeInterpreterFetchOpcode) {
+                    ResolvedJavaType typeBytecodeInterpreterFetchOpcode,
+                    ResolvedJavaType typeBytecodeInterpreterDefaultHandler) {
     }
 
     private final ResolvedJavaMethod enclosingMethod;
     private final int bci;
     private final ResolvedJavaMethod targetMethod;
     private final ResolvedJavaType returnType;
+    private final List<ArgumentInfo> allArgumentInfos;
     private final List<ArgumentInfo> argumentInfos;
     private final List<ResolvedJavaType> argumentTypes;
+    private final int templatesLength;
+    private final int templateIndex;
 
-    public TruffleBytecodeHandlerCallsite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod, TruffleBytecodeHandlerTypes truffleTypes) {
+    public TruffleBytecodeHandlerCallsite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod, int templateIndex, TruffleBytecodeHandlerTypes truffleTypes) {
         GraalError.guarantee(AnnotationValueSupport.isAnnotationPresent(truffleTypes.typeBytecodeInterpreterSwitch, enclosingMethod),
                         "Enclosing method %s is not annotated by @BytecodeInterpreterSwitch", enclosingMethod.format("%H.%n(%p)"));
         this.enclosingMethod = enclosingMethod;
         this.bci = bci;
+        this.templateIndex = templateIndex;
 
         GraalError.guarantee(AnnotationValueSupport.isAnnotationPresent(truffleTypes.typeBytecodeInterpreterHandler, targetMethod),
                         "Target method %s is not annotated by @BytecodeInterpreterHandler", targetMethod.format("%H.%n(%p)"));
         this.targetMethod = targetMethod;
 
         AnnotationValue configAnnotation = AnnotationValueSupport.getDeclaredAnnotationValue(truffleTypes.typeBytecodeInterpreterHandlerConfig, enclosingMethod);
+
+        this.templatesLength = configAnnotation.getInt("templates");
+
         List<AnnotationValue> argumentConfigs = configAnnotation.getList("arguments", AnnotationValue.class);
 
         ResolvedJavaType enclosingClass = targetMethod.getDeclaringClass();
@@ -142,20 +152,19 @@ public final class TruffleBytecodeHandlerCallsite {
 
             String name = receiverConfig.getEnum("expand").name;
             switch (name) {
-                case "NONE" -> localArguments.add(new ArgumentInfo(enclosingClass, currentIndex++, originalIndex, false, false, false, null, null, false, true, nonNull));
+                case "NONE" -> localArguments.add(new ArgumentInfo(enclosingClass, currentIndex++, originalIndex, false, false, false, null, null, false, true, nonNull, false));
                 case "VIRTUAL" -> throw GraalError.shouldNotReachHere("Receiver cannot be VIRTUAL");
                 case "MATERIALIZED" -> {
                     // @Argument(expand = MATERIALIZED, fields = {...})
-                    localArguments.add(new ArgumentInfo(enclosingClass, currentIndex++, originalIndex, false, true, false, null, null, false, true, nonNull));
-                    List<AnnotationValue> fields = receiverConfig.getList("fields", AnnotationValue.class);
+                    localArguments.add(new ArgumentInfo(enclosingClass, currentIndex++, originalIndex, false, true, false, null, null, false, true, nonNull, false));
+
                     for (ResolvedJavaField javaField : enclosingClass.getInstanceFields(true)) {
-                        for (AnnotationValue fieldConfig : fields) {
-                            if (javaField.getName().equals(fieldConfig.getString("name"))) {
-                                ResolvedJavaType fieldType = javaField.getType().resolve(enclosingClass);
-                                localArguments.add(new ArgumentInfo(fieldType, currentIndex++, originalIndex, false, false, true, enclosingClass, javaField, false, javaField.isFinal(),
-                                                !fieldType.isPrimitive() && fieldConfig.getBoolean("nonNull")));
-                                break;
-                            }
+                        AnnotationValue fieldConfig = getFieldAnnotation(javaField, receiverConfig);
+                        if (fieldConfig != null) {
+                            ResolvedJavaType fieldType = javaField.getType().resolve(enclosingClass);
+                            localArguments.add(new ArgumentInfo(fieldType, currentIndex++, originalIndex, false, false, true, enclosingClass, javaField, false, javaField.isFinal(),
+                                            !fieldType.isPrimitive() && fieldConfig.getBoolean("nonNull"), false));
+                            GraalError.guarantee(!fieldConfig.getBoolean("templateVariable"), "Field %s is marked as a template variable", javaField.format("%H.%n"));
                         }
                     }
                 }
@@ -164,6 +173,7 @@ public final class TruffleBytecodeHandlerCallsite {
             originalIndex++;
         }
 
+        int templateVariableCount = 0;
         final int length = signature.getParameterCount(false);
         for (int i = 0; i < length; i++, originalIndex++) {
             ResolvedJavaType parameterType = signature.getParameterType(i, enclosingClass).resolve(enclosingClass);
@@ -173,47 +183,68 @@ public final class TruffleBytecodeHandlerCallsite {
 
             String name = parameterConfig.getEnum("expand").name;
             switch (name) {
-                case "NONE" -> localArguments.add(new ArgumentInfo(parameterType, currentIndex++, originalIndex, copyFromReturn, false, false, null, null, false, !copyFromReturn, nonNull));
+                case "NONE" -> localArguments.add(new ArgumentInfo(parameterType, currentIndex++, originalIndex, copyFromReturn, false, false, null, null, false, !copyFromReturn, nonNull, false));
                 case "VIRTUAL" -> {
                     // @Argument(expand = VIRTUAL, fields = {...})
-                    List<AnnotationValue> fields = parameterConfig.getList("fields", AnnotationValue.class);
-
                     for (ResolvedJavaField javaField : parameterType.getInstanceFields(true)) {
                         ResolvedJavaType fieldType = javaField.getType().resolve(enclosingClass);
                         boolean fieldNonNull = false;
+                        boolean isTemplateVariable = false;
                         if (!fieldType.isPrimitive()) {
-                            for (AnnotationValue fieldConfig : fields) {
-                                if (javaField.getName().equals(fieldConfig.getString("name"))) {
-                                    fieldNonNull = fieldConfig.getBoolean("nonNull");
-                                    break;
+                            AnnotationValue fieldConfig = getFieldAnnotation(javaField, parameterConfig);
+                            if (fieldConfig != null) {
+                                fieldNonNull = fieldConfig.getBoolean("nonNull");
+                                GraalError.guarantee(!fieldConfig.getBoolean("templateVariable"), "Field %s is marked as a template variable", javaField.format("%H.%n"));
+                            }
+                        } else {
+                            AnnotationValue fieldConfig = getFieldAnnotation(javaField, parameterConfig);
+                            if (fieldConfig != null) {
+                                isTemplateVariable = fieldConfig.getBoolean("templateVariable");
+                                if (isTemplateVariable) {
+                                    GraalError.guarantee(fieldType.getJavaKind() == JavaKind.Int, "Template variable field %s must be int", javaField.format("%H.%n"));
+                                    templateVariableCount++;
+                                    GraalError.guarantee(templateVariableCount <= 1, "Found two template variables. The last one is %s", javaField.format("%H.%n"));
                                 }
                             }
                         }
-                        localArguments.add(new ArgumentInfo(fieldType, currentIndex++, originalIndex, false, false, true, parameterType, javaField, true, javaField.isFinal(), fieldNonNull));
+                        int index = isTemplateVariable ? -1 : currentIndex++;
+                        localArguments.add(new ArgumentInfo(fieldType, index, originalIndex, false, false, true,
+                                        parameterType, javaField, true, javaField.isFinal(), fieldNonNull, isTemplateVariable));
                     }
                 }
                 case "MATERIALIZED" -> {
                     // @Argument(expand = MATERIALIZED, fields = {...})
-                    localArguments.add(new ArgumentInfo(parameterType, currentIndex++, originalIndex, copyFromReturn, true, false, null, null, false, true, nonNull));
-                    List<AnnotationValue> fields = parameterConfig.getList("fields", AnnotationValue.class);
+                    localArguments.add(new ArgumentInfo(parameterType, currentIndex++, originalIndex, copyFromReturn, true, false, null, null, false, true, nonNull, false));
 
                     for (ResolvedJavaField javaField : parameterType.getInstanceFields(true)) {
-                        for (AnnotationValue fieldConfig : fields) {
-                            if (javaField.getName().equals(fieldConfig.getString("name"))) {
-                                ResolvedJavaType fieldType = javaField.getType().resolve(enclosingClass);
-                                localArguments.add(new ArgumentInfo(fieldType, currentIndex++, originalIndex, false, false, true, enclosingClass, javaField, false, javaField.isFinal(),
-                                                !fieldType.isPrimitive() && fieldConfig.getBoolean("nonNull")));
-                            }
+                        AnnotationValue fieldConfig = getFieldAnnotation(javaField, parameterConfig);
+                        if (fieldConfig != null) {
+                            ResolvedJavaType fieldType = javaField.getType().resolve(enclosingClass);
+                            localArguments.add(new ArgumentInfo(fieldType, currentIndex++, originalIndex, false, false, true, enclosingClass, javaField, false, javaField.isFinal(),
+                                            !fieldType.isPrimitive() && fieldConfig.getBoolean("nonNull"), false));
+                            GraalError.guarantee(!fieldConfig.getBoolean("templateVariable"), "Field %s is marked as a template variable", javaField.format("%H.%n"));
                         }
                     }
                 }
                 default -> throw GraalError.shouldNotReachHere("Unknown expansion kind " + name);
             }
         }
-        this.argumentInfos = Collections.unmodifiableList(localArguments);
+        GraalError.guarantee(templatesLength == 1 || templateVariableCount == 1,
+                        "Expected exactly one template variable when templates is %d, found %d", templatesLength, templateVariableCount);
+        this.allArgumentInfos = Collections.unmodifiableList(localArguments);
+        this.argumentInfos = localArguments.stream().filter(a -> a.index >= 0).toList();
         this.argumentTypes = argumentInfos.stream().map(ArgumentInfo::type).toList();
 
         assert verifyArguments(argumentInfos);
+    }
+
+    private static AnnotationValue getFieldAnnotation(ResolvedJavaField javaField, AnnotationValue parameterConfig) {
+        for (AnnotationValue fieldConfig : parameterConfig.getList("fields", AnnotationValue.class)) {
+            if (javaField.getName().equals(fieldConfig.getString("name"))) {
+                return fieldConfig;
+            }
+        }
+        return null;
     }
 
     /**
@@ -265,7 +296,7 @@ public final class TruffleBytecodeHandlerCallsite {
 
     /**
      * Creates (if not yet) and returns {@link ParameterNode}s for the arguments described by
-     * {@link #argumentInfos}.
+     * {@link #allArgumentInfos}.
      */
     public ParameterNode[] collectParameterNodes(GraphKit kit) {
         ParameterNode[] parameterNodes = new ParameterNode[argumentInfos.size()];
@@ -295,14 +326,13 @@ public final class TruffleBytecodeHandlerCallsite {
      * between the original object and its expanded fields are restored using
      * {@link FieldAliasNode}.
      */
-    private ValueNode[] createCalleeArguments(GraphKit kit, ParameterNode[] parameterNodes) {
+    public ValueNode[] createCalleeArguments(GraphKit kit, ParameterNode[] parameterNodes) {
         ArrayList<ValueNode> argumentNodes = new ArrayList<>();
 
         AllocatedObjectNode[] allocatedObjects = new AllocatedObjectNode[targetMethod.getSignature().getParameterCount(targetMethod.hasReceiver())];
         EconomicMap<AllocatedObjectNode, List<ValueNode>> virtualFields = EconomicMap.create();
 
-        for (ArgumentInfo argumentInfo : argumentInfos) {
-            ParameterNode parameterNode = parameterNodes[argumentInfo.index];
+        for (ArgumentInfo argumentInfo : allArgumentInfos) {
             if (argumentInfo.isExpanded) {
                 int index = argumentInfo.originalIndex;
                 if (argumentInfo.isOwnerVirtual) {
@@ -317,14 +347,21 @@ public final class TruffleBytecodeHandlerCallsite {
 
                         argumentNodes.add(allocatedObj);
                     }
-                    virtualFields.get(allocatedObj).add(parameterNode);
+                    if (argumentInfo.isTemplateVariable) {
+                        virtualFields.get(allocatedObj).add(kit.unique(ConstantNode.forInt(templateIndex)));
+                    } else {
+                        ParameterNode parameterNode = parameterNodes[argumentInfo.index];
+                        virtualFields.get(allocatedObj).add(parameterNode);
+                    }
                 } else {
                     // During construction, the MATERIALIZED owner is processed before the expanded
                     // fields
                     ValueNode owner = argumentNodes.getLast();
+                    ParameterNode parameterNode = parameterNodes[argumentInfo.index];
                     kit.append(new FieldAliasNode(owner, argumentInfo.field, parameterNode));
                 }
             } else {
+                ParameterNode parameterNode = parameterNodes[argumentInfo.index];
                 argumentNodes.add(parameterNode);
             }
         }
@@ -350,7 +387,7 @@ public final class TruffleBytecodeHandlerCallsite {
      */
     private ValueNode[] updateArguments(ValueNode result, ValueNode[] argumentsToOriginalHandler) {
         ValueNode[] updatedArguments = argumentsToOriginalHandler.clone();
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : allArgumentInfos) {
             if (argumentInfo.copyFromReturn) {
                 updatedArguments[argumentInfo.originalIndex] = result;
             }
@@ -358,17 +395,17 @@ public final class TruffleBytecodeHandlerCallsite {
         return updatedArguments;
     }
 
-    private ValueNode appendInvoke(ResolvedJavaMethod method, ValueNode[] inputs, FrameStateBuilder frameStateBuilder, GraphKit kit) {
+    public ValueNode appendInvoke(ResolvedJavaMethod method, ValueNode[] inputs, FrameStateBuilder frameStateBuilder, GraphKit kit) {
         CallTargetNode.InvokeKind invokeKind = method.isStatic() ? CallTargetNode.InvokeKind.Static : CallTargetNode.InvokeKind.Special;
         ValueNode invoke = kit.createInvokeWithExceptionAndUnwind(method, invokeKind, frameStateBuilder, bci, inputs);
-        return returnType.getJavaKind() == JavaKind.Void ? null : invoke;
+        return method.getSignature().getReturnKind() == JavaKind.Void ? null : invoke;
     }
 
     /**
      * Constructs and returns a {@link MultiReturnNode} representing the updated arguments to a
      * Truffle bytecode handler stub.
      */
-    private MultiReturnNode createStubReturn(GraphKit kit, ParameterNode[] parameterNodes, ValueNode result, ValueNode tailCallTarget, ValueNode[] argumentsToOriginalHandler) {
+    public MultiReturnNode createStubReturn(GraphKit kit, ParameterNode[] parameterNodes, ValueNode result, ValueNode tailCallTarget, ValueNode[] argumentsToOriginalHandler) {
         MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(result, tailCallTarget));
         List<ValueNode> additionalReturnResults = multiReturnNode.getAdditionalReturnResults();
 
@@ -407,7 +444,8 @@ public final class TruffleBytecodeHandlerCallsite {
      * "https://github.com/oracle/graal/blob/master/truffle/docs/OneCompilationPerBytecodeHandler.md">
      * One Compilation per Bytecode Handler documentation</a>.
      */
-    public StructuredGraph createStub(GraphKit kit, ResolvedJavaMethod frameOwner, boolean threading, ResolvedJavaMethod nextOpcodeMethod, Supplier<Object> bytecodeHandlerTableSupplier) {
+    public StructuredGraph createStub(GraphKit kit, ResolvedJavaMethod frameOwner, boolean threading, ResolvedJavaMethod nextOpcodeMethod, ResolvedJavaMethod defaultHandlerMethod,
+                    IntFunction<Object> bytecodeHandlerTableSupplier) {
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder frameStateBuilder = new FrameStateBuilder(kit, frameOwner, graph);
         graph.start().setStateAfter(frameStateBuilder.create(bci, graph.start()));
@@ -427,7 +465,24 @@ public final class TruffleBytecodeHandlerCallsite {
             // Invoke nextOpcodeMethod
             ValueNode[] updatedArguments = updateArguments(handlerResult, argumentsToOriginalHandler);
             ValueNode nextOpcode = appendInvoke(nextOpcodeMethod, updatedArguments, frameStateBuilder, kit);
-            tailCallTarget = kit.append(new TruffleBytecodeHandlerDispatchAddressNode(nextOpcode, bytecodeHandlerTableSupplier));
+
+            ValueNode template = null;
+            for (ArgumentInfo argumentInfo : allArgumentInfos) {
+                if (argumentInfo.isTemplateVariable) {
+                    // must be a virtual field
+                    ValueNode receiver = updatedArguments[argumentInfo.originalIndex];
+                    template = kit.append(LoadFieldNode.create(kit.getAssumptions(), receiver, argumentInfo.field));
+                    break;
+                }
+            }
+            if (template == null) {
+                template = kit.unique(ConstantNode.forInt(0));
+            }
+
+            tailCallTarget = kit.append(new TruffleBytecodeHandlerDispatchAddressNode(nextOpcode, template, bytecodeHandlerTableSupplier));
+        } else if (defaultHandlerMethod != null) {
+            ValueNode[] updatedArguments = updateArguments(handlerResult, argumentsToOriginalHandler);
+            appendInvoke(defaultHandlerMethod, updatedArguments, frameStateBuilder, kit);
         }
 
         kit.append(new ReturnNode(createStubReturn(kit, parameterNodes, handlerResult, tailCallTarget, argumentsToOriginalHandler)));
@@ -481,13 +536,14 @@ public final class TruffleBytecodeHandlerCallsite {
     public boolean equals(Object obj) {
         if (obj instanceof TruffleBytecodeHandlerCallsite other) {
             return enclosingMethod.equals(other.enclosingMethod) && bci == other.bci && targetMethod.equals(other.targetMethod) && returnType.equals(other.returnType) &&
-                            argumentInfos.equals(other.argumentInfos) && argumentTypes.equals(other.argumentTypes);
+                            allArgumentInfos.equals(other.allArgumentInfos) && argumentInfos.equals(other.argumentInfos) &&
+                            argumentTypes.equals(other.argumentTypes) && templateIndex == other.templateIndex && templatesLength == other.templatesLength;
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(enclosingMethod, bci, targetMethod, returnType, argumentInfos, argumentTypes);
+        return Objects.hash(enclosingMethod, bci, targetMethod, returnType, allArgumentInfos, argumentInfos, argumentTypes, templateIndex, templatesLength);
     }
 }

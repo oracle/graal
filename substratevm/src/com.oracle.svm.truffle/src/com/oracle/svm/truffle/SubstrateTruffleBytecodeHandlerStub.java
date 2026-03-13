@@ -62,6 +62,7 @@ import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandler;
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.nodes.MultiReturnNode;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -99,28 +100,30 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
     private final TruffleBytecodeHandlerCallsite callsite;
     private final boolean threading;
     private final boolean needSafepoint;
-    private final boolean isDefault;
+    private final boolean isDefaultHandler;
     private final ResolvedJavaMethod nextOpcodeMethod;
+    private final ResolvedJavaMethod defaultHandlerMethod;
 
     public SubstrateTruffleBytecodeHandlerStub(SubstrateTruffleBytecodeHandlerStubHelper stubHolder, ResolvedJavaType declaringClass, String stubName,
-                    TruffleBytecodeHandlerCallsite callsite, boolean threading, ResolvedJavaMethod nextOpcodeMethod, boolean needSafepoint, boolean isDefault) {
+                    TruffleBytecodeHandlerCallsite callsite, boolean threading, ResolvedJavaMethod nextOpcodeMethod, ResolvedJavaMethod defaultHandlerMethod, boolean needSafepoint, boolean isDefaultHandler) {
         super(stubName, true, declaringClass, ResolvedSignature.fromList(callsite.getArgumentTypes(),
                         callsite.getReturnType()), declaringClass.getDeclaredConstructors(false)[0].getConstantPool());
         this.stubHolder = stubHolder;
         this.callsite = callsite;
         this.threading = threading;
-        this.isDefault = isDefault;
         this.nextOpcodeMethod = nextOpcodeMethod;
+        this.defaultHandlerMethod = defaultHandlerMethod;
         this.needSafepoint = needSafepoint;
+        this.isDefaultHandler = isDefaultHandler;
     }
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
-        if (isDefault) {
-            return createEmptyStub(kit);
+        if (isDefaultHandler) {
+            return createDefaultHandlerStub(kit, method);
         }
-        return callsite.createStub(kit, method, threading, nextOpcodeMethod, () -> stubHolder.getBytecodeHandlers(callsite.getEnclosingMethod()));
+        return callsite.createStub(kit, method, threading, nextOpcodeMethod, defaultHandlerMethod, index -> stubHolder.getBytecodeHandlers(callsite.getEnclosingMethod(), index));
     }
 
     /**
@@ -131,7 +134,7 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
      * parameters as additional return results. This stub effectively terminates the threading and
      * triggers a re-dispatch of the bytecode in the caller.
      */
-    private StructuredGraph createEmptyStub(GraphKit kit) {
+    private StructuredGraph createDefaultHandlerStub(GraphKit kit, AnalysisMethod frameOwner) {
         StructuredGraph graph = kit.getGraph();
         graph.getGraphState().forceDisableFrameStateVerification();
 
@@ -152,10 +155,20 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
             }
         }
 
-        MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(returnResult, null));
-        multiReturnNode.getAdditionalReturnResults().addAll(Arrays.asList(parameterNodes));
+        if (defaultHandlerMethod != null) {
+            FrameStateBuilder frameStateBuilder = new FrameStateBuilder(kit, frameOwner, graph);
+            graph.start().setStateAfter(frameStateBuilder.create(callsite.getBci(), graph.start()));
+            ValueNode[] argumentsToDefaultHandler = callsite.createCalleeArguments(kit, parameterNodes);
+            GraalError.guarantee(defaultHandlerMethod.getSignature().getReturnKind() == JavaKind.Void,
+                            "Expected @BytecodeInterpreterDefaultHandler to return void: %s", defaultHandlerMethod.format("%H.%n(%p)"));
+            callsite.appendInvoke(defaultHandlerMethod, argumentsToDefaultHandler, frameStateBuilder, kit);
+            kit.append(new ReturnNode(callsite.createStubReturn(kit, parameterNodes, returnResult, null, argumentsToDefaultHandler)));
+        } else {
+            MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(returnResult, null));
+            multiReturnNode.getAdditionalReturnResults().addAll(Arrays.asList(parameterNodes));
+            kit.append(new ReturnNode(multiReturnNode));
+        }
 
-        kit.append(new ReturnNode(multiReturnNode));
         graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Initial graph for default bytecode handler stub");
         return graph;
     }
@@ -307,6 +320,7 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
         return new TruffleBytecodeHandlerTypes(unwrap(truffleKnownHostTypes.BytecodeInterpreterSwitch),
                         unwrap(truffleKnownHostTypes.BytecodeInterpreterHandlerConfig),
                         unwrap(truffleKnownHostTypes.BytecodeInterpreterHandler),
-                        unwrap(truffleKnownHostTypes.BytecodeInterpreterFetchOpcode));
+                        unwrap(truffleKnownHostTypes.BytecodeInterpreterFetchOpcode),
+                        unwrap(truffleKnownHostTypes.BytecodeInterpreterDefaultHandler));
     }
 }

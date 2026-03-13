@@ -70,9 +70,9 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
      * the stub method. This map is collected in {@link TruffleBytecodeHandlerInvokePlugin} and both
      * the keys and values are of {@link com.oracle.graal.pointsto.meta.AnalysisMethod}.
      */
-    private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers;
+    private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod[]> registeredBytecodeHandlers;
 
-    public SubstrateOutlineBytecodeHandlerPhase(EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers) {
+    public SubstrateOutlineBytecodeHandlerPhase(EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod[]> registeredBytecodeHandlers) {
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
     }
 
@@ -91,7 +91,7 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
      * @param targetMethod a {@link HostedMethod}
      */
     private SubstrateTruffleBytecodeHandlerStub getStub(ResolvedJavaMethod targetMethod) {
-        return (SubstrateTruffleBytecodeHandlerStub) unwrap(registeredBytecodeHandlers.get(unwrap(targetMethod)));
+        return (SubstrateTruffleBytecodeHandlerStub) unwrap(registeredBytecodeHandlers.get(unwrap(targetMethod))[0]);
     }
 
     @Override
@@ -116,7 +116,7 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
         StructuredGraph graph = invoke.asNode().graph();
         CallTargetNode oldCallTargetNode = invoke.callTarget();
         ResolvedJavaMethod targetMethod = oldCallTargetNode.targetMethod();
-        ResolvedJavaMethod analysisStub = registeredBytecodeHandlers.get(unwrap(targetMethod));
+        ResolvedJavaMethod analysisStub = registeredBytecodeHandlers.get(unwrap(targetMethod))[0];
         HostedMethod hostedStub = ((HostedMetaAccess) context.getMetaAccess()).getUniverse().optionalLookup(analysisStub);
 
         SubstrateMethodCallTargetNode newCallTargetNode = graph.add(new SubstrateMethodCallTargetNode(CallTargetNode.InvokeKind.Static, hostedStub, arguments,

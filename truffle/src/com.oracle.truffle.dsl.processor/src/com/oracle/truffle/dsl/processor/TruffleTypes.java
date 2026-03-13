@@ -149,6 +149,7 @@ public class TruffleTypes {
     public static final String HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_ExpansionKind_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.ExpansionKind";
     public static final String HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_Field_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.Field";
     public static final String HostCompilerDirectives_BytecodeInterpreterFetchOpcode_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterFetchOpcode";
+    public static final String HostCompilerDirectives_BytecodeInterpreterDefaultHandler_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterDefaultHandler";
     public static final String HostCompilerDirectives_BytecodeInterpreterHandler_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandler";
 
     public static final String InternalResource_Name = "com.oracle.truffle.api.InternalResource";
@@ -226,6 +227,7 @@ public class TruffleTypes {
     public final DeclaredType HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_Field = c.getDeclaredType(
                     HostCompilerDirectives_BytecodeInterpreterHandlerConfig_Argument_Field_Name);
     public final DeclaredType HostCompilerDirectives_BytecodeInterpreterFetchOpcode = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterFetchOpcode_Name);
+    public final DeclaredType HostCompilerDirectives_BytecodeInterpreterDefaultHandler = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterDefaultHandler_Name);
     public final DeclaredType HostCompilerDirectives_BytecodeInterpreterHandler = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterHandler_Name);
     public final DeclaredType InternalResource = c.getDeclaredType(InternalResource_Name);
     public final DeclaredType InternalResource_Id = c.getDeclaredType(InternalResource_Id_Name);
