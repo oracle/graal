@@ -308,7 +308,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             args[i] = switch (tagAt(entry.argAt(i))) {
                 case METHODHANDLE -> this.resolvedMethodHandleAt(entry.argAt(i), accessingClass);
                 case METHODTYPE -> this.resolvedMethodTypeAt(entry.argAt(i), accessingClass);
-                case CLASS -> this.resolveClassConstant(entry.argAt(i), accessingClass).getJavaClass();
+                case CLASS -> this.resolvedTypeAt(accessingClass, entry.argAt(i)).getJavaClass();
                 case STRING -> this.resolveStringAt(entry.argAt(i));
                 case INTEGER -> this.intAt(entry.argAt(i));
                 case LONG -> this.longAt(entry.argAt(i));
