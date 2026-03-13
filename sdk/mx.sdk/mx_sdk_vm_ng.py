@@ -504,15 +504,38 @@ class NativeImageBuildTask(mx.BuildTask):
         native_image_command = [native_image_bin] + build_args
         return native_image_command
 
+    def _get_args_file(self):
+        return self.subject.output_file() + '.args'
+
+    @staticmethod
+    def _quote_argfile_arg(arg):
+        if arg == '':
+            return '""'
+        if not any(ch.isspace() or ch in ('#', '"', "'") for ch in arg):
+            return arg
+        escaped = arg.replace('\\', '\\\\').replace('\"', '\\\"')
+        return f'"{escaped}"'
+
+    def _write_args_file(self, args_file, args):
+        with open(args_file, 'w', encoding='utf-8') as f:
+            for arg in args:
+                f.write(self._quote_argfile_arg(arg))
+                f.write('\n')
+
     def build(self):
         mx_util.ensure_dir_exists(self.subject.build_directory())
         native_image_command = self.get_build_command()
+        run_command = native_image_command
+        if mx.is_windows():
+            args_file = self._get_args_file()
+            self._write_args_file(args_file, native_image_command[1:])
+            run_command = [native_image_command[0], '@' + args_file]
 
         # Prefix native-image builds that print straight to stdout or stderr with [<output_filename>:<pid>]
         out = mx.PrefixCapture(lambda l: mx.log(l, end=''), self.subject.output_file_name())
         err = mx.PrefixCapture(lambda l: mx.log(l, end='', file=sys.stderr), out.identifier)
 
-        mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
+        mx.run(run_command, nonZeroIsFatal=True, out=out, err=err)
 
         with open(self._get_command_file(), 'w') as f:
             f.writelines((l + linesep for l in native_image_command))
@@ -525,6 +548,9 @@ class NativeImageBuildTask(mx.BuildTask):
         build_directory = self.subject.build_directory()
         if exists(build_directory):
             mx.rmtree(build_directory)
+        args_file = self._get_args_file()
+        if exists(args_file):
+            os.remove(args_file)
 
     def __str__(self):
         return 'Building {}'.format(self.subject.name)
