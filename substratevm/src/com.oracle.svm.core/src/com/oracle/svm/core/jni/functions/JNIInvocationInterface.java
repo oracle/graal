@@ -26,6 +26,7 @@ package com.oracle.svm.core.jni.functions;
 
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -387,6 +388,14 @@ public final class JNIInvocationInterface {
             WordPointer javaVmIdPointer = Word.nullPointer();
             if (hasSpecialVmOptions) {
                 javaVmIdPointer = parseVMOptions(vmArgs);
+            }
+            if (SubstrateOptions.InitializeVM.getValue()) {
+                /*
+                 * `JNI_CreateJavaVM` reaches this point only after all JNI VM options have been
+                 * applied, so startup hooks can safely observe the final launcher configuration
+                 * before any libjvm-backed Crema main dispatch begins.
+                 */
+                VMRuntime.initialize();
             }
 
             JNIJavaVM javaVm = JNIFunctionTables.singleton().getGlobalJavaVM();
