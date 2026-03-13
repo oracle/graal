@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.gc.shared;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.thread.VMOperationControl.isDedicatedVMOperationThread;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
@@ -56,6 +55,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * GC-related VM operations can be scheduled by any isolate thread (including the VM operation
@@ -217,7 +217,7 @@ public class NativeGCVMOperationSupport {
         private static final int FINISHED = ADJUST_THREAD_STATUS + 1;
 
         private static final VMMutex EXECUTION_STATUS_MUTEX = new VMMutex("vmOpExecutionStatus");
-        private static final VMCondition EXECUTION_STATUS_CONDITION = new VMCondition(EXECUTION_STATUS_MUTEX);
+        private static final VMCondition EXECUTION_STATUS_CONDITION = new VMCondition(EXECUTION_STATUS_MUTEX, "vmOpExecutionStatus");
 
         protected NativeGCVMOperationWrapper() {
             super(VMOperationInfos.get(NativeGCVMOperationWrapper.class, "Native GC VM operation wrapper", SystemEffect.NONE));

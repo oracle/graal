@@ -429,8 +429,8 @@ public final class VMOperationControl {
             this.javaNonSafepointOperations = new JavaVMOperationQueue(prefix + "JavaNonSafepointOperations");
             this.javaSafepointOperations = new JavaVMOperationQueue(prefix + "JavaSafepointOperations");
             this.mutex = createMutex(prefix + "VMOperationControlWorkQueue", needsLocking);
-            this.operationQueued = createCondition();
-            this.operationFinished = createCondition();
+            this.operationQueued = createCondition("operationQueued");
+            this.operationFinished = createCondition("operationFinished");
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -670,9 +670,9 @@ public final class VMOperationControl {
         }
 
         @Platforms(value = Platform.HOSTED_ONLY.class)
-        private VMCondition createCondition() {
+        private VMCondition createCondition(String name) {
             if (mutex != null && useDedicatedVMOperationThread()) {
-                return new VMCondition(mutex);
+                return new VMCondition(mutex, name);
             }
             return null;
         }

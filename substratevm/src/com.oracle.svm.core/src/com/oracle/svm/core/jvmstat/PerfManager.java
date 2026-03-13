@@ -43,14 +43,14 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
+import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.Option;
@@ -183,7 +183,7 @@ public class PerfManager {
             super("Performance data");
             this.manager = manager;
             this.initializationMutex = new VMMutex("perfDataInitialization");
-            this.initializationCondition = new VMCondition(initializationMutex);
+            this.initializationCondition = new VMCondition(initializationMutex, "perfDataInitialization");
             this.initialized = false;
 
             setDaemon(true);

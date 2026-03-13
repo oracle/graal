@@ -102,7 +102,7 @@ import jdk.graal.compiler.nodes.extended.MembarNode;
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
     private static final VMMutex REF_MUTEX = new VMMutex("referencePendingList");
-    private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
+    private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX, "referencePendingList");
 
     // Singleton instances, created during image generation.
     private final YoungGeneration youngGeneration = new YoungGeneration("YoungGeneration");
