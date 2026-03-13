@@ -1806,6 +1806,10 @@ libgraal_build_args = [
     '-H:+JNIEnhancedErrorCodes',
     '-H:InitialCollectionPolicy=LibGraal',
 
+    # Libgraal receives its final runtime option values from HotSpot after JNI_CreateJavaVM
+    # returns, so startup hooks must wait for the later explicit VMRuntime.initialize() call.
+    '-H:-InitializeVM',
+
     # A libgraal image contains classes with the same FQN loaded by different classloaders.
     # I.e. the SVM runtime depends on
     # - jdk.vm.ci.* classes loaded by the bootstrap classloader

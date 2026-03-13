@@ -96,7 +96,11 @@ public class RistrettoCompilationManager {
     public RistrettoCompilationManager() {
         compilerExceptions = Collections.synchronizedList(new ArrayList<>());
         final int compilerThreadCount = RistrettoOptions.JITCompilerThreadCount.getValue();
-        compilerExecutorService = Executors.newFixedThreadPool(compilerThreadCount);
+        compilerExecutorService = Executors.newFixedThreadPool(compilerThreadCount, runnable -> {
+            Thread t = new Thread(runnable);
+            t.setDaemon(true);
+            return t;
+        });
         compilationQueue = new PriorityBlockingQueue<>();
         performedCompilations = Collections.synchronizedList(new ArrayList<>());
         submittedRequests = new AtomicLong();
