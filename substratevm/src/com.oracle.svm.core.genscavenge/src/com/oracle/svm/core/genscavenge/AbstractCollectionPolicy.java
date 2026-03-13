@@ -194,7 +194,6 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public final UnsignedWord getMaximumEdenSize() {
         return sizes.getMaxEdenSize();
     }
