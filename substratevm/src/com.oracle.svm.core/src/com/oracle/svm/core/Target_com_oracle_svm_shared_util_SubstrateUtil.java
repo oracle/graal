@@ -25,43 +25,12 @@
 package com.oracle.svm.core;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.UnsignedWord;
 
 @TargetClass(SubstrateUtil.class)
 final class Target_com_oracle_svm_shared_util_SubstrateUtil {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
     private static boolean HOSTED = false;
-
-    @AnnotateOriginal
-    @AlwaysInline("Should be eliminated")
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static native void guaranteeRuntimeOnly();
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native UnsignedWord strlen(CCharPointer str);
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native CCharPointer strchr(CCharPointer str, int c);
-
-    @AnnotateOriginal
-    @AlwaysInline("Some callers rely on this never becoming an actual method call.")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native <T> T cast(Object obj, Class<T> toType);
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native boolean assertionsEnabled();
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native boolean isPowerOf2(long value);
 }
