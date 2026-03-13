@@ -498,11 +498,18 @@ public class RAVInstruction {
          */
         public RAValue getLocation() {
             if (LIRValueUtil.isVirtualStackSlot(location.getValue())) {
-                var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(lirInstruction);
-                var input = valueMov.getInput();
-                if (ValueUtil.isStackSlot(input)) {
+                Value moveLocation;
+                if (StandardOp.LoadConstantOp.isLoadConstantOp(lirInstruction)) {
+                    var loadConstOp = StandardOp.LoadConstantOp.asLoadConstantOp(lirInstruction);
+                    moveLocation = loadConstOp.getResult();
+                } else {
+                    var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(lirInstruction);
+                    moveLocation = valueMov.getInput();
+                }
+
+                if (ValueUtil.isStackSlot(moveLocation)) {
                     // Change vstack to allocated stack slot, because it was changed
-                    location.value = input;
+                    location.value = moveLocation;
                 }
             }
 
