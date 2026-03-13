@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,51 +23,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.os.RawFileOperationSupport;
+import org.graalvm.nativeimage.ImageSingletons;
 
-public interface JfrChunkWriter extends JfrUnlockedChunkWriter {
+import jdk.graal.compiler.api.replacements.Fold;
 
-    void unlock();
+/**
+ * JFR emergency dumps are snapshots generated when the VM shuts down due to unexpected
+ * circumstances such as OOME or VM crash. Currently, only dumping on OOME is supported. Emergency
+ * dumps are a best effort attempt to persist in-flight data and consolidate data in the on-disk JFR
+ * chunk repository into a snapshot. This process is allocation free.
+ */
+public interface JfrEmergencyDumpSupport {
+    @Fold
+    static boolean isPresent() {
+        return ImageSingletons.contains(JfrEmergencyDumpSupport.class);
+    }
 
-    long getChunkStartNanos();
+    @Fold
+    static JfrEmergencyDumpSupport singleton() {
+        return ImageSingletons.lookup(JfrEmergencyDumpSupport.class);
+    }
 
-    void setFilename(String filename);
+    void initialize();
 
-    void maybeOpenFile();
+    void setRepositoryLocation(String dirText);
 
-    void openFile(String outputFile);
+    void setDumpPath(String dumpPathText);
 
-    void openFile(RawFileOperationSupport.RawFileDescriptor fd);
+    String getDumpPath();
 
-    void write(JfrBuffer buffer);
+    RawFileOperationSupport.RawFileDescriptor chunkPath();
 
-    void flush();
+    void onVmError();
 
-    void markChunkFinal();
-
-    void closeFile();
-
-    void setMetadata(byte[] bytes);
-
-    boolean shouldRotateDisk();
-
-    long beginEvent();
-
-    void endEvent(long start);
-
-    void writeBoolean(boolean value);
-
-    void writeByte(byte value);
-
-    void writeBytes(byte[] values);
-
-    void writeCompressedInt(int value);
-
-    void writePaddedInt(long value);
-
-    void writeCompressedLong(long value);
-
-    void writeString(String str);
+    void teardown();
 }

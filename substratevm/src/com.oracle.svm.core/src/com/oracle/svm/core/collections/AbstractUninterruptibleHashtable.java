@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.collections;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -131,8 +133,9 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UninterruptibleEntry get(UninterruptibleEntry valueOnStack) {
+        assert valueOnStack.isNonNull();
         int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
         UninterruptibleEntry entry = table[index];
         while (entry.isNonNull()) {
@@ -169,6 +172,12 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
             UninterruptibleEntry newEntry = insertEntry(valueOnStack);
             return newEntry.isNonNull();
         }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean contains(UninterruptibleEntry valueOnStack) {
+        UninterruptibleEntry existingEntry = get(valueOnStack);
+        return existingEntry.isNonNull();
     }
 
     @Override

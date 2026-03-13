@@ -347,8 +347,13 @@ public final class JfrNativeEventWriter {
         if (oldBuffer.getSize().belowThan(minNewSize)) {
             // Grow the buffer because it is too small.
             UnsignedWord newSize = oldBuffer.getSize();
-            while (newSize.belowThan(minNewSize)) {
-                newSize = newSize.multiply(2);
+            if (newSize.equal(0)) {
+                // avoid infinite loops
+                newSize = minNewSize;
+            } else {
+                while (newSize.belowThan(minNewSize)) {
+                    newSize = newSize.multiply(2);
+                }
             }
 
             JfrBuffer result = JfrBufferAccess.allocate(newSize, oldBuffer.getBufferType());
@@ -363,7 +368,7 @@ public final class JfrNativeEventWriter {
 
             JfrBufferAccess.free(oldBuffer);
 
-            assert result.getSize().aboveThan(minNewSize);
+            assert result.getSize().aboveOrEqual(minNewSize);
             return result;
         } else {
             // Reuse the existing buffer because enough data was already flushed in the meanwhile.

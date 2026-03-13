@@ -33,7 +33,7 @@ import com.oracle.svm.shared.util.BasedOnJDKClass;
  * not provide the individual log tags.
  */
 @BasedOnJDKClass(className = "jdk.jfr.internal.LogTag")
-enum JfrLogTag {
+public enum JfrLogTag {
     JFR,
     SYSTEM,
     EVENT,
