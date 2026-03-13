@@ -29,12 +29,17 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.webimage.api.JSValue;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.functionintrinsics.JSConversion;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 @AutomaticallyRegisteredImageSingleton(JSConversion.class)
 @Platforms(WebImageWasmLMPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WasmLMJSConversion extends JSConversion {
     @Override
     public void setJavaScriptNativeImpl(JSValue self, Object jsNative) {

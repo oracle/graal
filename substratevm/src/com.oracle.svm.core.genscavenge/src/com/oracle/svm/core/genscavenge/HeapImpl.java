@@ -86,6 +86,10 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -94,6 +98,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
     private static final VMMutex REF_MUTEX = new VMMutex("referencePendingList");

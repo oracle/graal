@@ -37,6 +37,10 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.Digest;
@@ -50,6 +54,7 @@ import jdk.vm.ci.meta.Signature;
  * @see JSObjectAccessMethod
  */
 @AutomaticallyRegisteredImageSingleton
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class JSObjectAccessMethodSupport {
     public static JSObjectAccessMethodSupport singleton() {
         return ImageSingletons.lookup(JSObjectAccessMethodSupport.class);

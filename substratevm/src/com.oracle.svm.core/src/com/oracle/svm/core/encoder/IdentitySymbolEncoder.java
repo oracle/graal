@@ -24,9 +24,14 @@
  */
 package com.oracle.svm.core.encoder;
 
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
 /**
  * This encoder returns the symbol names unmodified.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class IdentitySymbolEncoder implements SymbolEncoder {
     @Override
     public String encodeModule(String moduleName) {

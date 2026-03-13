@@ -30,6 +30,10 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.graal.snippets.StackOverflowCheckFeature;
 import com.oracle.svm.hosted.webimage.WebImageDelegateFeature;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
 /**
@@ -39,6 +43,7 @@ import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
  */
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageWasmLMPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public final class WebImageWasmLMStackOverflowCheckFeature extends WebImageDelegateFeature {
 
     public WebImageWasmLMStackOverflowCheckFeature() {

@@ -27,12 +27,17 @@ package com.oracle.svm.core;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.UnsafeMemorySupport;
-
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import org.graalvm.word.impl.Word;
 
-@AutomaticallyRegisteredImageSingleton(UnsafeMemorySupport.class)
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
+@AutomaticallyRegisteredImageSingleton(value = UnsafeMemorySupport.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class UnsafeMemoryUtil implements UnsafeMemorySupport {
 
     /** Implementation of {@code Unsafe.copyMemory}. */

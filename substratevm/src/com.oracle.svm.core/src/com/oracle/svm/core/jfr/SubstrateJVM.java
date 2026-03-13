@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
@@ -49,6 +49,11 @@ import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -57,7 +62,6 @@ import jdk.internal.event.Event;
 import jdk.jfr.Configuration;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
-import org.graalvm.word.impl.Word;
 
 /**
  * Manager class that handles most JFR Java API, see {@link Target_jdk_jfr_internal_JVM}.
@@ -72,6 +76,7 @@ import org.graalvm.word.impl.Word;
  * <li>{@link #destroyJFR()} - destroy the JFR infrastructure and free data.</li>
  * </ul>
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class SubstrateJVM {
     private final List<Configuration> knownConfigurations;
     private final JfrOptionSet options;

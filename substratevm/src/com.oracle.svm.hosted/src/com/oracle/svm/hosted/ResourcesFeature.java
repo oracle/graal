@@ -97,6 +97,10 @@ import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.OptionMigrationMessage;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -145,6 +149,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * @see NativeImageResourceFileAttributesView
  */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class ResourcesFeature implements InternalFeature {
 
     static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
@@ -179,6 +184,7 @@ public class ResourcesFeature implements InternalFeature {
 
     private DynamicAccessInferenceLog inferenceLog;
 
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry<AccessCondition> {
         private final ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
 

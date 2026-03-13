@@ -31,7 +31,12 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jni.JNILibraryInitializer;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class JNILibraryLoadFeature implements Feature {
 
     private final JNILibraryInitializer jniLibraryInitializer = new JNILibraryInitializer();

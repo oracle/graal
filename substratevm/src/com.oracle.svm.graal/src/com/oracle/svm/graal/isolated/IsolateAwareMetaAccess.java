@@ -30,11 +30,16 @@ import com.oracle.svm.core.graal.isolated.ClientHandle;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /** Code for {@link SubstrateMetaAccess} that is specific to compilation in isolates. */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public final class IsolateAwareMetaAccess extends SubstrateMetaAccess {
     @Override
     public JavaConstant encodeSpeculation(SpeculationLog.Speculation speculation) {

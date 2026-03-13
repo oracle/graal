@@ -59,6 +59,10 @@ import com.oracle.svm.interpreter.metadata.Lazy;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 import com.oracle.svm.interpreter.metadata.serialization.Serializers;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -66,6 +70,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class DebuggerSupport {
     public static final String IMAGE_INTERP_HASH_SYMBOL_NAME = "__svm_interp_hash";
 

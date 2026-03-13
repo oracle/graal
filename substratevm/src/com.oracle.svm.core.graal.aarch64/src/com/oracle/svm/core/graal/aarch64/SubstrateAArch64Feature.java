@@ -62,6 +62,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AARCH64.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class SubstrateAArch64Feature implements InternalFeature {
 
     @Override

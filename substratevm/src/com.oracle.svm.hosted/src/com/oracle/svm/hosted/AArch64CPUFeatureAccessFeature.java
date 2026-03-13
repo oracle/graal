@@ -33,13 +33,18 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
 import com.oracle.svm.core.aarch64.AArch64LibCHelper;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.vm.ci.aarch64.AArch64;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AARCH64.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class AArch64CPUFeatureAccessFeature extends CPUFeatureAccessFeatureBase implements InternalFeature {
 
     @Override

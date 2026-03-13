@@ -39,6 +39,11 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.util.LazyFinalReference;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
@@ -61,6 +66,7 @@ import sun.security.util.SecurityConstants;
  * implicitly, like {@link CodeSource#toString} and {@link CodeSource#implies}. We accept that
  * difference in behavior.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public final class ProtectionDomainSupport {
 
     public static class Options {

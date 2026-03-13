@@ -35,6 +35,11 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.code.CodeCacheManagerMXBean;
 import com.oracle.svm.core.code.CodeCachePoolMXBean;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -43,6 +48,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * Note that multiple instances of this class may be in the same image if the image contains more
  * than one garbage collector.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class GCRelatedMXBeans {
     protected final ManagementSupport.MXBeans beans = new ManagementSupport.MXBeans();
 

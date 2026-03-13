@@ -31,6 +31,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
 import jdk.graal.compiler.api.replacements.Fold;
 
 public interface PerfDataSupport {
@@ -56,6 +61,7 @@ public interface PerfDataSupport {
     boolean hasLong(String name);
 }
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class NoPerfDataSupport implements PerfDataSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     NoPerfDataSupport() {

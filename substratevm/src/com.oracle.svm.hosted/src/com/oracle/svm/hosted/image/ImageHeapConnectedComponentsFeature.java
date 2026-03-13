@@ -35,11 +35,15 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class ImageHeapConnectedComponentsFeature implements InternalFeature {
     public static class Options {
         @Option(help = "file:doc-files/PrintImageHeapConnectedComponents.md", type = OptionType.Debug)//

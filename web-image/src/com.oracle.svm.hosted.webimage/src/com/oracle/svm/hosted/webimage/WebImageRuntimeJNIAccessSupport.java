@@ -31,6 +31,11 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
 /**
  * No-op implementation of {@link RuntimeJNIAccessSupport}.
  * <p>
@@ -38,6 +43,7 @@ import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
  * JNI-accessed types, fields, etc. The {@link RuntimeJNIAccessSupport} image singleton may be
  * accessed occasionally, so an implementation is still required.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageRuntimeJNIAccessSupport implements RuntimeJNIAccessSupport {
     @Override
     public void register(AccessCondition condition, boolean preserved, Class<?> clazz) {

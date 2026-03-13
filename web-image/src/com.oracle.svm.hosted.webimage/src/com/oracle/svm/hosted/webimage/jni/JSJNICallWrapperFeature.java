@@ -29,11 +29,16 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
 // TODO(GR-35288): Implement proper JNI call support.
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageJSPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class JSJNICallWrapperFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

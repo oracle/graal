@@ -48,10 +48,6 @@ import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.webimage.WebImageFeature;
 import com.oracle.svm.hosted.webimage.codegen.WebImageNoRegisterConfig;
@@ -61,13 +57,21 @@ import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCCloneSupport;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCBackend;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.phases.WebImageWasmGCSuitesCreatorProvider;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 import com.oracle.svm.webimage.wasmgc.WasmExtern;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -75,6 +79,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageWasmGCPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageWasmGCFeature implements InternalFeature {
 
     @Override
@@ -92,7 +97,7 @@ public class WebImageWasmGCFeature implements InternalFeature {
 
         ImageSingletons.add(SubstrateBackendFactory.class, new WebImageWasmGCSubstrateBackendFactory());
 
-        ImageSingletons.add(SubstrateLoweringProviderFactory.class, WebImageWasmGCLoweringProvider::new);
+        ImageSingletons.add(SubstrateLoweringProviderFactory.class, new WebImageWasmGCSubstrateLoweringProviderFactory());
         ImageSingletons.add(TargetGraphBuilderPlugins.class, new WasmGCGraphBuilderPlugins());
         ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new WebImageWasmGCSuitesCreatorProvider());
 
@@ -166,6 +171,15 @@ public class WebImageWasmGCFeature implements InternalFeature {
         @Override
         public SubstrateBackend newBackend(Providers newProviders) {
             return new WebImageWasmGCBackend(newProviders);
+        }
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    private static final class WebImageWasmGCSubstrateLoweringProviderFactory implements SubstrateLoweringProviderFactory {
+        @Override
+        public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                        MetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
+            return new WebImageWasmGCLoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
         }
     }
 }

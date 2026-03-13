@@ -68,10 +68,15 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions.CompilerBackend;
 import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.options.OptionValues;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class CLIVisualizationSupport extends VisualizationSupport {
     private static final HashMap<String, Color> SIZE_COLORS = new HashMap<>();
     private static final HashMap<String, Color> TYPE_COLORS = new HashMap<>();

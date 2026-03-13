@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.heap.GC;
@@ -42,14 +42,19 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-import org.graalvm.word.impl.Word;
 
 /**
  * SVM requires a {@link Heap} to be in the {@link ImageSingletons}. This class acts as a dummy
  * replacement for {@link HeapImpl} because {@link HeapImpl} is tightly coupled with {@link GCImpl}
  * and we do not need the GC. The method implementations are NOOP because we do not use them.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageJSHeap extends Heap {
 
     WebImageJSGC gc = new WebImageJSGC();

@@ -51,6 +51,10 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.CompilationWrapper.ExceptionAction;
@@ -80,6 +84,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Holds data that is pre-computed during native image generation and accessed at run time during a
  * multi-tier based runtime compilation system.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class RuntimeCompilationSupport {
 
     private static final ScanReason scanReason = new OtherReason("Manual rescan of Graal objects triggered from " + RuntimeCompilationSupport.class);

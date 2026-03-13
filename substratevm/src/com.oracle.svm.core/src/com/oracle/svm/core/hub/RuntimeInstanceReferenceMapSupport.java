@@ -42,6 +42,10 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -52,6 +56,7 @@ import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
  * run-time. Each {@link InstanceReferenceMap} is stored in a {@code byte[]} that lives in the
  * {@link Metaspace}.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class RuntimeInstanceReferenceMapSupport {
     private final EconomicMap<ReferenceMapHolder, ReferenceMapHolder> refMaps = EconomicMap.create();
 

@@ -51,6 +51,9 @@ import com.oracle.svm.core.jdk.VectorAPISupport;
 import com.oracle.svm.hosted.jdk.VarHandleFeature;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -62,6 +65,7 @@ import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class VectorAPIFeature implements InternalFeature {
     // JVMCI migration blocked by GR-72591: Migrate VectorAPIFeature to terminus
 

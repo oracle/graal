@@ -109,6 +109,10 @@ import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 import com.oracle.svm.interpreter.metadata.serialization.Serializers;
 import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
@@ -143,6 +147,7 @@ import jdk.vm.ci.meta.UnresolvedJavaMethod;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class DebuggerFeature implements InternalFeature {
     private AnalysisMethod enterInterpreterMethod;
     private InterpreterStubTable enterStubTable = null;

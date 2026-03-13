@@ -60,6 +60,10 @@ import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -93,6 +97,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * whose value is only available after static analysis. Once the value is available, it is read as
  * usual from the hosted HotSpot field without any further transformation.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public final class FieldValueInterceptionSupport {
     private static final Object INTERCEPTOR_ACCESSED_MARKER = new Object();
 

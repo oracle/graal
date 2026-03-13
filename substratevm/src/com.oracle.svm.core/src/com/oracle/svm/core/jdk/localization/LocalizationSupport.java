@@ -57,6 +57,11 @@ import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -71,6 +76,7 @@ import sun.util.resources.Bundles;
  *
  * For more details, see LocalizationFeature
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class LocalizationSupport {
 
     public final Map<String, Charset> charsets = new HashMap<>();

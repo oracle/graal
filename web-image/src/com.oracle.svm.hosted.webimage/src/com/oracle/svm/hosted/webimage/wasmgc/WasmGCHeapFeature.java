@@ -38,14 +38,21 @@ import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCHeapLayouter;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.heap.WebImageJSHeap;
 import com.oracle.svm.webimage.heap.WebImageNopAllocationSupport;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.gc.NoBarrierSet;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageWasmGCPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WasmGCHeapFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -54,7 +61,7 @@ public class WasmGCHeapFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ImageSingletons.add(BarrierSetProvider.class, metaAccess -> new NoBarrierSet());
+        ImageSingletons.add(BarrierSetProvider.class, new WebImageWasmGCBarrierSetProvider());
         ImageSingletons.add(Heap.class, new WebImageJSHeap());
         ImageSingletons.add(RememberedSet.class, new NoRememberedSet());
     }
@@ -62,5 +69,13 @@ public class WasmGCHeapFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         ImageSingletons.add(ImageHeapLayouter.class, new WasmGCHeapLayouter());
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    private static final class WebImageWasmGCBarrierSetProvider implements BarrierSetProvider {
+        @Override
+        public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
+            return new NoBarrierSet();
+        }
     }
 }

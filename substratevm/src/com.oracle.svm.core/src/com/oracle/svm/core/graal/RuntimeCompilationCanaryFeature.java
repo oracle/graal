@@ -29,6 +29,9 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.deopt.DeoptimizationCanaryFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
  * The purpose of this feature is to indicate whether JIT compilation is enabled in an image. It is
@@ -39,5 +42,6 @@ import com.oracle.svm.core.feature.InternalFeature;
  *
  * @see RuntimeCompilation#isEnabled()
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class RuntimeCompilationCanaryFeature implements InternalFeature {
 }

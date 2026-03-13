@@ -38,9 +38,15 @@ import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.gc.NoBarrierSet;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Replacement for HeapFeature of SVM. The HeapFeature of SVM adds singletons for the Heap and GC
@@ -50,6 +56,7 @@ import jdk.graal.compiler.nodes.gc.NoBarrierSet;
  */
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageJSPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class JSHeapFeature implements InternalFeature {
 
     @Override
@@ -59,7 +66,7 @@ public class JSHeapFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ImageSingletons.add(BarrierSetProvider.class, metaAccess -> new NoBarrierSet());
+        ImageSingletons.add(BarrierSetProvider.class, new WebImageJSBarrierSetProvider());
         ImageSingletons.add(Heap.class, new WebImageJSHeap());
         ImageSingletons.add(RememberedSet.class, new NoRememberedSet());
     }
@@ -68,5 +75,13 @@ public class JSHeapFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(new ImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    private static final class WebImageJSBarrierSetProvider implements BarrierSetProvider {
+        @Override
+        public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
+            return new NoBarrierSet();
+        }
     }
 }

@@ -39,6 +39,10 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.amd64.AMD64SnippetsFeature;
 import com.oracle.svm.graal.pltgot.PLTGOTNonSnippetLowerings;
 import com.oracle.svm.hosted.pltgot.PLTGOTOptions;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
@@ -46,6 +50,7 @@ import jdk.graal.compiler.phases.util.Providers;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class PLTGOTAMD64Lowerings implements InternalFeature {
 
     @Override

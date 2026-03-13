@@ -24,19 +24,24 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.svm.configure.ConfigurationParser;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import org.graalvm.collections.EconomicSet;
-
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.collections.EconomicSet;
+
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class ReportUsedMetadataFilesFeature implements InternalFeature {
 
     private EconomicSet<String> usedMetadataFiles;

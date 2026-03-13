@@ -24,15 +24,21 @@
  */
 package com.oracle.svm.core.reflect;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
-import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
-import org.graalvm.nativeimage.impl.ReflectionIntrospector;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 
+import org.graalvm.nativeimage.impl.ReflectionIntrospector;
+
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.SubstrateUtil;
+
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class ReflectionIntrospectorImpl implements ReflectionIntrospector {
     @Override
     public boolean isInvocable(Executable executable) {

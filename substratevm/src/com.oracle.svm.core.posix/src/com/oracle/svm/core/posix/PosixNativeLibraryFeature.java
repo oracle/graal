@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
@@ -49,9 +50,14 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class PosixNativeLibraryFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -64,6 +70,7 @@ class PosixNativeLibraryFeature implements InternalFeature {
     }
 }
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     public static final String PLM_PROPERTY_NAME = "jdk.lang.Process.launchMechanism";
 

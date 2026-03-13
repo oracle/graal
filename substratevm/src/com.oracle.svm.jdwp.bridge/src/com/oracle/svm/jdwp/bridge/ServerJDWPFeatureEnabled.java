@@ -28,6 +28,10 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
 /**
  * A marker to detect the presence of the {@code ServerJDWPFeature}. The {@code ServerJDWPFeature}
  * registers the {@link ServerJDWPFeatureEnabled} instance into an {@link ImageSingletons}. The
@@ -35,6 +39,7 @@ import org.graalvm.nativeimage.ImageSingletons;
  * ImageSingletons.contains(ServerJDWPFeatureEnabled.class)} to prevent SubstrateVM from including
  * methods that should not be reachable on the guest side.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class ServerJDWPFeatureEnabled implements BooleanSupplier {
 
     @Override

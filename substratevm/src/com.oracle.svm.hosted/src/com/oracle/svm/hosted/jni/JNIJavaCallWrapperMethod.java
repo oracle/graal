@@ -38,6 +38,9 @@ import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -83,6 +86,7 @@ import jdk.vm.ci.meta.Signature;
 public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
     private static final Constructor<InstantiationException> INSTANTIATION_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(InstantiationException.class);
 
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
     public static class Factory {
         public JNIJavaCallWrapperMethod create(ResolvedSignature<ResolvedJavaType> targetSignature, MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
             return new JNIJavaCallWrapperMethod(targetSignature, originalMetaAccess, wordTypes);

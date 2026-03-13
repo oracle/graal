@@ -27,6 +27,10 @@ package com.oracle.svm.core.deopt;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
 /**
  * The purpose of this feature is to indicate whether deoptimization is enabled in an image. It is
  * registered as a dependency of {@code DeoptimizationFeature} and so its object will be added to
@@ -34,5 +38,6 @@ import org.graalvm.nativeimage.hosted.Feature;
  *
  * @see DeoptimizationSupport#enabled()
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class DeoptimizationCanaryFeature implements Feature {
 }

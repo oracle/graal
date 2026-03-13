@@ -37,12 +37,19 @@ import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.gc.NoBarrierSet;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageWasmLMPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WasmLMHeapFeature implements InternalFeature {
 
     @Override
@@ -53,12 +60,20 @@ public class WasmLMHeapFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ImageSingletons.add(BarrierSetProvider.class, metaAccess -> new NoBarrierSet());
+        ImageSingletons.add(BarrierSetProvider.class, new WebImageWasmLMBarrierSetProvider());
     }
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(WasmHeap.getImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    private static final class WebImageWasmLMBarrierSetProvider implements BarrierSetProvider {
+        @Override
+        public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
+            return new NoBarrierSet();
+        }
     }
 }

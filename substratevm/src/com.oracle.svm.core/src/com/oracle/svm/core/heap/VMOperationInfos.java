@@ -127,6 +127,7 @@ public final class VMOperationInfos {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 class VMOperationNamesFeatures implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
