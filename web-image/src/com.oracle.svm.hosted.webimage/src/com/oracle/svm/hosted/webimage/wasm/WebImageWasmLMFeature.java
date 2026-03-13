@@ -42,20 +42,24 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.webimage.codegen.WebImageNoRegisterConfig;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmAssembler;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WebImageWasmLMBackend;
 import com.oracle.svm.hosted.webimage.wasm.phases.WebImageWasmLMSuitesCreatorProvider;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -63,6 +67,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageWasmLMPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageWasmLMFeature implements InternalFeature {
 
     @Override
@@ -78,7 +83,7 @@ public class WebImageWasmLMFeature implements InternalFeature {
 
         ImageSingletons.add(SubstrateBackendFactory.class, new WebImageWasmLMSubstrateBackendFactory());
 
-        ImageSingletons.add(SubstrateLoweringProviderFactory.class, WebImageWasmLMLoweringProvider::new);
+        ImageSingletons.add(SubstrateLoweringProviderFactory.class, new WebImageWasmLMSubstrateLoweringProviderFactory());
         ImageSingletons.add(TargetGraphBuilderPlugins.class, new WasmLMGraphBuilderPlugins());
         ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new WebImageWasmLMSuitesCreatorProvider());
     }
@@ -101,6 +106,15 @@ public class WebImageWasmLMFeature implements InternalFeature {
         @Override
         public SubstrateBackend newBackend(Providers newProviders) {
             return new WebImageWasmLMBackend(newProviders);
+        }
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    private static final class WebImageWasmLMSubstrateLoweringProviderFactory implements SubstrateLoweringProviderFactory {
+        @Override
+        public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                        MetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
+            return new WebImageWasmLMLoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
         }
     }
 }

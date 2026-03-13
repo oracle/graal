@@ -44,6 +44,10 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMRelocationIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
  * LLVM target-specific inline assembly snippets and information.
@@ -166,6 +170,7 @@ public interface LLVMTargetSpecific {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class LLVMAMD64TargetSpecificFeature implements InternalFeature {
     private static final int AMD64_RSP_IDX = 7;
     private static final int AMD64_RBP_IDX = 6;
@@ -272,6 +277,7 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AARCH64.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class LLVMAArch64TargetSpecificFeature implements InternalFeature {
     private static final int AARCH64_FP_IDX = 29;
     private static final int AARCH64_SP_IDX = 31;
@@ -382,6 +388,7 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.RISCV64.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
     private static final int RISCV64_FP_IDX = 8;
     private static final int RISCV64_SP_IDX = 2;

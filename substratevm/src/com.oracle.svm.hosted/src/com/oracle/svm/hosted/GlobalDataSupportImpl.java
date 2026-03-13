@@ -31,8 +31,12 @@ import org.graalvm.nativeimage.libgraal.impl.GlobalDataSupport;
 import com.oracle.svm.core.c.GlobalLongSupplier;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.libgraal.LibGraalBuild;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredImageSingleton(value = GlobalDataSupport.class, onlyWith = LibGraalBuild.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class GlobalDataSupportImpl implements GlobalDataSupport {
     @Override
     public Supplier<Long> createGlobal(long initialValue) {

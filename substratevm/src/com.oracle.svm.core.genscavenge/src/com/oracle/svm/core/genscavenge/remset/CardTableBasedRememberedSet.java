@@ -58,6 +58,11 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -69,6 +74,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * A card table based remembered set where the {@link CardTable} and the {@link FirstObjectTable}
  * are placed in the individual {@link HeapChunk}s.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class CardTableBasedRememberedSet implements RememberedSet {
     @Platforms(Platform.HOSTED_ONLY.class)
     public CardTableBasedRememberedSet() {

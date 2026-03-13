@@ -38,8 +38,14 @@ import com.oracle.svm.core.genscavenge.EpsilonGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
 import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.sun.management.GarbageCollectorMXBean;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public final class GenScavengeRelatedMXBeans extends GCRelatedMXBeans {
     @Platforms(Platform.HOSTED_ONLY.class)
     public GenScavengeRelatedMXBeans(GenScavengeMemoryPoolMXBeans memoryPoolMXBeans) {

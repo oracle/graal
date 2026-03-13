@@ -31,10 +31,16 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.WebImageJavaMainSupport;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 
 @Platforms(WebImageWasmGCPlatform.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class, other = Disallowed.class)
 public class WebImageWasmGCJavaMainSupport extends WebImageJavaMainSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public WebImageWasmGCJavaMainSupport(Method javaMainMethod) throws IllegalAccessException {

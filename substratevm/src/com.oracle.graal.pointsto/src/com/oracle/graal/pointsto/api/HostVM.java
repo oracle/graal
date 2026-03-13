@@ -52,6 +52,9 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MethodVariant;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -548,8 +551,10 @@ public abstract class HostVM {
     /**
      * The default policy does not alter the typical analysis behavior.
      */
-    protected static final MethodVariantsAnalysisPolicy DEFAULT_METHOD_VARIANTS_ANALYSIS_POLICY = new MethodVariantsAnalysisPolicy() {
+    protected static final MethodVariantsAnalysisPolicy DEFAULT_METHOD_VARIANTS_ANALYSIS_POLICY = new DefaultMethodVariantsAnalysisPolicy();
 
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
+    private static final class DefaultMethodVariantsAnalysisPolicy implements MethodVariantsAnalysisPolicy {
         @Override
         public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MethodVariant.MethodVariantKey callerMethodVariantKey, InvokeTypeFlow invokeFlow) {
             return List.of(implementation);
@@ -579,7 +584,7 @@ public abstract class HostVM {
         public boolean unknownReturnValue(BigBang bb, MethodVariant.MethodVariantKey callerMethodVariantKey, AnalysisMethod implementation) {
             return false;
         }
-    };
+    }
 
     public MethodVariantsAnalysisPolicy getMethodVariantsAnalysisPolicy() {
         return DEFAULT_METHOD_VARIANTS_ANALYSIS_POLICY;

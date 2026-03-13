@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.nodes;
 
+import java.util.Objects;
+
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 
@@ -34,9 +36,32 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 public final class MergeNode extends AbstractMergeNode {
 
     public static final NodeClass<MergeNode> TYPE = NodeClass.create(MergeNode.class);
+    private DuplicationHint duplicationHint = DuplicationHint.NONE;
+
+    /**
+     * Optional optimization hint that can guide duplication decisions for this merge.
+     */
+    public enum DuplicationHint {
+        NONE,
+        EXPLORE
+    }
 
     public MergeNode() {
         super(TYPE);
+    }
+
+    /**
+     * Returns the optional duplication hint used by optimizations to guide merge duplication.
+     */
+    public DuplicationHint getDuplicationHint() {
+        return duplicationHint;
+    }
+
+    /**
+     * Sets an optional duplication hint used by optimizations to guide merge duplication.
+     */
+    public void setDuplicationHint(DuplicationHint duplicationHint) {
+        this.duplicationHint = Objects.requireNonNull(duplicationHint, "duplicationHint");
     }
 
     public static void removeMergeIfDegenerated(MergeNode node) {

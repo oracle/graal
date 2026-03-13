@@ -42,6 +42,10 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.webimage.codegen.oop.ClassWithMirrorLowerer;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethod;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethodSupport;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.api.Nothing;
@@ -70,6 +74,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageJSPlatform.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public final class JSBodyFeature implements InternalFeature {
     @Override
     public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {

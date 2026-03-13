@@ -37,6 +37,10 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.gen.NodeMatchRules;
 import jdk.graal.compiler.core.match.MatchStatement;
@@ -51,6 +55,7 @@ import jdk.graal.compiler.phases.BasePhase;
  * Holds data that is pre-computed during native image generation and accessed at run time during a
  * Graal compilation.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class GraalCompilerSupport {
 
     public final EconomicMap<Class<?>, NodeClass<?>> nodeClasses = ImageHeapMap.create("nodeClasses");

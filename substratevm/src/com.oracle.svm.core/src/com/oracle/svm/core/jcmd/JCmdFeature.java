@@ -37,6 +37,9 @@ import com.oracle.svm.core.dcmd.DCmd;
 import com.oracle.svm.core.dcmd.DCmdFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
  * jcmd can be used to send diagnostic command requests to a running JVM.
@@ -62,6 +65,7 @@ import com.oracle.svm.core.feature.InternalFeature;
  * </ul>
  */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class JCmdFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {

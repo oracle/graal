@@ -24,16 +24,22 @@
  */
 package com.oracle.graal.pointsto.util;
 
-import com.oracle.graal.pointsto.reports.StatisticsPrinter;
-import com.oracle.svm.util.ImageBuildStatistics;
-import jdk.graal.compiler.debug.GraalError;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.reports.StatisticsPrinter;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.util.ImageBuildStatistics;
+
+import jdk.graal.compiler.debug.GraalError;
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrinter {
 
     public static TimerCollection singleton() {

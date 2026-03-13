@@ -29,6 +29,10 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
 
 /**
@@ -39,6 +43,7 @@ import com.oracle.svm.webimage.platform.WebImagePlatform;
  */
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 @Platforms(WebImagePlatform.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageJSJavaThreads extends PlatformThreads {
 
     @Override

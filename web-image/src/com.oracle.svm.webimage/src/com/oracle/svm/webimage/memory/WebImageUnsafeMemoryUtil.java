@@ -29,12 +29,17 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.UnsafeMemorySupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.webimage.platform.WebImagePlatform;
 import com.oracle.svm.webimage.substitute.WebImageUtil;
 
 @AutomaticallyRegisteredImageSingleton(UnsafeMemorySupport.class)
 @Platforms(WebImagePlatform.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WebImageUnsafeMemoryUtil implements UnsafeMemorySupport {
     @Override
     public void unsafeCopyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {

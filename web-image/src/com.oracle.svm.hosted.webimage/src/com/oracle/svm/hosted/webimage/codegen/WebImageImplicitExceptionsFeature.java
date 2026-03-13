@@ -35,6 +35,10 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.webimage.functionintrinsics.ImplicitExceptions;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -48,6 +52,7 @@ import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
  * {@link BytecodeExceptionNode} and {@link ThrowBytecodeExceptionNode} reachable.
  */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public final class WebImageImplicitExceptionsFeature implements InternalFeature {
     /// Maps method names to methods for all methods in [ImplicitExceptions].
     /// Is set in [#beforeAnalysis(BeforeAnalysisAccess)]
