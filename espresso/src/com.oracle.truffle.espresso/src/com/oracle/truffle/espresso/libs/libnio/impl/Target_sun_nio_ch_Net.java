@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.libs.libnio.impl;
 
+import static java.nio.channels.SelectionKey.OP_CONNECT;
+import static java.nio.channels.SelectionKey.OP_READ;
+import static java.nio.channels.SelectionKey.OP_WRITE;
+
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -29,6 +33,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketOption;
 import java.net.StandardSocketOptions;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.io.FDAccess;
@@ -39,6 +45,7 @@ import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
 import com.oracle.truffle.espresso.libs.libnio.LibNio;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -302,8 +309,73 @@ public final class Target_sun_nio_ch_Net {
 
     @Substitution
     @Throws(IOException.class)
+    public static boolean pollConnect(@JavaType(FileDescriptor.class) StaticObject fd, long timeout, @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        int op = poll(fd, POLLCONN, timeout, io, ctx);
+        if (op == POLLCONN) {
+            return io.finishConnect(fd, FDAccess.forFileDescriptor());
+        }
+        return false;
+    }
+
+    @Substitution
+    @Throws(IOException.class)
+    @TruffleBoundary
+    public static int poll(@JavaType(FileDescriptor.class) StaticObject fd, int nativeOps, long timeout, @Inject TruffleIO io, @Inject EspressoContext ctx) {
+        try (Selector selector = Selector.open()) {
+            int ops = nativeToSelectorOps(nativeOps, ctx);
+            SelectionKey key = io.register(fd, FDAccess.forFileDescriptor(), selector, ops);
+            ctx.getLibsState().doSelect(selector, timeout);
+            return selectorToNativeOps(key.readyOps(), ctx);
+        } catch (IOException | EspressoException e) {
+            return io.ioStatusSync.THROWN;
+        }
+
+    }
+
+    @Substitution
+    @Throws(IOException.class)
     public static int available(@JavaType(FileDescriptor.class) StaticObject fd, @Inject TruffleIO io) {
         return io.available(fd, FDAccess.forFileDescriptor());
+    }
+
+    private static int selectorToNativeOps(int selectorOps, EspressoContext ctx) {
+        int res = 0;
+        if ((selectorOps & OP_READ) != 0) {
+            res |= POLLIN;
+        }
+        if ((selectorOps & OP_WRITE) != 0) {
+            res |= POLLOUT;
+        }
+        if ((selectorOps & OP_CONNECT) != 0) {
+            res |= POLLCONN;
+        }
+        if (res == 0 && selectorOps != 0) {
+            throw Throw.throwUnsupported("The following selector operation is not supported:" + selectorOps, ctx);
+        }
+        return res;
+    }
+
+    private static int nativeToSelectorOps(int nativeOps, EspressoContext ctx) {
+        int ops = 0;
+        if ((nativeOps & POLLIN) != 0) {
+            ops |= OP_READ;
+        }
+        if ((nativeOps & POLLOUT) != 0) {
+            ops |= OP_WRITE;
+        }
+        if ((nativeOps & POLLERR) != 0) {
+            throw Throw.throwUnsupported("currently we dont support polling POLLERR", ctx);
+        }
+        if ((nativeOps & POLLHUP) != 0) {
+            throw Throw.throwUnsupported("currently we dont support polling POLLHUP", ctx);
+        }
+        if ((nativeOps & POLLNVAL) != 0) {
+            throw Throw.throwUnsupported("currently we dont support polling POLLNVAL", ctx);
+        }
+        if ((nativeOps & POLLCONN) != 0) {
+            ops |= OP_CONNECT;
+        }
+        return ops;
     }
 
     private static SocketOption<?> getSocketOption(int level, int opt, EspressoContext ctx) {
