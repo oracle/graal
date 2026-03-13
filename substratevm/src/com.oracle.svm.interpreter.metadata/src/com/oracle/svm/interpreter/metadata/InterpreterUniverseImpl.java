@@ -267,7 +267,7 @@ public final class InterpreterUniverseImpl implements InterpreterUniverse {
                         holder.setConstantPool(constantPool);
                     } else if (value instanceof InterpreterResolvedObjectType.VTableHolder vTableHolder) {
                         InterpreterResolvedObjectType holder = vTableHolder.holder;
-                        holder.setVtable(vTableHolder.vtable, vTableHolder.classVtableLength);
+                        holder.setVtable(vTableHolder.vtable);
                     } else if (value instanceof InterpreterResolvedJavaMethod.InlinedBy inlinedBy) {
                         InterpreterResolvedJavaMethod holder = inlinedBy.holder;
                         for (InterpreterResolvedJavaMethod m : inlinedBy.inliners) {
