@@ -27,12 +27,12 @@ package com.oracle.svm.webimage.threads;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.locks.VMSemaphore;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -53,7 +53,7 @@ final class WebImageSingleThreadedVMLockSupport extends VMLockSupport {
 
     @Override
     protected VMCondition replaceVMCondition(VMCondition source) {
-        return new WebImageSingleThreadedVMCondition((WebImageSingleThreadedVMMutex) mutexReplacer.apply(source.getMutex()));
+        return new WebImageSingleThreadedVMCondition((WebImageSingleThreadedVMMutex) mutexReplacer.apply(source.getMutex()), source.getName());
     }
 
     @Override
@@ -117,8 +117,8 @@ final class WebImageSingleThreadedVMMutex extends VMMutex {
 
 final class WebImageSingleThreadedVMCondition extends VMCondition {
 
-    WebImageSingleThreadedVMCondition(WebImageSingleThreadedVMMutex mutex) {
-        super(mutex);
+    WebImageSingleThreadedVMCondition(WebImageSingleThreadedVMMutex mutex, String name) {
+        super(mutex, name);
     }
 
     @Override

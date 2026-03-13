@@ -145,10 +145,10 @@ public final class ThreadsLock {
     private static final long STATE_OFFSET = U.objectFieldOffset(ThreadsLock.class, "state");
 
     private static final VMMutex READ_MUTEX = new VMMutex("threadsRead");
-    private static final VMCondition READ_CONDITION = new VMCondition(READ_MUTEX);
+    private static final VMCondition READ_CONDITION = new VMCondition(READ_MUTEX, "threadsRead");
 
     private static final VMMutex WRITE_MUTEX = new VMMutex("threadsWrite");
-    private static final VMCondition WRITE_CONDITION = new VMCondition(WRITE_MUTEX);
+    private static final VMCondition WRITE_CONDITION = new VMCondition(WRITE_MUTEX, "threadsWrite");
 
     /** Only updated via {@link #casState} so that always the same memory barriers are used. */
     private static volatile long state;

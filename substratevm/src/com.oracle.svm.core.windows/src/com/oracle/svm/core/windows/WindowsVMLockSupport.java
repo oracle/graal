@@ -66,7 +66,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
     protected VMCondition replaceVMCondition(VMCondition source) {
-        return new WindowsVMCondition((WindowsVMMutex) mutexReplacer.apply(source.getMutex()));
+        return new WindowsVMCondition((WindowsVMMutex) mutexReplacer.apply(source.getMutex()), source.getName());
     }
 
     @Override
@@ -106,7 +106,7 @@ final class WindowsVMMutex extends VMMutex {
     @Platforms(Platform.HOSTED_ONLY.class)
     WindowsVMMutex(String name) {
         super(name);
-        structPointer = CIsolateDataFactory.createStruct("windowsMutex_" + name, Process.CRITICAL_SECTION.class);
+        structPointer = CIsolateDataFactory.createStruct("mutex_" + name, Process.CRITICAL_SECTION.class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -172,9 +172,9 @@ final class WindowsVMCondition extends VMCondition {
     private final CIsolateData<Process.CONDITION_VARIABLE> structPointer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    WindowsVMCondition(WindowsVMMutex mutex) {
-        super(mutex);
-        structPointer = CIsolateDataFactory.createStruct("windowsCondition_" + mutex.getName(), Process.CONDITION_VARIABLE.class);
+    WindowsVMCondition(WindowsVMMutex mutex, String name) {
+        super(mutex, name);
+        structPointer = CIsolateDataFactory.createStruct("condition_" + name, Process.CONDITION_VARIABLE.class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

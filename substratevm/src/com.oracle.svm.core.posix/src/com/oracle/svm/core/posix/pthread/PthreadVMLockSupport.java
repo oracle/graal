@@ -68,7 +68,7 @@ public abstract class PthreadVMLockSupport extends VMLockSupport {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             throw VMError.shouldNotReachHere("A VM condition is added in an extension layer, which is unsupported", source);
         }
-        return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()), source.getConditionName());
+        return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()), source.getName());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -101,7 +101,7 @@ final class PthreadVMMutex extends VMMutex {
     @Platforms(Platform.HOSTED_ONLY.class)
     PthreadVMMutex(String name) {
         super(name);
-        structPointer = CIsolateDataFactory.createStruct("pthreadMutex_" + name, Pthread.pthread_mutex_t.class);
+        structPointer = CIsolateDataFactory.createStruct("mutex_" + name, Pthread.pthread_mutex_t.class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -165,7 +165,7 @@ final class PthreadVMCondition extends VMCondition {
 
     PthreadVMCondition(PthreadVMMutex mutex, String name) {
         super(mutex, name);
-        structPointer = CIsolateDataFactory.createStruct("pthreadCondition_" + getName(), Pthread.pthread_cond_t.class);
+        structPointer = CIsolateDataFactory.createStruct("condition_" + getName(), Pthread.pthread_cond_t.class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

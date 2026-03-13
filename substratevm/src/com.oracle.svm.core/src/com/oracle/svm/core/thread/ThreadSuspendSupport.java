@@ -73,7 +73,7 @@ public final class ThreadSuspendSupport {
      * {@link VMThreads#SAFEPOINT_MUTEX}.
      */
     private static final FastThreadLocalInt suspendedTL = FastThreadLocalFactory.createInt("ThreadSuspendSupport.suspended");
-    private static final VMCondition COND_SUSPEND = new VMCondition(VMThreads.SAFEPOINT_MUTEX);
+    private static final VMCondition COND_SUSPEND = new VMCondition(VMThreads.SAFEPOINT_MUTEX, "suspended");
 
     private ThreadSuspendSupport() {
     }
