@@ -61,7 +61,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * import static com.oracle.svm.core.log.Log;
  *
  * void foo(int i, String s) {
- *   Log.log().string("i: ").signed(i).string(" s: ").string(s).newline();
+ *     Log.log().string("i: ").signed(i).string(" s: ").string(s).newline();
  * }
  * </pre>
  */

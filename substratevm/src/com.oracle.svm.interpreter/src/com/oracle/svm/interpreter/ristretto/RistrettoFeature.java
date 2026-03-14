@@ -56,7 +56,7 @@ import jdk.graal.compiler.phases.util.Providers;
  * Native Image runtime. To recover performance, Ristretto integrates with
  * {@link RuntimeCompilationFeature} so that hot interpreted methods can be compiled to machine code
  * at runtime.
- * 
+ *
  * @see CremaFeature
  * @see InterpreterFeature
  * @see RuntimeCompilationFeature
@@ -104,14 +104,12 @@ public final class RistrettoFeature implements InternalFeature {
     // TODO GR-71480 - invocation plugins for Ristretto
 
     /**
-     * Installs the Ristretto graph builder plugins into the given plugin set. The same plugins are
-     * reused for hosted compilation so that generated stubs match runtime behavior.
+     * Installs the hosted-safe subset of Ristretto graph builder plugins into the given plugin set.
      *
      * @param plugins graph builder plugin container to mutate
      */
     public static void registerRistrettoGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
-        // Also use them for hosted compilation.
-        RistrettoGraphBuilderPlugins.setRuntimeGraphBuilderPlugins(plugins);
+        RistrettoGraphBuilderPlugins.setHostedGraphBuilderPlugins(plugins);
     }
 
     public static final class RistrettoEnabled implements BooleanSupplier {

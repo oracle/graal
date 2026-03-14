@@ -254,7 +254,8 @@ public class StandardGraphBuilderPlugins {
                     InvocationPlugins plugins,
                     boolean useExactMathPlugins,
                     boolean explicitUnsafeNullChecks,
-                    boolean supportsStubBasedPlugins) {
+                    boolean supportsStubBasedPlugins,
+                    boolean enableAesPlugins) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, useExactMathPlugins);
@@ -282,7 +283,9 @@ public class StandardGraphBuilderPlugins {
 
         if (supportsStubBasedPlugins) {
             registerArraysPlugins(plugins);
-            registerAESPlugins(plugins);
+            if (enableAesPlugins) {
+                registerAESPlugins(plugins);
+            }
             registerGHASHPlugin(plugins);
             registerBigIntegerPlugins(plugins);
             registerMessageDigestPlugins(plugins);
