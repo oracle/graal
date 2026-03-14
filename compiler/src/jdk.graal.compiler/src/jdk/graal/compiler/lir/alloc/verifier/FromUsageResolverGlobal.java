@@ -40,25 +40,98 @@ import java.util.Queue;
 import java.util.Set;
 
 /**
- * Resolve label variable locations based on their first usage,
- * globally - spanning over all program blocks for every variable.
+ * Resolve variables phi variables back to labels
+ * and jumps by find their first usage and handling
+ * any reg allocator inserted moves back to the defining
+ * label.
+ *
+ * Register allocator strips us of this information that is
+ * necessary for the verification. In order to avoid modifying
+ * the existing allocators, we rather try to resolve this
+ * information from other instructions.
+ *
+ * Variables with only usage in jump instructions are
+ * marked as aliases and are resolved after their successors.
+ *
+ * If a variable has no usage, then no location is resolved
+ * and verification continues without issues.
+ *
+ * In the case the first usage of a label-defined variable
+ * is wrong, then JUMP instructions from predecessors
+ * fail the verification - wrong register will be chosen.
  */
 public class FromUsageResolverGlobal {
+    /**
+     * LIR of the compilation unit we are resolving for.
+     */
     protected LIR lir;
+
+    /**
+     * Verifier IR.
+     */
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
+    /**
+     * Mapping of variables to the labels that defined them.
+     */
     public Map<RAVariable, RAVInstruction.Op> labelMap;
+
+    /**
+     * Is this a label-defined variable?
+     */
     public Map<RAVariable, Boolean> defined;
+
+    /**
+     * Was this label-defined variable reached?
+     */
     public Map<RAVariable, Boolean> reached;
+
+    /**
+     * Mapping of operation to a set of variable for which
+     * this operation is a first usage.
+     */
     public Map<RAVInstruction.Op, Set<RAVariable>> firstUsages;
+
+    /**
+     * Initial locations of label-defined variables
+     * to set them to when their first usage is found.
+     */
     public Map<RAVariable, RAValue> initialLocations;
-    public Map<RAVariable, List<RAVariable>> aliasMap;
 
-    public Map<RAVariable, BasicBlock<?>> aliasBlockMap;
-    public BlockMap<BlockUsage> blockUsageMap; // Entry blocks!
-    public List<BasicBlock<?>> endBlocks;
+    /**
+     * Variable and a block where it's coming from (last jump instruction),
+     * this variable is aliased by the succeeding label, which needs to
+     * be resolved first, before this one can be.
+     */
+    class AliasPair {
+        RAVariable variable;
+        BasicBlock<?> block;
 
-    final class BlockUsage {
+        AliasPair(RAVariable variable, BasicBlock<?> block) {
+            this.variable = variable;
+            this.block = block;
+        }
+    }
+
+    /**
+     * Map of variables are aliases for a list of variables
+     * used in predecessor jump instructions. First the
+     * successor label variable needs to be resolved and after
+     * the predecessor labels.
+     */
+    private Map<RAVariable, List<AliasPair>> aliasMap;
+
+    /**
+     * Block map of their usages objects.
+     */
+    public BlockMap<BlockUsage> blockUsageMap;
+
+    /**
+     * Set of blocks that have no successors.
+     */
+    public Set<BasicBlock<?>> endBlocks;
+
+    protected final class BlockUsage {
         private final Set<RAVariable> reached;
         private final Map<RAVariable, RAValue> locations;
 
@@ -74,13 +147,9 @@ public class FromUsageResolverGlobal {
 
         private BlockUsage merge(BlockUsage other) {
             var newDefs = new BlockUsage(this);
-            for (var defValue : other.reached) {
-                newDefs.reached.add(defValue);
-            }
+            newDefs.reached.addAll(other.reached);
 
-            var iterator = other.locations.keySet().iterator();
-            while (iterator.hasNext()) {
-                var variable = iterator.next();
+            for (RAVariable variable : other.locations.keySet()) {
                 var defValue = other.locations.get(variable);
                 if (defValue == null) {
                     continue;
@@ -108,14 +177,16 @@ public class FromUsageResolverGlobal {
         this.initialLocations = new EconomicHashMap<>();
         this.aliasMap = new EconomicHashMap<>();
         this.aliasMap = new EconomicHashMap<>();
-        this.aliasBlockMap = new EconomicHashMap<>();
-        this.endBlocks = new ArrayList<>();
+        this.endBlocks = new EconomicHashSet<>();
 
         this.blockUsageMap = new BlockMap<>(lir.getControlFlowGraph());
     }
 
     /**
-     * Resolves label variable registers by finding where they are used.
+     * Resolves label variable locations by finding where they are first used.
+     * Walk back from their usage to their defining label (bottom-up), handling any
+     * spills, reloads and moves along the way to set the location in label back
+     * after register allocator strips this information.
      */
     public void resolvePhiFromUsage() {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
@@ -176,6 +247,10 @@ public class FromUsageResolverGlobal {
         }
     }
 
+    /**
+     * Initialize first usages for variables, top-down in-order to
+     * collect all necessary information for the resolution.
+     */
     protected void initializeUsages() {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
 
@@ -197,6 +272,17 @@ public class FromUsageResolverGlobal {
 
             for (var i = 0; i < label.dests.count; i++) {
                 if (label.dests.orig[i].isVariable()) {
+                    if (label.dests.curr[i] != null) {
+                        // TestCase: TruffleSafepointTest
+                        // java.concurrent.ForkJoinPool
+                        // some methods for this class have location kept in
+                        // them after the register allocation is complete
+                        // but such information should be stripped by the allocator.
+                        // This information uses one register for 2 variables in a label
+                        // and triggers an error in the verification
+                        label.dests.curr[i] = null;
+                    }
+
                     var variable = label.dests.orig[i].asVariable();
                     defined.put(variable, true);
                     labelMap.put(variable, label);
@@ -234,10 +320,9 @@ public class FromUsageResolverGlobal {
                         continue; // Loop
                     }
 
-                    aliasBlockMap.put(variable, block);
-
                     var aliasedVariables = aliasMap.getOrDefault(alias, new ArrayList<>());
-                    aliasedVariables.add(variable);
+                    aliasedVariables.add(new AliasPair(variable, block));
+
                     aliasMap.put(alias, aliasedVariables);
                 }
             }
@@ -256,6 +341,13 @@ public class FromUsageResolverGlobal {
         }
     }
 
+    /**
+     * Find first usages for variables defined in labels.
+     *
+     * @param values Values of this instruction where are looking for usage
+     * @param op Instruction that holds values
+     * @param block Block where this instruction is in
+     */
     protected void handleUsages(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op, BasicBlock<?> block) {
         for (var i = 0; i < values.count; i++) {
             if (!values.orig[i].isVariable()) {
@@ -277,12 +369,27 @@ public class FromUsageResolverGlobal {
 
                 for (var entry : aliasMap.entrySet()) {
                     var aliasedVariables = entry.getValue();
-                    aliasedVariables.remove(variable);
+
+                    aliasedVariables.removeIf(pair -> pair.variable.equals(variable));
                 }
             }
         }
     }
 
+    /**
+     * Handle a register allocator inserted move, change
+     * locations of variables based on the locations.
+     *
+     * If a variable is in location reg1 and a move
+     * is found reg1 = MOVE reg2, then said variable
+     * will now be in reg2, because reg1 will now
+     * have different content when walking through
+     * the instructions in reverse.
+     *
+     * @param usage Variable locations for this block
+     * @param from Source location
+     * @param to Destination location
+     */
     protected void handleMove(BlockUsage usage, RAValue from, RAValue to) {
         var updatedVariables = new EconomicHashMap<RAVariable, RAValue>();
         for (var entry : usage.locations.entrySet()) {
@@ -300,6 +407,15 @@ public class FromUsageResolverGlobal {
         usage.locations.putAll(updatedVariables);
     }
 
+    /**
+     * Resolve locations for all variables in a label, also
+     * mark first usage for aliased variables - variables
+     * used in predecessors that have no other usage.
+     *
+     * @param usage usage for the block we are resolving, contains the locations
+     * @param label label we are resolving
+     * @param block block of the label
+     */
     protected void resolveLabel(BlockUsage usage, RAVInstruction.Op label, BasicBlock<?> block) {
         for (int i = 0; i < label.dests.count; i++) {
             if (!label.dests.orig[i].isVariable()) {
@@ -308,11 +424,11 @@ public class FromUsageResolverGlobal {
 
             var variable = label.dests.orig[i].asVariable();
             if (usage.locations.get(variable) == null) {
-                continue;
+                continue; // Not resolved yet
             }
 
             if (label.dests.curr[i] != null) {
-                continue;
+                continue; // Already resolved
             }
 
             var location = usage.locations.get(variable);
@@ -325,24 +441,21 @@ public class FromUsageResolverGlobal {
                 var pred = block.getPredecessorAt(j);
                 var jump = (RAVInstruction.Op) blockInstructions.get(pred).getLast();
 
-                jump.alive.curr[i] = location;
+                jump.alive.curr[i] = location; // Set predecessor location
             }
 
-            // Variables that are passed into jumps without any other usage are aliases
-            // for same variable in successor label, whenever said variable is resolved
-            // we now have a location for this variable and can take other moves into account.
+            // Variables that are passed into jumps without any other usage are resolved
+            // after variable, it's alias, in successor label.
             if (aliasMap.containsKey(variable)) {
                 var aliasedVariables = aliasMap.get(variable);
-                for (var aliases : aliasedVariables) {
-                    var aliasBlock = aliasBlockMap.get(aliases);
-
-                    if (blockUsageMap.get(aliasBlock) == null) {
-                        this.blockUsageMap.put(aliasBlock, new BlockUsage());
+                for (var aliasPair : aliasedVariables) {
+                    if (blockUsageMap.get(aliasPair.block) == null) {
+                        this.blockUsageMap.put(aliasPair.block, new BlockUsage());
                     }
 
-                    var aliasBlockUsage = blockUsageMap.get(aliasBlock);
-                    aliasBlockUsage.locations.put(aliases, location);
-                    aliasBlockUsage.reached.add(aliases);
+                    var aliasBlockUsage = blockUsageMap.get(aliasPair.block);
+                    aliasBlockUsage.locations.put(aliasPair.variable, location);
+                    aliasBlockUsage.reached.add(aliasPair.variable);
                 }
             }
 
