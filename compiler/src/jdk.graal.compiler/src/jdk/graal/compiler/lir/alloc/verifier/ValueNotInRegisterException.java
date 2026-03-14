@@ -77,7 +77,7 @@ public class ValueNotInRegisterException extends RAVException {
 
             messageBuilder.append("\n");
             for (var conflictedState : confStates) {
-                messageBuilder.append(" - ").append(conflictedState.getRAValue()).append(" from ").append(conflictedState.source).append("\n");
+                messageBuilder.append(" - ").append(conflictedState.getRAValue()).append(" from ").append(conflictedState.source).append(" in ").append(conflictedState.block).append("\n");
             }
         } else {
             messageBuilder.append(state);

@@ -38,6 +38,7 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.StateProcedure;
 import jdk.graal.compiler.lir.alloc.RegisterAllocationPhase;
+import jdk.graal.compiler.lir.amd64.AMD64Move;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.options.Option;
@@ -479,6 +480,11 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
         } else if (ValueUtil.isRegister(input) && ValueUtil.isRegister(result)) {
             return new RAVInstruction.RegMove(instruction, ValueUtil.asRegisterValue(input), ValueUtil.asRegisterValue(result));
         } else if (LIRValueUtil.isStackSlotValue(input) && LIRValueUtil.isStackSlotValue(result)) {
+            if (valueMov instanceof AMD64Move.AMD64StackMove stackMove) {
+                // Cannot access the isScratchAlwaysZero to see if backup slot is used
+                return new RAVInstruction.StackMove(instruction, input, result, stackMove.getBackupSlot());
+            }
+
             return new RAVInstruction.StackMove(instruction, input, result);
         }
 

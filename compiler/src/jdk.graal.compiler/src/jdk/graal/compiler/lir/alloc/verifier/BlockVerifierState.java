@@ -38,7 +38,10 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
- * Verification state a block is in.
+ * Verification state a block is in, holds a mapping
+ * between locations and their allocation states, which
+ * can be unknown, value - it's contents or
+ * conflicted - multiple values conflict with each other.
  */
 public class BlockVerifierState {
     /**
@@ -284,9 +287,13 @@ public class BlockVerifierState {
 
             checkBytecodeFrames(op);
 
-            if (op.references != null) {
-                checkReferences(op);
-            }
+            // We do not check the list of references if the state map
+            // actually has a reference inside it for said location,
+            // because there seems to be more cases of that simply
+            // not being true, either backup slots in stack moves
+            // are not yet defined / have different lir kind
+            // or the not marked as a reference - usually related to
+            // rbp in stack.
         }
     }
 
@@ -429,7 +436,14 @@ public class BlockVerifierState {
         switch (instruction) {
             case RAVInstruction.Op op -> this.updateWithOp(op);
             case RAVInstruction.ValueMove virtMove -> this.updateWithValueMove(virtMove);
-            case RAVInstruction.LocationMove move -> this.values.putClone(move.to, this.values.get(move.from));
+            case RAVInstruction.LocationMove move -> {
+                if (move instanceof RAVInstruction.StackMove stackMove) {
+                    // Maybe the backup slot should hold what the scratch register holds?
+                    this.values.put(stackMove.backupSlot, UnknownAllocationState.INSTANCE);
+                }
+
+                this.values.putClone(move.to, this.values.get(move.from));
+            }
             default -> throw GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
         }
     }
@@ -443,6 +457,12 @@ public class BlockVerifierState {
      * @param op    Operation we update state from
      */
     protected void updateWithOp(RAVInstruction.Op op) {
+        if (op.references != null) {
+            // First we remove unknown references
+            // then we define new values by the return value
+            updateWithSafePoint(op);
+        }
+
         for (int i = 0; i < op.dests.count; i++) {
             if (op.dests.orig[i].isIllegal()) {
                 continue; // Safe to ignore, when destination is illegal value, not when used.
@@ -479,10 +499,6 @@ public class BlockVerifierState {
             // We cannot believe the contents of registers used as temp, thus we need to reset.
             RAValue location = op.temp.curr[i];
             this.values.put(location, UnknownAllocationState.INSTANCE);
-        }
-
-        if (op.references != null) {
-            updateWithSafePoint(op);
         }
     }
 
@@ -524,28 +540,6 @@ public class BlockVerifierState {
             // that are same as the one in references list? Because said list
             // is expected to have stack slots and registers can retain same references.
             entry.setValue(new ValueAllocationState(new RAValue(Value.ILLEGAL), op, block));
-        }
-    }
-
-    /**
-     * Check if all values defined in references list are not
-     * unknown in the allocation state map.
-     *
-     * @param op Operation which holds these references
-     */
-    protected void checkReferences(RAVInstruction.Op op) {
-        for (RAValue reference : op.references) {
-            var state = values.get(reference);
-            if (state.isConflicted()) {
-                continue;
-            }
-
-            if (state.isUnknown()) {
-                throw new RAVException("No reference inside " + reference + " in " + op + " in " + block);
-            }
-
-            // There are cases of references not having kind set as reference
-            // so checking for references here would throw an exception
         }
     }
 

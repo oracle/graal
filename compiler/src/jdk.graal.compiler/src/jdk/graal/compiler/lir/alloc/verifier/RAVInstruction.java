@@ -368,7 +368,12 @@ public class RAVInstruction {
 
         @Override
         public String toString() {
-            return this.dests.toString() + " = Op " + this.uses.toString() + " " + this.alive.toString() + " " + this.temp.toString();
+            var opString = lirInstruction.name();
+            if (opString.isEmpty()) {
+                opString = "OP";
+            }
+
+            return this.dests.toString() + " = " + opString + " " + this.uses.toString() + " " + this.alive.toString() + " " + this.temp.toString();
         }
     }
 
@@ -416,7 +421,13 @@ public class RAVInstruction {
         public RAValue from;
         public RAValue to;
 
+        public RAValue backupSlot;
+
         public StackMove(LIRInstruction instr, Value from, Value to) {
+            this(instr, from, to, null);
+        }
+
+        public StackMove(LIRInstruction instr, Value from, Value to, Value backupSlot) {
             super(instr, from, to);
 
             assert from instanceof StackSlot || from instanceof VirtualStackSlot : "StackMove needs to receive instanceof StackSlot or VirtualStackSlot";
@@ -424,6 +435,7 @@ public class RAVInstruction {
 
             this.from = RAValue.create(from);
             this.to = RAValue.create(to);
+            this.backupSlot = RAValue.create(backupSlot);
         }
 
         public String toString() {
