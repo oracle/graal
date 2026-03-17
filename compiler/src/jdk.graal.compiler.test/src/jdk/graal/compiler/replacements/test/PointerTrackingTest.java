@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import jdk.graal.compiler.lir.alloc.verifier.RegAllocVerifierPhase;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.options.OptionValues;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,6 +53,12 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
     public void before() {
         HotSpotGraalRuntime runtime = (HotSpotGraalRuntime) Graal.getRequiredCapability(RuntimeProvider.class);
         Assume.assumeTrue("doesn't aggressively move objects", runtime.getGarbageCollector() != HotSpotGraalRuntime.HotSpotGC.Shenandoah);
+    }
+
+    @Override
+    protected LIRSuites createLIRSuites(OptionValues opts) {
+        var newOptions = new OptionValues(opts, RegAllocVerifierPhase.Options.EnableRAVerifier, false);
+        return super.createLIRSuites(newOptions);
     }
 
     @Test
