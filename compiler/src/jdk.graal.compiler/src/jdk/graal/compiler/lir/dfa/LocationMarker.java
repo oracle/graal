@@ -70,7 +70,7 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
 
     protected abstract void processState(LIRInstruction op, LIRFrameState info, S values);
 
-    void build() {
+    public void build() {
         BasicBlock<?>[] blocks = lir.getControlFlowGraph().getBlocks();
         UniqueWorkList worklist = new UniqueWorkList(blocks.length);
         for (int i = blocks.length - 1; i >= 0; i--) {

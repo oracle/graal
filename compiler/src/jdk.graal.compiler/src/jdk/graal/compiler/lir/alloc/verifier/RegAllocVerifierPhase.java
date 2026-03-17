@@ -74,6 +74,9 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
 
         @Option(help = "Verify output of stack allocator with register allocator", type = OptionType.Debug)
         public static final OptionKey<Boolean> VerifyStackAllocator = new OptionKey<>(true);
+
+        @Option(help = "Collect reference map information to verify", type = OptionType.Debug)
+        public static final OptionKey<Boolean> CollectReferences = new OptionKey<>(false);
     }
 
     /**
@@ -143,11 +146,16 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
             preAllocMap = saveInstructionsPreAlloc(lir);
         }
 
-        boolean verifyStackAlloc = Options.VerifyStackAllocator.getValue(lirGenRes.getLIR().getOptions());
+        boolean verifyStackAlloc = Options.VerifyStackAllocator.getValue(lir.getOptions());
 
         allocator.apply(target, lirGenRes, context);
         if (stackSlotAllocator != null && verifyStackAlloc) {
             stackSlotAllocator.apply(target, lirGenRes, context);
+
+            if (Options.CollectReferences.getValue(lir.getOptions())) {
+                // Frame map is only built after stack allocator has run
+                new ReferencesBuilder().build(lir, lirGenRes.getFrameMap(), preAllocMap);
+            }
         }
 
         try (DebugCloseable t = VerifierTimer.start(lir.getDebug())) {
