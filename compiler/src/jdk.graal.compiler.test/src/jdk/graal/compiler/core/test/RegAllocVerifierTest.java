@@ -46,6 +46,7 @@ import jdk.graal.compiler.lir.alloc.verifier.ValueAllocationState;
 import jdk.graal.compiler.lir.alloc.verifier.ValueNotInRegisterException;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
+import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.EconomicHashMap;
@@ -82,7 +83,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     RAVPhaseWrapper phase;
 
     class RAVPhaseWrapper extends RegAllocVerifierPhase {
-        public RAVPhaseWrapper() {
+        RAVPhaseWrapper() {
             super(null, null);
         }
 
@@ -304,7 +305,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
         protected boolean handleVirtualMoves(RAVInstruction.Op op, Register replacementReg) {
             for (var move : op.getVirtualMoveList()) {
-                var locValue = move.location.getValue();
+                var locValue = move.getLocation().getValue();
                 if (ValueUtil.isRegister(locValue)) {
                     var register = ValueUtil.asRegister(locValue);
 
@@ -312,7 +313,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
                         oldRegister = ValueUtil.asRegisterValue(locValue);
                         newRegister = replacementReg.asValue(locValue.getValueKind());
                         variable = move.variableOrConstant.asVariable();
-                        move.location = RAValue.create(newRegister);
+                        move.setLocation(RAValue.create(newRegister));
                         return true;
                     }
 
@@ -600,7 +601,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
                 for (var move : op.getVirtualMoveList()) {
                     if (move.variableOrConstant.isVariable()) {
-                        variables.put(move.variableOrConstant.asVariable(), move.location);
+                        variables.put(move.variableOrConstant.asVariable(), move.getLocation());
                     }
                 }
             }
@@ -725,6 +726,16 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         var stage = suites.getAllocationStage();
 
         if (RegAllocVerifierPhase.Options.EnableRAVerifier.getValue(options)) {
+            var verifier = (RegAllocVerifierPhase) stage.findPhaseInstance(RegisterAllocationPhase.class);
+            assert verifier != null;
+
+            var stackAllocator = verifier.getStackSlotAllocator();
+            if (stackAllocator != null) {
+                // Do not use stack allocator
+                verifier.setStackSlotAllocator(null);
+                stage.appendPhase(stackAllocator);
+            }
+
             return suites;
         }
 
@@ -744,14 +755,23 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         var it = stage.findPhase(RegisterAllocationPhase.class);
         Assert.assertNotNull(it);
 
+        LIRPhase<AllocationPhase.AllocationContext> stackAllocator = null;
         var allocator = (RegisterAllocationPhase) it.previous();
         if (allocator instanceof RegAllocVerifierPhase rav) {
+            stackAllocator = rav.getStackSlotAllocator();
+            if (stackAllocator != null) {
+                rav.setStackSlotAllocator(null);
+            }
+
             phase.setAllocator(rav.getAllocator());
         } else {
             phase.setAllocator(allocator);
         }
 
         it.set(phase);
+        if (stackAllocator != null) {
+            stage.appendPhase(stackAllocator);
+        }
 
         return suites;
     }
