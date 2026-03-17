@@ -47,8 +47,14 @@ public class VerifierPrinter {
             printBlockHeader(out, block);
             for (var instruction : instructions.get(block)) {
                 out.println("\t" + instruction.toString() + " | " + instruction.getLIRInstruction().toString());
-                if (instruction instanceof RAVInstruction.Op op && op.stateValues.count > 0) {
-                    out.println("\t\t State: " + op.stateValues);
+                if (instruction instanceof RAVInstruction.Op op) {
+                    if (op.lirInstruction.hasState()) {
+                        out.println("\t\t State: " + op.stateValues);
+                    }
+
+                    if (op.references != null) {
+                        out.println("\t\t References: " + op.references);
+                    }
                 }
             }
             out.println();
@@ -102,8 +108,14 @@ public class VerifierPrinter {
             int n = 1;
             for (var instruction : instructions.get(block)) {
                 out.println("\t" + n + "." + instruction.toString());
-                if (instruction instanceof RAVInstruction.Op op && op.stateValues.count > 0) {
-                    out.println("\t\t State: " + op.stateValues);
+                if (instruction instanceof RAVInstruction.Op op) {
+                    if (op.lirInstruction.hasState()) {
+                        out.println("\t\t State: " + op.stateValues);
+                    }
+
+                    if (op.references != null) {
+                        out.println("\t\t References: " + op.references);
+                    }
                 }
 
                 n++;

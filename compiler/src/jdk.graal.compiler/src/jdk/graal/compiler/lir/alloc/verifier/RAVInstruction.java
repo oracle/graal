@@ -43,6 +43,7 @@ import jdk.vm.ci.meta.Value;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 
 public class RAVInstruction {
     /**
@@ -373,7 +374,7 @@ public class RAVInstruction {
                 opString = "OP";
             }
 
-            return this.dests.toString() + " = " + opString + " " + this.uses.toString() + " " + this.alive.toString() + " " + this.temp.toString();
+            return this.dests.toString() + " = " + opString.toUpperCase(Locale.ROOT) + " " + this.uses.toString() + " " + this.alive.toString() + " " + this.temp.toString();
         }
     }
 
@@ -509,22 +510,6 @@ public class RAVInstruction {
          * Where variable (or constant) is being stored.
          */
         public RAValue getLocation() {
-            if (LIRValueUtil.isVirtualStackSlot(location.getValue())) {
-                Value moveLocation;
-                if (StandardOp.LoadConstantOp.isLoadConstantOp(lirInstruction)) {
-                    var loadConstOp = StandardOp.LoadConstantOp.asLoadConstantOp(lirInstruction);
-                    moveLocation = loadConstOp.getResult();
-                } else {
-                    var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(lirInstruction);
-                    moveLocation = valueMov.getInput();
-                }
-
-                if (ValueUtil.isStackSlot(moveLocation)) {
-                    // Change vstack to allocated stack slot, because it was changed
-                    location.value = moveLocation;
-                }
-            }
-
             return location;
         }
     }

@@ -49,6 +49,7 @@ import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.Value;
 import org.graalvm.collections.Equivalence;
 
 import java.io.FileNotFoundException;
@@ -360,13 +361,47 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                 }
 
                 var virtualMoves = opRAVInstr.getVirtualMoveList();
-                instructionList.addAll(virtualMoves);
+                for (var virtMove : virtualMoves) {
+                    instructionList.add(fixOldValueMove(virtMove));
+                }
             }
 
             blockInstructions.put(block, instructionList);
         }
 
         return blockInstructions;
+    }
+
+    /**
+     * Fixes value move created before any allocation has happened,
+     * we mainly care about stack allocator running - old value move
+     * still keeps the virtual stack slot, but the underlying lir
+     * instruction already has an allocated concrete stack slot, so
+     * for verification to work correctly, it needs to be changed.
+     *
+     * @param valueMove Old value move created before any (stack) allocation
+     * @return Fixed value move
+     */
+    protected RAVInstruction.ValueMove fixOldValueMove(RAVInstruction.ValueMove valueMove) {
+        if (!LIRValueUtil.isVirtualStackSlot(valueMove.location.getValue())) {
+            return valueMove;
+        }
+
+        Value moveLocation;
+        if (StandardOp.LoadConstantOp.isLoadConstantOp(valueMove.lirInstruction)) {
+            var loadConstOp = StandardOp.LoadConstantOp.asLoadConstantOp(valueMove.lirInstruction);
+            moveLocation = loadConstOp.getResult();
+        } else {
+            var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(valueMove.lirInstruction);
+            moveLocation = valueMov.getInput();
+        }
+
+        if (ValueUtil.isStackSlot(moveLocation)) {
+            // Change vstack to allocated stack slot, because it was changed
+            valueMove.location.value = moveLocation;
+        }
+
+        return valueMove;
     }
 
     /**
@@ -443,7 +478,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                 continue;
             }
 
-            toAdd.add(speculativeMove);
+            toAdd.add(fixOldValueMove(speculativeMove));
         }
         return toAdd;
     }
