@@ -31,17 +31,18 @@ import jdk.vm.ci.meta.Value;
 
 /**
  * Wrapper around Value to change how indexing
- * in data structures like Map or Set is done.
+ * in data structures like {@link java.util.Map} or {@link java.util.Set} is done.
+ *
  * <p>
- * Register is indexed by its name without the kind.
- * Variable is indexed by its number index without the kind.
- * Stack slots and constants remain as is, because the kind
- * does not mess with indexing.
+ * Values are indexed without their {@link LIRKind kind}
+ * associated with them, this is necessary for {@link AllocationStateMap}
+ * because locations can change kinds and still be associated
+ * with one key/value pair in said map.
  * </p>
  */
 public class RAValue {
     /**
-     * Create a new RAValue instance from Value.
+     * Create a new RAValue instance from {@link Value}.
      *
      * @param value Value we are wrapping
      * @return Instance of RAValue
@@ -107,8 +108,10 @@ public class RAValue {
     }
 
     /**
-     * Equal RegisterValue on it's Register, not Register and kind,
-     * otherwise same as Value.
+     * Are two {@link RAValue values} equal?
+     * - check for offset for {@link jdk.vm.ci.code.StackSlot}
+     * - check for id for {@link jdk.graal.compiler.lir.VirtualStackSlot}
+     * - otherwise default to normal equals on {@link Value}
      *
      * @param other The reference object with which to compare.
      * @return Are said values equal?

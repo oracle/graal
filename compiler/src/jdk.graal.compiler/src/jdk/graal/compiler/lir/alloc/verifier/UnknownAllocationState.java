@@ -32,7 +32,7 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
  */
 public class UnknownAllocationState extends AllocationState {
     /**
-     * Single instance used for all occurrences of Unknown state.
+     * Single instance used for all occurrences of {@link UnknownAllocationState unknown state}.
      */
     public static UnknownAllocationState INSTANCE = new UnknownAllocationState();
 
@@ -43,10 +43,10 @@ public class UnknownAllocationState extends AllocationState {
 
     /**
      * Meet state from predecessor, if both are unknown then unknown is returned,
-     * otherwise conflict occurs.
+     * otherwise {@link ConflictedAllocationState conflict} occurs.
      *
      * @param other Other state coming from a predecessor edge
-     * @return Unknown if both are, otherwise a conflict
+     * @return {@link UnknownAllocationState Unknown} if both are, otherwise a conflict
      */
     @Override
     public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block) {

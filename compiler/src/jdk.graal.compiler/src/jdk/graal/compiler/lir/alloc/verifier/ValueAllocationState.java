@@ -31,8 +31,8 @@ import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Allocation state holding a single, concrete Value (wrapped with RAValue),
- * also accompanied by instruction and block where it was created.
+ * Allocation state holding a single, concrete {@link Value} (wrapped with {@link RAValue}),
+ * also accompanied by {@link RAVInstruction instruction} and {@link BasicBlock block} where it was created.
  */
 public class ValueAllocationState extends AllocationState implements Cloneable {
     protected RAValue value;
@@ -66,10 +66,10 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
 
     /**
      * Create an illegal value allocation state, used
-     * as a substitute for Unknown state when creating
-     * a conflict.
+     * as a substitute for {@link UnknownAllocationState unknown} when creating
+     * a {@link ConflictedAllocationState conflict}.
      *
-     * @return instance of ValueAllocationState holding Value.ILLEGAL.
+     * @return instance of {@link ValueAllocationState} holding {@link Value#ILLEGAL}.
      */
     public static ValueAllocationState createIllegal(BasicBlock<?> block) {
         return new ValueAllocationState(new RAValue(Value.ILLEGAL), null, block);
@@ -92,12 +92,12 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
     }
 
     /**
-     * Meet a state from predecessor block, if it's ValueAllocationState
+     * Meet a state from predecessor block, if it's {@link ValueAllocationState}
      * and contents are equal, then same state is returned, otherwise
-     * a conflict is created between said states.
+     * a {@link ConflictedAllocationState conflict} is created between said states.
      *
      * @param other Other state coming from a predecessor edge
-     * @return ValueAllocationState if their contents are equal, otherwise ConflictedAllocationState.
+     * @return {@link ValueAllocationState} if their contents are equal, otherwise {@link ConflictedAllocationState}.
      */
     public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block) {
         if (other.isUnknown()) {

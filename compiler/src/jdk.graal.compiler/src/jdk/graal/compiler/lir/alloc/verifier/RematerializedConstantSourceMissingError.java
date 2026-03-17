@@ -25,13 +25,13 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 /**
- * Re-materialized constant has wrong source (not a Value Move),
+ * Re-materialized constant has wrong source (not a {@link RAVInstruction.ValueMove}),
  * but either undefined or something different.
  */
 @SuppressWarnings("serial")
 public class RematerializedConstantSourceMissingError extends RAVError {
     public RematerializedConstantSourceMissingError(RAVInstruction.Base instruction, RAVariable variable) {
-        super(variable + " was materialized to " + instruction);
+        super(getErrorMessage(instruction, variable));
     }
 
     public static String getErrorMessage(RAVInstruction.Base instruction, RAVariable variable) {

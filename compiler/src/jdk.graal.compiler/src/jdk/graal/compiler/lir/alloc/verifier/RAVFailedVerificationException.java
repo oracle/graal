@@ -27,8 +27,8 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import java.util.List;
 
 /**
- * Composite exception taking every Register Allocation Verification
- * exception that occurred (exceptions done by the Register Allocator)
+ * Composite exception taking every {@link RAVException exception}
+ * that occurred (exceptions caused by the {@link jdk.graal.compiler.lir.alloc.RegisterAllocationPhase})
  * and combining them together to one exception.
  */
 @SuppressWarnings("serial")

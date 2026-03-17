@@ -31,7 +31,7 @@ import jdk.graal.compiler.lir.StandardOp;
 /**
  * Unknown instruction was found after the allocation,
  * this usually means that it's a different instruction
- * from a Move, and we do not know how to handle it.
+ * from a move, and we do not know how to handle it.
  */
 @SuppressWarnings("serial")
 public class UnknownInstructionError extends RAVError {

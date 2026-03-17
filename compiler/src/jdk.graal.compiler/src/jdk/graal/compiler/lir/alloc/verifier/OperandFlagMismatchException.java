@@ -31,7 +31,7 @@ import jdk.vm.ci.meta.Value;
 import java.util.EnumSet;
 
 /**
- * Value used in instruction does not satisfy it's operand flags,
+ * Value used in instruction does not satisfy it's {@link LIRInstruction.OperandFlag operand flags},
  * for example if an operand is a stack slot, but should only
  * be a register.
  */

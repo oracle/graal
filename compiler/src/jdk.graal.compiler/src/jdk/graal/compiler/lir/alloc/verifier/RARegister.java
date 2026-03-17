@@ -27,6 +27,10 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 
+/**
+ * Wrap around {@link RegisterValue} to only index
+ * by the name of the {@link Register} it holds.
+ */
 public class RARegister extends RAValue {
     protected RegisterValue registerValue;
 

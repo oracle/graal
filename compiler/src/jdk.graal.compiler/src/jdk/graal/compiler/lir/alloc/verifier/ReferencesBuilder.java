@@ -50,10 +50,12 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
  * of it, to make sure GC-freed references are not
  * used further.
  *
- * It uses the LocationMarker class that is used
- * in the FinalCodeAnalysisStage where the actual
+ * <p>
+ * It uses the {@link LocationMarker} class that is used
+ * in the {@link jdk.graal.compiler.lir.phases.FinalCodeAnalysisPhase} where the actual
  * set of references is built, we require this
  * information earlier.
+ * </p>
  */
 public class ReferencesBuilder {
     class ReferenceSet extends ValueSet<ReferenceSet> {
@@ -119,8 +121,10 @@ public class ReferencesBuilder {
         /**
          * Only process values that are registers (that can contain references and are allocatable)
          * and stack slots, where kind cannot be Illegal.
+         *
          * <p>
-         * Take from LocationMarkerPhase.Marker.shouldProcessValue
+         * Take from {@link jdk.graal.compiler.lir.dfa.LocationMarkerPhase.Marker#shouldProcessValue}
+         * </p>
          *
          * @param operand Value to be processed
          * @return If matches criteria for LocationMarker processing
@@ -165,7 +169,7 @@ public class ReferencesBuilder {
     }
 
     /**
-     * Build references for RAV Op instructions to check GC roots.
+     * Build references for {@link RAVInstruction.Op intructions} to check GC roots.
      *
      * @param lir LIR
      * @param frameMap Frame map necessary to build references

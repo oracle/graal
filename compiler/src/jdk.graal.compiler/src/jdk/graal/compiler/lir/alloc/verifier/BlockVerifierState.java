@@ -100,7 +100,7 @@ public class BlockVerifierState {
      * except we skip those where the state values are incorrectly stored,
      * after stack allocation, because some values are no longer present.
      *
-     * @param op    Operation for which we are checking state values
+     * @param op Operation for which we are checking state values
      */
     protected void checkStateValues(RAVInstruction.Op op) {
         if (!op.hasCompleteState()) {
@@ -128,15 +128,17 @@ public class BlockVerifierState {
 
     /**
      * Check that original variable matches symbol stored at
-     * the current location in the allocation state map.
+     * the current location in the {@link AllocationStateMap}.
+     *
      * <p>
      * We also check that kinds match and possibly
      * rematerialize variables at this point in the
      * state map.
+     * </p>
      *
-     * @param orig  Original variable
-     * @param curr  Current location
-     * @param op    Operation where these are used
+     * @param orig Original variable
+     * @param curr Current location
+     * @param op   Operation where these are used
      */
     protected void checkOperand(RAValue orig, RAValue curr, RAVInstruction.Op op) {
         assert orig != null;
@@ -224,7 +226,7 @@ public class BlockVerifierState {
     }
 
     /**
-     * Are kinds equal even when casting (LIRKindWithCast) is present?
+     * Are kinds equal even when {@link LIRKindWithCast casting} is present?
      *
      * @param orig Original variable
      * @param curr Current location
@@ -246,10 +248,12 @@ public class BlockVerifierState {
     }
 
     /**
-     * Are kinds equal even when CastValue is present?
+     * Are kinds equal even when {@link jdk.graal.compiler.lir.CastValue cast value} is present?
+     *
      * <p>
      * We need to ignore the cast value because the currently stored
      * value will not be cast.
+     * </p>
      *
      * @param orig      Original variable
      * @param fromState Value stored in state of the current location
@@ -299,6 +303,12 @@ public class BlockVerifierState {
         }
     }
 
+    /**
+     * Check if the destination of a move has the correct type to
+     * store the {@link ValueAllocationState value}
+     *
+     * @param move Move between locations, inserted by register allocator
+     */
     protected void checkMoveKinds(RAVInstruction.LocationMove move) {
         AllocationState state = this.values.get(move.from);
         if (state instanceof ValueAllocationState valueAllocationState) {
@@ -309,6 +319,16 @@ public class BlockVerifierState {
         }
     }
 
+    /**
+     * Check {@link jdk.vm.ci.code.BytecodeFrame frames}, before and
+     * after allocation, mainly checking that {@link LIRKind} is a
+     * reference when {@link JavaKind} is an Object and wise-versa,
+     * checking that {@link LIRKind} is not a reference when
+     * {@link JavaKind} is not an object.
+     *
+     * @param op Operation holding said frames
+     * @throws RAVException when a violation occurs
+     */
     public void checkBytecodeFrames(RAVInstruction.Op op) {
         for (var frame : op.bcFrames) {
             for (int i = 0; i < frame.kinds.length; i++) {
@@ -336,8 +356,11 @@ public class BlockVerifierState {
                     if (origLIRKind.isValue() && currLIRKind.isValue()) {
                         continue;
                     }
+                    // These two tests needed to be modified
                     // PointerTrackingTest
                     // jdk.graal.compiler.replacements.test.DerivedOopTest
+                    // so this verification method doesn't throw an error
+                    // when running with them
                     throw new RAVException(orig + " -> " + curr + " is a reference when not marked as an object java kind");
                 }
             }
@@ -345,10 +368,10 @@ public class BlockVerifierState {
     }
 
     /**
-     * Check if kinds in the temporary array match before allocation
-     * original variables with after allocation concrete locations.
+     * Check if kinds in the {@link RAVInstruction.Op#temp temporary array}
+     * match before allocation original variables with after allocation concrete locations.
      *
-     * @param op    Instruction we update state from
+     * @param op Instruction we update state from
      * @throws KindsMismatchException if a pair does not match
      */
     protected void checkTempKind(RAVInstruction.Op op) {
@@ -370,6 +393,7 @@ public class BlockVerifierState {
      * is complete, but is used either as an output or a generic input.
      *
      * @param instruction Instruction with alive inputs
+     * @throws AliveConstraintViolationException throw when violation occurs
      */
     protected void checkAliveConstraint(RAVInstruction.Op instruction) {
         for (int i = 0; i < instruction.alive.count; i++) {
@@ -398,7 +422,7 @@ public class BlockVerifierState {
 
     /**
      * Make sure concrete current locations changed by the allocator
-     * are not violating set of LIRInstruction.OperandFlag flags,
+     * are not violating set of {@link LIRInstruction.OperandFlag flags},
      * which specify what type can they be. This is done on every
      * array of pairs (dest, uses, alive, temp).
      *
@@ -439,7 +463,7 @@ public class BlockVerifierState {
 
     /**
      * Update the current state based on outputs of this instruction.
-     * Setting contents of current location in allocation state map to
+     * Setting contents of current location in {@link AllocationStateMap} to
      * the symbol that was present before allocation was completed.
      *
      * @param instruction Instruction we update state from
@@ -462,11 +486,11 @@ public class BlockVerifierState {
 
     /**
      * Update the state using a generic operation,
-     * based on contents of its output array, storing
+     * based on contents of its {@link RAVInstruction.Op#dests output array}, storing
      * symbols pre-allocation to current locations after
      * allocation.
      *
-     * @param op    Operation we update state from
+     * @param op Operation we update state from
      */
     protected void updateWithOp(RAVInstruction.Op op) {
         if (op.references != null) {
@@ -518,8 +542,8 @@ public class BlockVerifierState {
      * Update block state with a safe point list of live references deemed by the GC,
      * any other references not included in said list are to be set as unknown so
      * there's no freed pointer use.
-     *
-     * References need to be retrieved using LocationMarker classes.
+     * <p>
+     * References need to be retrieved using {@link jdk.graal.compiler.lir.dfa.LocationMarker} classes.
      *
      * @param op SafePoint we are using to remove old references
      */
@@ -566,7 +590,7 @@ public class BlockVerifierState {
             return;
         }
 
-        for (var reg :  registers) {
+        for (var reg : registers) {
             var regValue = RARegister.create(reg.asValue());
 
             // Save same registers as symbol, and later check if it was retrieved
@@ -578,6 +602,8 @@ public class BlockVerifierState {
      * At exit point, check that all callee saved registers were
      * indeed correctly saved, by checking that the symbol stored
      * in said registers is equal to the registers themselves.
+     *
+     * @throws RAVException when callee saved register was not recovered
      */
     protected void checkCalleeSavedRegisters() {
         var registers = this.registerAllocationConfig.getRegisterConfig().getCalleeSaveRegisters();
@@ -600,12 +626,12 @@ public class BlockVerifierState {
     }
 
     /**
-     * Update state with a ValueMove, if locations is concrete,
+     * Update state with a {@link RAVInstruction.ValueMove}, if locations is concrete,
      * we set it to a variable/constant, if it's a variable to variable
      * move, then all locations containing old variable need to be changed
      * to the new variable.
      *
-     * @param valueMove Value move we update state from
+     * @param valueMove move we update state from
      */
     protected void updateWithValueMove(RAVInstruction.ValueMove valueMove) {
         if (valueMove.getLocation().isVariable()) {

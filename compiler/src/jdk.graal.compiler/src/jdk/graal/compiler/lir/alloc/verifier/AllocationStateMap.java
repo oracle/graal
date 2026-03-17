@@ -35,12 +35,12 @@ import java.util.Set;
 /**
  * Mapping between a location and allocation state,
  * that stores one of these:
- * - Unknown - our null state, nothing was stored yet
- * - Value - symbol that is stored at said location
- * - Conflict - set of Values that are supposed to be at same location
+ * - {@link UnknownAllocationState unknown} - our null state, nothing was stored yet
+ * - {@link ValueAllocationState value} - symbol that is stored at said location
+ * - {@link ConflictedAllocationState conflicted} - set of Values that are supposed to be at same location
  *
- * Conflicts are resolved by assigning new Value to same location.
- * Otherwise, they cannot be used. Value can store register, stack slot,
+ * Conflicts are resolved by assigning new {@link ValueAllocationState value} to same location.
+ * Otherwise, they cannot be used. {@link ValueAllocationState Value} can store register, stack slot,
  * constant, but most importantly variables used before allocation. These
  * are what we are checking with the verification process.
  */
@@ -66,8 +66,8 @@ public class AllocationStateMap {
 
     public AllocationStateMap(BasicBlock<?> block, AllocationStateMap other) {
         internalMap = new EconomicHashMap<>(other.internalMap);
-        this.block = block;
         registerAllocationConfig = other.registerAllocationConfig;
+        this.block = block;
     }
 
     public boolean has(RAValue key) {
@@ -101,8 +101,9 @@ public class AllocationStateMap {
     /**
      * Put a new state for location to the map,
      * without checking if the register can actually be used.
+     *
      * <p>
-     * This is useful for registers that are used by the abi
+     * This is useful for registers that are used by the ABI
      * in the first label, but can actually never be changed,
      * like rbp.
      * </p>

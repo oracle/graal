@@ -29,7 +29,7 @@ import jdk.graal.compiler.debug.GraalError;
 /**
  * An internal error occurred within the
  * verification process, not caused by
- * the Register Allocator.
+ * the {@link jdk.graal.compiler.lir.alloc.RegisterAllocationPhase register allocation}.
  */
 @SuppressWarnings("serial")
 public class RAVError extends GraalError {

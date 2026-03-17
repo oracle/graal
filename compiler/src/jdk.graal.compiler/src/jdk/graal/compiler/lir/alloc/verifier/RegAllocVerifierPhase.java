@@ -492,10 +492,10 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Create Register Verifier Instruction that was created by the Register Allocator.
+     * Create Register Verifier Instruction that was created by the {@link RegisterAllocationPhase register allocator}.
      * Generally speaking, it's always a move instruction, other ones return null.
      *
-     * @param instruction LIR Instruction newly created by Register Allocator
+     * @param instruction LIR Instruction newly created by {@link RegisterAllocationPhase register allocator}
      * @return Spill, Reload, Move or null if instruction is not a move
      */
     protected RAVInstruction.Base getRAVMoveInstruction(LIRInstruction instruction) {
@@ -535,10 +535,11 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Determines if instruction is a virtual move, a virtual move is
+     * Determines if instruction is a virtual {@link RAVInstruction.ValueMove move}, a virtual move is
      * a move instruction that moves a real register value into a variable,
      * which is something that will always get removed from the final allocated
      * IR.
+     *
      * <p>
      * This information is important to the verification process and needs to
      * be part of the Verifier IR.
@@ -558,14 +559,15 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Determines if a move is speculative - it could potentially be
+     * Determines if a {@link RAVInstruction.ValueMove move} is speculative - it could potentially be
      * removed, but hold important information to the verification process.
+     *
      * <p>
      * For example, this happens for a move between two variables and after
      * allocation locations are equal, making the move redundant.
      * </p>
      *
-     * @param instruction LIR instruction we are looking at
+     * @param instruction {@link LIRInstruction instruction} we are looking at
      * @return true, if instruction is a speculative move, otherwise false
      */
     protected boolean isSpeculativeMove(LIRInstruction instruction) {

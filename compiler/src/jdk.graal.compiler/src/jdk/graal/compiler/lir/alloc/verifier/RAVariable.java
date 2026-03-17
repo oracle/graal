@@ -27,10 +27,11 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.lir.Variable;
 
 /**
- * Wrapper around Variable to change how indexing
- * in data structures like Map or Set is done.
+ * Wrapper around {@link Variable} to change how indexing
+ * in data structures like {@link java.util.Map} or {@link java.util.Set} is done.
+ *
  * <p>
- * We index only by the Variable index instead of
+ * We index only by the {@link Variable} index instead of
  * including the kind as well.
  * </p>
  */

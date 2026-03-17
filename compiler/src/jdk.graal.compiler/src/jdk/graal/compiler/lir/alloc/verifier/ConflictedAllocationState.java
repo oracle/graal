@@ -31,10 +31,10 @@ import java.util.Arrays;
 import java.util.Set;
 
 /**
- * Conflicted allocation state - two or more ValueAllocationState instances
+ * Conflicted allocation state - two or more  instances
  * have collided and either of them can be stored at said location, needs
- * to be resolved by either overwriting the location with a new ValueAllocationState instance
- * or by a ConflictResolver implementation.
+ * to be resolved by either overwriting the location with a new {@link ValueAllocationState instance}
+ * or by a {@link ConflictResolver} implementation.
  */
 public class ConflictedAllocationState extends AllocationState {
     protected Set<ValueAllocationState> conflictedStates;
@@ -73,9 +73,9 @@ public class ConflictedAllocationState extends AllocationState {
     }
 
     /**
-     * Get the set of all ValueAllocationState instances conflicting in this state.
+     * Get the set of all {@link ValueAllocationState} instances conflicting in this state.
      *
-     * @return Set of ValueAllocationState instances
+     * @return Set of {@link ValueAllocationState} instances
      */
     public Set<ValueAllocationState> getConflictedStates() {
         return this.conflictedStates;
@@ -88,10 +88,10 @@ public class ConflictedAllocationState extends AllocationState {
 
     /**
      * Any state coming here will be added to the conflict set
-     * and create a new ConflictedAllocationState instance.
+     * and create a new {@link ConflictedAllocationState} instance.
      *
      * @param other Other state coming from a predecessor edge
-     * @return ConflictedAllocationState with predecessor state added up
+     * @return {@link ConflictedAllocationState} with predecessor state added up
      */
     @Override
     public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block) {

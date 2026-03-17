@@ -381,8 +381,8 @@ public class FromUsageResolverGlobal {
      * locations of variables based on the locations.
      *
      * If a variable is in location reg1 and a move
-     * is found reg1 = MOVE reg2, then said variable
-     * will now be in reg2, because reg1 will now
+     * is found <code>reg1 = MOVE reg2</code>, then said variable
+     * will now be in <code>reg2</code>, because reg1 will now
      * have different content when walking through
      * the instructions in reverse.
      *

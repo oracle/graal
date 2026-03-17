@@ -28,9 +28,9 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.lir.LIRInstruction;
 
 /**
- * Violation of the alive arguments occurred,
+ * Violation of the alive inputs occurred,
  * same location was marked as alive argument
- * as well as input or output.
+ * as well as temp or output.
  */
 @SuppressWarnings("serial")
 public class AliveConstraintViolationException extends RAVException {

@@ -27,13 +27,13 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 
 /**
- * Interface for AllocationState stored in AllocationStateMap,
- * describing what state physical location is in.
+ * Interface for state concrete location is in,
+ * stored in {@link AllocationStateMap}.
  */
 public abstract class AllocationState {
     /**
      * Get the default allocation state for every location,
-     * instead of null, we have Unknown state.
+     * instead of null, we have {@link UnknownAllocationState unknown} state.
      *
      * @return Default state for every location
      */
@@ -42,18 +42,18 @@ public abstract class AllocationState {
     }
 
     /**
-     * Shortcut to check if state is Unknown.
+     * Shortcut to check if state is {@link UnknownAllocationState unknown}.
      *
-     * @return Is unknown state
+     * @return Is {@link UnknownAllocationState unknown state}
      */
     public boolean isUnknown() {
         return false;
     }
 
     /**
-     * Shortcut to check if state is ConflictedState.
+     * Shortcut to check if state is {@link ConflictedAllocationState conflicted}.
      *
-     * @return Is ConflictedState
+     * @return Is {@link ConflictedAllocationState conflicted}
      */
     public boolean isConflicted() {
         return false;

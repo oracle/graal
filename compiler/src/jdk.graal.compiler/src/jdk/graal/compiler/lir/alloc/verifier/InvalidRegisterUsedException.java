@@ -28,7 +28,7 @@ import jdk.vm.ci.code.Register;
 
 /**
  * Invalid register was used in allocation
- * as defined by the RegisterAllocationConfig.
+ * as defined by the {@link jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig}.
  */
 @SuppressWarnings("serial")
 public class InvalidRegisterUsedException extends RAVException {

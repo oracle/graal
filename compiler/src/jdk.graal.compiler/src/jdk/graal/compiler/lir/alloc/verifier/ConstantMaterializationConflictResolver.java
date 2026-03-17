@@ -38,7 +38,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Resolve conflicts made by the constant materialization process.
+ * Resolve {@link ConflictedAllocationState conflicts} made by the constant materialization process.
+ *
  * <p>
  * Also checks if the constant can materialize to stack.
  * </p>
@@ -96,12 +97,12 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
 
     /**
      * Resolve conflict of target variable and the constant it represents
-     * to the ValueAllocationState of the target variable.
+     * to the {@link ValueAllocationState} of the target variable.
      *
      * @param target          Variable we are looking to resolve to
-     * @param conflictedState Set of conflicted states
-     * @param location        Location where the valueState is stored
-     * @return target variable stored in ValueAllocationState or null.
+     * @param conflictedState Set of {@link ConflictedAllocationState conflicted states}
+     * @param location        Location where the value is stored
+     * @return target variable stored in {@link ValueAllocationState} or null.
      */
     @Override
     public ValueAllocationState resolveConflictedState(RAVariable target, ConflictedAllocationState conflictedState, RAValue location) {
@@ -147,12 +148,12 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     }
 
     /**
-     * Resolve ValueAllocationState of a constant to the target variable.
+     * Resolve {@link ValueAllocationState} of a constant to the target variable.
      *
      * @param variable   Variable we are looking to resolve to
-     * @param valueState Current ValueAllocationState instance
-     * @param location   Location where the valueState is stored
-     * @return target variable stored in ValueAllocationState or null.
+     * @param valueState Current {@link ValueAllocationState} instance
+     * @param location   Location where the value is stored
+     * @return target variable stored in {@link ValueAllocationState} or null.
      */
     @Override
     public ValueAllocationState resolveValueState(RAVariable variable, ValueAllocationState valueState, RAValue location) {
@@ -179,14 +180,14 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
 
     /**
      * Check if variable can be rematerialized to said location based on the
-     * original instruction source, stored in ValueAllocationState.
+     * original instruction source, stored in {@link ValueAllocationState}.
      *
      * <p>
      * Check if variable cannot rematerialize to stack and if it did so.
      * </p>
      *
      * @param variable Target variable
-     * @param state    State it is in
+     * @param state    {@link AllocationState state} it is in
      * @return Was it rematerialized to wrong location?
      */
     protected boolean isRematerializedToWrongLocation(RAVariable variable, ValueAllocationState state) {
