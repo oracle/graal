@@ -294,6 +294,18 @@ public class BlockVerifierState {
             // are not yet defined / have different lir kind
             // or the not marked as a reference - usually related to
             // rbp in stack.
+        } else if (instruction instanceof RAVInstruction.LocationMove move) {
+            checkMoveKinds(move);
+        }
+    }
+
+    protected void checkMoveKinds(RAVInstruction.LocationMove move) {
+        AllocationState state = this.values.get(move.from);
+        if (state instanceof ValueAllocationState valueAllocationState) {
+            RAValue movedValue = valueAllocationState.getRAValue();
+            if (!kindsEqual(movedValue, move.to)) {
+                throw new KindsMismatchException(move.lirInstruction, block, move.to, movedValue, false);
+            }
         }
     }
 
