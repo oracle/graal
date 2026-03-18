@@ -77,8 +77,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     RAVException exception;
 
     /**
-     * Phase that causes RAVException to be thrown,
-     * by modifying LIR or Verifier State.
+     * Phase that causes RAVException to be thrown, by modifying LIR or Verifier State.
      */
     RAVPhaseWrapper phase;
 
@@ -98,9 +97,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Overwrites a destination variable with a newly created one
-     * to cause a ValueNotInLocationException with old variable being
-     * in said place.
+     * Overwrites a destination variable with a newly created one to cause a
+     * ValueNotInLocationException with old variable being in said place.
      */
     class ChangeVariablePhase extends RAVPhaseWrapper {
         protected RAVariable originalVariable;
@@ -157,9 +155,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * This pass changes register allocation config to only allow certain
-     * registers to be used for allocation, and we want the verifier to
-     * detect usage of said register.
+     * This pass changes register allocation config to only allow certain registers to be used for
+     * allocation, and we want the verifier to detect usage of said register.
      */
     class DisallowedRegisterPhase extends RAVPhaseWrapper {
         protected Register ignoredReg;
@@ -237,8 +234,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Change a register that is only used once as output,
-     * so that state of it is Unknown.
+     * Change a register that is only used once as output, so that state of
+     * it is {@link jdk.graal.compiler.lir.alloc.verifier.UnknownAllocationState unknown}.
      */
     class ForceUnknownStateInRegister extends RAVPhaseWrapper {
         protected RAVariable variable;
@@ -252,7 +249,6 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
             super();
             this.regUsage = new EconomicHashMap<>();
         }
-
 
         @Override
         protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> instrMap, AllocationContext context) {
@@ -371,9 +367,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Change kind of an operand to trigger a KindsMismatchException,
-     * very simply, find first instruction that is not a label and
-     * look through its operand array to find first variable and
+     * Change kind of an operand to trigger a KindsMismatchException, very simply, find first
+     * instruction that is not a label and look through its operand array to find first variable and
      * change its type to Illegal.
      */
     abstract class ChangeKindPhase extends RAVPhaseWrapper {
@@ -450,13 +445,13 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Modifies LIR instruction location in a way where
-     * an alive operand and destination or temporary use
-     * the same register.
+     * Modifies LIR instruction location in a way where an alive operand and destination or
+     * temporary use the same register.
+     *
      * <p>
-     * Finds the first instruction that satisfies having
-     * both alive operand and temp/output and changes it
-     * so one location is the same.
+     * Finds the first instruction that satisfies having both alive operand and temp/output and
+     * changes it so one location is the same.
+     * </p>
      */
     abstract class ViolateAliveConstraint extends RAVPhaseWrapper {
         class SetAliveRegProc implements ValueProcedure {
@@ -581,10 +576,9 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         protected abstract BasicBlock<?> getConflictUseBlock(LIR lir);
 
         /**
-         * Get block where conflict will be created,
-         * by inserting a ValueMove instruction.
+         * Get block where conflict will be created, by inserting a ValueMove instruction.
          *
-         * @param lir           LIR
+         * @param lir LIR
          * @param conflictBlock Block where conflict will be used
          * @return Source of the conflict
          */
@@ -633,11 +627,11 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         /**
          * Adds a conflict inducing value move to a block.
          *
-         * @param lir            LIR
-         * @param block          Block where we are putting move to
-         * @param instrMap       Pre allocation instruction map
+         * @param lir LIR
+         * @param block Block where we are putting move to
+         * @param instrMap Pre allocation instruction map
          * @param targetVariable Target variable we are creating conflict with
-         * @param variables      Variables and their locations from previous steps
+         * @param variables Variables and their locations from previous steps
          */
         protected void addVirtualMove(LIR lir, BasicBlock<?> block, Map<LIRInstruction, RAVInstruction.Base> instrMap, RAVariable targetVariable, Map<RAVariable, RAValue> variables) {
             var instructions = lir.getLIRforBlock(block);
@@ -883,7 +877,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
         assertException(InvalidRegisterUsedException.class);
         var iruException = (InvalidRegisterUsedException) exception;
-        Assert.assertEquals(iruException.register, disallowedRegPhase.ignoredReg); // Used forbidden register
+        Assert.assertEquals(iruException.register, disallowedRegPhase.ignoredReg); // Used forbidden
+                                                                                   // register
     }
 
     @Test
@@ -901,9 +896,12 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         assertException(ValueNotInRegisterException.class);
 
         var vnrException = (ValueNotInRegisterException) exception;
-        Assert.assertEquals(changeVariablePhase.originalVariable, vnrException.variable); // Expected original variable
+
+        // Expected original variable
+        Assert.assertEquals(changeVariablePhase.originalVariable, vnrException.variable);
         Assert.assertTrue(vnrException.state instanceof ValueAllocationState);
-        Assert.assertEquals(changeVariablePhase.newVariable, ((ValueAllocationState) vnrException.state).getRAValue()); // But new variable is there instead
+        // But new variable is there instead
+        Assert.assertEquals(changeVariablePhase.newVariable, ((ValueAllocationState) vnrException.state).getRAValue());
     }
 
     @Test

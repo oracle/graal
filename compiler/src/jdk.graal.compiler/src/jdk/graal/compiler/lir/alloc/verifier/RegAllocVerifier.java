@@ -71,8 +71,6 @@ public class RegAllocVerifier {
      */
     protected ConflictResolver constantMaterializationConflictResolver;
 
-    protected RematerializationHandler rematerializationHandler;
-
     public RegAllocVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
         this.registerAllocationConfig = registerAllocationConfig;
@@ -83,9 +81,7 @@ public class RegAllocVerifier {
 
         this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
 
-        var constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver();
-        this.constantMaterializationConflictResolver = constantMaterializationConflictResolver;
-        this.rematerializationHandler = new RematerializationHandler(constantMaterializationConflictResolver);
+        this.constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver();
     }
 
     /**

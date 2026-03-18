@@ -310,10 +310,10 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
      *
      * @param lir LIR
      * @param preallocMap Pre-allocation map to keep track of virtual values
-     * @param _ctx Context of the allocation, kept here so tests can access this value here
+     * @param ctx Context of the allocation, kept here so tests can access this value here
      * @return Verifier IR
      */
-    protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext _ctx) {
+    protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext ctx) {
         Map<RAVariable, RAVInstruction.Op> definedVariables = new EconomicHashMap<>();
         var presentInstructions = preprocessAllocatedInstructions(lir, preallocMap, definedVariables);
 

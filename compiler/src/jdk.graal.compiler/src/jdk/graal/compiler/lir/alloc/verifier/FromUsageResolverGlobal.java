@@ -42,17 +42,17 @@ import java.util.Set;
 /**
  * Resolve variables phi variables back to labels and jumps by find their first usage and handling
  * any reg allocator inserted moves back to the defining label.
- *
+ * <p>
  * Register allocator strips us of this information that is necessary for the verification. In order
  * to avoid modifying the existing allocators, we rather try to resolve this information from other
  * instructions.
- *
+ * <p>
  * Variables with only usage in jump instructions are marked as aliases and are resolved after their
  * successors.
- *
+ * <p>
  * If a variable has no usage, then no location is resolved and verification continues without
  * issues.
- *
+ * <p>
  * In the case the first usage of a label-defined variable is wrong, then JUMP instructions from
  * predecessors fail the verification - wrong register will be chosen.
  */
@@ -136,24 +136,36 @@ public class FromUsageResolverGlobal {
             this.locations = new EconomicHashMap<>(blockDefs.locations);
         }
 
-        private BlockUsage merge(BlockUsage other) {
-            var newDefs = new BlockUsage(this);
-            newDefs.reached.addAll(other.reached);
+        /**
+         * Two blocks meet, a successor merges into it's predecessor to pass in newly reached
+         * variable and locations.
+         *
+         * @param other Other block usage information - the successor
+         * @return Has the current block (predecessor) been changed?
+         */
+        private boolean meetWith(BlockUsage other) {
+            int reachedBefore = reached.size();
+            reached.addAll(other.reached);
 
+            boolean changed = reachedBefore != reached.size();
             for (RAVariable variable : other.locations.keySet()) {
                 var defValue = other.locations.get(variable);
-                if (defValue == null) {
+                if (defValue == null || defValue.isIllegal()) {
                     continue;
                 }
 
-                if (defValue.isIllegal() && newDefs.locations.containsKey(variable)) {
+                if (defValue.isIllegal() && locations.containsKey(variable)) {
                     continue;
                 }
 
-                newDefs.locations.put(variable, defValue);
+                if (locations.containsKey(variable) && locations.get(variable) == defValue) {
+                    continue;
+                }
+
+                locations.put(variable, defValue);
             }
 
-            return newDefs;
+            return changed;
         }
     }
 
@@ -223,10 +235,7 @@ public class FromUsageResolverGlobal {
                     this.blockUsageMap.put(pred, new BlockUsage(usage));
                 } else {
                     var predReached = this.blockUsageMap.get(pred);
-                    var newReached = predReached.merge(usage);
-
-                    this.blockUsageMap.put(pred, newReached);
-                    if (predReached.reached.size() == newReached.reached.size()) {
+                    if (!predReached.meetWith(usage)) {
                         continue;
                     }
                 }
@@ -369,7 +378,7 @@ public class FromUsageResolverGlobal {
     /**
      * Handle a register allocator inserted move, change locations of variables based on the
      * locations.
-     *
+     * <p>
      * If a variable is in location reg1 and a move is found <code>reg1 = MOVE reg2</code>, then
      * said variable will now be in <code>reg2</code>, because reg1 will now have different content
      * when walking through the instructions in reverse.
