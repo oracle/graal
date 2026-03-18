@@ -42,10 +42,10 @@ public class ValueNotInRegisterException extends RAVException {
      * Construct a ValueNotInRegisterException.
      *
      * @param instruction Instruction where violation occurred
-     * @param block       Block where violation occurred
-     * @param variable    Target varible we are looking for
-     * @param location    Location where we couldn't find it
-     * @param state       The actual state that the location is in
+     * @param block Block where violation occurred
+     * @param variable Target varible we are looking for
+     * @param location Location where we couldn't find it
+     * @param state The actual state that the location is in
      */
     public ValueNotInRegisterException(LIRInstruction instruction, BasicBlock<?> block, RAValue variable, RAValue location, AllocationState state) {
         super(ValueNotInRegisterException.getErrorMessage(instruction, block, variable, location, state));

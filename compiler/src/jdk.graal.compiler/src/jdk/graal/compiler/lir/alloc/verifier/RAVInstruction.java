@@ -54,27 +54,22 @@ public class RAVInstruction {
         protected LIRInstruction lirInstruction;
 
         /**
-         * List of virtual moves to be inserted after this instruction,
-         * virtual moves are ones removed by the allocator still holding
-         * relevant information to the verification process, for example
-         * first label always uses registers (instead of variables) based on ABI,
-         * and a move is inserted indicating that those registers have certain
-         * variables.
+         * List of virtual moves to be inserted after this instruction, virtual moves are ones
+         * removed by the allocator still holding relevant information to the verification process,
+         * for example first label always uses registers (instead of variables) based on ABI, and a
+         * move is inserted indicating that those registers have certain variables.
          *
-         * @example [rsi, rbp] = LABEL
-         * v1 = MOVE rsi
+         * @example [rsi, rbp] = LABEL v1 = MOVE rsi
          */
         protected List<ValueMove> virtualMoveList;
 
         /**
-         * List of speculative moves, these might be removed, but still
-         * hold important information for us, so we add them to the verifier
-         * IR in-case they are, this happens when a MOVE source and target
-         * locations are equal (and thus redundant) but before allocation
-         * their variable counter-parts are not equal.
+         * List of speculative moves, these might be removed, but still hold important information
+         * for us, so we add them to the verifier IR in-case they are, this happens when a MOVE
+         * source and target locations are equal (and thus redundant) but before allocation their
+         * variable counter-parts are not equal.
          *
-         * @example before alloc: v1 = MOVE v2
-         * after alloc: rax = MOVE rax
+         * @example before alloc: v1 = MOVE v2 after alloc: rax = MOVE rax
          */
         protected List<ValueMove> speculativeMoveList;
 
@@ -188,7 +183,8 @@ public class RAVInstruction {
         /**
          * Verify that all presumed values are present and that both sides have it.
          *
-         * @return true, if contents have been successfully verified, false if there's null in either array.
+         * @return true, if contents have been successfully verified, false if there's null in
+         *         either array.
          */
         public boolean verifyContents() {
             for (int i = 0; i < this.curr.length; i++) {
@@ -237,8 +233,8 @@ public class RAVInstruction {
     }
 
     /**
-     * RAV instruction that handles a regular operation
-     * in an abstract way - we do not care about the function of said operation.
+     * RAV instruction that handles a regular operation in an abstract way - we do not care about
+     * the function of said operation.
      */
     public static class Op extends Base {
         /**
@@ -254,14 +250,12 @@ public class RAVInstruction {
          */
         public ValueArrayPair temp;
         /**
-         * Pairs of inputs used by this operation
-         * that need to be alive after it completes.
+         * Pairs of inputs used by this operation that need to be alive after it completes.
          */
         public ValueArrayPair alive;
 
         /**
-         * Pairs of values retrieved from LIRFrameState,
-         * verified same as any other input to make
+         * Pairs of values retrieved from LIRFrameState, verified same as any other input to make
          * sure GC has all necessary information.
          */
         public ValueArrayPair stateValues;
@@ -272,8 +266,8 @@ public class RAVInstruction {
         public ArrayList<StateValuePair> bcFrames;
 
         /**
-         * List of GC roots, calculated using LocationMarker class,
-         * other references in state maps need to be nullified.
+         * List of GC roots, calculated using LocationMarker class, other references in state maps
+         * need to be nullified.
          */
         public List<RAValue> references;
 
@@ -340,7 +334,7 @@ public class RAVInstruction {
         }
 
         public boolean isCall() {
-           return lirInstruction instanceof AMD64Call.CallOp || lirInstruction instanceof AArch64Call.CallOp;
+            return lirInstruction instanceof AMD64Call.CallOp || lirInstruction instanceof AArch64Call.CallOp;
         }
 
         public boolean isSafePoint() {
@@ -348,11 +342,9 @@ public class RAVInstruction {
         }
 
         /**
-         * Check if stateValues have null values, if so
-         * the state is not complete. This happens because
-         * iterating over certain values in LIRFrameState is
-         * ignored because they are a concrete stack slot and
-         * not a virtual one (StackLockValue).
+         * Check if stateValues have null values, if so the state is not complete. This happens
+         * because iterating over certain values in LIRFrameState is ignored because they are a
+         * concrete stack slot and not a virtual one (StackLockValue).
          *
          * @return true, if complete - non-null values after allocation
          */
@@ -377,8 +369,7 @@ public class RAVInstruction {
     }
 
     /**
-     * A move between to concrete locations
-     * inserted by the register allocator.
+     * A move between to concrete locations inserted by the register allocator.
      */
     public static class LocationMove extends Base {
         public RAValue from;
@@ -484,8 +475,8 @@ public class RAVInstruction {
     }
 
     /**
-     * Move a value or variable to a concrete location,
-     * inserted by allocator (materialization) or not (virtual move).
+     * Move a value or variable to a concrete location, inserted by allocator (materialization) or
+     * not (virtual move).
      */
     public static class ValueMove extends Base {
         /**

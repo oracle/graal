@@ -35,15 +35,13 @@ import java.util.List;
 import java.util.Queue;
 
 /**
- * Class encapsulating the whole Register Allocation Verification.
- * Maintaining entry states for blocks, resolving label variable
- * locations and checking validity of every location to variable
+ * Class encapsulating the whole Register Allocation Verification. Maintaining entry states for
+ * blocks, resolving label variable locations and checking validity of every location to variable
  * correspondence.
  */
 public class RegAllocVerifier {
     /**
-     * Verifier IR that abstracts LIR instructions
-     * and marks moves inserted by the allocator.
+     * Verifier IR that abstracts LIR instructions and marks moves inserted by the allocator.
      */
     protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
@@ -58,15 +56,13 @@ public class RegAllocVerifier {
     protected LIR lir;
 
     /**
-     * Register Allocator config used for validating
-     * if valid register is used by the allocator.
+     * Register Allocator config used for validating if valid register is used by the allocator.
      */
     protected RegisterAllocationConfig registerAllocationConfig;
 
     /**
-     * Resolves locations for label variables by finding
-     * their first usage and walking back to the defining
-     * label.
+     * Resolves locations for label variables by finding their first usage and walking back to the
+     * defining label.
      */
     protected FromUsageResolverGlobal fromUsageResolverGlobal;
 
@@ -75,24 +71,27 @@ public class RegAllocVerifier {
      */
     protected ConflictResolver constantMaterializationConflictResolver;
 
+    protected RematerializationHandler rematerializationHandler;
+
     public RegAllocVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
         this.registerAllocationConfig = registerAllocationConfig;
-
-        this.constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver();
 
         var cfg = lir.getControlFlowGraph();
         this.blockInstructions = blockInstructions;
         this.blockEntryStates = new BlockMap<>(cfg);
 
         this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
+
+        var constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver();
+        this.constantMaterializationConflictResolver = constantMaterializationConflictResolver;
+        this.rematerializationHandler = new RematerializationHandler(constantMaterializationConflictResolver);
     }
 
     /**
-     * For every block, we need to calculate its entry state
-     * which is a combination of states of blocks that are its
-     * predecessors, we get after reached a fixed point state,
-     * where no entry state is changed.
+     * For every block, we need to calculate its entry state which is a combination of states of
+     * blocks that are its predecessors, we get after reached a fixed point state, where no entry
+     * state is changed.
      *
      * This is necessary to verify instruction inputs correctly.
      */
@@ -140,11 +139,9 @@ public class RegAllocVerifier {
     }
 
     /**
-     * By using the entry states calculated in step beforehand,
-     * we check input of every instruction to see that it matches
-     * symbols before allocation, after wards we update the state
-     * so the next instruction has correct state at said instruction
-     * input.
+     * By using the entry states calculated in step beforehand, we check input of every instruction
+     * to see that it matches symbols before allocation, after wards we update the state so the next
+     * instruction has correct state at said instruction input.
      */
     public void verifyInstructionInputs() {
         for (var blockId : this.lir.getBlocks()) {
@@ -188,7 +185,7 @@ public class RegAllocVerifier {
                 if (block.getSuccessorCount() == 0) {
                     state.checkCalleeSavedRegisters();
                 }
-            }  catch (RAVException e) {
+            } catch (RAVException e) {
                 exceptions.add(e);
             }
         }
@@ -199,17 +196,16 @@ public class RegAllocVerifier {
     }
 
     /**
-     * Run verification based on verifier IR created in phase beforehand,
-     * resolving stripped label variable locations back, calculating entry state
-     * for every block so that at the end we can verify inputs of instructions
-     * match variables present before allocation.
+     * Run verification based on verifier IR created in phase beforehand, resolving stripped label
+     * variable locations back, calculating entry state for every block so that at the end we can
+     * verify inputs of instructions match variables present before allocation.
      *
-     * The issues we are looking to catch are mostly about making sure that
-     * order of spills, reloads and moves is correct and that used location
-     * after stores the symbol that is supposed to be there.
+     * The issues we are looking to catch are mostly about making sure that order of spills, reloads
+     * and moves is correct and that used location after stores the symbol that is supposed to be
+     * there.
      *
-     * We also make sure that kinds are still matching, operand flags aren't violated,
-     * alive location not being used as temp or output of same instruction.
+     * We also make sure that kinds are still matching, operand flags aren't violated, alive
+     * location not being used as temp or output of same instruction.
      */
     public void run() {
         this.constantMaterializationConflictResolver.prepare(lir, blockInstructions);

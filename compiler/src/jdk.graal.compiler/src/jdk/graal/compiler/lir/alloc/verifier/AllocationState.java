@@ -27,13 +27,12 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 
 /**
- * Interface for state concrete location is in,
- * stored in {@link AllocationStateMap}.
+ * Interface for state concrete location is in, stored in {@link AllocationStateMap}.
  */
 public abstract class AllocationState {
     /**
-     * Get the default allocation state for every location,
-     * instead of null, we have {@link UnknownAllocationState unknown} state.
+     * Get the default allocation state for every location, instead of null, we have
+     * {@link UnknownAllocationState unknown} state.
      *
      * @return Default state for every location
      */
@@ -60,8 +59,7 @@ public abstract class AllocationState {
     }
 
     /**
-     * Create a copy of this state, necessary
-     * for state copies made over program graph edges.
+     * Create a copy of this state, necessary for state copies made over program graph edges.
      *
      * @return Newly copied state
      */
@@ -69,13 +67,12 @@ public abstract class AllocationState {
     public abstract AllocationState clone();
 
     /**
-     * Meet a state from different block coming from edge in
-     * the program graph, decide what result of said two states
-     * should be.
+     * Meet a state from different block coming from edge in the program graph, decide what result
+     * of said two states should be.
      *
-     * @param other      Other state coming from a predecessor edge
+     * @param other Other state coming from a predecessor edge
      * @param otherBlock Which block is other state from
-     * @param block      Which state is this state from
+     * @param block Which state is this state from
      * @return What is the new state the location is in.
      */
     public abstract AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block);

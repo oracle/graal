@@ -40,25 +40,21 @@ import java.util.Queue;
 import java.util.Set;
 
 /**
- * Resolve variables phi variables back to labels
- * and jumps by find their first usage and handling
- * any reg allocator inserted moves back to the defining
- * label.
+ * Resolve variables phi variables back to labels and jumps by find their first usage and handling
+ * any reg allocator inserted moves back to the defining label.
  *
- * Register allocator strips us of this information that is
- * necessary for the verification. In order to avoid modifying
- * the existing allocators, we rather try to resolve this
- * information from other instructions.
+ * Register allocator strips us of this information that is necessary for the verification. In order
+ * to avoid modifying the existing allocators, we rather try to resolve this information from other
+ * instructions.
  *
- * Variables with only usage in jump instructions are
- * marked as aliases and are resolved after their successors.
+ * Variables with only usage in jump instructions are marked as aliases and are resolved after their
+ * successors.
  *
- * If a variable has no usage, then no location is resolved
- * and verification continues without issues.
+ * If a variable has no usage, then no location is resolved and verification continues without
+ * issues.
  *
- * In the case the first usage of a label-defined variable
- * is wrong, then JUMP instructions from predecessors
- * fail the verification - wrong register will be chosen.
+ * In the case the first usage of a label-defined variable is wrong, then JUMP instructions from
+ * predecessors fail the verification - wrong register will be chosen.
  */
 public class FromUsageResolverGlobal {
     /**
@@ -87,21 +83,18 @@ public class FromUsageResolverGlobal {
     public Map<RAVariable, Boolean> reached;
 
     /**
-     * Mapping of operation to a set of variable for which
-     * this operation is a first usage.
+     * Mapping of operation to a set of variable for which this operation is a first usage.
      */
     public Map<RAVInstruction.Op, Set<RAVariable>> firstUsages;
 
     /**
-     * Initial locations of label-defined variables
-     * to set them to when their first usage is found.
+     * Initial locations of label-defined variables to set them to when their first usage is found.
      */
     public Map<RAVariable, RAValue> initialLocations;
 
     /**
-     * Variable and a block where it's coming from (last jump instruction),
-     * this variable is aliased by the succeeding label, which needs to
-     * be resolved first, before this one can be.
+     * Variable and a block where it's coming from (last jump instruction), this variable is aliased
+     * by the succeeding label, which needs to be resolved first, before this one can be.
      */
     class AliasPair {
         RAVariable variable;
@@ -114,10 +107,8 @@ public class FromUsageResolverGlobal {
     }
 
     /**
-     * Map of variables are aliases for a list of variables
-     * used in predecessor jump instructions. First the
-     * successor label variable needs to be resolved and after
-     * the predecessor labels.
+     * Map of variables are aliases for a list of variables used in predecessor jump instructions.
+     * First the successor label variable needs to be resolved and after the predecessor labels.
      */
     private Map<RAVariable, List<AliasPair>> aliasMap;
 
@@ -183,10 +174,9 @@ public class FromUsageResolverGlobal {
     }
 
     /**
-     * Resolves label variable locations by finding where they are first used.
-     * Walk back from their usage to their defining label (bottom-up), handling any
-     * spills, reloads and moves along the way to set the location in label back
-     * after register allocator strips this information.
+     * Resolves label variable locations by finding where they are first used. Walk back from their
+     * usage to their defining label (bottom-up), handling any spills, reloads and moves along the
+     * way to set the location in label back after register allocator strips this information.
      */
     public void resolvePhiFromUsage() {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
@@ -248,8 +238,8 @@ public class FromUsageResolverGlobal {
     }
 
     /**
-     * Initialize first usages for variables, top-down in-order to
-     * collect all necessary information for the resolution.
+     * Initialize first usages for variables, top-down in-order to collect all necessary information
+     * for the resolution.
      */
     protected void initializeUsages() {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
@@ -377,14 +367,12 @@ public class FromUsageResolverGlobal {
     }
 
     /**
-     * Handle a register allocator inserted move, change
-     * locations of variables based on the locations.
+     * Handle a register allocator inserted move, change locations of variables based on the
+     * locations.
      *
-     * If a variable is in location reg1 and a move
-     * is found <code>reg1 = MOVE reg2</code>, then said variable
-     * will now be in <code>reg2</code>, because reg1 will now
-     * have different content when walking through
-     * the instructions in reverse.
+     * If a variable is in location reg1 and a move is found <code>reg1 = MOVE reg2</code>, then
+     * said variable will now be in <code>reg2</code>, because reg1 will now have different content
+     * when walking through the instructions in reverse.
      *
      * @param usage Variable locations for this block
      * @param from Source location
@@ -408,9 +396,8 @@ public class FromUsageResolverGlobal {
     }
 
     /**
-     * Resolve locations for all variables in a label, also
-     * mark first usage for aliased variables - variables
-     * used in predecessors that have no other usage.
+     * Resolve locations for all variables in a label, also mark first usage for aliased variables -
+     * variables used in predecessors that have no other usage.
      *
      * @param usage usage for the block we are resolving, contains the locations
      * @param label label we are resolving

@@ -28,8 +28,7 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 
 /**
- * Wrap around {@link RegisterValue} to only index
- * by the name of the {@link Register} it holds.
+ * Wrap around {@link RegisterValue} to only index by the name of the {@link Register} it holds.
  */
 public class RARegister extends RAValue {
     protected RegisterValue registerValue;
@@ -64,8 +63,7 @@ public class RARegister extends RAValue {
     }
 
     /**
-     * Equal RegisterValue on it's Register, not Register and kind,
-     * otherwise same as Value.
+     * Equal RegisterValue on it's Register, not Register and kind, otherwise same as Value.
      *
      * @param other The reference object with which to compare.
      * @return Are said values equal?

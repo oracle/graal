@@ -56,7 +56,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     /**
      * Creates a variable to constant mapping.
      *
-     * @param lir               LIR
+     * @param lir LIR
      * @param blockInstructions IR of the Verifier
      */
     @Override
@@ -75,7 +75,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
      * Add variable to constant mapping from instruction contents.
      *
      * @param instruction Instruction we are looking at for LoadConstantOp
-     * @param block       Block where instruction is from
+     * @param block Block where instruction is from
      */
     public void prepareFromInstr(RAVInstruction.Base instruction, BasicBlock<?> block) {
         if (instruction instanceof RAVInstruction.Op op && op.lirInstruction.isLoadConstantOp()) {
@@ -96,12 +96,12 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     }
 
     /**
-     * Resolve conflict of target variable and the constant it represents
-     * to the {@link ValueAllocationState} of the target variable.
+     * Resolve conflict of target variable and the constant it represents to the
+     * {@link ValueAllocationState} of the target variable.
      *
-     * @param target          Variable we are looking to resolve to
+     * @param target Variable we are looking to resolve to
      * @param conflictedState Set of {@link ConflictedAllocationState conflicted states}
-     * @param location        Location where the value is stored
+     * @param location Location where the value is stored
      * @return target variable stored in {@link ValueAllocationState} or null.
      */
     @Override
@@ -150,9 +150,9 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     /**
      * Resolve {@link ValueAllocationState} of a constant to the target variable.
      *
-     * @param variable   Variable we are looking to resolve to
+     * @param variable Variable we are looking to resolve to
      * @param valueState Current {@link ValueAllocationState} instance
-     * @param location   Location where the value is stored
+     * @param location Location where the value is stored
      * @return target variable stored in {@link ValueAllocationState} or null.
      */
     @Override
@@ -179,15 +179,15 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     }
 
     /**
-     * Check if variable can be rematerialized to said location based on the
-     * original instruction source, stored in {@link ValueAllocationState}.
+     * Check if variable can be rematerialized to said location based on the original instruction
+     * source, stored in {@link ValueAllocationState}.
      *
      * <p>
      * Check if variable cannot rematerialize to stack and if it did so.
      * </p>
      *
      * @param variable Target variable
-     * @param state    {@link AllocationState state} it is in
+     * @param state {@link AllocationState state} it is in
      * @return Was it rematerialized to wrong location?
      */
     protected boolean isRematerializedToWrongLocation(RAVariable variable, ValueAllocationState state) {

@@ -60,23 +60,21 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Verification phase for Register Allocation, wraps around
- * the actual allocator and validates that order of spills, reloads
- * and moves is correct and that variables before allocation
- * are actually stored in current locations chosen by the allocator.
+ * Verification phase for Register Allocation, wraps around the actual allocator and validates that
+ * order of spills, reloads and moves is correct and that variables before allocation are actually
+ * stored in current locations chosen by the allocator.
+ *
  * <p>
  * Needs to extend RegisterAllocationPhase to not throw an exception.
+ * </p>
  */
 public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     public static class Options {
-        @Option(help = "Verify that register allocation is indeed, correct", type = OptionType.Debug)
-        public static final OptionKey<Boolean> EnableRAVerifier = new OptionKey<>(false);
+        @Option(help = "Verify that register allocation is indeed, correct", type = OptionType.Debug) public static final OptionKey<Boolean> EnableRAVerifier = new OptionKey<>(false);
 
-        @Option(help = "Verify output of stack allocator with register allocator", type = OptionType.Debug)
-        public static final OptionKey<Boolean> VerifyStackAllocator = new OptionKey<>(true);
+        @Option(help = "Verify output of stack allocator with register allocator", type = OptionType.Debug) public static final OptionKey<Boolean> VerifyStackAllocator = new OptionKey<>(true);
 
-        @Option(help = "Collect reference map information to verify", type = OptionType.Debug)
-        public static final OptionKey<Boolean> CollectReferences = new OptionKey<>(false);
+        @Option(help = "Collect reference map information to verify", type = OptionType.Debug) public static final OptionKey<Boolean> CollectReferences = new OptionKey<>(false);
     }
 
     /**
@@ -85,8 +83,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     protected RegisterAllocationPhase allocator;
 
     /**
-     * Stack allocator, if not null, being verified
-     * simultaneously with reg allocator.
+     * Stack allocator, if not null, being verified simultaneously with reg allocator.
      */
     protected LIRPhase<AllocationContext> stackSlotAllocator;
 
@@ -182,11 +179,13 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
             RAVInstruction.Base previousInstr = null;
             for (var instruction : instructions) {
                 if (this.isVirtualMove(instruction)) {
-                    // Virtual moves (variable = MOV real register) are going to be removed by the allocator,
-                    // but we still need the information about which variables are associated to which real
-                    // registers, and so we store them. They are generally associated to other instructions
-                    // that's why we append them here to the previous instruction (for example Label or Foreign Call)
-                    // use these, if this instruction was deleted in the allocator, then they will be missing too.
+                    // Virtual moves (variable = MOV real register) are going to be removed by the
+                    // allocator, but we still need the information about which variables are
+                    // associated to which real registers, and so we store them.
+                    // They are generally associated to other instructions
+                    // that's why we append them here to the previous instruction (for example Label
+                    // or Foreign Call) use these, if this instruction was deleted in the allocator,
+                    // then they will be missing too.
                     assert previousInstr != null;
 
                     var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
@@ -195,16 +194,19 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
 
                     var virtualMove = new RAVInstruction.ValueMove(instruction, variable, location);
                     previousInstr.addVirtualMove(virtualMove);
-                    continue; // No need to store virtual move here, it is stored into previous instruction.
+
+                    // No need to store virtual move here, it is stored into previous instruction.
+                    continue;
                 }
 
                 boolean speculative = false;
                 if (this.isSpeculativeMove(instruction)) {
                     speculative = true;
-                    // Speculative moves are in form ry = MOVE vx, which could be removed if variable
-                    // ends up being allocated to the same register as ry. If it was removed
-                    // we need to re-add it because it holds important information about where value of
-                    // this variable is placed - for label resolution after the label.
+                    // Speculative moves are in form ry = MOVE vx, which could be removed if
+                    // variable ends up being allocated to the same register as ry.
+                    // If it was removed we need to re-add it because it holds
+                    // important information about where value of this variable
+                    // is placed - for label resolution after the label.
                     assert previousInstr != null;
 
                     var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
@@ -257,9 +259,9 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     /**
      * Use information before allocation to verify output of allocator(s).
      *
-     * @param lir         LIR
+     * @param lir LIR
      * @param preallocMap Map of instructions before allocation
-     * @param context     Allocation context
+     * @param context Allocation context
      */
     protected void verifyAllocation(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext context) {
         var instructions = getVerifierInstructions(lir, preallocMap, context);
@@ -292,9 +294,8 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Retrieve RegisterAllocationConfig from context, this function
-     * is here so it can be overwritten by a test when it needs to
-     * change the config.
+     * Retrieve RegisterAllocationConfig from context, this function is here so it can be
+     * overwritten by a test when it needs to change the config.
      *
      * @param context Current phase context
      * @return Instance of RegisterAllocationConfig
@@ -304,12 +305,12 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Process instructions after allocation and create the Verifier IR.
-     * Using previously stored instructions from the PreAlloc phase.
+     * Process instructions after allocation and create the Verifier IR. Using previously stored
+     * instructions from the PreAlloc phase.
      *
-     * @param lir         LIR
+     * @param lir LIR
      * @param preallocMap Pre-allocation map to keep track of virtual values
-     * @param _ctx        Context of the allocation, kept here so tests can access this value here
+     * @param _ctx Context of the allocation, kept here so tests can access this value here
      * @return Verifier IR
      */
     protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext _ctx) {
@@ -382,11 +383,10 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Fixes value move created before any allocation has happened,
-     * we mainly care about stack allocator running - old value move
-     * still keeps the virtual stack slot, but the underlying lir
-     * instruction already has an allocated concrete stack slot, so
-     * for verification to work correctly, it needs to be changed.
+     * Fixes value move created before any allocation has happened, we mainly care about stack
+     * allocator running - old value move still keeps the virtual stack slot, but the underlying lir
+     * instruction already has an allocated concrete stack slot, so for verification to work
+     * correctly, it needs to be changed.
      *
      * @param valueMove Old value move created before any (stack) allocation
      * @return Fixed value move
@@ -414,12 +414,11 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Iterate over every instruction after allocation save it to a set
-     * to see if speculative moves should be re-added or not and also
-     * track if variable has been defined before.
+     * Iterate over every instruction after allocation save it to a set to see if speculative moves
+     * should be re-added or not and also track if variable has been defined before.
      *
-     * @param lir              LIR
-     * @param preallocMap      Map of instructions before allocation
+     * @param lir LIR
+     * @param preallocMap Map of instructions before allocation
      * @param definedVariables Output map, set defined variables here
      * @return Set of instructions present after allocation
      */
@@ -447,13 +446,13 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Handle speculative moves that should be re-added back to the IR
-     * to keep verification information in-tact, based on instructions
-     * present after allocation and variables defined by them.
+     * Handle speculative moves that should be re-added back to the IR to keep verification
+     * information in-tact, based on instructions present after allocation and variables defined by
+     * them.
      *
-     * @param op                  Op that holds these speculatives
+     * @param op Op that holds these speculatives
      * @param presentInstructions Instructions present in the IR in form of a Map
-     * @param definedVariables    Variables already defined
+     * @param definedVariables Variables already defined
      * @return List of speculative moves that need to be added bakc
      */
     protected List<RAVInstruction.ValueMove> handleSpeculativeMoves(RAVInstruction.Op op, Set<LIRInstruction> presentInstructions, Map<RAVariable, RAVInstruction.Op> definedVariables) {
@@ -493,10 +492,12 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Create Register Verifier Instruction that was created by the {@link RegisterAllocationPhase register allocator}.
-     * Generally speaking, it's always a move instruction, other ones return null.
+     * Create Register Verifier Instruction that was created by the {@link RegisterAllocationPhase
+     * register allocator}. Generally speaking, it's always a move instruction, other ones return
+     * null.
      *
-     * @param instruction LIR Instruction newly created by {@link RegisterAllocationPhase register allocator}
+     * @param instruction LIR Instruction newly created by {@link RegisterAllocationPhase register
+     *            allocator}
      * @return Spill, Reload, Move or null if instruction is not a move
      */
     protected RAVInstruction.Base getRAVMoveInstruction(LIRInstruction instruction) {
@@ -536,14 +537,13 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Determines if instruction is a virtual {@link RAVInstruction.ValueMove move}, a virtual move is
-     * a move instruction that moves a real register value into a variable,
-     * which is something that will always get removed from the final allocated
-     * IR.
+     * Determines if instruction is a virtual {@link RAVInstruction.ValueMove move}, a virtual move
+     * is a move instruction that moves a real register value into a variable, which is something
+     * that will always get removed from the final allocated IR.
      *
      * <p>
-     * This information is important to the verification process and needs to
-     * be part of the Verifier IR.
+     * This information is important to the verification process and needs to be part of the
+     * Verifier IR.
      * </p>
      *
      * @param instruction LIR instruction we are looking at
@@ -560,12 +560,12 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     }
 
     /**
-     * Determines if a {@link RAVInstruction.ValueMove move} is speculative - it could potentially be
-     * removed, but hold important information to the verification process.
+     * Determines if a {@link RAVInstruction.ValueMove move} is speculative - it could potentially
+     * be removed, but hold important information to the verification process.
      *
      * <p>
-     * For example, this happens for a move between two variables and after
-     * allocation locations are equal, making the move redundant.
+     * For example, this happens for a move between two variables and after allocation locations are
+     * equal, making the move redundant.
      * </p>
      *
      * @param instruction {@link LIRInstruction instruction} we are looking at

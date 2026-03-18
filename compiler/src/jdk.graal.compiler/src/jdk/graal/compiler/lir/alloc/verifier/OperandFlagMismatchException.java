@@ -31,9 +31,9 @@ import jdk.vm.ci.meta.Value;
 import java.util.EnumSet;
 
 /**
- * Value used in instruction does not satisfy it's {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag operand flags},
- * for example if an operand is a stack slot, but should only
- * be a register.
+ * Value used in instruction does not satisfy it's
+ * {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag operand flags}, for example if an
+ * operand is a stack slot, but should only be a register.
  */
 @SuppressWarnings("serial")
 public class OperandFlagMismatchException extends RAVException {
@@ -43,11 +43,11 @@ public class OperandFlagMismatchException extends RAVException {
     public EnumSet<LIRInstruction.OperandFlag> flags;
 
     public OperandFlagMismatchException(RAVInstruction.Op op, BasicBlock<?> block, Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
-       super(getErrorMesage(op, block, value, flags));
-       this.instruction = op;
-       this.block = block;
-       this.value = value;
-       this.flags = flags;
+        super(getErrorMesage(op, block, value, flags));
+        this.instruction = op;
+        this.block = block;
+        this.value = value;
+        this.flags = flags;
     }
 
     static String getErrorMesage(RAVInstruction.Op op, BasicBlock<?> block, Value value, EnumSet<LIRInstruction.OperandFlag> flags) {

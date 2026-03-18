@@ -28,9 +28,8 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.lir.LIRInstruction;
 
 /**
- * Violation of the alive inputs occurred,
- * same location was marked as alive argument
- * as well as temp or output.
+ * Violation of the alive inputs occurred, same location was marked as alive argument as well as
+ * temp or output.
  */
 @SuppressWarnings("serial")
 public class AliveConstraintViolationException extends RAVException {
@@ -41,9 +40,9 @@ public class AliveConstraintViolationException extends RAVException {
      * Construct an AliveConstraintViolationException.
      *
      * @param instruction Instruction where violation occurred
-     * @param block       Block where violation occurred
-     * @param location    Location that is being shared
-     * @param asDest      Alive location was used as an output
+     * @param block Block where violation occurred
+     * @param location Location that is being shared
+     * @param asDest Alive location was used as an output
      */
     public AliveConstraintViolationException(LIRInstruction instruction, BasicBlock<?> block, RAValue location, boolean asDest) {
         super(AliveConstraintViolationException.getErrorMessage(instruction, block, location, asDest));

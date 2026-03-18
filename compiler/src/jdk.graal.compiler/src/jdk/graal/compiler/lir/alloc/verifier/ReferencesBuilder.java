@@ -45,16 +45,13 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 /**
- * Build references list for operations that can be
- * used to in-validate references that are not part
- * of it, to make sure GC-freed references are not
- * used further.
+ * Build references list for operations that can be used to in-validate references that are not part
+ * of it, to make sure GC-freed references are not used further.
  *
  * <p>
- * It uses the {@link LocationMarker} class that is used
- * in the {@link jdk.graal.compiler.lir.phases.FinalCodeAnalysisPhase} where the actual
- * set of references is built, we require this
- * information earlier.
+ * It uses the {@link LocationMarker} class that is used in the
+ * {@link jdk.graal.compiler.lir.phases.FinalCodeAnalysisPhase} where the actual set of references
+ * is built, we require this information earlier.
  * </p>
  */
 public class ReferencesBuilder {
@@ -150,8 +147,7 @@ public class ReferencesBuilder {
         }
 
         /**
-         * Set references to the operation, if it can be found in
-         * the pre-allocation map.
+         * Set references to the operation, if it can be found in the pre-allocation map.
          *
          * @param instruction LIR instruction that holds these references
          * @param info LIR frame state

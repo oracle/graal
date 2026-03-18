@@ -27,8 +27,7 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 
 /**
- * Default allocation state for all locations,
- * nothing was yet inserted.
+ * Default allocation state for all locations, nothing was yet inserted.
  */
 public class UnknownAllocationState extends AllocationState {
     /**
@@ -42,8 +41,8 @@ public class UnknownAllocationState extends AllocationState {
     }
 
     /**
-     * Meet state from predecessor, if both are unknown then unknown is returned,
-     * otherwise {@link ConflictedAllocationState conflict} occurs.
+     * Meet state from predecessor, if both are unknown then unknown is returned, otherwise
+     * {@link ConflictedAllocationState conflict} occurs.
      *
      * @param other Other state coming from a predecessor edge
      * @return {@link UnknownAllocationState Unknown} if both are, otherwise a conflict

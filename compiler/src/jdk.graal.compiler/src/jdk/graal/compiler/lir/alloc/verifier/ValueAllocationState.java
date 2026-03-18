@@ -31,8 +31,9 @@ import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Allocation state holding a single, concrete {@link Value} (wrapped with {@link RAValue}),
- * also accompanied by {@link RAVInstruction instruction} and {@link BasicBlock block} where it was created.
+ * Allocation state holding a single, concrete {@link Value} (wrapped with {@link RAValue}), also
+ * accompanied by {@link RAVInstruction instruction} and {@link BasicBlock block} where it was
+ * created.
  */
 public class ValueAllocationState extends AllocationState implements Cloneable {
     protected RAValue value;
@@ -65,9 +66,9 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
     }
 
     /**
-     * Create an illegal value allocation state, used
-     * as a substitute for {@link UnknownAllocationState unknown} when creating
-     * a {@link ConflictedAllocationState conflict}.
+     * Create an illegal value allocation state, used as a substitute for
+     * {@link UnknownAllocationState unknown} when creating a {@link ConflictedAllocationState
+     * conflict}.
      *
      * @return instance of {@link ValueAllocationState} holding {@link Value#ILLEGAL}.
      */
@@ -92,14 +93,15 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
     }
 
     /**
-     * Meet a state from predecessor block, if it's {@link ValueAllocationState}
-     * and contents are equal, then same state is returned, otherwise
-     * a {@link ConflictedAllocationState conflict} is created between said states.
+     * Meet a state from predecessor block, if it's {@link ValueAllocationState} and contents are
+     * equal, then same state is returned, otherwise a {@link ConflictedAllocationState conflict} is
+     * created between said states.
      *
      * @param other Other state coming from a predecessor edge
      * @param otherBlock Where the other state is coming from
      * @param currBlock Where the current state is coming from
-     * @return {@link ValueAllocationState} if their contents are equal, otherwise {@link ConflictedAllocationState}.
+     * @return {@link ValueAllocationState} if their contents are equal, otherwise
+     *         {@link ConflictedAllocationState}.
      */
     @Override
     public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> currBlock) {
@@ -118,7 +120,8 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
         }
 
         var otherValueAllocState = (ValueAllocationState) other;
-        if (!this.value.equals(otherValueAllocState.getRAValue())) { // Does not take kind into account.
+        if (!this.value.equals(otherValueAllocState.getRAValue())) {
+            // Does not take kind into account.
             return new ConflictedAllocationState(this, otherValueAllocState);
         }
 

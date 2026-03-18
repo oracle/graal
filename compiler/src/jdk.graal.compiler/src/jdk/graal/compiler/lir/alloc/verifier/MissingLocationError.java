@@ -36,8 +36,8 @@ public class MissingLocationError extends RAVError {
      * Construct a MissingLocationError.
      *
      * @param instruction Instruction where violation occurred
-     * @param block       Block where violation occurred
-     * @param variable    Variable before allocation, that has no location afterward
+     * @param block Block where violation occurred
+     * @param variable Variable before allocation, that has no location afterward
      */
     public MissingLocationError(LIRInstruction instruction, BasicBlock<?> block, RAValue variable) {
         super(MissingLocationError.getMessage(instruction, block, variable));

@@ -33,16 +33,16 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Mapping between a location and allocation state,
- * that stores one of these:
- * - {@link UnknownAllocationState unknown} - our null state, nothing was stored yet
- * - {@link ValueAllocationState value} - symbol that is stored at said location
- * - {@link ConflictedAllocationState conflicted} - set of Values that are supposed to be at same location
+ * Mapping between a location and allocation state, that stores one of these: -
+ * {@link UnknownAllocationState unknown} - our null state, nothing was stored yet -
+ * {@link ValueAllocationState value} - symbol that is stored at said location -
+ * {@link ConflictedAllocationState conflicted} - set of Values that are supposed to be at same
+ * location
  *
  * Conflicts are resolved by assigning new {@link ValueAllocationState value} to same location.
- * Otherwise, they cannot be used. {@link ValueAllocationState Value} can store register, stack slot,
- * constant, but most importantly variables used before allocation. These
- * are what we are checking with the verification process.
+ * Otherwise, they cannot be used. {@link ValueAllocationState Value} can store register, stack
+ * slot, constant, but most importantly variables used before allocation. These are what we are
+ * checking with the verification process.
  */
 public class AllocationStateMap {
     protected BasicBlock<?> block;
@@ -53,8 +53,7 @@ public class AllocationStateMap {
     protected Map<RAValue, AllocationState> internalMap;
 
     /**
-     * Register allocation config describing which registers
-     * can be used.
+     * Register allocation config describing which registers can be used.
      */
     protected RegisterAllocationConfig registerAllocationConfig;
 
@@ -87,10 +86,9 @@ public class AllocationStateMap {
     }
 
     /**
-     * Put a new state for location to the map,
-     * while checking if register can be allocated to.
+     * Put a new state for location to the map, while checking if register can be allocated to.
      *
-     * @param key   Location used
+     * @param key Location used
      * @param state State to store
      */
     public void put(RAValue key, AllocationState state) {
@@ -99,16 +97,15 @@ public class AllocationStateMap {
     }
 
     /**
-     * Put a new state for location to the map,
-     * without checking if the register can actually be used.
+     * Put a new state for location to the map, without checking if the register can actually be
+     * used.
      *
      * <p>
-     * This is useful for registers that are used by the ABI
-     * in the first label, but can actually never be changed,
-     * like rbp.
+     * This is useful for registers that are used by the ABI in the first label, but can actually
+     * never be changed, like rbp.
      * </p>
      *
-     * @param key   Location used
+     * @param key Location used
      * @param state State to store
      */
     public void putWithoutRegCheck(RAValue key, AllocationState state) {
@@ -118,7 +115,7 @@ public class AllocationStateMap {
     /**
      * Put a copied state to a location, used when merging.
      *
-     * @param key   Location used
+     * @param key Location used
      * @param state State to store
      */
     public void putClone(RAValue key, AllocationState state) {
@@ -149,8 +146,8 @@ public class AllocationStateMap {
     }
 
     /**
-     * Merge two maps together, source is generally
-     * the predecessor to the current block (this state map).
+     * Merge two maps together, source is generally the predecessor to the current block (this state
+     * map).
      *
      * @param source Predecessor merging to here
      * @return Was this map changed?
@@ -177,8 +174,8 @@ public class AllocationStateMap {
     }
 
     /**
-     * Check if register can be used by the register allocator.
-     * If not allowed, an exception is thrown.
+     * Check if register can be used by the register allocator. If not allowed, an exception is
+     * thrown.
      *
      * @param location Value that could be a register.
      */

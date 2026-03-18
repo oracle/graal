@@ -38,10 +38,9 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
- * Verification state a block is in, holds a mapping
- * between locations and their allocation states, which
- * can be unknown, value - it's contents or
- * conflicted - multiple values conflict with each other.
+ * Verification state a block is in, holds a mapping between locations and their allocation states,
+ * which can be unknown, value - it's contents or conflicted - multiple values conflict with each
+ * other.
  */
 public class BlockVerifierState {
     /**
@@ -50,8 +49,7 @@ public class BlockVerifierState {
     public AllocationStateMap values;
 
     /**
-     * Register allocation config we use to check if only
-     * allocatable registers are the ones used.
+     * Register allocation config we use to check if only allocatable registers are the ones used.
      */
     protected RegisterAllocationConfig registerAllocationConfig;
 
@@ -84,9 +82,8 @@ public class BlockVerifierState {
     }
 
     /**
-     * Merge states of block and it's predecessor. This process
-     * creates a new state based on contents of the predecessor,
-     * creating conflicts where current locations do not match.
+     * Merge states of block and it's predecessor. This process creates a new state based on
+     * contents of the predecessor, creating conflicts where current locations do not match.
      *
      * @param other Predecessor of this block
      * @return Was this state changed?
@@ -96,9 +93,9 @@ public class BlockVerifierState {
     }
 
     /**
-     * Check state values stored in LIRFrameState same way other operands,
-     * except we skip those where the state values are incorrectly stored,
-     * after stack allocation, because some values are no longer present.
+     * Check state values stored in LIRFrameState same way other operands, except we skip those
+     * where the state values are incorrectly stored, after stack allocation, because some values
+     * are no longer present.
      *
      * @param op Operation for which we are checking state values
      */
@@ -113,11 +110,11 @@ public class BlockVerifierState {
     }
 
     /**
-     * Verify the correspondence of original variables used in instructions
-     * are stored in the state of current locations.
+     * Verify the correspondence of original variables used in instructions are stored in the state
+     * of current locations.
      *
      * @param valuePairs Array of pairs of current location and original variable.
-     * @param op     Operation this input array of values belongs to
+     * @param op Operation this input array of values belongs to
      */
     protected void checkInputs(RAVInstruction.ValueArrayPair valuePairs, RAVInstruction.Op op) {
         // Check that incoming values are not unknown or conflicted - these only matter if used
@@ -127,18 +124,17 @@ public class BlockVerifierState {
     }
 
     /**
-     * Check that original variable matches symbol stored at
-     * the current location in the {@link AllocationStateMap}.
+     * Check that original variable matches symbol stored at the current location in the
+     * {@link AllocationStateMap}.
      *
      * <p>
-     * We also check that kinds match and possibly
-     * rematerialize variables at this point in the
+     * We also check that kinds match and possibly rematerialize variables at this point in the
      * state map.
      * </p>
      *
      * @param orig Original variable
      * @param curr Current location
-     * @param op   Operation where these are used
+     * @param op Operation where these are used
      */
     protected void checkOperand(RAValue orig, RAValue curr, RAVInstruction.Op op) {
         assert orig != null;
@@ -162,7 +158,8 @@ public class BlockVerifierState {
             // Skip when jump due to this case:
             // "rdx|QWORD[*] = MOVE input: rdx|QWORD[.+] moveKind: QWORD"
             // this move is inserted by the allocator and changes type
-            // of rdx from [.+] (compressed reference) (same as original variable) to [*] (invalid reference)
+            // of rdx from [.+] (compressed reference) (same as original variable)
+            // to [*] (invalid reference)
         }
 
         AllocationState state = this.values.get(curr);
@@ -251,11 +248,10 @@ public class BlockVerifierState {
      * Are kinds equal even when {@link jdk.graal.compiler.lir.CastValue cast value} is present?
      *
      * <p>
-     * We need to ignore the cast value because the currently stored
-     * value will not be cast.
+     * We need to ignore the cast value because the currently stored value will not be cast.
      * </p>
      *
-     * @param orig      Original variable
+     * @param orig Original variable
      * @param fromState Value stored in state of the current location
      * @return Are they equal?
      */
@@ -270,8 +266,8 @@ public class BlockVerifierState {
     }
 
     /**
-     * Check that all instruction arrays of pairs of original variable and current location
-     * check out to the state stored in for this block.
+     * Check that all instruction arrays of pairs of original variable and current location check
+     * out to the state stored in for this block.
      *
      * @param instruction Instruction we are checking
      */
@@ -304,8 +300,8 @@ public class BlockVerifierState {
     }
 
     /**
-     * Check if the destination of a move has the correct type to
-     * store the {@link ValueAllocationState value}.
+     * Check if the destination of a move has the correct type to store the
+     * {@link ValueAllocationState value}.
      *
      * @param move Move between locations, inserted by register allocator
      */
@@ -320,11 +316,10 @@ public class BlockVerifierState {
     }
 
     /**
-     * Check {@link jdk.vm.ci.code.BytecodeFrame frames}, before and
-     * after allocation, mainly checking that {@link LIRKind} is a
-     * reference when {@link JavaKind} is an Object and wise-versa,
-     * checking that {@link LIRKind} is not a reference when
-     * {@link JavaKind} is not an object.
+     * Check {@link jdk.vm.ci.code.BytecodeFrame frames}, before and after allocation, mainly
+     * checking that {@link LIRKind} is a reference when {@link JavaKind} is an Object and
+     * wise-versa, checking that {@link LIRKind} is not a reference when {@link JavaKind} is not an
+     * object.
      *
      * @param op Operation holding said frames
      * @throws RAVException when a violation occurs
@@ -368,8 +363,8 @@ public class BlockVerifierState {
     }
 
     /**
-     * Check if kinds in the {@link RAVInstruction.Op#temp temporary array}
-     * match before allocation original variables with after allocation concrete locations.
+     * Check if kinds in the {@link RAVInstruction.Op#temp temporary array} match before allocation
+     * original variables with after allocation concrete locations.
      *
      * @param op Instruction we update state from
      * @throws KindsMismatchException if a pair does not match
@@ -386,11 +381,9 @@ public class BlockVerifierState {
         }
     }
 
-
     /**
-     * Check if alive constraint is not being violated,
-     * when one location is supposed to be alive after instruction
-     * is complete, but is used either as an output or a generic input.
+     * Check if alive constraint is not being violated, when one location is supposed to be alive
+     * after instruction is complete, but is used either as an output or a generic input.
      *
      * @param instruction Instruction with alive inputs
      * @throws AliveConstraintViolationException throw when violation occurs
@@ -421,13 +414,12 @@ public class BlockVerifierState {
     }
 
     /**
-     * Make sure concrete current locations changed by the allocator
-     * are not violating set of {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag flags},
-     * which specify what type can they be. This is done on every
-     * array of pairs (dest, uses, alive, temp).
+     * Make sure concrete current locations changed by the allocator are not violating set of
+     * {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag flags}, which specify what type can
+     * they be. This is done on every array of pairs (dest, uses, alive, temp).
      *
      * @param valuePairs Value array pair we are verifying
-     * @param op     Instruction which holds this array, for tracing in exceptions
+     * @param op Instruction which holds this array, for tracing in exceptions
      * @throws OperandFlagMismatchException Operand is a wrong type based on OperandFlag set.
      */
     protected void checkOperandFlags(RAVInstruction.ValueArrayPair valuePairs, RAVInstruction.Op op) {
@@ -462,9 +454,9 @@ public class BlockVerifierState {
     }
 
     /**
-     * Update the current state based on outputs of this instruction.
-     * Setting contents of current location in {@link AllocationStateMap} to
-     * the symbol that was present before allocation was completed.
+     * Update the current state based on outputs of this instruction. Setting contents of current
+     * location in {@link AllocationStateMap} to the symbol that was present before allocation was
+     * completed.
      *
      * @param instruction Instruction we update state from
      */
@@ -485,10 +477,9 @@ public class BlockVerifierState {
     }
 
     /**
-     * Update the state using a generic operation,
-     * based on contents of its {@link RAVInstruction.Op#dests output array}, storing
-     * symbols pre-allocation to current locations after
-     * allocation.
+     * Update the state using a generic operation, based on contents of its
+     * {@link RAVInstruction.Op#dests output array}, storing symbols pre-allocation to current
+     * locations after allocation.
      *
      * @param op Operation we update state from
      */
@@ -517,7 +508,8 @@ public class BlockVerifierState {
 
             if (location.equals(variable)) {
                 // Only check register validity if it was changed by the register allocator
-                // for example: rbp is used as input to start block and forbidden to be used by the allocator
+                // for example: rbp is used as input to start block and forbidden to be used by the
+                // allocator
                 this.values.putWithoutRegCheck(location, new ValueAllocationState(variable, op, block));
             } else {
                 this.values.put(location, new ValueAllocationState(variable, op, block));
@@ -539,11 +531,14 @@ public class BlockVerifierState {
     }
 
     /**
-     * Update block state with a safe point list of live references deemed by the GC,
-     * any other references not included in said list are to be set as unknown so
-     * there's no freed pointer use.
+     * Update block state with a safe point list of live references deemed by the GC, any other
+     * references not included in said list are to be set as unknown so there's no freed pointer
+     * use.
+     *
      * <p>
-     * References need to be retrieved using {@link jdk.graal.compiler.lir.dfa.LocationMarker} classes.
+     * References need to be retrieved using {@link jdk.graal.compiler.lir.dfa.LocationMarker}
+     * classes.
+     * </p>
      *
      * @param op SafePoint we are using to remove old references
      */
@@ -580,9 +575,8 @@ public class BlockVerifierState {
     }
 
     /**
-     * Take list of callee saved registers and add them to the start
-     * block state with their own values as symbols in order to check
-     * that they were correctly retrieved at exit point.
+     * Take list of callee saved registers and add them to the start block state with their own
+     * values as symbols in order to check that they were correctly retrieved at exit point.
      */
     protected void updateCalleeSavedRegisters() {
         var registers = this.registerAllocationConfig.getRegisterConfig().getCalleeSaveRegisters();
@@ -599,9 +593,8 @@ public class BlockVerifierState {
     }
 
     /**
-     * At exit point, check that all callee saved registers were
-     * indeed correctly saved, by checking that the symbol stored
-     * in said registers is equal to the registers themselves.
+     * At exit point, check that all callee saved registers were indeed correctly saved, by checking
+     * that the symbol stored in said registers is equal to the registers themselves.
      *
      * @throws RAVException when callee saved register was not recovered
      */
@@ -626,10 +619,9 @@ public class BlockVerifierState {
     }
 
     /**
-     * Update state with a {@link RAVInstruction.ValueMove}, if locations is concrete,
-     * we set it to a variable/constant, if it's a variable to variable
-     * move, then all locations containing old variable need to be changed
-     * to the new variable.
+     * Update state with a {@link RAVInstruction.ValueMove}, if locations is concrete, we set it to
+     * a variable/constant, if it's a variable to variable move, then all locations containing old
+     * variable need to be changed to the new variable.
      *
      * @param valueMove move we update state from
      */
