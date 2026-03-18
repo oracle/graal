@@ -24,14 +24,10 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
-import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotSafepointOp;
-import jdk.graal.compiler.hotspot.amd64.AMD64HotSpotSafepointOp;
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
-import jdk.graal.compiler.lir.aarch64.AArch64Call;
-import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaKind;
@@ -331,14 +327,6 @@ public class RAVInstruction {
 
         public boolean isJump() {
             return lirInstruction instanceof StandardOp.JumpOp;
-        }
-
-        public boolean isCall() {
-            return lirInstruction instanceof AMD64Call.CallOp || lirInstruction instanceof AArch64Call.CallOp;
-        }
-
-        public boolean isSafePoint() {
-            return references != null && (lirInstruction instanceof AMD64HotSpotSafepointOp || lirInstruction instanceof AArch64HotSpotSafepointOp || isCall());
         }
 
         /**
