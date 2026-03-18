@@ -40,8 +40,8 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
     protected BasicBlock<?> block;
 
     public ValueAllocationState(RAValue raValue, RAVInstruction.Base source, BasicBlock<?> block) {
-        var value = raValue.getValue();
-        if (ValueUtil.isRegister(value) || LIRValueUtil.isVariable(value) || LIRValueUtil.isConstantValue(value) || LIRValueUtil.isStackSlotValue(value) || Value.ILLEGAL.equals(value)) {
+        var v = raValue.getValue();
+        if (ValueUtil.isRegister(v) || LIRValueUtil.isVariable(v) || LIRValueUtil.isConstantValue(v) || LIRValueUtil.isStackSlotValue(v) || Value.ILLEGAL.equals(v)) {
             // Here, we make sure that no new value class is used here, without consideration.
 
             // StackSlot, RegisterValue is present in start block in label as predefined argument
@@ -54,7 +54,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
             this.source = source;
             this.block = block;
         } else {
-            throw GraalError.shouldNotReachHere("Invalid type of value used " + value);
+            throw GraalError.shouldNotReachHere("Invalid type of value used " + v);
         }
     }
 
@@ -97,9 +97,12 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
      * a {@link ConflictedAllocationState conflict} is created between said states.
      *
      * @param other Other state coming from a predecessor edge
+     * @param otherBlock Where the other state is coming from
+     * @param currBlock Where the current state is coming from
      * @return {@link ValueAllocationState} if their contents are equal, otherwise {@link ConflictedAllocationState}.
      */
-    public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block) {
+    @Override
+    public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> currBlock) {
         if (other.isUnknown()) {
             // Unknown is coming from different predecessor where this location
             // is undefined, meaning this value is not always accessible in the successor

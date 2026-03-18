@@ -123,7 +123,7 @@ public class ReferencesBuilder {
          * and stack slots, where kind cannot be Illegal.
          *
          * <p>
-         * Take from {@link jdk.graal.compiler.lir.dfa.LocationMarkerPhase.Marker#shouldProcessValue}
+         * Take from jdk.graal.compiler.lir.dfa.LocationMarkerPhase.Marker#shouldProcessValue
          * </p>
          *
          * @param operand Value to be processed

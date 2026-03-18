@@ -116,13 +116,13 @@ public class BlockVerifierState {
      * Verify the correspondence of original variables used in instructions
      * are stored in the state of current locations.
      *
-     * @param values Array of pairs of current location and original variable.
+     * @param valuePairs Array of pairs of current location and original variable.
      * @param op     Operation this input array of values belongs to
      */
-    protected void checkInputs(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op) {
+    protected void checkInputs(RAVInstruction.ValueArrayPair valuePairs, RAVInstruction.Op op) {
         // Check that incoming values are not unknown or conflicted - these only matter if used
-        for (int idx = 0; idx < values.count; idx++) {
-            checkOperand(values.orig[idx], values.curr[idx], op);
+        for (int idx = 0; idx < valuePairs.count; idx++) {
+            checkOperand(valuePairs.orig[idx], valuePairs.curr[idx], op);
         }
     }
 
@@ -305,7 +305,7 @@ public class BlockVerifierState {
 
     /**
      * Check if the destination of a move has the correct type to
-     * store the {@link ValueAllocationState value}
+     * store the {@link ValueAllocationState value}.
      *
      * @param move Move between locations, inserted by register allocator
      */
@@ -422,22 +422,22 @@ public class BlockVerifierState {
 
     /**
      * Make sure concrete current locations changed by the allocator
-     * are not violating set of {@link LIRInstruction.OperandFlag flags},
+     * are not violating set of {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag flags},
      * which specify what type can they be. This is done on every
      * array of pairs (dest, uses, alive, temp).
      *
-     * @param values Value array pair we are verifying
+     * @param valuePairs Value array pair we are verifying
      * @param op     Instruction which holds this array, for tracing in exceptions
      * @throws OperandFlagMismatchException Operand is a wrong type based on OperandFlag set.
      */
-    protected void checkOperandFlags(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op) {
-        for (int i = 0; i < values.count; i++) {
-            var curr = values.curr[i];
+    protected void checkOperandFlags(RAVInstruction.ValueArrayPair valuePairs, RAVInstruction.Op op) {
+        for (int i = 0; i < valuePairs.count; i++) {
+            var curr = valuePairs.curr[i];
             if (curr == null) {
                 continue;
             }
 
-            var flags = values.operandFlags.get(i);
+            var flags = valuePairs.operandFlags.get(i);
             var currValue = curr.getValue();
             if (LIRValueUtil.isStackSlotValue(currValue)) {
                 if (flags.contains(LIRInstruction.OperandFlag.STACK)) {

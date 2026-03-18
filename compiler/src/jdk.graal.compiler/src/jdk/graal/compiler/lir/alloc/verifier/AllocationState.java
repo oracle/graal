@@ -65,6 +65,7 @@ public abstract class AllocationState {
      *
      * @return Newly copied state
      */
+    @Override
     public abstract AllocationState clone();
 
     /**

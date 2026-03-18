@@ -28,14 +28,12 @@ import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotSafepointOp;
 import jdk.graal.compiler.hotspot.amd64.AMD64HotSpotSafepointOp;
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.Value;
@@ -283,18 +281,18 @@ public class RAVInstruction {
          * Count number of values stored.
          */
         private final class GetCountProcedure implements InstructionValueProcedure {
-            private int count = 0;
+            private int valueCount = 0;
 
             public int getCount() {
-                int count = this.count;
+                int count = this.valueCount;
                 // Reset the count and go again for different argument type
-                this.count = 0;
+                this.valueCount = 0;
                 return count;
             }
 
             @Override
             public Value doValue(LIRInstruction instruction, Value value, LIRInstruction.OperandMode mode, EnumSet<LIRInstruction.OperandFlag> flags) {
-                count++;
+                valueCount++;
                 return value;
             }
         }
@@ -392,6 +390,7 @@ public class RAVInstruction {
             this.to = RAValue.create(to);
         }
 
+        @Override
         public String toString() {
             return to.toString() + " = MOVE " + from.toString();
         }
@@ -410,6 +409,7 @@ public class RAVInstruction {
             this.to = RAValue.create(to);
         }
 
+        @Override
         public String toString() {
             return to.toString() + " = REGMOVE " + from.toString();
         }
@@ -439,6 +439,7 @@ public class RAVInstruction {
             this.backupSlot = RAValue.create(backupSlot);
         }
 
+        @Override
         public String toString() {
             return to.toString() + " = STACKMOVE " + from.toString();
         }
@@ -457,6 +458,7 @@ public class RAVInstruction {
             this.to = RAValue.create(to);
         }
 
+        @Override
         public String toString() {
             return to.toString() + " = RELOAD " + from.toString();
         }
@@ -475,6 +477,7 @@ public class RAVInstruction {
             this.to = RAValue.create(to);
         }
 
+        @Override
         public String toString() {
             return to.toString() + " = SPILL " + from.toString();
         }
@@ -498,6 +501,7 @@ public class RAVInstruction {
             this.location = RAValue.create(location);
         }
 
+        @Override
         public String toString() {
             return getLocation().toString() + " = VIRTMOVE " + variableOrConstant.toString();
         }

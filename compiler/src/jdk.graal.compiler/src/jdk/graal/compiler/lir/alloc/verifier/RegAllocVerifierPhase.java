@@ -64,7 +64,7 @@ import java.util.Set;
  * the actual allocator and validates that order of spills, reloads
  * and moves is correct and that variables before allocation
  * are actually stored in current locations chosen by the allocator.
- *
+ * <p>
  * Needs to extend RegisterAllocationPhase to not throw an exception.
  */
 public class RegAllocVerifierPhase extends RegisterAllocationPhase {
@@ -309,9 +309,10 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
      *
      * @param lir         LIR
      * @param preallocMap Pre-allocation map to keep track of virtual values
+     * @param _ctx        Context of the allocation, kept here so tests can access this value here
      * @return Verifier IR
      */
-    protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext context) {
+    protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext _ctx) {
         Map<RAVariable, RAVInstruction.Op> definedVariables = new EconomicHashMap<>();
         var presentInstructions = preprocessAllocatedInstructions(lir, preallocMap, definedVariables);
 
