@@ -234,8 +234,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Change a register that is only used once as output, so that state of
-     * it is {@link jdk.graal.compiler.lir.alloc.verifier.UnknownAllocationState unknown}.
+     * Change a register that is only used once as output, so that state of it is
+     * {@link jdk.graal.compiler.lir.alloc.verifier.UnknownAllocationState unknown}.
      */
     class ForceUnknownStateInRegister extends RAVPhaseWrapper {
         protected RAVariable variable;
@@ -877,8 +877,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
         assertException(InvalidRegisterUsedException.class);
         var iruException = (InvalidRegisterUsedException) exception;
-        Assert.assertEquals(iruException.register, disallowedRegPhase.ignoredReg); // Used forbidden
-                                                                                   // register
+        // Used forbidden register
+        Assert.assertEquals(iruException.register, disallowedRegPhase.ignoredReg);
     }
 
     @Test
