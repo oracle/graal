@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.runtime;
 
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -47,6 +48,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.Assumption;
@@ -357,6 +359,11 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     @Override
     public boolean onStoreCache(Object runtimeData, Path targetPath, long cancelledWord) {
         return ((EngineData) runtimeData).onStoreCache(targetPath, cancelledWord);
+    }
+
+    @Override
+    public ByteBuffer persistCache(Object runtimeData, Engine.CancellationCallback callback) {
+        return ((EngineData) runtimeData).persistCache(callback);
     }
 
     @Override

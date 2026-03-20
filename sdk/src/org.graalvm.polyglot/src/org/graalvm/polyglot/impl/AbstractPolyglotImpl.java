@@ -55,6 +55,7 @@ import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -853,6 +854,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract void onEngineCollected(Object engineReceiver);
 
         public abstract boolean storeCache(Object engineReceiver, Path targetFile, long cancelledWord);
+
+        public abstract ByteBuffer persistCache(Object engineReceiver, Engine.CancellationCallback callback);
 
     }
 

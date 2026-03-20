@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.runtime;
 
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.function.Function;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.TruffleLogger;
 
@@ -58,6 +60,11 @@ public interface EngineCacheSupport extends OptimizedRuntimeServiceProvider {
 
     @SuppressWarnings("unused")
     default boolean onStoreCache(EngineData e, Path path, long cancelledWord) {
+        throw new UnsupportedOperationException("Engine persist ist not yet supported on this JDK. Please update to resolve this problem.");
+    }
+
+    @SuppressWarnings("unused")
+    default ByteBuffer persistCache(EngineData e, Engine.CancellationCallback callback) {
         throw new UnsupportedOperationException("Engine persist ist not yet supported on this JDK. Please update to resolve this problem.");
     }
 

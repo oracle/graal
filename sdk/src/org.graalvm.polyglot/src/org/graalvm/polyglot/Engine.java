@@ -56,6 +56,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -322,6 +323,7 @@ public final class Engine implements AutoCloseable {
      * Stores the auxiliary engine cache to the targetFile without cancellation.
      *
      * @see #storeCache(Path, WordPointer)
+     * @see #persistCache(CancellationCallback)
      * @throws UnsupportedOperationException if this engine or the host virtual machine does not
      *             support storing the cache.
      * @since 25.0
@@ -386,6 +388,33 @@ public final class Engine implements AutoCloseable {
      */
     public boolean storeCache(Path targetFile, WordPointer cancelledWord) throws CancellationException, UnsupportedOperationException {
         return dispatch.storeCache(receiver, targetFile, cancelledWord.rawValue());
+    }
+
+    /**
+     * Persists the auxiliary engine cache into an in-memory buffer. The option
+     * <code>engine.CacheStoreEnabled</code> must be set to <code>true</code> to use this feature.
+     * The returned buffer contains the cache image bytes and can be written to a file by the
+     * caller.
+     * <p>
+     * Note that this feature is experimental and only supported on native-image hosts with
+     * Truffle's enterprise extensions.
+     * <p>
+     * If {@code callback} is non-null, it is polled periodically to request cancellation.
+     * Cancellation support during the low-level auxiliary image persistence phase is only
+     * available on hosts that support it; otherwise callback cancellation is limited to the
+     * compilation-preparation phase. Implementations that cannot support the callback semantics may
+     * throw {@link UnsupportedOperationException}.
+     *
+     * @param callback callback used to request cancellation, or {@code null} for no cancellation
+     * @return a buffer containing the persisted cache image, or {@code null} if no image was
+     *         produced, for example because the configured maximum image size was exceeded
+     * @throws CancellationException if the persist operation was cancelled via the callback
+     * @throws UnsupportedOperationException if this engine or host virtual machine does not support
+     *             in-memory cache persistence
+     * @since 25.1
+     */
+    public ByteBuffer persistCache(CancellationCallback callback) {
+        return dispatch.persistCache(receiver, callback);
     }
 
     /**
@@ -2198,5 +2227,24 @@ public final class Engine implements AutoCloseable {
                 dispatch.onContextCollected(target);
             }
         }
+    }
+
+    /**
+     * A callback that is invoked repeatedly while persisting the auxiliary engine cache.
+     * <p>
+     * The callback may be polled during compilation preparation. Some hosts may also support
+     * low-level auxiliary image persistence cancellation for host-specific callback
+     * implementations with additional runtime constraints.
+     *
+     * @since 25.1
+     */
+    @FunctionalInterface
+    public interface CancellationCallback {
+
+        /**
+         * @return whether auxiliary engine cache persistence should be cancelled.
+         * @since 25.1
+         */
+        boolean shouldCancel();
     }
 }

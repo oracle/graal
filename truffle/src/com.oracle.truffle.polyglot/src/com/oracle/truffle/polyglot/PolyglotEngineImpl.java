@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1259,19 +1259,33 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
 
         synchronized (this.lock) {
-            if (closingThread != null || closed) {
-                throw new IllegalStateException("The engine is already closed and cannot be cancelled or persisted.");
-            }
-            if (!storeEngine) {
-                throw new IllegalStateException(
-                                "In order to store the cache the option 'engine.CacheStoreEnabled' must be set to 'true'.");
-            }
-            List<PolyglotContextImpl> localContexts = collectAliveContexts();
-            if (!localContexts.isEmpty()) {
-                throw new IllegalStateException("There are still alive contexts that need to be closed or cancelled before the engine can be persisted.");
-            }
-
+            validateStoreCacheState();
             return RUNTIME.onStoreCache(this.runtimeData, targetPath, cancelledWord);
+        }
+    }
+
+    ByteBuffer persistCache(Engine.CancellationCallback callback) {
+        if (!TruffleOptions.AOT) {
+            throw new UnsupportedOperationException("Persisting the engine cache is only supported on native-image hosts.");
+        }
+
+        synchronized (this.lock) {
+            validateStoreCacheState();
+            return RUNTIME.persistCache(this.runtimeData, callback);
+        }
+    }
+
+    private void validateStoreCacheState() {
+        if (closingThread != null || closed) {
+            throw new IllegalStateException("The engine is already closed and cannot be cancelled or persisted.");
+        }
+        if (!storeEngine) {
+            throw new IllegalStateException(
+                            "In order to store the cache the option 'engine.CacheStoreEnabled' must be set to 'true'.");
+        }
+        List<PolyglotContextImpl> localContexts = collectAliveContexts();
+        if (!localContexts.isEmpty()) {
+            throw new IllegalStateException("There are still alive contexts that need to be closed or cancelled before the engine can be persisted.");
         }
     }
 

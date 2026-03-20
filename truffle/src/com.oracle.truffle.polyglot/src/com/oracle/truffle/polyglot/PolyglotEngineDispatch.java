@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.Reference;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -333,6 +334,12 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     public boolean storeCache(Object engineReceiver, Path targetFile, long cancelledWord) {
         PolyglotEngineImpl engine = ((PolyglotEngineImpl) engineReceiver);
         return engine.storeCache(targetFile, cancelledWord);
+    }
+
+    @Override
+    public ByteBuffer persistCache(Object engineReceiver, Engine.CancellationCallback callback) {
+        PolyglotEngineImpl engine = ((PolyglotEngineImpl) engineReceiver);
+        return engine.persistCache(callback);
     }
 
 }
