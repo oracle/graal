@@ -68,6 +68,10 @@ public class ReferencesBuilder {
 
         @Override
         public void put(Value v) {
+            if (v.getValueKind(LIRKind.class).isValue()) {
+                return;
+            }
+
             references.add(RAValue.create(v));
         }
 

@@ -287,21 +287,57 @@ public class BlockVerifierState {
 
             checkBytecodeFrames(op);
 
-            // We do not check the list of references if the state map
-            // actually has a reference inside it for said location,
-            // because there seems to be more cases of that simply
-            // not being true, either backup slots in stack moves
-            // are not yet defined / have different lir kind
-            // or the not marked as a reference - usually related to
-            // rbp in stack.
+            if (op.references != null) {
+                checkReferences(op);
+            }
         } else if (instruction instanceof RAVInstruction.LocationMove move) {
             checkMoveKinds(move);
         }
     }
 
     /**
-     * Check if the destination of a move has the correct type to store the
-     * {@link ValueAllocationState value}.
+     * Iterate over references collected by ReferenceBuilder and check if said locations actually
+     * contain a reference in the state map.
+     *
+     * @param op Operation containing references for GC
+     */
+    protected void checkReferences(RAVInstruction.Op op) {
+        // ReferenceSet makes sure that contents are references only
+        for (RAValue reference : op.references) {
+            var state = values.get(reference);
+            if (state.isConflicted()) {
+                var confState = (ConflictedAllocationState) state;
+                for (var valAllocState : confState.getConflictedStates()) {
+                    if (valAllocState.isIllegal()) {
+                        continue; // Undefined in branch
+                    }
+
+                    if (!valAllocState.getRAValue().getLIRKind().isValue()) {
+                        continue; // Is a reference
+                    }
+
+                    throw new MissingReferenceException(reference, state, op, block);
+                }
+
+                continue;
+            }
+
+            if (state.isUnknown()) {
+                throw new MissingReferenceException(reference, state, op, block);
+            }
+
+            var valAllocState = (ValueAllocationState) state;
+            if (!valAllocState.getRAValue().getLIRKind().isValue()) {
+                continue; // Is a reference
+            }
+
+            throw new MissingReferenceException(reference, state, op, block);
+        }
+    }
+
+    /**
+     * Check that a move destination has the correct kind to store the {@link ValueAllocationState
+     * value}.
      *
      * @param move Move between locations, inserted by register allocator
      */

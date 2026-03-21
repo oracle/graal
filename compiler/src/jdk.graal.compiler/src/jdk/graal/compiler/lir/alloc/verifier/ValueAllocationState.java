@@ -76,6 +76,10 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
         return new ValueAllocationState(new RAValue(Value.ILLEGAL), null, block);
     }
 
+    public boolean isIllegal() {
+        return value.isIllegal();
+    }
+
     public Value getValue() {
         return value.getValue();
     }
