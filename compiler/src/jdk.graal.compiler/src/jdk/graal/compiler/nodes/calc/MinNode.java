@@ -59,6 +59,9 @@ public class MinNode extends MinMaxNode<Min> {
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
+        if (x == y) {
+            return x;
+        }
         BinaryOp<Min> op = ArithmeticOpTable.forStamp(x.stamp(view)).getMin();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);

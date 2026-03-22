@@ -72,6 +72,9 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         if (ret != this) {
             return ret;
         }
+        if (forX == forY) {
+            return forX;
+        }
 
         NodeView view = NodeView.from(tool);
         if (forX.isConstant()) {
