@@ -233,17 +233,23 @@ public class BlockVerifierState {
     /**
      * Are kinds equal even when {@link LIRKindWithCast casting} is present?
      *
-     * @param origKind Original variable kind
-     * @param currKind Current location kind
+     * @param origInputKind Original variable kind
+     * @param currInputKind Current location kind
      * @return Are they equal?
      */
-    protected boolean kindsEqual(ValueKind<?> origKind, ValueKind<?> currKind) {
-        if (origKind instanceof LIRKindWithCast castKind) {
+    protected boolean kindsEqual(ValueKind<?> origInputKind, ValueKind<?> currInputKind) {
+        ValueKind<?> origKind;
+        if (origInputKind instanceof LIRKindWithCast castKind) {
             origKind = castKind.getActualKind();
+        } else {
+            origKind = origInputKind;
         }
 
-        if (currKind instanceof LIRKindWithCast castKind) {
+        ValueKind<?> currKind;
+        if (currInputKind instanceof LIRKindWithCast castKind) {
             currKind = castKind.getActualKind();
+        } else {
+            currKind = currInputKind;
         }
 
         return currKind.equals(origKind);
@@ -510,8 +516,8 @@ public class BlockVerifierState {
 
     /**
      * Make sure concrete current locations changed by the allocator are not violating set of
-     * {@link LIRInstruction.OperandFlag flags}, which specify what type can they be. This is done
-     * on every array of pairs (dest, uses, alive, temp).
+     * {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag flags}, which specify what type can
+     * they be. This is done on every array of pairs (dest, uses, alive, temp).
      *
      * @param valuePairs Value array pair we are verifying
      * @param op Instruction which holds this array, for tracing in exceptions
