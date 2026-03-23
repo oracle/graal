@@ -70,11 +70,11 @@ import java.util.Set;
  */
 public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     public static class Options {
-        @Option(help = "Verify that register allocation is indeed, correct", type = OptionType.Debug) public static final OptionKey<Boolean> EnableRAVerifier = new OptionKey<>(false);
+        @Option(help = "Verify that register allocation is indeed, correct", type = OptionType.Debug) public static final OptionKey<Boolean> EnableRAVerifier = new OptionKey<>(true);
 
         @Option(help = "Verify output of stack allocator with register allocator", type = OptionType.Debug) public static final OptionKey<Boolean> VerifyStackAllocator = new OptionKey<>(true);
 
-        @Option(help = "Collect reference map information to verify", type = OptionType.Debug) public static final OptionKey<Boolean> CollectReferences = new OptionKey<>(false);
+        @Option(help = "Collect reference map information to verify", type = OptionType.Debug) public static final OptionKey<Boolean> CollectReferences = new OptionKey<>(true);
     }
 
     /**
