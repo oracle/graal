@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,6 +64,7 @@ import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
+import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
@@ -207,7 +208,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testPoly1305() throws Exception {
-        Assume.assumeTrue("Poly1305 not supported", runtime().getVMConfig().poly1305ProcessBlocks != 0L);
+        Assume.assumeTrue("Poly1305 not supported", Poly1305ProcessBlocksNode.isSupported(getTarget().arch));
         testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
                         "ChaCha20", 256, "ChaCha20-Poly1305/None/NoPadding");
         testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),

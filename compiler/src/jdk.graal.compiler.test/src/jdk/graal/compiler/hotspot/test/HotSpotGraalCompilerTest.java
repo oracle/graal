@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,10 +76,14 @@ public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
         return compileAndInstallSubstitution(getMetaAccess().lookupJavaMethod(getMethod(c, methodName)));
     }
 
-    protected InstalledCode compileAndInstallSubstitution(ResolvedJavaMethod method) {
+    protected final StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method) {
         CompilationIdentifier compilationId = runtime().getHostBackend().getCompilationIdentifier(method);
         OptionValues options = getInitialOptions();
-        StructuredGraph graph = getIntrinsicGraph(method, compilationId, getDebugContext(options), AllowAssumptions.YES, null);
+        return getIntrinsicGraph(method, compilationId, getDebugContext(options), AllowAssumptions.YES, null);
+    }
+
+    protected InstalledCode compileAndInstallSubstitution(ResolvedJavaMethod method) {
+        StructuredGraph graph = getIntrinsicGraph(method);
         if (graph != null) {
             return getCode(method, graph, true, true, graph.getOptions());
         }

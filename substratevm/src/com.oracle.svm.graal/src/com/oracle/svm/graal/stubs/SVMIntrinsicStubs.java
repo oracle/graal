@@ -60,6 +60,7 @@ import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
+import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
@@ -94,6 +95,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
                 GHASHProcessBlocksNode.class,
                 IndexOfZeroNode.class,
                 MD5Node.class,
+                Poly1305ProcessBlocksNode.class,
                 SHA1Node.class,
                 SHA256Node.class,
                 SHA3Node.class,

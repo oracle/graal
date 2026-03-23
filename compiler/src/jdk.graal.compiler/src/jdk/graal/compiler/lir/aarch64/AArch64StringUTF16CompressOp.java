@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6641-L6651",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/fe57c1c22de5cad453d507558fafe224874fb212/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6647-L6657",
           sha1 = "857dc6f9a492da6c8e20afb2139ae393efd228ac")
 // @formatter:on
 @Opcode("AArch64_STRING_COMPRESS")

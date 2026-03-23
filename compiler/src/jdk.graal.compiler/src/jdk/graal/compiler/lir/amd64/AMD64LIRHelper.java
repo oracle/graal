@@ -29,7 +29,6 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -57,6 +56,13 @@ public final class AMD64LIRHelper {
         return temps;
     }
 
+    /**
+     * Records a RIP-relative patched reference to a data-section constant.
+     * <p>
+     * This helper should be used at the instruction emission site that actually needs the data
+     * reference. Avoid storing the returned address in a local variable and using it for a later
+     * emitted instruction later than the immediately following instruction.
+     */
     protected static AMD64Address recordExternalAddress(CompilationResultBuilder crb, ArrayDataPointerConstant ptr) {
         return (AMD64Address) crb.recordDataReferenceInCode(ptr);
     }

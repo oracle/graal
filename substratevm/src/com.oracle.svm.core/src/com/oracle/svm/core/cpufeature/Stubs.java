@@ -67,6 +67,7 @@ import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
+import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -110,6 +111,9 @@ public final class Stubs {
             }
             if (Base64DecodeBlockNode.class.equals(klass)) {
                 return Base64DecodeBlockNode.minFeaturesAMD64();
+            }
+            if (Poly1305ProcessBlocksNode.class.equals(klass)) {
+                return Poly1305ProcessBlocksNode.maxFeaturesAMD64();
             }
             if (BigIntegerMultiplyToLenNode.class.equals(klass)) {
                 return BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64;

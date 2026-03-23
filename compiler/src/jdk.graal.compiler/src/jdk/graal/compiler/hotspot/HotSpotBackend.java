@@ -182,9 +182,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor GALOIS_COUNTER_MODE_CRYPT = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_galoisCounterMode_AESCrypt", int.class,
                     WordBase.class, int.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class);
 
-    public static final HotSpotForeignCallDescriptor POLY1305_PROCESSBLOCKS = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_poly1305_processBlocks", int.class,
-                    WordBase.class, int.class, WordBase.class, WordBase.class);
-
     public static final HotSpotForeignCallDescriptor CHACHA20Block = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "_chacha20Block", int.class,
                     WordBase.class, WordBase.class);
 

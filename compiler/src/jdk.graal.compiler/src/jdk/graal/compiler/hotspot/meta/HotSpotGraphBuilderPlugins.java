@@ -43,7 +43,6 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_BARRETT_REDUCE;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_INVERSE_NTT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT_MULT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.POLY1305_PROCESSBLOCKS;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START;
@@ -291,7 +290,6 @@ public class HotSpotGraphBuilderPlugins {
                 registerReferencePlugins(invocationPlugins);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config);
-                registerPoly1305Plugins(invocationPlugins, config);
                 registerChaCha20Plugins(invocationPlugins, config);
                 registerP256Plugins(invocationPlugins, config);
                 registerDualPivotQuicksortPlugins(invocationPlugins, config, target.arch);
@@ -1457,34 +1455,6 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean isApplicable(Architecture arch) {
                 return config.stubKyberBarrettReduce != 0L;
-            }
-        });
-    }
-
-    private static void registerPoly1305Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
-        Registration r = new Registration(plugins, "com.sun.crypto.provider.Poly1305");
-        r.register(new ConditionalInvocationPlugin("processMultipleBlocks", Receiver.class, byte[].class, int.class, int.class, long[].class, long[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input, ValueNode offset, ValueNode length, ValueNode aLimbs,
-                            ValueNode rLimbs) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    receiver.get(true);
-                    ValueNode inputNotNull = b.nullCheckedValue(input);
-                    ValueNode aLimbsNotNull = b.nullCheckedValue(aLimbs);
-                    ValueNode rLimbsNotNull = b.nullCheckedValue(rLimbs);
-
-                    ValueNode inputStart = helper.arrayElementPointer(inputNotNull, JavaKind.Byte, offset);
-                    ValueNode aLimbsStart = helper.arrayStart(aLimbsNotNull, JavaKind.Long);
-                    ValueNode rLimbsStart = helper.arrayStart(rLimbsNotNull, JavaKind.Long);
-
-                    b.add(new ForeignCallNode(POLY1305_PROCESSBLOCKS, inputStart, length, aLimbsStart, rLimbsStart));
-                }
-                return true;
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.poly1305ProcessBlocks != 0L;
             }
         });
     }

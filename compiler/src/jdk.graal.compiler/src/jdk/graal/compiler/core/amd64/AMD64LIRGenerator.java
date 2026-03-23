@@ -143,6 +143,7 @@ import jdk.graal.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.MembarOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.StackLeaOp;
 import jdk.graal.compiler.lir.amd64.AMD64PauseOp;
+import jdk.graal.compiler.lir.amd64.AMD64Poly1305ProcessBlocksOp;
 import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import jdk.graal.compiler.lir.amd64.AMD64SHA1Op;
 import jdk.graal.compiler.lir.amd64.AMD64SHA256AVX2Op;
@@ -1113,6 +1114,22 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public void emitGHASHProcessBlocks(EnumSet<?> runtimeCheckedCPUFeatures, Value state, Value hashSubkey, Value data, Value blocks) {
         append(new AMD64GHASHProcessBlocksOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data),
                         asAllocatable(blocks)));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void emitPoly1305ProcessBlocks(EnumSet<?> runtimeCheckedCPUFeatures, Value input, Value length, Value accumulator, Value r) {
+        RegisterValue rInput = rdi.asValue(input.getValueKind());
+        RegisterValue rLength = rbx.asValue(length.getValueKind());
+        RegisterValue rAccumulator = rcx.asValue(accumulator.getValueKind());
+        RegisterValue rR = r8.asValue(r.getValueKind());
+
+        emitMove(rInput, input);
+        emitMove(rLength, length);
+        emitMove(rAccumulator, accumulator);
+        emitMove(rR, r);
+
+        append(new AMD64Poly1305ProcessBlocksOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, rInput, rLength, rAccumulator, rR));
     }
 
     @Override
