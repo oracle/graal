@@ -71,6 +71,8 @@ public class RegAllocVerifier {
      */
     protected ConflictResolver constantMaterializationConflictResolver;
 
+    protected VariableSynonymMap synonymMap;
+
     public RegAllocVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
         this.registerAllocationConfig = registerAllocationConfig;
@@ -82,6 +84,8 @@ public class RegAllocVerifier {
         this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
 
         this.constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver();
+
+        this.synonymMap = new VariableSynonymMap();
     }
 
     /**
@@ -131,7 +135,7 @@ public class RegAllocVerifier {
     }
 
     protected BlockVerifierState createNewBlockState(BasicBlock<?> block) {
-        return new BlockVerifierState(block, registerAllocationConfig, constantMaterializationConflictResolver);
+        return new BlockVerifierState(block, registerAllocationConfig, constantMaterializationConflictResolver, synonymMap);
     }
 
     /**

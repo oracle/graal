@@ -66,10 +66,13 @@ public class BlockVerifierState {
      */
     protected BasicBlock<?> block;
 
-    public BlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, ConflictResolver constantConflictResolver) {
+    protected VariableSynonymMap synonymMap;
+
+    public BlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, ConflictResolver constantConflictResolver, VariableSynonymMap synonymMap) {
         this.values = new AllocationStateMap(block, registerAllocationConfig);
         this.registerAllocationConfig = registerAllocationConfig;
         this.conflictConstantResolver = constantConflictResolver;
+        this.synonymMap = synonymMap;
         this.block = block;
     }
 
@@ -77,6 +80,7 @@ public class BlockVerifierState {
         this.registerAllocationConfig = other.registerAllocationConfig;
         this.conflictConstantResolver = other.conflictConstantResolver;
         this.values = new AllocationStateMap(block, other.values);
+        this.synonymMap = other.synonymMap;
         this.block = block;
     }
 
@@ -209,6 +213,10 @@ public class BlockVerifierState {
                         this.values.put(curr, resolvedState);
                         return;
                     }
+                }
+
+                if (orig.isVariable() && valAllocState.value.isVariable() && synonymMap.isSynonymOf(orig.asVariable(), valAllocState.value.asVariable())) {
+                    return; // Resolved!
                 }
 
                 throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
@@ -747,6 +755,10 @@ public class BlockVerifierState {
             var locations = this.values.getValueLocations(valueMove.variableOrConstant);
             for (var location : locations) {
                 this.values.put(location, new ValueAllocationState(valueMove.getLocation(), valueMove, block));
+            }
+
+            if (valueMove.variableOrConstant.isVariable()) {
+                synonymMap.addSynonym(valueMove.variableOrConstant.asVariable(), valueMove.getLocation().asVariable());
             }
         } else {
             this.values.put(valueMove.getLocation(), new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
