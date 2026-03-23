@@ -275,8 +275,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
             if (debugCtx.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {
                 var debugPath = debugCtx.getDumpPath(".rav.txt", false);
 
-                try {
-                    PrintStream output = new PrintStream(debugPath);
+                try (PrintStream output = new PrintStream(debugPath)) {
                     output.println("Register Allocation Verification failure:");
                     output.println(e.getMessage());
                     output.println();

@@ -29,8 +29,11 @@ import jdk.graal.compiler.core.common.LIRKindWithCast;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
+import jdk.graal.compiler.lir.dfa.LocationMarker;
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
@@ -150,16 +153,15 @@ public class BlockVerifierState {
             throw new MissingLocationError(op.lirInstruction, block, orig);
         }
 
-        if (!kindsEqual(orig, curr)) {
-            if (!op.isJump()) {
-                throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
-            }
+        ValueKind<?> currKind = curr.getValue().getValueKind();
+        if (values.castMap.containsKey(curr)) {
+            // The current location might have been cast by a previous move
+            // see isMoveKindChange comment
+            currKind = values.castMap.get(curr);
+        }
 
-            // Skip when jump due to this case:
-            // "rdx|QWORD[*] = MOVE input: rdx|QWORD[.+] moveKind: QWORD"
-            // this move is inserted by the allocator and changes type
-            // of rdx from [.+] (compressed reference) (same as original variable)
-            // to [*] (invalid reference)
+        if (!kindsEqual(orig.getValue().getValueKind(), currKind)) {
+            throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
         }
 
         AllocationState state = this.values.get(curr);
@@ -222,17 +224,20 @@ public class BlockVerifierState {
         throw GraalError.shouldNotReachHere("Invalid state " + state);
     }
 
-    /**
-     * Are kinds equal even when {@link LIRKindWithCast casting} is present?
-     *
-     * @param orig Original variable
-     * @param curr Current location
-     * @return Are they equal?
-     */
     protected boolean kindsEqual(RAValue orig, RAValue curr) {
         var origKind = orig.getValue().getValueKind();
         var currKind = curr.getValue().getValueKind();
+        return kindsEqual(origKind, currKind);
+    }
 
+    /**
+     * Are kinds equal even when {@link LIRKindWithCast casting} is present?
+     *
+     * @param origKind Original variable kind
+     * @param currKind Current location kind
+     * @return Are they equal?
+     */
+    protected boolean kindsEqual(ValueKind<?> origKind, ValueKind<?> currKind) {
         if (origKind instanceof LIRKindWithCast castKind) {
             origKind = castKind.getActualKind();
         }
@@ -245,7 +250,7 @@ public class BlockVerifierState {
     }
 
     /**
-     * Are kinds equal even when {@link jdk.graal.compiler.lir.CastValue cast value} is present?
+     * Are kinds equal even when {@link CastValue cast value} is present?
      *
      * <p>
      * We need to ignore the cast value because the currently stored value will not be cast.
@@ -346,16 +351,67 @@ public class BlockVerifierState {
         if (state instanceof ValueAllocationState valueAllocationState) {
             RAValue movedValue = valueAllocationState.getRAValue();
             if (!kindsEqual(movedValue, move.to)) {
+                if (isMoveKindChange(move, valueAllocationState)) {
+                    // This move changes the kind for destination location
+                    // see isMoveKindChange comment
+                    return;
+                }
+
                 throw new KindsMismatchException(move.lirInstruction, block, move.to, movedValue, false);
             }
         }
     }
 
     /**
-     * Check {@link jdk.vm.ci.code.BytecodeFrame frames}, before and after allocation, mainly
-     * checking that {@link LIRKind} is a reference when {@link JavaKind} is an Object and
-     * wise-versa, checking that {@link LIRKind} is not a reference when {@link JavaKind} is not an
-     * object.
+     * Does this move change the ValueKind? This happens for when derived reference gets changed to
+     * a normal reference, we make sure that the underlying platform kind is equal, and then allow
+     * change from derived ([.+]) to normal reference ([*]).
+     *
+     * <p>
+     * Currently only allowed if the moved state is {@link ValueAllocationState}.
+     * </p>
+     *
+     * <p>
+     * The standard setup is as this:
+     *
+     * <pre>
+     * (v8|QWORD[.+] -> rcx|QWORD[.+]) = ADD (x: rcx|QWORD, y: r8|QWORD[.]) size: QWORD
+     * rdx|QWORD[*] = MOVE input: rcx|QWORD[.+] moveKind: QWORD // MoveResolver resolve mapping
+     * JUMP ~outgoingValues: [v8|QWORD[.+] -> rdx|QWORD[*]] destination: B1 -> B3 isThreadedJump: false
+     * </pre>
+     *
+     * Add calculates the derived reference address, move casts it to LIRKind ref and value is used
+     * in the JUMP to the next block, where pre-allocation symbol (variable) has derived ref, but
+     * location has reference.
+     * </p>
+     *
+     * This is then changed in {@link BlockVerifierState#checkOperand} to verify that the kind is
+     * correct.
+     *
+     * @param move Move that facilitates the change
+     * @param state Current value state this happens for
+     * @return if this move changes the kinds
+     */
+    protected boolean isMoveKindChange(RAVInstruction.LocationMove move, ValueAllocationState state) {
+        var moveValueKind = state.getRAValue().getLIRKind();
+        var toKind = move.to.getLIRKind();
+        var fromKind = move.from.getLIRKind();
+
+        if (!moveValueKind.getPlatformKind().equals(toKind.getPlatformKind())) {
+            return false;
+        }
+
+        if (!moveValueKind.getPlatformKind().equals(fromKind.getPlatformKind())) {
+            return false;
+        }
+
+        return moveValueKind.isDerivedReference() && !toKind.isValue() && fromKind.isDerivedReference();
+    }
+
+    /**
+     * Check {@link BytecodeFrame frames}, before and after allocation, mainly checking that
+     * {@link LIRKind} is a reference when {@link JavaKind} is an Object and wise-versa, checking
+     * that {@link LIRKind} is not a reference when {@link JavaKind} is not an object.
      *
      * @param op Operation holding said frames
      * @throws RAVException when a violation occurs
@@ -374,6 +430,11 @@ public class BlockVerifierState {
                 }
 
                 var kind = frame.kinds[i];
+                if (JavaKind.Long.equals(kind)) {
+                    // Skipping long(s) because it can be a numeric value
+                    // or a derived reference / native pointer
+                    continue;
+                }
 
                 var origLIRKind = orig.getValueKind(LIRKind.class);
                 var currLIRKind = curr.getValueKind(LIRKind.class);
@@ -385,13 +446,11 @@ public class BlockVerifierState {
                     throw new RAVException(orig + " -> " + curr + " not an object java kind when marked as a reference");
                 } else {
                     if (origLIRKind.isValue() && currLIRKind.isValue()) {
+                        // Either not a reference, or a derived one - which might not be marked as
+                        // Object
                         continue;
                     }
-                    // These two tests needed to be modified
-                    // PointerTrackingTest
-                    // jdk.graal.compiler.replacements.test.DerivedOopTest
-                    // so this verification method doesn't throw an error
-                    // when running with them
+
                     throw new RAVException(orig + " -> " + curr + " is a reference when not marked as an object java kind");
                 }
             }
@@ -451,8 +510,8 @@ public class BlockVerifierState {
 
     /**
      * Make sure concrete current locations changed by the allocator are not violating set of
-     * {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag flags}, which specify what type can
-     * they be. This is done on every array of pairs (dest, uses, alive, temp).
+     * {@link LIRInstruction.OperandFlag flags}, which specify what type can they be. This is done
+     * on every array of pairs (dest, uses, alive, temp).
      *
      * @param valuePairs Value array pair we are verifying
      * @param op Instruction which holds this array, for tracing in exceptions
@@ -500,15 +559,26 @@ public class BlockVerifierState {
         switch (instruction) {
             case RAVInstruction.Op op -> this.updateWithOp(op);
             case RAVInstruction.ValueMove virtMove -> this.updateWithValueMove(virtMove);
-            case RAVInstruction.LocationMove move -> {
-                if (move instanceof RAVInstruction.StackMove stackMove) {
-                    // Maybe the backup slot should hold what the scratch register holds?
-                    this.values.put(stackMove.backupSlot, UnknownAllocationState.INSTANCE);
-                }
-
-                this.values.putClone(move.to, this.values.get(move.from));
-            }
+            case RAVInstruction.LocationMove move -> this.updateWithLocationMove(move);
             default -> throw GraalError.shouldNotReachHere("Invalid RAV instruction " + instruction);
+        }
+    }
+
+    public void updateWithLocationMove(RAVInstruction.LocationMove move) {
+        if (move instanceof RAVInstruction.StackMove stackMove) {
+            // Maybe the backup slot should hold what the scratch register holds?
+            this.values.put(stackMove.backupSlot, UnknownAllocationState.INSTANCE);
+        }
+
+        var state = this.values.get(move.from);
+
+        this.values.putClone(move.to, state);
+
+        if (state instanceof ValueAllocationState valueAllocationState) {
+            var movedValue = valueAllocationState.getRAValue();
+            if (!kindsEqual(movedValue, move.to) && isMoveKindChange(move, valueAllocationState)) {
+                this.values.castMap.put(move.to, move.from.getLIRKind()); // Add a new cast
+            }
         }
     }
 
@@ -572,8 +642,7 @@ public class BlockVerifierState {
      * use.
      *
      * <p>
-     * References need to be retrieved using {@link jdk.graal.compiler.lir.dfa.LocationMarker}
-     * classes.
+     * References need to be retrieved using {@link LocationMarker} classes.
      * </p>
      *
      * @param op SafePoint we are using to remove old references

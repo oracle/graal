@@ -27,9 +27,6 @@ package jdk.graal.compiler.replacements.test;
 import java.util.Objects;
 
 import org.graalvm.word.impl.Word;
-import jdk.graal.compiler.lir.alloc.verifier.RegAllocVerifierPhase;
-import jdk.graal.compiler.lir.phases.LIRSuites;
-import jdk.graal.compiler.options.OptionValues;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.StringContains;
 import org.junit.Assert;
@@ -105,12 +102,6 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
             Result other = (Result) obj;
             return Objects.equals(this.beforeGC, other.beforeGC) && Objects.equals(this.afterGC, other.afterGC);
         }
-    }
-
-    @Override
-    protected LIRSuites createLIRSuites(OptionValues opts) {
-        var newOptions = new OptionValues(opts, RegAllocVerifierPhase.Options.EnableRAVerifier, false);
-        return super.createLIRSuites(newOptions);
     }
 
     @Test
