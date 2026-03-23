@@ -400,8 +400,8 @@ public final class Engine implements AutoCloseable {
      * Truffle's enterprise extensions.
      * <p>
      * If {@code callback} is non-null, it is polled periodically to request cancellation.
-     * Cancellation support during the low-level auxiliary image persistence phase is only
-     * available on hosts that support it; otherwise callback cancellation is limited to the
+     * Cancellation support during the low-level auxiliary image persistence phase is only available
+     * on hosts that support it; otherwise callback cancellation is limited to the
      * compilation-preparation phase. Implementations that cannot support the callback semantics may
      * throw {@link UnsupportedOperationException}.
      *
@@ -2233,8 +2233,8 @@ public final class Engine implements AutoCloseable {
      * A callback that is invoked repeatedly while persisting the auxiliary engine cache.
      * <p>
      * The callback may be polled during compilation preparation. Some hosts may also support
-     * low-level auxiliary image persistence cancellation for host-specific callback
-     * implementations with additional runtime constraints.
+     * low-level auxiliary image persistence cancellation for host-specific callback implementations
+     * with additional runtime constraints.
      *
      * @since 25.1
      */

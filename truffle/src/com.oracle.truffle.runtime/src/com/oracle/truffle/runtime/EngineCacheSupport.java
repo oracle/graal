@@ -60,12 +60,12 @@ public interface EngineCacheSupport extends OptimizedRuntimeServiceProvider {
 
     @SuppressWarnings("unused")
     default boolean onStoreCache(EngineData e, Path path, long cancelledWord) {
-        throw new UnsupportedOperationException("Engine persist ist not yet supported on this JDK. Please update to resolve this problem.");
+        throw new UnsupportedOperationException("Engine persist is not yet supported on this JDK. Please update to resolve this problem.");
     }
 
     @SuppressWarnings("unused")
     default ByteBuffer persistCache(EngineData e, Engine.CancellationCallback callback) {
-        throw new UnsupportedOperationException("Engine persist ist not yet supported on this JDK. Please update to resolve this problem.");
+        throw new UnsupportedOperationException("Engine persist is not yet supported on this JDK. Please update to resolve this problem.");
     }
 
     void onEngineClosed(EngineData e);
