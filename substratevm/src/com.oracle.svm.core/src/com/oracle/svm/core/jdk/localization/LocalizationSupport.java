@@ -278,18 +278,39 @@ public class LocalizationSupport {
         registeredBundles.put(baseName, RuntimeDynamicAccessMetadata.addCondition(registeredBundles.get(baseName), condition, false));
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerBundleLookup(AccessCondition condition, String moduleName, String baseName) {
+        registerBundleLookup(condition, qualifyBundleName(moduleName, baseName));
+    }
+
     public boolean isRegisteredBundleLookup(String baseName, Locale locale, Object controlOrStrategy) {
+        return isRegisteredBundleLookup(null, baseName, locale, controlOrStrategy);
+    }
+
+    public boolean isRegisteredBundleLookup(Module module, String baseName, Locale locale, Object controlOrStrategy) {
         if (baseName == null || locale == null || controlOrStrategy == null) {
             /* Those cases will throw a NullPointerException before any lookup */
             return true;
         }
         if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceResourceBundle(baseName);
+            MetadataTracer.singleton().traceResourceBundle(module != null && module.isNamed() ? module.getName() : null, baseName);
         }
-        if (registeredBundles.containsKey(baseName)) {
-            return registeredBundles.get(baseName).satisfied();
+        if (module != null && module.isNamed()) {
+            /* Module-specific registrations are keyed separately from legacy unqualified ones. */
+            RuntimeDynamicAccessMetadata registeredModuleBundle = registeredBundles.get(qualifyBundleName(module.getName(), baseName));
+            if (registeredModuleBundle != null) {
+                return registeredModuleBundle.satisfied();
+            }
+        }
+        RuntimeDynamicAccessMetadata registeredBundle = registeredBundles.get(baseName);
+        if (registeredBundle != null) {
+            return registeredBundle.satisfied();
         }
         return false;
+    }
+
+    private static String qualifyBundleName(String moduleName, String baseName) {
+        return moduleName != null && !moduleName.isEmpty() ? moduleName + ":" + baseName : baseName;
     }
 
     private static EconomicSet<String> getLanguageTags(EconomicSet<Locale> locales) {
