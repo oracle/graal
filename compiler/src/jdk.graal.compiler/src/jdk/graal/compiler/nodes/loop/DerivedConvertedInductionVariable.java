@@ -24,7 +24,11 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
+import java.util.Collection;
+
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
@@ -110,6 +114,17 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     @Override
     public ValueNode extremumNode(boolean assumeLoopEntered, Stamp s, ValueNode maxTripCount) {
         return base.extremumNode(assumeLoopEntered, s, maxTripCount);
+    }
+
+    @Override
+    protected ValueNode collectLocalExtremumOverflowConditions(boolean assumeLoopEntered, Stamp extremumStamp, ValueNode effectiveMaxTripCount, ValueNode baseExtremum,
+                    Collection<LogicNode> conditions) {
+        GraalError.guarantee(baseExtremum != null, "Expected base extremum for %s", this);
+        /*
+         * A pure integer conversion does not add new extremum arithmetic of its own. The base IV's
+         * overflow conditions already cover the computation whose result is being converted.
+         */
+        return IntegerConvertNode.convert(baseExtremum, extremumStamp, value instanceof ZeroExtendNode, graph(), NodeView.DEFAULT);
     }
 
     @Override

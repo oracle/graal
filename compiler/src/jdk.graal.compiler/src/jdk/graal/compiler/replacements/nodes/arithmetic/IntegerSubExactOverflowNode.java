@@ -35,6 +35,7 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
@@ -51,8 +52,16 @@ public class IntegerSubExactOverflowNode extends IntegerExactOverflowNode {
         super(TYPE, x, y);
     }
 
+    public static LogicNode create(ValueNode x, ValueNode y) {
+        return canonical(null, x, y, NodeView.DEFAULT);
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        return canonical(this, forX, forY, NodeView.from(tool));
+    }
+
+    private static LogicNode canonical(IntegerSubExactOverflowNode self, ValueNode forX, ValueNode forY, NodeView view) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             return LogicConstantNode.forBoolean(false);
         }
@@ -64,10 +73,10 @@ public class IntegerSubExactOverflowNode extends IntegerExactOverflowNode {
                 return LogicConstantNode.forBoolean(false);
             }
         }
-        if (!IntegerStamp.subtractionCanOverflow((IntegerStamp) x.stamp(NodeView.DEFAULT), (IntegerStamp) y.stamp(NodeView.DEFAULT))) {
+        if (!IntegerStamp.subtractionCanOverflow((IntegerStamp) forX.stamp(view), (IntegerStamp) forY.stamp(view))) {
             return LogicConstantNode.forBoolean(false);
         }
-        return this;
+        return self != null ? self : new IntegerSubExactOverflowNode(forX, forY);
     }
 
     private static LogicConstantNode canonicalXYconstant(ValueNode forX, ValueNode forY) {

@@ -24,8 +24,13 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -34,6 +39,16 @@ import jdk.graal.compiler.nodes.ValueNode;
  * This class describes a value node that is an induction variable in a counted loop.
  */
 public abstract class InductionVariable {
+
+    /**
+     * Captures a computed induction-variable extremum together with the overflow conditions for the
+     * arithmetic operations used to produce it. If any condition evaluates to {@code true}, the
+     * corresponding operation in this extremum computation cannot be evaluated without overflow.
+     * Operations whose overflow is already covered by the loop overflow guard are omitted from
+     * {@link #overflowConditions()}.
+     */
+    public record Extremum(ValueNode extremum, List<LogicNode> overflowConditions) {
+    }
 
     public enum Direction {
         Up,
@@ -102,6 +117,93 @@ public abstract class InductionVariable {
     public abstract ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp);
 
     public abstract ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp, ValueNode maxTripCount);
+
+    /**
+     * Computes an extremum expression together with the overflow conditions for the arithmetic used
+     * to produce that expression.
+     * <p>
+     * The returned {@linkplain Extremum#extremum() extremum expression} uses {@code extremumStamp},
+     * which is chosen by the caller. Each overflow condition is still emitted in the native
+     * arithmetic width of the IV step that can overflow, so the condition matches that step's real
+     * overflow semantics.
+     * <p>
+     * For example, consider a loop {@code for (int i = 0; i < max; i++)} containing an IV
+     * {@code i * 2}. Asking for a {@code long} extremum returns {@code (((long) max) - 1L) * 2L}.
+     * The accompanying overflow condition is still the {@code int}-width check
+     * {@code !IntegerMulExactOverflowNode.create(max - 1, 2)}, because the multiplication overflows
+     * in {@code int}, not in the final widened expression.
+     */
+    public Extremum extremumComputation(boolean assumeLoopEntered, Stamp extremumStamp, ValueNode effectiveMaxTripCount, InductionVariable bodyIV,
+                    InductionVariable limitCheckedIV) {
+        /*
+         * Follow this IV's base chain to the root/basic IV, compute that root extremum and its
+         * overflow conditions first, then rebuild the derived IV extrema and overflow conditions on
+         * the way back out.
+         */
+        ArrayList<DerivedInductionVariable> derivedIVs = null;
+        InductionVariable current = this;
+        while (current instanceof DerivedInductionVariable derived) {
+            if (derivedIVs == null) {
+                derivedIVs = new ArrayList<>();
+            }
+            derivedIVs.add(derived);
+            current = derived.getBase();
+        }
+        GraalError.guarantee(current instanceof BasicInductionVariable, "Expected basic induction variable but got %s", current);
+
+        ArrayList<LogicNode> overflowConditions = new ArrayList<>();
+        /*
+         * The root/basic IV contributes overflow conditions in the width of its own IV stamp, even
+         * if the caller wants the final extremum in some other compatible stamp.
+         */
+        Stamp ivStamp = current.valueNode().stamp(NodeView.DEFAULT);
+        ValueNode currentExtremum = current.extremumNode(assumeLoopEntered, extremumStamp, effectiveMaxTripCount);
+        ValueNode currentIvExtremum;
+        /*
+         * The body and limit checked IVs are already covered by the counted loop's overflow guard
+         * or the guarantee that the counter does not overflow.
+         */
+        if (current == bodyIV || current == limitCheckedIV) {
+            currentIvExtremum = current.extremumNode(assumeLoopEntered, ivStamp, effectiveMaxTripCount);
+        } else {
+            currentIvExtremum = current.collectLocalExtremumOverflowConditions(assumeLoopEntered, ivStamp, effectiveMaxTripCount, null, overflowConditions);
+        }
+
+        if (derivedIVs != null) {
+            for (int i = derivedIVs.size() - 1; i >= 0; i--) {
+                DerivedInductionVariable derived = derivedIVs.get(i);
+                /*
+                 * Each derived IV likewise contributes overflow conditions in the width of its own
+                 * IV stamp, not in the caller-requested final extremum stamp.
+                 */
+                Stamp derivedIVStamp = derived.valueNode().stamp(NodeView.DEFAULT);
+                if (derived == bodyIV || derived == limitCheckedIV) {
+                    currentIvExtremum = derived.extremumNode(assumeLoopEntered, derivedIVStamp, effectiveMaxTripCount);
+                } else {
+                    currentIvExtremum = derived.collectLocalExtremumOverflowConditions(assumeLoopEntered, derivedIVStamp, effectiveMaxTripCount, currentIvExtremum, overflowConditions);
+                }
+                currentExtremum = derived.extremumNode(assumeLoopEntered, extremumStamp, effectiveMaxTripCount);
+            }
+        }
+        return new Extremum(currentExtremum, overflowConditions);
+    }
+
+    /**
+     * Adds the overflow conditions contributed by this induction variable's own extremum
+     * arithmetic. If any added condition evaluates to {@code true}, the corresponding local step of
+     * the extremum computation overflows.
+     * <p>
+     * The supplied {@code stamp} is the stamp that the resulting extremum value should have.
+     * <p>
+     * For derived IVs, {@code baseExtremum} is the already computed extremum of the base IV as
+     * produced by the preceding step of this iterative computation. For a basic IV,
+     * {@code baseExtremum} is unused and can be {@code null}.
+     *
+     * @return this IV's extremum in {@code stamp}, as threaded through the iterative overflow
+     *         computation
+     */
+    protected abstract ValueNode collectLocalExtremumOverflowConditions(boolean assumeLoopEntered, Stamp stamp, ValueNode effectiveMaxTripCount, ValueNode baseExtremum,
+                    Collection<LogicNode> conditions);
 
     public abstract boolean isConstantExtremum();
 
