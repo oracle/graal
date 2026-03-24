@@ -108,7 +108,7 @@ public final class RuntimeResourceAccess {
         deprecationFlag.printDeprecationWarning();
         Objects.requireNonNull(locales);
         RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
-                        withModuleName(module, baseBundleName), Arrays.asList(locales));
+                        moduleName(module), baseBundleName, Arrays.asList(locales));
     }
 
     /**
@@ -123,13 +123,12 @@ public final class RuntimeResourceAccess {
     public static void addResourceBundle(Module module, String bundleName) {
         deprecationFlag.printDeprecationWarning();
         RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
-                        false, withModuleName(module, bundleName));
+                        false, moduleName(module), bundleName);
     }
 
-    private static String withModuleName(Module module, String str) {
+    private static String moduleName(Module module) {
         Objects.requireNonNull(module);
-        Objects.requireNonNull(str);
-        return module.isNamed() ? module.getName() + ":" + str : str;
+        return module.isNamed() ? module.getName() : null;
     }
 
     private RuntimeResourceAccess() {

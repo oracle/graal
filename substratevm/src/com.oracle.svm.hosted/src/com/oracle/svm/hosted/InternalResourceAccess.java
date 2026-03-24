@@ -76,8 +76,7 @@ public final class InternalResourceAccess implements ResourceAccess {
             Method m2 = ReflectionUtil.lookupMethod(cache.getClass(), "getName");
             String name = ReflectionUtil.invokeMethod(m2, cache);
 
-            String finalBundleName = (modul != null && modul.isNamed()) ? modul.getName() + ":" + name : name;
-            rrsInstance.addResourceBundles(condition, false, finalBundleName);
+            rrsInstance.addResourceBundles(condition, false, modul != null && modul.isNamed() ? modul.getName() : null, name);
         }
     }
 }

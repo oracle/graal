@@ -108,12 +108,12 @@ public final class ConfigurationFiles {
 
         @OptionMigrationMessage("Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.")//
         @Option(help = "Files describing Java resources to be included in the image according to the schema at " +
-                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json", type = OptionType.User)//
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.1.0.json", type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> ResourceConfigurationFiles = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing Java resources to be included in the image according to the schema at " +
-                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json", type = OptionType.User)//
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.1.0.json", type = OptionType.User)//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ResourceConfigurationResources = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 

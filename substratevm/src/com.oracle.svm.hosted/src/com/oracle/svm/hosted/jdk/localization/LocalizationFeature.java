@@ -474,6 +474,24 @@ public class LocalizationFeature implements InternalFeature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public void prepareClassResourceBundle(AccessCondition condition, String moduleName, String basename, String className) {
+        if (moduleName == null || moduleName.isEmpty()) {
+            prepareClassResourceBundle(basename, className);
+            return;
+        }
+        Class<?> bundleClass = findClassByName.apply(className);
+        if (bundleClass == null) {
+            /* Unknown classes are ignored */
+            return;
+        }
+        UserError.guarantee(ResourceBundle.class.isAssignableFrom(bundleClass), "%s is not a subclass of ResourceBundle", bundleClass.getName());
+        trace("Adding class based resource bundle: " + moduleName + ":" + className + " " + bundleClass);
+        support.registerBundleLookup(condition, moduleName, basename);
+        support.registerRequiredReflectionAndResourcesForBundle(basename, Set.of(), false);
+        support.prepareClassResourceBundle(basename, bundleClass);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(AccessCondition condition, String baseName) {
         prepareBundle(condition, baseName, allLocales);
     }
