@@ -40,8 +40,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   darwin_aarch64: self.common + graal_common.darwin_aarch64 + {
     environment+: {
-      // for compatibility with macOS Big Sur
-      MACOSX_DEPLOYMENT_TARGET: '11.0',
+      // for compatibility with macOS Sonoma
+      MACOSX_DEPLOYMENT_TARGET: '14.0',
     },
   },
 
