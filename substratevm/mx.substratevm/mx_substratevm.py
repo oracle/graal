@@ -3655,10 +3655,7 @@ class SVMInvariantsUnittestConfig(mx_compiler.GraalUnittestConfig):
 mx_unittest.register_unittest_config(SVMInvariantsUnittestConfig())
 
 
-class SVMDriverUnittestsConfig(mx_unittest.MxUnittestConfig):
-
-    def __init__(self):
-        super().__init__('svm-driver-unittest')
+class SVMUnittestsConfig(mx_unittest.MxUnittestConfig):
 
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
@@ -3678,7 +3675,8 @@ class SVMDriverUnittestsConfig(mx_unittest.MxUnittestConfig):
 
         return (vmArgs, mainClass, mainClassArgs)
 
-mx_unittest.register_unittest_config(SVMDriverUnittestsConfig())
+mx_unittest.register_unittest_config(SVMUnittestsConfig('svm-driver-unittest'))
+mx_unittest.register_unittest_config(SVMUnittestsConfig('svm-unittest'))
 
 
 @mx.command(suite, 'update-build-options-table', usage_msg='[--check] - Update or verify the BuildOptions.md table')
