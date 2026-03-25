@@ -1616,6 +1616,7 @@ native_image = mx_sdk_vm.GraalVmJreComponent(
                 'substratevm:SVM_CONFIGURE',
                 'substratevm:JVMTI_AGENT_BASE',
                 'substratevm:SVM_AGENT',
+                'substratevm:SVM_AGENT_PROXY'
             ],
             build_args=driver_build_args + [
                 '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
@@ -2258,10 +2259,14 @@ def cinterfacetutorial(args):
 @mx.command(suite.name, 'javaagenttest', 'Runs tests for java agent with native image')
 def java_agent_test(args):
     def build_and_run(args, binary_path, native_image, agents, agents_arg):
-        test_cp = os.pathsep.join([classpath('com.oracle.svm.test')] + agents)
+        mx.log('Run agent with JVM as baseline')
+        test_cp = os.pathsep.join([classpath('com.oracle.svm.test')])
+        java_run_cp = os.pathsep.join([test_cp, mx.dependency('org.graalvm.nativeimage').classpath_repr()])
+        mx.run_java( agents_arg +  ['-cp', java_run_cp, 'com.oracle.svm.test.javaagent.AgentTest'])
+        test_cp = os.pathsep.join([test_cp] + agents)
         native_agent_premain_options = ['-XXpremain:com.oracle.svm.test.javaagent.agent1.TestJavaAgent1:test.agent1=true', '-XXpremain:com.oracle.svm.test.javaagent.agent2.TestJavaAgent2:test.agent2=true']
-        image_args = ['-cp', test_cp, '-J-ea', '-J-esa', '-H:+ReportExceptionStackTraces', '-H:Class=com.oracle.svm.test.javaagent.AgentTest']
-        native_image(image_args + svm_experimental_options(['-H:PremainClasses=' + agents_arg]) + ['-o', binary_path] + args)
+        image_args = ['-cp', test_cp, '-J-ea', '-J-esa', '-H:+ReportExceptionStackTraces', '-H:Class=com.oracle.svm.test.javaagent.AgentTest', '-H:+AllowDeprecatedBuilderClassesOnImageClasspath']
+        native_image(image_args + svm_experimental_options(agents_arg) + ['-o', binary_path] + args)
         mx.run([binary_path] + native_agent_premain_options)
 
     def build_and_test_java_agent_image(native_image, args):
@@ -2278,18 +2283,74 @@ def java_agent_test(args):
             # Note: we are not using MX here to avoid polluting the suite.py and requiring extra build flags
             mx.log("Building agent jars from " + test_classpath)
             agents = []
-            for i in range(1, 2):
+            for i in range(1, 3):
                 agent = join(tmp_dir, "testagent%d.jar" % (i))
-                agent_test_classpath = join(test_classpath, 'com', 'oracle', 'svm', 'test', 'javaagent', 'agent' + str(i))
-                class_list = [join(test_classpath, 'com', 'oracle', 'svm', 'test', 'javaagent', 'agent' + str(i), f) for f in os.listdir(agent_test_classpath) if os.path.isfile(os.path.join(agent_test_classpath, f)) and f.endswith(".class")]
-                mx.run([mx.get_jdk().jar, 'cmf', join(test_classpath, 'resources', 'javaagent' + str(i), 'MANIFEST.MF'), agent] + class_list, cwd = tmp_dir)
+                current_dir = os.getcwd()
+                # Change to test classpath to create agent jar file
+                os.chdir(test_classpath)
+                agent_test_classpath = join('com', 'oracle', 'svm', 'test', 'javaagent', 'agent' + str(i))
+                class_list = [join('com', 'oracle', 'svm', 'test', 'javaagent', 'agent' + str(i), f) for f in os.listdir(agent_test_classpath) if os.path.isfile(os.path.join(agent_test_classpath, f)) and f.endswith(".class")]
+                class_list.append(join('com', 'oracle', 'svm', 'test', 'javaagent', 'AgentPremainHelper.class'))
+                class_list.append(join('com', 'oracle', 'svm', 'test', 'javaagent', 'AssertInAgent.class'))
+                mx.run([mx.get_jdk().jar, 'cmf', join(test_classpath, 'resources', 'javaagent' + str(i), 'MANIFEST.MF'), agent] + class_list, cwd = test_classpath)
                 agents.append(agent)
+                os.chdir(current_dir)
 
             mx.log("Building images with different agent orders ")
-            build_and_run(args, join(tmp_dir, 'agenttest1'), native_image, agents,'com.oracle.svm.test.javaagent.agent1.TestJavaAgent1,com.oracle.svm.test.javaagent.agent2.TestJavaAgent2')
+            build_and_run(args, join(tmp_dir, 'agenttest1'), native_image, agents,[f'-javaagent:{agents[0]}=test.agent1=true', f'-javaagent:{agents[1]}=test.agent2=true'])
 
             # Switch the premain sequence of agent1 and agent2
-            build_and_run(args, join(tmp_dir, 'agenttest2'), native_image, agents, 'com.oracle.svm.test.javaagent.agent2.TestJavaAgent2,com.oracle.svm.test.javaagent.agent1.TestJavaAgent1')
+            build_and_run(args, join(tmp_dir, 'agenttest2'), native_image, agents, [f'-javaagent:{agents[1]}=test.agent2=true', f'-javaagent:{agents[0]}=test.agent1=true'])
+
+            # Test that ClassFileTransformerProxy suppresses transformations targeting protected
+            # GraalVM system modules.
+            #
+            # TestJavaAgent1 attempts to intercept InstrumentFeature#getRequiredFeatures() and make
+            # it return an empty list.  Because InstrumentFeature lives in the
+            # org.graalvm.nativeimage.builder module (which is in SYSTEM_MODULES), the proxy must
+            # suppress the live transformation.
+            #
+            # Verification strategy:
+            #   1. Enable DEBUG mode via com.oracle.svm.agentproxy.debug=true (passed to the
+            #      builder JVM with -J-D).
+            #   2. Point com.oracle.svm.agentproxy.shaded.dump.file at a temp file so that every
+            #      shaded class name is appended there.
+            #   3. After the build, assert that the dump file contains the shaded name of
+            #      InstrumentFeature, proving the proxy intercepted and shaded the class instead of
+            #      passing the transformation through.
+            mx.log("Testing ClassFileTransformerProxy suppression of protected system module classes")
+            shaded_dump_file = join(tmp_dir, 'shaded_classes.txt')
+            # Remove a stale dump file from a previous run to avoid false positives.
+            if os.path.exists(shaded_dump_file):
+                os.remove(shaded_dump_file)
+            agents_arg_debug = [f'-javaagent:{agents[0]}=test.agent1=true', f'-javaagent:{agents[1]}=test.agent2=true']
+            debug_jvm_args = [
+                '-J-Dcom.oracle.svm.agentproxy.debug=true',
+                f'-J-Dcom.oracle.svm.agentproxy.shaded.dump.file={shaded_dump_file}',
+            ]
+            test_cp_debug = os.pathsep.join([classpath('com.oracle.svm.test')] + agents)
+            image_args_debug = ['-cp', test_cp_debug, '-J-ea', '-J-esa',
+                                 '-H:+ReportExceptionStackTraces',
+                                 '-H:Class=com.oracle.svm.test.javaagent.AgentTest',
+                                 '-H:+AllowDeprecatedBuilderClassesOnImageClasspath']
+            native_image(image_args_debug + debug_jvm_args +
+                         svm_experimental_options(agents_arg_debug) +
+                         ['-o', join(tmp_dir, 'agenttest_debug')] + args)
+            # Verify that InstrumentFeature was shaded (i.e. the proxy intercepted the
+            # transformation attempt targeting the protected system module).
+            expected_shaded = 'com.oracle.svm.hosted.InstrumentFeature'
+            if not os.path.exists(shaded_dump_file):
+                mx.abort(f"Shaded class dump file not found: {shaded_dump_file}. "
+                         "ClassFileTransformerProxy DEBUG mode may not be active.")
+            with open(shaded_dump_file, 'r') as f:
+                shaded_lines = [line.strip() for line in f.readlines()]
+            if expected_shaded not in shaded_lines:
+                mx.abort(f"[FAIL] Expected suppressed class '{expected_shaded}' not found in dump file "
+                         f"{shaded_dump_file}. Contents: {shaded_lines}\n"
+                         "This indicates ClassFileTransformerProxy did NOT suppress the "
+                         "InstrumentFeature transformation as required.")
+            mx.log(f"[PASS] ClassFileTransformerProxy suppression test passed: "
+                   f"'{expected_shaded}' was correctly intercepted and recorded in the dump file.")
 
     native_image_context_run(build_and_test_java_agent_image, args)
 
