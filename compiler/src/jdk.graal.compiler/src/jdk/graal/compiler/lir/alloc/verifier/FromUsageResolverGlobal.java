@@ -26,7 +26,6 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.util.EconomicHashMap;
@@ -42,19 +41,27 @@ import java.util.Set;
 /**
  * Resolve variables phi variables back to labels and jumps by find their first usage and handling
  * any reg allocator inserted moves back to the defining label.
+ *
  * <p>
  * Register allocator strips us of this information that is necessary for the verification. In order
  * to avoid modifying the existing allocators, we rather try to resolve this information from other
  * instructions.
+ * </p>
+ *
  * <p>
  * Variables with only usage in jump instructions are marked as aliases and are resolved after their
  * successors.
+ * </p>
+ *
  * <p>
  * If a variable has no usage, then no location is resolved and verification continues without
  * issues.
+ * </p>
+ *
  * <p>
  * In the case the first usage of a label-defined variable is wrong, then JUMP instructions from
  * predecessors fail the verification - wrong register will be chosen.
+ * </p>
  */
 public class FromUsageResolverGlobal {
     /**
@@ -71,16 +78,6 @@ public class FromUsageResolverGlobal {
      * Mapping of variables to the labels that defined them.
      */
     public Map<RAVariable, RAVInstruction.Op> labelMap;
-
-    /**
-     * Is this a label-defined variable?
-     */
-    public Map<RAVariable, Boolean> defined;
-
-    /**
-     * Was this label-defined variable reached?
-     */
-    public Map<RAVariable, Boolean> reached;
 
     /**
      * Mapping of operation to a set of variable for which this operation is a first usage.
@@ -115,57 +112,40 @@ public class FromUsageResolverGlobal {
     /**
      * Block map of their usages objects.
      */
-    public BlockMap<BlockUsage> blockUsageMap;
+    protected BlockMap<BlockUsage> blockUsageMap;
 
     /**
      * Set of blocks that have no successors.
      */
     public Set<BasicBlock<?>> endBlocks;
 
+    /**
+     * Information about locations of variables found
+     * when traversing LIR, from first usage, handling
+     * all related moves up until the label instruction
+     * that defined the variable.
+     */
     protected final class BlockUsage {
-        private final Set<RAVariable> reached;
-        private final Map<RAVariable, RAValue> locations;
+        protected final Map<RAVariable, RAValue> locations;
+        protected boolean processed;
 
-        private BlockUsage() {
-            this.reached = new EconomicHashSet<>();
+        protected BlockUsage() {
             this.locations = new EconomicHashMap<>();
+            this.processed = false;
         }
 
-        private BlockUsage(BlockUsage blockDefs) {
-            this.reached = new EconomicHashSet<>(blockDefs.reached);
-            this.locations = new EconomicHashMap<>(blockDefs.locations);
-        }
-
-        /**
-         * Two blocks meet, a successor merges into it's predecessor to pass in newly reached
-         * variable and locations.
-         *
-         * @param other Other block usage information - the successor
-         * @return Has the current block (predecessor) been changed?
-         */
-        private boolean meetWith(BlockUsage other) {
-            int reachedBefore = reached.size();
-            reached.addAll(other.reached);
-
-            boolean changed = reachedBefore != reached.size();
-            for (RAVariable variable : other.locations.keySet()) {
-                var defValue = other.locations.get(variable);
-                if (defValue == null || defValue.isIllegal()) {
+        protected BlockUsage(BlockUsage blockDefs, boolean processed) {
+            this.locations = new EconomicHashMap<>();
+            for (var variable : blockDefs.locations.keySet()) {
+                var location = blockDefs.locations.get(variable);
+                if (location == null) {
                     continue;
                 }
 
-                if (defValue.isIllegal() && locations.containsKey(variable)) {
-                    continue;
-                }
-
-                if (locations.containsKey(variable) && locations.get(variable) == defValue) {
-                    continue;
-                }
-
-                locations.put(variable, defValue);
+                locations.put(variable, location);
             }
 
-            return changed;
+            this.processed = processed;
         }
     }
 
@@ -174,8 +154,6 @@ public class FromUsageResolverGlobal {
         this.blockInstructions = blockInstructions;
 
         this.labelMap = new EconomicHashMap<>();
-        this.defined = new EconomicHashMap<>();
-        this.reached = new EconomicHashMap<>();
         this.firstUsages = new EconomicHashMap<>();
         this.initialLocations = new EconomicHashMap<>();
         this.aliasMap = new EconomicHashMap<>();
@@ -201,50 +179,96 @@ public class FromUsageResolverGlobal {
         }
 
         while (!worklist.isEmpty()) {
-            var block = worklist.remove();
-
-            var usage = new BlockUsage(blockUsageMap.get(block));
-            var instructions = blockInstructions.get(block);
-            for (var instruction : instructions.reversed()) {
-                switch (instruction) {
-                    case RAVInstruction.LocationMove move -> handleMove(usage, move.from, move.to);
-                    case RAVInstruction.Op op -> {
-                        if (op.lirInstruction instanceof StandardOp.LabelOp) {
-                            this.resolveLabel(usage, op, block);
-                            continue;
-                        }
-
-                        if (firstUsages.containsKey(op)) {
-                            var iterator = firstUsages.get(op).iterator();
-                            while (iterator.hasNext()) {
-                                var variable = iterator.next();
-                                usage.locations.put(variable, initialLocations.get(variable));
-                                usage.reached.add(variable);
-                            }
-                        }
-                    }
-                    default -> {
-                    }
-                }
+            if (labelMap.isEmpty()) {
+                break; // No need to process further
             }
 
-            for (int i = 0; i < block.getPredecessorCount(); i++) {
-                var pred = block.getPredecessorAt(i);
-
-                if (this.blockUsageMap.get(pred) == null) {
-                    this.blockUsageMap.put(pred, new BlockUsage(usage));
-                } else {
-                    var predReached = this.blockUsageMap.get(pred);
-                    if (!predReached.meetWith(usage)) {
-                        continue;
-                    }
-                }
-
-                worklist.remove(pred);
-                worklist.add(pred);
-            }
+            processBlock(worklist);
         }
     }
+
+    protected void processBlock(Queue<BasicBlock<?>> worklist) {
+        var block = worklist.remove();
+
+        var usage = blockUsageMap.get(block);
+        usage.processed = true;
+
+        var instructions = blockInstructions.get(block);
+        for (var instruction : instructions.reversed()) {
+            switch (instruction) {
+                case RAVInstruction.LocationMove move -> handleMove(usage, move.from, move.to);
+                case RAVInstruction.Op op -> {
+                    if (op.lirInstruction instanceof StandardOp.LabelOp) {
+                        this.resolveLabel(usage, op, block);
+                        continue;
+                    }
+
+                    if (firstUsages.containsKey(op)) {
+                        for (RAVariable variable : firstUsages.get(op)) {
+                            usage.locations.put(variable, initialLocations.get(variable));
+                        }
+                    }
+                }
+                default -> {
+                }
+            }
+        }
+
+        this.blockUsageMap.put(block, usage);
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            var pred = block.getPredecessorAt(i);
+
+            if (this.blockUsageMap.get(pred) == null) {
+                this.blockUsageMap.put(pred, new BlockUsage(usage, false));
+            } else {
+                var predReached = this.blockUsageMap.get(pred);
+                if (!mergeInto(predReached, usage)) {
+                    if (predReached.processed) {
+                        continue;
+                    } else if (worklist.contains(pred)) {
+                        continue;
+                    }
+
+                    // Not yet processed, but also not in a worklist
+                    // this can happen when alias has been resolved and
+                    // predecessor block needs to be processed again
+                    // (the processed flag is set to false)
+                }
+            }
+
+            worklist.remove(pred);
+            worklist.add(pred);
+        }
+    }
+
+    /**
+     * Two blocks meet, a successor merges into it's predecessor to pass in newly reached
+     * variable and locations.
+     *
+     * @param block The base block, where information is being merged to
+     * @param successor The successor block, where new information is coming from
+     * @return Has the current block (predecessor) been changed?
+     */
+    protected boolean mergeInto(BlockUsage block, BlockUsage successor) {
+        boolean changed = false;
+        for (RAVariable variable : successor.locations.keySet()) {
+            if (!labelMap.containsKey(variable)) {
+                continue; // Do not push already resolved variables further
+            }
+
+            var defValue = successor.locations.get(variable);
+
+            if (block.locations.containsKey(variable) && block.locations.get(variable) == defValue) {
+                continue;
+            }
+
+            block.locations.put(variable, defValue);
+            changed = true;
+        }
+
+        return changed;
+    }
+
 
     /**
      * Initialize first usages for variables, top-down in-order to collect all necessary information
@@ -283,7 +307,6 @@ public class FromUsageResolverGlobal {
                     }
 
                     var variable = label.dests.orig[i].asVariable();
-                    defined.put(variable, true);
                     labelMap.put(variable, label);
                 }
             }
@@ -310,7 +333,7 @@ public class FromUsageResolverGlobal {
                 }
 
                 var variable = jump.alive.orig[i].asVariable();
-                if (defined.containsKey(variable) && !reached.containsKey(variable)) {
+                if (labelMap.containsKey(variable) && !initialLocations.containsKey(variable)) {
                     // No usage found before this jump
                     var succ = block.getSuccessorAt(0);
                     var succLabel = (RAVInstruction.Op) blockInstructions.get(succ).getFirst();
@@ -331,6 +354,24 @@ public class FromUsageResolverGlobal {
                 continue;
             }
 
+            if (block.isLoopHeader()) {
+                // Here we handle loops without any exit that might
+                // also need a resolution of label variables, but
+                // are not reachable from endBlocks set, so we
+                // add predecessors of such loops, that are part of the loop
+                // into the endBlocks set to process them.
+                var loop = block.getLoop();
+                if (loop.getNaturalExits().isEmpty() && loop.getLoopExits().isEmpty()) {
+                    var loopBlocks = loop.getBlocks();
+                    for (int i = 0; i < block.getPredecessorCount(); i++) {
+                        var pred = block.getPredecessorAt(i);
+                        if (loopBlocks.contains(pred)) {
+                            endBlocks.add(pred);
+                        }
+                    }
+                }
+            }
+
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 var succ = block.getSuccessorAt(i);
 
@@ -349,16 +390,12 @@ public class FromUsageResolverGlobal {
      */
     protected void handleUsages(RAVInstruction.ValueArrayPair values, RAVInstruction.Op op, BasicBlock<?> block) {
         for (var i = 0; i < values.count; i++) {
-            if (!values.orig[i].isVariable()) {
+            if (!values.orig[i].isVariable() || values.curr[i] == null) {
                 continue;
             }
 
             var variable = values.orig[i].asVariable();
-            if (defined.containsKey(variable) && !reached.containsKey(variable)) {
-                // Defined - variable comes from label
-                // Reached does not contain variable - there's no other first usage.
-                reached.put(variable, false);
-
+            if (labelMap.containsKey(variable) && !initialLocations.containsKey(variable)) {
                 if (!firstUsages.containsKey(op)) {
                     firstUsages.put(op, new EconomicHashSet<>());
                 }
@@ -392,11 +429,8 @@ public class FromUsageResolverGlobal {
         for (var entry : usage.locations.entrySet()) {
             var variable = entry.getKey();
             var location = entry.getValue();
-            if (location == null || location.isIllegal()) {
-                continue;
-            }
 
-            if (location.equals(to) && usage.reached.contains(variable)) {
+            if (location.equals(to)) {
                 updatedVariables.put(variable, from);
             }
         }
@@ -419,18 +453,15 @@ public class FromUsageResolverGlobal {
             }
 
             var variable = label.dests.orig[i].asVariable();
-            if (usage.locations.get(variable) == null) {
-                continue; // Not resolved yet
-            }
-
             if (label.dests.curr[i] != null) {
                 continue; // Already resolved
             }
 
-            var location = usage.locations.get(variable);
-            if (location == null || location.isIllegal()) {
-                GraalError.shouldNotReachHere("Location is " + location + " when resolving " + variable + " should not happen.");
+            if (!usage.locations.containsKey(variable)) {
+                continue;
             }
+
+            var location = usage.locations.get(variable);
 
             label.dests.curr[i] = location;
             for (int j = 0; j < block.getPredecessorCount(); j++) {
@@ -451,11 +482,12 @@ public class FromUsageResolverGlobal {
 
                     var aliasBlockUsage = blockUsageMap.get(aliasPair.block);
                     aliasBlockUsage.locations.put(aliasPair.variable, location);
-                    aliasBlockUsage.reached.add(aliasPair.variable);
+                    aliasBlockUsage.processed = false; // Needs to be processed again
                 }
             }
 
-            usage.locations.put(variable, null);
+            labelMap.remove(variable);
+            usage.locations.remove(variable);
         }
     }
 }
