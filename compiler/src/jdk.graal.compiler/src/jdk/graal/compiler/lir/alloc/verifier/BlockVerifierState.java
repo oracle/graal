@@ -586,7 +586,11 @@ public class BlockVerifierState {
 
         var state = this.values.get(move.from);
 
-        this.values.putClone(move.to, state);
+        if (move.validateRegisters) {
+            this.values.putClone(move.to, state);
+        } else {
+            this.values.putWithoutRegCheck(move.to, state.clone());
+        }
 
         if (state instanceof ValueAllocationState valueAllocationState) {
             var movedValue = valueAllocationState.getRAValue();
@@ -608,6 +612,14 @@ public class BlockVerifierState {
             // First we remove unknown references
             // then we define new values by the return value
             updateWithSafePoint(op);
+        }
+
+        if (canCastOpToMove(op)) {
+            // Moves present before the allocation can also be treated
+            // same way the one inserted by the allocator
+            RAVInstruction.LocationMove locMove = castMove(op);
+            updateWithLocationMove(locMove);
+            return;
         }
 
         for (int i = 0; i < op.dests.count; i++) {
@@ -646,8 +658,38 @@ public class BlockVerifierState {
 
             // We cannot believe the contents of registers used as temp, thus we need to reset.
             RAValue location = op.temp.curr[i];
-            this.values.put(location, UnknownAllocationState.INSTANCE);
+
+            if (op.temp.orig[i].equals(location)) {
+                this.values.putWithoutRegCheck(location, UnknownAllocationState.INSTANCE);
+            } else {
+                this.values.put(location, UnknownAllocationState.INSTANCE);
+            }
         }
+    }
+
+    /**
+     * Moves not inserted by the register allocator were previously treated as generic Operations,
+     * but some of them can be cast back to a move to increase the accuracy of the verification
+     * process.
+     *
+     * <p>
+     * All moves where the destination is the same location before and after the allocation, or
+     * vstack/stack combination can be cast to a move.
+     * </p>
+     *
+     * @param op the operation being cast
+     * @return true, if op can be cast to a move
+     */
+    protected boolean canCastOpToMove(RAVInstruction.Op op) {
+        if (!op.lirInstruction.isMoveOp() || op.dests.count != 1 || op.uses.count != 1) {
+            return false;
+        }
+
+        return op.dests.curr[0].equals(op.dests.orig[0]) || (ValueUtil.isStackSlot(op.dests.curr[0].getValue()) && LIRValueUtil.isVirtualStackSlot(op.dests.orig[0].getValue()));
+    }
+
+    protected RAVInstruction.LocationMove castMove(RAVInstruction.Op op) {
+        return new RAVInstruction.LocationMove(op.lirInstruction, op.uses.curr[0].getValue(), op.dests.curr[0].getValue(), false);
     }
 
     /**

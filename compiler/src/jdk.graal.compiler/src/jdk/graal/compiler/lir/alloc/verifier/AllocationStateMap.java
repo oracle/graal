@@ -41,10 +41,12 @@ import java.util.Set;
  * {@link ConflictedAllocationState conflicted} - set of Values that are supposed to be at same
  * location
  *
+ * <p>
  * Conflicts are resolved by assigning new {@link ValueAllocationState value} to same location.
  * Otherwise, they cannot be used. {@link ValueAllocationState Value} can store register, stack
  * slot, constant, but most importantly variables used before allocation. These are what we are
  * checking with the verification process.
+ * </p>
  */
 public class AllocationStateMap {
     protected BasicBlock<?> block;

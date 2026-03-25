@@ -362,11 +362,26 @@ public class RAVInstruction {
     public static class LocationMove extends Base {
         public RAValue from;
         public RAValue to;
+        public boolean validateRegisters;
 
         public LocationMove(LIRInstruction instr, Value from, Value to) {
+            this(instr, from, to, true);
+        }
+
+        /**
+         * Create a location move instance.
+         *
+         * @param instr Underlying LIR instruction
+         * @param from Source value
+         * @param to Destination value
+         * @param validateRegisters If checking, if register can be allocated to, should be done.
+         *            This is false for moves that are not inserted or changed by the allocator.
+         */
+        public LocationMove(LIRInstruction instr, Value from, Value to, boolean validateRegisters) {
             super(instr);
             this.from = RAValue.create(from);
             this.to = RAValue.create(to);
+            this.validateRegisters = validateRegisters;
         }
 
         @Override

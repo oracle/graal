@@ -32,6 +32,8 @@ import java.io.PrintStream;
 import java.util.List;
 
 public class VerifierPrinter {
+    public static int PADDING = 4;
+
     /**
      * Print human-readable representation of the Verifier IR to an output stream.
      *
@@ -81,7 +83,7 @@ public class VerifierPrinter {
                 var instructionString = instruction.toString();
                 var difference = longestRAVInstruction - instructionString.length();
 
-                var space = new String(new char[difference + 4]).replace("\0", " ");
+                var space = new String(new char[difference + PADDING]).replace("\0", " ");
 
                 out.println("\t" + instructionString + space + instruction.lirInstruction.toString());
                 if (instruction instanceof RAVInstruction.Op op) {

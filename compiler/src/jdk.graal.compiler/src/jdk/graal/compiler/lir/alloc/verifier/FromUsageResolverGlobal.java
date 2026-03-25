@@ -120,10 +120,8 @@ public class FromUsageResolverGlobal {
     public Set<BasicBlock<?>> endBlocks;
 
     /**
-     * Information about locations of variables found
-     * when traversing LIR, from first usage, handling
-     * all related moves up until the label instruction
-     * that defined the variable.
+     * Information about locations of variables found when traversing LIR, from first usage,
+     * handling all related moves up until the label instruction that defined the variable.
      */
     protected final class BlockUsage {
         protected final Map<RAVariable, RAValue> locations;
@@ -242,8 +240,8 @@ public class FromUsageResolverGlobal {
     }
 
     /**
-     * Two blocks meet, a successor merges into it's predecessor to pass in newly reached
-     * variable and locations.
+     * Two blocks meet, a successor merges into it's predecessor to pass in newly reached variable
+     * and locations.
      *
      * @param block The base block, where information is being merged to
      * @param successor The successor block, where new information is coming from
@@ -268,7 +266,6 @@ public class FromUsageResolverGlobal {
 
         return changed;
     }
-
 
     /**
      * Initialize first usages for variables, top-down in-order to collect all necessary information
