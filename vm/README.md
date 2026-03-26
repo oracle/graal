@@ -52,7 +52,7 @@ For more details, see [What is `mx`?](#what-is-mx) below.
     If it does not, check out the correct version:
     ```bash
     cd mx && git checkout 7.75.0
-    mx --version && cd ..
+    ./mx --version && cd ..
     ```
 5. Add `mx` to your `PATH` environment variable:
     ```bash
@@ -75,7 +75,7 @@ You can either download the latest [prebuilt release](https://github.com/graalvm
 3. Enter the directory and check out the required tag. The tag is derived from the definition of `jdks.labsjdk-ce-latest.version` in [common.json](../common.json) in the Graal repository.
     ```bash
     cd labs-openjdk
-    git checkout `cat /path/to/graal/common.json | grep '"labsjdk-ce-latest"' | sed 's:.*\(jvmci-[^"]*\)".*:\1:g'`
+    git checkout `cat /path/to/graal/common.json | grep '"labsjdk-ce-latest":' | sed 's:.*\(jvmci-[^"]*\)".*:\1:g'`
     ```
     For example, at the time of writing this guide, the tag is `jvmci-25.1-b14`:
     ```
