@@ -68,11 +68,15 @@ public class BlockVerifierState {
 
     protected VariableSynonymMap synonymMap;
 
-    public BlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, ConflictResolver constantConflictResolver, VariableSynonymMap synonymMap) {
+    protected CalleeSaveMap calleeSaveMap;
+
+    public BlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, ConflictResolver constantConflictResolver, VariableSynonymMap synonymMap,
+                    CalleeSaveMap calleeSaveMap) {
         this.values = new AllocationStateMap(block, registerAllocationConfig);
         this.registerAllocationConfig = registerAllocationConfig;
         this.conflictConstantResolver = constantConflictResolver;
         this.synonymMap = synonymMap;
+        this.calleeSaveMap = calleeSaveMap;
         this.block = block;
     }
 
@@ -81,6 +85,7 @@ public class BlockVerifierState {
         this.conflictConstantResolver = other.conflictConstantResolver;
         this.values = new AllocationStateMap(block, other.values);
         this.synonymMap = other.synonymMap;
+        this.calleeSaveMap = other.calleeSaveMap;
         this.block = block;
     }
 
@@ -665,6 +670,10 @@ public class BlockVerifierState {
                 this.values.put(location, UnknownAllocationState.INSTANCE);
             }
         }
+
+        if (op.isLabel() && block.getId() == 0) {
+            updateCalleeSavedRegisters();
+        }
     }
 
     /**
@@ -746,10 +755,25 @@ public class BlockVerifierState {
         }
 
         for (var reg : registers) {
-            var regValue = RARegister.create(reg.asValue());
+            var regValue = calleeSaveMap.createCalleeSavedRegister(reg.asValue());
+
+            var presentState = values.get(regValue);
+            if (presentState instanceof ValueAllocationState valueAllocationState) {
+                // Keep the old value from the label, but save it for check at exit point.
+                if (!valueAllocationState.getRAValue().equals(regValue)) {
+                    // If the symbol is the same register, then override it with CalleeSaveRegister
+                    calleeSaveMap.addValue(regValue, valueAllocationState.getRAValue());
+                    continue;
+                }
+
+                // Keep the kind here!
+                var lirRegValue = ValueUtil.asRegisterValue(valueAllocationState.getValue());
+                regValue = calleeSaveMap.createCalleeSavedRegister(lirRegValue);
+            }
 
             // Save same registers as symbol, and later check if it was retrieved
-            this.values.putWithoutRegCheck(regValue, new ValueAllocationState(regValue, null, block));
+            var state = new ValueAllocationState(regValue, null, block);
+            this.values.putWithoutRegCheck(regValue, state);
         }
     }
 
@@ -760,22 +784,25 @@ public class BlockVerifierState {
      * @throws RAVException when callee saved register was not recovered
      */
     protected void checkCalleeSavedRegisters() {
-        var registers = this.registerAllocationConfig.getRegisterConfig().getCalleeSaveRegisters();
+        var registers = this.calleeSaveMap.getCalleeSaveRegisters();
         if (registers == null) {
             return;
         }
 
         for (var reg : registers) {
-            var regValue = RARegister.create(reg.asValue());
+            var regValue = (RARegister) RARegister.create(reg.asValue());
             var state = this.values.get(regValue);
             if (state instanceof ValueAllocationState valueAllocationState) {
-                if (valueAllocationState.getRAValue().equals(regValue)) {
+                var stateValue = valueAllocationState.getRAValue();
+                var calleeSavedValue = calleeSaveMap.getCalleeSavedValue(regValue);
+                if (stateValue.equals(calleeSavedValue) && stateValue.getLIRKind().equals(calleeSavedValue.getLIRKind())) {
                     // Same symbol as register means the value was retrieved safely
+                    // Kinds also need to match
                     continue;
                 }
             }
 
-            throw new RAVException("Callee saved register " + regValue + " not recovered.");
+            throw new CalleeSavedRegisterNotRetrievedException(regValue, block);
         }
     }
 
@@ -802,6 +829,22 @@ public class BlockVerifierState {
             if (valueMove.variableOrConstant.isVariable()) {
                 synonymMap.addSynonym(valueMove.variableOrConstant.asVariable(), valueMove.getLocation().asVariable());
             }
+        } else if (location.isRegister() && valueMove.variableOrConstant.isVariable()) {
+            var regLoc = location.asRegister();
+
+            var state = this.values.get(regLoc);
+            if (state instanceof ValueAllocationState valueAllocationState) {
+                var value = valueAllocationState.getRAValue();
+                if (value instanceof CalleeSaveMap.CalleeSavedRegister) {
+                    // Virtual move in form r1 = VIRTMOVE v1, assigns variable
+                    // v1 to callee saved register, this needs to be saved
+                    // to properly check that callee saved value is retrieved
+                    // at exit point.
+                    calleeSaveMap.addValue(regLoc, valueMove.variableOrConstant.asVariable());
+                }
+            }
+
+            this.values.putWithoutRegCheck(valueMove.getLocation(), new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
         } else {
             this.values.put(valueMove.getLocation(), new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
         }

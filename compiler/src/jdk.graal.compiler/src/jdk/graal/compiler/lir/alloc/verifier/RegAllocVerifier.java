@@ -73,6 +73,11 @@ public class RegAllocVerifier {
 
     protected VariableSynonymMap synonymMap;
 
+    /**
+     * Track callee saved values from start block to exit blocks.
+     */
+    protected CalleeSaveMap calleeSaveMap;
+
     public RegAllocVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
         this.registerAllocationConfig = registerAllocationConfig;
@@ -86,6 +91,7 @@ public class RegAllocVerifier {
         this.constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver();
 
         this.synonymMap = new VariableSynonymMap();
+        this.calleeSaveMap = new CalleeSaveMap(registerAllocationConfig.getRegisterConfig());
     }
 
     /**
@@ -100,7 +106,6 @@ public class RegAllocVerifier {
 
         var startBlock = this.lir.getControlFlowGraph().getStartBlock();
         var startBlockState = createNewBlockState(startBlock);
-        startBlockState.updateCalleeSavedRegisters();
         this.blockEntryStates.put(startBlock, startBlockState);
 
         worklist.add(startBlock);
@@ -135,7 +140,7 @@ public class RegAllocVerifier {
     }
 
     protected BlockVerifierState createNewBlockState(BasicBlock<?> block) {
-        return new BlockVerifierState(block, registerAllocationConfig, constantMaterializationConflictResolver, synonymMap);
+        return new BlockVerifierState(block, registerAllocationConfig, constantMaterializationConflictResolver, synonymMap, calleeSaveMap);
     }
 
     /**
@@ -200,12 +205,16 @@ public class RegAllocVerifier {
      * variable locations back, calculating entry state for every block so that at the end we can
      * verify inputs of instructions match variables present before allocation.
      *
+     * <p>
      * The issues we are looking to catch are mostly about making sure that order of spills, reloads
      * and moves is correct and that used location after stores the symbol that is supposed to be
      * there.
+     * </p>
      *
+     * <p>
      * We also make sure that kinds are still matching, operand flags aren't violated, alive
      * location not being used as temp or output of same instruction.
+     * </p>
      */
     public void run() {
         this.constantMaterializationConflictResolver.prepare(lir, blockInstructions);
