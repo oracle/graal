@@ -72,9 +72,8 @@ public class RegAllocVerifier {
     protected ConflictResolver constantMaterializationConflictResolver;
 
     /**
-     * Conflict resolver for variable synonyms, some virtual
-     * moves can be in form vx = MOVE vy, and so variables are
-     * interchangeable.
+     * Conflict resolver for variable synonyms, some virtual moves can be in form vx = MOVE vy, and
+     * so variables are interchangeable.
      */
     protected VariableSynonymMap synonymMap;
 

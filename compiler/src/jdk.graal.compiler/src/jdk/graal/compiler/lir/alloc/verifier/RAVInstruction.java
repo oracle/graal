@@ -513,10 +513,9 @@ public class RAVInstruction {
     }
 
     /**
-     * Virtual move in from: v28|DWORD = MOVE input: rax|BYTE moveKind: DWORD,
-     * where the destination is a variable. We flip the relation so that
-     * the input register actually stores said symbol/variable, which keeps
-     * necessary verification information present.
+     * Virtual move in from: v28|DWORD = MOVE input: rax|BYTE moveKind: DWORD, where the destination
+     * is a variable. We flip the relation so that the input register actually stores said
+     * symbol/variable, which keeps necessary verification information present.
      */
     public static class VirtualLocationMove extends ValueMove {
         public VirtualLocationMove(LIRInstruction instr, Value variableOrConstant, Value location) {

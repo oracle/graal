@@ -33,8 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Union-find data structure for synonyms between
- * variables created by virtual moves.
+ * Union-find data structure for synonyms between variables created by virtual moves.
  */
 public class VariableSynonymMap implements ConflictResolver {
     Map<RAVariable, RAVariable> parent = new EconomicHashMap<>();
@@ -91,11 +90,11 @@ public class VariableSynonymMap implements ConflictResolver {
 
     public void prepareFromInstr(RAVInstruction.Base instruction, BasicBlock<?> block) {
         if (instruction instanceof RAVInstruction.ValueMove move) {
-           if (!move.variableOrConstant.isVariable() || !move.getLocation().isVariable()) {
-               return;
-           }
+            if (!move.variableOrConstant.isVariable() || !move.getLocation().isVariable()) {
+                return;
+            }
 
-           this.addSynonym(move.variableOrConstant.asVariable(), move.getLocation().asVariable());
+            this.addSynonym(move.variableOrConstant.asVariable(), move.getLocation().asVariable());
         }
     }
 
