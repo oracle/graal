@@ -192,7 +192,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                     var location = valueMov.getInput();
                     var variable = LIRValueUtil.asVariable(valueMov.getResult());
 
-                    var virtualMove = new RAVInstruction.ValueMove(instruction, variable, location);
+                    var virtualMove = new RAVInstruction.VirtualLocationMove(instruction, variable, location);
                     previousInstr.addVirtualMove(virtualMove);
 
                     // No need to store virtual move here, it is stored into previous instruction.

@@ -497,7 +497,7 @@ public class RAVInstruction {
 
         @Override
         public String toString() {
-            return getLocation().toString() + " = VIRTMOVE " + variableOrConstant.toString();
+            return getLocation().toString() + " = VALUEMOVE " + variableOrConstant.toString();
         }
 
         public void setLocation(RAValue location) {
@@ -509,6 +509,23 @@ public class RAVInstruction {
          */
         public RAValue getLocation() {
             return location;
+        }
+    }
+
+    /**
+     * Virtual move in from: v28|DWORD = MOVE input: rax|BYTE moveKind: DWORD,
+     * where the destination is a variable. We flip the relation so that
+     * the input register actually stores said symbol/variable, which keeps
+     * necessary verification information present.
+     */
+    public static class VirtualLocationMove extends ValueMove {
+        public VirtualLocationMove(LIRInstruction instr, Value variableOrConstant, Value location) {
+            super(instr, variableOrConstant, location);
+        }
+
+        @Override
+        public String toString() {
+            return getLocation().toString() + " = VIRTMOVE " + variableOrConstant.toString();
         }
     }
 }

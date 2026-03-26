@@ -315,7 +315,9 @@ public class BlockVerifierState {
                 checkReferences(op);
             }
         } else if (instruction instanceof RAVInstruction.LocationMove move) {
-            checkMoveKinds(move);
+            checkLocationMoveKinds(move);
+        } else if (instruction instanceof RAVInstruction.ValueMove move) {
+            checkValueMoveKinds(move);
         }
     }
 
@@ -365,7 +367,7 @@ public class BlockVerifierState {
      *
      * @param move Move between locations, inserted by register allocator
      */
-    protected void checkMoveKinds(RAVInstruction.LocationMove move) {
+    protected void checkLocationMoveKinds(RAVInstruction.LocationMove move) {
         AllocationState state = this.values.get(move.from);
         if (state instanceof ValueAllocationState valueAllocationState) {
             RAValue movedValue = valueAllocationState.getRAValue();
@@ -378,6 +380,19 @@ public class BlockVerifierState {
 
                 throw new KindsMismatchException(move.lirInstruction, block, move.to, movedValue, false);
             }
+        }
+    }
+
+    protected void checkValueMoveKinds(RAVInstruction.ValueMove move) {
+        if (move instanceof RAVInstruction.VirtualLocationMove) {
+            // v28|DWORD = MOVE input: rax|BYTE moveKind: DWORD
+            // this type of instruction that is stripped from final
+            // LIR is not checked for kinds.
+            return;
+        }
+
+        if (!kindsEqual(move.getLocation(), move.variableOrConstant)) {
+            throw new KindsMismatchException(move.lirInstruction, block, move.getLocation(), move.variableOrConstant, false);
         }
     }
 
