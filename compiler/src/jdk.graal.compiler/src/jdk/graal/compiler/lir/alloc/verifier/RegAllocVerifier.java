@@ -71,6 +71,11 @@ public class RegAllocVerifier {
      */
     protected ConflictResolver constantMaterializationConflictResolver;
 
+    /**
+     * Conflict resolver for variable synonyms, some virtual
+     * moves can be in form vx = MOVE vy, and so variables are
+     * interchangeable.
+     */
     protected VariableSynonymMap synonymMap;
 
     /**
@@ -99,7 +104,9 @@ public class RegAllocVerifier {
      * blocks that are its predecessors, we get after reached a fixed point state, where no entry
      * state is changed.
      *
+     * <p>
      * This is necessary to verify instruction inputs correctly.
+     * </p>
      */
     public void calculateEntryBlocks() {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
@@ -218,6 +225,7 @@ public class RegAllocVerifier {
      */
     public void run() {
         this.constantMaterializationConflictResolver.prepare(lir, blockInstructions);
+        this.synonymMap.prepare(lir, blockInstructions);
         this.fromUsageResolverGlobal.resolvePhiFromUsage();
 
         this.calculateEntryBlocks();

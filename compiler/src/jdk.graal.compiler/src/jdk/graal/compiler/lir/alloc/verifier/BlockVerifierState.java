@@ -206,6 +206,15 @@ public class BlockVerifierState {
                 }
             }
 
+            if (orig.isVariable()) {
+                var variable = orig.asVariable();
+                var resolvedState = this.synonymMap.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
+                if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
+                    this.values.put(curr, resolvedState);
+                    return;
+                }
+            }
+
             throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
         }
 
@@ -220,8 +229,13 @@ public class BlockVerifierState {
                     }
                 }
 
-                if (orig.isVariable() && valAllocState.value.isVariable() && synonymMap.isSynonymOf(orig.asVariable(), valAllocState.value.asVariable())) {
-                    return; // Resolved!
+                if (orig.isVariable()) {
+                    var variable = orig.asVariable();
+                    var resolvedState = this.synonymMap.resolveValueState(variable, valAllocState, curr);
+                    if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
+                        this.values.put(curr, resolvedState);
+                        return;
+                    }
                 }
 
                 throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
@@ -829,21 +843,13 @@ public class BlockVerifierState {
      * @param valueMove move we update state from
      */
     protected void updateWithValueMove(RAVInstruction.ValueMove valueMove) {
-        if (valueMove.getLocation().isVariable()) {
-            // Whenever there is a move between two variables,
-            // we need to change every location containing the old variable (rhs - source)
-            // to the new variable (lhs - destination)
+        var location = valueMove.getLocation();
+        if (location.isVariable()) {
+            // Moves of this form:
             // v4|QWORD[.] = MOVE input: v3|QWORD[.] moveKind: QWORD
-            // Move before allocation
+            // are handled by VariableSynonymMap.
             // TestCase: BoxingTest.boxBoolean
-            var locations = this.values.getValueLocations(valueMove.variableOrConstant);
-            for (var location : locations) {
-                this.values.put(location, new ValueAllocationState(valueMove.getLocation(), valueMove, block));
-            }
-
-            if (valueMove.variableOrConstant.isVariable()) {
-                synonymMap.addSynonym(valueMove.variableOrConstant.asVariable(), valueMove.getLocation().asVariable());
-            }
+            return;
         } else if (location.isRegister() && valueMove.variableOrConstant.isVariable()) {
             var regLoc = location.asRegister();
 

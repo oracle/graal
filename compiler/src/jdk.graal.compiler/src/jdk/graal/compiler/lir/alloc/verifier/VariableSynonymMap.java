@@ -24,19 +24,27 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.util.EconomicHashMap;
 
+import java.util.List;
 import java.util.Map;
 
-public class VariableSynonymMap {
+/**
+ * Union-find data structure for synonyms between
+ * variables created by virtual moves.
+ */
+public class VariableSynonymMap implements ConflictResolver {
     Map<RAVariable, RAVariable> parent = new EconomicHashMap<>();
     Map<RAVariable, Integer> rank = new EconomicHashMap<>();
 
-    public void addSynonym(RAVariable source, RAVariable target) {
+    protected void addSynonym(RAVariable source, RAVariable target) {
         union(source, target);
     }
 
-    public RAVariable find(RAVariable x) {
+    protected RAVariable find(RAVariable x) {
         parent.putIfAbsent(x, x);
         if (!parent.get(x).equals(x)) {
             parent.put(x, find(parent.get(x)));
@@ -44,7 +52,7 @@ public class VariableSynonymMap {
         return parent.get(x);
     }
 
-    public void union(RAVariable a, RAVariable b) {
+    protected void union(RAVariable a, RAVariable b) {
         RAVariable rootA = find(a);
         RAVariable rootB = find(b);
 
@@ -65,7 +73,60 @@ public class VariableSynonymMap {
         }
     }
 
-    public boolean isSynonymOf(RAVariable source, RAVariable target) {
+    protected boolean isSynonymOf(RAVariable source, RAVariable target) {
         return find(source).equals(find(target));
+    }
+
+    @Override
+    public void prepare(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions) {
+        for (var blockId : lir.getBlocks()) {
+            var block = lir.getBlockById(blockId);
+            var instructions = blockInstructions.get(block);
+
+            for (var instruction : instructions) {
+                this.prepareFromInstr(instruction, block);
+            }
+        }
+    }
+
+    public void prepareFromInstr(RAVInstruction.Base instruction, BasicBlock<?> block) {
+        if (instruction instanceof RAVInstruction.ValueMove move) {
+           if (!move.variableOrConstant.isVariable() || !move.getLocation().isVariable()) {
+               return;
+           }
+
+           this.addSynonym(move.variableOrConstant.asVariable(), move.getLocation().asVariable());
+        }
+    }
+
+    @Override
+    public ValueAllocationState resolveValueState(RAVariable target, ValueAllocationState valueState, RAValue location) {
+        var stateValue = valueState.getRAValue();
+        if (!stateValue.isVariable()) {
+            return null;
+        }
+
+        if (!isSynonymOf(target, stateValue.asVariable())) {
+            return null;
+        }
+
+        return new ValueAllocationState(target, null, null);
+    }
+
+    @Override
+    public ValueAllocationState resolveConflictedState(RAVariable target, ConflictedAllocationState conflictedState, RAValue location) {
+        var confStates = conflictedState.getConflictedStates();
+        for (var valueState : confStates) {
+            var stateValue = valueState.getRAValue();
+            if (!stateValue.isVariable()) {
+                return null;
+            }
+
+            if (!isSynonymOf(target, stateValue.asVariable())) {
+                return null;
+            }
+
+        }
+        return new ValueAllocationState(target, null, null);
     }
 }
