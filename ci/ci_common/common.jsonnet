@@ -136,6 +136,7 @@ common + common.frequencies + {
   },
 
   linux_amd64: common.linux_amd64 + graal_common_extras + linux_deps_extras,
+  linux_amd64_ol8: common.linux_amd64_ol8 + graal_common_extras + linux_deps_extras,
   linux_amd64_ol9: common.linux_amd64_ol9 + graal_common_extras + linux_deps_extras,
   linux_amd64_ubuntu: common.linux_amd64_ubuntu + graal_common_extras,
   linux_aarch64: common.linux_aarch64 + graal_common_extras + linux_deps_extras,

@@ -28,23 +28,34 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 
 /**
- * Wrapper class for Language filters to avoid signaling. Prevent the installation of a signal
- * handler except on SVM and not with llvm or EspressoLibs. (sulong virtualizes pthread_self but not
- * ptrhead_kill)
+ * Wrapper class for language filters to decide when to use noop substitutions for nio's
+ * {@code NativeThread}.
  */
-public class DisableSignals {
-    // avoid the installation of a signal handler except on SVM and not with llvm or espresso libs
+public class UseNativeThreadSubstitutions {
+    /**
+     * Disables NIO's {@code NativeThread} signals on EspressoLibs and Sulong. On EspressoLibs, this
+     * will not cause problems because guest NIO native functions will eventually call host NIO
+     * functions, which maintain working {@code NativeThread} signals. <br>
+     *
+     * LLVM currently offers no way to support NIO's {@code NativeThread} signals. Consequently, all
+     * guest code relying on them is expected to fail when using {@link NFISulongNativeAccess}.
+     */
     public static boolean standardFilter(EspressoLanguage language) {
-        return language.useEspressoLibs() || !ImageInfo.inImageRuntimeCode() || language.nativeBackendId().equals(NFISulongNativeAccess.Provider.ID);
+        return language.useEspressoLibs() || language.nativeBackendId().equals(NFISulongNativeAccess.Provider.ID);
     }
 
-    // various filters
-    public static class StandardFilter implements LanguageFilter {
-        public static final LanguageFilter INSTANCE = new StandardFilter();
+    /**
+     * The native init function overwrites the previously installed signal handler. When running on
+     * HotSpot, this may not be desirable. To be safe, we substitute this function on HotSpot to
+     * ensure we do not overwrite any settings established by the host VM.
+     */
+    public static class InitFilter implements LanguageFilter {
+        public static final LanguageFilter INSTANCE = new InitFilter();
 
         @Override
         public boolean isValidFor(EspressoLanguage language) {
-            return standardFilter(language);
+            // substitute on Hotspot too
+            return standardFilter(language) || !ImageInfo.inImageRuntimeCode();
         }
     }
 
@@ -65,5 +76,4 @@ public class DisableSignals {
             return (standardFilter(language)) && (language.getJavaVersion().java17OrEarlier());
         }
     }
-
 }

@@ -30,8 +30,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       ruby: "==3.0.2",
     },
   },
-
-  linux_amd64: self.common + self.linux + graal_common.linux_amd64,
+  // (GR-76265) use ol8 instead of the default (ol7), which leads to the problematic glibc 2.17
+  linux_amd64: self.common + self.linux + graal_common.linux_amd64_ol8,
   linux_aarch64: self.common + self.linux + graal_common.linux_aarch64,
 
   x52: {
