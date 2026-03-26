@@ -188,8 +188,9 @@ public class FromUsageResolverGlobal {
     protected void processBlock(Queue<BasicBlock<?>> worklist) {
         var block = worklist.remove();
 
-        var usage = blockUsageMap.get(block);
-        usage.processed = true;
+        var exitUsage = blockUsageMap.get(block);
+        exitUsage.processed = true;
+        var usage = new BlockUsage(exitUsage, true);
 
         var instructions = blockInstructions.get(block);
         for (var instruction : instructions.reversed()) {
@@ -212,7 +213,6 @@ public class FromUsageResolverGlobal {
             }
         }
 
-        this.blockUsageMap.put(block, usage);
         for (int i = 0; i < block.getPredecessorCount(); i++) {
             var pred = block.getPredecessorAt(i);
 
