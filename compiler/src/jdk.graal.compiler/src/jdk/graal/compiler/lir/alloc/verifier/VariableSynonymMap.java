@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.util.EconomicHashMap;
@@ -83,12 +82,12 @@ public class VariableSynonymMap implements ConflictResolver {
             var instructions = blockInstructions.get(block);
 
             for (var instruction : instructions) {
-                this.prepareFromInstr(instruction, block);
+                this.prepareFromInstr(instruction);
             }
         }
     }
 
-    public void prepareFromInstr(RAVInstruction.Base instruction, BasicBlock<?> block) {
+    public void prepareFromInstr(RAVInstruction.Base instruction) {
         if (instruction instanceof RAVInstruction.ValueMove move) {
             if (!move.variableOrConstant.isVariable() || !move.getLocation().isVariable()) {
                 return;
