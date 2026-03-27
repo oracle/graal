@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.util.EconomicHashMap;
@@ -35,8 +36,13 @@ import java.util.Map;
  * Union-find data structure for synonyms between variables created by virtual moves.
  */
 public class VariableSynonymMap implements ConflictResolver {
-    Map<RAVariable, RAVariable> parent = new EconomicHashMap<>();
-    Map<RAVariable, Integer> rank = new EconomicHashMap<>();
+    protected Map<RAVariable, RAVariable> parent;
+    protected Map<RAVariable, Integer> rank;
+
+    protected VariableSynonymMap() {
+       parent = new EconomicHashMap<>();
+       rank = new EconomicHashMap<>();
+    }
 
     protected void addSynonym(RAVariable source, RAVariable target) {
         union(source, target);
@@ -108,11 +114,14 @@ public class VariableSynonymMap implements ConflictResolver {
             return null;
         }
 
-        return new ValueAllocationState(target, null, null);
+        return new ValueAllocationState(target, valueState.source, valueState.block);
     }
 
     @Override
     public ValueAllocationState resolveConflictedState(RAVariable target, ConflictedAllocationState conflictedState, RAValue location) {
+        RAVInstruction.Base source = null;
+        BasicBlock<?> block = null;
+
         var confStates = conflictedState.getConflictedStates();
         for (var valueState : confStates) {
             var stateValue = valueState.getRAValue();
@@ -124,7 +133,11 @@ public class VariableSynonymMap implements ConflictResolver {
                 return null;
             }
 
+            // Currently take any source, but maybe its better to track the original variable
+            source = valueState.source;
+            block = valueState.block;
         }
-        return new ValueAllocationState(target, null, null);
+
+        return new ValueAllocationState(target, source, block);
     }
 }
