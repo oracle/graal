@@ -95,6 +95,16 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
         this.stackSlotAllocator = stackSlotAllocator;
     }
 
+    @Override
+    public void setNeverSpillConstants(boolean neverSpillConstants) {
+        allocator.setNeverSpillConstants(neverSpillConstants);
+    }
+
+    @Override
+    public boolean getNeverSpillConstants() {
+        return allocator.getNeverSpillConstants();
+    }
+
     /**
      * Get allocator that is being verified.
      *

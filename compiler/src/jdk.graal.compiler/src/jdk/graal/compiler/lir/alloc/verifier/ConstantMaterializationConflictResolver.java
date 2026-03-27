@@ -47,10 +47,12 @@ import java.util.Set;
 public class ConstantMaterializationConflictResolver implements ConflictResolver {
     protected Map<RAVariable, ConstantValue> constantVariableMap;
     protected Set<RAVariable> canRematerializeToStack;
+    protected VariableSynonymMap variableSynonymMap;
 
-    public ConstantMaterializationConflictResolver() {
+    public ConstantMaterializationConflictResolver(VariableSynonymMap variableSynonymMap) {
         this.constantVariableMap = new EconomicHashMap<>();
         this.canRematerializeToStack = new EconomicHashSet<>();
+        this.variableSynonymMap = variableSynonymMap;
     }
 
     /**
@@ -106,6 +108,18 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
      */
     @Override
     public ValueAllocationState resolveConflictedState(RAVariable target, ConflictedAllocationState conflictedState, RAValue location) {
+        if (!this.constantVariableMap.containsKey(target)) {
+            var synonym = variableSynonymMap.find(target);
+            if (this.constantVariableMap.containsKey(synonym) && !synonym.equals(target)) {
+                var resolvedState = resolveConflictedState(synonym, conflictedState, location);
+                if (resolvedState != null) {
+                    return new ValueAllocationState(target, resolvedState.getSource(), resolvedState.getBlock());
+                }
+            }
+
+            return null;
+        }
+
         var confStates = conflictedState.getConflictedStates();
 
         RAVariable variable = null;
@@ -132,10 +146,6 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
             return null;
         }
 
-        if (!this.constantVariableMap.containsKey(variable)) {
-            return null;
-        }
-
         if (!this.constantVariableMap.get(variable).equals(constantState.getValue())) {
             return null;
         }
@@ -158,6 +168,14 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     @Override
     public ValueAllocationState resolveValueState(RAVariable variable, ValueAllocationState valueState, RAValue location) {
         if (!this.constantVariableMap.containsKey(variable)) {
+            var synonym = variableSynonymMap.find(variable);
+            if (this.constantVariableMap.containsKey(synonym) && !synonym.equals(variable)) {
+                var resolvedState = resolveValueState(synonym, valueState, location);
+                if (resolvedState != null) {
+                    return new ValueAllocationState(variable, resolvedState.getSource(), resolvedState.getBlock());
+                }
+            }
+
             return null;
         }
 

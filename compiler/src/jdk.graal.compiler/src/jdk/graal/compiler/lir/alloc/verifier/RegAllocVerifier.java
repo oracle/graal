@@ -92,9 +92,9 @@ public class RegAllocVerifier {
 
         this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
 
-        this.constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver();
-
         this.synonymMap = new VariableSynonymMap();
+        this.constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver(this.synonymMap);
+
         this.calleeSaveMap = new CalleeSaveMap(registerAllocationConfig.getRegisterConfig());
     }
 

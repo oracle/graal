@@ -70,7 +70,8 @@ public class BlockVerifierState {
 
     protected CalleeSaveMap calleeSaveMap;
 
-    public BlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig, ConflictResolver constantConflictResolver, VariableSynonymMap synonymMap,
+    public BlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig,
+                    ConflictResolver constantConflictResolver, VariableSynonymMap synonymMap,
                     CalleeSaveMap calleeSaveMap) {
         this.values = new AllocationStateMap(block, registerAllocationConfig);
         this.registerAllocationConfig = registerAllocationConfig;

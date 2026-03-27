@@ -42,7 +42,7 @@ public class VariableSynonymMap implements ConflictResolver {
         union(source, target);
     }
 
-    protected RAVariable find(RAVariable x) {
+    public RAVariable find(RAVariable x) {
         parent.putIfAbsent(x, x);
         if (!parent.get(x).equals(x)) {
             parent.put(x, find(parent.get(x)));
