@@ -200,16 +200,13 @@ public class BlockVerifierState {
         if (state.isConflicted()) {
             if (orig.isVariable()) {
                 var variable = orig.asVariable();
-                var resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
-                if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
-                    this.values.put(curr, resolvedState);
-                    return;
-                }
-            }
+                var confState = (ConflictedAllocationState) state;
 
-            if (orig.isVariable()) {
-                var variable = orig.asVariable();
-                var resolvedState = this.synonymMap.resolveConflictedState(variable, (ConflictedAllocationState) state, curr);
+                ValueAllocationState resolvedState = this.conflictConstantResolver.resolveConflictedState(variable, confState, curr);
+                if (resolvedState == null) {
+                    resolvedState = this.synonymMap.resolveConflictedState(variable, confState, curr);
+                }
+
                 if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
                     this.values.put(curr, resolvedState);
                     return;
@@ -221,18 +218,16 @@ public class BlockVerifierState {
 
         if (state instanceof ValueAllocationState valAllocState) {
             if (!valAllocState.value.equals(orig)) {
-                if (LIRValueUtil.isConstantValue(valAllocState.value.getValue()) && orig.isVariable()) {
-                    var variable = orig.asVariable();
-                    var resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState, curr);
-                    if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
-                        this.values.put(curr, resolvedState);
-                        return;
-                    }
-                }
-
                 if (orig.isVariable()) {
                     var variable = orig.asVariable();
-                    var resolvedState = this.synonymMap.resolveValueState(variable, valAllocState, curr);
+
+                    ValueAllocationState resolvedState = null;
+                    if (LIRValueUtil.isConstantValue(valAllocState.value.getValue())) {
+                        resolvedState = this.conflictConstantResolver.resolveValueState(variable, valAllocState, curr);
+                    } else if (valAllocState.getRAValue().isVariable()) {
+                        resolvedState = this.synonymMap.resolveValueState(variable, valAllocState, curr);
+                    }
+
                     if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
                         this.values.put(curr, resolvedState);
                         return;
