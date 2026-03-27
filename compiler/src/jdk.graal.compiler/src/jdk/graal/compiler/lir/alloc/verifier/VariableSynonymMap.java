@@ -40,8 +40,8 @@ public class VariableSynonymMap implements ConflictResolver {
     protected Map<RAVariable, Integer> rank;
 
     protected VariableSynonymMap() {
-       parent = new EconomicHashMap<>();
-       rank = new EconomicHashMap<>();
+        parent = new EconomicHashMap<>();
+        rank = new EconomicHashMap<>();
     }
 
     protected void addSynonym(RAVariable source, RAVariable target) {
