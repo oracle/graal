@@ -67,6 +67,8 @@ import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.QuickeningKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteSection;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteSectionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
@@ -632,23 +634,32 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         List<InstructionRewriteRuleModel> rules = new ArrayList<>();
 
         // load.argument, pop -> _
-        rules.add(deletionRule(p(loadArgumentInstruction), p(popInstruction)));
+        rules.add(rule(delete(p(loadArgumentInstruction), p(popInstruction))));
         // load.constant, pop -> _
-        rules.add(deletionRule(p(loadConstantInstruction), p(popInstruction)));
+        rules.add(rule(delete(p(loadConstantInstruction), p(popInstruction))));
         // load.null, pop -> _
-        rules.add(deletionRule(p(loadNullInstruction), p(popInstruction)));
-
+        rules.add(rule(delete(p(loadNullInstruction), p(popInstruction))));
         // Throwing an exception on illegal load makes load.local side-effecting.
         if (loadIllegalLocalStrategy != LoadIllegalLocalStrategy.CUSTOM_EXCEPTION) {
             // load.local x, pop -> _
-            rules.add(deletionRule(p(loadLocalOperation.instruction), p(popInstruction)));
+            rules.add(rule(delete(p(loadLocalOperation.instruction), p(popInstruction))));
         }
+        // clear.local x, clear.local x -> clear.local x
+        rules.add(rule(identity(p(clearLocalInstruction, "x")), delete(p(clearLocalInstruction, "x"))));
 
         return rules.toArray(InstructionRewriteRuleModel[]::new);
     }
 
-    private static InstructionRewriteRuleModel deletionRule(InstructionPatternModel... lhs) {
-        return new InstructionRewriteRuleModel(lhs, new InstructionPatternModel[0]);
+    private static InstructionRewriteRuleModel rule(RewriteSection... sections) {
+        return new InstructionRewriteRuleModel(sections);
+    }
+
+    private static RewriteSection delete(InstructionPatternModel... patterns) {
+        return new RewriteSection(RewriteSectionKind.DELETE, patterns);
+    }
+
+    private static RewriteSection identity(InstructionPatternModel... patterns) {
+        return new RewriteSection(RewriteSectionKind.IDENTITY, patterns);
     }
 
     private static InstructionPatternModel p(InstructionModel instruction, String... immediates) {

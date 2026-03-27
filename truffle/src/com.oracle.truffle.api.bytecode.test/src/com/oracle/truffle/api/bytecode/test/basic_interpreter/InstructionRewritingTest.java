@@ -203,6 +203,40 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testClearLocalDuplicate() {
+        BasicInterpreter node = parseNode("clearLocalDuplicate", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal local = b.createLocal();
+
+            b.beginBlock();
+            b.emitClearLocal(local);
+            b.emitClearLocal(local);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "clear.local",
+                            "load.constant",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "clear.local",
+                            "clear.local",
+                            "load.constant",
+                            "return");
+        }
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
     public void testMultipleRewrites() {
         BasicInterpreter node = parseNode("multipleRewrites", (BasicInterpreterBuilder b) -> {
             b.beginRoot();
@@ -325,10 +359,45 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
                         "pop",
                         "load.constant",
                         "return");
-        for (Instruction oldInstruction : instructionsToTest) {
-            Instruction newInstruction = oldInstruction.getLocation().update().getInstruction();
-            assertEquals(oldInstruction.getName(), newInstruction.getName());
-        }
+        List<Instruction> newInstructions = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+        assertUpdatedInstructions(instructionsToTest, newInstructions, 0, 1, 5, 12, 13);
+    }
+
+    @Test
+    public void testClearLocalDuplicateTranslateRewrittenBytecodeIndex() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("clearLocalDuplicateTranslateRewrittenBytecodeIndex", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal();
+            b.emitClearLocal(x);
+            b.emitClearLocal(x);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        List<Instruction> oldInstructions = node.getBytecodeNode().getInstructionsAsList();
+
+        BytecodeConfig config = run.bytecode().newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build();
+        node.getRootNodes().update(config);
+
+        List<Instruction> newInstructions = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+        assertInstructions(node,
+                        "clear.local",
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        assertUpdatedInstructions(oldInstructions, newInstructions, 0, 2, 3);
+        assertEquals(42L, node.getCallTarget().call());
     }
 
     @Test
@@ -363,26 +432,92 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
         List<LocalVariable> locals = node.getBytecodeNode().getLocals();
         assertEquals(1, locals.size());
         LocalVariable x = locals.getFirst();
-        // The bci should point to the load.constant. Walk the instructions explicitly to avoid
-        // coincidentally interpreting an immediate as an opcode.
-        for (var instruction : node.getBytecodeNode().getInstructions()) {
-            if (instruction.getBytecodeIndex() == x.getStartIndex()) {
-                Instruction localStartInstruction;
-                if (run.testTracer()) {
-                    // Get the instruction after trace.instruction.
-                    localStartInstruction = node.getBytecodeNode().getInstruction(instruction.getNextBytecodeIndex());
-                } else {
-                    localStartInstruction = instruction;
-                }
-                assertEquals("load.constant", localStartInstruction.getName());
-                break;
-            }
-            if (instruction.getBytecodeIndex() > x.getStartIndex()) {
-                fail("Local start index does not point to a valid instruction.");
-            }
-        }
+        assertLocalStartInstruction(node, x, "load.constant");
 
         assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testClearLocalDuplicateFixLocalIndices() {
+        assumeTrue(run.hasBlockScoping());
+        assumeTrue(run.hasInstructionRewriting());
+
+        BasicInterpreter node = parseNode("clearLocalDuplicateFixLocalIndices", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal();
+
+            b.beginBlock();
+            b.emitClearLocal(x); // kept
+            b.createLocal(); // y
+            b.emitClearLocal(x); // deleted
+
+            b.createLocal(); // z
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+
+        List<LocalVariable> locals = node.getBytecodeNode().getLocals();
+        assertEquals(3, locals.size());
+        LocalVariable x = locals.get(0);
+        LocalVariable y = locals.get(1);
+        LocalVariable z = locals.get(2);
+        assertLocalStartInstruction(node, x, "clear.local");
+        assertLocalStartInstruction(node, y, "load.constant");
+        assertLocalStartInstruction(node, z, "load.constant");
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testClearLocalDuplicateFixSourceSuffix() {
+        assumeTrue(run.hasInstructionRewriting());
+
+        Source source = Source.newBuilder("test", "keep;drop;return 42;", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("clearLocalDuplicateFixSourceSuffix", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+            BytecodeLocal x = b.createLocal();
+
+            b.beginBlock();
+            b.beginSource(source);
+
+            b.beginSourceSection(0, 5); // keep;
+            b.emitClearLocal(x); // kept
+            b.endSourceSection();
+
+            b.beginSourceSection(5, 5); // drop;
+            b.emitClearLocal(x); // deleted
+            b.endSourceSection();
+
+            b.beginSourceSection(10, 10); // return 42;
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endSourceSection();
+
+            b.endSource();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "clear.local",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+
+        assertSourceSectionsForInstructions(node, 0, 1, "keep;");
+        assertSourceSectionsForInstructions(node, 1, 3, "return 42;");
+        assertEmptySourceSection(node, "drop;");
     }
 
     /**
@@ -598,6 +733,38 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
             for (int j = 0; j < sourceStrings.length; j++) {
                 assertEquals("Instruction " + i + " did not have the expected source section at index " + j, sourceStrings[j], sourceSections[j].getCharacters());
             }
+        }
+    }
+
+    private void assertLocalStartInstruction(BasicInterpreter node, LocalVariable local, String instructionName) {
+        // Walk the instructions explicitly to avoid coincidentally interpreting an immediate as an
+        // opcode.
+        for (var instruction : node.getBytecodeNode().getInstructions()) {
+            if (instruction.getBytecodeIndex() == local.getStartIndex()) {
+                Instruction localStartInstruction;
+                if (run.testTracer()) {
+                    // Get the instruction after trace.instruction.
+                    localStartInstruction = node.getBytecodeNode().getInstruction(instruction.getNextBytecodeIndex());
+                } else {
+                    localStartInstruction = instruction;
+                }
+                assertEquals(instructionName, localStartInstruction.getName());
+                return;
+            }
+            if (instruction.getBytecodeIndex() > local.getStartIndex()) {
+                fail("Local start index does not point to a valid instruction.");
+            }
+        }
+        fail("Local start index does not point to a valid instruction.");
+    }
+
+    private static void assertUpdatedInstructions(List<Instruction> oldInstructions, List<Instruction> newInstructions, int... newInstructionIndexes) {
+        assertEquals(newInstructionIndexes.length, oldInstructions.size());
+        for (int i = 0; i < oldInstructions.size(); i++) {
+            Instruction expectedInstruction = newInstructions.get(newInstructionIndexes[i]);
+            Instruction actualInstruction = oldInstructions.get(i).getLocation().update().getInstruction();
+            assertEquals(expectedInstruction.getName(), actualInstruction.getName());
+            assertEquals(expectedInstruction.getBytecodeIndex(), actualInstruction.getBytecodeIndex());
         }
     }
 
