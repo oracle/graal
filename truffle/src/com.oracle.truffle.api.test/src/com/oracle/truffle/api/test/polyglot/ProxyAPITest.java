@@ -275,6 +275,19 @@ public class ProxyAPITest {
         assertValue(value, Trait.PROXY_OBJECT, Trait.EXECUTABLE);
     }
 
+    @Test
+    public void testProxyExecutableException() {
+        Value executable = context.asValue(new ProxyExecutable() {
+            @Override
+            public Object execute(Value... arguments) {
+                throw new UnsupportedOperationException();
+            }
+        });
+        PolyglotException exception = Assert.assertThrows(PolyglotException.class, () -> executable.execute());
+        assertTrue(exception.isHostException());
+        assertTrue(exception.asHostException() instanceof UnsupportedOperationException);
+    }
+
     static class ProxyInstantiableTest implements ProxyInstantiable {
 
         Function<Value[], Object> newInstance;
