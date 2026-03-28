@@ -129,7 +129,7 @@ public class ObjectState {
         ValueNode value = values[i];
         int totalBytes = value.getStackKind().getByteCount();
         // Stamps erase the actual kind of a value. totalBytes is therefore not reliable.
-        while (j < values.length && values[i].isIllegalConstant()) {
+        while (j < values.length && values[j].isIllegalConstant()) {
             j++;
         }
         assert j - i <= totalBytes : Assertions.errorMessage(i, j, totalBytes, values, valuePos);
