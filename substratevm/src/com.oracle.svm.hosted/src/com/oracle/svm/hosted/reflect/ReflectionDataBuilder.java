@@ -113,6 +113,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final SubstrateAnnotationExtractor annotationExtractor;
     private BeforeAnalysisAccessImpl analysisAccess;
     private final ClassForNameSupport classForNameSupport;
+    private SubstitutionReflectivityFilter reflectivityFilter;
 
     private boolean sealed;
 
@@ -175,6 +176,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             registerConditionalConfiguration(conditionalTask.condition, (cnd) -> universe.getBigbang().postTask(debug -> conditionalTask.task.accept(cnd)));
         }
         pendingConditionalTasks.clear();
+        reflectivityFilter = SubstitutionReflectivityFilter.singleton();
     }
 
     public void beforeAnalysis(BeforeAnalysisAccessImpl beforeAnalysisAccess) {
@@ -444,7 +446,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerMethod(ConfigurationCondition cnd, boolean queriedOnly, Executable reflectExecutable) {
-        if (SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
+        if (reflectivityFilter.shouldExclude(reflectExecutable)) {
             return;
         }
 
@@ -605,7 +607,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerField(ConfigurationCondition cnd, boolean queriedOnly, Field reflectField) {
-        if (SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
+        if (reflectivityFilter.shouldExclude(reflectField)) {
             return;
         }
 
@@ -1051,7 +1053,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return false;
         }
         for (Class<?> type : annotationValue.getTypes()) {
-            if (type == null || SubstitutionReflectivityFilter.shouldExclude(type, metaAccess, universe)) {
+            if (type == null || reflectivityFilter.shouldExclude(type)) {
                 return false;
             }
         }
@@ -1092,7 +1094,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (clazz.isPrimitive()) {
             return true; // primitives cannot be looked up by name and have no methods or fields
         }
-        return SubstitutionReflectivityFilter.shouldExclude(clazz, metaAccess, universe);
+        return reflectivityFilter.shouldExclude(clazz);
     }
 
     private static <T> T queryGenericInfo(Callable<T> callable) {
@@ -1126,7 +1128,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             Method[] accessors = RecordUtils.getRecordComponentAccessorMethods(clazz);
             Set<Method> unregisteredAccessors = ConcurrentHashMap.newKeySet();
             for (Method accessor : accessors) {
-                if (SubstitutionReflectivityFilter.shouldExclude(accessor, metaAccess, universe)) {
+                if (reflectivityFilter.shouldExclude(accessor)) {
                     return;
                 }
                 unregisteredAccessors.add(accessor);
@@ -1236,7 +1238,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (sealed) {
                 throw new UnsupportedFeatureException("Registering new class for reflection when the image heap is already sealed: " + javaClass);
             }
-            if (!SubstitutionReflectivityFilter.shouldExclude(javaClass, metaAccess, universe)) {
+            if (!reflectivityFilter.shouldExclude(javaClass)) {
                 registerTypesForClass(metaAccess.lookupJavaType(javaClass), javaClass);
             }
         }
@@ -1255,7 +1257,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (sealed) {
                 throw new UnsupportedFeatureException("Registering new field for reflection when the image heap is already sealed: " + reflectField);
             }
-            if (!SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
+            if (!reflectivityFilter.shouldExclude(reflectField)) {
                 registerTypesForField(analysisField, reflectField, false);
                 if (analysisField.getDeclaringClass().isAnnotation()) {
                     processAnnotationField(ConfigurationCondition.alwaysTrue(), reflectField);
@@ -1280,7 +1282,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (sealed) {
                 throw new UnsupportedFeatureException("Registering new method for reflection when the image heap is already sealed: " + reflectExecutable);
             }
-            if (!SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
+            if (!reflectivityFilter.shouldExclude(reflectExecutable)) {
                 registerTypesForMethod(analysisMethod, reflectExecutable);
                 if (reflectExecutable instanceof Method && reflectExecutable.getDeclaringClass().isAnnotation()) {
                     processAnnotationMethod(false, (Method) reflectExecutable);

@@ -176,6 +176,8 @@ public class JNIAccessFeature implements Feature {
 
     private int loadedConfigurations;
 
+    private SubstitutionReflectivityFilter reflectivityFilter;
+
     private final Set<Class<?>> newClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> newNegativeClassLookups = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Executable> newMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -220,6 +222,8 @@ public class JNIAccessFeature implements Feature {
                         access.getImageClassLoader());
         loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
+
+        reflectivityFilter = SubstitutionReflectivityFilter.singleton();
     }
 
     private final class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry
@@ -416,11 +420,11 @@ public class JNIAccessFeature implements Feature {
         access.requireAnalysisIteration();
     }
 
-    private static JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
+    private JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
         if (classObj.isPrimitive()) {
             return null; // primitives cannot be looked up by name and have no methods or fields
         }
-        if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess(), access.getUniverse())) {
+        if (reflectivityFilter.shouldExclude(classObj)) {
             return null;
         }
         return JNIReflectionDictionary.currentLayer().addClassIfAbsent(classObj, c -> {
@@ -435,7 +439,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     public void addMethod(Executable method, DuringAnalysisAccessImpl access) {
-        if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
+        if (reflectivityFilter.shouldExclude(method)) {
             return;
         }
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
@@ -479,7 +483,7 @@ public class JNIAccessFeature implements Feature {
         });
     }
 
-    private static void addNegativeMethodLookup(Class<?> declaringClass, String methodName, Class<?>[] parameterTypes, DuringAnalysisAccessImpl access) {
+    private void addNegativeMethodLookup(Class<?> declaringClass, String methodName, Class<?>[] parameterTypes, DuringAnalysisAccessImpl access) {
         JNIAccessibleClass jniClass = addClass(declaringClass, access);
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(methodName, parameterTypes);
         jniClass.addMethodIfAbsent(descriptor, d -> JNIAccessibleMethod.negativeMethodQuery(jniClass));
@@ -505,8 +509,8 @@ public class JNIAccessFeature implements Feature {
         });
     }
 
-    private static void addField(Field reflField, boolean writable, DuringAnalysisAccessImpl access) {
-        if (SubstitutionReflectivityFilter.shouldExclude(reflField, access.getMetaAccess(), access.getUniverse())) {
+    private void addField(Field reflField, boolean writable, DuringAnalysisAccessImpl access) {
+        if (reflectivityFilter.shouldExclude(reflField)) {
             return;
         }
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), access);
@@ -531,7 +535,7 @@ public class JNIAccessFeature implements Feature {
         bb.registerAsJNIAccessed(field, writable);
     }
 
-    private static void addNegativeFieldLookup(Class<?> declaringClass, String fieldName, DuringAnalysisAccessImpl access) {
+    private void addNegativeFieldLookup(Class<?> declaringClass, String fieldName, DuringAnalysisAccessImpl access) {
         JNIAccessibleClass jniClass = addClass(declaringClass, access);
         jniClass.addFieldIfAbsent(fieldName, d -> JNIAccessibleField.negativeFieldQuery(jniClass));
     }
