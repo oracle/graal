@@ -180,11 +180,15 @@ public final class CodeInfoAccess {
         return state == CodeInfo.STATE_CODE_CONSTANTS_LIVE || state == CodeInfo.STATE_NON_ENTRANT;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CodePointer getActualCodeStart(CodeInfo info) {
+        return (CodePointer) ((UnsignedWord) cast(info).getCodeStart()).subtract(cast(info).getNopsBeforeEntry());
+    }
+
     /** @see CodeInfoImpl#getCodeStart */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodePointer getCodeStart(CodeInfo info) {
-        UnsignedWord actualCodeStart = ((UnsignedWord) cast(info).getCodeStart()).subtract(cast(info).getNopsBeforeEntry());
-        return (CodePointer) actualCodeStart;
+        return getActualCodeStart(info);
     }
 
     /** @see CodeInfoImpl#setCodeStart */
@@ -256,23 +260,20 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean contains(CodeInfo info, CodePointer ip) {
         CodeInfoImpl impl = cast(info);
-        UnsignedWord actualCodeStart = ((UnsignedWord) cast(info).getCodeStart()).subtract(cast(info).getNopsBeforeEntry());
-        return ((UnsignedWord) ip).subtract(actualCodeStart).belowThan(impl.getCodeSize());
+        return ((UnsignedWord) ip).subtract((UnsignedWord) getActualCodeStart(info)).belowThan(impl.getCodeSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long relativeIP(CodeInfo info, CodePointer ip) {
         assert contains(info, ip);
         CodeInfoImpl impl = cast(info);
-        // TODO (ahgamut): move nopsBeforeEntry to getRelativeIPOffset?
-        UnsignedWord actualCodeStart = ((UnsignedWord) cast(info).getCodeStart()).subtract(cast(info).getNopsBeforeEntry());
-        UnsignedWord baseOffset = ((UnsignedWord) ip).subtract(actualCodeStart);
+        // TODO (ahgamut): use nopsBeforeEntry around getRelativeIPOffset?
+        UnsignedWord baseOffset = ((UnsignedWord) ip).subtract((UnsignedWord) getActualCodeStart(info));
         return baseOffset.add(impl.getRelativeIPOffset()).rawValue();
     }
 
     public static CodePointer absoluteIP(CodeInfo info, long relativeIP) {
-        UnsignedWord actualCodeStart = ((UnsignedWord) cast(info).getCodeStart()).subtract(cast(info).getNopsBeforeEntry());
-        return (CodePointer) (actualCodeStart).add(Word.unsigned(relativeIP));
+        return (CodePointer) ((UnsignedWord) getActualCodeStart(info)).add(Word.unsigned(relativeIP));
     }
 
     @SuppressWarnings("unchecked")
@@ -390,8 +391,7 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static CodePointer getCodeEnd(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
-        UnsignedWord actualCodeStart = ((UnsignedWord) cast(info).getCodeStart()).subtract(cast(info).getNopsBeforeEntry());
-        return (CodePointer) (actualCodeStart).add(impl.getCodeSize());
+        return (CodePointer) ((UnsignedWord) getActualCodeStart(info)).add(impl.getCodeSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
