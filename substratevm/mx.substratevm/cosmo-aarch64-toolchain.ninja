@@ -1,0 +1,38 @@
+# Expects cosmocc/bin on $PATH, or set CC/CXX/AR to absolute paths.
+
+CC = aarch64-unknown-cosmo-cc
+CXX = aarch64-unknown-cosmo-c++
+AR = aarch64-linux-cosmo-ar
+CFLAGS = -D_COSMO_SOURCE -fno-stack-protector
+CXXFLAGS = -D_COSMO_SOURCE -fno-stack-protector
+LDFLAGS =
+
+rule cc
+  command = $CC -MMD -MF $out.d $includes $CFLAGS $cflags -c $in -o $out
+  description = CC $out
+  depfile = $out.d
+  deps = gcc
+
+rule cxx
+  command = $CXX -MMD -MF $out.d $includes $CXXFLAGS $cflags -c $in -o $out
+  description = CXX $out
+  depfile = $out.d
+  deps = gcc
+
+rule link
+  command = $CC $LDFLAGS $ldflags -o $out $in $ldlibs
+  description = LINK $out
+
+rule linkxx
+  command = $CXX $LDFLAGS $ldflags -o $out $in $ldlibs
+  description = LINKXX $out
+
+rule ar
+  command = $AR -rc $out $in
+  description = AR $out
+
+rule asm
+  command = $CC -MMD -MF $out.d $includes $cflags -c $in -o $out
+  description = ASM $out
+  depfile = $out.d
+  deps = gcc

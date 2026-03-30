@@ -926,7 +926,7 @@ suite = {
             "subDir": "src",
             "native": "static_lib",
             "multitarget": {
-                "libc": ["glibc", "musl", "default"],
+                "libc": ["glibc", "musl", "cosmo", "default"],
             },
             "os": {
                 "solaris": {
@@ -990,7 +990,7 @@ suite = {
             "deliverable" : "jvm",
             "use_jdk_headers" : True,
             "multitarget": {
-                "libc": ["glibc", "musl", "default"],
+                "libc": ["glibc", "musl", "cosmo", "default"],
             },
             "os" : {
                 "darwin": {
@@ -1036,7 +1036,7 @@ suite = {
             "subDir": "src",
             "native": "static_lib",
             "multitarget": {
-                "libc": ["glibc", "musl", "default"],
+                "libc": ["glibc", "musl", "cosmo", "default"],
             },
             "deliverable" : "svm_container",
             "os_arch": {
@@ -2379,6 +2379,44 @@ suite = {
         #
         # Native Projects
         #
+        "COSMOCC_AMD64_NINJA_TOOLCHAIN": {
+            "native": True,
+            "platformDependent": False,
+            "description": "Ninja rules for Cosmopolitan Libc toolchain on x86_64",
+            "native_toolchain": {
+                "kind": "ninja",
+                "target": {
+                    "os": "linux",
+                    "arch": "amd64",
+                    "libc": "cosmo",
+                },
+                "compiler": "cosmocc",
+            },
+            "layout": {
+                "toolchain.ninja": "file:mx.substratevm/cosmo-x86_64-toolchain.ninja",
+            },
+            "maven": False,
+        },
+
+        "COSMOCC_AARCH64_NINJA_TOOLCHAIN": {
+            "native": True,
+            "platformDependent": False,
+            "description": "Ninja rules for Cosmopolitan Libc toolchain on aarch64",
+            "native_toolchain": {
+                "kind": "ninja",
+                "target": {
+                    "os": "linux",
+                    "arch": "aarch64",
+                    "libc": "cosmo",
+                },
+                "compiler": "cosmocc",
+            },
+            "layout": {
+                "toolchain.ninja": "file:mx.substratevm/cosmo-aarch64-toolchain.ninja",
+            },
+            "maven": False,
+        },
+
         "SVM_HOSTED_NATIVE": {
             "native": True,
             "platformDependent" : True,
