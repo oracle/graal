@@ -546,6 +546,11 @@ public class SubstrateOptions {
             if (N - M < 0) {
                 throw UserError.invalidOptionValue(PatchableFunctionEntry, newValue, "requires N >= M");
             }
+            if (M != 0 || N != 0) {
+                if (!values.get(UseLibC).equals("cosmo")) {
+                    throw UserError.invalidOptionValue(PatchableFunctionEntry, newValue, "PatchableFunctionEntry is currently only available for --libc=cosmo");
+                }
+            }
             SubstrateOptions.ConcealedOptions.NOPsBeforeFunctionEntryLabel.update(values, M);
             SubstrateOptions.ConcealedOptions.NOPsAfterFunctionEntryLabel.update(values, N-M);
         }
