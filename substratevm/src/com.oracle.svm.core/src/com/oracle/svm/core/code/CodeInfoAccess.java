@@ -266,7 +266,7 @@ public final class CodeInfoAccess {
         CodeInfoImpl impl = cast(info);
         // TODO (ahgamut): move nopsBeforeEntry to getRelativeIPOffset?
         UnsignedWord actualCodeStart = ((UnsignedWord) cast(info).getCodeStart()).subtract(cast(info).getNopsBeforeEntry());
-        UnsignedWord baseOffset = ((UnsignedWord) ip).subtract((UnsignedWord) actualCodeStart);
+        UnsignedWord baseOffset = ((UnsignedWord) ip).subtract(actualCodeStart);
         return baseOffset.add(impl.getRelativeIPOffset()).rawValue();
     }
 
