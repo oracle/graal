@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.posix.cosmo;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;

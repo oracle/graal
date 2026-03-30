@@ -26,7 +26,7 @@ package com.oracle.svm.core.posix.cosmo;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
 import com.oracle.svm.core.c.locale.LocaleSupport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.posix.cosmo.headers.Dlfcn;

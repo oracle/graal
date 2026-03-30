@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.core.posix.cosmo;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -61,7 +62,7 @@ abstract class PthreadVMLockSupport extends VMLockSupport {
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
     protected VMCondition replaceVMCondition(VMCondition source) {
-        return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()), source.getConditionName());
+        return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()), source.getName());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -71,6 +72,7 @@ abstract class PthreadVMLockSupport extends VMLockSupport {
         }
     }
 
+    @NeverInline("Fatal error handling is always a slowpath.")
     @Uninterruptible(reason = "Error handling is interruptible.", calleeMustBe = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     private static void fatalError(int result, String functionName) {

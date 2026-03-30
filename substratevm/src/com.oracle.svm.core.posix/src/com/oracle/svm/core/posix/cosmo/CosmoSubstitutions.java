@@ -1,6 +1,6 @@
 package com.oracle.svm.core.posix.cosmo;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -17,6 +17,8 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import java.io.Console;
 import java.util.Objects;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 /* dummy */
 public class CosmoSubstitutions {
 }
@@ -25,7 +27,7 @@ public class CosmoSubstitutions {
 final class Target_java_lang_System_Cosmo {
 
     @Substitute
-    @Uninterruptible(reason = "Does basic math after a simple system call")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long nanoTime() {
         Time.timespec tp = StackValue.get(Time.timespec.class);
         int status = Time.NoTransitions.clock_gettime(Time.CLOCK_MONOTONIC(), tp);

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.posix.cosmo;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.locale.LocaleSupport;
@@ -60,8 +60,8 @@ import org.graalvm.word.UnsignedWord;
 
 import java.io.FileDescriptor;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.posix.cosmo.headers.Unistd._SC_GETPW_R_SIZE_MAX;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 public class CosmoUtils {
     /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
