@@ -80,6 +80,13 @@ public interface OutputAssembler {
 
     void writeStringPadded(String s, int nBytes);
 
+    /**
+     * Writes a string into exactly nBytes, padding with zeros if needed. Unlike writeStringPadded,
+     * this method does NOT add a null terminator, allowing strings of exactly nBytes length.
+     * This is needed for Mach-O section names which are 16-byte fixed fields.
+     */
+    void writeFixedString(String s, int nBytes);
+
     ByteBuffer getBuffer();
 
     byte[] getBlob();

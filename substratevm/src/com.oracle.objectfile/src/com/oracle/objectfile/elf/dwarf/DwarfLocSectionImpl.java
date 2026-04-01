@@ -88,7 +88,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
          * on abbrev section size.
          */
         String abbrevSectionName = dwarfSections.getAbbrevSectionImpl().getSectionName();
-        ELFObjectFile.ELFSection abbrevSection = (ELFObjectFile.ELFSection) getElement().getOwner().elementForName(abbrevSectionName);
+        ObjectFile.Element abbrevSection = getElement().getOwner().elementForName(abbrevSectionName);
         LayoutDecision sizeDecision = decisions.get(abbrevSection).getDecision(LayoutDecision.Kind.SIZE);
         deps.add(BuildDependency.createOrGet(ourContent, sizeDecision));
         return deps;

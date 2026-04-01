@@ -227,10 +227,35 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
     }
 
     /**
+     * Checks if the given file entry represents the same file as this class's primary source file.
+     * <p>
+     * We compare by file name and directory index rather than object identity because different
+     * FileEntry instances may represent the same logical file (e.g., when the same file is
+     * referenced from different code paths during debug info generation).
+     *
+     * @param file the file entry to check
+     * @return true if the file is the class's primary source file
+     */
+    public boolean isClassFile(FileEntry file) {
+        if (file == null || this.fileEntry == null) {
+            return false;
+        }
+        String fileName = file.fileName();
+        String classFileName = this.fileEntry.fileName();
+        if (fileName == null || classFileName == null || classFileName.isEmpty()) {
+            return false;
+        }
+        return fileName.equals(classFileName) && getDirIdx(file) == getDirIdx(this.fileEntry);
+    }
+
+    /**
      * Returns the file index of a given file entry within this class entry.
      * <p>
      * This method is only called once all debug info entries are produced, the class entry and the
      * file index was generated.
+     * <p>
+     * Note: The class's own file is always at index 0 in the DWARF 5 file table (the primary source
+     * file). Other files are indexed starting at 1.
      *
      * @param file the given file entry
      * @return the index of the file entry
@@ -240,8 +265,20 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
         if (file == null || !indexedFiles.containsKey(file)) {
             return 0;
         }
-
-        return indexedFiles.get(file);
+        // Class's own file is at index 0 (primary source file in DWARF 5 file table)
+        if (isClassFile(file)) {
+            return 0;
+        }
+        /*
+         * Adjust index: The class's own file is written at index 0 and skipped in the file table
+         * loop. The indexedFiles map uses 1-based indices (position 0 -> index 1, etc.).
+         * Since the class file (at position 0) is skipped, remaining files shift down by 1.
+         *
+         * Invariant: The class's own file is always at position 0 in the files list because
+         * it's added first in the constructor and distinct() preserves encounter order.
+         */
+        int idx = indexedFiles.get(file);
+        return idx - 1;
     }
 
     private static DirEntry getDirEntry(FileEntry file) {

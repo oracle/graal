@@ -261,6 +261,22 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
     }
 
     @Override
+    public void writeFixedString(String s, int nBytes) {
+        ensure(nBytes);
+        assert s == null || s.length() <= nBytes : "string oversize: " + s;
+        byte[] bytes = s != null ? s.getBytes() : new byte[0];
+        int writeLen = Math.min(bytes.length, nBytes);
+        // Write string bytes
+        for (int i = 0; i < writeLen; i++) {
+            writeByte(bytes[i]);
+        }
+        // Pad with zeros
+        for (int i = writeLen; i < nBytes; i++) {
+            writeByte((byte) 0);
+        }
+    }
+
+    @Override
     public ByteBuffer getBuffer() {
         return buf;
     }

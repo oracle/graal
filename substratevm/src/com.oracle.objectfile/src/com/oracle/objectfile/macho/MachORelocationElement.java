@@ -102,7 +102,26 @@ class MachORelocationElement extends MachOObjectFile.LinkEditElement {
 
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-        return ObjectFile.minimalDependencies(decisions, this);
+        EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+        /*
+         * Our size depends on the content of all sections that might generate relocations.
+         * This is needed for DWARF sections which register relocations during content generation
+         * (in createContent() called from getOrDecideContent()/getOrDecideSize()).
+         * We depend on CONTENT rather than SIZE because:
+         * 1. Relocations are registered during content generation
+         * 2. For DWARF sections, SIZE calls getOrDecideContent(), but we want the dependency
+         *    to be explicit on CONTENT to ensure proper ordering
+         */
+        com.oracle.objectfile.LayoutDecision ourSize = decisions.get(this).getDecision(com.oracle.objectfile.LayoutDecision.Kind.SIZE);
+        for (Element e : getOwner().getElements()) {
+            if (e instanceof MachOSection && decisions.get(e) != null) {
+                com.oracle.objectfile.LayoutDecision sectionContent = decisions.get(e).getDecision(com.oracle.objectfile.LayoutDecision.Kind.CONTENT);
+                if (sectionContent != null) {
+                    deps.add(BuildDependency.createOrGet(ourSize, sectionContent));
+                }
+            }
+        }
+        return deps;
     }
 
     public int startIndexFor(MachOSection s) {

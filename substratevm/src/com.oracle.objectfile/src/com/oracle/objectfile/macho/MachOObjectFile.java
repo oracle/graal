@@ -53,6 +53,18 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SymbolTable;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.elf.ELFMachine;
+import com.oracle.objectfile.elf.dwarf.DwarfARangesSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfAbbrevSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
+import com.oracle.objectfile.elf.dwarf.DwarfFrameSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfLineSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfLineStrSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfLocSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfRangesSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfStrSectionImpl;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 
@@ -157,10 +169,11 @@ public final class MachOObjectFile extends ObjectFile {
 
     @Override
     protected int initialVaddr() {
-        // HACK: this (and the superclass version)
-        // is baking in *per-OS* knowledge, not just per-format knowledge...
-        // need to model OS [constraints] somehow.
-        return super.initialVaddr();
+        /*
+         * For relocatable (.o) files, vmaddr should be 0. The linker will relocate
+         * addresses when creating the executable. This matches the output of clang -c.
+         */
+        return 0;
     }
 
     @Override
@@ -257,6 +270,20 @@ public final class MachOObjectFile extends ObjectFile {
         MachOUserDefinedSection userDefined = new MachOUserDefinedSection(this, name, alignment, (Segment64Command) segment, SectionType.REGULAR, ourImpl);
         ourImpl.setElement(userDefined);
         return userDefined;
+    }
+
+    /**
+     * Create debug sections in the unnamed segment for relocatable (.o) files.
+     * The section's destinationSegmentName will be automatically set to "__DWARF"
+     * (in MachOSection constructor) since the name contains "debug".
+     * After linking, these sections will be placed in the __DWARF segment.
+     */
+    @Override
+    public Section newDebugSection(String name, ElementImpl impl) {
+        // Use the unnamed segment (same as other sections in .o files)
+        Segment64Command segment = (Segment64Command) findSegmentByName(getUnnamedSegmentName());
+        final int alignment = 1; // debugging information is mostly unaligned
+        return newUserDefinedSection(segment, name, alignment, impl);
     }
 
     private final class MachOElementList extends ElementList {
@@ -1785,8 +1812,8 @@ public final class MachOObjectFile extends ObjectFile {
         }
 
         public void write(OutputAssembler db) {
-            db.writeStringPadded(sectName, 16);
-            db.writeStringPadded(segName, 16);
+            db.writeFixedString(sectName, 16);
+            db.writeFixedString(segName, 16);
             db.write8Byte(addr);
             db.write8Byte(size);
             db.write4Byte(offset);
@@ -1880,33 +1907,45 @@ public final class MachOObjectFile extends ObjectFile {
 
         @Override
         protected void writePayload(OutputAssembler db, final Map<Element, LayoutDecisionMap> alreadyDecided) {
-            db.writeStringPadded(segname, 16);
+            db.writeFixedString(segname, 16);
 
             // our virtual address is the lowest of any virtual address issued to
             // our constituent loadable sections.
             Map<Element, LayoutDecisionMap> decidedAboutOurElements = new HashMap<>();
+            // For vmsize calculation, only include referenceable sections (those loaded into memory).
+            // Debug sections are not referenceable and shouldn't contribute to vmsize.
+            Map<Element, LayoutDecisionMap> referenceableElements = new HashMap<>();
             for (Element e : elementsInSegment) {
                 if (e instanceof MachOSection) {
                     decidedAboutOurElements.put(e, alreadyDecided.get(e));
+                    if (e.isReferenceable()) {
+                        referenceableElements.put(e, alreadyDecided.get(e));
+                    }
                 }
             }
-            List<LayoutDecision> minVaddrDecisions = ObjectFile.minimalDecisionValues(decidedAboutOurElements, LayoutDecision.Kind.VADDR, new IntegerDecisionComparator(true));
+            // Use only referenceable elements for vmsize calculation
+            List<LayoutDecision> minVaddrDecisions = ObjectFile.minimalDecisionValues(referenceableElements, LayoutDecision.Kind.VADDR, new IntegerDecisionComparator(true));
             int minVaddr = (minVaddrDecisions == null || minVaddrDecisions.size() == 0) ? 0 : (int) minVaddrDecisions.get(0).getValue();
             // vmsize is the difference between our min vaddr and max vaddr size + that section's
             // size rounded up to page size
-            List<LayoutDecision> maxVaddrDecisions = ObjectFile.maximalDecisionValues(decidedAboutOurElements, LayoutDecision.Kind.VADDR, new IntegerDecisionComparator(false));
-            // break ties using size
-            Collections.sort(maxVaddrDecisions, new SizeTiebreakComparator(decidedAboutOurElements, false));
-            // we sorted into ascending size order, so get the biggest
-            LayoutDecision maxVaddrDecision = maxVaddrDecisions.get(maxVaddrDecisions.size() - 1);
-
-            int maxVaddr = (maxVaddrDecision == null) ? 0 : ((int) maxVaddrDecision.getValue() + maxVaddrDecision.getElement().getMemSize(alreadyDecided));
-            int vmSize = ObjectFile.nextIntegerMultiple(maxVaddr - minVaddr, getPageSize());
+            List<LayoutDecision> maxVaddrDecisions = ObjectFile.maximalDecisionValues(referenceableElements, LayoutDecision.Kind.VADDR, new IntegerDecisionComparator(false));
+            int vmSize;
+            if (maxVaddrDecisions == null || maxVaddrDecisions.isEmpty()) {
+                // No referenceable sections - vmsize should be 0 (debug-only segment)
+                vmSize = 0;
+            } else {
+                // break ties using size
+                Collections.sort(maxVaddrDecisions, new SizeTiebreakComparator(referenceableElements, false));
+                // we sorted into ascending size order, so get the biggest
+                LayoutDecision maxVaddrDecision = maxVaddrDecisions.get(maxVaddrDecisions.size() - 1);
+                int maxVaddr = (int) maxVaddrDecision.getValue() + maxVaddrDecision.getElement().getMemSize(alreadyDecided);
+                vmSize = ObjectFile.nextIntegerMultiple(maxVaddr - minVaddr, getPageSize());
+            }
 
             @SuppressWarnings("unused")
-            Element firstSectionByVaddr = (minVaddrDecisions == null) ? null : minVaddrDecisions.get(0).getElement();
+            Element firstSectionByVaddr = (minVaddrDecisions == null || minVaddrDecisions.isEmpty()) ? null : minVaddrDecisions.get(0).getElement();
             @SuppressWarnings("unused")
-            Element lastSectionByVaddr = (maxVaddrDecision == null) ? null : maxVaddrDecision.getElement();
+            Element lastSectionByVaddr = (maxVaddrDecisions == null || maxVaddrDecisions.isEmpty()) ? null : maxVaddrDecisions.get(maxVaddrDecisions.size() - 1).getElement();
 
             // same job for file offsets -- not all elements have vaddrs!
             // NOTE: the vaddr case is redundant, but is a useful sanity check
@@ -1942,9 +1981,6 @@ public final class MachOObjectFile extends ObjectFile {
             int effectiveFileOffset = fileOffset - prePadding;
             int effectiveFileSize = fileSize + prePadding;
 
-            db.write8Byte(effectiveMinVaddr);
-            db.write8Byte(effectiveVmSize);
-            db.write8Byte(effectiveFileOffset);
             /*
              * Round up effectiveFileSize to the nearest page boundary, to match what the stock
              * tools do. BUT: ARGH:
@@ -1965,6 +2001,18 @@ public final class MachOObjectFile extends ObjectFile {
                 effectiveFileSize = ObjectFile.nextIntegerMultiple(effectiveFileSize, getPageSize());
                 minimumFileSize = Math.max(minimumFileSize, effectiveFileOffset + effectiveFileSize);
             }
+            /*
+             * Mach-O requires vmsize >= filesize for segments. When non-referenceable sections
+             * (like debug sections) are included in the segment but don't contribute to vmsize,
+             * we must expand vmsize to cover filesize. Round up to page size.
+             */
+            if (effectiveVmSize < effectiveFileSize) {
+                effectiveVmSize = ObjectFile.nextIntegerMultiple(effectiveFileSize, getPageSize());
+            }
+
+            db.write8Byte(effectiveMinVaddr);
+            db.write8Byte(effectiveVmSize);
+            db.write8Byte(effectiveFileOffset);
             db.write8Byte(effectiveFileSize);
             db.write4Byte((int) ObjectFile.flagSetAsLong(maxprot));
             db.write4Byte((int) ObjectFile.flagSetAsLong(initprot));
@@ -2075,13 +2123,14 @@ public final class MachOObjectFile extends ObjectFile {
                 assert this == loadCommands.linkEditCommand;
             } else {
                 /*
-                 * We also depend on the offset of any relocation element containing relocation
-                 * records for our content.
+                 * We depend on the offset of any relocation element. This ensures proper ordering
+                 * since section content (which writes relocation info) needs relocations to be
+                 * positioned. We always add this dependency because DWARF sections register
+                 * relocations during content generation (after getDependencies is called).
                  */
                 if (getLinkEditSegment() != null) {
                     for (Element e : getLinkEditSegment().elementsInSegment) {
-                        if (e instanceof MachORelocationElement && ((MachORelocationElement) e).relocatesSegment(this)) {
-                            // we depend on its offset
+                        if (e instanceof MachORelocationElement) {
                             deps.add(BuildDependency.createOrGet(ourContent, decisions.get(e).getDecision(LayoutDecision.Kind.OFFSET)));
                         }
                     }
@@ -2365,6 +2414,62 @@ public final class MachOObjectFile extends ObjectFile {
             return ObjectFile.defaultGetOrDecideOffset(alreadyDecided, this, offsetHint);
         }
 
+    }
+
+    @Override
+    public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
+        // Map Mach-O CPU type to ELF machine for DWARF register constants
+        ELFMachine machine = cpuType == MachOCpuType.ARM64
+                        ? ELFMachine.AArch64 : ELFMachine.X86_64;
+
+        DwarfDebugInfo dwarfSections = new DwarfDebugInfo(machine, getByteOrder());
+
+        // Get all section implementations
+        DwarfStrSectionImpl strSection = dwarfSections.getStrSectionImpl();
+        DwarfLineStrSectionImpl lineStrSection = dwarfSections.getLineStrSectionImpl();
+        DwarfAbbrevSectionImpl abbrevSection = dwarfSections.getAbbrevSectionImpl();
+        DwarfFrameSectionImpl frameSection = dwarfSections.getFrameSectionImpl();
+        DwarfLocSectionImpl locSection = dwarfSections.getLocSectionImpl();
+        DwarfInfoSectionImpl infoSection = dwarfSections.getInfoSectionImpl();
+        DwarfARangesSectionImpl arangesSection = dwarfSections.getARangesSectionImpl();
+        DwarfRangesSectionImpl rangesSection = dwarfSections.getRangesSectionImpl();
+        DwarfLineSectionImpl lineSection = dwarfSections.getLineSectionImpl();
+
+        // Create section elements using Mach-O style names (e.g., "__debug_str" instead of ".debug_str")
+        // The section names go to the __DWARF segment
+        ObjectFile.Format format = getFormat();
+        newDebugSection(strSection.getSectionName(format), strSection);
+        newDebugSection(lineStrSection.getSectionName(format), lineStrSection);
+        newDebugSection(abbrevSection.getSectionName(format), abbrevSection);
+        newDebugSection(frameSection.getSectionName(format), frameSection);
+        newDebugSection(locSection.getSectionName(format), locSection);
+        newDebugSection(infoSection.getSectionName(format), infoSection);
+        newDebugSection(arangesSection.getSectionName(format), arangesSection);
+        newDebugSection(rangesSection.getSectionName(format), rangesSection);
+        newDebugSection(lineSection.getSectionName(format), lineSection);
+
+        // Create symbols for DWARF sections (for base-relative relocations)
+        createDefinedSymbol(abbrevSection.getSectionName(), abbrevSection.getElement(), 0, 0, false, false);
+        createDefinedSymbol(strSection.getSectionName(), strSection.getElement(), 0, 0, false, false);
+        createDefinedSymbol(lineStrSection.getSectionName(), lineStrSection.getElement(), 0, 0, false, false);
+        createDefinedSymbol(infoSection.getSectionName(), infoSection.getElement(), 0, 0, false, false);
+        createDefinedSymbol(locSection.getSectionName(), locSection.getElement(), 0, 0, false, false);
+        createDefinedSymbol(rangesSection.getSectionName(), rangesSection.getElement(), 0, 0, false, false);
+        createDefinedSymbol(lineSection.getSectionName(), lineSection.getElement(), 0, 0, false, false);
+
+        // Pre-create relocation elements to avoid NPE during content write
+        strSection.getOrCreateRelocationElement(0);
+        lineStrSection.getOrCreateRelocationElement(0);
+        abbrevSection.getOrCreateRelocationElement(0);
+        frameSection.getOrCreateRelocationElement(0);
+        locSection.getOrCreateRelocationElement(0);
+        infoSection.getOrCreateRelocationElement(0);
+        arangesSection.getOrCreateRelocationElement(0);
+        rangesSection.getOrCreateRelocationElement(0);
+        lineSection.getOrCreateRelocationElement(0);
+
+        // Populate debug info model
+        dwarfSections.installDebugInfo(debugInfoProvider);
     }
 
     @SuppressWarnings("unused")
