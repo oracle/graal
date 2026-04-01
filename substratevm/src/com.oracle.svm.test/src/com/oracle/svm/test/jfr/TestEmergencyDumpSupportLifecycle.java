@@ -34,13 +34,13 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.posix.jfr.PosixJfrEmergencyDumpSupport;
 
-public class TestEmergencyDumpSupportLifecycle extends AbstractJfrTest {
+public class TestEmergencyDumpSupportLifecycle extends JfrEmergencyDumpTest {
     @Test
     public void testRepeatedInitializeReusesPathBuffer() {
         if (!HasJfrSupport.get()) {
             return;
         }
-        if (!(JfrEmergencyDumpSupport.singleton() instanceof PosixJfrEmergencyDumpSupport support)) {
+        if (!JfrEmergencyDumpSupport.isPresent() || !(JfrEmergencyDumpSupport.singleton() instanceof PosixJfrEmergencyDumpSupport support)) {
             return;
         }
 

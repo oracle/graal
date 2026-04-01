@@ -49,7 +49,7 @@ import jdk.jfr.Configuration;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
-public class TestEmergencyDumpRepositoryFallback extends AbstractJfrTest {
+public class TestEmergencyDumpRepositoryFallback extends JfrEmergencyDumpTest {
     private static final String STRING_EVENT_NAME = "com.jfr.String";
     private static final String OUT_OF_MEMORY_REASON = "Out of Memory";
 
@@ -58,7 +58,7 @@ public class TestEmergencyDumpRepositoryFallback extends AbstractJfrTest {
         if (!HasJfrSupport.get()) {
             return;
         }
-        if (!(JfrEmergencyDumpSupport.singleton() instanceof PosixJfrEmergencyDumpSupport support)) {
+        if (!JfrEmergencyDumpSupport.isPresent() || !(JfrEmergencyDumpSupport.singleton() instanceof PosixJfrEmergencyDumpSupport support)) {
             return;
         }
 
