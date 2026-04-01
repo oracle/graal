@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -34,8 +35,8 @@ import jdk.vm.ci.code.Register;
 public class InvalidRegisterUsedException extends RAVException {
     public Register register;
 
-    public InvalidRegisterUsedException(Register register) {
-        super(getErrorMessage(register));
+    public InvalidRegisterUsedException(Register register, RAVInstruction.Base instruction, BasicBlock<?> block) {
+        super(getErrorMessage(register), instruction, block);
         this.register = register;
     }
 

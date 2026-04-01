@@ -27,18 +27,19 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 
 /**
- * Callee-saved register was not retrieved on exit block.
+ * Callee-saved register was not retrieved on an exit block.
  */
 @SuppressWarnings("serial")
 public class CalleeSavedRegisterNotRetrievedException extends RAVException {
     public RARegister register;
-    public BasicBlock<?> block;
+    public BlockVerifierState blockVerifierState;
 
-    public CalleeSavedRegisterNotRetrievedException(RARegister register, BasicBlock<?> block) {
-        super(getErrorMessage(register, block));
+    public CalleeSavedRegisterNotRetrievedException(RARegister register, BasicBlock<?> block, BlockVerifierState blockVerifierState) {
+        super(getErrorMessage(register), null, block);
+        this.blockVerifierState = new BlockVerifierState(block, blockVerifierState);
     }
 
-    public static String getErrorMessage(RARegister register, BasicBlock<?> block) {
-        return "Callee saved register " + register + " not retrieved on exit " + block;
+    public static String getErrorMessage(RARegister register) {
+        return "Callee saved register " + register + " not retrieved on exit";
     }
 }

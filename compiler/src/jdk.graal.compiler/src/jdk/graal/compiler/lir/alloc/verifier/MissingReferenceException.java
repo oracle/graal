@@ -31,17 +31,17 @@ public class MissingReferenceException extends RAVException {
     public RAValue reference;
     public AllocationState state;
     public RAVInstruction.Op op;
-    public BasicBlock<?> block;
+    public BlockVerifierState blockVerifierState;
 
-    public MissingReferenceException(RAValue reference, AllocationState state, RAVInstruction.Op op, BasicBlock<?> block) {
-        super(getMessage(reference, state, op, block));
+    public MissingReferenceException(RAVInstruction.Op op, BasicBlock<?> block, RAValue reference, AllocationState state, BlockVerifierState blockVerifierState) {
+        super(getMessage(reference, state), op, block);
         this.reference = reference;
         this.state = state;
         this.op = op;
-        this.block = block;
+        this.blockVerifierState = new BlockVerifierState(block, blockVerifierState);
     }
 
-    public static String getMessage(RAValue reference, AllocationState state, RAVInstruction.Op op, BasicBlock<?> block) {
-        return "Missing reference in " + reference + " in " + op.lirInstruction + " in " + block + " actually is " + state;
+    public static String getMessage(RAValue reference, AllocationState state) {
+        return "Missing reference in " + reference + " actually is " + state;
     }
 }

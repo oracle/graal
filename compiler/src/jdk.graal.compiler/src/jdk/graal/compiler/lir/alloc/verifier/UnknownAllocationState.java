@@ -55,11 +55,11 @@ public class UnknownAllocationState extends AllocationState {
 
         if (other instanceof ConflictedAllocationState conflictedState) {
             var newConfState = new ConflictedAllocationState(conflictedState.conflictedStates);
-            newConfState.addConflictedValue(ValueAllocationState.createIllegal(block));
+            newConfState.addConflictedValue(ValueAllocationState.createUndefined(block));
             return newConfState;
         }
 
-        return new ConflictedAllocationState((ValueAllocationState) other, ValueAllocationState.createIllegal(null));
+        return new ConflictedAllocationState((ValueAllocationState) other, ValueAllocationState.createUndefined(null));
     }
 
     @Override

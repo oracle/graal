@@ -72,12 +72,8 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
      *
      * @return instance of {@link ValueAllocationState} holding {@link Value#ILLEGAL}.
      */
-    public static ValueAllocationState createIllegal(BasicBlock<?> block) {
+    public static ValueAllocationState createUndefined(BasicBlock<?> block) {
         return new ValueAllocationState(new RAValue(Value.ILLEGAL), null, block);
-    }
-
-    public boolean isIllegal() {
-        return value.isIllegal();
     }
 
     public Value getValue() {
@@ -113,7 +109,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
             // Unknown is coming from different predecessor where this location
             // is undefined, meaning this value is not always accessible in the successor
             // and thus conflict is created.
-            return new ConflictedAllocationState(createIllegal(otherBlock), this);
+            return new ConflictedAllocationState(createUndefined(otherBlock), this);
         }
 
         if (other.isConflicted()) {
@@ -144,11 +140,19 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
 
     @Override
     public String toString() {
+        if (isUndefinedFromBlock()) {
+            return "Value {undefined from " + block + "}";
+        }
+
         return "Value {" + this.value + "}";
     }
 
     @Override
     public int hashCode() {
         return this.value.hashCode();
+    }
+
+    public boolean isUndefinedFromBlock() {
+        return Value.ILLEGAL.equals(this.value.getValue()) && source == null;
     }
 }

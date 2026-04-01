@@ -279,23 +279,33 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
 
         try {
             verifier.run();
-        } catch (RAVException | RAVError e) {
+        } catch (RAVException e) {
             var debugCtx = lir.getDebug();
 
             if (debugCtx.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {
                 var debugPath = debugCtx.getDumpPath(".rav.txt", false);
 
                 try (PrintStream output = new PrintStream(debugPath)) {
-                    output.println("Register Allocation Verification failure:");
-                    output.println(e.getMessage());
-                    output.println();
-                    VerifierPrinter.printAligned(output, lir, instructions);
+                    verifier.getPrinter(output).printIRWithException(e);
                 } catch (FileNotFoundException ignored) {
                 }
 
                 // Keep original message with class path prefix and add debug path info
                 // to the end so it's easier to access.
                 throw new RAVException(e + ", see debug file " + debugPath, e);
+            }
+
+            throw e;
+        } catch (RAVFailedVerificationException e) {
+            var debugCtx = lir.getDebug();
+
+            if (debugCtx.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {
+                var debugPath = debugCtx.getDumpPath(".rav.txt", false);
+
+                try (PrintStream output = new PrintStream(debugPath)) {
+                    verifier.getPrinter(output).printIRWithMultiExceptions(e);
+                } catch (FileNotFoundException ignored) {
+                }
             }
 
             throw e;

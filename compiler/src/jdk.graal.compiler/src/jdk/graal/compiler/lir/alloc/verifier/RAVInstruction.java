@@ -195,10 +195,13 @@ public class RAVInstruction {
         public String toString() {
             StringBuilder result = new StringBuilder("[");
             for (int i = 0; i < this.count; i++) {
-                if (this.curr[i] != null) {
-                    result.append(this.orig[i].toString()).append(" -> ").append(this.curr[i].toString());
+                var origVar = this.orig[i];
+                var currLoc = this.curr[i];
+
+                if (currLoc != null) {
+                    result.append(origVar.getValue().toString()).append(" -> ").append(currLoc.getValue().toString());
                 } else {
-                    result.append(this.orig[i].toString());
+                    result.append(origVar.getValue().toString());
                 }
 
                 result.append(", ");

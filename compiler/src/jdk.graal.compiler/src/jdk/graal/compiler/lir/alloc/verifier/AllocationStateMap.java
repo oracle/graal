@@ -103,8 +103,8 @@ public class AllocationStateMap {
      * @param key Location used
      * @param state State to store
      */
-    public void put(RAValue key, AllocationState state) {
-        this.checkRegisterDestinationValidity(key);
+    public void put(RAValue key, AllocationState state, RAVInstruction.Base instruction) {
+        this.checkRegisterDestinationValidity(key, instruction);
         putWithoutRegCheck(key, state);
     }
 
@@ -131,13 +131,13 @@ public class AllocationStateMap {
      * @param key Location used
      * @param state State to store
      */
-    public void putClone(RAValue key, AllocationState state) {
+    public void putClone(RAValue key, AllocationState state, RAVInstruction.Base instruction) {
         if (state.isUnknown()) {
-            this.put(key, state);
+            this.put(key, state, instruction);
             return;
         }
 
-        this.put(key, state.clone());
+        this.put(key, state.clone(), instruction);
     }
 
     /**
@@ -193,7 +193,7 @@ public class AllocationStateMap {
      *
      * @param location Value that could be a register.
      */
-    protected void checkRegisterDestinationValidity(RAValue location) {
+    protected void checkRegisterDestinationValidity(RAValue location, RAVInstruction.Base instruction) {
         if (!location.isRegister()) {
             return;
         }
@@ -201,7 +201,7 @@ public class AllocationStateMap {
         // Equality check so we know that this change was made by the register allocator.
         var register = location.asRegister().getRegister();
         if (!this.registerAllocationConfig.getAllocatableRegisters().contains(register)) {
-            throw new InvalidRegisterUsedException(register);
+            throw new InvalidRegisterUsedException(register, instruction, block);
         }
     }
 }

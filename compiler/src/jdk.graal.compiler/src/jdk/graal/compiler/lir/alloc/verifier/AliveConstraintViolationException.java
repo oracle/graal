@@ -25,7 +25,6 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.lir.LIRInstruction;
 
 /**
  * Violation of the alive inputs occurred, same location was marked as alive argument as well as
@@ -33,8 +32,7 @@ import jdk.graal.compiler.lir.LIRInstruction;
  */
 @SuppressWarnings("serial")
 public class AliveConstraintViolationException extends RAVException {
-    public LIRInstruction instruction;
-    public BasicBlock<?> block;
+    public RAVInstruction.Op instruction;
 
     /**
      * Construct an AliveConstraintViolationException.
@@ -44,17 +42,16 @@ public class AliveConstraintViolationException extends RAVException {
      * @param location Location that is being shared
      * @param asDest Alive location was used as an output
      */
-    public AliveConstraintViolationException(LIRInstruction instruction, BasicBlock<?> block, RAValue location, boolean asDest) {
-        super(AliveConstraintViolationException.getErrorMessage(instruction, block, location, asDest));
+    public AliveConstraintViolationException(RAVInstruction.Op instruction, BasicBlock<?> block, RAValue location, boolean asDest) {
+        super(AliveConstraintViolationException.getErrorMessage(location, asDest), instruction, block);
         this.instruction = instruction;
-        this.block = block;
     }
 
-    static String getErrorMessage(LIRInstruction instruction, BasicBlock<?> block, RAValue location, boolean asDest) {
+    static String getErrorMessage(RAValue location, boolean asDest) {
         if (asDest) {
-            return "Location " + location + " used as both alive and output in " + instruction + " in block" + block;
+            return "Location " + location + " used as both alive and output";
         }
 
-        return "Location " + location + " used as both alive and temp in " + instruction + "in block" + block;
+        return "Location " + location + " used as both alive and temp";
     }
 }

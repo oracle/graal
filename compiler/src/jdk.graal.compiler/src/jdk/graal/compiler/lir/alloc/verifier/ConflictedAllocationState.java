@@ -27,7 +27,6 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.util.EconomicHashSet;
 
-import java.util.Arrays;
 import java.util.Set;
 
 /**
@@ -110,8 +109,8 @@ public class ConflictedAllocationState extends AllocationState {
             // the unknown state is coming from a different predecessor to the same block,
             // and it means that this location was not defined there, but it was defined in a
             // different predecessor block, meaning it's now in a conflicted state, where
-            // it either is defined or it is not - should not be used in further blocks.
-            newlyConflictedState.addConflictedValue(ValueAllocationState.createIllegal(otherBlock));
+            // it either is defined or it - should not be used in further blocks.
+            newlyConflictedState.addConflictedValue(ValueAllocationState.createUndefined(otherBlock));
         }
 
         return newlyConflictedState;
@@ -123,11 +122,11 @@ public class ConflictedAllocationState extends AllocationState {
     }
 
     /**
-     * We do not compare conflicted state on its contents, whenever new one would be created as a
-     * result, the set of contents would remain the same, if values are equal based on RAValue
+     * We do not compare a conflicted state on its contents, whenever a new one would be created as
+     * a result, the set of contents would remain the same, if values are equal based on RAValue
      * rules.
      *
-     * @param other Other state we are comparing it to
+     * @param other Another state we are comparing it to
      * @return Are both states conflicted?
      */
     @Override
@@ -137,6 +136,15 @@ public class ConflictedAllocationState extends AllocationState {
 
     @Override
     public String toString() {
-        return "Conflicted {" + Arrays.toString(this.conflictedStates.toArray()) + "}";
+        StringBuilder sb = new StringBuilder("Conflicted {");
+        for (var state : this.conflictedStates) {
+            sb.append(state.toString()).append(", ");
+        }
+
+        if (!conflictedStates.isEmpty()) {
+            sb.setLength(sb.length() - 2);
+        }
+
+        return sb.append("}").toString();
     }
 }

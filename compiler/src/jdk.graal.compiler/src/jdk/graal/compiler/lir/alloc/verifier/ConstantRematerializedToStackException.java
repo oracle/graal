@@ -24,38 +24,20 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
-
 /**
- * Value was not found in the location we needed it in.
+ * Constant was rematerialized to a stack location, which was forbidden for this variable/constant.
  */
 @SuppressWarnings("serial")
-public class ValueNotInRegisterException extends RAVException {
-    public RAVInstruction.Op instruction;
-    public RAValue variable; // Can be a constant or other symbolic value
-    public RAValue location; // Can be StackSlot, RegisterValue or memory
-    public AllocationState state;
-    public BlockVerifierState blockVerifierState;
+public class ConstantRematerializedToStackException extends RAVException {
+    public RAVariable variable;
+    public RAValue location;
+    public ValueAllocationState state;
 
-    /**
-     * Construct a ValueNotInRegisterException.
-     *
-     * @param instruction Instruction where violation occurred
-     * @param block Block where violation occurred
-     * @param variable Target varible we are looking for
-     * @param location Location where we couldn't find it
-     * @param state The actual state that the location is in
-     */
-    public ValueNotInRegisterException(RAVInstruction.Op instruction, BasicBlock<?> block, RAValue variable, RAValue location, AllocationState state, BlockVerifierState blockVerifierState) {
-        super(ValueNotInRegisterException.getErrorMessage(variable, location, state), instruction, block);
+    public ConstantRematerializedToStackException(RAVariable variable, RAValue location, ValueAllocationState state) {
+        super("Variable " + variable + " cannot be rematerialized to stack location " + location, state.getSource(), state.getBlock());
 
         this.variable = variable;
         this.location = location;
         this.state = state;
-        this.blockVerifierState = new BlockVerifierState(block, blockVerifierState);
-    }
-
-    static String getErrorMessage(RAValue variable, RAValue location, AllocationState state) {
-        return "Value " + variable + " not found in " + location + " the actual state is " + state;
     }
 }

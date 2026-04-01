@@ -151,7 +151,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
         }
 
         if (isRematerializedToWrongLocation(variable, constantState)) {
-            throw new RAVException("Variable " + variable + " cannot be rematerialized to stack location " + location);
+            throw new ConstantRematerializedToStackException(variable, location, constantState);
         }
 
         return new ValueAllocationState(variable, constantState.getSource(), constantState.block);
@@ -187,7 +187,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
             }
 
             if (isRematerializedToWrongLocation(variable, valueState)) {
-                throw new RAVException("Variable " + variable + " cannot be rematerialized to stack location " + location);
+                throw new ConstantRematerializedToStackException(variable, location, valueState);
             }
 
             return new ValueAllocationState(variable, valueState.getSource(), valueState.getBlock());

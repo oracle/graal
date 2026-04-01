@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
 
 /**
@@ -33,11 +34,33 @@ import jdk.graal.compiler.debug.GraalError;
  */
 @SuppressWarnings("serial")
 public class RAVException extends GraalError {
-    public RAVException(String message) {
+    public RAVInstruction.Base instruction;
+    public BasicBlock<?> block;
+
+    public RAVException(String message, RAVInstruction.Base instruction, BasicBlock<?> block) {
         super(message);
+
+        this.instruction = instruction;
+        this.block = block;
     }
 
-    public RAVException(String message, Throwable cause) {
-        super(message, cause);
+    public RAVException(String message, RAVException cause) {
+        super(cause, message);
+
+        this.instruction = cause.instruction;
+        this.block = cause.block;
+    }
+
+    @Override
+    public synchronized RAVException getCause() {
+        return (RAVException) super.getCause();
+    }
+
+    public String getLocationString() {
+        return instruction + " in " + block;
+    }
+
+    public String getFullMessage() {
+        return getMessage() + " in " + getLocationString();
     }
 }

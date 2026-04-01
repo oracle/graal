@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.debug.GraalError;
+
 import java.util.List;
 
 /**
@@ -32,9 +34,13 @@ import java.util.List;
  * to one exception.
  */
 @SuppressWarnings("serial")
-public class RAVFailedVerificationException extends RAVException {
+public class RAVFailedVerificationException extends GraalError {
+    public List<RAVException> exceptions;
+
     public RAVFailedVerificationException(String compUnitName, List<RAVException> exceptions) {
         super(RAVFailedVerificationException.getMessage(compUnitName, exceptions));
+
+        this.exceptions = exceptions;
     }
 
     static String getMessage(String compUnitName, List<RAVException> exceptions) {

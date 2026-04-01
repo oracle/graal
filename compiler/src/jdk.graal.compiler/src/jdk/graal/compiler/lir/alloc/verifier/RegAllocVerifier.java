@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 
+import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
@@ -157,7 +158,7 @@ public class RegAllocVerifier {
     public void verifyInstructionInputs() {
         for (var blockId : this.lir.getBlocks()) {
             var block = this.lir.getBlockById(blockId);
-            var state = this.blockEntryStates.get(block);
+            var state = new BlockVerifierState(block, this.blockEntryStates.get(block));
             var instructions = this.blockInstructions.get(block);
 
             for (var instr : instructions) {
@@ -229,5 +230,9 @@ public class RegAllocVerifier {
 
         this.calculateEntryBlocks();
         this.verifyInstructionInputs();
+    }
+
+    public VerifierPrinter getPrinter(OutputStream out) {
+        return new VerifierPrinter(out, this);
     }
 }

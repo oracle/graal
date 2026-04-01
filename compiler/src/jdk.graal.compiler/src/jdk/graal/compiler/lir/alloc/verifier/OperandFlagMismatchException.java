@@ -38,19 +38,16 @@ import java.util.EnumSet;
 @SuppressWarnings("serial")
 public class OperandFlagMismatchException extends RAVException {
     public RAVInstruction.Op instruction;
-    public BasicBlock<?> block;
     public Value value;
     public EnumSet<LIRInstruction.OperandFlag> flags;
 
     public OperandFlagMismatchException(RAVInstruction.Op op, BasicBlock<?> block, Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
-        super(getErrorMesage(op, block, value, flags));
-        this.instruction = op;
-        this.block = block;
+        super(getErrorMessage(value, flags), op, block);
         this.value = value;
         this.flags = flags;
     }
 
-    static String getErrorMesage(RAVInstruction.Op op, BasicBlock<?> block, Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
-        return "Value " + value + " does not satisfy operand flags " + flags.toString() + " in " + op.lirInstruction + " in " + block;
+    static String getErrorMessage(Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
+        return "Value " + value + " does not satisfy operand flags " + flags.toString();
     }
 }

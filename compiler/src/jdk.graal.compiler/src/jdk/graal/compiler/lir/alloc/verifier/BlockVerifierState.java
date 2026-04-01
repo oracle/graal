@@ -160,7 +160,7 @@ public class BlockVerifierState {
                 return;
             }
 
-            throw new MissingLocationError(op.lirInstruction, block, orig);
+            throw new MissingLocationException(op, block, orig);
         }
 
         ValueKind<?> currKind = curr.getValue().getValueKind();
@@ -171,7 +171,7 @@ public class BlockVerifierState {
         }
 
         if (!kindsEqual(orig.getValue().getValueKind(), currKind)) {
-            throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
+            throw new KindsMismatchException(op, block, orig, curr, true);
         }
 
         AllocationState state = this.values.get(curr);
@@ -194,7 +194,7 @@ public class BlockVerifierState {
         }
 
         if (state.isUnknown()) {
-            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+            throw new ValueNotInRegisterException(op, block, orig, curr, state, this);
         }
 
         if (state.isConflicted()) {
@@ -208,12 +208,12 @@ public class BlockVerifierState {
                 }
 
                 if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
-                    this.values.put(curr, resolvedState);
+                    this.values.put(curr, resolvedState, op);
                     return;
                 }
             }
 
-            throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+            throw new ValueNotInRegisterException(op, block, orig, curr, state, this);
         }
 
         if (state instanceof ValueAllocationState valAllocState) {
@@ -229,16 +229,16 @@ public class BlockVerifierState {
                     }
 
                     if (resolvedState != null && resolvedState.getValue().equals(orig.getValue())) {
-                        this.values.put(curr, resolvedState);
+                        this.values.put(curr, resolvedState, op);
                         return;
                     }
                 }
 
-                throw new ValueNotInRegisterException(op.lirInstruction, block, orig, curr, state);
+                throw new ValueNotInRegisterException(op, block, orig, curr, state, this);
             }
 
             if (!kindsEqualFromState(orig, valAllocState.value)) {
-                throw new KindsMismatchException(op.lirInstruction, block, orig, valAllocState.value, false);
+                throw new KindsMismatchException(op, block, orig, valAllocState.value, false);
             }
 
             return;
@@ -344,7 +344,7 @@ public class BlockVerifierState {
             if (state.isConflicted()) {
                 var confState = (ConflictedAllocationState) state;
                 for (var valAllocState : confState.getConflictedStates()) {
-                    if (valAllocState.isIllegal()) {
+                    if (valAllocState.isUndefinedFromBlock()) {
                         continue; // Undefined in branch
                     }
 
@@ -352,14 +352,14 @@ public class BlockVerifierState {
                         continue; // Is a reference
                     }
 
-                    throw new MissingReferenceException(reference, state, op, block);
+                    throw new MissingReferenceException(op, block, reference, state, this);
                 }
 
                 continue;
             }
 
             if (state.isUnknown()) {
-                throw new MissingReferenceException(reference, state, op, block);
+                throw new MissingReferenceException(op, block, reference, state, this);
             }
 
             var valAllocState = (ValueAllocationState) state;
@@ -367,7 +367,7 @@ public class BlockVerifierState {
                 continue; // Is a reference
             }
 
-            throw new MissingReferenceException(reference, state, op, block);
+            throw new MissingReferenceException(op, block, reference, state, this);
         }
     }
 
@@ -388,7 +388,7 @@ public class BlockVerifierState {
                     return;
                 }
 
-                throw new KindsMismatchException(move.lirInstruction, block, move.to, movedValue, false);
+                throw new KindsMismatchException(move, block, move.to, movedValue, false);
             }
         }
     }
@@ -402,7 +402,7 @@ public class BlockVerifierState {
         }
 
         if (!kindsEqual(move.getLocation(), move.variableOrConstant)) {
-            throw new KindsMismatchException(move.lirInstruction, block, move.getLocation(), move.variableOrConstant, false);
+            throw new KindsMismatchException(move, block, move.getLocation(), move.variableOrConstant, false);
         }
     }
 
@@ -487,7 +487,7 @@ public class BlockVerifierState {
                         continue;
                     }
 
-                    throw new RAVException(orig + " -> " + curr + " not an object java kind when marked as a reference");
+                    throw new RAVException(orig + " -> " + curr + " not an object java kind when marked as a reference", op, block);
                 } else {
                     if (origLIRKind.isValue() && currLIRKind.isValue()) {
                         // Either not a reference, or a derived one - which might not be marked as
@@ -495,7 +495,7 @@ public class BlockVerifierState {
                         continue;
                     }
 
-                    throw new RAVException(orig + " -> " + curr + " is a reference when not marked as an object java kind");
+                    throw new RAVException(orig + " -> " + curr + " is a reference when not marked as an object java kind", op, block);
                 }
             }
         }
@@ -515,7 +515,7 @@ public class BlockVerifierState {
 
             if (!kindsEqual(orig, curr)) {
                 // Make sure the assigned register has the correct kind for temp.
-                throw new KindsMismatchException(op.lirInstruction, block, orig, curr, true);
+                throw new KindsMismatchException(op, block, orig, curr, true);
             }
         }
     }
@@ -540,13 +540,13 @@ public class BlockVerifierState {
 
             for (int j = 0; j < instruction.temp.count; j++) {
                 if (value.equals(instruction.temp.curr[j])) {
-                    throw new AliveConstraintViolationException(instruction.lirInstruction, block, value, false);
+                    throw new AliveConstraintViolationException(instruction, block, value, false);
                 }
             }
 
             for (int j = 0; j < instruction.dests.count; j++) {
                 if (value.equals(instruction.dests.curr[j])) {
-                    throw new AliveConstraintViolationException(instruction.lirInstruction, block, value, true);
+                    throw new AliveConstraintViolationException(instruction, block, value, true);
                 }
             }
         }
@@ -611,13 +611,13 @@ public class BlockVerifierState {
     public void updateWithLocationMove(RAVInstruction.LocationMove move) {
         if (move instanceof RAVInstruction.StackMove stackMove) {
             // Maybe the backup slot should hold what the scratch register holds?
-            this.values.put(stackMove.backupSlot, UnknownAllocationState.INSTANCE);
+            this.values.put(stackMove.backupSlot, UnknownAllocationState.INSTANCE, move);
         }
 
         var state = this.values.get(move.from);
 
         if (move.validateRegisters) {
-            this.values.putClone(move.to, state);
+            this.values.putClone(move.to, state, move);
         } else {
             this.values.putWithoutRegCheck(move.to, state.clone());
         }
@@ -674,7 +674,7 @@ public class BlockVerifierState {
                 // allocator
                 this.values.putWithoutRegCheck(location, new ValueAllocationState(variable, op, block));
             } else {
-                this.values.put(location, new ValueAllocationState(variable, op, block));
+                this.values.put(location, new ValueAllocationState(variable, op, block), op);
             }
         }
 
@@ -692,7 +692,7 @@ public class BlockVerifierState {
             if (op.temp.orig[i].equals(location)) {
                 this.values.putWithoutRegCheck(location, UnknownAllocationState.INSTANCE);
             } else {
-                this.values.put(location, UnknownAllocationState.INSTANCE);
+                this.values.put(location, UnknownAllocationState.INSTANCE, op);
             }
         }
 
@@ -827,7 +827,7 @@ public class BlockVerifierState {
                 }
             }
 
-            throw new CalleeSavedRegisterNotRetrievedException(regValue, block);
+            throw new CalleeSavedRegisterNotRetrievedException(regValue, block, this);
         }
     }
 
@@ -863,7 +863,7 @@ public class BlockVerifierState {
 
             this.values.putWithoutRegCheck(valueMove.getLocation(), new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
         } else {
-            this.values.put(valueMove.getLocation(), new ValueAllocationState(valueMove.variableOrConstant, valueMove, block));
+            this.values.put(valueMove.getLocation(), new ValueAllocationState(valueMove.variableOrConstant, valueMove, block), valueMove);
         }
     }
 }
