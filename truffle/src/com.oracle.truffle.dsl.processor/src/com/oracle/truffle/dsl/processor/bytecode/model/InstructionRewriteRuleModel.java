@@ -52,9 +52,6 @@ import java.util.stream.Stream;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 
 public class InstructionRewriteRuleModel implements Comparable<InstructionRewriteRuleModel> {
-    // Upper-bound pattern length to keep rewrite overhead low.
-    private static final int MAX_PATTERN_SIZE = 5;
-
     public final ResolvedInstructionPatternModel[] lhs;
     public final ResolvedInstructionPatternModel[] rhs;
     public final Map<String, ImmediateReference> bindings;
@@ -157,11 +154,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
     }
 
     private void initialize(InstructionPatternModel[] lhsPattern, InstructionPatternModel[] rhsPattern) {
-        if (lhsPattern.length > MAX_PATTERN_SIZE) {
-            throw new IllegalArgumentException("Pattern exceeds maximum length %d".formatted(MAX_PATTERN_SIZE));
-        }
-
-        /**
+        /*
          * First, resolve the LHS. The first occurrence of an immediate binding declares it and
          * subsequent occurrences become immediate constraints.
          */
@@ -182,7 +175,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
             offset += instruction.getInstructionLength();
         }
 
-        /**
+        /*
          * Then, resolve the RHS using the same process. All instructions on the RHS should have
          * immediates with bindings declared on the LHS.
          */

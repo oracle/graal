@@ -646,6 +646,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
         // clear.local x, clear.local x -> clear.local x
         rules.add(rule(identity(p(clearLocalInstruction, "x")), delete(p(clearLocalInstruction, "x"))));
+        // load.constant _, store.local x, clear.local x -> clear.local x
+        rules.add(rule(delete(p(loadConstantInstruction), pStoreLocal("x")), identity(p(clearLocalInstruction, "x"))));
 
         return rules.toArray(InstructionRewriteRuleModel[]::new);
     }
@@ -669,6 +671,16 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             finalImmediates = new String[instruction.immediates.size()];
         }
         return new InstructionPatternModel(instruction, finalImmediates);
+    }
+
+    /**
+     * Creates a {@code store.local} pattern binding local identity. This helper abstracts away
+     * immediate layout differences that can vary between configurations.
+     */
+    private InstructionPatternModel pStoreLocal(String localBinding) {
+        String[] immediates = new String[storeLocalOperation.instruction.immediates.size()];
+        immediates[0] = localBinding;
+        return p(storeLocalOperation.instruction, immediates);
     }
 
     public short getInstructionStartIndex() {
@@ -733,6 +745,16 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public Collection<OperationModel> getCustomYieldOperations() {
         return customYieldOperations.stream().map(customOperation -> customOperation.operation).toList();
+    }
+
+    public Collection<OperationModel> getCustomVariadicOperations() {
+        List<OperationModel> result = new ArrayList<>();
+        for (OperationModel operation : operations.values()) {
+            if (operation.isCustomVariadic()) {
+                result.add(operation);
+            }
+        }
+        return result;
     }
 
     public Collection<InstructionModel> getInstructions() {

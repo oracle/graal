@@ -640,7 +640,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.hasVariadicReturn = false;
         model.maximumVariadicOffset = 0;
         for (OperationModel operation : model.getOperations()) {
-            if (operation.kind == OperationKind.CUSTOM && operation.isVariadic) {
+            if (operation.isCustomVariadic()) {
                 model.hasCustomVariadic = true;
             }
             if (operation.variadicReturn) {

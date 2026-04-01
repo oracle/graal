@@ -314,6 +314,13 @@ public class OperationModel implements PrettyPrintable {
         return kind == OperationKind.CUSTOM || kind == OperationKind.CUSTOM_YIELD || kind == OperationKind.CUSTOM_SHORT_CIRCUIT || kind == OperationKind.CUSTOM_INSTRUMENTATION;
     }
 
+    public boolean isCustomVariadic() {
+        return switch (kind) {
+            case CUSTOM, CUSTOM_YIELD, CUSTOM_INSTRUMENTATION -> isVariadic && !isTransparent;
+            default -> false;
+        };
+    }
+
     public boolean requiresRootOperation() {
         return kind != OperationKind.SOURCE && kind != OperationKind.SOURCE_SECTION;
     }
