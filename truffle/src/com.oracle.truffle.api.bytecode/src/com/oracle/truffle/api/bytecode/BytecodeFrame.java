@@ -158,8 +158,8 @@ public final class BytecodeFrame {
     }
 
     /**
-     * Returns the value of the local at the given offset. The offset should be between 0 and
-     * {@link #getLocalCount()}.
+     * Returns the value of the local at the given offset. The offset should be in the range
+     * {@code [0, getLocalCount())}.
      *
      * @since 25.1
      */
@@ -168,8 +168,8 @@ public final class BytecodeFrame {
     }
 
     /**
-     * Updates the value of the local at the given offset. The offset should be between 0 and
-     * {@link #getLocalCount()}.
+     * Updates the value of the local at the given offset. The offset should be in the range
+     * {@code [0, getLocalCount())}.
      * <p>
      * This method will throw an {@link AssertionError} if the captured frame does not support
      * writes.

@@ -524,9 +524,19 @@ public abstract class AbstractBasicInterpreterTest {
             if (local.getStartIndex() != -1) {
                 // block scoping
                 assertNotNull(BytecodeLocation.get(bytecode, local.getStartIndex()));
-                assertTrue(local.getStartIndex() < local.getEndIndex());
+                assertTrue(local.getStartIndex() <= local.getEndIndex());
 
                 if (locals.size() < 1000) {
+                    if (local.getStartIndex() == local.getEndIndex()) {
+                        /*
+                         * Special case: locals with empty ranges are not live at any bci, so we
+                         * cannot query the bytecode node. Just test that these calls succeed.
+                         */
+                        local.getInfo();
+                        local.getName();
+                        assertTrue(0 <= local.getLocalOffset());
+                        continue;
+                    }
                     assertEquals(local.getInfo(), bytecode.getLocalInfo(local.getStartIndex(), local.getLocalOffset()));
                     assertEquals(local.getName(), bytecode.getLocalName(local.getStartIndex(), local.getLocalOffset()));
                     assertTrue(local.getLocalOffset() < bytecode.getLocalCount(local.getStartIndex()));

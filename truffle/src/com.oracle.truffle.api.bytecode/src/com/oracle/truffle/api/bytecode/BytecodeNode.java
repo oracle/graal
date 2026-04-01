@@ -565,8 +565,8 @@ public abstract class BytecodeNode extends Node {
      *            evaluation constant. If the bytecode index is inconsistent with the state of the
      *            frame passed then the result of this method is unspecified.
      * @param frame the frame to read locals from
-     * @param localOffset the offset of the local. The offset should be between 0 and
-     *            {@link #getLocalCount(int)} (and may come from
+     * @param localOffset the offset of the local. The offset should be in the range
+     *            {@code [0, getLocalCount(bytecodeIndex))} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      *            The value must be a partial evaluation constant.
      * @return the current local value, or null if the local was never written to (and there is no
@@ -616,8 +616,8 @@ public abstract class BytecodeNode extends Node {
      *            {@link BytecodeLocation#getBytecodeIndex()} or using @{@link Bind
      *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
      *            constant.
-     * @param localOffset the offset of the local. The offset should be between 0 and
-     *            {@link #getLocalCount(int)} (and may come from
+     * @param localOffset the offset of the local. The offset should be in the range
+     *            {@code [0, getLocalCount(bytecodeIndex))} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      *            The value must be a partial evaluation constant.
      * @return the local name as a partial evaluation constant
@@ -666,8 +666,8 @@ public abstract class BytecodeNode extends Node {
      *            {@link BytecodeLocation#getBytecodeIndex()} or using @{@link Bind
      *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
      *            constant.
-     * @param localOffset the offset of the local. The offset should be between 0 and
-     *            {@link #getLocalCount(int)} (and may come from
+     * @param localOffset the offset of the local. The offset should be in the range
+     *            {@code [0, getLocalCount(bytecodeIndex))} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      *            The value must be a partial evaluation constant.
      * @return the local info as a partial evaluation constant
@@ -751,8 +751,8 @@ public abstract class BytecodeNode extends Node {
      *            frame passed then the result of this method is unspecified.
      * @param source the frame to copy locals from
      * @param destination the frame to copy locals into
-     * @param localOffset the offset of the first local to be copied. The offset should be between 0
-     *            and {@link #getLocalCount(int)} (and may come from
+     * @param localOffset the offset of the first local to be copied. The offset should be in the
+     *            range {@code [0, getLocalCount(bytecodeIndex))} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      *            The value must be a partial evaluation constant.
      * @param localCount the number of locals to copy. The value must be a partial evaluation
@@ -793,8 +793,8 @@ public abstract class BytecodeNode extends Node {
      *            evaluation constant. If the bytecode index is inconsistent with the state of the
      *            frame passed then the result of this method is unspecified.
      * @param frame the frame to store the local value into
-     * @param localOffset the offset of the local. The offset should be between 0 and
-     *            {@link #getLocalCount(int)} (and may come from
+     * @param localOffset the offset of the local. The offset should be in the range
+     *            {@code [0, getLocalCount(bytecodeIndex))} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      *            The value must be a partial evaluation constant.
      * @param value the value to store into the local
