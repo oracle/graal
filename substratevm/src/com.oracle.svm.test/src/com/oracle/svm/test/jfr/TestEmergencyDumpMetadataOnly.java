@@ -42,7 +42,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
-public class TestEmergencyDumpMetadataOnly extends JfrRecordingTest {
+public class TestEmergencyDumpMetadataOnly extends JfrEmergencyDumpTest {
     private static final String OUT_OF_MEMORY_REASON = "Out of Memory";
 
     @Test

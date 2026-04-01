@@ -49,7 +49,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
  * emergency dump. This would indicate that the chunk files from the disk repository we merged
  * correctly along with in-flight data.
  */
-public class TestEmergencyDump extends JfrRecordingTest {
+public class TestEmergencyDump extends JfrEmergencyDumpTest {
     private static final String STRING_EVENT_NAME = "com.jfr.String";
     private static final String OUT_OF_MEMORY_REASON = "Out of Memory";
 

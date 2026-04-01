@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, IBM Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +23,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows.headers;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.type.CCharPointer;
+package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
+import org.graalvm.nativeimage.Platform;
+import static org.junit.Assume.assumeTrue;
+import org.junit.BeforeClass;
 
-// Checkstyle: stop
-
-/**
- * Definitions for Windows stringapiset.h
- */
-@CContext(WindowsDirectives.class)
-public class StringAPISet {
-
-    /** The system-wide Windows ANSI code page. */
-    @CConstant
-    public static native int CP_ACP();
-
-    /** UTF-8 code page. */
-    @CConstant
-    public static native int CP_UTF8();
-
-    /** Maps a character string to a UTF-16 (wide character) string. */
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int MultiByteToWideChar(int CodePage, int dwFlags, CCharPointer lpMultiByteStr, int cbMultiByte, WCharPointer lpWideCharStr, int cchWideChar);
+public abstract class JfrEmergencyDumpTest extends JfrRecordingTest {
+    @BeforeClass
+    public static void checkNotWindows() {
+        assumeTrue("skipping emergency dump tests on Windows", !Platform.includedIn(Platform.WINDOWS.class));
+    }
 }

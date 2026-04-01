@@ -30,6 +30,7 @@ import java.nio.ByteOrder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
@@ -209,7 +210,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
 class PosixRawFileOperationFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.firstImageBuild();
+        return ImageLayerBuildingSupport.firstImageBuild() && !Platform.includedIn(WINDOWS_BASE.class);
     }
 
     @Override

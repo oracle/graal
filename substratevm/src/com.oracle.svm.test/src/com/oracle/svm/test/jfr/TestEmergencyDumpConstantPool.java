@@ -49,7 +49,7 @@ import jdk.jfr.consumer.RecordedEvent;
  * Verifies that the previous-epoch type and symbol constant pools required by in-flight class
  * events are serialized correctly during an emergency dump.
  */
-public class TestEmergencyDumpConstantPool extends JfrRecordingTest {
+public class TestEmergencyDumpConstantPool extends JfrEmergencyDumpTest {
     private static final String CLASS_EVENT_NAME = "com.jfr.Class";
 
     @Test

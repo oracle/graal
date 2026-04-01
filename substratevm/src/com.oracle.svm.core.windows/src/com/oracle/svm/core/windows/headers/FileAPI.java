@@ -29,6 +29,8 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
@@ -49,6 +51,9 @@ public class FileAPI {
     @CConstant
     public static native int GENERIC_READ();
 
+    @CConstant
+    public static native int GENERIC_WRITE();
+
     /** Creates or opens a file or I/O device. */
     @CFunction(transition = NO_TRANSITION)
     public static native HANDLE CreateFileW(WCharPointer lpFileName, int dwDesiredAccess, int dwShareMode,
@@ -60,11 +65,41 @@ public class FileAPI {
     public static native int FILE_SHARE_READ();
 
     @CConstant
+    public static native int FILE_SHARE_WRITE();
+
+    @CConstant
     public static native int FILE_SHARE_DELETE();
 
     /** CreateFile - dwCreationDisposition Constants */
     @CConstant
     public static native int OPEN_EXISTING();
+
+    @CConstant
+    public static native int CREATE_NEW();
+
+    @CConstant
+    public static native int CREATE_ALWAYS();
+
+    @CConstant
+    public static native int FILE_ATTRIBUTE_NORMAL();
+
+    @CConstant
+    public static native int FILE_BEGIN();
+
+    @CConstant
+    public static native int FILE_CURRENT();
+
+    /**
+     * 64-bit integer needed by various APIs.
+     */
+    @CStruct
+    public interface LARGE_INTEGER extends PointerBase {
+        @CField("QuadPart")
+        long getQuadPart();
+
+        @CField("QuadPart")
+        void setQuadPart(long value);
+    }
 
     @CFunction
     public static native int WriteFile(HANDLE hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite,
@@ -89,6 +124,15 @@ public class FileAPI {
     public static native int GetTempPathW(int nBufferLength, WCharPointer lpBuffer);
 
     public static class NoTransition {
+        @CFunction(transition = NO_TRANSITION)
+        public static native int ReadFile(HANDLE hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToRead, CIntPointer lpNumberOfBytesRead, PointerBase lpOverlapped);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int GetFileSizeEx(HANDLE hFile, LARGE_INTEGER lpFileSize);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int SetFilePointerEx(HANDLE hFile, long liDistanceToMove, LARGE_INTEGER lpNewFilePointer, int dwMoveMethod);
+
         @CFunction(transition = NO_TRANSITION)
         public static native int WriteFile(HANDLE hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite, CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
 
