@@ -777,6 +777,10 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     protected <T extends RAVException> void assertException(Class<T> expected) {
+        if (exception.getCause() != null) {
+            exception = exception.getCause();
+        }
+
         Assert.assertNotNull("No exception was thrown", exception);
         Assert.assertTrue("Unexpected exception: " + exception, expected.isInstance(exception));
     }
@@ -853,6 +857,16 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
                 return 3;
             default:
                 return -1;
+        }
+    }
+
+    public static void loop(int a, int b) {
+        while (true) {
+            if (a > 3) {
+                System.out.println("a = " + a);
+            }
+
+            a += b;
         }
     }
 
@@ -954,6 +968,30 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         phase = loopConflictPhase;
 
         var methodName = "sum";
+        compile(getResolvedJavaMethod(methodName), null);
+
+        Assert.assertNull(exception);
+
+        compileModified(methodName);
+
+        assertException(ValueNotInRegisterException.class);
+        var vnrException = (ValueNotInRegisterException) exception;
+        Assert.assertTrue(vnrException.state.isConflicted());
+
+        var confState = (ConflictedAllocationState) vnrException.state;
+        var conflitedStates = confState.getConflictedStates();
+        Assert.assertEquals(2, conflitedStates.size());
+        for (var state : conflitedStates) {
+            Assert.assertTrue(state.getRAValue().equals(loopConflictPhase.newVariable) || state.getRAValue().equals(loopConflictPhase.targetVariable));
+        }
+    }
+
+    @Test
+    public void testConflictInInfiniteLoop() {
+        var loopConflictPhase = new LoopConflictPhase();
+        phase = loopConflictPhase;
+
+        var methodName = "loop";
         compile(getResolvedJavaMethod(methodName), null);
 
         Assert.assertNull(exception);
