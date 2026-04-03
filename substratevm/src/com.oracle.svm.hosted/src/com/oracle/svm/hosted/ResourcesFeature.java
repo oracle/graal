@@ -312,6 +312,12 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
+        public void addResourceBundles(AccessCondition condition, boolean preserved, String moduleName, String name) {
+            abortIfSealed();
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, moduleName, name));
+        }
+
+        @Override
         public void addClassBasedResourceBundle(AccessCondition condition, String basename, String className) {
             abortIfSealed();
             registerConditionalConfiguration(condition, _ -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
@@ -320,13 +326,19 @@ public class ResourcesFeature implements InternalFeature {
         @Override
         public void addClassBasedResourceBundle(AccessCondition condition, String moduleName, String basename, String className) {
             abortIfSealed();
-            registerConditionalConfiguration(condition, _ -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(condition, moduleName, basename, className));
+            registerConditionalConfiguration(condition, cnd -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(cnd, moduleName, basename, className));
         }
 
         @Override
         public void addResourceBundles(AccessCondition condition, String basename, Collection<Locale> locales) {
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, basename, locales));
+        }
+
+        @Override
+        public void addResourceBundles(AccessCondition condition, String moduleName, String basename, Collection<Locale> locales) {
+            abortIfSealed();
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, moduleName, basename, locales));
         }
 
         /*

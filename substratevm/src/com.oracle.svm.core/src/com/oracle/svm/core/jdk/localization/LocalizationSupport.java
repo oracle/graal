@@ -78,6 +78,7 @@ import sun.util.resources.Bundles;
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class LocalizationSupport {
+    static final String ALL_UNNAMED_MODULE = "ALL-UNNAMED";
 
     public final Map<String, Charset> charsets = new HashMap<>();
 
@@ -119,21 +120,29 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale, boolean jdkBundle) {
+        String[] bundleNameWithModule = StringUtil.split(bundleName, ":", 2);
+        String moduleName = bundleNameWithModule.length < 2 ? null : bundleNameWithModule[0];
+        String baseName = bundleNameWithModule.length < 2 ? bundleName : bundleNameWithModule[1];
+        prepareBundle(moduleName, baseName, bundle, findModule, locale, jdkBundle);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void prepareBundle(String moduleName, String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale, boolean jdkBundle) {
         /*
          * Class-based bundle lookup happens on every query, but we don't need to register the
          * constructor for a property resource bundle since the class lookup will fail.
          */
-        registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale), jdkBundle);
+        registerRequiredReflectionAndResourcesForBundle(moduleName, bundleName, Set.of(locale), jdkBundle, findModule);
         if (!(bundle instanceof PropertyResourceBundle)) {
             registerNullaryConstructor(bundle.getClass());
         }
 
         /* Property-based bundle lookup happens only if class-based lookup fails */
         if (bundle instanceof PropertyResourceBundle) {
-            String[] bundleNameWithModule = StringUtil.split(bundleName, ":", 2);
             String resourceName;
-            String origin = "Added for PropertyResourceBundle: " + bundleName;
-            if (bundleNameWithModule.length < 2) {
+            String debugName = qualifyBundleName(moduleName, bundleName);
+            String origin = "Added for PropertyResourceBundle: " + debugName;
+            if (moduleName == null || moduleName.isEmpty()) {
                 resourceName = toSlashSeparated(control.toBundleName(bundleName, locale)).concat(".properties");
 
                 Map<String, EconomicSet<Module>> packageToModules = ImageSingletons.lookup(ClassLoaderSupport.class).getPackageToModules();
@@ -146,10 +155,13 @@ public class LocalizationSupport {
                 if (modules.isEmpty()) {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName, origin);
                 }
+            } else if (ALL_UNNAMED_MODULE.equals(moduleName)) {
+                resourceName = toSlashSeparated(control.toBundleName(bundleName, locale)).concat(".properties");
+                ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName, origin);
             } else {
                 if (findModule != null) {
-                    resourceName = toSlashSeparated(control.toBundleName(bundleNameWithModule[1], locale)).concat(".properties");
-                    Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
+                    resourceName = toSlashSeparated(control.toBundleName(bundleName, locale)).concat(".properties");
+                    Optional<Module> module = findModule.apply(moduleName);
                     String finalResourceName = resourceName;
                     module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName, origin));
                 }
@@ -168,6 +180,11 @@ public class LocalizationSupport {
     }
 
     public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales, boolean jdkBundle) {
+        registerRequiredReflectionAndResourcesForBundle(null, baseName, wantedLocales, jdkBundle, null);
+    }
+
+    public void registerRequiredReflectionAndResourcesForBundle(String moduleName, String baseName, Collection<Locale> wantedLocales, boolean jdkBundle,
+                    Function<String, Optional<Module>> findModule) {
         if (!jdkBundle) {
             int i = baseName.lastIndexOf('.');
             if (i > 0) {
@@ -178,11 +195,16 @@ public class LocalizationSupport {
         }
 
         for (Locale locale : wantedLocales) {
-            registerRequiredReflectionAndResourcesForBundleAndLocale(baseName, locale, jdkBundle);
+            registerRequiredReflectionAndResourcesForBundleAndLocale(moduleName, baseName, locale, jdkBundle, findModule);
         }
     }
 
     public void registerRequiredReflectionAndResourcesForBundleAndLocale(String baseName, Locale baseLocale, boolean jdkBundle) {
+        registerRequiredReflectionAndResourcesForBundleAndLocale(null, baseName, baseLocale, jdkBundle, null);
+    }
+
+    public void registerRequiredReflectionAndResourcesForBundleAndLocale(String moduleName, String baseName, Locale baseLocale, boolean jdkBundle,
+                    Function<String, Optional<Module>> findModule) {
         /*
          * Bundles in the sun.(text|util).resources.cldr packages are loaded with an alternative
          * strategy which tries parent aliases defined in CLDRBaseLocaleDataMetaInfo.parentLocales.
@@ -190,6 +212,7 @@ public class LocalizationSupport {
         List<Locale> candidateLocales = jdkBundle
                         ? getJDKBundleCandidateLocales(baseName, baseLocale)
                         : control.getCandidateLocales(baseName, baseLocale);
+        Module module = resolveNamedModule(moduleName, findModule);
 
         for (Locale locale : candidateLocales) {
             String bundleWithLocale = jdkBundle ? strategy.toBundleName(baseName, locale) : control.toBundleName(baseName, locale);
@@ -198,7 +221,7 @@ public class LocalizationSupport {
             if (bundleClass != null) {
                 registerNullaryConstructor(bundleClass);
             }
-            Resources.currentLayer().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
+            Resources.currentLayer().registerNegativeQuery(module, bundleWithLocale.replace('.', '/') + ".properties");
 
             if (jdkBundle) {
                 String otherBundleName = Bundles.toOtherBundleName(baseName, bundleWithLocale, locale);
@@ -293,13 +316,19 @@ public class LocalizationSupport {
             return true;
         }
         if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceResourceBundle(module != null && module.isNamed() ? module.getName() : null, baseName);
+            String moduleName = module == null ? null : module.isNamed() ? module.getName() : ALL_UNNAMED_MODULE;
+            MetadataTracer.singleton().traceResourceBundle(moduleName, baseName);
         }
         if (module != null && module.isNamed()) {
             /* Module-specific registrations are keyed separately from legacy unqualified ones. */
             RuntimeDynamicAccessMetadata registeredModuleBundle = registeredBundles.get(qualifyBundleName(module.getName(), baseName));
             if (registeredModuleBundle != null) {
                 return registeredModuleBundle.satisfied();
+            }
+        } else if (module != null) {
+            RuntimeDynamicAccessMetadata registeredUnnamedBundle = registeredBundles.get(qualifyBundleName(ALL_UNNAMED_MODULE, baseName));
+            if (registeredUnnamedBundle != null) {
+                return registeredUnnamedBundle.satisfied();
             }
         }
         RuntimeDynamicAccessMetadata registeredBundle = registeredBundles.get(baseName);
@@ -311,6 +340,13 @@ public class LocalizationSupport {
 
     private static String qualifyBundleName(String moduleName, String baseName) {
         return moduleName != null && !moduleName.isEmpty() ? moduleName + ":" + baseName : baseName;
+    }
+
+    private static Module resolveNamedModule(String moduleName, Function<String, Optional<Module>> findModule) {
+        if (moduleName == null || moduleName.isEmpty() || ALL_UNNAMED_MODULE.equals(moduleName) || findModule == null) {
+            return null;
+        }
+        return findModule.apply(moduleName).orElse(null);
     }
 
     private static EconomicSet<String> getLanguageTags(EconomicSet<Locale> locales) {

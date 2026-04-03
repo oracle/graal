@@ -36,6 +36,8 @@ import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
 public final class InternalResourceAccess implements ResourceAccess {
 
+    private static final String ALL_UNNAMED_MODULE = "ALL-UNNAMED";
+
     private final RuntimeResourceSupport<AccessCondition> rrsInstance;
     private static InternalResourceAccess instance;
 
@@ -71,12 +73,16 @@ public final class InternalResourceAccess implements ResourceAccess {
             }
 
             Method m = ReflectionUtil.lookupMethod(cache.getClass(), "getModule");
-            Module modul = ReflectionUtil.invokeMethod(m, cache);
+            Module module = ReflectionUtil.invokeMethod(m, cache);
 
             Method m2 = ReflectionUtil.lookupMethod(cache.getClass(), "getName");
             String name = ReflectionUtil.invokeMethod(m2, cache);
 
-            rrsInstance.addResourceBundles(condition, false, modul != null && modul.isNamed() ? modul.getName() : null, name);
+            rrsInstance.addResourceBundles(condition, false, bundleModuleName(module), name);
         }
+    }
+
+    private static String bundleModuleName(Module module) {
+        return module != null && module.isNamed() ? module.getName() : ALL_UNNAMED_MODULE;
     }
 }

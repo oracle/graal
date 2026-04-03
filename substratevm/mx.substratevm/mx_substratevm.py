@@ -553,6 +553,11 @@ def svm_gate_body(args, tasks):
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                     java_desktop_integration_task(native_image, args.extra_image_builder_arguments)
 
+    with Task('hosted jvm unittests', tasks, tags=[GraalTags.native_unittests]) as t:
+        if t:
+            jvm_unittest(['--record-results', '--print-failed', 'failed.txt',
+                          'com.oracle.svm.hosted.jdk.localization'])
+
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:

@@ -60,6 +60,7 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 public final class RuntimeResourceAccess {
 
     private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
+    private static final String ALL_UNNAMED_MODULE = "ALL-UNNAMED";
 
     /**
      * Make Java resource {@code resourcePath} from {@code module} available at run time. If the
@@ -106,9 +107,10 @@ public final class RuntimeResourceAccess {
      */
     public static void addResourceBundle(Module module, String baseBundleName, Locale[] locales) {
         deprecationFlag.printDeprecationWarning();
+        Objects.requireNonNull(baseBundleName);
         Objects.requireNonNull(locales);
         RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
-                        moduleName(module), baseBundleName, Arrays.asList(locales));
+                        bundleModuleName(module), baseBundleName, Arrays.asList(locales));
     }
 
     /**
@@ -122,13 +124,14 @@ public final class RuntimeResourceAccess {
      */
     public static void addResourceBundle(Module module, String bundleName) {
         deprecationFlag.printDeprecationWarning();
+        Objects.requireNonNull(bundleName);
         RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
-                        false, moduleName(module), bundleName);
+                        false, bundleModuleName(module), bundleName);
     }
 
-    private static String moduleName(Module module) {
+    private static String bundleModuleName(Module module) {
         Objects.requireNonNull(module);
-        return module.isNamed() ? module.getName() : null;
+        return module.isNamed() ? module.getName() : ALL_UNNAMED_MODULE;
     }
 
     private RuntimeResourceAccess() {
