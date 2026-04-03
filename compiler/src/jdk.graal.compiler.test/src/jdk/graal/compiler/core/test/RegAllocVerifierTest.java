@@ -34,6 +34,7 @@ import jdk.graal.compiler.lir.ValueProcedure;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.alloc.RegisterAllocationPhase;
 import jdk.graal.compiler.lir.alloc.verifier.AliveConstraintViolationException;
+import jdk.graal.compiler.lir.alloc.verifier.CalleeSavedRegisterNotRetrievedException;
 import jdk.graal.compiler.lir.alloc.verifier.ConflictedAllocationState;
 import jdk.graal.compiler.lir.alloc.verifier.InvalidRegisterUsedException;
 import jdk.graal.compiler.lir.alloc.verifier.KindsMismatchException;
@@ -50,10 +51,19 @@ import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterAttributes;
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 import org.junit.Assert;
@@ -706,6 +716,81 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         }
     }
 
+    class CalleeSavePhase extends RAVPhaseWrapper {
+        Register register;
+
+        @Override
+        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
+            var name = target.arch.getName();
+
+            switch (name) {
+                case "AMD64" -> register = AMD64.rsi;
+                case "ARM64" -> register = AArch64.r0;
+            }
+
+            super.run(target, lirGenRes, context);
+        }
+
+        @Override
+        protected RegisterAllocationConfig getRegisterAllocationConfig(AllocationContext context) {
+            var regCfg = context.registerAllocationConfig.getRegisterConfig();
+            var newRegCfg = new RegisterConfig() {
+
+                @Override
+                public Register getReturnRegister(JavaKind kind) {
+                    return regCfg.getReturnRegister(kind);
+                }
+
+                @Override
+                public Register getFrameRegister() {
+                    return regCfg.getFrameRegister();
+                }
+
+                @Override
+                public CallingConvention getCallingConvention(CallingConvention.Type type, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
+                    return regCfg.getCallingConvention(type, returnType, parameterTypes, valueKindFactory);
+                }
+
+                @Override
+                public List<Register> getCallingConventionRegisters(CallingConvention.Type type, JavaKind kind) {
+                    return regCfg.getCallingConventionRegisters(type, kind);
+                }
+
+                @Override
+                public List<Register> getAllocatableRegisters() {
+                    return regCfg.getAllocatableRegisters();
+                }
+
+                @Override
+                public List<Register> filterAllocatableRegisters(PlatformKind kind, List<Register> registers) {
+                    return regCfg.filterAllocatableRegisters(kind, registers);
+                }
+
+                @Override
+                public List<Register> getCallerSaveRegisters() {
+                    return regCfg.getCallerSaveRegisters();
+                }
+
+                @Override
+                public List<Register> getCalleeSaveRegisters() {
+                    return List.of(register);
+                }
+
+                @Override
+                public List<RegisterAttributes> getAttributesMap() {
+                    return regCfg.getAttributesMap();
+                }
+
+                @Override
+                public boolean areAllAllocatableRegistersCallerSaved() {
+                    return regCfg.areAllAllocatableRegistersCallerSaved();
+                }
+            };
+
+            return new RegisterAllocationConfig(newRegCfg, null);
+        }
+    }
+
     @Override
     protected LIRSuites createLIRSuites(OptionValues options) {
         if (validSuites) {
@@ -1079,6 +1164,23 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         Assert.assertEquals(changeInputKindPhase.variable.getValueKind(), kmException.value1.getValue().getValueKind());
         Assert.assertEquals(ValueKind.Illegal, kmException.value2.getValue().getValueKind());
         Assert.assertFalse(kmException.origVsCurr);
+    }
+
+    @Test
+    public void testCalleeSaveRetrieval() {
+        var calleeSavePhase = new CalleeSavePhase();
+        phase = calleeSavePhase;
+
+        var methodName = "simple";
+        compile(getResolvedJavaMethod(methodName), null);
+
+        Assert.assertNull(exception);
+
+        compileModified(methodName);
+
+        assertException(CalleeSavedRegisterNotRetrievedException.class);
+        var csException = (CalleeSavedRegisterNotRetrievedException) exception;
+        Assert.assertEquals(csException.register.getRegister(), calleeSavePhase.register);
     }
 }
 

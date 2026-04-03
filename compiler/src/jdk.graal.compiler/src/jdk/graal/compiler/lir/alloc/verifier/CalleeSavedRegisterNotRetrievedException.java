@@ -36,6 +36,7 @@ public class CalleeSavedRegisterNotRetrievedException extends RAVException {
 
     public CalleeSavedRegisterNotRetrievedException(RARegister register, BasicBlock<?> block, BlockVerifierState blockVerifierState) {
         super(getErrorMessage(register), null, block);
+        this.register = register;
         this.blockVerifierState = new BlockVerifierState(block, blockVerifierState);
     }
 
