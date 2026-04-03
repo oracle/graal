@@ -25,7 +25,7 @@ Select the installation option that you prefer.
 Install Oracle GraalVM with [Homebrew](https://brew.sh/){:target="_blank"}:
 
 ```bash
-brew install graal
+brew install graalvm
 ```
 
 ## SDKMAN!
