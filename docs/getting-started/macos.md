@@ -11,6 +11,7 @@ redirect_from: /docs/getting-started/macos/
 GraalVM is available for macOS on AArch64 architecture. Support for macOS on x64 architecture has been removed.
 You can install GraalVM on macOS:
 
+* [using Homebrew](#homebrew)
 * [using SDKMAN!](#sdkman)
 * [from an archive](#from-an-archive)
 * [using script-friendly URLs](#script-friendly-urls)
@@ -18,6 +19,14 @@ You can install GraalVM on macOS:
 Note that on macOS the JDK installation path is: _/Library/Java/JavaVirtualMachines/&lt;graalvm&gt;/Contents/Home/_.
 
 Select the installation option that you prefer.
+
+## Homebrew
+
+Install Oracle GraalVM with [Homebrew](https://brew.sh/){:target="_blank"}:
+
+```bash
+brew install graal
+```
 
 ## SDKMAN!
 
