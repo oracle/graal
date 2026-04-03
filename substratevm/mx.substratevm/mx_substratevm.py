@@ -556,6 +556,13 @@ def svm_gate_body(args, tasks):
     with Task('hosted jvm unittests', tasks, tags=[GraalTags.native_unittests]) as t:
         if t:
             jvm_unittest(['--record-results', '--print-failed', 'failed.txt',
+                          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+                          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
+                          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
+                          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
+                          '--add-exports=jdk.graal.compiler/jdk.graal.compiler.util.json=ALL-UNNAMED',
+                          '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
+                          '--add-opens=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
                           'com.oracle.svm.hosted.jdk.localization'])
 
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:

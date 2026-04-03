@@ -75,8 +75,8 @@ public class LocalizationFeatureTest {
 
     @Test
     public void allUnnamedModuleSelectorDoesNotRequireResolution() {
-        String moduleName = LocalizationFeature.validateBundleModuleName(LocalizationFeature.ALL_UNNAMED_MODULE, "com.example.Messages", ignored -> {
-            throw new AssertionError("ALL-UNNAMED should not be resolved as a named module.");
+        String moduleName = LocalizationFeature.validateBundleModuleName(LocalizationFeature.ALL_UNNAMED_MODULE, "com.example.Messages", moduleToResolve -> {
+            throw new AssertionError("ALL-UNNAMED should not be resolved as a named module: " + moduleToResolve);
         });
         Assert.assertEquals(LocalizationFeature.ALL_UNNAMED_MODULE, moduleName);
     }
@@ -87,7 +87,10 @@ public class LocalizationFeatureTest {
                         () -> LocalizationFeature.validateBundleModuleName(
                                         "missing.module",
                                         "com.example.Messages",
-                                        ignored -> Optional.empty()));
+                                        moduleToResolve -> {
+                                            Assert.assertEquals("missing.module", moduleToResolve);
+                                            return Optional.empty();
+                                        }));
         Assert.assertTrue(error.getMessage().contains("missing.module"));
         Assert.assertTrue(error.getMessage().contains("com.example.Messages"));
     }
