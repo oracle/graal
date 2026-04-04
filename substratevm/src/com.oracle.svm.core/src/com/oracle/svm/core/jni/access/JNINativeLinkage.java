@@ -26,7 +26,7 @@ package com.oracle.svm.core.jni.access;
 
 import static com.oracle.svm.core.jni.access.JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE;
 
-import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
@@ -93,10 +93,10 @@ public final class JNINativeLinkage {
         return (PlatformNativeLibrarySupport.singleton().isBuiltinPkgNative(this.getShortName()));
     }
 
-    public CGlobalDataInfo getOrCreateBuiltInAddress(Function<String, CGlobalDataInfo> createSymbol) {
+    public CGlobalDataInfo getOrCreateBuiltInAddress(Supplier<CGlobalDataInfo> createSymbol) {
         assert isBuiltInFunction();
         if (builtInAddress == null) {
-            builtInAddress = createSymbol.apply(getShortName());
+            builtInAddress = createSymbol.get();
         }
         return builtInAddress;
     }

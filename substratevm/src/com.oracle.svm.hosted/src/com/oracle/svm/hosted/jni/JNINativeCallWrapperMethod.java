@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.jni;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
@@ -114,8 +113,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         ValueNode callAddress;
         String builtInSymbolName = DarwinBuiltinJNISymbolSupport.builtInSymbolName(linkage);
         if (builtInSymbolName != null) {
-            Function<String, CGlobalDataInfo> createSymbol = symbolName -> CGlobalDataFeature.singleton().registerAsAccessedOrGet(CGlobalDataFactory.forSymbol(symbolName));
-            CGlobalDataInfo builtinAddress = linkage.getOrCreateBuiltInAddress(ignored -> createSymbol.apply(builtInSymbolName));
+            CGlobalDataInfo builtinAddress = linkage.getOrCreateBuiltInAddress(() -> CGlobalDataFeature.singleton().registerAsAccessedOrGet(CGlobalDataFactory.forSymbol(builtInSymbolName)));
             callAddress = kit.unique(new CGlobalDataLoadAddressNode(builtinAddress));
 
             ScanReason reason = new ObjectScanner.OtherReason("Manual rescan triggered for " + method.getQualifiedName());
