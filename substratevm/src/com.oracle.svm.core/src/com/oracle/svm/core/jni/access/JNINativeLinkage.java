@@ -176,12 +176,16 @@ public final class JNINativeLinkage {
         return null;
     }
 
-    private String getShortName() {
+    public String getShortName() {
         StringBuilder sb = new StringBuilder("Java_");
         mangleName(getDeclaringClassName(), 1, getDeclaringClassName().length() - 1, sb);
         sb.append('_');
         mangleName(getName(), 0, name.length(), sb);
         return sb.toString();
+    }
+
+    public String getLongName() {
+        return getShortName() + "__" + getSignature();
     }
 
     private String getSignature() {

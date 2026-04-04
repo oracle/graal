@@ -112,9 +112,10 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
 
         ValueNode callAddress;
-        if (linkage.isBuiltInFunction()) {
+        String builtInSymbolName = DarwinBuiltinJNISymbolSupport.builtInSymbolName(linkage);
+        if (builtInSymbolName != null) {
             Function<String, CGlobalDataInfo> createSymbol = symbolName -> CGlobalDataFeature.singleton().registerAsAccessedOrGet(CGlobalDataFactory.forSymbol(symbolName));
-            CGlobalDataInfo builtinAddress = linkage.getOrCreateBuiltInAddress(createSymbol);
+            CGlobalDataInfo builtinAddress = linkage.getOrCreateBuiltInAddress(ignored -> createSymbol.apply(builtInSymbolName));
             callAddress = kit.unique(new CGlobalDataLoadAddressNode(builtinAddress));
 
             ScanReason reason = new ObjectScanner.OtherReason("Manual rescan triggered for " + method.getQualifiedName());
