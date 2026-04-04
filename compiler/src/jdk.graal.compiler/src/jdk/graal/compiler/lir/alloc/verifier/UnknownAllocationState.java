@@ -59,7 +59,7 @@ public class UnknownAllocationState extends AllocationState {
             return newConfState;
         }
 
-        return new ConflictedAllocationState((ValueAllocationState) other, ValueAllocationState.createUndefined(null));
+        return new ConflictedAllocationState((ValueAllocationState) other, ValueAllocationState.createUndefined(block));
     }
 
     @Override

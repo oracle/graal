@@ -821,7 +821,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
             @Def({REG, STACK}) protected AllocatableValue result;
             JavaConstant input;
 
-            public LoadConstOp(AllocatableValue result, JavaConstant input) {
+            LoadConstOp(AllocatableValue result, JavaConstant input) {
                 super(TYPE);
 
                 this.result = result;

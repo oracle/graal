@@ -117,12 +117,15 @@ public class RAValue {
     @Override
     public boolean equals(Object other) {
         if (other instanceof RAValue otherValueWrap) {
-            if (LIRValueUtil.isVirtualStackSlot(this.value) && otherValueWrap.value.equals(this.value)) {
+            if (LIRValueUtil.isVirtualStackSlot(this.value) && LIRValueUtil.isVirtualStackSlot(otherValueWrap.value)) {
                 return LIRValueUtil.asVirtualStackSlot(this.value).getId() == LIRValueUtil.asVirtualStackSlot(otherValueWrap.value).getId();
             }
 
-            if (ValueUtil.isStackSlot(this.value) && otherValueWrap.value.equals(this.value)) {
-                return ValueUtil.asStackSlot(this.value).getRawOffset() == ValueUtil.asStackSlot(otherValueWrap.value).getRawOffset();
+            if (ValueUtil.isStackSlot(this.value) && ValueUtil.isStackSlot(otherValueWrap.value)) {
+                var ourSlot = ValueUtil.asStackSlot(this.value);
+                var otherSlot = ValueUtil.asStackSlot(otherValueWrap.value);
+
+                return ourSlot.getRawOffset() == otherSlot.getRawOffset() && ourSlot.getRawAddFrameSize() == otherSlot.getRawAddFrameSize();
             }
 
             return this.value.equals(otherValueWrap.value);

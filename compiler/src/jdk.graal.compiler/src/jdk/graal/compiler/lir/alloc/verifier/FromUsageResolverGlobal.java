@@ -155,7 +155,6 @@ public class FromUsageResolverGlobal {
         this.firstUsages = new EconomicHashMap<>();
         this.initialLocations = new EconomicHashMap<>();
         this.aliasMap = new EconomicHashMap<>();
-        this.aliasMap = new EconomicHashMap<>();
         this.endBlocks = new EconomicHashSet<>();
 
         this.blockUsageMap = new BlockMap<>(lir.getControlFlowGraph());
@@ -254,9 +253,8 @@ public class FromUsageResolverGlobal {
                 continue; // Do not push already resolved variables further
             }
 
-            var defValue = successor.locations.get(variable);
-
-            if (block.locations.containsKey(variable) && block.locations.get(variable) == defValue) {
+            RAValue defValue = successor.locations.get(variable);
+            if (block.locations.containsKey(variable) && block.locations.get(variable).equals(defValue)) {
                 continue;
             }
 

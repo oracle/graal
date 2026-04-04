@@ -181,7 +181,7 @@ public class RegAllocVerifier {
         List<RAVException> exceptions = new ArrayList<>();
         for (var blockId : this.lir.getBlocks()) {
             var block = this.lir.getBlockById(blockId);
-            var state = this.blockEntryStates.get(block);
+            var state = new BlockVerifierState(block, this.blockEntryStates.get(block));
             var instructions = this.blockInstructions.get(block);
 
             for (var instr : instructions) {
