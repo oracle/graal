@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
@@ -144,11 +145,24 @@ public abstract class NativeLibraries {
 
     private boolean loadLibrary0(File file, boolean builtin) {
         try {
+            if (!builtin) {
+                String builtInName = asBuiltinLibraryName(file.getName());
+                if (builtInName != null && addLibrary(builtInName, true)) {
+                    return true;
+                }
+            }
             String canonical = builtin ? file.getName() : file.getCanonicalPath();
             return addLibrary(canonical, builtin);
         } catch (IOException e) {
             return false;
         }
+    }
+
+    private static String asBuiltinLibraryName(String fileName) {
+        if (Platform.includedIn(Platform.DARWIN.class) && fileName.startsWith("lib") && fileName.endsWith(".dylib")) {
+            return fileName.substring("lib".length(), fileName.length() - ".dylib".length());
+        }
+        return null;
     }
 
     protected abstract boolean addLibrary(String canonical, boolean builtin);
