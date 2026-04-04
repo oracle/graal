@@ -24,11 +24,15 @@
  */
 package jdk.graal.compiler.core.test;
 
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.ValueProcedure;
 import jdk.graal.compiler.lir.Variable;
@@ -36,8 +40,12 @@ import jdk.graal.compiler.lir.alloc.RegisterAllocationPhase;
 import jdk.graal.compiler.lir.alloc.verifier.AliveConstraintViolationException;
 import jdk.graal.compiler.lir.alloc.verifier.CalleeSavedRegisterNotRetrievedException;
 import jdk.graal.compiler.lir.alloc.verifier.ConflictedAllocationState;
+import jdk.graal.compiler.lir.alloc.verifier.ConstantRematerializedToStackException;
 import jdk.graal.compiler.lir.alloc.verifier.InvalidRegisterUsedException;
 import jdk.graal.compiler.lir.alloc.verifier.KindsMismatchException;
+import jdk.graal.compiler.lir.alloc.verifier.MissingLocationException;
+import jdk.graal.compiler.lir.alloc.verifier.MissingReferenceException;
+import jdk.graal.compiler.lir.alloc.verifier.OperandFlagMismatchException;
 import jdk.graal.compiler.lir.alloc.verifier.RAVException;
 import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
 import jdk.graal.compiler.lir.alloc.verifier.RAValue;
@@ -45,14 +53,18 @@ import jdk.graal.compiler.lir.alloc.verifier.RAVariable;
 import jdk.graal.compiler.lir.alloc.verifier.RegAllocVerifierPhase;
 import jdk.graal.compiler.lir.alloc.verifier.ValueAllocationState;
 import jdk.graal.compiler.lir.alloc.verifier.ValueNotInRegisterException;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.framemap.SimpleVirtualStackSlot;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
@@ -61,6 +73,9 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PlatformKind;
@@ -74,6 +89,10 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 public class RegAllocVerifierTest extends GraalCompilerTest {
     /**
@@ -791,6 +810,330 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         }
     }
 
+    class PhantomConstRematerializationPhase extends RAVPhaseWrapper {
+        RAVariable variableValue;
+        RAValue stackSlotValue;
+        ConstantValue constant;
+
+        class LoadConstOp extends LIRInstruction implements StandardOp.LoadConstantOp {
+            public static final LIRInstructionClass<LoadConstOp> TYPE = LIRInstructionClass.create(LoadConstOp.class);
+
+            @Def({REG, STACK}) protected AllocatableValue result;
+            JavaConstant input;
+
+            public LoadConstOp(AllocatableValue result, JavaConstant input) {
+                super(TYPE);
+
+                this.result = result;
+                this.input = input;
+            }
+
+            @Override
+            public Constant getConstant() {
+                return input;
+            }
+
+            @Override
+            public boolean canRematerializeToStack() {
+                return false;
+            }
+
+            @Override
+            public AllocatableValue getResult() {
+                return result;
+            }
+
+            @Override
+            public void emitCode(CompilationResultBuilder crb) {
+            }
+        }
+
+        @Override
+        protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext ctx) {
+            var instructions = super.getVerifierInstructions(lir, preallocMap, ctx);
+
+            var kind = LIRKind.value(AMD64Kind.V32_BYTE);
+            var jvConst = new JavaConstant() {
+                @Override
+                public JavaKind getJavaKind() {
+                    return JavaKind.Int;
+                }
+
+                @Override
+                public boolean isNull() {
+                    return false;
+                }
+
+                @Override
+                public boolean isDefaultForKind() {
+                    return false;
+                }
+
+                @Override
+                public Object asBoxedPrimitive() {
+                    return null;
+                }
+
+                @Override
+                public int asInt() {
+                    return 0;
+                }
+
+                @Override
+                public boolean asBoolean() {
+                    return false;
+                }
+
+                @Override
+                public long asLong() {
+                    return 0;
+                }
+
+                @Override
+                public float asFloat() {
+                    return 0;
+                }
+
+                @Override
+                public double asDouble() {
+                    return 0;
+                }
+            };
+
+            constant = new ConstantValue(kind, jvConst);
+            var stackSlot = new SimpleVirtualStackSlot(1, kind);
+            var variable = new Variable(kind, lir.numVariables() + 1);
+
+            stackSlotValue = RAValue.create(stackSlot);
+            variableValue = (RAVariable) RAValue.create(variable);
+
+            var loadConstOp = new LoadConstOp(variable, constant.getJavaConstant());
+            var constSpawnOp = new RAVInstruction.Op(loadConstOp);
+            loadConstOp.forEachOutput(constSpawnOp.dests.copyOriginalProc);
+            constSpawnOp.dests.curr[0] = stackSlotValue;
+
+            var remMove = new RAVInstruction.ValueMove(new LoadConstOp(stackSlot, constant.getJavaConstant()), constant, stackSlot);
+
+            var usage = new RAVInstruction.Op(new StandardOp.NoOp(null, 0));
+            usage.uses = new RAVInstruction.ValueArrayPair(1);
+            usage.uses.curr[0] = stackSlotValue;
+            usage.uses.orig[0] = variableValue;
+
+            var blockInstructions = instructions.get(0);
+            blockInstructions.add(1, constSpawnOp);
+            blockInstructions.add(blockInstructions.size() - 1, remMove);
+            blockInstructions.add(blockInstructions.size() - 1, usage);
+
+            return instructions;
+        }
+    }
+
+    class ForceOperandFlagPhase extends RAVPhaseWrapper {
+        @Override
+        protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext ctx) {
+            var instructions = super.getVerifierInstructions(lir, preallocMap, ctx);
+
+            for (var blockId : lir.getBlocks()) {
+                var block = lir.getBlockById(blockId);
+                var instructionsForBlock = instructions.get(block);
+                for (var instruction : instructionsForBlock) {
+                    if (instruction instanceof RAVInstruction.Op op) {
+                        if (op.isLabel()) {
+                            continue;
+                        }
+
+                        for (int i = 0; i < op.uses.count; i++) {
+                            var curr = op.uses.curr[i];
+                            var orig = op.uses.orig[i];
+
+                            if (orig.equals(curr)) {
+                                continue;
+                            }
+
+                            EnumSet<LIRInstruction.OperandFlag> opFlags = EnumSet.noneOf(LIRInstruction.OperandFlag.class);
+                            opFlags.addAll(op.uses.operandFlags.get(i));
+
+                            if (curr.isRegister()) {
+                                opFlags.remove(LIRInstruction.OperandFlag.REG);
+                            } else if (LIRValueUtil.isStackSlotValue(curr.getValue())) {
+                                opFlags.remove(LIRInstruction.OperandFlag.STACK);
+                            } else if (LIRValueUtil.isConstantValue(curr.getValue())) {
+                                opFlags.remove(LIRInstruction.OperandFlag.CONST);
+                            } else {
+                                continue;
+                            }
+
+                            op.uses.operandFlags.set(i, opFlags);
+                            return instructions;
+                        }
+                    }
+                }
+            }
+
+            return instructions;
+        }
+    }
+
+    class ForceMissingLocationExceptionPhase extends RAVPhaseWrapper {
+        @Override
+        protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext ctx) {
+            var instructions = super.getVerifierInstructions(lir, preallocMap, ctx);
+
+            for (var blockId : lir.getBlocks()) {
+                var block = lir.getBlockById(blockId);
+                var instructionsForBlock = instructions.get(block);
+                for (var instruction : instructionsForBlock) {
+                    if (instruction instanceof RAVInstruction.Op op) {
+                        if (op.isLabel()) {
+                            continue;
+                        }
+
+                        for (int i = 0; i < op.uses.count; i++) {
+                            var curr = op.uses.curr[i];
+                            var orig = op.uses.orig[i];
+
+                            if (orig.equals(curr)) {
+                                continue;
+                            }
+
+                            op.uses.curr[i] = null;
+                            return instructions;
+                        }
+                    }
+                }
+            }
+
+            return instructions;
+        }
+    }
+
+    class ExcessReferencePhase extends RAVPhaseWrapper {
+        @Override
+        protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext ctx) {
+            var instructions = super.getVerifierInstructions(lir, preallocMap, ctx);
+
+            for (var blockId : lir.getBlocks()) {
+                var block = lir.getBlockById(blockId);
+                var instructionsForBlock = instructions.get(block);
+
+                RAVInstruction.Op prev = null;
+                for (var instruction : instructionsForBlock) {
+                    if (instruction instanceof RAVInstruction.Op op) {
+                        if (prev != null) {
+                            var curr = prev.dests.curr[0];
+                            var kind = curr.getLIRKind().makeUnknownReference();
+                            var refLocation = RAValue.create(curr.asRegister().getRegister().asValue(kind));
+
+                            op.references = List.of(refLocation);
+                            return instructions;
+                        }
+
+                        if (op.isLabel()) {
+                            continue;
+                        }
+
+                        if (op.dests.count == 0) {
+                            continue;
+                        }
+
+                        var curr = op.dests.curr[0];
+                        if (!curr.isRegister() || !curr.getLIRKind().isValue()) {
+                            continue;
+                        }
+
+                        // This instruction will define dest location
+                        // next instruction will verify the references list
+                        // -> no reference there!
+                        prev = op;
+                    }
+                }
+            }
+
+            return instructions;
+        }
+    }
+
+    class PhiResolver extends RAVPhaseWrapper {
+        RAVInstruction.Op label;
+        RAValue location;
+
+        @Override
+        protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> instrMap, AllocationContext context) {
+            var instructions = super.getVerifierInstructions(lir, instrMap, context);
+
+            Set<Register> usedRegisters = new EconomicHashSet<>();
+            for (var blockId : lir.getBlocks()) {
+                var block = lir.getBlockById(blockId);
+                var instructionsForBlock = instructions.get(block);
+                for (var instruction : instructionsForBlock) {
+                    switch (instruction) {
+                        case RAVInstruction.Op op -> {
+                            for (int i = 0; i < op.dests.count; i++) {
+                                var dest = op.dests.curr[i];
+                                if (dest.isRegister()) {
+                                    usedRegisters.add(dest.asRegister().getRegister());
+                                }
+                            }
+                        }
+                        case RAVInstruction.ValueMove move -> {
+                            var regValue = move.getLocation();
+                            if (regValue.isRegister()) {
+                                usedRegisters.add(regValue.asRegister().getRegister());
+                            }
+                        }
+                        case RAVInstruction.LocationMove move -> {
+                            if (move.to.isRegister()) {
+                                usedRegisters.add(move.to.asRegister().getRegister());
+                            }
+                        }
+                        default -> {
+                        }
+                    }
+                }
+            }
+
+            Register targetRegister = null;
+            var allocatableRegisters = context.registerAllocationConfig.getAllocatableRegisters();
+            for (var register : allocatableRegisters) {
+                if (!usedRegisters.contains(register)) {
+                    targetRegister = register;
+                    break;
+                }
+            }
+
+            assert targetRegister != null : "No register available for phi resolver test";
+
+            var labelOp = (RAVInstruction.Op) instructions.get(0).getFirst();
+
+            var newDst = new RAVInstruction.ValueArrayPair(labelOp.dests.count + 1);
+            for (int i = 0; i < labelOp.dests.count; i++) {
+                newDst.curr[i] = labelOp.dests.curr[i];
+                newDst.orig[i] = labelOp.dests.orig[i];
+                newDst.operandFlags.add(labelOp.dests.operandFlags.get(i));
+            }
+
+            var variable = RAVariable.create(new Variable(ValueKind.Illegal, lir.numVariables() + 1));
+            location = RAValue.create(targetRegister.asValue());
+
+            newDst.orig[labelOp.dests.count] = variable;
+            newDst.curr[labelOp.dests.count] = null;
+            newDst.operandFlags.add(EnumSet.of(LIRInstruction.OperandFlag.REG));
+
+            labelOp.dests = newDst;
+            label = labelOp;
+
+            var usage = new RAVInstruction.Op(new StandardOp.NoOp(null, 0));
+            usage.uses = new RAVInstruction.ValueArrayPair(1);
+            usage.uses.orig[0] = variable;
+            usage.uses.curr[0] = location;
+            usage.uses.operandFlags.add(EnumSet.of(LIRInstruction.OperandFlag.REG));
+
+            instructions.get(0).add(instructions.get(0).size() - 1, usage);
+
+            return instructions;
+        }
+    }
+
     @Override
     protected LIRSuites createLIRSuites(OptionValues options) {
         if (validSuites) {
@@ -1181,6 +1524,86 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         assertException(CalleeSavedRegisterNotRetrievedException.class);
         var csException = (CalleeSavedRegisterNotRetrievedException) exception;
         Assert.assertEquals(csException.register.getRegister(), calleeSavePhase.register);
+    }
+
+    @Test
+    public void testOperandFlags() {
+        var forceOperandFlagPhase = new ForceOperandFlagPhase();
+        phase = forceOperandFlagPhase;
+
+        var methodName = "simple";
+        compile(getResolvedJavaMethod(methodName), null);
+
+        Assert.assertNull(exception);
+
+        compileModified(methodName);
+
+        assertException(OperandFlagMismatchException.class);
+    }
+
+    @Test
+    public void testMissingLocation() {
+        var forceMissingLocationException = new ForceMissingLocationExceptionPhase();
+        phase = forceMissingLocationException;
+
+        var methodName = "simple";
+        compile(getResolvedJavaMethod(methodName), null);
+
+        Assert.assertNull(exception);
+
+        compileModified(methodName);
+
+        assertException(MissingLocationException.class);
+    }
+
+    @Test
+    public void testExcessReference() {
+        var forceExcessReference = new ExcessReferencePhase();
+        phase = forceExcessReference;
+
+        var methodName = "simple";
+        compile(getResolvedJavaMethod(methodName), null);
+
+        Assert.assertNull(exception);
+
+        compileModified(methodName);
+
+        assertException(MissingReferenceException.class);
+    }
+
+    @Test
+    public void testPhiResolver() {
+        var phiResolver = new PhiResolver();
+        phase = phiResolver;
+
+        var methodName = "simple";
+        compile(getResolvedJavaMethod(methodName), null);
+
+        Assert.assertNull(exception);
+
+        compileModified(methodName);
+
+        Assert.assertNull(exception);
+        Assert.assertEquals(phiResolver.label.dests.curr[phiResolver.label.dests.count - 1], phiResolver.location);
+    }
+
+    @Test
+    public void testConstRematerializer() {
+        var constRemPhase = new PhantomConstRematerializationPhase();
+        phase = constRemPhase;
+
+        var methodName = "simple";
+        compile(getResolvedJavaMethod(methodName), null);
+
+        Assert.assertNull(exception);
+
+        compileModified(methodName);
+
+        assertException(ConstantRematerializedToStackException.class);
+        var crException = (ConstantRematerializedToStackException) exception;
+        Assert.assertEquals(constRemPhase.stackSlotValue, crException.location);
+        Assert.assertEquals(constRemPhase.variableValue, crException.variable);
+        Assert.assertEquals(constRemPhase.constant, crException.state.getValue());
     }
 }
 
