@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -56,9 +59,12 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
             NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
         }
         if (isLinux() || isDarwin()) {
-            access.registerReachabilityHandler(JNIRegistrationAWTSupport::registerHeadlessJavaDesktopSupport,
-                            method(access, "java.awt.image.ColorModel", "loadLibraries"),
-                            method(access, "java.awt.Toolkit", "loadLibraries"));
+            List<Object> triggers = new ArrayList<>();
+            optionalMethod(access, "java.awt.image.ColorModel", "loadLibraries").ifPresent(triggers::add);
+            optionalMethod(access, "java.awt.Toolkit", "loadLibraries").ifPresent(triggers::add);
+            if (!triggers.isEmpty()) {
+                access.registerReachabilityHandler(JNIRegistrationAWTSupport::registerHeadlessJavaDesktopSupport, triggers.toArray());
+            }
         }
     }
 
