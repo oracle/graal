@@ -53,12 +53,26 @@ public interface SharedField extends ResolvedJavaField {
      */
     int getLocation();
 
+    /**
+     * Returns whether the field is accessed in a way that must be preserved in the analysis
+     * universe, including reads and writes with observable side effects.
+     */
     boolean isAccessed();
 
+    /**
+     * Returns whether the field was marked as reachable during analysis, for example because it is
+     * read, written, or folded.
+     */
     boolean isReachable();
 
+    /**
+     * Returns whether the field is treated as written during analysis.
+     */
     boolean isWritten();
 
+    /**
+     * Returns the kind of the field in memory, which can differ from its Java language kind.
+     */
     JavaKind getStorageKind();
 
     /**
