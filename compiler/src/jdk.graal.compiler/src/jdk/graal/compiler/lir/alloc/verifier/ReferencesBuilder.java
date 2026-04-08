@@ -164,7 +164,7 @@ public class ReferencesBuilder {
             }
 
             var op = (RAVInstruction.Op) preAllocMap.get(instruction);
-            op.references = values.references.stream().toList();
+            op.references = new EconomicHashSet<>(values.references); // Has to be a copy here
         }
     }
 

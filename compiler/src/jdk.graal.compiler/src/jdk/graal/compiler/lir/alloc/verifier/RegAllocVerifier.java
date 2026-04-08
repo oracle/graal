@@ -140,7 +140,6 @@ public class RegAllocVerifier {
                 }
 
                 this.blockEntryStates.put(succ, succState);
-                worklist.remove(succ); // Always at the end, for predecessors to be processed first.
                 worklist.add(succ);
             }
         }

@@ -233,7 +233,6 @@ public class FromUsageResolverGlobal {
                 }
             }
 
-            worklist.remove(pred);
             worklist.add(pred);
         }
     }
@@ -278,7 +277,7 @@ public class FromUsageResolverGlobal {
         // Calculate what is defined when + usages
         Set<BasicBlock<?>> visited = new EconomicHashSet<>();
         while (!worklist.isEmpty()) {
-            var block = worklist.remove();
+            var block = worklist.poll();
             if (visited.contains(block)) {
                 continue;
             }
@@ -370,7 +369,6 @@ public class FromUsageResolverGlobal {
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 var succ = block.getSuccessorAt(i);
 
-                worklist.remove(succ);
                 worklist.add(succ);
             }
         }

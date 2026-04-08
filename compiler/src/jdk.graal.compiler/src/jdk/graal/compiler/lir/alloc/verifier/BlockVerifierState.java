@@ -749,15 +749,7 @@ public class BlockVerifierState {
                 continue; // Not a reference, continue
             }
 
-            boolean referenceFound = false;
-            for (RAValue reference : op.references) {
-                if (reference.equals(entry.getKey())) {
-                    referenceFound = true;
-                    break;
-                }
-            }
-
-            if (referenceFound) {
+            if (op.references.contains(entry.getKey())) {
                 continue;
             }
 

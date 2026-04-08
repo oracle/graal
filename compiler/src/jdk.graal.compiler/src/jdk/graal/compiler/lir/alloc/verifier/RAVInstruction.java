@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class RAVInstruction {
     /**
@@ -268,7 +269,7 @@ public class RAVInstruction {
          * List of GC roots, calculated using LocationMarker class, other references in state maps
          * need to be nullified.
          */
-        public List<RAValue> references;
+        public Set<RAValue> references;
 
         /**
          * Count number of values stored.

@@ -1024,7 +1024,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
                             var kind = curr.getLIRKind().makeUnknownReference();
                             var refLocation = RAValue.create(curr.asRegister().getRegister().asValue(kind));
 
-                            op.references = List.of(refLocation);
+                            op.references = new EconomicHashSet<>();
+                            op.references.add(refLocation);
                             return instructions;
                         }
 
