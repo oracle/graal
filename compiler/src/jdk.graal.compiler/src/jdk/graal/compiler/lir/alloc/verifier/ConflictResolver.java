@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 
@@ -45,6 +46,15 @@ public interface ConflictResolver {
      * @param blockInstructions IR of the Verifier
      */
     void prepare(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions);
+
+    /**
+     * This is run during the checking/verification stage, before this any
+     * conflict resolution is needed.
+     *
+     * @param instruction RAV instruction that we build conflict resolver information from
+     * @param block Block where this instruction is in
+     */
+    void prepareFromInstr(RAVInstruction.Base instruction, BasicBlock<?> block);
 
     /**
      * Resolve an issue stemming from {@link ValueAllocationState} not having the correct value in

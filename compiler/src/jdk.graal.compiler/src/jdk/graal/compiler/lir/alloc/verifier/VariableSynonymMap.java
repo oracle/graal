@@ -81,19 +81,19 @@ public class VariableSynonymMap implements ConflictResolver {
         return find(source).equals(find(target));
     }
 
-    @Override
+    // @Override
     public void prepare(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions) {
         for (var blockId : lir.getBlocks()) {
             var block = lir.getBlockById(blockId);
             var instructions = blockInstructions.get(block);
 
             for (var instruction : instructions) {
-                this.prepareFromInstr(instruction);
+                this.prepareFromInstr(instruction, block);
             }
         }
     }
 
-    public void prepareFromInstr(RAVInstruction.Base instruction) {
+    public void prepareFromInstr(RAVInstruction.Base instruction, BasicBlock<?> block) {
         if (instruction instanceof RAVInstruction.ValueMove move) {
             if (!move.variableOrConstant.isVariable() || !move.getLocation().isVariable()) {
                 return;

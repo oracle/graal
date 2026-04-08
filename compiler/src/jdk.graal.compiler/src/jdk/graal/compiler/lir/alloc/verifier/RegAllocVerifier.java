@@ -161,6 +161,9 @@ public class RegAllocVerifier {
             var instructions = this.blockInstructions.get(block);
 
             for (var instr : instructions) {
+                this.constantMaterializationConflictResolver.prepareFromInstr(instr, block);
+                this.synonymMap.prepareFromInstr(instr, block);
+
                 state.check(instr);
                 state.update(instr);
             }
@@ -184,6 +187,9 @@ public class RegAllocVerifier {
             var instructions = this.blockInstructions.get(block);
 
             for (var instr : instructions) {
+                this.constantMaterializationConflictResolver.prepareFromInstr(instr, block);
+                this.synonymMap.prepareFromInstr(instr, block);
+
                 try {
                     state.check(instr);
                     state.update(instr);
@@ -223,8 +229,6 @@ public class RegAllocVerifier {
      * </p>
      */
     public void run() {
-        this.constantMaterializationConflictResolver.prepare(lir, blockInstructions);
-        this.synonymMap.prepare(lir, blockInstructions);
         this.fromUsageResolverGlobal.resolvePhiFromUsage();
 
         this.calculateEntryBlocks();
