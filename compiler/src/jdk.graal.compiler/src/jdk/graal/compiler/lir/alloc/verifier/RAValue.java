@@ -36,7 +36,7 @@ import jdk.vm.ci.meta.Value;
  * <p>
  * Values are indexed without their {@link LIRKind kind} associated with them, this is necessary for
  * {@link AllocationStateMap} because locations can change kinds and still be associated with one
- * key/value pair in said map.
+ * key/value pair in the map.
  * </p>
  */
 public class RAValue {
@@ -107,9 +107,10 @@ public class RAValue {
     }
 
     /**
-     * Are two {@link RAValue values} equal? - check for offset for {@link jdk.vm.ci.code.StackSlot}
-     * - check for id for {@link jdk.graal.compiler.lir.VirtualStackSlot} - otherwise default to
-     * normal equals on {@link Value}
+     * Are two {@link RAValue values} equal? - check for offset for
+     * {@link jdk.vm.ci.code.StackSlot}, check for id for
+     * {@link jdk.graal.compiler.lir.VirtualStackSlot}, otherwise default to normal equals on
+     * {@link Value}
      *
      * @param other The reference object with which to compare.
      * @return Are said values equal?

@@ -67,12 +67,12 @@ public abstract class AllocationState {
     public abstract AllocationState clone();
 
     /**
-     * Meet a state from different block coming from edge in the program graph, decide what result
-     * of said two states should be.
+     * Meet a state from a different block coming from an edge in the program graph, decide what the
+     * result of said two states should be.
      *
-     * @param other Other state coming from a predecessor edge
+     * @param other The other state coming from a predecessor edge
      * @param otherBlock Which block is other state from
-     * @param block Which state is this state from
+     * @param block Which state is this state from?
      * @return What is the new state the location is in.
      */
     public abstract AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block);

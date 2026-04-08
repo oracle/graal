@@ -133,7 +133,7 @@ public class VariableSynonymMap implements ConflictResolver {
                 return null;
             }
 
-            // Currently take any source, but maybe its better to track the original variable
+            // Currently take any source, but maybe it is better to track the original variable
             source = valueState.source;
             block = valueState.block;
         }

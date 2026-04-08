@@ -42,7 +42,7 @@ public class KindsMismatchException extends RAVException {
      * @param block Block where violation occurred
      * @param value1 First value in comparison, original variable.
      * @param value2 Second value in comparison, either current location or value stored in state
-     * @param origVsCurr Comparing original variable to current location
+     * @param origVsCurr Comparing the original variable to the current location
      */
     public KindsMismatchException(RAVInstruction.Base instruction, BasicBlock<?> block, RAValue value1, RAValue value2, boolean origVsCurr) {
         super(KindsMismatchException.getErrorMessage(value1, value2, origVsCurr), instruction, block);

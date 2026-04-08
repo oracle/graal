@@ -30,7 +30,7 @@ import jdk.graal.compiler.util.EconomicHashSet;
 import java.util.Set;
 
 /**
- * Conflicted allocation state - two or more instances have collided and either of them can be
+ * Conflicted allocation state - two or more instances have collided, and either of them can be
  * stored at said location, needs to be resolved by either overwriting the location with a new
  * {@link ValueAllocationState instance} or by a {@link ConflictResolver} implementation.
  */
@@ -88,7 +88,7 @@ public class ConflictedAllocationState extends AllocationState {
      * Any state coming here will be added to the conflict set and create a new
      * {@link ConflictedAllocationState} instance.
      *
-     * @param other Other state coming from a predecessor edge
+     * @param other The other state coming from a predecessor edge
      * @return {@link ConflictedAllocationState} with predecessor state added up
      */
     @Override
@@ -123,7 +123,7 @@ public class ConflictedAllocationState extends AllocationState {
 
     /**
      * We do not compare a conflicted state on its contents, whenever a new one would be created as
-     * a result, the set of contents would remain the same, if values are equal based on RAValue
+     * a result, the set of contents would remain the same if values are equal based on RAValue
      * rules.
      *
      * @param other Another state we are comparing it to

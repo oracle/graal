@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Mapping between a location and allocation state, that stores one of these: -
+ * Mapping between a location and allocation state that stores one of these: -
  * {@link UnknownAllocationState unknown} - our null state, nothing was stored yet -
  * {@link ValueAllocationState value} - symbol that is stored at said location -
  * {@link ConflictedAllocationState conflicted} - set of Values that are supposed to be at same
@@ -113,7 +113,7 @@ public class AllocationStateMap {
      * used.
      *
      * <p>
-     * This is useful for registers that are used by the ABI in the first label, but can actually
+     * This is useful for registers that are used by the ABI in the first label but can actually
      * never be changed, like rbp.
      * </p>
      *
@@ -141,10 +141,10 @@ public class AllocationStateMap {
     }
 
     /**
-     * Get set of locations holding this particular variable/constant.
+     * Get the set of locations holding this particular variable/constant.
      *
      * @param value Symbol we are looking for
-     * @return Set of locations that hold said symbol
+     * @return Set of locations holding the symbol
      */
     public Set<RAValue> getValueLocations(RAValue value) {
         Set<RAValue> locations = new EconomicHashSet<>();
@@ -159,8 +159,7 @@ public class AllocationStateMap {
     }
 
     /**
-     * Merge two maps together, source is generally the predecessor to the current block (this state
-     * map).
+     * Merge two maps, a source is generally the predecessor to the current block (this state map).
      *
      * @param source Predecessor merging to here
      * @return Was this map changed?

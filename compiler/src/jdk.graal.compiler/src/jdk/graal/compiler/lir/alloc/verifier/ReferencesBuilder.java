@@ -46,7 +46,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 /**
  * Build references list for operations that can be used to in-validate references that are not part
- * of it, to make sure GC-freed references are not used further.
+ * of it to make sure GC-freed references are not used further.
  *
  * <p>
  * It uses the {@link LocationMarker} class that is used in the
@@ -151,7 +151,7 @@ public class ReferencesBuilder {
         }
 
         /**
-         * Set references to the operation, if it can be found in the pre-allocation map.
+         * Set references to the operation if it can be found in the pre-allocation map.
          *
          * @param instruction LIR instruction that holds these references
          * @param info LIR frame state

@@ -105,7 +105,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     boolean validSuites = true;
 
     /**
-     * Exception thrown during verification process.
+     * Exception thrown during the verification process.
      */
     RAVException exception;
 
@@ -131,7 +131,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
     /**
      * Overwrites a destination variable with a newly created one to cause a
-     * ValueNotInLocationException with old variable being in said place.
+     * ValueNotInLocationException with an old variable being in the said place.
      */
     class ChangeVariablePhase extends RAVPhaseWrapper {
         protected RAVariable originalVariable;
@@ -189,7 +189,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
     /**
      * This pass changes register allocation config to only allow certain registers to be used for
-     * allocation, and we want the verifier to detect usage of said register.
+     * allocation, and we want the verifier to detect usage of the said register.
      */
     class DisallowedRegisterPhase extends RAVPhaseWrapper {
         protected Register ignoredReg;
@@ -267,7 +267,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Change a register that is only used once as output, so that state of it is
+     * Change a register only used once as output, so that state of it is
      * {@link jdk.graal.compiler.lir.alloc.verifier.UnknownAllocationState unknown}.
      */
     class ForceUnknownStateInRegister extends RAVPhaseWrapper {
@@ -400,9 +400,9 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Change kind of an operand to trigger a KindsMismatchException, very simply, find first
-     * instruction that is not a label and look through its operand array to find first variable and
-     * change its type to Illegal.
+     * Change the kind of operand to trigger a KindsMismatchException, very simply, find the first
+     * instruction that is not a label and look through its operand array to find the first variable
+     * and change its type to Illegal.
      */
     abstract class ChangeKindPhase extends RAVPhaseWrapper {
         protected Variable variable;
@@ -458,7 +458,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Change kind for a variable that is being used as an input.
+     * Change the kind for a variable that is being used as an input.
      */
     class ChangeInputKindPhase extends ChangeKindPhase {
         @Override
@@ -468,7 +468,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Change kind for a variable that is being used as an output.
+     * Change the kind for a variable that is being used as an output.
      */
     class ChangeOutputKindPhase extends ChangeKindPhase {
         @Override
@@ -557,7 +557,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Changes LIR instruction to use same register as alive and output.
+     * Changes LIR instruction to use the same register as alive and output.
      */
     class ViolateAliveConstraintInDstPhase extends ViolateAliveConstraint {
         @Override
@@ -567,7 +567,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     /**
-     * Changes LIR instruction to use same register as alive and temporary.
+     * Changes LIR instruction to use the same register as alive and temporary.
      */
     class ViolateAliveConstraintInTempPhase extends ViolateAliveConstraint {
         @Override
@@ -601,7 +601,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         }
 
         /**
-         * Get block where a location with conflicted state will be used.
+         * Get a block where a location with a conflicted state will be used.
          *
          * @param lir LIR
          * @return Conflicted use block
@@ -658,11 +658,11 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         }
 
         /**
-         * Adds a conflict inducing value move to a block.
+         * Adds a conflict-inducing value move to a block.
          *
          * @param lir LIR
          * @param block Block where we are putting move to
-         * @param instrMap Pre allocation instruction map
+         * @param instrMap Pre-allocation instruction map
          * @param targetVariable Target variable we are creating conflict with
          * @param variables Variables and their locations from previous steps
          */
@@ -1047,7 +1047,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
                         }
 
                         // This instruction will define dest location
-                        // next instruction will verify the references list
+                        // next instruction will verify the reference list
                         // -> no reference there!
                         prev = op;
                     }
@@ -1320,7 +1320,7 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
             }
             if (array[0] instanceof String || a) {
                 /*
-                 * This code is outside of the loop. Accessing the array reqires a ValueProxyNode.
+                 * This code is outside of the loop. Accessing the array requires a ValueProxyNode.
                  * When the simplification of the ArrayLengthNode replaces the length access with
                  * the ArrayList.size used to create the array, then the value needs to have a
                  * ValueProxyNode too. In addition, the two parts of the if-condition actually lead
@@ -1474,9 +1474,9 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         Assert.assertTrue(vnrException.state.isConflicted());
 
         var confState = (ConflictedAllocationState) vnrException.state;
-        var conflitedStates = confState.getConflictedStates();
-        Assert.assertEquals(2, conflitedStates.size());
-        for (var state : conflitedStates) {
+        var conflictedStates = confState.getConflictedStates();
+        Assert.assertEquals(2, conflictedStates.size());
+        for (var state : conflictedStates) {
             Assert.assertTrue(state.getRAValue().equals(diamondConflictPhase.newVariable) || state.getRAValue().equals(diamondConflictPhase.targetVariable));
         }
     }
@@ -1498,9 +1498,9 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         Assert.assertTrue(vnrException.state.isConflicted());
 
         var confState = (ConflictedAllocationState) vnrException.state;
-        var conflitedStates = confState.getConflictedStates();
-        Assert.assertEquals(2, conflitedStates.size());
-        for (var state : conflitedStates) {
+        var conflictedStates = confState.getConflictedStates();
+        Assert.assertEquals(2, conflictedStates.size());
+        for (var state : conflictedStates) {
             Assert.assertTrue(state.getRAValue().equals(loopConflictPhase.newVariable) || state.getRAValue().equals(loopConflictPhase.targetVariable));
         }
     }
@@ -1522,9 +1522,9 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         Assert.assertTrue(vnrException.state.isConflicted());
 
         var confState = (ConflictedAllocationState) vnrException.state;
-        var conflitedStates = confState.getConflictedStates();
-        Assert.assertEquals(2, conflitedStates.size());
-        for (var state : conflitedStates) {
+        var conflictedStates = confState.getConflictedStates();
+        Assert.assertEquals(2, conflictedStates.size());
+        for (var state : conflictedStates) {
             Assert.assertTrue(state.getRAValue().equals(loopConflictPhase.newVariable) || state.getRAValue().equals(loopConflictPhase.targetVariable));
         }
     }

@@ -74,7 +74,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
     }
 
     /**
-     * Add variable to constant mapping from instruction contents.
+     * Add a variable to constant mapping from instruction contents.
      *
      * @param instruction Instruction we are looking at for LoadConstantOp
      * @param block Block where instruction is from
@@ -201,12 +201,12 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
      * source, stored in {@link ValueAllocationState}.
      *
      * <p>
-     * Check if variable cannot rematerialize to stack and if it did so.
+     * Check if the variable cannot rematerialize to stack and if it did so.
      * </p>
      *
      * @param variable Target variable
      * @param state {@link AllocationState state} it is in
-     * @return Was it rematerialized to wrong location?
+     * @return Was it rematerialized to a wrong location?
      */
     protected boolean isRematerializedToWrongLocation(RAVariable variable, ValueAllocationState state) {
         if (canRematerializeToStack.contains(variable)) {

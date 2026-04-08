@@ -63,7 +63,7 @@ public class RARegister extends RAValue {
     }
 
     /**
-     * Equal RegisterValue on it's Register, not Register and kind, otherwise same as Value.
+     * Equal RegisterValue on it's Register, not Register and kind, otherwise the same as a Value.
      *
      * @param other The reference object with which to compare.
      * @return Are said values equal?

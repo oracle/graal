@@ -42,8 +42,8 @@ import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Verification state a block is in, holds a mapping between locations and their allocation states,
- * which can be unknown, value - it's contents or conflicted - multiple values conflict with each
- * other.
+ * which can be unknown, value (with symbol content) or conflicted; multiple values conflict with
+ * each other.
  */
 public class BlockVerifierState {
     /**
@@ -95,7 +95,7 @@ public class BlockVerifierState {
     }
 
     /**
-     * Merge states of block and it's predecessor. This process creates a new state based on
+     * Merge states of block and it's predecessor. This process creates a new state based on the
      * contents of the predecessor, creating conflicts where current locations do not match.
      *
      * @param other Predecessor of this block
@@ -155,7 +155,7 @@ public class BlockVerifierState {
         if (curr == null) {
             if (op.isJump()) {
                 // This can happen if a variable without a usage is passed in
-                // even when this variable acts as an alias to the next label
+                // even when this variable acts as an alias to the next label,
                 // there's no usage, so no location.
                 return;
             }
@@ -177,8 +177,8 @@ public class BlockVerifierState {
         AllocationState state = this.values.get(curr);
         if (orig.equals(curr)) {
             // For these cases we do not consider checking state taking the original
-            // register as a symbol, because there's too many cases when this does
-            // not work, for example RETURN with rax tends to contain the actual
+            // register as a symbol, because there are too many cases when this does
+            // not work, for example, RETURN with rax tends to contain the actual
             // generated variable instead of rax symbol, or NEAR_FOREIGN_CALL
             // keeps its own registers before and after allocation, but those
             // can also contain different variable symbols.
@@ -286,7 +286,7 @@ public class BlockVerifierState {
      * </p>
      *
      * @param orig Original variable
-     * @param fromState Value stored in state of the current location
+     * @param fromState Value stored in the state of the current location
      * @return Are they equal?
      */
     protected boolean kindsEqualFromState(RAValue orig, RAValue fromState) {
@@ -349,7 +349,7 @@ public class BlockVerifierState {
                     }
 
                     if (!valAllocState.getRAValue().getLIRKind().isValue()) {
-                        continue; // Is a reference
+                        continue; // State holds a reference
                     }
 
                     throw new MissingReferenceException(op, block, reference, state, this);
@@ -364,7 +364,7 @@ public class BlockVerifierState {
 
             var valAllocState = (ValueAllocationState) state;
             if (!valAllocState.getRAValue().getLIRKind().isValue()) {
-                continue; // Is a reference
+                continue; // State holds a reference
             }
 
             throw new MissingReferenceException(op, block, reference, state, this);
@@ -407,8 +407,8 @@ public class BlockVerifierState {
     }
 
     /**
-     * Does this move change the ValueKind? This happens for when derived reference gets changed to
-     * a normal reference, we make sure that the underlying platform kind is equal, and then allow
+     * Does this move change the ValueKind? This happens for when a derived reference gets changed
+     * to a normal reference, we make sure that the underlying platform kind is equal and then allow
      * change from derived ([.+]) to normal reference ([*]).
      *
      * <p>
@@ -424,7 +424,7 @@ public class BlockVerifierState {
      * JUMP ~outgoingValues: [v8|QWORD[.+] -> rdx|QWORD[*]] destination: B1 -> B3 isThreadedJump: false
      * </pre>
      *
-     * Add calculates the derived reference address, move casts it to LIRKind ref and value is used
+     * Add calculates the derived reference address, move casts it to LIRKind ref, and value is used
      * in the JUMP to the next block, where pre-allocation symbol (variable) has derived ref, but
      * location has reference.
      * </p>
@@ -490,7 +490,7 @@ public class BlockVerifierState {
                     throw new RAVException(orig + " -> " + curr + " not an object java kind when marked as a reference", op, block);
                 } else {
                     if (origLIRKind.isValue() && currLIRKind.isValue()) {
-                        // Either not a reference, or a derived one - which might not be marked as
+                        // Either not a reference or a derived one - which might not be marked as
                         // Object
                         continue;
                     }
@@ -553,12 +553,12 @@ public class BlockVerifierState {
     }
 
     /**
-     * Make sure concrete current locations changed by the allocator are not violating set of
+     * Make sure concrete current locations changed by the allocator are not violating a set of
      * {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag flags}, which specify what type can
      * they be. This is done on every array of pairs (dest, uses, alive, temp).
      *
      * @param valuePairs Value array pair we are verifying
-     * @param op Instruction which holds this array, for tracing in exceptions
+     * @param op Instruction that holds this array, for tracing in exceptions
      * @throws OperandFlagMismatchException Operand is a wrong type based on OperandFlag set.
      */
     protected void checkOperandFlags(RAVInstruction.ValueArrayPair valuePairs, RAVInstruction.Op op) {
@@ -639,7 +639,7 @@ public class BlockVerifierState {
      */
     protected void updateWithOp(RAVInstruction.Op op) {
         if (op.references != null) {
-            // First we remove unknown references
+            // First we remove unknown references,
             // then we define new values by the return value
             updateWithSafePoint(op);
         }
@@ -654,7 +654,7 @@ public class BlockVerifierState {
 
         for (int i = 0; i < op.dests.count; i++) {
             if (op.dests.orig[i].isIllegal()) {
-                continue; // Safe to ignore, when destination is illegal value, not when used.
+                continue; // Safe to ignore when destination is illegal value, not when used.
             }
 
             assert op.dests.orig[i] != null;
@@ -669,8 +669,8 @@ public class BlockVerifierState {
             RAValue variable = op.dests.orig[i];
 
             if (location.equals(variable)) {
-                // Only check register validity if it was changed by the register allocator
-                // for example: rbp is used as input to start block and forbidden to be used by the
+                // Only check register validity if it was changed by the register allocator,
+                // for example, rbp is used as input to start block and forbidden to be used by the
                 // allocator
                 this.values.putWithoutRegCheck(location, new ValueAllocationState(variable, op, block));
             } else {
@@ -727,9 +727,9 @@ public class BlockVerifierState {
     }
 
     /**
-     * Update block state with a safe point list of live references deemed by the GC, any other
-     * references not included in said list are to be set as unknown so there's no freed pointer
-     * use.
+     * Update the block state with a safe point list of live references deemed by the GC; any other
+     * references not included in the said list are to be set as unknown, so there's no freed
+     * pointer use.
      *
      * <p>
      * References need to be retrieved using {@link LocationMarker} classes.
@@ -753,17 +753,17 @@ public class BlockVerifierState {
                 continue;
             }
 
-            // Remove all references that are not present in the references list,
+            // Remove all references that are not present in the reference list;
             // maybe it makes sense to keep registers that have live references,
-            // that are same as the one in references list? Because said list
-            // is expected to have stack slots and registers can retain same references.
+            // that are same as the one in the reference list? Because the list
+            // is expected to have stack slots and registers can retain the same references.
             entry.setValue(new ValueAllocationState(new RAValue(Value.ILLEGAL), op, block));
         }
     }
 
     /**
-     * Take list of callee saved registers and add them to the start block state with their own
-     * values as symbols in order to check that they were correctly retrieved at exit point.
+     * Take the list of callee saved registers and add them to the start block state with their own
+     * values as symbols in order to check that they were correctly retrieved at an exit point.
      */
     protected void updateCalleeSavedRegisters() {
         var registers = this.registerAllocationConfig.getRegisterConfig().getCalleeSaveRegisters();
@@ -776,7 +776,7 @@ public class BlockVerifierState {
 
             var presentState = values.get(regValue);
             if (presentState instanceof ValueAllocationState valueAllocationState) {
-                // Keep the old value from the label, but save it for check at exit point.
+                // Keep the old value from the label but save it for check at exit point.
                 if (!valueAllocationState.getRAValue().equals(regValue)) {
                     // If the symbol is the same register, then override it with CalleeSaveRegister
                     calleeSaveMap.addValue(regValue, valueAllocationState.getRAValue());
@@ -813,7 +813,7 @@ public class BlockVerifierState {
                 var stateValue = valueAllocationState.getRAValue();
                 var calleeSavedValue = calleeSaveMap.getCalleeSavedValue(regValue);
                 if (stateValue.equals(calleeSavedValue) && stateValue.getLIRKind().equals(calleeSavedValue.getLIRKind())) {
-                    // Same symbol as register means the value was retrieved safely
+                    // The same symbol as register means the value was retrieved safely.
                     // Kinds also need to match
                     continue;
                 }
@@ -824,8 +824,8 @@ public class BlockVerifierState {
     }
 
     /**
-     * Update state with a {@link RAVInstruction.ValueMove}, if locations is concrete, we set it to
-     * a variable/constant, if it's a variable to variable move, then all locations containing old
+     * Update state with a {@link RAVInstruction.ValueMove}, if location is concrete, we set it to a
+     * variable/constant, if it's a variable to variable move, then all locations containing old
      * variable need to be changed to the new variable.
      *
      * @param valueMove move we update state from
@@ -846,7 +846,7 @@ public class BlockVerifierState {
                 var value = valueAllocationState.getRAValue();
                 if (value instanceof CalleeSaveMap.CalleeSavedRegister) {
                     // Virtual move in form r1 = VIRTMOVE v1, assigns variable
-                    // v1 to callee saved register, this needs to be saved
+                    // v1 to callee saved register; this needs to be saved
                     // to properly check that callee saved value is retrieved
                     // at exit point.
                     calleeSaveMap.addValue(regLoc, valueMove.variableOrConstant.asVariable());

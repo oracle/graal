@@ -31,7 +31,7 @@ import jdk.graal.compiler.lir.LIR;
 import java.util.List;
 
 /**
- * Resolve {@link ConflictedAllocationState} occurrences based on internal set of rules.
+ * Resolve {@link ConflictedAllocationState} occurrences based on an internal set of rules.
  *
  * <p>
  * In-case comparison of {@link ValueAllocationState} fails, it also might get resolved by this.

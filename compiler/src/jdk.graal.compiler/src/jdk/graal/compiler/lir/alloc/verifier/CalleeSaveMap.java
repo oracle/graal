@@ -33,11 +33,11 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 
 /**
- * Make sure callee-saved register values are retrieved at exit block.
+ * Make sure callee-saved register values are retrieved at an exit block.
  *
  * <p>
- * Virtual moves assigning to same registers need to also be handled, because both values could be
- * retrieved.
+ * Virtual moves assigning to the same registers need to also be handled, because both values could
+ * be retrieved.
  * </p>
  */
 public class CalleeSaveMap {
@@ -64,8 +64,8 @@ public class CalleeSaveMap {
     }
 
     /**
-     * Create a callee saved register, this is signalling that this value needs to be retrieved on
-     * exit point, not just same register value.
+     * Create a callee saved register this is signaling that this value needs to be retrieved on
+     * exit point, not just the same register value.
      *
      * @param registerValue Callee saved register
      * @return Instance of callee saved register
@@ -77,8 +77,8 @@ public class CalleeSaveMap {
     }
 
     /**
-     * Add a variable from virtual move that is assigned to a callee saved register and can also be
-     * retrieved on exit.
+     * Add a variable from a virtual move that is assigned to a callee saved register and can also
+     * be retrieved on exit.
      *
      * @param register Callee saved register
      * @param value New callee saved value
@@ -118,7 +118,7 @@ public class CalleeSaveMap {
     }
 
     /**
-     * Get list of callee saved registers.
+     * Get the list of callee saved registers.
      *
      * @return callee saved registers
      */

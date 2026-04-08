@@ -37,8 +37,8 @@ import java.util.Queue;
 
 /**
  * Class encapsulating the whole Register Allocation Verification. Maintaining entry states for
- * blocks, resolving label variable locations and checking validity of every location to variable
- * correspondence.
+ * blocks, resolving label variable locations, and checking the validity of every location to
+ * variable correspondence.
  */
 public class RegAllocVerifier {
     /**
@@ -57,7 +57,7 @@ public class RegAllocVerifier {
     protected LIR lir;
 
     /**
-     * Register Allocator config used for validating if valid register is used by the allocator.
+     * Register Allocator config used for validating if the allocator uses a valid register.
      */
     protected RegisterAllocationConfig registerAllocationConfig;
 
@@ -100,8 +100,8 @@ public class RegAllocVerifier {
     }
 
     /**
-     * For every block, we need to calculate its entry state which is a combination of states of
-     * blocks that are its predecessors, we get after reached a fixed point state, where no entry
+     * For every block, we need to calculate its entry state, which is a combination of states of
+     * blocks that are its predecessors; we get after reached a fixed point state, where no entry
      * state is changed.
      *
      * <p>
@@ -150,9 +150,9 @@ public class RegAllocVerifier {
     }
 
     /**
-     * By using the entry states calculated in step beforehand, we check input of every instruction
-     * to see that it matches symbols before allocation, after wards we update the state so the next
-     * instruction has correct state at said instruction input.
+     * By using the entry states calculated in a step beforehand, we check the input of every
+     * instruction to see that it matches symbols before allocation; after wards we update the state
+     * so the next instruction has the correct state at said instruction input.
      */
     public void verifyInstructionInputs() {
         for (var blockId : this.lir.getBlocks()) {
@@ -216,14 +216,14 @@ public class RegAllocVerifier {
      * verify inputs of instructions match variables present before allocation.
      *
      * <p>
-     * The issues we are looking to catch are mostly about making sure that order of spills, reloads
-     * and moves is correct and that used location after stores the symbol that is supposed to be
-     * there.
+     * The issues we are looking to catch are mostly about making sure that the order of spills,
+     * reloads, and moves is correct and that used location after stores the symbol that is supposed
+     * to be there.
      * </p>
      *
      * <p>
      * We also make sure that kinds are still matching, operand flags aren't violated, alive
-     * location not being used as temp or output of same instruction.
+     * location not being used as temp or output of the same instruction.
      * </p>
      */
     @SuppressWarnings("try")

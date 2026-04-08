@@ -32,8 +32,24 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 @SuppressWarnings("serial")
 public class ValueNotInRegisterException extends RAVException {
     public RAVInstruction.Op instruction;
-    public RAValue variable; // Can be a constant or other symbolic value
-    public RAValue location; // Can be StackSlot, RegisterValue or memory
+
+    /**
+     * Symbol that was not found at the location.
+     *
+     * <p>
+     * Can be a constant, variable, or other symbolic value.
+     * </p>
+     */
+    public RAValue variable;
+
+    /**
+     * Location where the symbol was not found.
+     *
+     * <p>
+     * Can be a register or a (virtual) stack slot.
+     * </p>
+     */
+    public RAValue location;
     public AllocationState state;
     public BlockVerifierState blockVerifierState;
 
@@ -42,7 +58,7 @@ public class ValueNotInRegisterException extends RAVException {
      *
      * @param instruction Instruction where violation occurred
      * @param block Block where violation occurred
-     * @param variable Target varible we are looking for
+     * @param variable Target variable we are looking for
      * @param location Location where we couldn't find it
      * @param state The actual state that the location is in
      */

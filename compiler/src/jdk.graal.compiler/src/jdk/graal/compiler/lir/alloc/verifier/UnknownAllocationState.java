@@ -41,10 +41,10 @@ public class UnknownAllocationState extends AllocationState {
     }
 
     /**
-     * Meet state from predecessor, if both are unknown then unknown is returned, otherwise
+     * Meet state from a predecessor, if both are unknown then unknown is returned, otherwise
      * {@link ConflictedAllocationState conflict} occurs.
      *
-     * @param other Other state coming from a predecessor edge
+     * @param other The other state coming from a predecessor edge
      * @return {@link UnknownAllocationState Unknown} if both are, otherwise a conflict
      */
     @Override

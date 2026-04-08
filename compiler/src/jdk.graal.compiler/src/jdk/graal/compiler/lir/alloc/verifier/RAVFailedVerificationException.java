@@ -30,8 +30,8 @@ import java.util.List;
 
 /**
  * Composite exception taking every {@link RAVException exception} that occurred (exceptions caused
- * by the {@link jdk.graal.compiler.lir.alloc.RegisterAllocationPhase}) and combining them together
- * to one exception.
+ * by the {@link jdk.graal.compiler.lir.alloc.RegisterAllocationPhase}) and combining them to one
+ * exception.
  */
 @SuppressWarnings("serial")
 public class RAVFailedVerificationException extends GraalError {

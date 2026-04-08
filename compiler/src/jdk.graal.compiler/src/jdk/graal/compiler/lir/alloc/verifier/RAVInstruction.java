@@ -53,20 +53,24 @@ public class RAVInstruction {
         /**
          * List of virtual moves to be inserted after this instruction, virtual moves are ones
          * removed by the allocator still holding relevant information to the verification process,
-         * for example first label always uses registers (instead of variables) based on ABI, and a
-         * move is inserted indicating that those registers have certain variables.
+         * for example, the first label always uses registers (instead of variables) based on ABI,
+         * and a move is inserted indicating that those registers have certain variables.
          *
-         * @example [rsi, rbp] = LABEL v1 = MOVE rsi
+         * <pre>
+         * {@code [rsi, rbp] = LABEL v1 = MOVE rsi}
+         * </pre>
          */
         protected List<ValueMove> virtualMoveList;
 
         /**
-         * List of speculative moves, these might be removed, but still hold important information
-         * for us, so we add them to the verifier IR in-case they are, this happens when a MOVE
+         * List of speculative moves, these might be removed but still hold important information
+         * for us, so we add them to the verifier IR in case they are, this happens when a MOVE
          * source and target locations are equal (and thus redundant) but before allocation their
          * variable counter-parts are not equal.
          *
-         * @example before alloc: v1 = MOVE v2 after alloc: rax = MOVE rax
+         * <p>
+         * Before alloc: {@code v1 = MOVE v2} after alloc: {@code rax = MOVE rax}
+         * </p>
          */
         protected List<ValueMove> speculativeMoveList;
 
@@ -178,7 +182,7 @@ public class RAVInstruction {
         }
 
         /**
-         * Verify that all presumed values are present and that both sides have it.
+         * Verify that all presumed values are present and that both sides have them.
          *
          * @return true, if contents have been successfully verified, false if there's null in
          *         either array.
@@ -255,8 +259,8 @@ public class RAVInstruction {
         public ValueArrayPair alive;
 
         /**
-         * Pairs of values retrieved from LIRFrameState, verified same as any other input to make
-         * sure GC has all necessary information.
+         * Pairs of values retrieved from LIRFrameState, verified the same as any other input to
+         * make sure GC has all necessary information.
          */
         public ValueArrayPair stateValues;
 
@@ -272,7 +276,7 @@ public class RAVInstruction {
         public Set<RAValue> references;
 
         /**
-         * Count number of values stored.
+         * Count the number of values stored.
          */
         private final class GetCountProcedure implements InstructionValueProcedure {
             private int valueCount = 0;
@@ -444,7 +448,7 @@ public class RAVInstruction {
     }
 
     /**
-     * Reload symbol from stack slot to a register.
+     * Reload a symbol from a stack slot to a register.
      */
     public static class Reload extends LocationMove {
         public RAValue from;
@@ -518,7 +522,7 @@ public class RAVInstruction {
 
     /**
      * Virtual move in from: v28|DWORD = MOVE input: rax|BYTE moveKind: DWORD, where the destination
-     * is a variable. We flip the relation so that the input register actually stores said
+     * is a variable. We flip the relation so that the input register actually stores the
      * symbol/variable, which keeps necessary verification information present.
      */
     public static class VirtualLocationMove extends ValueMove {

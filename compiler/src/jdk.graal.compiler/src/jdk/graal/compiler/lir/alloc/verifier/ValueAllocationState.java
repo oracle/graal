@@ -48,9 +48,6 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
             // StackSlot, RegisterValue is present in start block in label as predefined argument
             // VirtualStackSlot is used for RESTORE_REGISTERS and SAVE_REGISTERS
             // ConstantValue act as Variable
-
-            // We use variables as symbols for register validation
-            // but real registers can also be used as that, in some cases.
             this.value = raValue;
             this.source = source;
             this.block = block;
@@ -97,7 +94,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
      * equal, then same state is returned, otherwise a {@link ConflictedAllocationState conflict} is
      * created between said states.
      *
-     * @param other Other state coming from a predecessor edge
+     * @param other The other state coming from a predecessor edge
      * @param otherBlock Where the other state is coming from
      * @param currBlock Where the current state is coming from
      * @return {@link ValueAllocationState} if their contents are equal, otherwise

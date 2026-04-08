@@ -39,8 +39,8 @@ import java.util.Queue;
 import java.util.Set;
 
 /**
- * Resolve variables phi variables back to labels and jumps by find their first usage and handling
- * any reg allocator inserted moves back to the defining label.
+ * Resolve label phi variables back to labels and jumps by find their first usage and handling any
+ * reg allocator inserted moves back to the defining label.
  *
  * <p>
  * Register allocator strips us of this information that is necessary for the verification. In order
@@ -105,12 +105,12 @@ public class FromUsageResolverGlobal {
 
     /**
      * Map of variables are aliases for a list of variables used in predecessor jump instructions.
-     * First the successor label variable needs to be resolved and after the predecessor labels.
+     * First, the successor label variable needs to be resolved and after the predecessor labels.
      */
     private Map<RAVariable, List<AliasPair>> aliasMap;
 
     /**
-     * Block map of their usages objects.
+     * Block map of their usage objects.
      */
     protected BlockMap<BlockUsage> blockUsageMap;
 
@@ -120,7 +120,7 @@ public class FromUsageResolverGlobal {
     public Set<BasicBlock<?>> endBlocks;
 
     /**
-     * Information about locations of variables found when traversing LIR, from first usage,
+     * Information about locations of variables found when traversing LIR, from the first usage,
      * handling all related moves up until the label instruction that defined the variable.
      */
     protected final class BlockUsage {
@@ -162,8 +162,9 @@ public class FromUsageResolverGlobal {
 
     /**
      * Resolves label variable locations by finding where they are first used. Walk back from their
-     * usage to their defining label (bottom-up), handling any spills, reloads and moves along the
-     * way to set the location in label back after register allocator strips this information.
+     * usage to their defining label (bottom-up), handling any spills, reloads, and moves along the
+     * way to set the location in the label back after the register allocator strips this
+     * information.
      */
     public void resolvePhiFromUsage() {
         Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
@@ -293,7 +294,7 @@ public class FromUsageResolverGlobal {
                         // TestCase: TruffleSafepointTest
                         // java.concurrent.ForkJoinPool
                         // some methods for this class have location kept in
-                        // them after the register allocation is complete
+                        // them after the register allocation is complete,
                         // but such information should be stripped by the allocator.
                         // This information uses one register for 2 variables in a label
                         // and triggers an error in the verification
@@ -352,7 +353,7 @@ public class FromUsageResolverGlobal {
                 // Here we handle loops without any exit that might
                 // also need a resolution of label variables, but
                 // are not reachable from endBlocks set, so we
-                // add predecessors of such loops, that are part of the loop
+                // add predecessors of such loops that are part of the loop
                 // into the endBlocks set to process them.
                 var loop = block.getLoop();
                 if (loop.getNaturalExits().isEmpty() && loop.getLoopExits().isEmpty()) {
@@ -432,10 +433,10 @@ public class FromUsageResolverGlobal {
     }
 
     /**
-     * Resolve locations for all variables in a label, also mark first usage for aliased variables -
-     * variables used in predecessors that have no other usage.
+     * Resolve locations for all variables in a label, also mark the first usage for aliased
+     * variables - variables used in predecessors that have no other usage.
      *
-     * @param usage usage for the block we are resolving, contains the locations
+     * @param usage usage for the block we are resolving contains the locations
      * @param label label we are resolving
      * @param block block of the label
      */

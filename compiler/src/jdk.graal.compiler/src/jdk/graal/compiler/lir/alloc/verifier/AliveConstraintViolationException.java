@@ -27,7 +27,7 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 
 /**
- * Violation of the alive inputs occurred, same location was marked as alive argument as well as
+ * Violation of the alive inputs occurred, the same location was marked as alive argument as well as
  * temp or output.
  */
 @SuppressWarnings("serial")
