@@ -176,10 +176,8 @@ public class RegAllocVerifier {
 
     /**
      * Verify every instruction and collect every exception that has occurred.
-     *
-     * @param compUnitName Name of this compilation unit, we are verifying
      */
-    public void verifyInstructionsAndCollectErrors(String compUnitName) {
+    public void verifyInstructionsAndCollectErrors() {
         List<RAVException> exceptions = new ArrayList<>();
         for (var blockId : this.lir.getBlocks()) {
             var block = this.lir.getBlockById(blockId);
@@ -208,7 +206,7 @@ public class RegAllocVerifier {
         }
 
         if (!exceptions.isEmpty()) {
-            throw new RAVFailedVerificationException(compUnitName, exceptions);
+            throw new RAVFailedVerificationException(exceptions);
         }
     }
 
@@ -228,11 +226,17 @@ public class RegAllocVerifier {
      * location not being used as temp or output of same instruction.
      * </p>
      */
-    public void run() {
+    @SuppressWarnings("try")
+    public void run(boolean failOnFirst) {
         this.fromUsageResolverGlobal.resolvePhiFromUsage();
 
         this.calculateEntryBlocks();
-        this.verifyInstructionInputs();
+
+        if (failOnFirst) {
+            this.verifyInstructionInputs();
+        } else {
+            this.verifyInstructionsAndCollectErrors();
+        }
     }
 
     public VerifierPrinter getPrinter(OutputStream out) {

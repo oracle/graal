@@ -37,15 +37,14 @@ import java.util.List;
 public class RAVFailedVerificationException extends GraalError {
     public List<RAVException> exceptions;
 
-    public RAVFailedVerificationException(String compUnitName, List<RAVException> exceptions) {
-        super(RAVFailedVerificationException.getMessage(compUnitName, exceptions));
+    public RAVFailedVerificationException(List<RAVException> exceptions) {
+        super(RAVFailedVerificationException.getMessage(exceptions));
 
         this.exceptions = exceptions;
     }
 
-    static String getMessage(String compUnitName, List<RAVException> exceptions) {
+    static String getMessage(List<RAVException> exceptions) {
         StringBuilder sb = new StringBuilder("Failed to verify ");
-        sb.append(compUnitName);
         sb.append(":");
         for (var e : exceptions) {
             sb.append(" - ");

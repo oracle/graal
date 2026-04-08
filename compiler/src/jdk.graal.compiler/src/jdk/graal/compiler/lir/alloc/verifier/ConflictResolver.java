@@ -48,8 +48,8 @@ public interface ConflictResolver {
     void prepare(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions);
 
     /**
-     * This is run during the checking/verification stage, before this any
-     * conflict resolution is needed.
+     * This is run during the checking/verification stage, before this any conflict resolution is
+     * needed.
      *
      * @param instruction RAV instruction that we build conflict resolver information from
      * @param block Block where this instruction is in

@@ -75,6 +75,8 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
         @Option(help = "Verify output of stack allocator with register allocator", type = OptionType.Debug) public static final OptionKey<Boolean> VerifyStackAllocator = new OptionKey<>(true);
 
         @Option(help = "Collect reference map information to verify", type = OptionType.Debug) public static final OptionKey<Boolean> CollectReferences = new OptionKey<>(true);
+
+        @Option(help = "Fail on first verification failure", type = OptionType.Debug) public static final OptionKey<Boolean> RAVFailOnFirst = new OptionKey<>(true);
     }
 
     /**
@@ -277,8 +279,10 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
         var instructions = getVerifierInstructions(lir, preallocMap, context);
         var verifier = new RegAllocVerifier(lir, instructions, getRegisterAllocationConfig(context));
 
+        boolean failOnFirst = Options.RAVFailOnFirst.getValue(lir.getOptions());
+
         try {
-            verifier.run();
+            verifier.run(failOnFirst);
         } catch (RAVException e) {
             var debugCtx = lir.getDebug();
 
