@@ -1135,6 +1135,59 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         }
     }
 
+    class DeleteReferencePhase extends RAVPhaseWrapper {
+        RAValue location;
+        RAValue variable;
+
+        protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir, Map<LIRInstruction, RAVInstruction.Base> instrMap, AllocationContext context) {
+            var instructions = super.getVerifierInstructions(lir, instrMap, context);
+
+            for (var blockId : lir.getBlocks()) {
+                var block = lir.getBlockById(blockId);
+                var instructionsForBlock = instructions.get(block);
+
+                RAVInstruction.Op prev = null;
+                for (var instruction : instructionsForBlock) {
+                    if (instruction instanceof RAVInstruction.Op op) {
+                        if (prev != null) {
+                            if (setReferences(op.uses) || setReferences(op.alive)) {
+                                prev.references = new EconomicHashSet<>();
+                                return instructions;
+                            }
+                        }
+
+                        if (!op.isLabel()) {
+                            // Check fix, the previous instruction cannot define
+                            // the reference being discarded, because then this phase
+                            // won't work
+                            prev = op;
+                        }
+                    }
+                }
+            }
+
+            return instructions;
+        }
+
+        protected boolean setReferences(RAVInstruction.ValueArrayPair values) {
+            for (int i = 0; i < values.count; i++) {
+                var orig = values.orig[i];
+                var curr = values.curr[i];
+
+                if (orig.isIllegal() || curr == null || curr.isIllegal()) {
+                    continue;
+                }
+
+                if (!orig.getLIRKind().isValue()) {
+                    location = curr;
+                    variable = orig;
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     @Override
     protected LIRSuites createLIRSuites(OptionValues options) {
         if (validSuites) {
@@ -1206,11 +1259,11 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
     }
 
     protected <T extends RAVException> void assertException(Class<T> expected) {
+        Assert.assertNotNull("No exception was thrown", exception);
         if (exception.getCause() != null) {
             exception = exception.getCause();
         }
 
-        Assert.assertNotNull("No exception was thrown", exception);
         Assert.assertTrue("Unexpected exception: " + exception, expected.isInstance(exception));
     }
 
@@ -1297,6 +1350,32 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
             a += b;
         }
+    }
+
+    class A {
+        protected int a;
+
+        A(int a) {
+            this.a = a;
+        }
+
+        public void increment() {
+            this.a++;
+        }
+
+        public int getA() {
+            return a;
+        }
+    }
+
+    A obj;
+
+    public int referenceSnippet(int a, int b) {
+        obj = new A(a);
+        while (obj.getA() < b) {
+            obj.increment();
+        }
+        return obj.getA();
     }
 
     @Before
@@ -1605,6 +1684,24 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
         Assert.assertEquals(constRemPhase.stackSlotValue, crException.location);
         Assert.assertEquals(constRemPhase.variableValue, crException.variable);
         Assert.assertEquals(constRemPhase.constant, crException.state.getValue());
+    }
+
+    @Test
+    public void testDeleteReference() {
+        var deleteReferencePhase = new DeleteReferencePhase();
+        phase = deleteReferencePhase;
+
+        var methodName = "referenceSnippet";
+        compile(getResolvedJavaMethod(methodName), null);
+
+        Assert.assertNull(exception);
+
+        compileModified(methodName);
+
+        assertException(ValueNotInRegisterException.class);
+        var vnrException = (ValueNotInRegisterException) exception;
+        Assert.assertEquals(vnrException.variable, deleteReferencePhase.variable);
+        Assert.assertEquals(vnrException.location, deleteReferencePhase.location);
     }
 }
 
