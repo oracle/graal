@@ -45,6 +45,7 @@ public class OperandFlagMismatchException extends RAVException {
         super(getErrorMessage(value, flags), op, block);
         this.value = value;
         this.flags = flags;
+        this.instruction = op;
     }
 
     static String getErrorMessage(Value value, EnumSet<LIRInstruction.OperandFlag> flags) {

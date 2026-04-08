@@ -53,6 +53,7 @@ public class ValueNotInRegisterException extends RAVException {
         this.location = location;
         this.state = state;
         this.blockVerifierState = new BlockVerifierState(block, blockVerifierState);
+        this.instruction = instruction;
     }
 
     static String getErrorMessage(RAValue variable, RAValue location, AllocationState state) {

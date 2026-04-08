@@ -30,14 +30,14 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 public class MissingReferenceException extends RAVException {
     public RAValue reference;
     public AllocationState state;
-    public RAVInstruction.Op op;
+    public RAVInstruction.Op instruction;
     public BlockVerifierState blockVerifierState;
 
-    public MissingReferenceException(RAVInstruction.Op op, BasicBlock<?> block, RAValue reference, AllocationState state, BlockVerifierState blockVerifierState) {
-        super(getMessage(reference, state), op, block);
+    public MissingReferenceException(RAVInstruction.Op instruction, BasicBlock<?> block, RAValue reference, AllocationState state, BlockVerifierState blockVerifierState) {
+        super(getMessage(reference, state), instruction, block);
         this.reference = reference;
         this.state = state;
-        this.op = op;
+        this.instruction = instruction;
         this.blockVerifierState = new BlockVerifierState(block, blockVerifierState);
     }
 
