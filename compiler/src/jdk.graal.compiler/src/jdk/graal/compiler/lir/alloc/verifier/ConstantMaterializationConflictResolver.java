@@ -79,6 +79,7 @@ public class ConstantMaterializationConflictResolver implements ConflictResolver
      * @param instruction Instruction we are looking at for LoadConstantOp
      * @param block Block where instruction is from
      */
+    @Override
     public void prepareFromInstr(RAVInstruction.Base instruction, BasicBlock<?> block) {
         if (instruction instanceof RAVInstruction.Op op && op.lirInstruction.isLoadConstantOp()) {
             var loadConstantOp = StandardOp.LoadConstantOp.asLoadConstantOp(op.lirInstruction);
