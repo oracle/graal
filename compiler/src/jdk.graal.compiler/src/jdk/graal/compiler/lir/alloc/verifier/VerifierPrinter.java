@@ -144,9 +144,13 @@ public class VerifierPrinter {
 
     protected void printEntryState(BasicBlock<?> block) {
         var blockVerifierState = verifier.blockEntryStates.get(block);
+        if (blockVerifierState == null) {
+            // If error occurred during creation of entry states, it might not be defined.
+            return;
+        }
 
         if (block.getId() == 0) {
-            return;
+            return; // Start block is always empty
         }
 
         out.println("Entry state:");
@@ -156,13 +160,53 @@ public class VerifierPrinter {
             if (state.isUnknown()) {
                 continue;
             }
-            out.println(location + " -> " + state);
+
+            printAllocationState(location, state);
         }
         out.adjustIndentation(-INDENT);
         out.println();
     }
 
     protected void printAllocationState(RAValue location, AllocationState state) {
+        String stateStr = switch (state) {
+            case ValueAllocationState st -> {
+                if (st.isUndefinedFromBlock()) {
+                    yield "Value unknown from " + st.block;
+                } else {
+                    yield "Value {" + st.getValue() + "} from " + st.source + " in " + st.block;
+                }
+            }
+            case ConflictedAllocationState st -> {
+                StringBuilder str = new StringBuilder();
+                str.append("Conflicted {\n");
+                for (var valueAllocState : st.getConflictedStates()) {
+                    if (valueAllocState.isUndefinedFromBlock()) {
+                        str.append("Value unknown from ").append(valueAllocState.block);
+                        continue;
+                    } else {
+                        str.append(valueAllocState.getValue());
+                        if (valueAllocState.block != null) {
+                            str.append(" from ").append(valueAllocState.block);
+                        }
+                    }
+
+                    str.append(", ");
+                }
+
+                if (!st.getConflictedStates().isEmpty()) {
+                    str.setLength(str.length() - 2);
+                }
+
+                yield str.append("}").toString();
+            }
+            case UnknownAllocationState st -> "Unknown";
+            default -> throw new RAVError("Unexpected value: " + state);
+        };
+
+        out.println(location + " -> " + stateStr);
+    }
+
+    protected void printAllocationStateInDetail(RAValue location, AllocationState state) {
         String stateStr = switch (state) {
             case ValueAllocationState st -> {
                 if (st.isUndefinedFromBlock()) {
@@ -177,7 +221,7 @@ public class VerifierPrinter {
                 str.append("Conflicted: \n");
                 for (var valueAllocState : st.getConflictedStates()) {
                     if (valueAllocState.isUndefinedFromBlock()) {
-                        str.append(" - Value unknown from ").append(valueAllocState.block);
+                        str.append(" - Value unknown from ").append(valueAllocState.block).append('\n');
                         continue;
                     }
 
@@ -333,7 +377,7 @@ public class VerifierPrinter {
         out.adjustIndentation(INDENT);
         for (var location : locations) {
             var state = exception.blockVerifierState.values.get(location);
-            printAllocationState(location, state);
+            printAllocationStateInDetail(location, state);
         }
         out.adjustIndentation(-INDENT);
     }
@@ -345,7 +389,7 @@ public class VerifierPrinter {
         for (var reg : registers) {
             var regValue = new RARegister(reg.asValue());
             var state = exception.blockVerifierState.values.get(regValue);
-            printAllocationState(regValue, state);
+            printAllocationStateInDetail(regValue, state);
         }
         out.adjustIndentation(-INDENT);
     }
@@ -365,7 +409,7 @@ public class VerifierPrinter {
             }
 
             // Print all available references.
-            printAllocationState(location, state);
+            printAllocationStateInDetail(location, state);
         }
         out.adjustIndentation(-INDENT);
     }

@@ -394,7 +394,7 @@ public class RAVInstruction {
 
         @Override
         public String toString() {
-            return to.toString() + " = MOVE " + from.toString();
+            return to.getValue().toString() + " = MOVE " + from.getValue().toString();
         }
     }
 
@@ -413,7 +413,7 @@ public class RAVInstruction {
 
         @Override
         public String toString() {
-            return to.toString() + " = REGMOVE " + from.toString();
+            return to.getValue().toString() + " = REGMOVE " + from.getValue().toString();
         }
     }
 
@@ -443,7 +443,7 @@ public class RAVInstruction {
 
         @Override
         public String toString() {
-            return to.toString() + " = STACKMOVE " + from.toString();
+            return to.getValue().toString() + " = STACKMOVE " + from.getValue().toString();
         }
     }
 
@@ -462,7 +462,7 @@ public class RAVInstruction {
 
         @Override
         public String toString() {
-            return to.toString() + " = RELOAD " + from.toString();
+            return to.getValue().toString() + " = RELOAD " + from.getValue().toString();
         }
     }
 
@@ -481,7 +481,7 @@ public class RAVInstruction {
 
         @Override
         public String toString() {
-            return to.toString() + " = SPILL " + from.toString();
+            return to.getValue().toString() + " = SPILL " + from.getValue().toString();
         }
     }
 
@@ -505,7 +505,7 @@ public class RAVInstruction {
 
         @Override
         public String toString() {
-            return getLocation().toString() + " = VALUEMOVE " + variableOrConstant.toString();
+            return getLocation().getValue().toString() + " = VALUEMOVE " + variableOrConstant.getValue().toString();
         }
 
         public void setLocation(RAValue location) {
@@ -532,7 +532,7 @@ public class RAVInstruction {
 
         @Override
         public String toString() {
-            return getLocation().toString() + " = VIRTMOVE " + variableOrConstant.toString();
+            return getLocation().getValue().toString() + " = VIRTMOVE " + variableOrConstant.getValue().toString();
         }
     }
 }
