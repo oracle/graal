@@ -26,32 +26,36 @@ package com.oracle.svm.hosted.jdk;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @Platforms({Platform.WINDOWS.class, Platform.LINUX.class, Platform.DARWIN.class})
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements InternalFeature {
+    private ResolvedJavaMethod systemLoadMethod;
+
     @Override
-    public void beforeAnalysis(@SuppressWarnings("unused") BeforeAnalysisAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        systemLoadMethod = method(access, "java.lang.System", "load", String.class);
         if (isDarwin()) {
             registerDarwinBuiltinPkgNatives();
         }
         if (isLinux() || isDarwin()) {
-            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(JNIRegistrationAWTSupport::registerHeadlessJavaDesktopSupport);
+            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(this::registerHeadlessJavaDesktopSupport);
         }
     }
 
@@ -157,16 +161,11 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
         PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_imageio_plugins_jpeg");
     }
 
-    private static void registerHeadlessJavaDesktopSupport(String libname) {
+    private void registerHeadlessJavaDesktopSupport(String libname) {
         if (!"awt".equals(libname)) {
             return;
         }
-        RuntimeJNIAccess.register(System.class);
-        try {
-            RuntimeJNIAccess.register(System.class.getDeclaredMethod("load", String.class));
-        } catch (NoSuchMethodException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        JVMCIRuntimeJNIAccess.register(systemLoadMethod);
         if (isDarwin()) {
             NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("awt");
             NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("awt_lwawt");
