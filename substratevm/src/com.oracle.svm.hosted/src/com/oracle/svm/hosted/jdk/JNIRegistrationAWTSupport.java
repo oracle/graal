@@ -24,47 +24,34 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
+
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 
 @Platforms({Platform.WINDOWS.class, Platform.LINUX.class, Platform.DARWIN.class})
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements InternalFeature {
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void beforeAnalysis(@SuppressWarnings("unused") BeforeAnalysisAccess access) {
         if (isDarwin()) {
             registerDarwinBuiltinPkgNatives();
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("awt");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("awt_lwawt");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("osxapp");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("javajpeg");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("lcms");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("mlib_image");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
         }
         if (isLinux() || isDarwin()) {
-            List<Object> triggers = new ArrayList<>();
-            optionalMethod(access, "java.awt.image.ColorModel", "loadLibraries").ifPresent(triggers::add);
-            optionalMethod(access, "java.awt.Toolkit", "loadLibraries").ifPresent(triggers::add);
-            if (!triggers.isEmpty()) {
-                access.registerReachabilityHandler(JNIRegistrationAWTSupport::registerHeadlessJavaDesktopSupport, triggers.toArray());
-            }
+            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(JNIRegistrationAWTSupport::registerHeadlessJavaDesktopSupport);
         }
     }
 
@@ -170,11 +157,25 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
         PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_imageio_plugins_jpeg");
     }
 
-    private static void registerHeadlessJavaDesktopSupport(DuringAnalysisAccess access) {
-        if (isRunOnce(JNIRegistrationAWTSupport::registerHeadlessJavaDesktopSupport)) {
+    private static void registerHeadlessJavaDesktopSupport(String libname) {
+        if (!"awt".equals(libname)) {
             return;
         }
-        JVMCIRuntimeJNIAccess.register(method(access, "java.lang.System", "load", String.class));
+        RuntimeJNIAccess.register(System.class);
+        try {
+            RuntimeJNIAccess.register(System.class.getDeclaredMethod("load", String.class));
+        } catch (NoSuchMethodException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+        if (isDarwin()) {
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("awt");
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("awt_lwawt");
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("osxapp");
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("javajpeg");
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("lcms");
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("mlib_image");
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
+        }
         if (!isDarwin()) {
             return;
         }

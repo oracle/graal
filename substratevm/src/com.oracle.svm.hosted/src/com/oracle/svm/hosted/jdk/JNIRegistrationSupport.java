@@ -39,6 +39,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -108,6 +109,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     private NativeLibraries nativeLibraries = null;
     private JNIRegistrationSupportSingleton jniRegistrationSupportSingleton = null;
     private boolean isSunMSCAPIProviderReachable = false;
+    private final List<Consumer<String>> libraryRegistrationHandlers = new CopyOnWriteArrayList<>();
 
     public static JNIRegistrationSupport singleton() {
         return ImageSingletons.lookup(JNIRegistrationSupport.class);
@@ -167,8 +169,15 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     void registerLibrary(String libname) {
         if (libname != null && !jniRegistrationSupportSingleton.currentLayerRegisteredLibraries.contains(libname)) {
             jniRegistrationSupportSingleton.currentLayerRegisteredLibraries.add(libname);
+            for (Consumer<String> handler : libraryRegistrationHandlers) {
+                handler.accept(libname);
+            }
             addLibrary(libname);
         }
+    }
+
+    void addLibraryRegistrationHandler(Consumer<String> handler) {
+        libraryRegistrationHandlers.add(handler);
     }
 
     private void addLibrary(String libname) {
