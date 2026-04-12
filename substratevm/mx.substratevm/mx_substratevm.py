@@ -556,8 +556,8 @@ def svm_gate_body(args, tasks):
             if mx.is_windows():
                 mx.warn('Headless java.desktop integration test does not run on Windows')
             else:
-                with native_image_context(IMAGE_ASSERTION_FLAGS):
-                    java_desktop_integration_task(args.extra_image_builder_arguments)
+                with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                    java_desktop_integration_task(native_image, args.extra_image_builder_arguments)
 
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
         if t:
@@ -808,14 +808,13 @@ def runtime_classpath_resource_test_task(extra_build_args=None):
     ])
 
 
-def java_desktop_integration_task(extra_build_args=None):
-    extra_build_args = list(extra_build_args or [])
-    build_args = extra_build_args + svm_experimental_options(['-H:Preserve=module=java.desktop'])
-    native_unittest([
+def java_desktop_integration_task(native_image, extra_build_args=None):
+    build_args = _compute_native_unittest_args(extra_build_args, include_svm_test_features=False)
+    build_args += svm_experimental_options(['-H:Preserve=module=java.desktop'])
+    _native_unittest(native_image, [
         '--test-classes-per-run', '1',
         'com.oracle.svm.integrationtest.HeadlessJavaDesktopTest',
         'com.oracle.svm.integrationtest.NonHeadlessJavaDesktopTest',
-        '--build-args',
     ] + build_args)
 
 def conditional_config_task(native_image):
