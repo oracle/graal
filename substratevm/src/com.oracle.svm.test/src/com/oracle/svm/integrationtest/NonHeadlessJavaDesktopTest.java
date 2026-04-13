@@ -24,10 +24,8 @@
  */
 package com.oracle.svm.integrationtest;
 
-import java.awt.AWTError;
 import java.awt.Dimension;
 import java.awt.GraphicsEnvironment;
-import java.awt.HeadlessException;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -48,16 +46,9 @@ public class NonHeadlessJavaDesktopTest {
         Assume.assumeTrue(display != null && !display.isEmpty());
 
         System.clearProperty("java.awt.headless");
-        Toolkit toolkit;
-        Dimension screenSize;
-        try {
-            Assume.assumeFalse(GraphicsEnvironment.isHeadless());
-            toolkit = Toolkit.getDefaultToolkit();
-            screenSize = toolkit.getScreenSize();
-        } catch (AWTError | HeadlessException e) {
-            Assume.assumeNoException(e);
-            return;
-        }
+        Assume.assumeFalse(GraphicsEnvironment.isHeadless());
+        Toolkit toolkit = Toolkit.getDefaultToolkit();
+        Dimension screenSize = toolkit.getScreenSize();
         Assert.assertTrue("Invalid screen width: " + screenSize.width, screenSize.width > 0);
         Assert.assertTrue("Invalid screen height: " + screenSize.height, screenSize.height > 0);
 

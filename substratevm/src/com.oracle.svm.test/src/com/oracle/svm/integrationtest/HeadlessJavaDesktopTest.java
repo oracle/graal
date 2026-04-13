@@ -39,7 +39,7 @@ public class HeadlessJavaDesktopTest {
     @Test
     public void headlessJavaDesktopSmokeTest() throws Exception {
         String osName = System.getProperty("os.name", "");
-        Assume.assumeTrue(osName.startsWith("Linux") || osName.startsWith("Mac") || osName.startsWith("Darwin"));
+        Assume.assumeTrue(osName.startsWith("Linux") || osName.startsWith("Mac"));
 
         System.setProperty("java.awt.headless", "true");
 

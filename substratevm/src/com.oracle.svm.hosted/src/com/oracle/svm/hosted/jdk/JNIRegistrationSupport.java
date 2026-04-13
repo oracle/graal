@@ -190,8 +190,16 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
     }
 
-    public boolean isRegisteredLibrary(String libname) {
+    boolean isCurrentLayerRegisteredLibrary(String libname) {
         return jniRegistrationSupportSingleton.currentLayerRegisteredLibraries.contains(libname);
+    }
+
+    boolean isPreviousLayerRegisteredLibrary(String libname) {
+        return jniRegistrationSupportSingleton.prevLayerRegisteredLibraries.contains(libname);
+    }
+
+    public boolean isAnyLayerRegisteredLibrary(String libname) {
+        return isCurrentLayerRegisteredLibrary(libname) || isPreviousLayerRegisteredLibrary(libname);
     }
 
     /** Adds exports that `jvm` shim should re-export. */

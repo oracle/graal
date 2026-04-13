@@ -117,7 +117,7 @@ final class DarwinBuiltinJNISymbolSupport {
     }
 
     private static Set<String> readDefinedSymbols(Path staticLibrary) throws IOException, InterruptedException {
-        List<String> commandLine = List.of("nm", "-g", "-U", "-j", staticLibrary.toString());
+        List<String> commandLine = List.of("nm", "--extern-only", "--defined-only", "--format=just-symbols", staticLibrary.toString());
         ProcessBuilder command = FileUtils.prepareCommand(commandLine, null).redirectErrorStream(true);
         FileUtils.traceCommand(command);
         Process process = command.start();

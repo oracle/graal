@@ -32,13 +32,13 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.util.StringUtil;
@@ -103,6 +103,9 @@ public abstract class NativeLibraries {
         if (loadLibrary0(file, false)) {
             return;
         }
+        if (loadBuiltinDarwinLibraryAbsoluteFallback(file)) {
+            return;
+        }
         throw new UnsatisfiedLinkError("Can't load library: " + file);
     }
 
@@ -145,12 +148,6 @@ public abstract class NativeLibraries {
 
     private boolean loadLibrary0(File file, boolean builtin) {
         try {
-            if (!builtin) {
-                String builtInName = asBuiltinLibraryName(file.getName());
-                if (builtInName != null && addLibrary(builtInName, true)) {
-                    return true;
-                }
-            }
             String canonical = builtin ? file.getName() : file.getCanonicalPath();
             return addLibrary(canonical, builtin);
         } catch (IOException e) {
@@ -159,10 +156,45 @@ public abstract class NativeLibraries {
     }
 
     private static String asBuiltinLibraryName(String fileName) {
-        if (Platform.includedIn(Platform.DARWIN.class) && fileName.startsWith("lib") && fileName.endsWith(".dylib")) {
+        if (OS.getCurrent() == OS.DARWIN && fileName.startsWith("lib") && fileName.endsWith(".dylib")) {
             return fileName.substring("lib".length(), fileName.length() - ".dylib".length());
         }
         return null;
+    }
+
+    private boolean loadBuiltinDarwinLibraryAbsoluteFallback(File file) {
+        String builtInName = asBuiltinLibraryName(file.getName());
+        if (builtInName == null) {
+            return false;
+        }
+        try {
+            return isBuiltinDarwinLibraryLocation(file) && addLibrary(builtInName, true);
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static boolean isBuiltinDarwinLibraryLocation(File file) throws IOException {
+        if (OS.getCurrent() != OS.DARWIN) {
+            return false;
+        }
+
+        File canonicalParent = file.getCanonicalFile().getParentFile();
+        if (canonicalParent == null) {
+            return false;
+        }
+
+        String imageDirectory = getImageDirectory();
+        if (imageDirectory != null && canonicalParent.equals(new File(imageDirectory).getCanonicalFile())) {
+            return true;
+        }
+
+        String javaHome = System.getProperty("java.home");
+        if (javaHome != null && canonicalParent.equals(new File(javaHome, "lib").getCanonicalFile())) {
+            return true;
+        }
+
+        return false;
     }
 
     protected abstract boolean addLibrary(String canonical, boolean builtin);

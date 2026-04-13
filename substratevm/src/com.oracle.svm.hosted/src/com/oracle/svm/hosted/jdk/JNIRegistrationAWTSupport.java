@@ -62,7 +62,11 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
-        if (jniRegistrationSupport.isRegisteredLibrary("awt")) {
+        if ((isLinux() || isDarwin()) && jniRegistrationSupport.isPreviousLayerRegisteredLibrary("awt") &&
+                        !jniRegistrationSupport.isCurrentLayerRegisteredLibrary("awt")) {
+            registerHeadlessJavaDesktopSupport("awt");
+        }
+        if (jniRegistrationSupport.isAnyLayerRegisteredLibrary("awt")) {
             jniRegistrationSupport.addJvmShimExports(
                             "JVM_IsStaticallyLinked");
             jniRegistrationSupport.addJavaShimExports(
@@ -104,11 +108,11 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
                 jniRegistrationSupport.registerLibrary("awt_xawt");
             }
         }
-        if (jniRegistrationSupport.isRegisteredLibrary("javaaccessbridge")) {
+        if (jniRegistrationSupport.isAnyLayerRegisteredLibrary("javaaccessbridge")) {
             /* Dependency on `jawt` is not expressed in Java, so we register it manually here. */
             jniRegistrationSupport.registerLibrary("jawt");
         }
-        if (jniRegistrationSupport.isRegisteredLibrary("javajpeg")) {
+        if (jniRegistrationSupport.isAnyLayerRegisteredLibrary("javajpeg")) {
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_GetEnv",
                             "JNU_ThrowByName",
@@ -119,7 +123,7 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
-        if (isDarwin() && JNIRegistrationSupport.singleton().isRegisteredLibrary("awt")) {
+        if (isDarwin() && JNIRegistrationSupport.singleton().isAnyLayerRegisteredLibrary("awt")) {
             ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
                 linkerInvocation.addNativeLinkerOption("-Wl,-framework,AppKit");
                 linkerInvocation.addNativeLinkerOption("-Wl,-framework,Accelerate");
@@ -134,7 +138,7 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
                 return linkerInvocation;
             });
         }
-        if (isWindows() && JNIRegistrationSupport.singleton().isRegisteredLibrary("awt")) {
+        if (isWindows() && JNIRegistrationSupport.singleton().isAnyLayerRegisteredLibrary("awt")) {
             ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
                 /*
                  * Add Windows libraries that are pulled in as a side effect of exporting the
