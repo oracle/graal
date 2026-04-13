@@ -47,6 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements InternalFeature {
     private ResolvedJavaMethod systemLoadMethod;
+    private boolean headlessJavaDesktopSupportRegistered;
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -56,16 +57,15 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
         }
         if (isLinux() || isDarwin()) {
             JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(this::registerHeadlessJavaDesktopSupport);
+            if (JNIRegistrationSupport.singleton().isPreviousLayerRegisteredLibrary("awt")) {
+                registerHeadlessJavaDesktopSupport("awt");
+            }
         }
     }
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
-        if ((isLinux() || isDarwin()) && jniRegistrationSupport.isPreviousLayerRegisteredLibrary("awt") &&
-                        !jniRegistrationSupport.isCurrentLayerRegisteredLibrary("awt")) {
-            registerHeadlessJavaDesktopSupport("awt");
-        }
         if (jniRegistrationSupport.isAnyLayerRegisteredLibrary("awt")) {
             jniRegistrationSupport.addJvmShimExports(
                             "JVM_IsStaticallyLinked");
@@ -166,9 +166,10 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
     }
 
     private void registerHeadlessJavaDesktopSupport(String libname) {
-        if (!"awt".equals(libname)) {
+        if (!"awt".equals(libname) || headlessJavaDesktopSupportRegistered) {
             return;
         }
+        headlessJavaDesktopSupportRegistered = true;
         JVMCIRuntimeJNIAccess.register(systemLoadMethod);
         if (isDarwin()) {
             NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("awt");
