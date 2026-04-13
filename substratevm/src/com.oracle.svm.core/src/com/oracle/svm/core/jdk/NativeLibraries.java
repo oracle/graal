@@ -167,6 +167,14 @@ public abstract class NativeLibraries {
         if (builtInName == null) {
             return false;
         }
+        if (file.exists()) {
+            /*
+             * Preserve System.load(<absolute path>) semantics for real files. The fallback is only
+             * intended for builtin JDK libraries whose image/java.home path does not exist as a
+             * loadable dylib in the generated image.
+             */
+            return false;
+        }
         try {
             return isBuiltinDarwinLibraryLocation(file) && addLibrary(builtInName, true);
         } catch (IOException e) {
