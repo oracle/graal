@@ -132,7 +132,6 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static WCharPointer convertUtf8ToWide(CCharPointer pathUtf8) {
-        // First just calculate the length.
         int nchars = StringAPISet.MultiByteToWideChar(StringAPISet.CP_UTF8(), 0, pathUtf8, -1, Word.nullPointer(), 0);
         if (nchars <= 0) {
             return Word.nullPointer();
@@ -144,7 +143,6 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
             return Word.nullPointer();
         }
 
-        // Do the conversion
         if (StringAPISet.MultiByteToWideChar(StringAPISet.CP_UTF8(), 0, pathUtf8, -1, wide, nchars) == 0) {
             UntrackedNullableNativeMemory.free(wide);
             return Word.nullPointer();

@@ -15,8 +15,6 @@ GraalVM Native Image supports building a native executable with JFR events, and 
 
 JFR support is disabled by default and must be explicitly enabled at build time.
 
-> Note: JFR event recording is not yet available with Native Image on Windows.
-
 To build a native executable with JFR, use the `--enable-monitoring=jfr` option:
 ```shell
 native-image --enable-monitoring=jfr JavaApplication
