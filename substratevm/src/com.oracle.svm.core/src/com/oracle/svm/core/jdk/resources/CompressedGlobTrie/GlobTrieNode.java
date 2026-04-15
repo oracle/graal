@@ -58,12 +58,15 @@ public class GlobTrieNode<C> {
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
     private Set<C> hostedOnlyContent;
+    @UnknownObjectField(availability = AfterAnalysis.class, fullyQualifiedTypes = {"java.util.HashSet", "java.util.ImmutableCollections$SetN", "java.util.ImmutableCollections$Set12"}) //
+    private Set<C> runtimeContent;
 
     protected GlobTrieNode() {
         content = "";
         children = new HashMap<>();
         isLeaf = false;
         isNewLevel = false;
+        runtimeContent = new HashSet<>(); // noEconomicSet(streaming)
         if (SubstrateUtil.HOSTED) {
             hostedOnlyContent = new HashSet<>(); // noEconomicSet(streaming)
         }
@@ -111,6 +114,14 @@ public class GlobTrieNode<C> {
     @Platforms(Platform.HOSTED_ONLY.class) //
     protected void addHostedOnlyContent(C ac) {
         this.hostedOnlyContent.add(ac);
+    }
+
+    protected Set<C> getRuntimeContent() {
+        return runtimeContent;
+    }
+
+    protected void addRuntimeContent(C ac) {
+        runtimeContent.add(ac);
     }
 
     public List<GlobTrieNode<C>> getChildren() {
@@ -182,6 +193,7 @@ public class GlobTrieNode<C> {
         }
 
         hostedOnlyContent = Set.copyOf(hostedOnlyContent);
+        runtimeContent = Set.copyOf(runtimeContent);
         children = Map.copyOf(children);
     }
 }

@@ -62,6 +62,7 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
@@ -289,6 +290,8 @@ public final class Resources {
     private long lastModifiedTime = INVALID_TIMESTAMP;
 
     private GlobTrieNode<ConditionWithOrigin> resourcesTrieRoot;
+    @UnknownObjectField(types = GlobTrieNode.class, canBeNull = true, availability = BuildPhaseProvider.AfterAnalysis.class) //
+    private GlobTrieNode<RuntimeDynamicAccessMetadata> includePatternMetadataTrieRoot;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private Function<Module, Module> hostedToRuntimeModuleMapper;
@@ -316,6 +319,15 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setResourcesTrieRoot(GlobTrieNode<ConditionWithOrigin> resourcesTrieRoot) {
         this.resourcesTrieRoot = resourcesTrieRoot;
+    }
+
+    public GlobTrieNode<RuntimeDynamicAccessMetadata> getIncludePatternMetadataTrieRoot() {
+        return includePatternMetadataTrieRoot;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setIncludePatternMetadataTrieRoot(GlobTrieNode<RuntimeDynamicAccessMetadata> includePatternMetadataTrieRoot) {
+        this.includePatternMetadataTrieRoot = includePatternMetadataTrieRoot;
     }
 
     public void forEachResource(BiConsumer<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> action) {
@@ -672,7 +684,7 @@ public final class Resources {
     public static ResourceStorageEntryBase getAtRuntime(ClassLoader loader, String name, boolean probe) {
         String loaderKey = resourceLoaderKey(loader);
         if (loader != null && loaderKey == null) {
-            return missingMetadata(null, name, probe);
+            return missingMetadata(null, name, probe, null);
         }
         return getAtRuntime(loaderKey, null, name, probe);
     }
@@ -796,7 +808,6 @@ public final class Resources {
      */
     private static boolean missingResourceMatchesIncludePattern(String resourceName, String moduleName) {
         VMError.guarantee(MissingRegistrationUtils.throwMissingRegistrationErrors(), "include patterns are only stored in the image with exact reachability metadata");
-        String glob = GlobUtils.transformToTriePath(resourceName, moduleName);
         for (var r : layeredSingletons()) {
             boolean matchedUnsatisfiedPatternInLayer = false;
             MapCursor<RequestedPattern, RuntimeDynamicAccessMetadata> cursor = r.requestedPatterns.getEntries();
@@ -818,11 +829,42 @@ public final class Resources {
                 continue;
             }
 
-            if (CompressedGlobTrie.match(r.getResourcesTrieRoot(), glob)) {
+            RuntimeDynamicAccessMetadata matchingGlobMetadata = findMatchingIncludeGlobMetadata(r, resourceName, moduleName);
+            if (matchingGlobMetadata != null) {
+                if (matchingGlobMetadata.satisfied()) {
+                    return true;
+                }
+                continue;
+            }
+
+            if (CompressedGlobTrie.match(r.getResourcesTrieRoot(), GlobUtils.transformToTriePath(resourceName, moduleName))) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static RuntimeDynamicAccessMetadata findMatchingIncludeGlobMetadata(Resources resources, String resourceName, String moduleName) {
+        GlobTrieNode<RuntimeDynamicAccessMetadata> globMetadataRoot = resources.getIncludePatternMetadataTrieRoot();
+        if (globMetadataRoot == null) {
+            return null;
+        }
+
+        List<RuntimeDynamicAccessMetadata> matchedGlobMetadata = CompressedGlobTrie.getRuntimeContentIfMatched(globMetadataRoot, GlobUtils.transformToTriePath(resourceName, moduleName));
+        if (matchedGlobMetadata == null) {
+            return null;
+        }
+
+        RuntimeDynamicAccessMetadata firstUnsatisfiedMatch = null;
+        for (RuntimeDynamicAccessMetadata metadata : matchedGlobMetadata) {
+            if (metadata.satisfied()) {
+                return metadata;
+            }
+            if (firstUnsatisfiedMatch == null) {
+                firstUnsatisfiedMatch = metadata;
+            }
+        }
+        return firstUnsatisfiedMatch;
     }
 
     private static RuntimeDynamicAccessMetadata findUnsatisfiedMatchingIncludePattern(String resourceName, String moduleName) {
@@ -841,6 +883,11 @@ public final class Resources {
                         crossModuleFallback = dynamicAccessMetadata;
                     }
                 }
+            }
+
+            RuntimeDynamicAccessMetadata matchingGlobMetadata = findMatchingIncludeGlobMetadata(r, resourceName, moduleName);
+            if (matchingGlobMetadata != null && !matchingGlobMetadata.satisfied()) {
+                return matchingGlobMetadata;
             }
         }
         return crossModuleFallback;

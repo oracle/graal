@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.Platform;
@@ -70,6 +71,10 @@ import com.oracle.svm.util.GlobUtils;
  * {@link #getHostedOnlyContentIfMatched(GlobTrieNode, String)}).
  */
 public class CompressedGlobTrie {
+    private enum AdditionalContentKind {
+        HOSTED_ONLY,
+        RUNTIME
+    }
 
     public record GlobWithInfo<C>(String pattern, C additionalContent) {
     }
@@ -103,11 +108,20 @@ public class CompressedGlobTrie {
             return build(patterns, true);
         }
 
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public static <C> GlobTrieNode<C> buildRuntimeContent(List<GlobWithInfo<C>> patterns) {
+            return build(patterns, true, AdditionalContentKind.RUNTIME);
+        }
+
         /**
          * Builds an immutable CompressedGlobTrie structure from glob patterns given in any order
          * with possibly additional context. Validation of patterns can be turned off.
          */
         public static <C> GlobTrieNode<C> build(List<GlobWithInfo<C>> patterns, boolean validatePatterns) {
+            return build(patterns, validatePatterns, AdditionalContentKind.HOSTED_ONLY);
+        }
+
+        private static <C> GlobTrieNode<C> build(List<GlobWithInfo<C>> patterns, boolean validatePatterns, AdditionalContentKind contentKind) {
             GlobTrieNode<C> root = new GlobTrieNode<>();
             /* classify patterns in groups */
             List<GlobWithInfo<C>> doubleStarPatterns = new ArrayList<>();
@@ -127,9 +141,9 @@ public class CompressedGlobTrie {
              * add patterns from the most general to more specific one. This allows us to discard
              * some patterns that are already covered with more generic one that was added before
              */
-            doubleStarPatterns.forEach(pattern -> addPattern(root, pattern));
-            starPatterns.forEach(pattern -> addPattern(root, pattern));
-            noStarPatterns.forEach(pattern -> addPattern(root, pattern));
+            doubleStarPatterns.forEach(pattern -> addPattern(root, pattern, contentKind));
+            starPatterns.forEach(pattern -> addPattern(root, pattern, contentKind));
+            noStarPatterns.forEach(pattern -> addPattern(root, pattern, contentKind));
 
             return root;
         }
@@ -147,7 +161,19 @@ public class CompressedGlobTrie {
             return unescapedPattern;
         }
 
-        private static <C> void addPattern(GlobTrieNode<C> root, GlobWithInfo<C> pattern) {
+        private static <C> Set<C> getAdditionalContent(GlobTrieNode<C> node, AdditionalContentKind contentKind) {
+            return contentKind == AdditionalContentKind.HOSTED_ONLY ? node.getHostedOnlyContent() : node.getRuntimeContent();
+        }
+
+        private static <C> void addAdditionalContent(GlobTrieNode<C> node, C additionalInfo, AdditionalContentKind contentKind) {
+            if (contentKind == AdditionalContentKind.HOSTED_ONLY) {
+                node.addHostedOnlyContent(additionalInfo);
+            } else {
+                node.addRuntimeContent(additionalInfo);
+            }
+        }
+
+        private static <C> void addPattern(GlobTrieNode<C> root, GlobWithInfo<C> pattern, AdditionalContentKind contentKind) {
             String unescapedPattern = unescapePossibleWildcards(pattern.pattern());
             List<GlobTrieNode<C>> parts = getPatternParts(unescapedPattern);
 
@@ -164,19 +190,19 @@ public class CompressedGlobTrie {
                      * Both pattern and additionalContent are already present in the trie, so we can
                      * skip this pattern
                      */
-                    if (node.getHostedOnlyContent().stream().anyMatch(c -> c.equals(pattern.additionalContent()))) {
+                    if (getAdditionalContent(node, contentKind).stream().anyMatch(c -> c.equals(pattern.additionalContent()))) {
                         return;
                     }
                 }
             }
 
-            addPattern(root, parts, 0, pattern.additionalContent());
+            addPattern(root, parts, 0, pattern.additionalContent(), contentKind);
         }
 
-        private static <C> void addPattern(GlobTrieNode<C> root, List<GlobTrieNode<C>> parts, int i, C additionalInfo) {
+        private static <C> void addPattern(GlobTrieNode<C> root, List<GlobTrieNode<C>> parts, int i, C additionalInfo, AdditionalContentKind contentKind) {
             if (patternReachedEnd(i, parts)) {
                 root.setLeaf();
-                root.addHostedOnlyContent(additionalInfo);
+                addAdditionalContent(root, additionalInfo, contentKind);
                 return;
             }
 
@@ -184,7 +210,7 @@ public class CompressedGlobTrie {
             boolean canProceed = simplePatternMatch(root, nextPart);
             if (canProceed) {
                 /* we had progress, try to match rest of the pattern */
-                addPattern(root.getChild(nextPart.getContent()), parts, i + 1, additionalInfo);
+                addPattern(root.getChild(nextPart.getContent()), parts, i + 1, additionalInfo, contentKind);
                 return;
             }
 
@@ -192,10 +218,10 @@ public class CompressedGlobTrie {
              * we reached the lowest point in the Trie we could go, therefore we need to have a new
              * branch from the current root we are at right now
              */
-            addNewBranch(root, parts, i, additionalInfo);
+            addNewBranch(root, parts, i, additionalInfo, contentKind);
         }
 
-        private static <C> void addNewBranch(GlobTrieNode<C> root, List<GlobTrieNode<C>> parts, int i, C additionalInfo) {
+        private static <C> void addNewBranch(GlobTrieNode<C> root, List<GlobTrieNode<C>> parts, int i, C additionalInfo, AdditionalContentKind contentKind) {
             /* sanity check */
             if (parts.isEmpty() || i >= parts.size()) {
                 return;
@@ -215,7 +241,7 @@ public class CompressedGlobTrie {
 
             /* mark end of pattern and populate additional info */
             newNode.setLeaf();
-            newNode.addHostedOnlyContent(additionalInfo);
+            addAdditionalContent(newNode, additionalInfo, contentKind);
         }
 
         private static <C> List<String> classifyPatterns(List<GlobWithInfo<C>> patterns,
@@ -375,6 +401,18 @@ public class CompressedGlobTrie {
 
         List<C> additionalContexts = new ArrayList<>();
         matchedNodes.forEach(node -> additionalContexts.addAll(node.getHostedOnlyContent()));
+        return additionalContexts;
+    }
+
+    public static <C> List<C> getRuntimeContentIfMatched(GlobTrieNode<C> root, String text) {
+        List<GlobTrieNode<C>> matchedNodes = getAllMatchedNodes(root, text);
+        if (matchedNodes.isEmpty()) {
+            /* text cannot be matched */
+            return null;
+        }
+
+        List<C> additionalContexts = new ArrayList<>();
+        matchedNodes.forEach(node -> additionalContexts.addAll(node.getRuntimeContent()));
         return additionalContexts;
     }
 
