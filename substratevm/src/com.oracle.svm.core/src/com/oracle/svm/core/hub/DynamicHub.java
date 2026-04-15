@@ -870,7 +870,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         Class<?> clazz = DynamicHub.toClass(this);
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata();
-        if (throwMissingRegistrationErrors() && !(isClassFlagSet(mask) && dynamicAccessMetadata != null && dynamicAccessMetadata.satisfied())) {
+        if (throwMissingRegistrationErrors() && !(isClassFlagSet(mask) && (dynamicAccessMetadata == null || dynamicAccessMetadata.satisfied()))) {
             MissingReflectionRegistrationUtils.reportClassQuery(clazz, methodName, dynamicAccessMetadata);
         }
     }
@@ -878,7 +878,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @AlwaysInline("For performance reasons")
     private boolean classDynamicAccessAllowed(Class<?> clazz, RuntimeDynamicAccessMetadata dynamicAccessMetadata, String query, int mask) {
         boolean classFlagSet = isClassFlagSet(mask);
-        boolean conditionsSatisfied = dynamicAccessMetadata != null && dynamicAccessMetadata.satisfied();
+        boolean conditionsSatisfied = dynamicAccessMetadata == null || dynamicAccessMetadata.satisfied();
         boolean accessAllowed = classFlagSet && conditionsSatisfied;
         if (ConfigurationFiles.Options.trackReflectionClassQueryChecks()) {
             String conditions = dynamicAccessMetadata == null || conditionsSatisfied ? "" : dynamicAccessMetadata.formatUnsatisfiedConditions();
