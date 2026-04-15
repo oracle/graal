@@ -401,7 +401,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
             Field field = (Field) decodeObject(buf, layerId);
-            SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata = RuntimeDynamicAccessMetadata.emptySet(preserved);
+            SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAllow(preserved);
             if (publicOnly && !Modifier.isPublic(field.getModifiers())) {
                 /*
                  * Generate negative copy of the field. Finding a non-public field when looking for
@@ -571,7 +571,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
             Executable executable = (Executable) decodeObject(buf, layerId);
-            SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata = RuntimeDynamicAccessMetadata.emptySet(preserved);
+            SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAllow(preserved);
             if (publicOnly && !Modifier.isPublic(executable.getModifiers())) {
                 /*
                  * Generate negative copy of the executable. Finding a non-public method when

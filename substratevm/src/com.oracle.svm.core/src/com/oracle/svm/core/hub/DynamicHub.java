@@ -97,7 +97,6 @@ import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.configure.ClassNameSupport;
-import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.NeverInline;
@@ -541,9 +540,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         DynamicHubOffsets dynamicHubOffsets = DynamicHubOffsets.singleton();
         DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, simpleBinaryName, declaringClass, signature, info);
 
-        companion.dynamicAccess = RuntimeDynamicAccessMetadata.emptySet(false);
+        companion.dynamicAccess = RuntimeDynamicAccessMetadata.alwaysAllow(false);
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
-        companion.canUnsafeAllocate = RuntimeDynamicAccessMetadata.emptySet(false);
+        companion.canUnsafeAllocate = RuntimeDynamicAccessMetadata.alwaysAllow(false);
         companion.classInitializationInfo = ClassInitializationInfo.forRuntimeLoadedClass(componentHub != null, hasClassInitializer);
         byte additionalFlags = NumUtil.safeToUByte((companion.additionalFlags & 0xff) | makeFlag(ADDITIONAL_FLAGS_INSTANTIATED_BIT, true));
         writeByte(companion, dynamicHubOffsets.getCompanionAdditionalFlagsOffset(), additionalFlags);
@@ -1629,7 +1628,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public Field getField(String fieldName) throws NoSuchFieldException, SecurityException {
         Objects.requireNonNull(fieldName);
         checkAccessForFieldQuery(fieldName);
-        Field field = searchFields(filterFields(privateGetPublicFields()), fieldName);
+        Field field = getField0(fieldName);
         checkField(fieldName, field);
         return getReflectionFactory().copyField(field);
     }
@@ -2216,7 +2215,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             MetadataTracer.singleton().traceReflectionArrayType(clazz);
         }
         DynamicHub arrayHub = getArrayHub();
-        assert RuntimeClassLoading.isSupported() || arrayHub != null || !ClassRegistries.isRegisteredClassName(ClassNameSupport.getArrayReflectionName(getName())) : "There must be no metadata if the array was never registered";
+        assert RuntimeClassLoading.isSupported() || arrayHub != null ||
+                        !ClassRegistries.isRegisteredClassName(ClassNameSupport.getArrayReflectionName(getName())) : "There must be no metadata if the array was never registered";
 
         var dynamicAccessMetadata = arrayHub == null ? null : arrayHub.getDynamicAccessMetadata();
         if (arrayHub == null || (throwMissingRegistrationErrors() && (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied()))) {

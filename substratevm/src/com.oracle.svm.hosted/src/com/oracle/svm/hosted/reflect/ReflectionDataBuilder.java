@@ -1490,7 +1490,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         void updateUnsafeAllocatedDynamicAccessMetadata(AccessCondition condition, boolean preserved) {
             if (unsafeAllocatedDynamicAccess == null) {
-                unsafeAllocatedDynamicAccess = RuntimeDynamicAccessMetadata.emptySet(preserved);
+                unsafeAllocatedDynamicAccess = RuntimeDynamicAccessMetadata.alwaysAllow(preserved);
             }
             updateDynamicAccessMetadata(unsafeAllocatedDynamicAccess, condition, preserved);
         }
@@ -1531,7 +1531,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         RuntimeDynamicAccessMetadata getDynamicAccessMetadata() {
             VMError.guarantee((dynamicAccess != null) == (accessibility == ACCESSED), "Dynamic access metadata should only be present on accessed elements");
-            return dynamicAccess != null ? dynamicAccess : RuntimeDynamicAccessMetadata.emptySet(false);
+            return dynamicAccess != null ? dynamicAccess : RuntimeDynamicAccessMetadata.alwaysAllow(false);
         }
     }
 

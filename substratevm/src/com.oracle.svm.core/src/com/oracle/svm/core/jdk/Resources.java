@@ -425,7 +425,7 @@ public final class Resources {
         Module m = module != null && module.isNamed() ? module : null;
         synchronized (resources) {
             ModuleResourceKey key = isNegativeQuery ? createLoaderIndependentNegativeQueryKey(m, resourceName) : createStorageKeyImpl(loaderKey, m, resourceName);
-            RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.emptySet(false);
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAllow(false);
             if (isNegativeQuery) {
                 ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(key);
                 if (entry == null) {
@@ -553,7 +553,7 @@ public final class Resources {
         }
         synchronized (resources) {
             updateTimeStamp();
-            ConditionalRuntimeValue<ResourceStorageEntryBase> resourceEntry = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(false), new ResourceExceptionEntry(e));
+            ConditionalRuntimeValue<ResourceStorageEntryBase> resourceEntry = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.alwaysAllow(false), new ResourceExceptionEntry(e));
             addResource(createStorageKey(injectedResourceLoaderKey(), module, resourceName), resourceEntry);
         }
     }
@@ -581,7 +581,7 @@ public final class Resources {
         }
         synchronized (resources) {
             updateTimeStamp();
-            ConditionalRuntimeValue<ResourceStorageEntryBase> resourceEntry = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(false), new ResourceExceptionEntry(e));
+            ConditionalRuntimeValue<ResourceStorageEntryBase> resourceEntry = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.alwaysAllow(false), new ResourceExceptionEntry(e));
             addResource(createStorageKey(owner, module, resourceName), resourceEntry);
         }
     }
@@ -629,7 +629,7 @@ public final class Resources {
              * Keep a single metadata entry per (module, pattern) and merge all conditions into it.
              * This preserves unconditional registrations even when conditional entries are present.
              */
-            RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.emptySet(false);
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAllow(false);
             RuntimeDynamicAccessMetadata registered = requestedPatterns.putIfAbsent(pattern, dynamicAccessMetadata);
             (registered == null ? dynamicAccessMetadata : registered).addCondition(condition);
         }

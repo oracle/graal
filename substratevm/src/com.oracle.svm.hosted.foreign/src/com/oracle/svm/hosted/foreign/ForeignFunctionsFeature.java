@@ -367,14 +367,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
                 DirectUpcallDesc directUpcallDesc = new DirectUpcallDesc(target, directMethodHandleDesc, desc, linkerOptions);
                 runConditionalTask(condition, _ -> {
-                    RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-                    /*
-                     * Upcall setup may query the method through Class.getDeclaredMethod (see
-                     * SharedUtils.checkExceptions), so register the declaring class for reflection
-                     * queries in addition to the executable itself.
-                     */
-                    reflectionSupport.register(AccessCondition.unconditional(), false, method.getDeclaringClass());
-                    reflectionSupport.register(AccessCondition.unconditional(), false, method);
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, method);
                     createStub(UpcallStubFactory.INSTANCE, directUpcallDesc.toSharedDesc());
                     createStub(DirectUpcallStubFactory.INSTANCE, directUpcallDesc);
                 });

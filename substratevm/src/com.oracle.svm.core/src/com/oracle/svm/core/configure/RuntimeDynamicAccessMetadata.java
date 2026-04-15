@@ -63,7 +63,7 @@ public class RuntimeDynamicAccessMetadata {
     private boolean satisfied;
     private volatile boolean preserved;
 
-    public static RuntimeDynamicAccessMetadata emptySet(boolean preserved) {
+    public static RuntimeDynamicAccessMetadata alwaysAllow(boolean preserved) {
         return new RuntimeDynamicAccessMetadata(new Object[0], preserved);
     }
 

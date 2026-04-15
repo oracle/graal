@@ -389,7 +389,7 @@ public final class ClassRegistries implements ParsingContext {
             }
             RuntimeDynamicAccessMetadata dynamicAccessMetadata = cond.getDynamicAccessMetadata();
             if (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied()) {
-                continue;
+                break; // found the entry and it is not satisfied.
             }
             Throwable exception = cond.getValue();
             if (exception == null) {
