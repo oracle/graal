@@ -29,8 +29,8 @@ import java.io.Reader;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import java.util.regex.Pattern;
 
@@ -116,6 +116,10 @@ final class BundlePathMap {
 
     static PortablePath bundlePath(Path path) {
         return new PortablePath(PathStyle.BundleRelative, encodeBundlePathText(path));
+    }
+
+    static <T> Stream<Map.Entry<T, T>> withoutIdentityMappings(Map<T, T> pathMap) {
+        return pathMap.entrySet().stream().filter(entry -> !entry.getKey().equals(entry.getValue()));
     }
 
     static Path portableSourcePath(String rawPath, PathStyle sourceStyle) {

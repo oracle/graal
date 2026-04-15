@@ -699,7 +699,7 @@ final class BundleSupport {
 
         Path pathCanonicalizationsFile = stageDir.resolve(pathCanonicalizationsFileName);
         try (JsonWriter writer = new JsonWriter(pathCanonicalizationsFile)) {
-            JsonPrinter.printCollection(writer, pathCanonicalizations.entrySet(), Map.Entry.comparingByKey(),
+            JsonPrinter.printCollection(writer, BundlePathMap.withoutIdentityMappings(pathCanonicalizations).toList(), Map.Entry.comparingByKey(),
                             (entry, jsonWriter) -> BundlePathMap.printPathMapping(entry, jsonWriter, BundlePathMap.PathStyle.currentSourceStyle(), false));
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + pathCanonicalizationsFile, e);

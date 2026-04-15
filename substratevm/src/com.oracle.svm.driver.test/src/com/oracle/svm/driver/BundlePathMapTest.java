@@ -32,6 +32,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
 
@@ -124,5 +125,16 @@ public class BundlePathMapTest {
         List<String> serialized = BundleSupport.serializeUpdatedBundleArgs(queueSnapshot, currentBuildArgs, bundleFileBuildArgs);
 
         assertEquals(List.of("-cp", "cp", "HelloJava", "--pgo", "--bundle-create=simple-bundle-pgo.nib"), serialized);
+    }
+
+    @Test
+    public void filtersIdentityCanonicalizationsFromBundleFileOutput() {
+        Map<Path, Path> canonicalizations = Map.of(
+                        Path.of("/win/c/work/app.jar"), Path.of("/win/c/work/app.jar"),
+                        Path.of("win-rel/target/app.jar"), Path.of("/win/c/work/target/app.jar"));
+
+        List<Map.Entry<Path, Path>> filtered = BundlePathMap.withoutIdentityMappings(canonicalizations).collect(Collectors.toList());
+
+        assertEquals(List.of(Map.entry(Path.of("win-rel/target/app.jar"), Path.of("/win/c/work/target/app.jar"))), filtered);
     }
 }
