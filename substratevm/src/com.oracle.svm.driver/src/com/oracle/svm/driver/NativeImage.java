@@ -116,6 +116,7 @@ public class NativeImage {
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
     private static final String DEFAULT_GENERATOR_MODULE_NAME = NativeImageGeneratorRunner.class.getModule().getName();
+    static final String JAR_FILE_EXTENSION = ".jar";
 
     private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
@@ -2332,7 +2333,7 @@ public class NativeImage {
     }
 
     private static boolean hasJarFileSuffix(Path p) {
-        return p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar");
+        return p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(JAR_FILE_EXTENSION);
     }
 
     /**
@@ -2531,7 +2532,7 @@ public class NativeImage {
                     return true;
                 }
                 String jarFileName = p.getFileName().toString();
-                String jarBaseName = jarFileName.substring(0, jarFileName.length() - ".jar".length());
+                String jarBaseName = jarFileName.substring(0, jarFileName.length() - JAR_FILE_EXTENSION.length());
                 return baseNameList.contains(jarBaseName);
             }).collect(Collectors.toList());
         } catch (IOException e) {

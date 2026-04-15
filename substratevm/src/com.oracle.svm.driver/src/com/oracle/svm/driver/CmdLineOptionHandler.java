@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.driver;
 
-import java.io.File;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -74,6 +72,11 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     private boolean consume(ArgumentQueue args, String headArg) {
+        DriverPathOptions.Match pathOption = DriverPathOptions.matchCmdLine(headArg);
+        if (pathOption != null) {
+            pathOption.consume(nativeImage, args);
+            return true;
+        }
         switch (headArg) {
             case "--help":
                 nativeImage.showMessage(HELP_TEXT);
@@ -91,16 +94,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, true);
                 nativeImage.showNewline();
                 System.exit(ExitStatus.OK.getValue());
-                return true;
-            case "--configurations-path":
-                args.poll();
-                String configPath = args.poll();
-                if (configPath == null) {
-                    NativeImage.showError(headArg + " requires a " + File.pathSeparator + " separated list of directories");
-                }
-                for (String configDir : configPath.split(File.pathSeparator)) {
-                    nativeImage.addMacroOptionRoot(Paths.get(configDir));
-                }
                 return true;
             case "--exclude-config":
                 args.poll();

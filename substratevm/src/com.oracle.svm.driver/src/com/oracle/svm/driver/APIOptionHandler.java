@@ -40,6 +40,7 @@ import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.options.OptionsContainer;
@@ -88,6 +89,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     record PathsOptionInfo(String delimiter, BundleMember.Role role) {
+    }
+
+    record BundlePathArgumentRewrite(List<String> rewrittenArguments, boolean consumesNextArg) {
     }
 
     private final SortedMap<String, OptionInfo> apiOptions;
@@ -536,6 +540,54 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
+    String rewriteBundleHostedOptionArgument(String builderArgument, Function<String, String> pathRewriter) {
+        BuilderArgumentParts argumentParts = BuilderArgumentParts.from(builderArgument);
+        if (argumentParts.optionValue == null) {
+            return builderArgument;
+        }
+        PathsOptionInfo pathsOptionInfo = pathOptions.get(argumentParts.option.name);
+        if (pathsOptionInfo == null || pathsOptionInfo.role == BundleMember.Role.Ignore) {
+            return builderArgument;
+        }
+        argumentParts.optionValue = rewritePathAggregate(argumentParts.optionValue, pathsOptionInfo.delimiter, pathRewriter);
+        return argumentParts.toString();
+    }
+
+    /**
+     * Rewrites path-valued API options as they appear in bundle replay input.
+     *
+     * <p>
+     * The returned value preserves the original argument shape: either a single rewritten argument
+     * or the original option head plus a rewritten following value.
+     * </p>
+     */
+    BundlePathArgumentRewrite rewriteBundleAPIOptionArgument(String headArg, String nextArg, Function<String, String> pathRewriter) {
+        for (OptionInfo optionInfo : apiOptions.values()) {
+            PathsOptionInfo pathsOptionInfo = pathOptions.get(rawBuilderOptionName(optionInfo.builderOption));
+            if (pathsOptionInfo == null || pathsOptionInfo.role == BundleMember.Role.Ignore) {
+                continue;
+            }
+            for (String variant : optionInfo.variants) {
+                String optionName = optionInfo.group == null ? APIOption.Utils.optionName(variant) : APIOption.Utils.groupName(optionInfo.group) + variant;
+                for (char valueSeparator : optionInfo.valueSeparator) {
+                    if (valueSeparator == APIOption.WHITESPACE_SEPARATOR) {
+                        if (headArg.equals(optionName) && nextArg != null) {
+                            return new BundlePathArgumentRewrite(List.of(headArg, rewritePathAggregate(nextArg, pathsOptionInfo.delimiter, pathRewriter)), true);
+                        }
+                    } else {
+                        String optionNameWithSeparator = optionName + APIOption.Utils.valueSeparatorToString(valueSeparator);
+                        if (headArg.startsWith(optionNameWithSeparator)) {
+                            String optionValue = headArg.substring(optionNameWithSeparator.length());
+                            String rewrittenValue = rewritePathAggregate(optionValue, pathsOptionInfo.delimiter, pathRewriter);
+                            return new BundlePathArgumentRewrite(List.of(optionNameWithSeparator + rewrittenValue), false);
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     static final class BuilderArgumentParts {
 
         final LocatableOption option;
@@ -567,6 +619,17 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Allow features to handle the path string. */
             return origPath;
         }
+    }
+
+    private static String rawBuilderOptionName(String builderOption) {
+        return builderOption.endsWith("=") ? builderOption.substring(0, builderOption.length() - 1) : builderOption;
+    }
+
+    private static String rewritePathAggregate(String value, String delimiter, Function<String, String> pathRewriter) {
+        if (delimiter.isEmpty()) {
+            return pathRewriter.apply(value);
+        }
+        return Arrays.stream(value.split(Pattern.quote(delimiter), -1)).map(pathRewriter).collect(Collectors.joining(delimiter));
     }
 
     void printOptions(Consumer<String> println, boolean extra) {
