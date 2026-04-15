@@ -126,6 +126,7 @@ public class MethodHandleFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        registerInvokersMethodsForReflection(access);
         registerValueConversionsMethodsForReflection(access);
     }
 
@@ -391,6 +392,14 @@ public class MethodHandleFeature implements InternalFeature {
         for (int i = 0; i < count; i++) {
             ReflectionUtil.invokeMethod(getFunctionMethod, null, (byte) i);
         }
+    }
+
+    /**
+     * Method-handle runtime paths can reflectively query this helper method.
+     */
+    private static void registerInvokersMethodsForReflection(AfterRegistrationAccess access) {
+        var invokersClass = ReflectionUtil.lookupClass("java.lang.invoke.Invokers");
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClass, "checkExactType", MethodHandle.class, MethodType.class));
     }
 
     /**
