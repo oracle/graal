@@ -216,6 +216,7 @@ public class RuntimeDynamicAccessMetadata {
                  * java.lang.Object is always reached in practice and adds noise to diagnostics.
                  */
                 if (reachedTypeCondition == Object.class) {
+                    VMError.shouldNotReachHere("Object");
                     continue;
                 }
                 joiner.add("typeReached(" + DynamicHub.fromClass(reachedTypeCondition).getTypeName() + ")");

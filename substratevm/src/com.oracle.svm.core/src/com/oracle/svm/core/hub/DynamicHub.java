@@ -2216,7 +2216,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             MetadataTracer.singleton().traceReflectionArrayType(clazz);
         }
         DynamicHub arrayHub = getArrayHub();
-        assert arrayHub != null || !ClassRegistries.isRegisteredClassName(ClassNameSupport.getArrayReflectionName(getName())) : "There must be no metadata if the array was never registered";
+        assert RuntimeClassLoading.isSupported() || arrayHub != null || !ClassRegistries.isRegisteredClassName(ClassNameSupport.getArrayReflectionName(getName())) : "There must be no metadata if the array was never registered";
 
         var dynamicAccessMetadata = arrayHub == null ? null : arrayHub.getDynamicAccessMetadata();
         if (arrayHub == null || (throwMissingRegistrationErrors() && (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied()))) {
