@@ -28,6 +28,8 @@ package com.oracle.svm.core.configure;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackUnsatisfiedTypeReachedConditions;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackConditionSatisfied;
 
+import java.io.IOException;
+import java.io.StringWriter;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.StringJoiner;
@@ -44,6 +46,7 @@ import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 /**
  * The dynamic access metadata for some value that can be accessed at run time. Contains a set of
@@ -211,17 +214,9 @@ public class RuntimeDynamicAccessMetadata {
 
         StringJoiner joiner = new StringJoiner(", ");
         for (Object condition : localConditions) {
-            if (condition instanceof Class<?> reachedTypeCondition) {
-                /*
-                 * java.lang.Object is always reached in practice and adds noise to diagnostics.
-                 */
-                if (reachedTypeCondition == Object.class) {
-                    VMError.shouldNotReachHere("Object");
-                    continue;
-                }
-                joiner.add("typeReached(" + DynamicHub.fromClass(reachedTypeCondition).getTypeName() + ")");
-            } else {
-                joiner.add(String.valueOf(condition));
+            String formattedCondition = formatUnsatisfiedCondition(condition);
+            if (formattedCondition != null) {
+                joiner.add(formattedCondition);
             }
         }
         return joiner.toString();
@@ -240,19 +235,13 @@ public class RuntimeDynamicAccessMetadata {
         StringBuilder builder = new StringBuilder();
         boolean wroteAny = false;
         for (Object condition : localConditions) {
-            if (!(condition instanceof Class<?> reachedTypeCondition)) {
-                continue;
-            }
-            /*
-             * java.lang.Object is always reached in practice and adds noise to diagnostics.
-             */
-            if (reachedTypeCondition == Object.class) {
+            if (formatUnsatisfiedCondition(condition) == null) {
                 continue;
             }
             if (wroteAny) {
                 builder.append(lineSeparator);
             }
-            builder.append("    \"typeReached\": \"").append(DynamicHub.fromClass(reachedTypeCondition).getTypeName()).append("\"").append(lineSeparator);
+            appendUnsatisfiedConditionAsJson(builder, condition);
             wroteAny = true;
         }
         if (!wroteAny) {
@@ -263,6 +252,38 @@ public class RuntimeDynamicAccessMetadata {
          */
         builder.setLength(builder.length() - lineSeparator.length());
         return builder.toString();
+    }
+
+    private static String formatUnsatisfiedCondition(Object condition) {
+        if (condition instanceof Class<?> reachedTypeCondition) {
+            /*
+             * java.lang.Object is always reached in practice and adds noise to diagnostics.
+             */
+            if (reachedTypeCondition == Object.class) {
+                VMError.shouldNotReachHere("Object");
+                return null;
+            }
+            return "typeReached(" + DynamicHub.fromClass(reachedTypeCondition).getTypeName() + ")";
+        }
+        return String.valueOf(condition);
+    }
+
+    private static void appendUnsatisfiedConditionAsJson(StringBuilder builder, Object condition) {
+        if (condition instanceof Class<?> reachedTypeCondition) {
+            builder.append("    ").append(quoteJsonString("typeReached")).append(": ").append(quoteJsonString(DynamicHub.fromClass(reachedTypeCondition).getTypeName()));
+        } else {
+            builder.append("    ").append(quoteJsonString("condition")).append(": ").append(quoteJsonString(String.valueOf(condition)));
+        }
+        builder.append(System.lineSeparator());
+    }
+
+    private static String quoteJsonString(String value) {
+        try (StringWriter stringWriter = new StringWriter(); JsonWriter writer = new JsonWriter(stringWriter)) {
+            writer.quote(value);
+            return stringWriter.toString();
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere("Writing JSON to memory", e);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
