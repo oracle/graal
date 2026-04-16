@@ -125,6 +125,7 @@ jobs:
               JDK_VERSION: "latest"
               GATE_TAGS: "build,helloworld,native_unittests,standalone_pointsto_unittests"
               PRIMARY: "substratevm"
+              DYNAMIC_IMPORTS: "/espresso-compiler-stub"
               PIP_PACKAGES: "jsonschema==4.6.1"
           - os: ubuntu-24.04
             env:
@@ -219,11 +220,23 @@ jobs:
       run: rm -rf .git
     - name: Build GraalVM and run gate with tags
       env: ${{ matrix.env }}
-      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} --tools-java-home=${{ matrix.env.TOOLS_JDK_VERSION != '' && env.TOOLS_JAVA_HOME_LOCATION || '' }} gate --strict-mode ${{ matrix.env.GATE_OPTS }} --tags ${GATE_TAGS}
+      shell: bash
+      run: |
+        DYNAMIC_IMPORT_ARGS=()
+        if [ -n "${DYNAMIC_IMPORTS}" ]; then
+          DYNAMIC_IMPORT_ARGS=(--dy "${DYNAMIC_IMPORTS}")
+        fi
+        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} --tools-java-home=${{ matrix.env.TOOLS_JDK_VERSION != '' && env.TOOLS_JAVA_HOME_LOCATION || '' }} "${DYNAMIC_IMPORT_ARGS[@]}" gate --strict-mode ${{ matrix.env.GATE_OPTS }} --tags ${GATE_TAGS}
       if: ${{ matrix.env.GATE_TAGS != '' }}
     - name: Build GraalVM and run gate without tags
       env: ${{ matrix.env }}
-      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode ${{ matrix.env.GATE_OPTS }}
+      shell: bash
+      run: |
+        DYNAMIC_IMPORT_ARGS=()
+        if [ -n "${DYNAMIC_IMPORTS}" ]; then
+          DYNAMIC_IMPORT_ARGS=(--dy "${DYNAMIC_IMPORTS}")
+        fi
+        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} "${DYNAMIC_IMPORT_ARGS[@]}" gate --strict-mode ${{ matrix.env.GATE_OPTS }}
       if: ${{ matrix.env.GATE_TAGS == '' }}
   build-graalvm-windows:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
