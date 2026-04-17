@@ -2330,7 +2330,7 @@ class LibffiBuilderProject(mx_native.MultitargetProject):
             else:
                 assert toolchain.spec.target.os == "linux"
 
-                configure_arch = {"amd64": "x86_64", "aarch64": "aarch64"}.get(toolchain.spec.target.arch)
+                configure_arch = {"amd64": "x86_64", "aarch64": "aarch64", "riscv64": "riscv64"}.get(toolchain.spec.target.arch)
                 assert configure_arch, "translation to configure style arch is not supported yet for " + str(
                     toolchain.spec.target.arch
                 )
