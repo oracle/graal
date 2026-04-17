@@ -31,7 +31,6 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -112,6 +111,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     }
 
     private final EconomicMap<ProxyCacheKey, ConditionalRuntimeValue<Object>> proxyCache = ImageHeapMap.create("proxyCache");
+    private final EconomicMap<String, ProxyMetadataCandidate> proxyMetadataByInterfaceNames = ImageHeapMap.create("proxyMetadataByInterfaceNames");
+    private final EconomicMap<String, ProxyMetadataCandidate> proxyMetadataBySortedInterfaceNames = ImageHeapMap.create("proxyMetadataBySortedInterfaceNames");
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final EconomicMap<Class<?>, ClassLoader> proxyClassClassloaders = EconomicMap.create();
@@ -138,6 +139,9 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         if (conditionalValue == null) {
             conditionalValue = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.createHosted(condition, preserved), createProxyClass(intfs));
             proxyCache.put(key, conditionalValue);
+            String[] interfaceNames = interfaceTypeNames(intfs);
+            addProxyMetadataCandidate(proxyMetadataByInterfaceNames, interfaceLookupKey(interfaceNames), conditionalValue, intfs);
+            addProxyMetadataCandidate(proxyMetadataBySortedInterfaceNames, interfaceLookupKey(sortedCopy(interfaceNames)), conditionalValue, intfs);
         } else if (!preserved) {
             conditionalValue.getDynamicAccessMetadata().setNotPreserved();
         }
@@ -317,29 +321,27 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     private ProxyMetadataLookup findMatchingMetadata(Class<?>... interfaces) {
         String[] interfaceNames = interfaceTypeNames(interfaces);
-        String[] sortedInterfaceNames = sortedCopy(interfaceNames);
-        Class<?>[] unorderedMatchInterfaces = null;
-        RuntimeDynamicAccessMetadata unorderedMatchMetadata = null;
         RuntimeDynamicAccessMetadata orderedMatch = null;
-        MapCursor<ProxyCacheKey, ConditionalRuntimeValue<Object>> entries = proxyCache.getEntries();
-        while (entries.advance()) {
-            RuntimeDynamicAccessMetadata metadata = entries.getValue().getDynamicAccessMetadata();
-            Class<?>[] cachedInterfaces = entries.getKey().interfaces;
-            if (matchesInterfaceNames(cachedInterfaces, interfaceNames)) {
-                if (!metadata.satisfied()) {
-                    return new ProxyMetadataLookup(metadata, null);
-                }
-                if (orderedMatch == null) {
-                    orderedMatch = metadata;
-                }
-            } else if (unorderedMatchMetadata == null && !metadata.satisfied() && matchesUnorderedInterfaceNames(cachedInterfaces, sortedInterfaceNames)) {
-                unorderedMatchMetadata = metadata;
-                unorderedMatchInterfaces = cachedInterfaces;
+        ProxyMetadataCandidate orderedCandidates = proxyMetadataByInterfaceNames.get(interfaceLookupKey(interfaceNames));
+        while (orderedCandidates != null) {
+            RuntimeDynamicAccessMetadata metadata = orderedCandidates.dynamicAccessMetadata;
+            if (!metadata.satisfied()) {
+                return new ProxyMetadataLookup(metadata, null);
             }
+            if (orderedMatch == null) {
+                orderedMatch = metadata;
+            }
+            orderedCandidates = orderedCandidates.next;
         }
-        if (unorderedMatchMetadata != null) {
-            String hint = createInterfaceOrderHint(interfaceNames, unorderedMatchInterfaces);
-            return new ProxyMetadataLookup(unorderedMatchMetadata, hint);
+
+        ProxyMetadataCandidate unorderedCandidates = proxyMetadataBySortedInterfaceNames.get(interfaceLookupKey(sortedCopy(interfaceNames)));
+        while (unorderedCandidates != null) {
+            RuntimeDynamicAccessMetadata metadata = unorderedCandidates.dynamicAccessMetadata;
+            if (!metadata.satisfied() && !matchesInterfaceNames(unorderedCandidates.interfaces, interfaceNames)) {
+                String hint = createInterfaceOrderHint(interfaceNames, unorderedCandidates.interfaces);
+                return new ProxyMetadataLookup(metadata, hint);
+            }
+            unorderedCandidates = unorderedCandidates.next;
         }
         return new ProxyMetadataLookup(orderedMatch, null);
     }
@@ -356,15 +358,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         return true;
     }
 
-    private static boolean matchesUnorderedInterfaceNames(Class<?>[] cachedInterfaces, String[] sortedInterfaceNames) {
-        if (cachedInterfaces.length != sortedInterfaceNames.length) {
-            return false;
-        }
-        String[] sortedCachedInterfaceNames = interfaceTypeNames(cachedInterfaces);
-        Arrays.sort(sortedCachedInterfaceNames);
-        return Arrays.equals(sortedCachedInterfaceNames, sortedInterfaceNames);
-    }
-
     private static String[] interfaceTypeNames(Class<?>[] interfaces) {
         String[] interfaceNames = new String[interfaces.length];
         for (int i = 0; i < interfaces.length; i++) {
@@ -373,10 +366,19 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         return interfaceNames;
     }
 
+    private static String interfaceLookupKey(String[] interfaceNames) {
+        return proxyTypeDescriptor(interfaceNames);
+    }
+
     private static String[] sortedCopy(String[] names) {
         String[] result = names.clone();
         Arrays.sort(result);
         return result;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void addProxyMetadataCandidate(EconomicMap<String, ProxyMetadataCandidate> metadataIndex, String key, ConditionalRuntimeValue<Object> conditionalValue, Class<?>[] interfaces) {
+        metadataIndex.put(key, new ProxyMetadataCandidate(conditionalValue.getDynamicAccessMetadata(), interfaces, metadataIndex.get(key)));
     }
 
     private static String createInterfaceOrderHint(String[] requestedInterfaceNames, Class<?>[] registeredInterfaces) {
@@ -384,6 +386,18 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         String registeredOrder = proxyTypeDescriptor(interfaceTypeNames(registeredInterfaces));
         return "A proxy registration with the same interfaces exists but in a different order. Proxy interface order is significant. " +
                         "Requested order: " + requestedOrder + ". Registered order: " + registeredOrder + ".";
+    }
+
+    private static final class ProxyMetadataCandidate {
+        private final RuntimeDynamicAccessMetadata dynamicAccessMetadata;
+        private final Class<?>[] interfaces;
+        private final ProxyMetadataCandidate next;
+
+        private ProxyMetadataCandidate(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Class<?>[] interfaces, ProxyMetadataCandidate next) {
+            this.dynamicAccessMetadata = dynamicAccessMetadata;
+            this.interfaces = interfaces;
+            this.next = next;
+        }
     }
 
     private static final class ProxyMetadataLookup {
