@@ -2628,8 +2628,8 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
             return True, outfile.path + ' does not exist'
 
         if not self.staticlibs:
-            mx.abort('Please use a JDK that contains static JDK libraries.\n'
-                     + 'See: https://github.com/oracle/graal/tree/master/substratevm#quick-start')
+            mx.warn('No static JDK libraries found for ' + mx.get_arch() + ' - skipping JvmFuncsFallbacks')
+            return False, 'no static JDK libraries available'
 
         infile = mx.TimeStampFile.newest([self.jvm_funcs_path] + self.staticlibs)
         needs_build = infile.isNewerThan(outfile)
