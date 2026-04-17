@@ -2695,6 +2695,9 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                 mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'), err=suppress_gnu_property_type_5_warnings)
 
             if len(symbols) == 0:
+                if not self.staticlibs:
+                    mx.warn('No static JDK libraries found for riscv64 - generating empty JvmFuncsFallbacks.c')
+                    return symbols
                 mx.abort('Could not find any unresolved JVM_* symbols in static JDK libraries')
             return symbols
 
@@ -2806,9 +2809,15 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     else:
         lib_prefix = mx.add_lib_prefix('')
         lib_suffix = mx.add_static_lib_suffix('')
-        layout = {
-            './': ['file:' + join(base_jdk_home, 'lib', lib_prefix + '*' + lib_suffix)]
-        }
+        from glob import glob as _glob
+        static_lib_glob = join(base_jdk_home, 'lib', lib_prefix + '*' + lib_suffix)
+        if _glob(static_lib_glob):
+            layout = {
+                './': ['file:' + static_lib_glob]
+            }
+        else:
+            mx.warn('No static JDK libraries found for ' + mx.get_arch() + ' - SVM_STATIC_LIBRARIES_SUPPORT will be empty')
+            layout = {}
     register_distribution(JDKLayoutTARDistribution(suite, 'SVM_STATIC_LIBRARIES_SUPPORT', [], layout, None, True, None))
 
 
