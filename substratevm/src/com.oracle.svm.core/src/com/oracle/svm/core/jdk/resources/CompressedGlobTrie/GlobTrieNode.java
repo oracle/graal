@@ -66,7 +66,6 @@ public class GlobTrieNode<C> {
         children = new HashMap<>();
         isLeaf = false;
         isNewLevel = false;
-        runtimeContent = new HashSet<>(); // noEconomicSet(streaming)
         if (SubstrateUtil.HOSTED) {
             hostedOnlyContent = new HashSet<>(); // noEconomicSet(streaming)
         }
@@ -117,10 +116,13 @@ public class GlobTrieNode<C> {
     }
 
     protected Set<C> getRuntimeContent() {
-        return runtimeContent;
+        return runtimeContent == null ? Set.of() : runtimeContent;
     }
 
     protected void addRuntimeContent(C ac) {
+        if (runtimeContent == null) {
+            runtimeContent = new HashSet<>(); // noEconomicSet(streaming)
+        }
         runtimeContent.add(ac);
     }
 
@@ -193,7 +195,7 @@ public class GlobTrieNode<C> {
         }
 
         hostedOnlyContent = Set.copyOf(hostedOnlyContent);
-        runtimeContent = Set.copyOf(runtimeContent);
+        runtimeContent = runtimeContent == null ? Set.of() : Set.copyOf(runtimeContent);
         children = Map.copyOf(children);
     }
 }
