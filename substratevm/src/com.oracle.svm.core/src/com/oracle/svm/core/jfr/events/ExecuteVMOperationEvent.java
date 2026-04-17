@@ -39,16 +39,16 @@ import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMOperation;
 
 public class ExecuteVMOperationEvent {
-    public static void emit(VMOperation vmOperation, long requestingThreadId, long startTicks) {
+    public static void emit(VMOperation vmOperation, long requestingThreadId, String requestingVThreadName, long startTicks) {
         if (!HasJfrSupport.get()) {
             return;
         }
 
-        emit0(vmOperation, requestingThreadId, startTicks);
+        emit0(vmOperation, requestingThreadId, requestingVThreadName, startTicks);
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(VMOperation vmOperation, long requestingThreadId, long startTicks) {
+    private static void emit0(VMOperation vmOperation, long requestingThreadId, String requestingVThreadName, long startTicks) {
         long duration = JfrTicks.duration(startTicks);
         if (JfrEvent.ExecuteVMOperation.shouldEmit(duration)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
@@ -61,7 +61,7 @@ public class ExecuteVMOperationEvent {
             JfrNativeEventWriter.putLong(data, vmOperation.getId() + 1); // id starts with 1
             JfrNativeEventWriter.putBoolean(data, vmOperation.getCausesSafepoint());
             JfrNativeEventWriter.putBoolean(data, vmOperation.isBlocking());
-            JfrNativeEventWriter.putThread(data, requestingThreadId);
+            JfrNativeEventWriter.putRegisteredThreadId(data, requestingThreadId, requestingVThreadName);
             JfrNativeEventWriter.putLong(data, vmOperation.getCausesSafepoint() ? Safepoint.singleton().getSafepointId().rawValue() : 0);
             JfrNativeEventWriter.endSmallEvent(data);
         }

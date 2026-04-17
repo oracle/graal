@@ -148,11 +148,12 @@ final class JfrOldObjectSampler {
     private void store(Object obj, UnsignedWord span, UnsignedWord allocatedSize, int arrayLength) {
         Thread thread = JavaThreads.getCurrentThreadOrNull();
         long threadId = thread == null ? 0L : JavaThreads.getThreadId(thread);
+        String threadName = thread != null && JavaThreads.isVirtual(thread) ? thread.getName() : null;
         long stackTraceId = thread == null ? 0L : SubstrateJVM.get().getStackTraceId(JfrEvent.OldObjectSample);
         UnsignedWord heapUsedAfterLastGC = Heap.getHeap().getUsedMemoryAfterLastGC();
 
         JfrOldObject sample = (JfrOldObject) freeList.pop();
-        sample.initialize(obj, span, allocatedSize, threadId, stackTraceId, heapUsedAfterLastGC, arrayLength);
+        sample.initialize(obj, span, allocatedSize, threadId, threadName, stackTraceId, heapUsedAfterLastGC, arrayLength);
         queue.add(sample);
         usedList.append(sample);
         totalInQueue = totalInQueue.add(span);
@@ -178,11 +179,12 @@ final class JfrOldObjectSampler {
                 UnsignedWord objectSize = cur.getObjectSize();
                 long allocationTicks = cur.getAllocationTicks();
                 long threadId = cur.getThreadId();
+                String threadName = cur.getThreadName();
                 long stackTraceId = cur.getStackTraceId();
                 UnsignedWord heapUsedAfterLastGC = cur.getHeapUsedAfterLastGC();
                 int arrayLength = cur.getArrayLength();
 
-                OldObjectSampleEvent.emit(startTicks, objectId, objectSize, allocationTicks, threadId, stackTraceId, heapUsedAfterLastGC, arrayLength);
+                OldObjectSampleEvent.emit(startTicks, objectId, objectSize, allocationTicks, threadId, threadName, stackTraceId, heapUsedAfterLastGC, arrayLength);
             }
 
             cur = (JfrOldObject) cur.getNext();

@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.List;
 
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -233,6 +236,11 @@ public class SubstrateJVM {
         return recording;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isRecordingActive() {
+        return HasJfrSupport.get() && get().isRecording();
+    }
+
     /**
      * See {@link JVM#createJFR}. Until {@link #beginRecording} is executed, no JFR events can be
      * triggered yet. So, we don't need to take any precautions here.
@@ -329,6 +337,17 @@ public class SubstrateJVM {
             return JavaThreads.getCurrentThreadId();
         }
         return 0;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static String getOptionalCurrentThreadName() {
+        if (isRecordingActive() && CurrentIsolate.getCurrentThread().isNonNull()) {
+            Thread thread = JavaThreads.getCurrentThreadOrNull();
+            if (thread != null && JavaThreads.isVirtual(thread)) {
+                return thread.getName();
+            }
+        }
+        return null;
     }
 
     /**

@@ -31,6 +31,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
@@ -242,21 +243,46 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putEventThread(JfrNativeEventWriterData data) {
-        putThread(data, SubstrateJVM.getCurrentThreadId());
+        putCurrentThread(data);
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void putCurrentThread(JfrNativeEventWriterData data) {
+        Thread thread = JavaThreads.getCurrentThreadOrNull();
+        if (thread != null && JavaThreads.isVirtual(thread)) {
+            SubstrateJVM.getThreadRepo().registerThread(thread);
+        }
+        putRegisteredThreadId(data, SubstrateJVM.getCurrentThreadId());
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putThread(JfrNativeEventWriterData data, Thread thread) {
         if (thread == null) {
-            putThread(data, 0L);
+            putRegisteredThreadId(data, 0L);
         } else {
-            putThread(data, SubstrateJVM.getThreadId(thread));
+            if (JavaThreads.isVirtual(thread)) {
+                SubstrateJVM.getThreadRepo().registerThread(thread);
+            }
+            putRegisteredThreadId(data, SubstrateJVM.getThreadId(thread));
         }
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static void putThread(JfrNativeEventWriterData data, long threadId) {
+    public static void putRegisteredThreadId(JfrNativeEventWriterData data, long threadId) {
         putLong(data, threadId);
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void putRegisteredThreadId(JfrNativeEventWriterData data, long threadId, String virtualThreadName) {
+        if (virtualThreadName != null) {
+            /*
+             * Delayed event paths may retain only a virtual thread id across chunk rotations. In
+             * that case, re-register the virtual thread metadata in the current epoch before
+             * writing the reference.
+             */
+            SubstrateJVM.getThreadRepo().registerVirtualThread(threadId, virtualThreadName);
+        }
+        putRegisteredThreadId(data, threadId);
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)

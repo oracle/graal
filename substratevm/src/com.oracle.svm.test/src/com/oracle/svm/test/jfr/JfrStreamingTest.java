@@ -33,13 +33,13 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Consumer;
 
 import org.junit.After;
 
 import com.oracle.svm.test.jfr.events.EndStreamEvent;
 import com.oracle.svm.test.jfr.events.StartStreamEvent;
 
-import jdk.jfr.Configuration;
 import jdk.jfr.consumer.RecordingStream;
 
 public abstract class JfrStreamingTest extends AbstractJfrTest {
@@ -55,8 +55,12 @@ public abstract class JfrStreamingTest extends AbstractJfrTest {
     }
 
     protected RecordingStream startStream(String[] events) throws Throwable {
-        Configuration config = getDefaultConfiguration();
-        RecordingStream stream = new RecordingStream(config);
+        return startStream(events, _ -> {
+        });
+    }
+
+    protected RecordingStream startStream(String[] events, Consumer<RecordingStream> configurer) throws Throwable {
+        RecordingStream stream = new RecordingStream();
         streamStates.put(stream, new JfrStreamState(events));
 
         stream.setMaxSize(JFR_MAX_SIZE);
@@ -69,6 +73,7 @@ public abstract class JfrStreamingTest extends AbstractJfrTest {
             stream.close();
             streamStates.get(stream).endedSuccessfully = true;
         });
+        configurer.accept(stream);
         enableEvents(stream, events);
         startStream(stream);
         return stream;
@@ -81,6 +86,14 @@ public abstract class JfrStreamingTest extends AbstractJfrTest {
     protected void stopStream(RecordingStream stream, EventValidator validator, boolean validateTestedEventsOnly) throws Throwable {
         Path jfrFile = createTempJfrFile();
         stream.dump(jfrFile);
+        stopStream(stream, validator, validateTestedEventsOnly, jfrFile);
+    }
+
+    protected void stopStream(RecordingStream stream, EventValidator validator, Path jfrFile) throws Throwable {
+        stopStream(stream, validator, true, jfrFile);
+    }
+
+    protected void stopStream(RecordingStream stream, EventValidator validator, boolean validateTestedEventsOnly, Path jfrFile) throws Throwable {
         closeStream(stream);
 
         JfrStreamState state = streamStates.get(stream);

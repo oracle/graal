@@ -51,6 +51,7 @@ import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTimer;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -189,6 +190,10 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
         public void run(Threading.RecurringCallbackAccess access) {
             Pointer sp = readCallerStackPointer();
             CodePointer ip = readReturnAddress();
+            Thread currentThread = JavaThreads.getCurrentThreadOrNull();
+            if (currentThread != null && JavaThreads.isVirtual(currentThread)) {
+                SubstrateJVM.getThreadRepo().registerThread(currentThread);
+            }
             tryUninterruptibleStackWalk(ip, sp, false);
         }
     }

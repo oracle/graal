@@ -29,8 +29,9 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfo;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.shared.Uninterruptible;
 import org.graalvm.word.impl.Word;
 
 /**
@@ -67,6 +68,16 @@ public abstract class NativeVMOperation extends VMOperation {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
+    protected String getQueuingVThreadName(NativeVMOperationData data) {
+        return null;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected void setQueuingVThreadName(@SuppressWarnings("unused") NativeVMOperationData data, @SuppressWarnings("unused") String value) {
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
     protected boolean isFinished(NativeVMOperationData data) {
         return data.getFinished();
     }
@@ -77,12 +88,14 @@ public abstract class NativeVMOperation extends VMOperation {
         data.setFinished(false);
         data.setQueuingThread(CurrentIsolate.getCurrentThread());
         data.setQueuingThreadId(JavaThreads.getCurrentThreadIdOrZero());
+        setQueuingVThreadName(data, SubstrateJVM.getOptionalCurrentThreadName());
     }
 
     @Override
     protected void markAsFinished(NativeVMOperationData data) {
         data.setQueuingThread(Word.nullPointer());
         data.setQueuingThreadId(0);
+        setQueuingVThreadName(data, null);
         data.setFinished(true);
     }
 }

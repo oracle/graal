@@ -35,7 +35,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
@@ -63,6 +62,7 @@ import jdk.internal.misc.Unsafe;
 @BasedOnJDKClass(value = ReentrantLock.class, innerClass = "Sync")
 public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     protected long latestJfrTid = 0;
+    protected String latestJfrVThreadName;
 
     public JavaMonitor() {
     }
@@ -71,11 +71,15 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
         if (!tryLock()) {
             long startTicks = JfrTicks.elapsedTicks();
             acquire(1);
-            JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
+            JavaMonitorEnterEvent.emit(obj, latestJfrTid, latestJfrVThreadName, startTicks);
         }
 
-        if (HasJfrSupport.get()) {
+        if (SubstrateJVM.isRecordingActive()) {
             latestJfrTid = SubstrateJVM.getCurrentThreadId();
+            latestJfrVThreadName = SubstrateJVM.getOptionalCurrentThreadName();
+        } else {
+            latestJfrTid = 0;
+            latestJfrVThreadName = null;
         }
     }
 

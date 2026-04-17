@@ -51,6 +51,7 @@ public final class JfrOldObject implements UninterruptibleComparable, Uninterrup
     private UnsignedWord objectSize;
     private long allocationTicks;
     private long threadId;
+    private String threadName;
     private long stackTraceId;
     private UnsignedWord heapUsedAfterLastGC;
     private int arrayLength;
@@ -61,12 +62,13 @@ public final class JfrOldObject implements UninterruptibleComparable, Uninterrup
 
     @SuppressWarnings("hiding")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void initialize(Object obj, UnsignedWord span, UnsignedWord allocatedSize, long threadId, long stackTraceId, UnsignedWord heapUsedAfterLastGC, int arrayLength) {
+    void initialize(Object obj, UnsignedWord span, UnsignedWord allocatedSize, long threadId, String threadName, long stackTraceId, UnsignedWord heapUsedAfterLastGC, int arrayLength) {
         ReferenceInternals.setReferent(reference, obj);
         this.span = span;
         this.objectSize = allocatedSize;
         this.allocationTicks = JfrTicks.elapsedTicks();
         this.threadId = threadId;
+        this.threadName = threadName;
         this.stackTraceId = stackTraceId;
         this.heapUsedAfterLastGC = heapUsedAfterLastGC;
         this.arrayLength = arrayLength;
@@ -79,6 +81,7 @@ public final class JfrOldObject implements UninterruptibleComparable, Uninterrup
         this.objectSize = Word.zero();
         this.allocationTicks = 0L;
         this.threadId = 0L;
+        this.threadName = null;
         this.stackTraceId = 0L;
         this.heapUsedAfterLastGC = Word.zero();
         this.arrayLength = 0;
@@ -120,6 +123,11 @@ public final class JfrOldObject implements UninterruptibleComparable, Uninterrup
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getThreadId() {
         return threadId;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public String getThreadName() {
+        return threadName;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

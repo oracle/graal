@@ -180,11 +180,6 @@ public final class JavaThreads {
         return toTarget(thread).interrupted;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getParentThreadId(Thread thread) {
-        return toTarget(thread).parentThreadId;
-    }
-
     /**
      * Indicates whether a thread is <em>truly</em> virtual, whereas {@link Thread#isVirtual()} also
      * returns {@code true} for platform threads of type {@code BoundVirtualThread}.

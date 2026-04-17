@@ -40,8 +40,6 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.Uninterruptible;
@@ -231,36 +229,6 @@ public final class Target_java_lang_VirtualThread {
 
     @Alias
     native Object carrierThreadAccessLock();
-
-    @Alias
-    private native void setCarrierThread(Target_java_lang_Thread carrier);
-
-    /*
-     * GR-57064: substitution should not be needed (acquireInterruptLockMaybeSwitch should not have
-     * been necessary here), but currently cannot be removed because of the JFR registration.
-     */
-    @Substitute
-    void mount() {
-        Target_java_lang_Thread carrier = asTarget(Target_java_lang_Thread.currentCarrierThread());
-        setCarrierThread(carrier);
-
-        if (interrupted) {
-            carrier.setInterrupt();
-            // Checkstyle: allow Thread.isInterrupted: as in JDK
-        } else if (carrier.isInterrupted()) {
-            // Checkstyle: disallow Thread.isInterrupted
-            synchronized (asTarget(this).interruptLock) {
-                if (!interrupted) {
-                    carrier.clearInterrupt();
-                }
-            }
-        }
-
-        carrier.setCurrentThread(asThread(this));
-        if (HasJfrSupport.get()) {
-            SubstrateJVM.getThreadRepo().registerThread(asThread(this));
-        }
-    }
 
     @Alias
     native int state();

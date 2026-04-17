@@ -53,6 +53,10 @@ public final class JfrEventWriterAccess {
 
         long committedPos = buffer.getCommittedPos().rawValue();
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
+        Thread currentThread = Thread.currentThread();
+        if (JavaThreads.isVirtual(currentThread)) {
+            SubstrateJVM.getThreadRepo().registerThread(currentThread);
+        }
         long jfrThreadId = SubstrateJVM.getCurrentThreadId();
         boolean pinVirtualThread = JavaThreads.isCurrentThreadVirtual();
         return new Target_jdk_jfr_internal_event_EventWriter(committedPos, maxPos, jfrThreadId, true, pinVirtualThread, isCurrentThreadExcluded);

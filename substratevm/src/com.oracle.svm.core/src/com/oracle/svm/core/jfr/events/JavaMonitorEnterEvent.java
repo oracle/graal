@@ -40,14 +40,14 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import org.graalvm.word.impl.Word;
 
 public class JavaMonitorEnterEvent {
-    public static void emit(Object obj, long previousOwnerTid, long startTicks) {
+    public static void emit(Object obj, long previousOwnerTid, String previousOwnerVThreadName, long startTicks) {
         if (HasJfrSupport.get()) {
-            emit0(obj, previousOwnerTid, startTicks);
+            emit0(obj, previousOwnerTid, previousOwnerVThreadName, startTicks);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit0(Object obj, long previousOwnerTid, long startTicks) {
+    public static void emit0(Object obj, long previousOwnerTid, String previousOwnerVThreadName, long startTicks) {
         long duration = JfrTicks.duration(startTicks);
         if (JfrEvent.JavaMonitorEnter.shouldEmit(duration)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
@@ -59,7 +59,7 @@ public class JavaMonitorEnterEvent {
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorEnter));
             JfrNativeEventWriter.putClass(data, obj.getClass());
-            JfrNativeEventWriter.putThread(data, previousOwnerTid);
+            JfrNativeEventWriter.putRegisteredThreadId(data, previousOwnerTid, previousOwnerVThreadName);
             JfrNativeEventWriter.putLong(data, Word.objectToUntrackedPointer(obj).rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
         }

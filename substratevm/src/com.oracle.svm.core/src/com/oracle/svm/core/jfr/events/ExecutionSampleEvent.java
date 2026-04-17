@@ -41,7 +41,7 @@ public final class ExecutionSampleEvent {
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ExecutionSample);
             JfrNativeEventWriter.putLong(data, elapsedTicks);
-            JfrNativeEventWriter.putThread(data, threadId);
+            JfrNativeEventWriter.putRegisteredThreadId(data, threadId);
             JfrNativeEventWriter.putLong(data, stackTraceId);
             JfrNativeEventWriter.putLong(data, threadState);
             JfrNativeEventWriter.endSmallEvent(data);

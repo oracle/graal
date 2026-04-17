@@ -37,7 +37,8 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 
 public class OldObjectSampleEvent {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit(long startTicks, long objectId, UnsignedWord objectSize, long allocationTicks, long threadId, long stackTraceId, UnsignedWord heapUsedAfterLastGC, int arrayLength) {
+    public static void emit(long startTicks, long objectId, UnsignedWord objectSize, long allocationTicks, long threadId, String threadName, long stackTraceId, UnsignedWord heapUsedAfterLastGC,
+                    int arrayLength) {
         if (JfrEvent.OldObjectSample.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
@@ -45,7 +46,7 @@ public class OldObjectSampleEvent {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.OldObjectSample);
             JfrNativeEventWriter.putLong(data, startTicks); // start time
             JfrNativeEventWriter.putLong(data, 0); // duration
-            JfrNativeEventWriter.putLong(data, threadId);
+            JfrNativeEventWriter.putRegisteredThreadId(data, threadId, threadName);
             JfrNativeEventWriter.putLong(data, stackTraceId);
             JfrNativeEventWriter.putLong(data, allocationTicks); // allocation time
             JfrNativeEventWriter.putLong(data, objectSize.rawValue());
