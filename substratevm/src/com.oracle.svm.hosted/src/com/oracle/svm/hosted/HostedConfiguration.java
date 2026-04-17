@@ -51,8 +51,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.libc.CosmoLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.SubstrateTargetDescription;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;

@@ -2,7 +2,6 @@ package com.oracle.svm.hosted.c.libc;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.CosmoLibC;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.hosted.image.AbstractImage;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;

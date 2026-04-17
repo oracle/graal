@@ -34,6 +34,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 public class CosmoLibCSupport implements LibCSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -105,6 +107,12 @@ public class CosmoLibCSupport implements LibCSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int strcmp(CCharPointer s1, CCharPointer s2) {
         return PosixLibC.strcmp(s1, s2);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int strncmp(CCharPointer s1, CCharPointer s2, UnsignedWord n) {
+        return PosixLibC.strncmp(s1, s2, n);
     }
 
     @Override

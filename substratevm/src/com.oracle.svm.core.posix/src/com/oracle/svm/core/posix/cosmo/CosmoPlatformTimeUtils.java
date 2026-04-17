@@ -37,10 +37,11 @@ public final class CosmoPlatformTimeUtils extends PlatformTimeUtils {
     @Override
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/posix/os_posix.cpp#L1409-L1415")
     @Uninterruptible(reason = "Must not migrate platform threads when executing on a virtual thread.")
-    public SecondsNanos javaTimeSystemUTC() {
+    protected void javaTimeSystemUTC0(SecondsNanosBuffer result) {
         Time.timespec ts = StackValue.get(Time.timespec.class);
         int status = CosmoUtils.clock_gettime(Time.CLOCK_REALTIME(), ts);
         CosmoUtils.checkStatusIs0(status, "javaTimeSystemUTC: clock_gettime(CLOCK_REALTIME) failed.");
-        return allocateSecondsNanosInterruptibly(ts.tv_sec(), ts.tv_nsec());
+        result.setSeconds(ts.tv_sec());
+        result.setNanos(ts.tv_nsec());
     }
 }
