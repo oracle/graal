@@ -235,9 +235,6 @@ public class RuntimeDynamicAccessMetadata {
         StringBuilder builder = new StringBuilder();
         boolean wroteAny = false;
         for (Object condition : localConditions) {
-            if (formatUnsatisfiedCondition(condition) == null) {
-                continue;
-            }
             if (wroteAny) {
                 builder.append(lineSeparator);
             }
@@ -256,13 +253,6 @@ public class RuntimeDynamicAccessMetadata {
 
     private static String formatUnsatisfiedCondition(Object condition) {
         if (condition instanceof Class<?> reachedTypeCondition) {
-            /*
-             * java.lang.Object is always reached in practice and adds noise to diagnostics.
-             */
-            if (reachedTypeCondition == Object.class) {
-                VMError.shouldNotReachHere("Object");
-                return null;
-            }
             return "typeReached(" + DynamicHub.fromClass(reachedTypeCondition).getTypeName() + ")";
         }
         return String.valueOf(condition);
