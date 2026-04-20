@@ -29,13 +29,14 @@ import java.io.Reader;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.driver.launcher.configuration.BundleConfigurationParser;
+import com.oracle.svm.driver.launcher.json.BundleJSONParser;
 import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
 
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -82,7 +83,7 @@ final class BundlePathMap {
      * map using the current platform's internal {@link Path} representation.
      */
     static void parseAndRegister(Reader reader, Map<Path, Path> pathMap) throws IOException {
-        Object json = new com.oracle.svm.driver.launcher.json.BundleJSONParser(reader).parse();
+        Object json = new BundleJSONParser(reader).parse();
         for (var rawEntry : BundleConfigurationParser.asList(json, "Expected a list of path substitution objects")) {
             var entry = BundleConfigurationParser.asMap(rawEntry, "Expected a substitution object");
             pathMap.put(parsePortablePath(entry, srcField).asInternalPath(), parsePortablePath(entry, dstField).asInternalPath());
