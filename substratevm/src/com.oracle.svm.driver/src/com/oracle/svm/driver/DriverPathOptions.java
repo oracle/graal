@@ -57,7 +57,7 @@ final class DriverPathOptions {
                 if (rawValue == null || optionSpelling.endsWith("=") && rawValue.isEmpty()) {
                     NativeImage.showError(optionSpelling + " requires class path specification");
                 }
-                for (String cp : rawValue.split(File.pathSeparator)) {
+                for (String cp : rawValue.split(File.pathSeparator, Integer.MAX_VALUE)) {
                     String cpEntry = cp.isEmpty() ? "." : cp;
                     nativeImage.addCustomImageClasspath(cpEntry);
                 }
