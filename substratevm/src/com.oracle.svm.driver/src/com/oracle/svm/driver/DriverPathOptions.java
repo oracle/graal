@@ -42,7 +42,7 @@ final class DriverPathOptions {
     }
 
     enum Option {
-        CLASSPATH(ValueKind.PATH_LIST, true, "-cp", "-classpath", "--class-path") {
+        CLASSPATH(ValueKind.PATH_LIST, "-cp", "-classpath", "--class-path=") {
             @Override
             void consume(NativeImage nativeImage, String optionSpelling, String rawValue) {
                 if (rawValue == null || optionSpelling.endsWith("=") && rawValue.isEmpty()) {
@@ -54,7 +54,7 @@ final class DriverPathOptions {
                 }
             }
         },
-        MODULE_PATH(ValueKind.PATH_LIST, false, "-p", "--module-path") {
+        MODULE_PATH(ValueKind.PATH_LIST, "-p", "--module-path=") {
             @Override
             void consume(NativeImage nativeImage, String optionSpelling, String rawValue) {
                 if (rawValue == null) {
@@ -65,7 +65,7 @@ final class DriverPathOptions {
                 }
             }
         },
-        CONFIGURATIONS_PATH(ValueKind.PATH_LIST, false, "--configurations-path") {
+        CONFIGURATIONS_PATH(ValueKind.PATH_LIST, "--configurations-path") {
             @Override
             void consume(NativeImage nativeImage, String optionSpelling, String rawValue) {
                 if (rawValue == null) {
@@ -76,7 +76,7 @@ final class DriverPathOptions {
                 }
             }
         },
-        JAR(ValueKind.SINGLE_PATH, false, "-jar") {
+        JAR(ValueKind.SINGLE_PATH, "-jar") {
             @Override
             void consume(NativeImage nativeImage, String optionSpelling, String rawValue) {
                 if (rawValue == null) {
@@ -102,12 +102,10 @@ final class DriverPathOptions {
         };
 
         private final ValueKind valueKind;
-        private final boolean allowInlineEquals;
         private final List<String> spellings;
 
-        Option(ValueKind valueKind, boolean allowInlineEquals, String... spellings) {
+        Option(ValueKind valueKind, String... spellings) {
             this.valueKind = valueKind;
-            this.allowInlineEquals = allowInlineEquals;
             this.spellings = List.of(spellings);
         }
 
@@ -187,11 +185,13 @@ final class DriverPathOptions {
     private static Match match(String headArg, List<Option> options) {
         for (Option option : options) {
             for (String spelling : option.spellings) {
-                if (headArg.equals(spelling)) {
-                    return new Match(option, spelling, null);
+                boolean allowsInlineEquals = spelling.endsWith("=");
+                String normalizedSpelling = allowsInlineEquals ? spelling.substring(0, spelling.length() - 1) : spelling;
+                if (headArg.equals(normalizedSpelling)) {
+                    return new Match(option, normalizedSpelling, null);
                 }
-                if (option.allowInlineEquals && headArg.startsWith(spelling + "=")) {
-                    return new Match(option, spelling + "=", headArg.substring(spelling.length() + 1));
+                if (allowsInlineEquals && headArg.startsWith(spelling)) {
+                    return new Match(option, spelling, headArg.substring(spelling.length()));
                 }
             }
         }
