@@ -29,6 +29,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.io.File;
+import java.util.ArrayDeque;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -41,6 +42,13 @@ import org.junit.Test;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class BundlePathMapTest {
+    private static final class NoOpAPIOptionHandler extends APIOptionHandler {
+        NoOpAPIOptionHandler() {
+            super();
+        }
+    }
+
+    private static final APIOptionHandler noOpAPIOptionHandler = new NoOpAPIOptionHandler();
 
     @Test
     public void lowersWindowsPathsIntoPortableSyntax() {
@@ -73,7 +81,7 @@ public class BundlePathMapTest {
                         Path.of("/win/d/work/lib/helper.jar"), Path.of("input/classes/cp/helper.jar"));
 
         Path bundleRoot = Path.of("/bundle");
-        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(null, BundlePathMap.PathStyle.Windows, canonicalizations, substitutions, bundleRoot);
+        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(noOpAPIOptionHandler, BundlePathMap.PathStyle.Windows, canonicalizations, substitutions, bundleRoot);
         List<String> rewritten = rewriter.rewrite(List.of("-cp", "target\\app.jar;lib\\helper.jar"));
 
         String expectedClassPath = bundleRoot.resolve(Path.of("input/classes/cp/app.jar")) + File.pathSeparator + bundleRoot.resolve(Path.of("input/classes/cp/helper.jar"));
@@ -90,7 +98,7 @@ public class BundlePathMapTest {
                         Path.of("/win/d/work/lib/helper.jar"), Path.of("input/classes/cp/helper.jar"));
 
         Path bundleRoot = Path.of("/bundle");
-        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(null, BundlePathMap.PathStyle.Windows, canonicalizations, substitutions, bundleRoot);
+        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(noOpAPIOptionHandler, BundlePathMap.PathStyle.Windows, canonicalizations, substitutions, bundleRoot);
         List<String> rewritten = rewriter.rewrite(List.of("--class-path=target\\app.jar;lib\\helper.jar"));
 
         String expectedClassPath = bundleRoot.resolve(Path.of("input/classes/cp/app.jar")) + File.pathSeparator + bundleRoot.resolve(Path.of("input/classes/cp/helper.jar"));
@@ -99,20 +107,30 @@ public class BundlePathMapTest {
 
     @Test
     public void matchesOnlyJavaLauncherInlineClasspathSpellings() {
-        assertNotNull(DriverPathOptions.matchAny("--class-path=cp"));
-        assertNull(DriverPathOptions.matchAny("-cp=cp"));
-        assertNull(DriverPathOptions.matchAny("-classpath=cp"));
+        assertNotNull(matchAny("--class-path=cp"));
+        assertNull(matchAny("-cp=cp"));
+        assertNull(matchAny("-classpath=cp"));
     }
 
     @Test
     public void matchesOnlyJavaLauncherInlineModulePathSpellings() {
-        assertNotNull(DriverPathOptions.matchAny("--module-path=mods"));
-        assertNull(DriverPathOptions.matchAny("-p=mods"));
+        assertNotNull(matchAny("--module-path=mods"));
+        assertNull(matchAny("-p=mods"));
+    }
+
+    @Test
+    public void consumesSplitPathOptionArgumentsWhenMatching() {
+        ArrayDeque<String> args = new ArrayDeque<>(List.of("-cp", "cp", "Hello"));
+
+        DriverPathOptions.Match match = DriverPathOptions.matchAny(args);
+
+        assertNotNull(match);
+        assertEquals(List.of("Hello"), List.copyOf(args));
     }
 
     @Test
     public void rewritesAbsoluteWindowsImageNameToPlainFileName() {
-        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(null, BundlePathMap.PathStyle.Windows, Map.of(), Map.of(), Path.of("/bundle"));
+        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(noOpAPIOptionHandler, BundlePathMap.PathStyle.Windows, Map.of(), Map.of(), Path.of("/bundle"));
 
         List<String> rewritten = rewriter.rewrite(List.of("-o", "C:\\Users\\paul\\Labs\\ni-bundles\\spring-petclinic\\target\\spring-petclinic"));
 
@@ -121,7 +139,7 @@ public class BundlePathMapTest {
 
     @Test
     public void rewritesRelativeWindowsImageNameToCurrentPlatformPath() {
-        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(null, BundlePathMap.PathStyle.Windows, Map.of(), Map.of(), Path.of("/bundle"));
+        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(noOpAPIOptionHandler, BundlePathMap.PathStyle.Windows, Map.of(), Map.of(), Path.of("/bundle"));
 
         List<String> rewritten = rewriter.rewrite(List.of("-o", "target\\spring-petclinic"));
 
@@ -151,5 +169,9 @@ public class BundlePathMapTest {
         List<Map.Entry<Path, Path>> filtered = BundlePathMap.withoutIdentityMappings(canonicalizations).collect(Collectors.toList());
 
         assertEquals(List.of(Map.entry(Path.of("win-rel/target/app.jar"), Path.of("/win/c/work/target/app.jar"))), filtered);
+    }
+
+    private static DriverPathOptions.Match matchAny(String... args) {
+        return DriverPathOptions.matchAny(new ArrayDeque<>(List.of(args)));
     }
 }

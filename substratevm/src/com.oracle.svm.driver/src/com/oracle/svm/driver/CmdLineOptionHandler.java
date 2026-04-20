@@ -72,9 +72,9 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     private boolean consume(ArgumentQueue args, String headArg) {
-        DriverPathOptions.Match pathOption = DriverPathOptions.matchCmdLine(headArg);
+        DriverPathOptions.Match pathOption = DriverPathOptions.matchCmdLine(args);
         if (pathOption != null) {
-            pathOption.consume(nativeImage, args);
+            pathOption.consume(nativeImage);
             return true;
         }
         switch (headArg) {

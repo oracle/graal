@@ -52,9 +52,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     public boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
-        DriverPathOptions.Match pathOption = DriverPathOptions.matchDefault(headArg);
+        DriverPathOptions.Match pathOption = DriverPathOptions.matchDefault(args);
         if (pathOption != null) {
-            pathOption.consume(nativeImage, args);
+            pathOption.consume(nativeImage);
             return true;
         }
         switch (headArg) {

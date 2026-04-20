@@ -25,9 +25,11 @@
 package com.oracle.svm.driver;
 
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 final class BundleSupportArgumentRewriter {
     private static final String OUTPUT_OPTION = "-o";
@@ -39,7 +41,7 @@ final class BundleSupportArgumentRewriter {
     private final Path rootDir;
 
     BundleSupportArgumentRewriter(APIOptionHandler apiOptionHandler, BundlePathMap.PathStyle sourcePathStyle, Map<Path, Path> pathCanonicalizations, Map<Path, Path> pathSubstitutions, Path rootDir) {
-        this.apiOptionHandler = apiOptionHandler;
+        this.apiOptionHandler = Objects.requireNonNull(apiOptionHandler);
         this.sourcePathStyle = sourcePathStyle;
         this.pathCanonicalizations = pathCanonicalizations;
         this.pathSubstitutions = pathSubstitutions;
@@ -52,42 +54,34 @@ final class BundleSupportArgumentRewriter {
      */
     List<String> rewrite(List<String> args) {
         ArrayList<String> rewritten = new ArrayList<>(args.size());
-        int i = 0;
-        while (i < args.size()) {
-            String arg = args.get(i);
-            String nextArg = i + 1 < args.size() ? args.get(i + 1) : null;
-            boolean consumeNextArg = false;
-
-            DriverPathOptions.Match pathOption = DriverPathOptions.matchAny(arg);
+        ArrayDeque<String> queue = new ArrayDeque<>(args);
+        while (!queue.isEmpty()) {
+            DriverPathOptions.Match pathOption = DriverPathOptions.matchAny(queue);
             if (pathOption != null) {
-                if (pathOption.consumesNextArg() && nextArg != null) {
-                    rewritten.add(arg);
-                    rewritten.add(pathOption.rewriteValue(nextArg, sourcePathStyle, this::rewriteSinglePath));
-                    consumeNextArg = true;
-                } else if (!pathOption.consumesNextArg()) {
-                    rewritten.add(pathOption.renderInlineArgument(pathOption.rewriteValue(pathOption.inlineValue(), sourcePathStyle, this::rewriteSinglePath)));
-                } else {
-                    rewritten.add(arg);
-                }
-            } else if (OUTPUT_OPTION.equals(arg) && nextArg != null) {
-                rewritten.add(arg);
-                rewritten.add(rewriteImageName(nextArg));
-                consumeNextArg = true;
-            } else if (apiOptionHandler != null && arg.startsWith(NativeImage.oH)) {
-                rewritten.add(apiOptionHandler.rewriteBundleHostedOptionArgument(arg, this::rewriteSinglePath));
-            } else if (apiOptionHandler != null) {
-                APIOptionHandler.BundlePathArgumentRewrite apiRewrite = apiOptionHandler.rewriteBundleAPIOptionArgument(arg, nextArg, this::rewriteSinglePath);
-                if (apiRewrite != null) {
-                    rewritten.addAll(apiRewrite.rewrittenArguments());
-                    consumeNextArg = apiRewrite.consumesNextArg();
-                } else {
-                    rewritten.add(arg);
-                }
-            } else {
-                rewritten.add(arg);
+                rewritten.addAll(pathOption.render(pathOption.rewriteValue(sourcePathStyle, this::rewriteSinglePath)));
+                continue;
             }
 
-            i += consumeNextArg ? 2 : 1;
+            List<String> apiRewrite = apiOptionHandler.rewriteBundleAPIOptionArgument(queue, this::rewriteSinglePath);
+            if (apiRewrite != null) {
+                rewritten.addAll(apiRewrite);
+                continue;
+            }
+
+            String arg = queue.poll();
+            if (arg.startsWith(NativeImage.oH)) {
+                rewritten.add(apiOptionHandler.rewriteBundleHostedOptionArgument(arg, this::rewriteSinglePath));
+                continue;
+            }
+
+            if (OUTPUT_OPTION.equals(arg) && !queue.isEmpty()) {
+                String rawImageName = queue.poll();
+                rewritten.add(arg);
+                rewritten.add(rewriteImageName(rawImageName));
+                continue;
+            }
+
+            rewritten.add(arg);
         }
         return rewritten;
     }

@@ -28,6 +28,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
@@ -35,6 +36,14 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 final class DriverPathOptions {
+
+    interface ArgumentCursor {
+        String peek();
+
+        String poll();
+
+        boolean isEmpty();
+    }
 
     private enum ValueKind {
         SINGLE_PATH,
@@ -125,30 +134,24 @@ final class DriverPathOptions {
         }
     }
 
-    record Match(Option option, String spelling, String inlineValue) {
-        boolean consumesNextArg() {
-            return inlineValue == null;
-        }
-
+    record Match(Option option, String optionSpelling, String rawValue) {
         /**
          * Rewrites the matched option value while preserving the option's original aggregate
          * semantics.
          */
-        String rewriteValue(String rawValue, BundlePathMap.PathStyle sourcePathStyle, Function<String, String> pathRewriter) {
+        String rewriteValue(BundlePathMap.PathStyle sourcePathStyle, Function<String, String> pathRewriter) {
             return option.rewriteValue(rawValue, sourcePathStyle, pathRewriter);
         }
 
-        String renderInlineArgument(String rewrittenValue) {
-            return spelling + rewrittenValue;
+        List<String> render(String rewrittenValue) {
+            return optionSpelling.endsWith("=") ? List.of(optionSpelling + rewrittenValue) : List.of(optionSpelling, rewrittenValue);
         }
 
         /**
-         * Consumes the matched option from the argument queue and dispatches its raw value to the
-         * option-specific semantic handler.
+         * Dispatches the already consumed option value to the option-specific semantic handler.
          */
-        void consume(NativeImage nativeImage, NativeImage.ArgumentQueue args) {
-            args.poll();
-            option.consume(nativeImage, spelling, inlineValue != null ? inlineValue : args.poll());
+        void consume(NativeImage nativeImage) {
+            option.consume(nativeImage, optionSpelling, rawValue);
         }
     }
 
@@ -164,33 +167,60 @@ final class DriverPathOptions {
     /**
      * Matches any non-API path-taking driver option that can appear in bundle replay input.
      */
-    static Match matchAny(String headArg) {
-        return match(headArg, allOptions);
+    static Match matchAny(ArrayDeque<String> args) {
+        return match(new ArgumentCursor() {
+            @Override
+            public String peek() {
+                return args.peek();
+            }
+
+            @Override
+            public String poll() {
+                return args.poll();
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return args.isEmpty();
+            }
+        }, allOptions);
     }
 
     /**
      * Matches non-API path-taking options handled by {@link DefaultOptionHandler}.
      */
-    static Match matchDefault(String headArg) {
-        return match(headArg, defaultOptions);
+    static Match matchDefault(NativeImage.ArgumentQueue args) {
+        return match(args, defaultOptions);
     }
 
     /**
      * Matches non-API path-taking options handled by {@link CmdLineOptionHandler}.
      */
-    static Match matchCmdLine(String headArg) {
-        return match(headArg, cmdLineOptions);
+    static Match matchCmdLine(NativeImage.ArgumentQueue args) {
+        return match(args, cmdLineOptions);
     }
 
-    private static Match match(String headArg, List<Option> options) {
+    private static Match match(ArgumentCursor args, List<Option> options) {
+        String headArg = args.peek();
+        if (headArg == null) {
+            return null;
+        }
         for (Option option : options) {
             for (String spelling : option.spellings) {
                 boolean allowsInlineEquals = spelling.endsWith("=");
                 String normalizedSpelling = allowsInlineEquals ? spelling.substring(0, spelling.length() - 1) : spelling;
                 if (headArg.equals(normalizedSpelling)) {
-                    return new Match(option, normalizedSpelling, null);
+                    // Consume the matched option spelling before normalizing its value handling.
+                    args.poll();
+                    String rawValue = null;
+                    if (!args.isEmpty()) {
+                        // For split spellings, also consume the following value argument here.
+                        rawValue = args.poll();
+                    }
+                    return new Match(option, normalizedSpelling, rawValue);
                 }
                 if (allowsInlineEquals && headArg.startsWith(spelling)) {
+                    args.poll();
                     return new Match(option, spelling, headArg.substring(spelling.length()));
                 }
             }
