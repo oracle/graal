@@ -26,58 +26,59 @@ package com.oracle.svm.core.jni;
 
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
- * Helper code that is used in generated JNI code via {@code JNIGraphKit}.
+ * Helper code shared by generated JNI wrappers via {@code JNIGraphKit} and the generic JNI call
+ * path in {@code InterpreterStubSection}.
  */
-public final class JNIGeneratedMethodSupport {
-    // Careful around here -- these methods are invoked by generated methods.
+public final class JNIMethodSupport {
+    // Careful around here -- these methods are invoked by generated and generic JNI code.
 
-    static PointerBase nativeCallAddress(JNINativeLinkage linkage) {
+    public static PointerBase nativeCallAddress(JNINativeLinkage linkage) {
         return linkage.getOrFindEntryPoint();
     }
 
-    static int nativeCallPrologue() {
+    public static int nativeCallPrologue() {
         return JNIObjectHandles.pushLocalFrame(JNIObjectHandles.NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions - otherwise, we might leak memory.")
-    static void nativeCallEpilogue(int handleFrame) {
+    public static void nativeCallEpilogue(int handleFrame) {
         JNIObjectHandles.popLocalFramesIncluding(handleFrame);
     }
 
-    static JNIEnvironment environment() {
+    public static JNIEnvironment environment() {
         return JNIThreadLocalEnvironment.getAddress();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static JNIObjectHandle boxObjectInLocalHandle(Object obj) {
+    public static JNIObjectHandle boxObjectInLocalHandle(Object obj) {
         return JNIObjectHandles.createLocal(obj);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static Object unboxHandle(JNIObjectHandle handle) {
+    public static Object unboxHandle(JNIObjectHandle handle) {
         return JNIObjectHandles.getObject(handle);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
-    static void setPendingException(Throwable t) {
+    public static void setPendingException(Throwable t) {
         JNIThreadLocalPendingException.set(t);
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions.")
-    static Throwable getAndClearPendingException() {
+    public static Throwable getAndClearPendingException() {
         Throwable t = JNIThreadLocalPendingException.get();
         JNIThreadLocalPendingException.clear();
         return t;
     }
 
     @Uninterruptible(reason = "Must not throw any exceptions, except for the pending exception.")
-    static void rethrowPendingException() throws Throwable {
+    public static void rethrowPendingException() throws Throwable {
         Throwable t = getAndClearPendingException();
         if (t != null) {
             throw t;

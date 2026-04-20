@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub.crema;
 
+import com.oracle.svm.core.graal.code.PreparedSignature;
+import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.espresso.classfile.attributes.MethodParametersAttribute;
 
 import jdk.vm.ci.meta.JavaType;
@@ -89,4 +91,15 @@ public interface CremaResolvedJavaMethod extends ResolvedJavaMethod {
      * @return the generic signature
      */
     String getGenericSignature();
+
+    /**
+     * Returns the precomputed JNI signature consumed by interpreter stubs.
+     */
+    PreparedSignature getJNIPreparedSignature();
+
+    /**
+     * Returns the JNI linkage used when a native method of a runtime-loaded Crema class is linked
+     * lazily, e.g. via RegisterNatives.
+     */
+    JNINativeLinkage getJNINativeLinkage();
 }

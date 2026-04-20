@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.jni;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveEpilogue;
-import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
+import com.oracle.svm.core.jni.JNIMethodSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
 import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIEnvEnterFatalOnFailurePrologue;
@@ -127,7 +127,7 @@ public class JNIGraphKit extends HostedGraphKit {
     }
 
     private InvokeWithExceptionNode createStaticInvoke(String name, ValueNode... args) {
-        return createInvokeWithExceptionAndUnwind(findMethod(JNIGeneratedMethodSupport.class, name, true), InvokeKind.Static, getFrameState(), bci(), args);
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIMethodSupport.class, name, true), InvokeKind.Static, getFrameState(), bci(), args);
     }
 
     public InvokeWithExceptionNode invokeNativeCallAddress(ValueNode linkage) {

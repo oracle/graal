@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
@@ -57,10 +58,19 @@ import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
+import com.oracle.svm.core.jni.JNIMethodSupport;
+import com.oracle.svm.core.jni.access.JNINativeLinkage;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
@@ -499,25 +509,42 @@ public abstract class InterpreterStubSection {
     public static Object leaveInterpreter(CFunctionPointer compiledEntryPoint, InterpreterResolvedJavaMethod seedMethod, Object[] args) {
         PreparedSignature compiledSignature = seedMethod.getPreparedSignature();
         VMError.guarantee(compiledSignature != null);
-        InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
-
         InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
         Pointer leaveData = StackValue.get(accessHelper.allocateStubDataSize());
 
-        int stackSize = NumUtil.roundUp(compiledSignature.getStackSize(), stubSection.target.stackAlignment);
-
+        int stackSize = getStackSize(compiledSignature);
         assert stackSize > 0 : "Stack size should include deopt slot.";
-        Pointer stackBuffer = NullableNativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
-        VMError.guarantee(stackBuffer.isNonNull(), "Out-of-memory while allocating interpreter-internal data.");
-        accessHelper.setSpAndStoreStackSizeInDeoptSlot(leaveData, stackSize, stackBuffer);
+        Pointer stackBuffer = allocateStackBuffer(accessHelper, leaveData, stackSize, true);
         try {
             // GR-55022: Stack overflow check should be done here
             return leaveInterpreter0(compiledEntryPoint, args, compiledSignature, accessHelper, leaveData, stackSize);
         } finally {
-            if (stackSize > 0) {
-                VMError.guarantee(stackBuffer.isNonNull());
-                NativeMemory.free(stackBuffer);
-            }
+            freeStackBuffer(stackBuffer, stackSize);
+        }
+    }
+
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
+    private static int getStackSize(PreparedSignature compiledSignature) {
+        InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
+        return NumUtil.roundUp(compiledSignature.getStackSize(), stubSection.target.stackAlignment);
+    }
+
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
+    private static Pointer allocateStackBuffer(InterpreterAccessStubData accessHelper, Pointer leaveData, int stackSize, boolean saveStackSizeInDeoptSlot) {
+        Pointer stackBuffer = Word.nullPointer();
+        if (stackSize > 0) {
+            stackBuffer = NullableNativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
+            VMError.guarantee(stackBuffer.isNonNull(), "Out-of-memory while allocating interpreter-internal data.");
+            accessHelper.setSp(leaveData, stackSize, stackBuffer, saveStackSizeInDeoptSlot);
+        }
+        return stackBuffer;
+    }
+
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
+    private static void freeStackBuffer(Pointer stackBuffer, int stackSize) {
+        if (stackSize > 0) {
+            VMError.guarantee(stackBuffer.isNonNull());
+            NativeMemory.free(stackBuffer);
         }
     }
 
@@ -581,6 +608,11 @@ public abstract class InterpreterStubSection {
         VMError.guarantee(compiledEntryPoint.isNonNull());
         JavaKind returnKind = compiledSignature.getReturnKind();
         boolean returnInFpRegister = returnKind == JavaKind.Float || returnKind == JavaKind.Double;
+        /*
+         * leaveData should no longer be accessed by accessHelper after the stub call. This is
+         * because leaveData is a pointer to the stack which may become invalid when virtual threads
+         * are used.
+         */
         long rawReturnValue = leaveInterpreterStub(compiledEntryPoint, leaveData, stackSize, returnInFpRegister);
 
         // @formatter:off
@@ -598,6 +630,155 @@ public abstract class InterpreterStubSection {
             default      -> throw VMError.shouldNotReachHereAtRuntime();
         };
         // @formatter:on
+    }
+
+    @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterLeaveJNIStub)
+    @NeverInline("needs ABI boundary")
+    @Uninterruptible(reason = REASON_REFERENCES_ON_STACK)
+    @SuppressWarnings("unused")
+    public static long leaveInterpreterJNIStub(CFunctionPointer entryPoint, Pointer leaveData, long stackSize, boolean returnInFpRegister) {
+        /*
+         * The backend overwrites this value and makes the stub return the raw result of invoking
+         * entryPoint instead. Nevertheless, it relies on entryPoint.rawValue() being in the integer
+         * return register, so this Java method must not return a different value.
+         */
+        return entryPoint.rawValue();
+    }
+
+    public static Object leaveInterpreterJNI(InterpreterResolvedJavaMethod seedMethod, Object[] args) throws Throwable {
+        VMError.guarantee(seedMethod instanceof CremaResolvedJavaMethod, "Unexpected native interpreter method");
+
+        CremaResolvedJavaMethod target = (CremaResolvedJavaMethod) seedMethod;
+        PreparedSignature jniSignature = target.getJNIPreparedSignature();
+
+        JNINativeLinkage linkage = target.getJNINativeLinkage();
+        CFunctionPointer nativeEntryPoint = (CFunctionPointer) JNIMethodSupport.nativeCallAddress(linkage);
+
+        Object receiverOrClass = target.isStatic() ? seedMethod.getDeclaringClass().getJavaClass() : args[0];
+        VMError.guarantee(receiverOrClass != null);
+        Object lockTarget = null;
+        if (target.isSynchronized()) {
+            lockTarget = receiverOrClass;
+            MonitorSupport.singleton().monitorEnter(lockTarget, MonitorInflationCause.MONITOR_ENTER);
+        }
+
+        Object result;
+        try {
+            int handleFrame = JNIMethodSupport.nativeCallPrologue();
+            try {
+                Pointer stackBuffer = Word.nullPointer();
+                InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
+                Pointer leaveData = StackValue.get(accessHelper.allocateStubDataSize());
+                int stackSize = getStackSize(jniSignature);
+                try {
+                    stackBuffer = allocateStackBuffer(accessHelper, leaveData, stackSize, false);
+                    result = leaveInterpreterJNI(nativeEntryPoint, args, jniSignature, accessHelper, leaveData, receiverOrClass, target.hasReceiver(), JNIMethodSupport.environment());
+                } finally {
+                    freeStackBuffer(stackBuffer, stackSize);
+                }
+            } finally {
+                JNIMethodSupport.nativeCallEpilogue(handleFrame);
+            }
+        } finally {
+            if (lockTarget != null) {
+                MonitorSupport.singleton().monitorExit(lockTarget, MonitorInflationCause.VM_INTERNAL);
+            }
+        }
+        JNIMethodSupport.rethrowPendingException();
+        return result;
+    }
+
+    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
+    public static Object leaveInterpreterJNI(CFunctionPointer nativeEntryPoint, Object[] args, PreparedSignature jniSignature, InterpreterAccessStubData accessHelper, Pointer leaveData,
+                    Object receiverOrClass, boolean hasReceiver, JNIEnvironment jniEnvironment) {
+        int[] argumentTypes = jniSignature.getArgumentTypes();
+        int gpPos = 0;
+        accessHelper.setGpArgumentAtOutgoingJNI(argumentTypes[0], leaveData, gpPos++, jniEnvironment.rawValue());
+        accessHelper.setGpArgumentAtOutgoingJNI(argumentTypes[1], leaveData, gpPos++, JNIMethodSupport.boxObjectInLocalHandle(receiverOrClass).rawValue());
+        int fpPos = 0;
+        int argCount = argumentTypes.length;
+        int argsIndex = hasReceiver ? 1 : 0;
+        for (int i = 2; i < argCount; i++) {
+            if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && Platform.includedIn(Platform.AMD64.class)) {
+                /*
+                 * Windows AMD64 native calls consume GP and FP register positions strictly by
+                 * argument index.
+                 */
+                gpPos = i;
+                fpPos = i;
+            }
+            Object arg = args[argsIndex++];
+            int cArgType = argumentTypes[i];
+            JavaKind argKind = PreparedSignature.getKind(cArgType);
+            switch (argKind) {
+                case Boolean:
+                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (boolean) arg ? 1 : 0);
+                    gpPos++;
+                    break;
+                case Byte:
+                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (byte) arg);
+                    gpPos++;
+                    break;
+                case Short:
+                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (short) arg);
+                    gpPos++;
+                    break;
+                case Char:
+                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (char) arg);
+                    gpPos++;
+                    break;
+                case Int:
+                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (int) arg);
+                    gpPos++;
+                    break;
+                case Long:
+                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (long) arg);
+                    gpPos++;
+                    break;
+                case Object:
+                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, JNIMethodSupport.boxObjectInLocalHandle(arg).rawValue());
+                    gpPos++;
+                    break;
+                case Float:
+                    accessHelper.setFpArgumentAtJNI(cArgType, leaveData, fpPos, Float.floatToRawIntBits((float) arg));
+                    fpPos++;
+                    break;
+                case Double:
+                    accessHelper.setFpArgumentAtJNI(cArgType, leaveData, fpPos, Double.doubleToRawLongBits((double) arg));
+                    fpPos++;
+                    break;
+
+                default:
+                    throw VMError.shouldNotReachHereAtRuntime();
+            }
+        }
+
+        VMError.guarantee(nativeEntryPoint.isNonNull());
+        JavaKind returnKind = jniSignature.getReturnKind();
+        boolean returnInFpRegister = returnKind == JavaKind.Float || returnKind == JavaKind.Double;
+        int stackSize = getStackSize(jniSignature);
+        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
+        /*
+         * leaveData should no longer be accessed by accessHelper after the stub call. This is
+         * because leaveData is a pointer to the stack which may become invalid when virtual threads
+         * are used.
+         */
+        long rawReturnValue = leaveInterpreterJNIStub(nativeEntryPoint, leaveData, stackSize, returnInFpRegister);
+        CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
+
+        return switch (returnKind) {
+            case Boolean -> (rawReturnValue & 0xff) != 0;
+            case Byte -> (byte) rawReturnValue;
+            case Short -> (short) rawReturnValue;
+            case Char -> (char) rawReturnValue;
+            case Int -> (int) rawReturnValue;
+            case Long -> rawReturnValue;
+            case Float -> Float.intBitsToFloat((int) rawReturnValue);
+            case Double -> Double.longBitsToDouble(rawReturnValue);
+            case Object -> JNIMethodSupport.unboxHandle(Word.pointer(rawReturnValue));
+            case Void -> null;
+            default -> throw VMError.shouldNotReachHereAtRuntime();
+        };
     }
 
     public static class TestingBackdoor {

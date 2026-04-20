@@ -97,7 +97,7 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
     }
 
     @Override
-    public void initialize(PlatformNativeLibrarySupport.NativeLibrary lib) {
+    public int initialize(PlatformNativeLibrarySupport.NativeLibrary lib) {
         String libName = lib.getCanonicalIdentifier();
         PointerBase onLoadFunction;
         if (lib.isBuiltin()) {
@@ -119,7 +119,9 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
             if (!JNIVersion.isSupported(expected, lib.isBuiltin())) {
                 throw new UnsatisfiedLinkError("Unsupported JNI version 0x" + Integer.toHexString(expected) + ", required by " + libName);
             }
+            return expected;
         }
+        return JNIVersion.JNI_VERSION_1_1();
     }
 
     private PointerBase getOnLoadSymbolAddress(String libName) {

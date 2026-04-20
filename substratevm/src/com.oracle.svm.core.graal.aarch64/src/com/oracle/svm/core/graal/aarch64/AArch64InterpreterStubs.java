@@ -36,19 +36,10 @@ import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
 import static jdk.vm.ci.aarch64.AArch64.r2;
 import static jdk.vm.ci.aarch64.AArch64.r3;
-import static jdk.vm.ci.aarch64.AArch64.r4;
-import static jdk.vm.ci.aarch64.AArch64.r5;
-import static jdk.vm.ci.aarch64.AArch64.r6;
-import static jdk.vm.ci.aarch64.AArch64.r7;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.v0;
-import static jdk.vm.ci.aarch64.AArch64.v1;
-import static jdk.vm.ci.aarch64.AArch64.v2;
-import static jdk.vm.ci.aarch64.AArch64.v3;
-import static jdk.vm.ci.aarch64.AArch64.v4;
-import static jdk.vm.ci.aarch64.AArch64.v5;
-import static jdk.vm.ci.aarch64.AArch64.v6;
-import static jdk.vm.ci.aarch64.AArch64.v7;
+
+import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.RawField;
@@ -283,6 +274,9 @@ public class AArch64InterpreterStubs {
         @Override
         public void enter(CompilationResultBuilder crb) {
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            SubstrateAArch64RegisterConfig registerConfig = ((SubstrateAArch64RegisterConfig) crb.frameMap.getRegisterConfig());
+            List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
+            List<Register> fps = registerConfig.getFloatingPointParameterRegs();
 
             /*
              * Ristretto currently makes this frame context reachable during analysis. Explicitly
@@ -311,23 +305,13 @@ public class AArch64InterpreterStubs {
             /* sp points to InterpreterData struct */
             masm.str(64, spCopy, createImmediate(offsetAbiSpReg()));
 
-            masm.str(64, r0, createImmediate(offsetAbiGpArg0()));
-            masm.str(64, r1, createImmediate(offsetAbiGpArg1()));
-            masm.str(64, r2, createImmediate(offsetAbiGpArg2()));
-            masm.str(64, r3, createImmediate(offsetAbiGpArg3()));
-            masm.str(64, r4, createImmediate(offsetAbiGpArg4()));
-            masm.str(64, r5, createImmediate(offsetAbiGpArg5()));
-            masm.str(64, r6, createImmediate(offsetAbiGpArg6()));
-            masm.str(64, r7, createImmediate(offsetAbiGpArg7()));
+            for (int i = 0; i < gps.size(); i++) {
+                masm.str(64, gps.get(i), createImmediate(offsetAbiGpArg(i)));
+            }
 
-            masm.fstr(64, v0, createImmediate(offsetAbiFpArg0()));
-            masm.fstr(64, v1, createImmediate(offsetAbiFpArg1()));
-            masm.fstr(64, v2, createImmediate(offsetAbiFpArg2()));
-            masm.fstr(64, v3, createImmediate(offsetAbiFpArg3()));
-            masm.fstr(64, v4, createImmediate(offsetAbiFpArg4()));
-            masm.fstr(64, v5, createImmediate(offsetAbiFpArg5()));
-            masm.fstr(64, v6, createImmediate(offsetAbiFpArg6()));
-            masm.fstr(64, v7, createImmediate(offsetAbiFpArg7()));
+            for (int i = 0; i < fps.size(); i++) {
+                masm.fstr(64, fps.get(i), createImmediate(offsetAbiFpArg(i)));
+            }
 
             /* sp+deoptSlotSize points to InterpreterData struct */
             masm.add(64, r1, sp, 16 /* deoptSlotSize */);
@@ -374,6 +358,9 @@ public class AArch64InterpreterStubs {
         @Override
         public void leave(CompilationResultBuilder crb) {
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            SubstrateAArch64RegisterConfig registerConfig = ((SubstrateAArch64RegisterConfig) crb.frameMap.getRegisterConfig());
+            List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
+            List<Register> fps = registerConfig.getFloatingPointParameterRegs();
             Register callTarget = AArch64.r11;
 
             /* Save call target */
@@ -400,24 +387,17 @@ public class AArch64InterpreterStubs {
             masm.cbnz(64, stackSize, spCopyBegin);
 
             /* Set fp argument registers */
-            masm.fldr(64, v7, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg7()));
-            masm.fldr(64, v6, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg6()));
-            masm.fldr(64, v5, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg5()));
-            masm.fldr(64, v4, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg4()));
-            masm.fldr(64, v3, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg3()));
-            masm.fldr(64, v2, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg2()));
-            masm.fldr(64, v1, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg1()));
-            masm.fldr(64, v0, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg0()));
+            for (int i = 0; i < fps.size(); i++) {
+                masm.fldr(64, fps.get(i), createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg(i)));
+            }
 
-            /* Set gp argument registers */
-            masm.ldr(64, r7, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg7()));
-            masm.ldr(64, r6, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg6()));
-            masm.ldr(64, r5, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg5()));
-            masm.ldr(64, r4, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg4()));
-            masm.ldr(64, r3, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg3()));
-            masm.ldr(64, r2, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg2()));
-            masm.ldr(64, r1, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg1()));
-            masm.ldr(64, r0, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg0()));
+            /*
+             * Set gp argument registers. r0 contains the pointer to the InterpreterData, so this
+             * register has to be set in the last iteration.
+             */
+            for (int i = gps.size() - 1; i >= 0; i--) {
+                masm.ldr(64, gps.get(i), createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg(i)));
+            }
 
             /* Call into target method */
             masm.blr(callTarget);
@@ -440,6 +420,103 @@ public class AArch64InterpreterStubs {
             /* Return the raw float/double bits in r0. */
             masm.fmov(64, r0, v0);
             masm.bind(gpResult);
+
+            super.leave(crb);
+        }
+    }
+
+    public static class InterpreterLeaveJNIStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
+
+        public InterpreterLeaveJNIStubContext(SharedMethod method) {
+            super(method);
+        }
+
+        @Override
+        public void enter(CompilationResultBuilder crb) {
+            super.enter(crb);
+            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+
+            /* sp points to one reserved stack slots for this stub */
+
+            /* arg3: true if the result of the function is in a floating-point register */
+            masm.str(64, r3, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, 0));
+
+            /*
+             * Variable stack size. Compared to Java calls we have no deopt stack slot available to
+             * store the stack size, so we save it in a callee-saved register.
+             */
+            masm.mov(64, AArch64.r19, r2);
+
+            masm.sub(64, sp, sp, r2 /* variable stack size */);
+        }
+
+        @Override
+        public void leave(CompilationResultBuilder crb) {
+            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            SubstrateAArch64RegisterConfig registerConfig = ((SubstrateAArch64RegisterConfig) crb.frameMap.getRegisterConfig());
+            List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
+            List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+            Register callTarget = AArch64.r11;
+
+            /* Save call target */
+            masm.mov(64, callTarget, r0);
+
+            /* Get pointer to InterpreterData struct */
+            masm.mov(64, r0, r1);
+
+            Register stackSize = AArch64.r2;
+            Label regsHandling = new Label();
+            /* if stackSize == 0 */
+            masm.cbz(64, stackSize, regsHandling);
+
+            /* Copy prepared outgoing args to the stack where the ABI expects it */
+            Register calleeSpArgs = AArch64.r4;
+            Register interpDataSp = AArch64.r1;
+            masm.ldr(64, interpDataSp, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, r0, offsetAbiSpReg()));
+            masm.mov(64, calleeSpArgs, sp);
+
+            int wordSize = 8;
+            Label spCopyBegin = new Label();
+            masm.bind(spCopyBegin);
+            masm.ldr(64, r3, createImmediateAddress(64, IMMEDIATE_POST_INDEXED, interpDataSp, wordSize));
+            masm.str(64, r3, createImmediateAddress(64, IMMEDIATE_POST_INDEXED, calleeSpArgs, wordSize));
+            masm.sub(64, stackSize, stackSize, wordSize);
+
+            masm.cbnz(64, stackSize, spCopyBegin);
+
+            masm.bind(regsHandling);
+
+            /* Set fp argument registers */
+            for (int i = 0; i < fps.size(); i++) {
+                masm.fldr(64, fps.get(i), createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiFpArg(i)));
+            }
+
+            /*
+             * Set gp argument registers. r0 contains the pointer to the InterpreterData, so this
+             * register has to be set in the last iteration.
+             */
+            for (int i = gps.size() - 1; i >= 0; i--) {
+                masm.ldr(64, gps.get(i), createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, AArch64.r0, offsetAbiGpArg(i)));
+            }
+
+            /* Call into target method */
+            masm.blr(callTarget);
+
+            try (AArch64MacroAssembler.ScratchRegister scratchRegister = masm.getScratchRegister()) {
+                Register resultCopy = scratchRegister.getRegister();
+                masm.mov(64, resultCopy, r0);
+
+                /* Restore stack pointer */
+                masm.add(64, sp, sp, AArch64.r19);
+
+                Label gpResult = new Label();
+                /* The leave stub returns a long, so check whether the actual call returned in v0. */
+                masm.ldr(64, r2, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, 0));
+                masm.cbz(64, r2, gpResult);
+                /* Return the raw float/double bits in r0. */
+                masm.fmov(64, r0, v0);
+                masm.bind(gpResult);
+            }
 
             super.leave(crb);
         }
@@ -595,39 +672,10 @@ public class AArch64InterpreterStubs {
         return OffsetOf.get(InterpreterDataAArch64.class, "AbiGpArg0");
     }
 
-    @Fold
-    public static int offsetAbiGpArg1() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiGpArg1");
-    }
-
-    @Fold
-    public static int offsetAbiGpArg2() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiGpArg2");
-    }
-
-    @Fold
-    public static int offsetAbiGpArg3() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiGpArg3");
-    }
-
-    @Fold
-    public static int offsetAbiGpArg4() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiGpArg4");
-    }
-
-    @Fold
-    public static int offsetAbiGpArg5() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiGpArg5");
-    }
-
-    @Fold
-    public static int offsetAbiGpArg6() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiGpArg6");
-    }
-
-    @Fold
-    public static int offsetAbiGpArg7() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiGpArg7");
+    public static int offsetAbiGpArg(int index) {
+        int offset = offsetAbiGpArg0() + 8 * index;
+        assert !SubstrateUtil.HOSTED || OffsetOf.get(InterpreterDataAArch64.class, "AbiGpArg" + index) == offset;
+        return offset;
     }
 
     @Fold
@@ -635,39 +683,10 @@ public class AArch64InterpreterStubs {
         return OffsetOf.get(InterpreterDataAArch64.class, "AbiFpArg0");
     }
 
-    @Fold
-    public static int offsetAbiFpArg1() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiFpArg1");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg2() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiFpArg2");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg3() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiFpArg3");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg4() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiFpArg4");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg5() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiFpArg5");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg6() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiFpArg6");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg7() {
-        return OffsetOf.get(InterpreterDataAArch64.class, "AbiFpArg7");
+    public static int offsetAbiFpArg(int index) {
+        int offset = offsetAbiFpArg0() + 8 * index;
+        assert !SubstrateUtil.HOSTED || OffsetOf.get(InterpreterDataAArch64.class, "AbiFpArg" + index) == offset;
+        return offset;
     }
 
     @Fold
@@ -685,23 +704,31 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public void setSpAndStoreStackSizeInDeoptSlot(Pointer data, int stackSize, Pointer stackBuffer) {
+        public void setSp(Pointer data, int stackSize, Pointer stackBuffer, boolean saveStackSizeInDeoptSlot) {
             VMError.guarantee(stackBuffer.isNonNull());
 
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
             p.setAbiSpReg(stackBuffer.rawValue());
             p.setStackSize(stackSize);
 
-            /*
-             * We re-use the deopt slot to leave the stack size at a known place for the stack
-             * walker. See
-             *
-             * com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig#getCallingConvention
-             *
-             * comment above `currentStackOffset` declaration.
-             */
-            assert stackSize % 0x10 == 0;
-            stackBuffer.writeLong(0, DeoptimizationSlotPacking.encodeVariableFrameSizeIntoDeoptSlot(stackSize));
+            if (saveStackSizeInDeoptSlot) {
+                /*
+                 * We re-use the deopt slot to leave the stack size at a known place for the stack
+                 * walker. See
+                 *
+                 * com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig#
+                 * getCallingConvention
+                 *
+                 * comment above `currentStackOffset` declaration.
+                 */
+                assert stackSize % 0x10 == 0;
+                stackBuffer.writeLong(0, DeoptimizationSlotPacking.encodeVariableFrameSizeIntoDeoptSlot(stackSize));
+            } else {
+                /*
+                 * Native calls have no deopt slot, the leave stub preserves the stack size in
+                 * callee-saved r19.
+                 */
+            }
         }
 
         @Override

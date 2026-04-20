@@ -122,6 +122,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         nativeLibraries = ((BeforeAnalysisAccessImpl) access).getNativeLibraries();
+        registerLibrary("java");
     }
 
     @Override

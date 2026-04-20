@@ -785,6 +785,7 @@ public final class InterpreterToVM {
 
         // First, find the target method.
         InterpreterResolvedJavaMethod target = resolveCallSiteTarget(seedMethod, calleeArgs, callKind, quiet);
+        boolean callRuntimeLoadedJNI = target.isNative() && target instanceof CremaResolvedJavaMethodImpl;
 
         // GR-74743: Should be an entry in the ITable throwing IllegalAccessError.
         if (callKind == CallKind.ITABLE_LOOKUP && !target.isPublic() && !target.isPrivate()) {
@@ -792,7 +793,7 @@ public final class InterpreterToVM {
         }
 
         // Next, determine whether the call should stay in interpreter or call the compiled target.
-        boolean callAOTEntryPoint = shouldCallAOTEntryPoint(forceStayInInterpreter, preferStayInInterpreter, target, quiet);
+        boolean callAOTEntryPoint = !callRuntimeLoadedJNI && shouldCallAOTEntryPoint(forceStayInInterpreter, preferStayInInterpreter, target, quiet);
 
         InterpreterUtil.guarantee(target.getSymbolicName() == seedMethod.getSymbolicName() && target.getSymbolicSignature() == seedMethod.getSymbolicSignature(),
                         "Erroneous dispatching for seed: %s%n  With dispatch index: %s%n  Resulted in : %s", seedMethod, seedMethod.getVTableIndex(), target);
@@ -801,7 +802,7 @@ public final class InterpreterToVM {
         if (InterpreterOptions.InterpreterTraceSupport.getValue() && !quiet) {
             traceInterpreter()
                             .string(" -> calling (")
-                            .string(callAOTEntryPoint ? "compiled" : "interp").string(") ")
+                            .string(callRuntimeLoadedJNI ? "jni" : (callAOTEntryPoint ? "compiled" : "interp")).string(") ")
                             .string(target.hasNativeEntryPoint() ? "(compiled entry available) " : "");
             if (target.hasNativeEntryPoint()) {
                 traceInterpreter("(addr: ").hex(target.getNativeEntryPoint()).string(" ) ");
@@ -814,7 +815,9 @@ public final class InterpreterToVM {
 
         // All done, we can do the call.
         try {
-            if (callAOTEntryPoint) {
+            if (callRuntimeLoadedJNI) {
+                return InterpreterStubSection.leaveInterpreterJNI(target, calleeArgs);
+            } else if (callAOTEntryPoint) {
                 return InterpreterStubSection.leaveInterpreter(target.getNativeEntryPoint(), target, calleeArgs);
             } else {
                 // Note: this call may still end up in compiled code if JIT code is available.
@@ -868,10 +871,7 @@ public final class InterpreterToVM {
 
             if (target instanceof CremaResolvedJavaMethodImpl) {
                 source = "runtime-loaded";
-                if (target.isNative()) {
-                    // GR-73665
-                    reason = "Linking native methods not yet supported.";
-                }
+                assert !target.isNative() : "Shouldn't be called for native methods.";
             } else {
                 source = "AOT";
                 String dotPkg = target.getDeclaringClass().getHub().getPackageName();
