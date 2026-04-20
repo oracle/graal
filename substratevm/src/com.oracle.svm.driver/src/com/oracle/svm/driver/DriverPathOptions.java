@@ -29,11 +29,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 final class DriverPathOptions {
 
@@ -126,11 +123,8 @@ final class DriverPathOptions {
          * the local platform separator.
          */
         String rewriteValue(String rawValue, BundlePathMap.PathStyle sourcePathStyle, Function<String, String> pathRewriter) {
-            if (valueKind == ValueKind.SINGLE_PATH) {
-                return pathRewriter.apply(rawValue);
-            }
             String sourceDelimiter = sourcePathStyle == BundlePathMap.PathStyle.Windows ? ";" : ":";
-            return Arrays.stream(rawValue.split(Pattern.quote(sourceDelimiter), -1)).map(pathRewriter).collect(Collectors.joining(File.pathSeparator));
+            return APIOptionHandler.rewritePathAggregate(rawValue, () -> valueKind == ValueKind.SINGLE_PATH, sourceDelimiter, File.pathSeparator, pathRewriter);
         }
     }
 

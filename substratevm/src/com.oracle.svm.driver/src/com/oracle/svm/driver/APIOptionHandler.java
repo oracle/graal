@@ -38,6 +38,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -643,10 +644,14 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     private static String rewritePathAggregate(String value, String delimiter, Function<String, String> pathRewriter) {
-        if (delimiter.isEmpty()) {
+        return rewritePathAggregate(value, delimiter::isEmpty, delimiter, delimiter, pathRewriter);
+    }
+
+    static String rewritePathAggregate(String value, BooleanSupplier isSingleValue, String splitDelimiter, String joinDelimiter, Function<String, String> pathRewriter) {
+        if (isSingleValue.getAsBoolean()) {
             return pathRewriter.apply(value);
         }
-        return Arrays.stream(value.split(Pattern.quote(delimiter), -1)).map(pathRewriter).collect(Collectors.joining(delimiter));
+        return Arrays.stream(value.split(Pattern.quote(splitDelimiter), -1)).map(pathRewriter).collect(Collectors.joining(joinDelimiter));
     }
 
     void printOptions(Consumer<String> println, boolean extra) {
