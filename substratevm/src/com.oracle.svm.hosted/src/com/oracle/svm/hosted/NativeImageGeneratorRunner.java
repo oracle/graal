@@ -353,7 +353,7 @@ public class NativeImageGeneratorRunner {
         arguments.remove(cpArgIndex);
         try {
             String imageClasspath = arguments.remove(cpArgIndex);
-            return imageClasspath.split(File.pathSeparator, Integer.MAX_VALUE);
+            return imageClasspath.split(File.pathSeparator);
         } catch (IndexOutOfBoundsException e) {
             throw UserError.abort("Missing path entries for %s", msgTail);
         }
