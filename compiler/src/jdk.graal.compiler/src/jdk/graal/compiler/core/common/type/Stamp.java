@@ -202,6 +202,10 @@ public abstract class Stamp implements SpeculationContextObject {
         return false;
     }
 
+    public boolean isConstant() {
+        return asConstant() != null;
+    }
+
     /**
      * If this stamp represents a single value, the methods returns this single value. It returns
      * null otherwise.
