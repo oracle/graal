@@ -25,6 +25,8 @@
 package com.oracle.svm.driver;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -93,6 +95,19 @@ public class BundlePathMapTest {
 
         String expectedClassPath = bundleRoot.resolve(Path.of("input/classes/cp/app.jar")) + File.pathSeparator + bundleRoot.resolve(Path.of("input/classes/cp/helper.jar"));
         assertEquals(List.of("--class-path=" + expectedClassPath), rewritten);
+    }
+
+    @Test
+    public void matchesOnlyJavaLauncherInlineClasspathSpellings() {
+        assertNotNull(DriverPathOptions.matchAny("--class-path=cp"));
+        assertNull(DriverPathOptions.matchAny("-cp=cp"));
+        assertNull(DriverPathOptions.matchAny("-classpath=cp"));
+    }
+
+    @Test
+    public void matchesOnlyJavaLauncherInlineModulePathSpellings() {
+        assertNotNull(DriverPathOptions.matchAny("--module-path=mods"));
+        assertNull(DriverPathOptions.matchAny("-p=mods"));
     }
 
     @Test
