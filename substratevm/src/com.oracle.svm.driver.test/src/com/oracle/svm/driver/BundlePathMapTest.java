@@ -52,8 +52,8 @@ public class BundlePathMapTest {
 
     @Test
     public void lowersWindowsPathsIntoPortableSyntax() {
-        assertEquals("/win/d/work/app.jar", BundlePathMap.encodeSourcePathText("D:\\work\\app.jar", BundlePathMap.PathStyle.Windows));
-        assertEquals("win-rel/target/app.jar", BundlePathMap.encodeSourcePathText("target\\app.jar", BundlePathMap.PathStyle.Windows));
+        assertEquals("/win/d/work/app.jar", BundlePathMap.toPortableSourcePathText("D:\\work\\app.jar", BundlePathMap.PathStyle.Windows));
+        assertEquals("win-rel/target/app.jar", BundlePathMap.toPortableSourcePathText("target\\app.jar", BundlePathMap.PathStyle.Windows));
         assertEquals("input/classes/cp/app.jar", BundlePathMap.bundlePath(Path.of("input", "classes", "cp", "app.jar")).text());
     }
 

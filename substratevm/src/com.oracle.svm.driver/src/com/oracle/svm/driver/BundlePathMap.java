@@ -79,6 +79,9 @@ final class BundlePathMap {
     }
 
     /**
+     * Main bundle-file entry point for reading a path map from disk into the current platform's
+     * internal {@link Path} representation.
+     *
      * Parses a portable path mapping file and registers its entries into the given in-memory path
      * map using the current platform's internal {@link Path} representation.
      */
@@ -111,10 +114,18 @@ final class BundlePathMap {
         }
     }
 
+    /**
+     * Main bundle-file entry point for serializing a source-platform path into the portable bundle
+     * schema.
+     */
     static PortablePath sourcePath(Path path, PathStyle sourceStyle) {
-        return new PortablePath(sourceStyle, encodeSourcePathText(path.toString(), sourceStyle));
+        return new PortablePath(sourceStyle, toPortableSourcePathText(path.toString(), sourceStyle));
     }
 
+    /**
+     * Main bundle-file entry point for serializing a bundle-relative path into the portable bundle
+     * schema.
+     */
     static PortablePath bundlePath(Path path) {
         return new PortablePath(PathStyle.BundleRelative, encodeBundlePathText(path));
     }
@@ -123,15 +134,26 @@ final class BundlePathMap {
         return pathMap.entrySet().stream().filter(entry -> !entry.getKey().equals(entry.getValue()));
     }
 
+    /**
+     * Main replay entry point for converting a source-platform path string into the portable lookup
+     * key used by the in-memory path maps.
+     */
     static Path portableSourcePath(String rawPath, PathStyle sourceStyle) {
-        return Path.of(encodeSourcePathText(rawPath, sourceStyle));
+        return Path.of(toPortableSourcePathText(rawPath, sourceStyle));
     }
 
+    /**
+     * Main replay entry point for deriving an output file name from a source-platform image path.
+     */
     static String sourceFileName(String rawPath, PathStyle sourceStyle) {
         Path fileName = portableSourcePath(rawPath, sourceStyle).getFileName();
         return fileName == null ? rawPath : fileName.toString();
     }
 
+    /**
+     * Main replay entry point for checking source-platform absolute-path semantics without
+     * depending on the current host platform.
+     */
     static boolean isSourceAbsolute(String rawPath, PathStyle sourceStyle) {
         if (rawPath.isEmpty()) {
             return false;
@@ -147,6 +169,10 @@ final class BundlePathMap {
         return normalized.startsWith("/");
     }
 
+    /**
+     * Main replay entry point for reinterpreting a source-platform relative path using the current
+     * host platform's separator semantics.
+     */
     static String toCurrentPlatformRelativePath(String rawPath, PathStyle sourceStyle) {
         if (rawPath.isEmpty()) {
             return rawPath;
@@ -162,19 +188,20 @@ final class BundlePathMap {
     }
 
     /**
-     * Encodes a source-platform path string into the portable bundle representation.
+     * Converts a source-platform path string into the portable text form used both on disk and for
+     * replay lookup keys.
      */
-    static String encodeSourcePathText(String rawPath, PathStyle sourceStyle) {
-        return sourceStyle == PathStyle.Windows ? lowerWindowsPath(rawPath) : rawPath;
+    static String toPortableSourcePathText(String rawPath, PathStyle sourceStyle) {
+        return sourceStyle == PathStyle.Windows ? WindowsPortablePathCodec.encode(rawPath) : rawPath;
     }
 
     /**
-     * Decodes a portable path string back into a native path string when replaying on Windows. On
-     * non-Windows platforms the portable form is preserved.
+     * Main replay entry point for restoring a portable source path to the current platform's native
+     * path text. Only Windows-source paths replayed on Windows need decoding.
      */
     static String decodeToCurrentPlatformPath(String portablePathText, PathStyle sourceStyle) {
         if (sourceStyle == PathStyle.Windows && OS.WINDOWS.isCurrent()) {
-            return restoreWindowsPath(portablePathText);
+            return WindowsPortablePathCodec.decode(portablePathText);
         }
         return portablePathText;
     }
@@ -204,77 +231,81 @@ final class BundlePathMap {
                         .collect(Collectors.joining("/"));
     }
 
-    private static String lowerWindowsPath(String rawPath) {
-        String normalized = rawPath.replace('/', '\\');
-        if (normalized.startsWith("\\\\")) {
-            String[] components = windowsSeparatorPattern.split(normalized.substring(2));
-            if (components.length >= 2) {
-                return "/" + joinSegments(winPrefix, "unc", components);
+    private static final class WindowsPortablePathCodec {
+        private WindowsPortablePathCodec() {
+        }
+
+        private static String encode(String rawPath) {
+            String normalized = rawPath.replace('/', '\\');
+            if (normalized.startsWith("\\\\")) {
+                String[] components = windowsSeparatorPattern.split(normalized.substring(2));
+                if (components.length >= 2) {
+                    return "/" + PortablePathTextSupport.joinSegments(winPrefix, "unc") + PortablePathTextSupport.appendSegments(components);
+                }
             }
-        }
-        if (normalized.length() >= 3 && Character.isLetter(normalized.charAt(0)) && normalized.charAt(1) == ':' && normalized.charAt(2) == '\\') {
-            return "/" + joinSegments(winPrefix, Character.toString(Character.toLowerCase(normalized.charAt(0))), windowsSeparatorPattern.split(normalized.substring(3)));
-        }
-        if (normalized.length() >= 2 && Character.isLetter(normalized.charAt(0)) && normalized.charAt(1) == ':') {
-            return joinSegments(winDriveRelativePrefix, Character.toString(Character.toLowerCase(normalized.charAt(0))), windowsSeparatorPattern.split(normalized.substring(2)));
-        }
-        if (normalized.startsWith("\\")) {
-            return "/" + joinSegments(winPrefix, "root", windowsSeparatorPattern.split(normalized.substring(1)));
-        }
-        return joinSegments(winRelativePrefix, windowsSeparatorPattern.split(normalized));
-    }
-
-    private static String restoreWindowsPath(String portablePathText) {
-        String absoluteWinPrefix = "/" + winPrefix;
-        if (portablePathText.startsWith(absoluteWinPrefix + "/unc/")) {
-            List<String> segments = List.of(unixSeparatorPattern.split(portablePathText.substring((absoluteWinPrefix + "/unc/").length())));
-            if (segments.size() >= 2) {
-                return "\\\\" + String.join("\\", segments);
+            if (normalized.length() >= 3 && Character.isLetter(normalized.charAt(0)) && normalized.charAt(1) == ':' && normalized.charAt(2) == '\\') {
+                return "/" + PortablePathTextSupport.joinSegments(winPrefix, Character.toString(Character.toLowerCase(normalized.charAt(0)))) +
+                                PortablePathTextSupport.appendSegments(windowsSeparatorPattern.split(normalized.substring(3)));
             }
-        }
-        if (portablePathText.startsWith(absoluteWinPrefix + "/root/")) {
-            return "\\" + joinWindowsSegments(unixSeparatorPattern.split(portablePathText.substring((absoluteWinPrefix + "/root/").length())));
-        }
-        if (portablePathText.startsWith(absoluteWinPrefix + "/")) {
-            List<String> segments = List.of(unixSeparatorPattern.split(portablePathText.substring((absoluteWinPrefix + "/").length())));
-            if (!segments.isEmpty()) {
-                String drive = segments.getFirst();
-                String tail = joinWindowsSegments(segments.subList(1, segments.size()).toArray(String[]::new));
-                return Character.toUpperCase(drive.charAt(0)) + ":" + (tail.isEmpty() ? "\\" : "\\" + tail);
+            if (normalized.length() >= 2 && Character.isLetter(normalized.charAt(0)) && normalized.charAt(1) == ':') {
+                return PortablePathTextSupport.joinSegments(winDriveRelativePrefix, Character.toString(Character.toLowerCase(normalized.charAt(0)))) +
+                                PortablePathTextSupport.appendSegments(windowsSeparatorPattern.split(normalized.substring(2)));
             }
-        }
-        if (portablePathText.startsWith(winDriveRelativePrefix + "/")) {
-            List<String> segments = List.of(unixSeparatorPattern.split(portablePathText.substring((winDriveRelativePrefix + "/").length())));
-            if (!segments.isEmpty()) {
-                String drive = segments.getFirst();
-                String tail = joinWindowsSegments(segments.subList(1, segments.size()).toArray(String[]::new));
-                return Character.toUpperCase(drive.charAt(0)) + ":" + tail;
+            if (normalized.startsWith("\\")) {
+                return "/" + PortablePathTextSupport.joinSegments(winPrefix, "root") + PortablePathTextSupport.appendSegments(windowsSeparatorPattern.split(normalized.substring(1)));
             }
+            return PortablePathTextSupport.joinSegments(winRelativePrefix) + PortablePathTextSupport.appendSegments(windowsSeparatorPattern.split(normalized));
         }
-        if (portablePathText.startsWith(winRelativePrefix + "/")) {
-            return joinWindowsSegments(unixSeparatorPattern.split(portablePathText.substring((winRelativePrefix + "/").length())));
+
+        private static String decode(String portablePathText) {
+            String absoluteWinPrefix = "/" + winPrefix;
+            if (portablePathText.startsWith(absoluteWinPrefix + "/unc/")) {
+                List<String> segments = List.of(unixSeparatorPattern.split(portablePathText.substring((absoluteWinPrefix + "/unc/").length())));
+                if (segments.size() >= 2) {
+                    return "\\\\" + String.join("\\", segments);
+                }
+            }
+            if (portablePathText.startsWith(absoluteWinPrefix + "/root/")) {
+                return "\\" + PortablePathTextSupport.joinWindowsSegments(unixSeparatorPattern.split(portablePathText.substring((absoluteWinPrefix + "/root/").length())));
+            }
+            if (portablePathText.startsWith(absoluteWinPrefix + "/")) {
+                List<String> segments = List.of(unixSeparatorPattern.split(portablePathText.substring((absoluteWinPrefix + "/").length())));
+                if (!segments.isEmpty()) {
+                    String drive = segments.getFirst();
+                    String tail = PortablePathTextSupport.joinWindowsSegments(segments.subList(1, segments.size()).toArray(String[]::new));
+                    return Character.toUpperCase(drive.charAt(0)) + ":" + (tail.isEmpty() ? "\\" : "\\" + tail);
+                }
+            }
+            if (portablePathText.startsWith(winDriveRelativePrefix + "/")) {
+                List<String> segments = List.of(unixSeparatorPattern.split(portablePathText.substring((winDriveRelativePrefix + "/").length())));
+                if (!segments.isEmpty()) {
+                    String drive = segments.getFirst();
+                    String tail = PortablePathTextSupport.joinWindowsSegments(segments.subList(1, segments.size()).toArray(String[]::new));
+                    return Character.toUpperCase(drive.charAt(0)) + ":" + tail;
+                }
+            }
+            if (portablePathText.startsWith(winRelativePrefix + "/")) {
+                return PortablePathTextSupport.joinWindowsSegments(unixSeparatorPattern.split(portablePathText.substring((winRelativePrefix + "/").length())));
+            }
+            return portablePathText;
         }
-        return portablePathText;
     }
 
-    private static String joinSegments(String first, String second, String[] remainder) {
-        return joinSegments(first, second) + appendSegments(remainder);
-    }
+    private static final class PortablePathTextSupport {
+        private PortablePathTextSupport() {
+        }
 
-    private static String joinSegments(String first, String[] remainder) {
-        return joinSegments(first) + appendSegments(remainder);
-    }
+        private static String joinSegments(String... segments) {
+            return Stream.of(segments).filter(segment -> segment != null && !segment.isEmpty()).collect(Collectors.joining("/"));
+        }
 
-    private static String joinSegments(String... segments) {
-        return Stream.of(segments).filter(segment -> segment != null && !segment.isEmpty()).collect(Collectors.joining("/"));
-    }
+        private static String appendSegments(String[] segments) {
+            String suffix = Stream.of(segments).filter(segment -> !segment.isEmpty()).collect(Collectors.joining("/"));
+            return suffix.isEmpty() ? "" : "/" + suffix;
+        }
 
-    private static String appendSegments(String[] segments) {
-        String suffix = Stream.of(segments).filter(segment -> !segment.isEmpty()).collect(Collectors.joining("/"));
-        return suffix.isEmpty() ? "" : "/" + suffix;
-    }
-
-    private static String joinWindowsSegments(String[] segments) {
-        return Stream.of(segments).filter(segment -> !segment.isEmpty()).collect(Collectors.joining("\\"));
+        private static String joinWindowsSegments(String[] segments) {
+            return Stream.of(segments).filter(segment -> !segment.isEmpty()).collect(Collectors.joining("\\"));
+        }
     }
 }
