@@ -82,7 +82,8 @@ final class HostStackTraceElementObject implements TruffleObject {
         int lineNumber = stackTraceElement.getLineNumber();
         if (lineNumber >= 0) {
             Source dummySource = Source.newBuilder("host", "", stackTraceElement.getFileName()).content(Source.CONTENT_NONE).cached(false).build();
-            return dummySource.createSection(lineNumber);
+            int nonZeroLineNumber = Math.max(1, lineNumber);
+            return dummySource.createSection(nonZeroLineNumber, 1, nonZeroLineNumber, 1);
         }
         throw UnsupportedMessageException.create();
     }
