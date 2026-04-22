@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -411,7 +411,7 @@ public final class Engine implements AutoCloseable {
      * @throws CancellationException if the persist operation was cancelled via the callback
      * @throws UnsupportedOperationException if this engine or host virtual machine does not support
      *             in-memory cache persistence
-     * @since 25.1
+     * @since 25.0.4
      */
     public ByteBuffer persistCache(CancellationCallback callback) {
         return dispatch.persistCache(receiver, callback);
@@ -2236,14 +2236,14 @@ public final class Engine implements AutoCloseable {
      * low-level auxiliary image persistence cancellation for host-specific callback implementations
      * with additional runtime constraints.
      *
-     * @since 25.1
+     * @since 25.0.4
      */
     @FunctionalInterface
     public interface CancellationCallback {
 
         /**
          * @return whether auxiliary engine cache persistence should be cancelled.
-         * @since 25.1
+         * @since 25.0.4
          */
         boolean shouldCancel();
     }
