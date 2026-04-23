@@ -49,6 +49,8 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVM
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_ARRAYCOPY;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_SETMEMORY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotInvocationPluginHelper.HotSpotVMConfigField.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT;
@@ -110,8 +112,6 @@ import jdk.graal.compiler.hotspot.replacements.HotSpotReflectionGetCallerClassNo
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.hotspot.replacements.HubGetClassNode;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneNode;
-import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
-import jdk.graal.compiler.hotspot.replacements.UnsafeSetMemoryNode;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.java.BytecodeParser;
@@ -532,25 +532,51 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
-        r.register(new InvocationPlugin("copyMemory0", Receiver.class, Object.class, long.class, Object.class, long.class, long.class) {
+        r.register(new ConditionalInvocationPlugin("copyMemory0", Receiver.class, Object.class, long.class, Object.class, long.class, long.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase,
                             ValueNode destOffset, ValueNode bytes) {
-                b.add(new UnsafeCopyMemoryNode(receiver.get(true), srcBase, srcOffset, destBase, destOffset, bytes));
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    StructuredGraph graph = b.getGraph();
+                    receiver.get(true);
+                    ValueNode srcAddress = b.add(new ComputeObjectAddressNode(srcBase, srcOffset));
+                    ValueNode dstAddress = b.add(new ComputeObjectAddressNode(destBase, destOffset));
+                    CurrentJavaThreadNode javaThread = graph.addOrUniqueWithInputs(new CurrentJavaThreadNode(helper.getWordKind()));
+                    OffsetAddressNode doingUnsafeAccessAddress = graph.addOrUniqueWithInputs(new OffsetAddressNode(javaThread, helper.asWord(config.doingUnsafeAccessOffset)));
+                    LocationIdentity any = LocationIdentity.any();
+                    b.add(new JavaWriteNode(JavaKind.Boolean, doingUnsafeAccessAddress, any, ConstantNode.forBoolean(true), BarrierType.NONE, false));
+                    b.add(new ForeignCallNode(UNSAFE_ARRAYCOPY, helper.asWord(srcAddress), helper.asWord(dstAddress), helper.asWord(bytes)));
+                    b.add(new JavaWriteNode(JavaKind.Boolean, doingUnsafeAccessAddress, any, ConstantNode.forBoolean(false), BarrierType.NONE, false));
+                }
                 return true;
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return config.unsafeArraycopy != 0L && config.doingUnsafeAccessOffset != -1;
             }
         });
 
         r.register(new ConditionalInvocationPlugin("setMemory0", Receiver.class, Object.class, long.class, long.class, byte.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj, ValueNode offset, ValueNode bytes, ValueNode value) {
-                b.add(new UnsafeSetMemoryNode(receiver.get(true), obj, offset, bytes, value));
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    StructuredGraph graph = b.getGraph();
+                    receiver.get(true);
+                    ValueNode address = b.add(new ComputeObjectAddressNode(obj, offset));
+                    CurrentJavaThreadNode javaThread = graph.addOrUniqueWithInputs(new CurrentJavaThreadNode(helper.getWordKind()));
+                    OffsetAddressNode doingUnsafeAccessAddress = graph.addOrUniqueWithInputs(new OffsetAddressNode(javaThread, helper.asWord(config.doingUnsafeAccessOffset)));
+                    LocationIdentity any = LocationIdentity.any();
+                    b.add(new JavaWriteNode(JavaKind.Boolean, doingUnsafeAccessAddress, any, ConstantNode.forBoolean(true), BarrierType.NONE, false));
+                    b.add(new ForeignCallNode(UNSAFE_SETMEMORY, helper.asWord(address), helper.asWord(bytes), value));
+                    b.add(new JavaWriteNode(JavaKind.Boolean, doingUnsafeAccessAddress, any, ConstantNode.forBoolean(false), BarrierType.NONE, false));
+                }
                 return true;
             }
 
             @Override
             public boolean isApplicable(Architecture arch) {
-                return config.unsafeSetMemory != 0L;
+                return config.unsafeSetMemory != 0L && config.doingUnsafeAccessOffset != -1;
             }
         });
         r.register(new InvocationPlugin("allocateInstance", Receiver.class, Class.class) {

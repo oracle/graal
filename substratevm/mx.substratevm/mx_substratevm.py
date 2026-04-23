@@ -438,8 +438,16 @@ def truffle_unittest_task(extra_build_args=None):
     extra_build_args = extra_build_args or []
     # White Box Truffle compilation tests that need access to compiler graphs.
     if '-Ob' not in extra_build_args:
-        # GR-44492
-        native_unittest(['jdk.graal.compiler.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + svm_experimental_options(['-H:-SupportCompileInIsolates'])))
+        tests = [
+            # GR-44492
+            'jdk.graal.compiler.truffle.test.ContextLookupCompilationTest',
+            # Verify that native-image folds ConstantOptionKey#getConstantValue
+            'jdk.graal.compiler.truffle.test.ConstantOptionKeyPartialEvaluationTest'
+        ]
+        test_build_args = (extra_build_args +
+                           svm_experimental_options(['-H:-SupportCompileInIsolates']) +
+                           ['-Dpolyglot.ConstantOptionKeyPartialEvaluationLanguage.ConstantOption1=true'])
+        native_unittest(tests + truffle_args(test_build_args))
 
     with tempfile.NamedTemporaryFile(mode='w', delete=False) as logfile:
         logfile_name = logfile.name
@@ -3227,6 +3235,32 @@ class StandalonePointstoUnittestsConfig(mx_unittest.MxUnittestConfig):
         return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.register_unittest_config(StandalonePointstoUnittestsConfig())
+
+
+class SVMDriverUnittestsConfig(mx_unittest.MxUnittestConfig):
+
+    def __init__(self):
+        super().__init__('svm-driver-unittest')
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+
+        vmArgs.extend([
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
+            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.phases.util=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.util.json=ALL-UNNAMED',
+            '--add-exports=java.base/jdk.internal.module=jdk.graal.compiler.vmaccess',
+        ])
+
+        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=jdk.graal.compiler,ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.nativeimage/*=ALL-UNNAMED'])
+
+        return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.register_unittest_config(SVMDriverUnittestsConfig())
 
 
 @mx.command(suite, 'update-build-options-table', usage_msg='[--check] - Update or verify the BuildOptions.md table')

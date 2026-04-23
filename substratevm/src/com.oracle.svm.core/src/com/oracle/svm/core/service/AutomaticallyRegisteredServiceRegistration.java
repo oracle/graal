@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,22 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.service;
 
-package com.oracle.graal.pointsto.standalone.test;
-
-public class ClassEqualityCase {
-    static class C {
-        public static void foo() {
-        }
-    }
-
-    public static void main(String[] args) {
-        equals(C.class);
-    }
-
-    private static void equals(Class<?> clazz) {
-        if (clazz == C.class) {
-            C.foo();
-        }
-    }
+/**
+ * Common contract for generated service-registration entries used by automatic registration
+ * handlers. Generated implementations identify the annotated implementation class that should be
+ * resolved through the image builder's class loader.
+ * <p>
+ * Do not implement this interface manually. It is intended only for annotation-processor-generated
+ * classes.
+ */
+public interface AutomaticallyRegisteredServiceRegistration {
+    /**
+     * Returns the Java binary name of the annotated class represented by this generated service
+     * entry.
+     * <p>
+     * For top-level classes this matches the fully qualified source name. For nested classes it
+     * uses {@code $} separators, for example {@code com.example.Outer$Inner}. The
+     * automatic-registration handler resolves that name through the image builder's
+     * {@link ClassLoader}.
+     */
+    String getClassName();
 }

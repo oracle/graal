@@ -38,6 +38,12 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 
+/**
+ * Heap-model representation for non-primitive arrays.
+ * <p>
+ * Terminus/layering invariant: each element slot stores either a materialized {@link JavaConstant}
+ * or an {@link AnalysisFuture} that deterministically resolves to a {@link JavaConstant}.
+ */
 public final class ImageHeapObjectArray extends ImageHeapArray {
 
     private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
@@ -54,6 +60,9 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
          * {@link JavaConstant}. Evaluating the {@link AnalysisFuture} runs
          * {@link ImageHeapScanner#createImageHeapConstant(JavaConstant, ObjectScanner.ScanReason)}
          * which adds the result to the image heap.
+         * <p>
+         * This keeps the array payload Terminus-ready by value-shape (constant or deferred
+         * constant), while still allowing lazy materialization during analysis.
          */
         private Object[] arrayElementValues;
 
@@ -120,7 +129,10 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
      */
     @Override
     public Object getElement(int idx) {
-        return arrayHandle.getVolatile(getElementValues(), idx);
+        Object value = arrayHandle.getVolatile(getElementValues(), idx);
+        assert value instanceof JavaConstant || value instanceof AnalysisFuture<?> : "Unexpected element slot value at index %d in %s: %s (type %s). Expected a JavaConstant or AnalysisFuture."
+                        .formatted(idx, this, value, value == null ? "null" : value.getClass().getName());
+        return value;
     }
 
     /**

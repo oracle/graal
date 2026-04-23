@@ -1722,7 +1722,10 @@ public final class Interpreter {
             throw noSuchFieldError(opcode, null);
         }
         try {
-            return getConstantPool(method).resolvedFieldAt(method.getDeclaringClass(), cpi);
+            InterpreterResolvedJavaField field = getConstantPool(method).resolvedFieldAt(method.getDeclaringClass(), cpi);
+            // Apply the opcode-specific field rules after symbolic resolution.
+            CremaLinkResolver.checkFieldAccessOrThrow(CremaRuntimeAccess.getInstance(), field, opcode, method.getDeclaringClass(), method);
+            return field;
         } catch (UnsupportedResolutionException e) {
             // CP does not support resolution, try to provide a hint of the non-resolvable entry.
             UnresolvedJavaField missingField = null;

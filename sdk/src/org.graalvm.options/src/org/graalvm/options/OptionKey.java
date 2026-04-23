@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import java.util.Objects;
  *
  * @since 19.0
  */
-public final class OptionKey<T> {
+public sealed class OptionKey<T> permits ConstantOptionKey {
 
     private final OptionType<T> type;
     private final T defaultValue;

@@ -43,8 +43,9 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite;
+import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
 import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.TruffleBytecodeHandlerTypes;
+import jdk.graal.compiler.truffle.TruffleBytecodeHandlerStubHelper;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -55,19 +56,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <p>
  * This plugin is responsible for detecting invocations of methods annotated with
  * {@code @BytecodeInterpreterHandler} within methods annotated with
- * {@code @BytecodeInterpreterSwitch}. It creates a {@link TruffleBytecodeHandlerCallsite} object to
- * represent the call site and generates a stub for the handler method. The stub is then registered
- * as a root method in the analysis universe.
+ * {@code @BytecodeInterpreterSwitch}. It generates a stub for the handler method and registers that
+ * stub as a root method in the analysis universe.
  */
 public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
 
-    private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers;
+    private final EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers;
     private final SubstrateTruffleBytecodeHandlerStubHelper stubHolder;
     private final boolean threadingEnabled;
 
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> nextOpcodeCache = EconomicMap.create();
 
-    public TruffleBytecodeHandlerInvokePlugin(EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers,
+    public TruffleBytecodeHandlerInvokePlugin(EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers,
                     SubstrateTruffleBytecodeHandlerStubHelper stubHolder, boolean threadingEnabled) {
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
         this.stubHolder = stubHolder;
@@ -109,6 +109,11 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
 
         boolean threading = threadingEnabled && handlerAnnotationValue.getBoolean("threading");
         boolean safepoint = handlerAnnotationValue.getBoolean("safepoint");
+
+        BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, target, truffleTypes);
+        ResolvedJavaType interpreterHolder = unwrap(enclosingMethod.getDeclaringClass());
+        String stubName = TruffleBytecodeHandlerStubHelper.getStubName(target);
+
         ResolvedJavaMethod nextOpcode = null;
         if (threading) {
             if (!nextOpcodeCache.containsKey(enclosingMethod)) {
@@ -119,29 +124,31 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
             }
             nextOpcode = nextOpcodeCache.get(enclosingMethod);
         }
-
-        TruffleBytecodeHandlerCallsite callSite = new TruffleBytecodeHandlerCallsite(enclosingMethod, b.bci(), target, truffleTypes);
         SubstrateTruffleBytecodeHandlerStub stub = new SubstrateTruffleBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
-                        callSite.getStubName(), callSite, threading, nextOpcode, safepoint, false);
+                        stubName, interpreterHolder, handlerConfig, threading, nextOpcode, safepoint, false, target);
 
         AnalysisUniverse universe = ((AnalysisMetaAccess) b.getMetaAccess()).getUniverse();
-        AnalysisMethod stubWrapper = universe.lookup(stub);
-        universe.getBigbang().addRootMethod(stubWrapper, true, "Bytecode handler stub " + callSite.getStubName());
+        AnalysisMethod handlerStubWrapper = universe.lookup(stub);
+        universe.getBigbang().addRootMethod(handlerStubWrapper, true, "Bytecode handler stub " + stubName);
 
+        BytecodeHandlerStubKey handlerKey = BytecodeHandlerStubKey.create(unwrap(target), interpreterHolder, handlerConfig);
         synchronized (registeredBytecodeHandlers) {
-            registeredBytecodeHandlers.put(target, stubWrapper);
+            registeredBytecodeHandlers.put(handlerKey, handlerStubWrapper);
 
-            // Register a default empty stub, keyed by the enclosing method
-            if (threading && !registeredBytecodeHandlers.containsKey(enclosingMethod)) {
-                SubstrateTruffleBytecodeHandlerStub defaultHandlerStub = new SubstrateTruffleBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
-                                "__stub_defaultHandler", callSite, false, null, false, true);
-                stubWrapper = universe.lookup(defaultHandlerStub);
-                universe.getBigbang().addRootMethod(stubWrapper, true, "Default bytecode handler stub");
+            if (threading) {
+                BytecodeHandlerStubKey defaultHandlerKey = BytecodeHandlerStubKey.createDefaultHandlerKey(interpreterHolder, handlerConfig);
+                if (!registeredBytecodeHandlers.containsKey(defaultHandlerKey)) {
+                    SubstrateTruffleBytecodeHandlerStub defaultHandlerStub = new SubstrateTruffleBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
+                                    "__stub_defaultHandler", interpreterHolder, handlerConfig, false, null, false, true, null);
+                    AnalysisMethod defaultStubWrapper = universe.lookup(defaultHandlerStub);
+                    universe.getBigbang().addRootMethod(defaultStubWrapper, true, "Default bytecode handler stub");
 
-                registeredBytecodeHandlers.put(enclosingMethod, stubWrapper);
+                    registeredBytecodeHandlers.put(defaultHandlerKey, defaultStubWrapper);
+                }
             }
         }
 
         return false;
     }
+
 }

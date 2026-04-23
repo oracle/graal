@@ -30,9 +30,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -65,17 +64,15 @@ public class MethodConfigReader {
     /**
      * Read methods from the specified file. For each parsed method, execute the specified action.
      *
-     * @param file the configuration file to read.
+     * @param file the configuration file or class-path resource to read.
      * @param bigbang
      * @param classLoaderAccess for loading classes
      * @param actionForEachMethod the action to take for each resolved method.
      */
     public static void readMethodFromFile(String file, BigBang bigbang, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, Consumer<AnalysisMethod> actionForEachMethod) {
         List<String> methodNameList = new ArrayList<>();
-        Path entryFilePath = Paths.get(file);
-        File entryFile = entryFilePath.toFile();
-        try (FileInputStream fis = new FileInputStream(entryFile);
-                        BufferedReader br = new BufferedReader(new InputStreamReader(fis))) {
+        try (InputStream input = openMethodConfig(file);
+                        BufferedReader br = new BufferedReader(new InputStreamReader(input))) {
             String line;
             while ((line = br.readLine()) != null) {
                 methodNameList.add(line);
@@ -93,6 +90,22 @@ public class MethodConfigReader {
                             .append(System.lineSeparator());
         }
         System.out.println(sb.toString());
+    }
+
+    /**
+     * Opens an entry-points configuration either from the filesystem or, if no regular file exists
+     * at the supplied location, from the class path.
+     */
+    private static InputStream openMethodConfig(String file) throws IOException {
+        File entryFile = new File(file);
+        if (entryFile.isFile()) {
+            return new FileInputStream(entryFile);
+        }
+        InputStream resourceStream = MethodConfigReader.class.getResourceAsStream(file);
+        if (resourceStream != null) {
+            return resourceStream;
+        }
+        throw new IOException("Cannot find analysis entry points file or resource: " + file);
     }
 
     @SuppressWarnings("try")

@@ -195,6 +195,24 @@ public @interface Option {
     SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
 
     /**
+     * Declares this option as immutable after polyglot runtime initialization, enabling constant
+     * propagation and dead-code elimination when read through
+     * {@link org.graalvm.options.ConstantOptionKey#getConstantValue()}. Constant options must use
+     * {@link org.graalvm.options.ConstantOptionKey} as their field type. Their value is fixed
+     * before the polyglot runtime is initialized and cannot be changed at runtime. The value is
+     * read from the system property {@code -Dpolyglot.<option-name>=<value>} during class
+     * initialization; if absent, the {@link org.graalvm.options.OptionKey#getDefaultValue() default
+     * value} is used. Once set, calls to
+     * {@link org.graalvm.options.ConstantOptionKey#getConstantValue()} on a {@code static final}
+     * field are eligible for constant folding by the GraalVM compiler, allowing dead branches to be
+     * eliminated. The default value is {@code false}.
+     *
+     * @see org.graalvm.options.ConstantOptionKey
+     * @since 25.1
+     */
+    boolean constant() default false;
+
+    /**
      * Must be applied on classes containing {@link Option option} fields to specify a name prefix
      * if the prefix cannot be inferred by language or instrument.
      * <p>

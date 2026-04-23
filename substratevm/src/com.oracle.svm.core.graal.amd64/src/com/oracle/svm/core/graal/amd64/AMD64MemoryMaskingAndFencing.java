@@ -26,7 +26,6 @@ package com.oracle.svm.core.graal.amd64;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
-import com.oracle.svm.core.option.RuntimeOptionValidationSupportFeature;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -55,9 +54,6 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.common.AddressLoweringByNodePhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import java.util.List;
 
 /**
  * This class along with {@link AMD64AddressLoweringAndMaskingByNodePhase} implements a mitigation
@@ -152,11 +148,6 @@ public class AMD64MemoryMaskingAndFencing {
 @Platforms(Platform.AMD64.class)
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class AMD64MemoryMaskingAndFencingFeature implements InternalFeature {
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(RuntimeOptionValidationSupportFeature.class);
-    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

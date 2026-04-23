@@ -74,19 +74,18 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.BuilderUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.BuilderUtil;
 import com.oracle.svm.core.JavaVersionUtil;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.util.ArchiveSupport;
@@ -109,6 +108,7 @@ import com.oracle.svm.shared.option.OptionOrigin;
 import com.oracle.svm.shared.option.OptionUtils;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.StringUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
@@ -120,6 +120,7 @@ public class NativeImage {
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
     private static final String DEFAULT_GENERATOR_MODULE_NAME = NativeImageGeneratorRunner.class.getModule().getName();
+    static final String JAR_FILE_EXTENSION = ".jar";
 
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getName();
     private static final String CUSTOM_COMMON_FORK_JOIN_POOL_THREAD_FACTORY = NativeImageSystemClassLoader.NativeImageForkJoinWorkerThreadFactory.class.getName();
@@ -199,7 +200,7 @@ public class NativeImage {
                         .collect(Collectors.joining("\n"));
     }
 
-    static class ArgumentQueue {
+    static class ArgumentQueue implements DriverPathOptions.ArgumentCursor {
 
         private final ArrayDeque<String> queue;
         public final String argumentOrigin;
@@ -214,6 +215,7 @@ public class NativeImage {
             queue.add(arg);
         }
 
+        @Override
         public String poll() {
             return queue.poll();
         }
@@ -222,10 +224,12 @@ public class NativeImage {
             queue.push(arg);
         }
 
+        @Override
         public String peek() {
             return queue.peek();
         }
 
+        @Override
         public boolean isEmpty() {
             return queue.isEmpty();
         }
@@ -1315,7 +1319,7 @@ public class NativeImage {
         if (!limitModules.isEmpty()) {
             imageBuilderJavaArgs.add("-D" + HostedModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES + "=" + String.join(",", limitModules));
         }
-        if (!finalImageClasspath.isEmpty()) {
+        if (!finalImageClasspath.isEmpty() || layerCreate()) {
             imageBuilderJavaArgs.add(DefaultOptionHandler.addModulesOption + "=ALL-DEFAULT");
         }
         // allow native access for all modules on the image builder module path
@@ -1459,6 +1463,10 @@ public class NativeImage {
         return Boolean.TRUE.equals(getHostedOptionBooleanArgumentValue(imageBuilderArgs, COMPATIBILITY_MODE_FLAG_NAME));
     }
 
+    private boolean layerCreate() {
+        return !getHostedOptionArgumentValues(imageBuilderArgs, oHLayerCreate).isEmpty();
+    }
+
     private boolean shouldAddCWDToCP() {
         if (printFlagsOptionQuery != null || printFlagsWithExtraHelpOptionQuery != null) {
             return false;
@@ -1472,6 +1480,10 @@ public class NativeImage {
 
         if (useBundle() && bundleSupport.loadBundle) {
             /* If bundle was loaded we have valid -cp and/or -p from within the bundle */
+            return false;
+        }
+
+        if (layerCreate()) {
             return false;
         }
 
@@ -2336,7 +2348,7 @@ public class NativeImage {
     }
 
     private static boolean hasJarFileSuffix(Path p) {
-        return p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar");
+        return p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(JAR_FILE_EXTENSION);
     }
 
     /**
@@ -2527,7 +2539,7 @@ public class NativeImage {
                     return true;
                 }
                 String jarFileName = p.getFileName().toString();
-                String jarBaseName = jarFileName.substring(0, jarFileName.length() - ".jar".length());
+                String jarBaseName = jarFileName.substring(0, jarFileName.length() - JAR_FILE_EXTENSION.length());
                 return baseNameList.contains(jarBaseName);
             }).collect(Collectors.toList());
         } catch (IOException e) {

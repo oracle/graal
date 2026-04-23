@@ -620,8 +620,6 @@ public abstract class Accessor {
 
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
 
-        public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
-
         public abstract String getRelativePathInResourceRoot(TruffleFile truffleFile);
 
         public abstract void onSourceCreated(Source source);
@@ -877,6 +875,8 @@ public abstract class Accessor {
         public abstract boolean isIsolateMemoryProtection(OptionValues optionValues);
 
         public abstract boolean isUntrustedCodeMitigationPolicySoftware(Enum<?> policy);
+
+        public abstract void collectNativeImagePresetOptions();
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1071,6 +1071,8 @@ public abstract class Accessor {
         public abstract OptionDescriptors describeContextOptions(Object instrumentationHandler, Object key, String requiredGroup);
 
         public abstract OptionDescriptors describeSourceOptions(Object instrumentationHandler, Object key, String requiredGroup);
+
+        public abstract OptionDescriptors describeOptions(Object truffleInstrument, String requiredGroup);
 
         public abstract Object getEngineInstrumenter(Object instrumentationHandler);
 
@@ -1589,7 +1591,7 @@ public abstract class Accessor {
         public abstract boolean isIsolateHost();
 
         public abstract Engine buildIsolatedEngine(AbstractPolyglotImpl polyglot, Engine localEngine, String[] isolateLanguages, String[] permittedLanguages, SandboxPolicy sandboxPolicy,
-                        OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
+                        OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                         boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, boolean registerInActiveEngines, boolean externalProcess, long stackHeadRoom,
                         String isolateLibrary, String isolateLauncher);
 

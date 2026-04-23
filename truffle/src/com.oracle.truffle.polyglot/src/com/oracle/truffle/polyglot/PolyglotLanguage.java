@@ -219,7 +219,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
                     try {
                         this.options = LANGUAGE.describeOptions(instance.spi, cache.getId());
                         this.sourceOptions = LANGUAGE.describeSourceOptions(instance.spi, cache.getId());
-                        this.emptySourceOptions = new OptionValuesImpl(sourceOptions, SandboxPolicy.TRUSTED, false, false);
+                        this.emptySourceOptions = new OptionValuesImpl(sourceOptions, SandboxPolicy.TRUSTED, false);
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
                     }
@@ -233,7 +233,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         if (optionValues == null) {
             synchronized (engine.lock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(getOptionsInternal(), engine.sandboxPolicy, false, false);
+                    optionValues = new OptionValuesImpl(getOptionsInternal(), engine.sandboxPolicy, false);
                 }
             }
         }

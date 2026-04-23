@@ -51,6 +51,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -77,11 +78,18 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
+
+import static javax.lang.model.element.Modifier.PRIVATE;
+import static javax.lang.model.element.Modifier.STATIC;
 
 /**
  * Processes static fields annotated with Option. An OptionDescriptors implementation is generated
@@ -311,6 +319,18 @@ public class OptionProcessor extends AbstractProcessor {
             sandbox = "TRUSTED";
         }
 
+        boolean constant = ElementUtils.getAnnotationValue(Boolean.class, annotation, "constant");
+        boolean constantOptionKey = typeUtils.isSameType(typeUtils.erasure(element.asType()), typeUtils.erasure(types.ConstantOptionKey));
+        if (constant && !constantOptionKey) {
+            error(element, elementAnnotation, "Option annotated with @Option.constant must use ConstantOptionKey, but found OptionKey. " +
+                            "Either change the field type to ConstantOptionKey, or remove the @Option.constant attribute.");
+            return false;
+        } else if (!constant && constantOptionKey) {
+            error(element, elementAnnotation, "ConstantOptionKey can only be used with options annotated with @Option.constant, but this option is not constant. " +
+                            "Either add the @Option.constant attribute, or change the field type to OptionKey.");
+            return false;
+        }
+
         for (String group : groupPrefixStrings) {
             String name;
             if (group.isEmpty() && optionName.isEmpty()) {
@@ -325,7 +345,7 @@ public class OptionProcessor extends AbstractProcessor {
                     name = group + "." + optionName;
                 }
             }
-            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap, deprecationMessage, usageSyntax, sandbox));
+            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap, deprecationMessage, usageSyntax, sandbox, constant));
         }
         return true;
     }
@@ -518,6 +538,108 @@ public class OptionProcessor extends AbstractProcessor {
         builder.end(); // return
         descriptors.add(iteratorMethod);
 
+        List<OptionInfo> constantOptions = model.options.stream().filter((o) -> o.constant).toList();
+        if (!constantOptions.isEmpty()) {
+            Map<VariableElement, List<OptionInfo>> optionsBySimpleName = new LinkedHashMap<>();
+            for (OptionInfo optionInfo : constantOptions) {
+                optionsBySimpleName.computeIfAbsent(optionInfo.field, k -> new ArrayList<>()).add(optionInfo);
+            }
+
+            CodeExecutableElement staticInitializer = new CodeExecutableElement(Set.of(STATIC), null, "<cinit>");
+            builder = staticInitializer.createBuilder();
+            for (var entry : optionsBySimpleName.entrySet()) {
+                builder.startStatement();
+                builder.startCall("initConstantOption");
+                builder.tree(builder.create().staticReference(entry.getKey()).build());
+                for (OptionInfo optionInfo : entry.getValue()) {
+                    builder.doubleQuote(optionInfo.name);
+                }
+                builder.end();
+                builder.end();
+            }
+            builder.end();
+            descriptors.add(staticInitializer);
+
+            Types typeUtils = context.getEnvironment().getTypeUtils();
+            TypeMirror voidType = typeUtils.getNoType(TypeKind.VOID);
+            CodeTypeParameterElement tpT = new CodeTypeParameterElement(CodeNames.of("T"), context.getType(Object.class));
+            DeclaredCodeTypeMirror constantOptionKeyT = new DeclaredCodeTypeMirror((TypeElement) types.ConstantOptionKey.asElement(), List.of(tpT.asType()));
+            TypeMirror string = context.getType(String.class);
+            CodeExecutableElement initConstantOption = new CodeExecutableElement(Set.of(PRIVATE, STATIC), voidType, "initConstantOption");
+            initConstantOption.addParameter(new CodeVariableElement(constantOptionKeyT, "key"));
+            initConstantOption.addParameter(new CodeVariableElement(typeUtils.getArrayType(string), "propertyKeys"));
+            initConstantOption.setVarArgs(true);
+            initConstantOption.getTypeParameters().add(tpT);
+            builder = initConstantOption.createBuilder();
+            builder.startDeclaration(tpT.asType(), "resolvedValue");
+            builder.nullLiteral();
+            builder.end();
+            builder.startDeclaration(string, "resolvedProperty");
+            builder.nullLiteral();
+            builder.end();
+            builder.startDeclaration(string, "resolvedRaw");
+            builder.nullLiteral();
+            builder.end();
+            builder.startFor();
+            builder.type(string).string(" propertyKey : propertyKeys").end();
+            builder.startBlock();
+            builder.startDeclaration(context.getType(String.class), "raw");
+            builder.startStaticCall(context.getType(System.class), "getProperty").startGroup().doubleQuote("polyglot.").string(" + propertyKey").end().end();
+            builder.end();
+            builder.startIf().string("raw == null").end();
+            builder.startBlock();
+            builder.statement("continue");
+            builder.end();
+            builder.startDeclaration(tpT.asType(), "converted");
+            builder.startCall(builder.create().startCall("key", "getType").end().build(), "convert");
+            builder.string("raw");
+            builder.end();
+            builder.end();
+            builder.startIf().string("resolvedRaw == null").end();
+            builder.startBlock();
+            builder.startAssign("resolvedValue").string("converted").end();
+            builder.startAssign("resolvedProperty").string("propertyKey").end();
+            builder.startAssign("resolvedRaw").string("raw").end();
+            builder.end();
+            builder.startElseIf();
+            builder.string("!");
+            builder.startStaticCall(context.getType(Objects.class), "equals");
+            builder.string("resolvedValue");
+            builder.string("converted");
+            builder.end();
+            builder.end();
+            builder.startBlock();
+            builder.startThrow().startNew(context.getType(IllegalArgumentException.class));
+            builder.startStaticCall(context.getType(String.class), "format");
+            builder.doubleQuote("Conflicting values for aliased constant option. Properties '%s'='%s' and '%s'='%s' refer to the same option but specify different values.");
+            builder.string("resolvedProperty");
+            builder.string("resolvedRaw");
+            builder.string("propertyKey");
+            builder.string("raw");
+            builder.end();
+            builder.end();
+            builder.end();
+            builder.end();
+            builder.end();
+            builder.startIf().string("resolvedRaw != null").end();
+            builder.startBlock();
+            builder.startStatement();
+            builder.startCall("key", "setConstantValue");
+            builder.string("resolvedValue");
+            builder.end();
+            builder.end();
+            builder.end();
+            builder.startElseBlock();
+            builder.startStatement();
+            builder.startCall("key", "setConstantValue");
+            builder.startCall("key", "getDefaultValue").end();
+            builder.end();
+            builder.end();
+            builder.end();
+            builder.end();
+            descriptors.add(initConstantOption);
+        }
+
         return descriptors;
     }
 
@@ -540,6 +662,10 @@ public class OptionProcessor extends AbstractProcessor {
 
         builder.startCall("", "category").staticReference(types.OptionCategory, info.category).end();
         builder.startCall("", "stability").staticReference(types.OptionStability, info.stability).end();
+
+        if (info.constant) {
+            builder.startCall("", "constant").string("true").end();
+        }
 
         builder.startCall("", "build").end();
         return builder.build();
@@ -566,10 +692,11 @@ public class OptionProcessor extends AbstractProcessor {
         final String stability;
         final String deprecationMessage;
         final String sandboxPolicy;
+        final boolean constant;
         private String usageSyntax;
 
         OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, String category, String stability, boolean optionMap, String deprecationMessage,
-                        String usageSyntax, String sandboxPolicy) {
+                        String usageSyntax, String sandboxPolicy, boolean constant) {
             this.name = name;
             this.help = help;
             this.field = field;
@@ -581,6 +708,7 @@ public class OptionProcessor extends AbstractProcessor {
             this.deprecationMessage = deprecationMessage;
             this.usageSyntax = usageSyntax;
             this.sandboxPolicy = sandboxPolicy;
+            this.constant = constant;
         }
 
         @Override

@@ -152,7 +152,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     protected boolean isEnabledFor(TruffleHostEnvironment env, ResolvedJavaMethod method) {
-        return isBytecodeInterpreterSwitch(env, method) || isInliningRoot(env, method) || isBytecodeInterpreterHandler(env, method);
+        return isBytecodeInterpreterSwitch(env, method) || isInliningRoot(env, method) || isBytecodeInterpreterHandlerStub(env, method);
     }
 
     protected String isTruffleBoundary(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
@@ -175,8 +175,16 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     @SuppressWarnings("unused")
-    protected boolean isBytecodeInterpreterHandler(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+    protected boolean isBytecodeInterpreterHandlerStub(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
         return false;
+    }
+
+    protected boolean isBytecodeInterpreterHandler(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+        return env.getHostMethodInfo(translateMethod(targetMethod)).isBytecodeInterpreterHandler();
+    }
+
+    protected boolean hasBytecodeInterpreterConfig(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+        return env.getHostMethodInfo(translateMethod(targetMethod)).hasBytecodeInterpreterHandlerConfig();
     }
 
     protected ResolvedJavaMethod translateMethod(ResolvedJavaMethod method) {
@@ -206,6 +214,15 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     @Override
+    protected boolean shouldVerifyForceInlinedInvokes(StructuredGraph graph) {
+        /*
+         * Host inlining is a domain-specific exploration phase and may leave force-inlined invokes
+         * to later general inlining phases.
+         */
+        return false;
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected final void runInlining(StructuredGraph graph, HighTierContext highTierContext) {
         ResolvedJavaMethod method = graph.method();
@@ -225,10 +242,11 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return;
         }
 
-        boolean isHandler = isBytecodeInterpreterHandler(env, method);
+        boolean isHandlerStub = isBytecodeInterpreterHandlerStub(env, method);
         boolean isSwitch = isBytecodeInterpreterSwitch(env, method);
+        boolean hasBytecodeInterpreterConfig = hasBytecodeInterpreterConfig(env, method);
 
-        runImpl(new InliningPhaseContext(highTierContext, graph, env, isHandler, isSwitch, this.defaultMinProfiledFrequency));
+        runImpl(new InliningPhaseContext(highTierContext, graph, env, isHandlerStub, hasBytecodeInterpreterConfig, isSwitch, this.defaultMinProfiledFrequency));
     }
 
     private void runImpl(InliningPhaseContext context) {
@@ -236,7 +254,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
 
         int sizeLimit;
         int exploreLimit;
-        if (context.isBytecodeHandler) {
+        if (context.isBytecodeHandlerStub) {
             sizeLimit = Options.TruffleHostInliningByteCodeHandlerBudget.getValue(context.graph.getOptions());
             exploreLimit = Math.max(sizeLimit, Options.TruffleHostInliningExploreBudget.getValue(context.graph.getOptions()));
         } else if (context.isBytecodeSwitch) {
@@ -985,6 +1003,11 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return true;
         }
 
+        if (isBytecodeInterpreterHandler(context.env, targetMethod) && context.hasBytecodeInterpreterHandlerConfig) {
+            call.reason = "No inlining of @BytecodeInterpreterHandler method into @BytecodeInterpreterSwitch methods.";
+            return false;
+        }
+
         if (call.deoptimized) {
             /*
              * The block of the call was deoptimized or the deoptimization propagated through a call
@@ -1384,6 +1407,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
         TruffleKnownHostTypes types = env.types();
         HostMethodInfo info = env.getHostMethodInfo(callee);
         return (info.isBytecodeInterpreterSwitch() ||
+                        info.isBytecodeInterpreterHandler() ||
                         info.isInliningCutoff() ||
                         info.isTruffleBoundary() ||
                         types.isInInterpreter(callee) ||
@@ -1416,7 +1440,8 @@ public class HostInliningPhase extends AbstractInliningPhase {
         public final StructuredGraph graph;
         public final OptionValues options;
         public final TruffleHostEnvironment env;
-        public final boolean isBytecodeHandler;
+        public final boolean isBytecodeHandlerStub;
+        public final boolean hasBytecodeInterpreterHandlerConfig;
         public final boolean isBytecodeSwitch;
         public final int maxSubtreeInvokes;
         public final boolean printExplored;
@@ -1429,18 +1454,20 @@ public class HostInliningPhase extends AbstractInliningPhase {
          */
         final EconomicMap<ResolvedJavaMethod, StructuredGraph> graphCache = EconomicMap.create(Equivalence.DEFAULT);
 
-        InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleHostEnvironment env, boolean isBytecodeHandler, boolean isBytecodeSwitch, double defaultMinimumFrequency) {
+        InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleHostEnvironment env, boolean isBytecodeHandlerStub, boolean hasBytecodeInterpreterHandlerConfig,
+                        boolean isBytecodeSwitch, double defaultMinimumFrequency) {
             this.highTierContext = context;
             this.graph = graph;
             this.options = graph.getOptions();
             this.env = env;
-            this.isBytecodeHandler = isBytecodeHandler;
+            this.isBytecodeHandlerStub = isBytecodeHandlerStub;
             this.isBytecodeSwitch = isBytecodeSwitch;
-            if (isBytecodeHandler) {
+            if (isBytecodeHandlerStub) {
                 this.maxSubtreeInvokes = Options.TruffleHostInliningByteCodeHandlerMaxSubtreeInvokes.getValue(options);
             } else {
                 this.maxSubtreeInvokes = Options.TruffleHostInliningMaxSubtreeInvokes.getValue(options);
             }
+            this.hasBytecodeInterpreterHandlerConfig = hasBytecodeInterpreterHandlerConfig;
             this.printExplored = Options.TruffleHostInliningPrintExplored.getValue(options);
             if (Options.TruffleHostInliningMinFrequency.hasBeenSet(options)) {
                 this.minimumFrequency = Options.TruffleHostInliningMinFrequency.getValue(options);

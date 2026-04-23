@@ -96,6 +96,9 @@ public interface FrameInstance {
 
     /**
      * Accesses the underlying frame using a specified {@link FrameAccess access mode}.
+     * <p>
+     * Bytecode DSL note: This method should <strong>not</strong> be used with Bytecode DSL
+     * interpreters. See {@link com.oracle.truffle.api.bytecode.BytecodeFrame} for more information.
      *
      * @see FrameAccess
      * @since 0.23

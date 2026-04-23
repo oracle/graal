@@ -338,6 +338,13 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         return node;
     }
 
+    /**
+     * Simulates {@link System#arraycopy(Object, int, Object, int, int)} for active image-heap
+     * arrays. The implementation first enforces the same bounds and assignability checks that the
+     * runtime copy would observe and then performs an element-wise copy through the
+     * {@link ImageHeapArray} abstraction. For overlapping self-copies it iterates backwards to
+     * preserve the original source values.
+     */
     protected boolean handleArrayCopy(ImageHeapArray source, int sourcePos, ImageHeapArray dest, int destPos, int length) {
         if (source == null || sourcePos < 0 || sourcePos >= source.getLength() ||
                         dest == null || destPos < 0 || destPos >= dest.getLength() ||
@@ -362,7 +369,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             }
         }
 
-        /* All checks passed, we can now copy array elements. */
+        /* All checks passed, so the copy matches arraycopy semantics for the active snapshot. */
         if (sourceComponentType.getJavaKind().isPrimitive()) {
             /*
              * Primitive arrays are already backed by guest-side storage, so we can delegate the
@@ -372,12 +379,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             var destArray = ((ImageHeapPrimitiveArray) dest).getArray();
             GuestAccess.get().copyArray(sourceArray, sourcePos, destArray, destPos, length);
         } else if (source.equals(dest) && sourcePos < destPos) {
-            /*
-             * The object-array path still operates on the builder-side ImageHeapObjectArray model.
-             * Port it to VMAccess bulk copy after GR-74854 migrates ImageHeapObjectArray for
-             * Terminus.
-             */
-            /* Must copy backwards to avoid losing elements. */
+            /* Copy backwards for overlapping self-copies to preserve unread source elements. */
             for (int i = length - 1; i >= 0; i--) {
                 dest.setElement(destPos + i, (JavaConstant) source.getElement(sourcePos + i));
             }

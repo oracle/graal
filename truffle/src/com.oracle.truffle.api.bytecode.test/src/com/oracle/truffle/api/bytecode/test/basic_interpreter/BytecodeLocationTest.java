@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,13 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -86,6 +88,27 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
         SourceSection section = location.ensureSourceInformation().getSourceLocation();
         assertSame(source, section.getSource());
         assertEquals("getBytecodeLocation", section.getCharacters());
+    }
+
+    @Test
+    public void testGetBytecodeLocationUnavailableLocation() {
+        BasicInterpreter root = parseNode("getBytecodeLocationUnavailableLocation", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitMaterializeFrame();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        root.getBytecodeNode().setUncachedThreshold(0);
+        MaterializedFrame materializedFrame = (MaterializedFrame) root.getCallTarget().call();
+        // Pass a bad location to getBytecodeLocation. It should be null unless the interpreter uses the frame to compute locations.
+        BytecodeLocation location = root.getBytecodeNode().getBytecodeLocation(materializedFrame, root);
+        if (run.storesBciInFrame()) {
+            assertNotNull(location);
+        } else {
+            assertNull(location);
+        }
     }
 
 

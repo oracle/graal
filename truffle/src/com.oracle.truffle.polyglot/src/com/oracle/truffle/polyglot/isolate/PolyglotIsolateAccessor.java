@@ -85,11 +85,12 @@ final class PolyglotIsolateAccessor extends Accessor {
 
         @Override
         public Engine buildIsolatedEngine(AbstractPolyglotImpl polyglot, Engine localEngine, String[] isolateLanguages, String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out,
-                        OutputStream err, InputStream in, Map<String, String> options,
+                        OutputStream err, InputStream in, Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                         boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, boolean registerInActiveEngines, boolean externalProcess, long stackHeadroom,
                         String isolateLibrary, String isolateLauncher) {
-            return PolyglotIsolateHostSupport.buildIsolatedEngine(polyglot, localEngine, isolateLanguages, permittedLanguages, sandboxPolicy, out, err, in, options,
-                            allowExperimentalOptions, boundEngine, messageInterceptor, registerInActiveEngines, externalProcess, stackHeadroom, isolateLibrary, isolateLauncher);
+            return PolyglotIsolateHostSupport.buildIsolatedEngine(polyglot, localEngine, isolateLanguages, permittedLanguages, sandboxPolicy, out, err, in,
+                            options, systemPropertiesOptions, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, registerInActiveEngines,
+                            externalProcess, stackHeadroom, isolateLibrary, isolateLauncher);
         }
 
         @Override

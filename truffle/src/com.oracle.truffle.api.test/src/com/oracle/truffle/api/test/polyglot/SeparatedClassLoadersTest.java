@@ -186,7 +186,10 @@ public class SeparatedClassLoadersTest {
         Thread.currentThread().setContextClassLoader(classLoaders.truffleLoader);
         try {
             Class<?> engineClass = classLoaders.sdkLoader.loadClass(Engine.class.getName());
-            return engineClass.getMethod("create").invoke(null);
+            Class<?> builderClass = classLoaders.sdkLoader.loadClass(Engine.Builder.class.getName());
+            Object builder = engineClass.getMethod("newBuilder").invoke(null);
+            builderClass.getMethod("useSystemProperties", boolean.class).invoke(builder, false);
+            return builderClass.getMethod("build").invoke(builder);
         } catch (ReflectiveOperationException roe) {
             throw new AssertionError(roe);
         }

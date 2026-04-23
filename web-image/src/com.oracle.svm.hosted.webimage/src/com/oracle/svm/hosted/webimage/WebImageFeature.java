@@ -26,15 +26,12 @@ package com.oracle.svm.hosted.webimage;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import org.graalvm.webimage.api.JS;
@@ -53,7 +50,6 @@ import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.core.c.ProjectHeaderFile;
-import com.oracle.svm.core.c.ProjectHeaderFileHeaderResolversRegistryFeature;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -124,13 +120,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @Platforms(WebImagePlatform.class)
 public class WebImageFeature implements InternalFeature {
     private final JSEntryPointRegistry entryPointsData = new JSEntryPointRegistry();
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        List<Class<? extends Feature>> result = new ArrayList<>(1);
-        result.add(ProjectHeaderFileHeaderResolversRegistryFeature.class);
-        return result;
-    }
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {

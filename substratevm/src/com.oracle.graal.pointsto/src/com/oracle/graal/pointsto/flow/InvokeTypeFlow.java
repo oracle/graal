@@ -124,6 +124,13 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         return targetMethod;
     }
 
+    /**
+     * Returns the bytecode index of this invoke within its declaring method.
+     */
+    public int getBci() {
+        return getSource().getBCI();
+    }
+
     public int actualParametersCount() {
         return actualParameters.length;
     }

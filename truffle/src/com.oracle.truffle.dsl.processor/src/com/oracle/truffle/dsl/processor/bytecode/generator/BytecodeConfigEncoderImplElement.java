@@ -57,6 +57,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
@@ -204,6 +205,20 @@ final class BytecodeConfigEncoderImplElement extends AbstractElement {
         return String.format("(int) ((%s >> %s) & 0x%s)", encoded, encoding.tagShift(), Long.toHexString(encoding.tagMask()));
     }
 
+    public String checkHasYieldsBit(String encoded) {
+        if (!parent.model.hasYieldOperation()) {
+            throw new AssertionError("Tried to generate code to check the has-yields bit, but the interpreter has no yield operations.");
+        }
+        return String.format("(%s & 0x%sL) != 0", encoded, Long.toHexString(encoding.hasYieldsMask()));
+    }
+
+    public String compareHasYieldsBit(String encoded1, String encoded2) {
+        if (!parent.model.hasYieldOperation()) {
+            throw new AssertionError("Tried to generate code to compare the has-yields bit, but the interpreter has no yield operations.");
+        }
+        return String.format("(%s & 0x%sL) == (%s & 0x%sL)", encoded1, Long.toHexString(encoding.hasYieldsMask()), encoded2, Long.toHexString(encoding.hasYieldsMask()));
+    }
+
     public String checkInstructionTracingEnabled(String instrumentations) {
         if (!parent.model.enableInstructionTracing) {
             throw new AssertionError("Tried to generate code to check instruction tracing bit, but instruction tracing is not enabled.");
@@ -229,24 +244,31 @@ final class BytecodeConfigEncoderImplElement extends AbstractElement {
         return String.format("(%s & 0x%s) != 0", tags, Integer.toHexString(encoding.tagMask(tagIndex)));
     }
 
-    public String encodeSourceBits(String sourceEnabled, String sourceContentEnabled) {
-        if (parent.model.sourceContentSupplier != null) {
-            return String.format("((%s ? 0x%sL : 0L) | (%s ? 0x%sL : 0L))", sourceEnabled, Long.toHexString(encoding.sourceMask()), sourceContentEnabled,
-                            Long.toHexString(encoding.sourceContentMask()));
-        }
-        return String.format("(%s ? 0x%sL : 0L)", sourceEnabled, Long.toHexString(encoding.sourceMask()));
-    }
+    public CodeTree encode(String sourceEnabled, String sourceContentEnabled, String instrumentations, String tags, String hasYields) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-    public String encode(String sourceBits, String instrumentations, String tags) {
-        return String.format(
-                        "(%s & 0x%sL) | ((%s & 0x%sL) << %s) | ((%s & 0x%sL) << %s)",
-                        sourceBits,
-                        Long.toHexString(encoding.sourceBitsMask()),
-                        instrumentations,
-                        Long.toHexString(encoding.instrumentationMask()),
-                        encoding.instrumentationShift(),
-                        tags,
-                        Long.toHexString(encoding.tagMask()),
-                        encoding.tagShift());
+        b.startParantheses().string(sourceEnabled).string(" ? 0x").string(Long.toHexString(encoding.sourceMask())).string("L : 0L").end();
+        if (parent.model.sourceContentSupplier != null) {
+            b.string(" | ");
+            b.startParantheses().string(sourceContentEnabled).string(" ? 0x").string(Long.toHexString(encoding.sourceContentMask())).string("L : 0L").end();
+        }
+        b.string(" | ");
+        b.startParantheses();
+        b.startParantheses().string(instrumentations).string(" & 0x").string(Long.toHexString(encoding.instrumentationMask())).string("L").end();
+        b.string(" << ").string(String.valueOf(encoding.instrumentationShift()));
+        b.end();
+        b.string(" | ");
+        b.startParantheses();
+        b.startParantheses().string(tags).string(" & 0x").string(Long.toHexString(encoding.tagMask())).string("L").end();
+        b.string(" << ").string(String.valueOf(encoding.tagShift()));
+        b.end();
+        if (parent.model.hasYieldOperation()) {
+            if (hasYields == null) {
+                throw new AssertionError("Tried to generate code to encode the has-yields bit, but no expression was provided.");
+            }
+            b.string(" | ");
+            b.startParantheses().string(hasYields).string(" ? 0x").string(Long.toHexString(encoding.hasYieldsMask())).string("L : 0L").end();
+        }
+        return b.build();
     }
 }

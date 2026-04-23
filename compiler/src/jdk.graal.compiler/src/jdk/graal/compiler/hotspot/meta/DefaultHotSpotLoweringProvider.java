@@ -99,9 +99,6 @@ import jdk.graal.compiler.hotspot.replacements.MonitorSnippets;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneSnippets;
 import jdk.graal.compiler.hotspot.replacements.ObjectSnippets;
 import jdk.graal.compiler.hotspot.replacements.RegisterFinalizerSnippets;
-import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
-import jdk.graal.compiler.hotspot.replacements.UnsafeSetMemoryNode;
-import jdk.graal.compiler.hotspot.replacements.UnsafeSnippets;
 import jdk.graal.compiler.hotspot.replacements.VirtualThreadUpdateJFRSnippets;
 import jdk.graal.compiler.hotspot.replacements.arraycopy.CheckcastArrayCopyCallNode;
 import jdk.graal.compiler.hotspot.replacements.arraycopy.GenericArrayCopyCallNode;
@@ -286,7 +283,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected LogSnippets.Templates logSnippets;
     protected ArrayCopySnippets.Templates arraycopySnippets;
     protected ObjectSnippets.Templates objectSnippets;
-    protected UnsafeSnippets.Templates unsafeSnippets;
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
     protected ForeignCallSnippets.Templates foreignCallSnippets;
     protected RegisterFinalizerSnippets.Templates registerFinalizerSnippets;
@@ -342,7 +338,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, providers);
         registerFinalizerSnippets = new RegisterFinalizerSnippets.Templates(options, providers);
         objectSnippets = new ObjectSnippets.Templates(options, providers);
-        unsafeSnippets = new UnsafeSnippets.Templates(options, providers);
         virtualThreadUpdateJFRSnippets = new VirtualThreadUpdateJFRSnippets.Templates(options, providers);
 
         replacements.registerSnippetTemplateCache(new DigestBaseSnippets.Templates(options, providers));
@@ -599,14 +594,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof FastNotifyNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 objectSnippets.lower(n, tool);
-            }
-        } else if (n instanceof UnsafeCopyMemoryNode) {
-            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                unsafeSnippets.lower((UnsafeCopyMemoryNode) n, tool);
-            }
-        } else if (n instanceof UnsafeSetMemoryNode) {
-            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                unsafeSnippets.lower((UnsafeSetMemoryNode) n, tool);
             }
         } else if (n instanceof RegisterFinalizerNode) {
             lowerRegisterFinalizer((RegisterFinalizerNode) n, tool);

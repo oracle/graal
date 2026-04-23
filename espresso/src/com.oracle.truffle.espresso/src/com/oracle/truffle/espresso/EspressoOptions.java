@@ -728,7 +728,7 @@ public final class EspressoOptions {
                     category = OptionCategory.INTERNAL, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "safety|compact|graal") //
-    public static final OptionKey<GuestFieldOffsetStrategyEnum> GuestFieldOffsetStrategy = new OptionKey<>(GuestFieldOffsetStrategyEnum.safety);
+    public static final OptionKey<GuestFieldOffsetStrategyEnum> GuestFieldOffsetStrategy = new OptionKey<>(GuestFieldOffsetStrategyEnum.graal);
 
     @Option(help = "Selects a specific runtime resource id (espresso-runtime-resource-<id>).", //
                     category = OptionCategory.EXPERT, //

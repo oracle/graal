@@ -930,14 +930,14 @@ public final class Engine implements AutoCloseable {
                 };
             }
             Object logHandler = customLogHandler != null ? polyglot.newLogHandler(customLogHandler) : null;
-            Map<String, String> useOptions = useSystemProperties ? readOptionsFromSystemProperties(options) : options;
+            Map<String, String> systemPropertiesOptions = readOptionsFromSystemProperties();
             boolean useAllowExperimentalOptions = allowExperimentalOptions || readAllowExperimentalOptionsFromSystemProperties();
-            Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, useOptions, useAllowExperimentalOptions,
+            Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, options, systemPropertiesOptions, useSystemProperties, useAllowExperimentalOptions,
                             boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null, exceptionHandler);
             return engine;
         }
 
-        static Map<String, String> readOptionsFromSystemProperties(Map<String, String> options) {
+        static Map<String, String> readOptionsFromSystemProperties() {
             Properties properties = System.getProperties();
             Map<String, String> newOptions = null;
             String systemPropertyPrefix = "polyglot.";
@@ -953,18 +953,16 @@ public final class Engine implements AutoCloseable {
                         // Image build time options are not set in runtime options
                         if (!optionKey.startsWith("image-build-time")) {
                             // system properties cannot override existing options
-                            if (!options.containsKey(optionKey)) {
-                                if (newOptions == null) {
-                                    newOptions = new HashMap<>(options);
-                                }
-                                newOptions.put(optionKey, System.getProperty(key));
+                            if (newOptions == null) {
+                                newOptions = new HashMap<>();
                             }
+                            newOptions.put(optionKey, System.getProperty(key));
                         }
                     }
                 }
             }
             if (newOptions == null) {
-                return options;
+                return Map.of();
             } else {
                 return newOptions;
             }
@@ -1381,7 +1379,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Map<String, String> readOptionsFromSystemProperties() {
-            return Builder.readOptionsFromSystemProperties(Collections.emptyMap());
+            return Builder.readOptionsFromSystemProperties();
         }
 
         @Override
@@ -1768,7 +1766,6 @@ public final class Engine implements AutoCloseable {
         public Object callContextGetCurrent() {
             return Context.getCurrent();
         }
-
     }
 
     private static AbstractPolyglotImpl validateAndInitializePolyglot(AbstractPolyglotImpl polyglot) {
@@ -1898,7 +1895,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments,
+        public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
+                        Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                         boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
                         boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
             throw noPolyglotImplementationFound();

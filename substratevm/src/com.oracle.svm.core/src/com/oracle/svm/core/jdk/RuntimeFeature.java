@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.List;
-
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -41,8 +37,4 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @Deprecated
 public class RuntimeFeature implements InternalFeature {
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(RuntimeSupportFeature.class);
-    }
 }

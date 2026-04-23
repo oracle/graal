@@ -28,72 +28,49 @@ package com.oracle.graal.pointsto.standalone.test;
 
 import org.junit.Test;
 
-import java.io.IOException;
-import java.nio.file.Path;
-
-import static org.junit.Assert.assertNotNull;
+import com.oracle.graal.pointsto.standalone.test.classes.AnalysisEntryPointsFileCase;
+import com.oracle.graal.pointsto.standalone.test.classes.AnalysisEntryPointsFileCase.C;
 
 /**
  * This test verifies reading analysis entry points from file via -H:AnalysisEntryPointsFile.
  */
-public class AnalysisEntryPointsFileTest {
-    static class C {
-        static {
-            doC();
-        }
-
-        private static void doC() {
-        }
-    }
-
-    public static void foo() {
-        doFoo();
-    }
-
-    private static void doFoo() {
-    }
-
-    @SuppressWarnings("unused")
-    public static void bar(String s) {
-        doBar1();
-    }
-
-    private static void doBar1() {
-    }
-
-    @SuppressWarnings("unused")
-    public static void bar(String s, int i) {
-        doBar2();
-    }
-
-    private static void doBar2() {
-    }
-
-    public void foo1() {
-        doFoo1();
-    }
-
-    private void doFoo1() {
-    }
-
+public class AnalysisEntryPointsFileTest extends StandaloneAnalysisTest {
+    /**
+     * Verifies that an entry-points file can select specific roots from
+     * {@link AnalysisEntryPointsFileCase} and that standalone analysis honors exactly those
+     * entries.
+     *
+     * This checks both setup and intent: the bundled entry-points resource must be resolved
+     * directly from the test resources, consumed successfully, and then drive reachability so that
+     * {@link C#doC()}, {@link AnalysisEntryPointsFileCase#doFoo()},
+     * {@link AnalysisEntryPointsFileCase#doFoo1()}, and
+     * {@link AnalysisEntryPointsFileCase#doBar1()} are reachable while
+     * {@link AnalysisEntryPointsFileCase#doBar2()} stays unreachable.
+     */
     @Test
-    public void test() throws IOException, ReflectiveOperationException {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(this.getClass());
-        Path outPutDirectory = tester.createTestTmpDir();
-        Path entryFilePath = tester.saveFileFromResource("/resources/entrypoints", outPutDirectory.resolve("entrypoints").normalize());
-        assertNotNull("Fail to create entrypoints file.", entryFilePath);
-        try {
-            tester.setAnalysisArguments("-H:AnalysisEntryPointsFile=" + entryFilePath.toString(),
-                            "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
-            Class<?> classC = C.class;
-            tester.setExpectedReachableMethods(classC.getDeclaredMethod("doC"),
-                            tester.getTestClass().getDeclaredMethod("doFoo"),
-                            tester.getTestClass().getDeclaredMethod("doFoo1"),
-                            tester.getTestClass().getDeclaredMethod("doBar1"));
-            tester.setExpectedUnreachableMethods(tester.getTestClass().getDeclaredMethod("doBar2"));
-            tester.runAnalysisAndAssert();
-        } finally {
-            tester.deleteTestTmpDir();
-        }
+    public void test() {
+        runAnalysisWithEntryPointsFile(AnalysisEntryPointsFileCase.class, "/resources/entrypoints");
+        Class<?> classC = AnalysisEntryPointsFileCase.C.class;
+        assertReachable(findMethod(classC, "doC"));
+        assertReachable(findMethod(AnalysisEntryPointsFileCase.class, "doFoo"));
+        assertReachable(findMethod(AnalysisEntryPointsFileCase.class, "doFoo1"));
+        assertReachable(findMethod(AnalysisEntryPointsFileCase.class, "doBar1"));
+        assertNotReachable(findMethod(AnalysisEntryPointsFileCase.class, "doBar2"));
+    }
+
+    /**
+     * Verifies that the direct method-entry API can select the single-argument
+     * {@link AnalysisEntryPointsFileCase#bar(String)} overload without going through an
+     * entry-points file.
+     *
+     * This checks the new in-process analyzer path specifically:
+     * {@link AnalysisEntryPointsFileCase#doBar1()} should become reachable, while
+     * {@link AnalysisEntryPointsFileCase#doBar2()} should stay unreachable.
+     */
+    @Test
+    public void testDirectMethodEntry() {
+        runAnalysisMethod(AnalysisEntryPointsFileCase.class, "bar", String.class);
+        assertReachable(findMethod(AnalysisEntryPointsFileCase.class, "doBar1"));
+        assertNotReachable(findMethod(AnalysisEntryPointsFileCase.class, "doBar2"));
     }
 }

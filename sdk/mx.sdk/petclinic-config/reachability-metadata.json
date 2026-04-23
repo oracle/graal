@@ -2,19 +2,7 @@
   "reflection": [
     {
       "type": "org.apache.coyote.AbstractProtocol",
-      "methods": [
-        {
-          "name": "setProperty",
-          "parameterTypes": [
-            "java.lang.String",
-            "java.lang.String"
-          ]
-        },
-        {
-          "name": "getAddress",
-          "parameterTypes": []
-        }
-      ]
+      "allPublicMethods": true
     },
     {
       "type": "org.apache.coyote.http11.AbstractHttp11Protocol",

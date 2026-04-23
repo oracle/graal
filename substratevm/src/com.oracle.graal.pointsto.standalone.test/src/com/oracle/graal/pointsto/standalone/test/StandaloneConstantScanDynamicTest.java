@@ -28,14 +28,25 @@ package com.oracle.graal.pointsto.standalone.test;
 
 import org.junit.Test;
 
-public class StandaloneConstantScanDynamicTest {
+import com.oracle.graal.pointsto.standalone.test.classes.StandaloneConstantScanDynamicCase;
 
+/**
+ * Verifies standalone reachability for the dynamic constant-scanning fixture
+ * {@link StandaloneConstantScanDynamicCase}.
+ */
+public class StandaloneConstantScanDynamicTest extends StandaloneAnalysisTest {
+
+    /**
+     * Verifies that analyzing {@link StandaloneConstantScanDynamicCase} still reaches
+     * {@link StandaloneConstantScanDynamicCase#run()}.
+     *
+     * The test guards the standalone constant-scanning path for dynamically discovered inputs and
+     * makes sure the migration to {@link StandaloneAnalysisTest} did not weaken the original
+     * reachability expectation.
+     */
     @Test
-    public void test() throws NoSuchMethodException {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(StandaloneConstantScanDynamicCase.class);
-        tester.setAnalysisArguments(tester.getTestClassName(),
-                        "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
-        tester.setExpectedReachableMethods(tester.getTestClass().getDeclaredMethod("run"));
-        tester.runAnalysisAndAssert();
+    public void test() {
+        runAnalysis(StandaloneConstantScanDynamicCase.class);
+        assertReachable(findMethod(StandaloneConstantScanDynamicCase.class, "run"));
     }
 }

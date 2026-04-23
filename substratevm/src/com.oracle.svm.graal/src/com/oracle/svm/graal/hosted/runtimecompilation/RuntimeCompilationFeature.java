@@ -123,6 +123,8 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -939,6 +941,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
      */
     private class RuntimeCompilationInlineBeforeAnalysisPolicy extends InlineBeforeAnalysisPolicy {
         private final int trivialAllowingInliningDepth = InlineDuringParsingMaxDepth.getValue(HostedOptionValues.singleton().get());
+        private final ResolvedJavaMethod optionalStackTraceThrowableConstructor = GuestAccess.elements().java_lang_Throwable_init_String_Throwable_boolean_boolean;
 
         final SVMHost hostVM;
         final InlineBeforeAnalysisPolicyUtils inliningUtils;
@@ -947,6 +950,23 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             super(new NodePlugin[]{new ConstantFoldLoadFieldPlugin(ParsingReason.PointsToAnalysis)});
             this.hostVM = hostVM;
             this.inliningUtils = inliningUtils;
+        }
+
+        /**
+         * Runtime compilation must treat these methods as "always inline" both when admitting the
+         * invoke and when choosing the callee scope. Otherwise, the inline can still be aborted by
+         * the regular accumulative budgets during decoding.
+         */
+        private boolean shouldAlwaysInlineInvoke(AnalysisMethod method) {
+            /*
+             * The Throwable(String, Throwable, boolean, boolean) constructor is typically called
+             * with constant values for enableSuppression and writableStackTrace. In open-world
+             * analysis we force inline this constructor to fold away the false writableStackTrace
+             * path. If the inline is aborted and the original invoke is kept, the constructor is
+             * analyzed independently with non-constant boolean parameters and fillInStackTrace()
+             * becomes reachable.
+             */
+            return optionalStackTraceThrowableConstructor.equals(OriginalMethodProvider.getOriginalMethod(method));
         }
 
         @Override
@@ -995,6 +1015,9 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 // postpone the inlining till runtime compilation
                 return false;
             }
+            if (shouldAlwaysInlineInvoke(method)) {
+                return true;
+            }
             InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accScope;
             if (policyScope instanceof RuntimeCompilationAlwaysInlineScope) {
                 /*
@@ -1036,6 +1059,18 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             }
 
             assert outer == null || outer instanceof RuntimeCompilationAlwaysInlineScope : "unexpected outer scope: " + outer;
+            int inliningDepth = outer == null ? 1 : outer.inliningDepth + 1;
+
+            /*
+             * Forcing shouldInlineInvoke() only starts decoding this constructor. If it is decoded
+             * under the regular accumulative scope, node or invoke budgets can still abort the
+             * inline and restore the original invoke. Using RuntimeCompilationAlwaysInlineScope
+             * bypasses that accumulative accounting for this region while still rejecting
+             * runtime-compilation-invalid nodes.
+             */
+            if (shouldAlwaysInlineInvoke(method)) {
+                return new RuntimeCompilationAlwaysInlineScope(inliningDepth);
+            }
 
             /*
              * Check if trivial is possible. We use the graph size as the main criteria, similar to
@@ -1047,7 +1082,6 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
              * handle.
              */
             boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method) && !inliningUtils.isMethodHandleIntrinsificationRoot(method);
-            int inliningDepth = outer == null ? 1 : outer.inliningDepth + 1;
             if (trivialInlineAllowed && inliningDepth <= trivialAllowingInliningDepth) {
                 return new RuntimeCompilationAlwaysInlineScope(inliningDepth);
             } else {
@@ -1273,7 +1307,8 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
 }
 
 /**
- * This scope will always allow nodes to be inlined.
+ * This scope bypasses the regular accumulative node/invoke budgets. Runtime compilation still
+ * rejects any node that is invalid for runtime-compilation graphs.
  */
 class RuntimeCompilationAlwaysInlineScope extends InlineBeforeAnalysisPolicy.AbstractPolicyScope {
 

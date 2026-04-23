@@ -975,7 +975,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
         compileImpl(callTarget, task);
 
-        if (oldBlockCompilations == null && callTarget.blockCompilations != null) {
+        List<OptimizedCallTarget> newBlockCompilations = callTarget.blockCompilations;
+        if (oldBlockCompilations == null && newBlockCompilations != null && !newBlockCompilations.isEmpty()) {
             // retry with block compilations
             ((CompilationTask) task).reset();
             listeners.onCompilationQueued(callTarget, task.tier());

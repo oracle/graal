@@ -36,8 +36,9 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.Speculative;
 import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.truffle.BytecodeHandlerConfig.ArgumentInfo;
 import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.ArgumentInfo;
+import jdk.graal.compiler.truffle.TruffleBytecodeHandlerStubHelper;
 import jdk.graal.compiler.truffle.host.HostInliningPhase;
 import jdk.graal.compiler.truffle.hotspot.HotSpotOutlineBytecodeHandlerPhase;
 import jdk.vm.ci.code.CallingConvention;
@@ -47,7 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * A stub implementation for calling Truffle bytecode handler.
  *
- * @see TruffleBytecodeHandlerCallsite#createStub
+ * @see TruffleBytecodeHandlerStubHelper#createStub
  */
 public class HotSpotTruffleBytecodeHandlerStub extends Stub {
 
@@ -62,7 +63,7 @@ public class HotSpotTruffleBytecodeHandlerStub extends Stub {
     protected StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId) {
         try {
             HotSpotGraphKit kit = new HotSpotGraphKit(debug, callsite.getEnclosingMethod(), providers, providers.getGraphBuilderPlugins(), compilationId, callsite.getStubName(), false, true);
-            return callsite.createStub(kit, callsite.getEnclosingMethod(), false, null, null);
+            return TruffleBytecodeHandlerStubHelper.createStub(kit, callsite.getEnclosingMethod(), callsite.getBci(), false, null, null, callsite.getHandlerConfig(), callsite.getTargetMethod());
         } catch (Exception e) {
             throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }

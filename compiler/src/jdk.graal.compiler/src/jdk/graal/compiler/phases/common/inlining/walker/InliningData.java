@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,7 @@ import jdk.graal.compiler.phases.common.inlining.policy.InliningPolicy;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -143,7 +144,190 @@ public class InliningData {
         return (arg instanceof AbstractNewObjectNode) || (arg instanceof AllocatedObjectNode) || (arg instanceof VirtualObjectNode);
     }
 
-    private String checkTargetConditionsHelper(ResolvedJavaMethod method, Invoke invoke) {
+    /**
+     * The result of resolving a direct, statically bound, or devirtualized invoke target.
+     *
+     * @param invoke the invoke whose target was resolved
+     * @param targetMethod the resolved target method
+     * @param dispatchedType the exact receiver type used for receiver-based devirtualization, or
+     *            {@code null} if no such type was needed or available
+     * @param takenAssumption the assumption required for the resolution, or {@code null} if the
+     *            target was proven without assumptions. When non-null, the assumption is not
+     *            recorded yet.
+     */
+    public record DevirtualizationInfo(Invoke invoke, ResolvedJavaMethod targetMethod, ResolvedJavaType dispatchedType, AssumptionResult<?> takenAssumption) {
+        /**
+         * Creates the {@link InlineInfo} corresponding to this devirtualization result. Any
+         * non-null {@link #takenAssumption()} is only recorded later, when that {@link InlineInfo}
+         * is used to inline or devirtualize the invoke.
+         */
+        public InlineInfo asInlineInfo() {
+            return takenAssumption == null ? new ExactInlineInfo(invoke, targetMethod) : new AssumptionInlineInfo(invoke, targetMethod, takenAssumption);
+        }
+    }
+
+    /**
+     * Returns inline information for an indirect invoke whose target can be devirtualized to a
+     * single method.
+     *
+     * @param invoke the indirect invoke to inspect
+     * @param mayUseAssumptions whether assumption-backed devirtualization results may be used. When
+     *            {@code true}, this method may return an {@link AssumptionInlineInfo} that carries
+     *            the assumption needed for devirtualization, but that assumption is only recorded
+     *            in the graph later, when that {@link InlineInfo} is used to inline or devirtualize
+     *            the invoke.
+     * @return inline information for the devirtualized target, or {@code null} if the invoke does
+     *         not have a single devirtualized target
+     */
+    private static InlineInfo getDevirtualizedInlineInfo(Invoke invoke, boolean mayUseAssumptions) {
+        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+        ResolvedJavaMethod targetMethod = callTarget.targetMethod();
+        assert targetMethod != null;
+        assert callTarget.invokeKind().isIndirect();
+
+        DevirtualizationInfo info = getDevirtualizationInfo(invoke, callTarget, targetMethod, mayUseAssumptions);
+        return info != null ? info.asInlineInfo() : null;
+    }
+
+    /**
+     * Resolves the target of an indirect invoke when it can be devirtualized to a single method.
+     *
+     * @param invoke the indirect invoke to inspect
+     * @param callTarget the invoke's call target
+     * @param targetMethod the invoked method before devirtualization
+     * @param mayUseAssumptions whether assumption-backed devirtualization results may be used
+     * @return the devirtualization result, or {@code null} if the invoke does not have a single
+     *         target under the requested constraints
+     */
+    private static DevirtualizationInfo getDevirtualizationInfo(Invoke invoke, MethodCallTargetNode callTarget, ResolvedJavaMethod targetMethod, boolean mayUseAssumptions) {
+        InvokeKind invokeKind = callTarget.invokeKind();
+        assert invokeKind.isIndirect();
+
+        ResolvedJavaType holder = targetMethod.getDeclaringClass();
+        ObjectStamp receiverStamp = (ObjectStamp) callTarget.receiver().stamp(NodeView.DEFAULT);
+        if (receiverStamp.alwaysNull()) {
+            // Don't inline if receiver is known to be null
+            return null;
+        }
+        ResolvedJavaType contextType = invoke.getContextType();
+        if (receiverStamp.type() != null) {
+            // the invoke target might be more specific than the holder (happens after inlining:
+            // parameters lose their declared type...)
+            ResolvedJavaType receiverType = receiverStamp.type();
+            if (holder.isAssignableFrom(receiverType)) {
+                holder = receiverType;
+                if (receiverStamp.isExactType()) {
+                    assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
+                    ResolvedJavaMethod resolvedMethod = holder.resolveConcreteMethod(targetMethod, contextType);
+                    if (resolvedMethod != null) {
+                        return new DevirtualizationInfo(invoke, resolvedMethod, holder, null);
+                    }
+                }
+            }
+        }
+
+        if (holder.isArray()) {
+            // arrays can be treated as Objects
+            ResolvedJavaMethod resolvedMethod = holder.resolveConcreteMethod(targetMethod, contextType);
+            if (resolvedMethod != null) {
+                return new DevirtualizationInfo(invoke, resolvedMethod, null, null);
+            }
+        }
+
+        Assumptions assumptions = callTarget.graph().getAssumptions();
+        if (mayUseAssumptions && invokeKind != InvokeKind.Interface && assumptions != null) {
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = holder.findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null) {
+                ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
+                if (resolvedMethod != null && leafConcreteSubtype.canRecordTo(assumptions)) {
+                    return new DevirtualizationInfo(invoke, resolvedMethod, null, leafConcreteSubtype);
+                }
+            }
+
+            AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
+            if (concrete != null && concrete.canRecordTo(assumptions)) {
+                return new DevirtualizationInfo(invoke, concrete.getResult(), null, concrete);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the target of an invoke that is already direct, statically bound, or can be
+     * devirtualized to a single target.
+     *
+     * @param invoke the invoke to inspect
+     * @param mayUseAssumptions whether assumption-backed devirtualization results may be returned
+     * @return the direct, statically bound, or devirtualization result, or {@code null} if no such
+     *         target can be proven
+     */
+    public static DevirtualizationInfo resolveDirectOrDevirtualizedTargetInfo(Invoke invoke, boolean mayUseAssumptions) {
+        if (invoke.getInvokeKind().isDirect()) {
+            return new DevirtualizationInfo(invoke, invoke.getTargetMethod(), null, null);
+        }
+        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+        ResolvedJavaMethod targetMethod = callTarget.targetMethod();
+        if (targetMethod == null) {
+            return null;
+        }
+        if (targetMethod.canBeStaticallyBound()) {
+            return new DevirtualizationInfo(invoke, targetMethod, null, null);
+        }
+        return getDevirtualizationInfo(invoke, callTarget, targetMethod, mayUseAssumptions);
+    }
+
+    /**
+     * Returns the target of an invoke that is already direct, statically bound, or can be
+     * devirtualized without relying on assumptions.
+     *
+     * @param invoke the invoke to inspect
+     * @return the direct, statically bound, or assumption-free devirtualization result, or
+     *         {@code null} if no such target can be proven
+     */
+    public static DevirtualizationInfo resolveDirectOrDevirtualizedTargetInfo(Invoke invoke) {
+        return resolveDirectOrDevirtualizedTargetInfo(invoke, false);
+    }
+
+    /**
+     * Returns the target method for an invoke that is already direct, statically bound, or can be
+     * devirtualized to a single target.
+     *
+     * @param invoke the invoke to inspect
+     * @param mayUseAssumptions whether assumption-backed devirtualization results may be returned
+     * @return the direct, statically bound, or devirtualized target method, or {@code null} if no
+     *         such target can be proven
+     */
+    public static ResolvedJavaMethod resolveDirectOrDevirtualizedTargetMethod(Invoke invoke, boolean mayUseAssumptions) {
+        DevirtualizationInfo resolution = resolveDirectOrDevirtualizedTargetInfo(invoke, mayUseAssumptions);
+        return resolution != null ? resolution.targetMethod() : null;
+    }
+
+    /**
+     * Returns the target method for an invoke that is already direct, statically bound, or can be
+     * devirtualized without relying on assumptions.
+     *
+     * @param invoke the invoke to inspect
+     * @return the direct, statically bound, or assumption-free devirtualized target method, or
+     *         {@code null} if no such target can be proven
+     */
+    public static ResolvedJavaMethod resolveDirectOrDevirtualizedTargetMethod(Invoke invoke) {
+        return resolveDirectOrDevirtualizedTargetMethod(invoke, false);
+    }
+
+    /**
+     * Checks whether a target method can be inlined at a given invoke under the provided graph and
+     * context.
+     *
+     * @param rootGraph the root graph whose options, assumptions, and replacements govern the
+     *            inlining decision
+     * @param context the high-tier context providing replacements and optimistic optimizations
+     * @param method the target method to validate
+     * @param invoke the invoke at which the method would be inlined
+     * @param recursiveInliningDepth the current recursion depth for {@code method} at
+     *            {@code invoke}
+     * @return a failure message when the method cannot be inlined, or {@code null} when it can
+     */
+    public static String checkTargetConditionsHelper(StructuredGraph rootGraph, HighTierContext context, ResolvedJavaMethod method, Invoke invoke, int recursiveInliningDepth) {
         OptionValues options = rootGraph.getOptions();
         if (method == null) {
             return "the method is not resolved";
@@ -160,7 +344,7 @@ public class InliningData {
             return "the method's class is not initialized";
         } else if (!method.canBeInlined()) {
             return "it is marked non-inlinable";
-        } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue(options)) {
+        } else if (recursiveInliningDepth > MaximumRecursiveInlining.getValue(options)) {
             return "it exceeds the maximum recursive inlining depth";
         } else {
             if (new OptimisticOptimizations(rootGraph.getProfilingInfo(invoke.asNode().graph().getCallerContext(), method), options).lessOptimisticThan(context.getOptimisticOptimizations())) {
@@ -169,6 +353,10 @@ public class InliningData {
                 return null;
             }
         }
+    }
+
+    private String checkTargetConditionsHelper(ResolvedJavaMethod method, Invoke invoke) {
+        return checkTargetConditionsHelper(rootGraph, context, method, invoke, countRecursiveInlining(method));
     }
 
     private boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method) {
@@ -204,53 +392,9 @@ public class InliningData {
 
         assert invokeKind.isIndirect();
 
-        ResolvedJavaType holder = targetMethod.getDeclaringClass();
-        if (!(callTarget.receiver().stamp(NodeView.DEFAULT) instanceof ObjectStamp)) {
-            return null;
-        }
-        ObjectStamp receiverStamp = (ObjectStamp) callTarget.receiver().stamp(NodeView.DEFAULT);
-        if (receiverStamp.alwaysNull()) {
-            // Don't inline if receiver is known to be null
-            return null;
-        }
-        ResolvedJavaType contextType = invoke.getContextType();
-        if (receiverStamp.type() != null) {
-            // the invoke target might be more specific than the holder (happens after inlining:
-            // parameters lose their declared type...)
-            ResolvedJavaType receiverType = receiverStamp.type();
-            if (receiverType != null && holder.isAssignableFrom(receiverType)) {
-                holder = receiverType;
-                if (receiverStamp.isExactType()) {
-                    assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
-                    ResolvedJavaMethod resolvedMethod = holder.resolveConcreteMethod(targetMethod, contextType);
-                    if (resolvedMethod != null) {
-                        return getExactInlineInfo(invoke, resolvedMethod);
-                    }
-                }
-            }
-        }
-
-        if (holder.isArray()) {
-            // arrays can be treated as Objects
-            ResolvedJavaMethod resolvedMethod = holder.resolveConcreteMethod(targetMethod, contextType);
-            if (resolvedMethod != null) {
-                return getExactInlineInfo(invoke, resolvedMethod);
-            }
-        }
-
-        if (invokeKind != InvokeKind.Interface) {
-            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = holder.findLeafConcreteSubtype();
-            if (leafConcreteSubtype != null) {
-                ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
-                if (resolvedMethod != null && leafConcreteSubtype.canRecordTo(callTarget.graph().getAssumptions())) {
-                    return getAssumptionInlineInfo(invoke, resolvedMethod, leafConcreteSubtype);
-                }
-            }
-
-            AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
-            if (concrete != null && concrete.canRecordTo(callTarget.graph().getAssumptions())) {
-                return getAssumptionInlineInfo(invoke, concrete.getResult(), concrete);
-            }
+        InlineInfo devirtualizedInlineInfo = getDevirtualizedInlineInfo(invoke, true);
+        if (devirtualizedInlineInfo != null && checkTargetConditions(invoke, devirtualizedInlineInfo.methodAt(0))) {
+            return devirtualizedInlineInfo;
         }
 
         // type check based inlining
@@ -406,14 +550,6 @@ public class InliningData {
             }
             return new MultiTypeGuardInlineInfo(invoke, concreteMethods, usedTypes, typesToConcretes, notRecordedTypeProbability, speculationFailed, speculation);
         }
-    }
-
-    private InlineInfo getAssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, AssumptionResult<?> takenAssumption) {
-        assert concrete.isConcrete();
-        if (checkTargetConditions(invoke, concrete)) {
-            return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
-        }
-        return null;
     }
 
     private InlineInfo getExactInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod) {

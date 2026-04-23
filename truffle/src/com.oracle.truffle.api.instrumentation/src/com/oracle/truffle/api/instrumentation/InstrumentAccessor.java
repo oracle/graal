@@ -137,24 +137,38 @@ final class InstrumentAccessor extends Accessor {
         public OptionDescriptors describeEngineOptions(Object instrumentationHandler, Object key, String requiredGroup) {
             InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) ((InstrumentationHandler) instrumentationHandler).instrumenterMap.get(key);
             OptionDescriptors descriptors = instrumenter.instrument.getOptionDescriptors();
-            return validateOptions(requiredGroup, instrumenter, descriptors);
+            return validateOptions(requiredGroup, instrumenter.instrument, descriptors);
         }
 
         @Override
         public OptionDescriptors describeContextOptions(Object instrumentationHandler, Object key, String requiredGroup) {
             InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) ((InstrumentationHandler) instrumentationHandler).instrumenterMap.get(key);
             OptionDescriptors descriptors = instrumenter.instrument.getContextOptionDescriptors();
-            return validateOptions(requiredGroup, instrumenter, descriptors);
+            return validateOptions(requiredGroup, instrumenter.instrument, descriptors);
         }
 
         @Override
         public OptionDescriptors describeSourceOptions(Object instrumentationHandler, Object key, String requiredGroup) {
             InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) ((InstrumentationHandler) instrumentationHandler).instrumenterMap.get(key);
             OptionDescriptors descriptors = instrumenter.instrument.getSourceOptionDescriptors();
-            return validateOptions(requiredGroup, instrumenter, descriptors);
+            return validateOptions(requiredGroup, instrumenter.instrument, descriptors);
         }
 
-        private static OptionDescriptors validateOptions(String requiredGroup, InstrumentClientInstrumenter instrumenter, OptionDescriptors descriptors) {
+        @Override
+        public OptionDescriptors describeOptions(Object truffleInstrument, String requiredGroup) {
+            TruffleInstrument instrument = (TruffleInstrument) truffleInstrument;
+            OptionDescriptors engineDescriptors = validateOptions(requiredGroup, instrument, instrument.getOptionDescriptors());
+            OptionDescriptors contextDescriptors = validateOptions(requiredGroup, instrument, instrument.getContextOptionDescriptors());
+            if (engineDescriptors == OptionDescriptors.EMPTY) {
+                return contextDescriptors;
+            }
+            if (contextDescriptors == OptionDescriptors.EMPTY) {
+                return engineDescriptors;
+            }
+            return InstrumentAccessor.LANGUAGE.createOptionDescriptorsUnion(engineDescriptors, contextDescriptors);
+        }
+
+        private static OptionDescriptors validateOptions(String requiredGroup, TruffleInstrument instrument, OptionDescriptors descriptors) {
             if (descriptors == null) {
                 return OptionDescriptors.EMPTY;
             }
@@ -163,7 +177,7 @@ final class InstrumentAccessor extends Accessor {
                 if (!descriptor.getName().equals(requiredGroup) && !descriptor.getName().startsWith(groupPlusDot)) {
                     throw new IllegalArgumentException(String.format("Illegal option prefix in name '%s' specified for option described by instrument '%s'. " +
                                     "The option prefix must match the id of the instrument '%s'.",
-                                    descriptor.getName(), instrumenter.instrument.getClass().getName(), requiredGroup));
+                                    descriptor.getName(), instrument.getClass().getName(), requiredGroup));
                 }
             }
             return descriptors;

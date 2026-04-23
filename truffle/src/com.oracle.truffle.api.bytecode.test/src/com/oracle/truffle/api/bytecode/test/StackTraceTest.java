@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,7 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -497,6 +498,43 @@ public class StackTraceTest extends AbstractInstructionTest {
 
             assertThrows(AssertionError.class, () -> caller.getCallTarget().call());
         }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testInvalidBytecodeIndexTruffleStackTraceElement() {
+        StackTraceTestRootNode capturesStack = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitCaptureStack();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        List<TruffleStackTraceElement> elements = (List<TruffleStackTraceElement>) capturesStack.getCallTarget().call();
+        TruffleStackTraceElement element = elements.get(0);
+        TruffleStackTraceElement invalid = TruffleStackTraceElement.create(element.getLocation(), element.getTarget(), element.getFrame(), -2);
+        assertThrows(IllegalArgumentException.class, () -> BytecodeLocation.get(invalid));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testInvalidBytecodeIndexGuestObject() {
+        StackTraceTestRootNode capturesStack = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitCaptureStack();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        List<TruffleStackTraceElement> elements = (List<TruffleStackTraceElement>) capturesStack.getCallTarget().call();
+        TruffleStackTraceElement element = elements.get(0);
+        TruffleStackTraceElement invalid = TruffleStackTraceElement.create(element.getLocation(), element.getTarget(), element.getFrame(), -2);
+        Object guestObject = invalid.getGuestObject();
+        InteropLibrary lib = InteropLibrary.getUncached();
+        assertFalse(lib.hasBytecodeIndex(guestObject));
+        assertThrows(UnsupportedMessageException.class, () -> lib.getBytecodeIndex(guestObject));
     }
 
     private StackTraceTestRootNode[] chainCalls(int depth, BytecodeParser<StackTraceTestRootNodeBuilder> innerParser, boolean includeLocation, boolean includeSources) {

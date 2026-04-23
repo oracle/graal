@@ -24,6 +24,10 @@
  */
 package com.oracle.truffle.tools.dap.server;
 
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
@@ -36,11 +40,11 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.dap.types.Scope;
 import com.oracle.truffle.tools.dap.types.StackFrame;
 import com.oracle.truffle.tools.dap.types.Variable;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
 
 public final class StackFramesHandler {
+
+    /** DAP variables-view label for a guest top scope when no usable guest name is available. */
+    public static final String DEFAULT_TOP_SCOPE_NAME = "Global";
 
     private final ExecutionContext context;
     private final DebuggerSession debuggerSession;
@@ -143,7 +147,7 @@ public final class StackFramesHandler {
             while (dscope != null) {
                 if (dscope.isFunctionScope() || dscope.getDeclaredValues().iterator().hasNext()) {
                     // provide only scopes that have some variables
-                    scopes.add(Scope.create("Global", info.getId(dscope), true));
+                    scopes.add(Scope.create(topScopeDapName(dscope), info.getId(dscope), true));
                 }
                 dscope = getParent(dscope);
             }
@@ -152,7 +156,28 @@ public final class StackFramesHandler {
         return null;
     }
 
-    public static Variable evaluateOnStackFrame(ThreadsHandler.SuspendedThreadInfo info, int frameId, String expression) throws DebugException {
+    String topScopeDapName(DebugScope dscope) {
+        try {
+            return topScopeDapName(dscope.getName());
+        } catch (DebugException ex) {
+            PrintWriter err = context.getErr();
+            if (err != null) {
+                err.println("getScope() has caused " + ex);
+                ex.printStackTrace(err);
+            }
+            return DEFAULT_TOP_SCOPE_NAME;
+        }
+    }
+
+    public static String topScopeDapName(String guestName) {
+        if (guestName == null) {
+            return DEFAULT_TOP_SCOPE_NAME;
+        }
+        String trimmed = guestName.trim();
+        return trimmed.isEmpty() ? DEFAULT_TOP_SCOPE_NAME : trimmed;
+    }
+
+    public static Variable evaluateOnStackFrame(ThreadsHandler.SuspendedThreadInfo info, int frameId, String expression) {
         FrameWrapper frameWrapper = info.getById(FrameWrapper.class, frameId);
         DebugStackFrame frame = frameWrapper != null ? frameWrapper.getFrame() : null;
         if (frame != null) {

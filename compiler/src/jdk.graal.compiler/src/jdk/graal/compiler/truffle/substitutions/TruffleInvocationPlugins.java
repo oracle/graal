@@ -33,6 +33,7 @@ import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEn
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.getArrayLocation;
 
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.Stride;
@@ -109,6 +110,7 @@ public class TruffleInvocationPlugins {
         registerBytecodePlugins(plugins);
         registerCompilerDirectivesPlugins(plugins);
         registerDynamicObjectPlugins(plugins);
+        registerOptionPlugins(plugins);
     }
 
     private static void registerFramePlugins(InvocationPlugins plugins) {
@@ -838,5 +840,39 @@ public class TruffleInvocationPlugins {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/object/UnsafeAccess;"));
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.object.UnsafeAccess");
         r.register(new UnsafeCastPlugin("hostUnsafeCast", false));
+    }
+
+    private static void registerOptionPlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lorg/graalvm/options/ConstantOptionKey;"));
+        var r = new InvocationPlugins.Registration(plugins, "org.graalvm.options.ConstantOptionKey");
+        r.register(new InvocationPlugin.RequiredInvocationPlugin("getConstantValue", InvocationPlugin.Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode receiverValueNode = receiver.get(false);
+                if (receiverValueNode.isConstant()) {
+                    JavaConstant receiverConstant = receiverValueNode.asJavaConstant();
+                    ConstantReflectionProvider cr = b.getConstantReflection();
+                    ResolvedJavaType owner = targetMethod.getDeclaringClass();
+                    ResolvedJavaField constantValueField = find(owner.getInstanceFields(false), "constantValue");
+                    ResolvedJavaField unsetField = find(owner.getStaticFields(), "UNSET");
+                    JavaConstant constantValue = cr.readFieldValue(constantValueField, receiverConstant);
+                    JavaConstant unset = cr.readFieldValue(unsetField, null);
+                    if (constantValue != null && !cr.constantEquals(constantValue, unset)) {
+                        b.addPush(JavaKind.Object, ConstantNode.forConstant(constantValue, b.getMetaAccess()));
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            private ResolvedJavaField find(ResolvedJavaField[] fields, String fieldName) {
+                for (ResolvedJavaField field : fields) {
+                    if (field.getName().equals(fieldName)) {
+                        return field;
+                    }
+                }
+                throw GraalError.shouldNotReachHere("Field not found: " + fieldName);
+            }
+        });
     }
 }

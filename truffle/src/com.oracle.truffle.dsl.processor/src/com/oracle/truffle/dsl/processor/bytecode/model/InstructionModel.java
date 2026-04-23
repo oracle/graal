@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -221,7 +222,7 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public record InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding, boolean dynamic, Optional<ConstantOperandModel> constantOperand) {
+    public record InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding, boolean dynamic, OptionalInt operandIndex) {
 
         public int offset() {
             return encoding.offset();
@@ -624,12 +625,26 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName, boolean dynamic) {
-        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(byteLength, immediateKind.width), dynamic, Optional.empty()));
+        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(byteLength, immediateKind.width), dynamic, OptionalInt.empty()));
         return this;
     }
 
-    public InstructionModel addConstantOperandImmediate(ConstantOperandModel constantOperand, String immediateName) {
-        addImmediate(new InstructionImmediate(constantOperand.kind(), immediateName, new InstructionImmediateEncoding(byteLength, constantOperand.kind().width), false, Optional.of(constantOperand)));
+    public InstructionModel addConstantOperandImmediate(Operand operand, String immediateName) {
+        if (!operand.isConstant()) {
+            throw new IllegalArgumentException("Operand must be constant: " + operand);
+        }
+        ConstantOperandModel constantOperand = operand.constant();
+        addImmediate(new InstructionImmediate(constantOperand.kind(), immediateName, new InstructionImmediateEncoding(byteLength, constantOperand.kind().width), false,
+                        OptionalInt.of(operand.index())));
+        return this;
+    }
+
+    public InstructionModel addChildBciImmediate(Operand operand) {
+        if (!operand.isDynamic()) {
+            throw new IllegalArgumentException("Operand must be dynamic: " + operand);
+        }
+        addImmediate(new InstructionImmediate(ImmediateKind.BYTECODE_INDEX, "child" + operand.dynamicIndex(), new InstructionImmediateEncoding(byteLength, ImmediateKind.BYTECODE_INDEX.width),
+                        false, OptionalInt.of(operand.index())));
         return this;
     }
 
@@ -638,15 +653,44 @@ public final class InstructionModel implements PrettyPrintable {
             throw new AssertionError("Immediate has offset " + immediate.offset() + " but the instruction is currently only " + byteLength + " bytes long.");
         }
         immediates.add(immediate);
-        if (immediate.constantOperand.isPresent()) {
-            constantOperandImmediates.put(immediate.constantOperand.get(), immediate);
-        }
+        resolveConstantOperand(immediate).ifPresent(constantOperand -> constantOperandImmediates.put(constantOperand, immediate));
         byteLength += immediate.kind.width.byteSize;
+    }
+
+    public Optional<Operand> resolveOperand(InstructionImmediate immediate) {
+        if (immediate.operandIndex().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(signature.operands().get(immediate.operandIndex().getAsInt()));
+    }
+
+    public OptionalInt resolveDynamicOperandIndex(InstructionImmediate immediate) {
+        Optional<Operand> operand = resolveOperand(immediate);
+        if (operand.isPresent() && operand.get().isDynamic()) {
+            return OptionalInt.of(operand.get().dynamicIndex());
+        }
+        return OptionalInt.empty();
+    }
+
+    public Optional<ConstantOperandModel> resolveConstantOperand(InstructionImmediate immediate) {
+        return resolveOperand(immediate).filter(Operand::isConstant).map(Operand::constant);
     }
 
     public InstructionImmediate findImmediate(ImmediateKind immediateKind, String immediateName) {
         for (InstructionImmediate immediate : immediates) {
             if (immediate.kind == immediateKind && immediate.name.equals(immediateName)) {
+                return immediate;
+            }
+        }
+        return null;
+    }
+
+    public InstructionImmediate findChildBciImmediate(int dynamicOperandIndex) {
+        for (InstructionImmediate immediate : immediates) {
+            if (immediate.kind != ImmediateKind.BYTECODE_INDEX) {
+                continue;
+            }
+            if (resolveDynamicOperandIndex(immediate).orElse(-1) == dynamicOperandIndex) {
                 return immediate;
             }
         }
@@ -659,10 +703,6 @@ public final class InstructionModel implements PrettyPrintable {
 
     public List<InstructionImmediate> getImmediates(ImmediateKind immediateKind) {
         return immediates.stream().filter(imm -> imm.kind == immediateKind).toList();
-    }
-
-    public boolean hasImmediate(ImmediateKind immediateKind) {
-        return !getImmediates(immediateKind).isEmpty();
     }
 
     public InstructionImmediate getImmediate(ImmediateKind immediateKind) {

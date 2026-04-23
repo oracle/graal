@@ -83,7 +83,6 @@ public final class LibEspresso {
         builder.option("java.ExitHost", "true");
         builder.option("java.EnableSignals", "true");
         builder.option("java.ExposeNativeJavaVM", "true");
-        builder.option("java.GuestFieldOffsetStrategy", "graal"); // most "hotspot-like"
         Context context = null;
         boolean entered = false;
         Value bindings;

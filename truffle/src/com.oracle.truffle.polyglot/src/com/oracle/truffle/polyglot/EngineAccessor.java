@@ -72,12 +72,14 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionMap;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -134,6 +136,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.FileSystems.ResetablePath;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.FinalizationResult;
+import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
@@ -1681,14 +1684,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey) {
-            if (!(optionValues instanceof OptionValuesImpl)) {
-                throw new IllegalArgumentException(String.format("Only %s is supported.", OptionValuesImpl.class.getName()));
-            }
-            return ((OptionValuesImpl) optionValues).getUnparsedOptionValue(optionKey);
-        }
-
-        @Override
         public String getRelativePathInResourceRoot(TruffleFile truffleFile) {
             return FileSystems.getRelativePathInResourceRoot(truffleFile);
         }
@@ -2454,6 +2449,35 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isUntrustedCodeMitigationPolicySoftware(Enum<?> policy) {
             return policy == PolyglotEngineOptions.UntrustedCodeMitigationPolicy.SOFTWARE;
+        }
+
+        @Override
+        public void collectNativeImagePresetOptions() {
+            if (!ImageInfo.inImageBuildtimeCode()) {
+                throw new AssertionError("CollectNativeImagePresetOptions can be called only in image build time");
+            }
+            PolyglotImpl polyglot = PolyglotImpl.findInstance();
+            Map<String, String> newDefaults = polyglot.getAPIAccess().readOptionsFromSystemProperties();
+            if (!newDefaults.isEmpty()) {
+                // Validate preset options
+                Map<String, String> toValidate = new HashMap<>(newDefaults);
+                // Parse engine options to validate them
+                PolyglotImpl.createEngineOptions(PolyglotImpl.findInstance(), Map.of(), toValidate, true, new LogConfig(), SandboxPolicy.TRUSTED, true);
+                Set<String> componentIds = toValidate.keySet().stream().map(PolyglotEngineImpl::parseOptionGroup).collect(Collectors.toSet());
+                List<OptionDescriptors> descriptors = new ArrayList<>();
+                LanguageCache.languages().entrySet().stream().//
+                                filter((e) -> componentIds.contains(e.getKey())).//
+                                map((e) -> LANGUAGE.describeOptions(e.getValue().loadLanguage(), e.getKey())).//
+                                forEach(descriptors::add);
+                InstrumentCache.load().entrySet().stream().//
+                                filter((e) -> componentIds.contains(e.getKey())).//
+                                map((e) -> INSTRUMENT.describeOptions(e.getValue().loadInstrument(), e.getKey())).//
+                                forEach(descriptors::add);
+                // Parse languages/instrument options to validate them
+                OptionValuesImpl values = new OptionValuesImpl(LANGUAGE.createOptionDescriptorsUnion(descriptors.toArray(new OptionDescriptors[0])), SandboxPolicy.TRUSTED, false);
+                values.putAll(toValidate, true, null);
+                polyglot.presetOptions = Collections.unmodifiableMap(newDefaults);
+            }
         }
     }
 

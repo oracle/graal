@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -561,7 +561,7 @@ public @interface GenerateBytecode {
      *     // ...
      * }
      *
-     * class MyIllegaLocalException extends AbstractTruffleException {
+     * class MyIllegalLocalException extends AbstractTruffleException {
      *     public static MyIllegalLocalException create(Node location, BytecodeNode bytecode, BytecodeLocation location, LocalVariable variable) {
      *         // ...
      *     }

@@ -24,9 +24,18 @@
  * questions.
  */
 
-package com.oracle.graal.pointsto.standalone.test;
+package com.oracle.graal.pointsto.standalone.test.classes;
 
+/**
+ * Fixture for basic reachability checks.
+ *
+ * The reachable branch instantiates only the {@code C} hierarchy, while {@link D} stays unreachable
+ * so the test can assert both positive and negative reachability facts.
+ */
 public class StandaloneAnalyzerReachabilityCase {
+    /**
+     * Entry point that selects between the two reachable subclasses and never touches {@link D}.
+     */
     public static void main(String[] args) {
         Object c;
         if (args.length > 0) {
@@ -37,38 +46,68 @@ public class StandaloneAnalyzerReachabilityCase {
         c.toString();
     }
 
+    /**
+     * Reachable abstract base class whose field should also become reachable.
+     */
     public abstract static class C {
-        protected String val;
+        public String val;
 
+        /**
+         * Returns the stored value so both subclasses contribute the same observable behavior.
+         */
         @Override
         public abstract String toString();
     }
 
+    /**
+     * First reachable subclass.
+     */
     public static class C1 extends C {
+        /**
+         * Initializes the inherited reachable field.
+         */
         public C1(String v) {
             val = v;
         }
 
+        /**
+         * Returns the stored constructor value.
+         */
         @Override
         public String toString() {
             return val;
         }
     }
 
+    /**
+     * Second reachable subclass.
+     */
     public static class C2 extends C {
+        /**
+         * Initializes the inherited reachable field.
+         */
         public C2(String v) {
             val = v;
         }
 
+        /**
+         * Returns the stored constructor value.
+         */
         @Override
         public String toString() {
             return val;
         }
     }
 
+    /**
+     * Unreachable comparison type used to verify negative reachability assertions.
+     */
     public static class D {
-        @SuppressWarnings("unused") private String val;
+        @SuppressWarnings("unused") public String val;
 
+        /**
+         * Produces an observable side effect if this unreachable type were ever analyzed.
+         */
         @Override
         public String toString() {
             return val = "D";

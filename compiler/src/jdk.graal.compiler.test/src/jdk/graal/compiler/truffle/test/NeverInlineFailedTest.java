@@ -185,8 +185,16 @@ public class NeverInlineFailedTest {
             AtomicReference<CallTarget> calleeRef = new AtomicReference<>();
             AtomicReference<CallTarget> callerRef = new AtomicReference<>();
             AtomicReference<String> calleeCompilationFailure = new AtomicReference<>();
+            AtomicInteger calleeCompilationStarts = new AtomicInteger();
             AtomicInteger callerCompilationInlinedCalls = new AtomicInteger(-1);
             OptimizedTruffleRuntimeListener listener = new OptimizedTruffleRuntimeListener() {
+                @Override
+                public void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
+                    if (target == calleeRef.get()) {
+                        calleeCompilationStarts.incrementAndGet();
+                    }
+                }
+
                 @Override
                 public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
                     if (target == calleeRef.get()) {
@@ -212,6 +220,7 @@ public class NeverInlineFailedTest {
                 Assert.assertNotNull(calleeCompilationFailure.get());
                 Assert.assertTrue("Unexpected compilation failure reason: " + calleeCompilationFailure.get(),
                                 calleeCompilationFailure.get().contains(reasonContains));
+                Assert.assertEquals(1, calleeCompilationStarts.get());
                 CallTarget callerTarget = new Caller(calleeTarget).getCallTarget();
                 callerRef.set(callerTarget);
                 callerTarget.call();

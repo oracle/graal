@@ -58,7 +58,8 @@ interface PolyglotIsolateServices {
     void initialize(PolyglotHostServices hostServices, String internalResources);
 
     long buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
-                    Map<String, String> options, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler,
+                    Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
+                    boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler,
                     AbstractPolyglotHostService polyglotHostService, Object hostLanguageServicePeer);
 
     long createContext(Object engineReceiver, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,

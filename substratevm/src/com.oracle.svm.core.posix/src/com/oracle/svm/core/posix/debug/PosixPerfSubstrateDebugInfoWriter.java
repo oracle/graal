@@ -25,16 +25,12 @@
 
 package com.oracle.svm.core.posix.debug;
 
-import java.util.List;
-
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
-import com.oracle.svm.core.code.InstalledCodeObserverSupportFeature;
 import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
 import com.oracle.svm.core.debug.SubstrateDebugInfoProvider;
 import com.oracle.svm.core.debug.SubstrateDebugInfoWriter;
@@ -77,11 +73,6 @@ class PosixPerfSubstrateDebugInfoFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateDebugInfoInstaller.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoInstaller.DEBUG_INFO_JITDUMP_NAME);
-    }
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(InstalledCodeObserverSupportFeature.class);
     }
 
     @Override

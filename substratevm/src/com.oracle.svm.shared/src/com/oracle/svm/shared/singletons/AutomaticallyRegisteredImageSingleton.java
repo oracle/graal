@@ -41,15 +41,21 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
  * Convenience annotation to automatically register a singleton instance of the annotated class in
  * {@link ImageSingletons}.
  *
- * The singleton is allocated and registered in a {@link Feature#afterRegistration} hook, and the
- * feature does not have any dependencies on other features. The order in which such features are
- * registered is not deterministic and cannot be influenced. This means that the constructor of
- * annotated class must not rely on other features being registered already, or other image
- * singletons being present already.
+ * The singleton is allocated and registered in an internal hosted registration step before feature
+ * registration begins. In particular, this happens before any feature
+ * {@link Feature#isInConfiguration}, {@link Feature#getRequiredFeatures}, or
+ * {@link Feature#afterRegistration} logic runs. The order in which automatically registered image
+ * singletons are processed is not deterministic and cannot be influenced. This means that the
+ * constructor of the annotated class and any {@link #onlyWith} predicates must not rely on feature
+ * registration having started already, or other image singletons being present already.
  *
  * If both a class and a subclass are annotated with {@link AutomaticallyRegisteredImageSingleton}
- * (and the subclass is not disabled by {@link #onlyWith}), only the subclass will be registered as
- * an image singleton.
+ * (and the subclass is not disabled by {@link #onlyWith}), exactly one singleton instance is
+ * created, and its class is the most specific enabled annotated class in that hierarchy.
+ * Registration keys are derived separately: explicit {@link #value()} keys declared on the selected
+ * class and on its annotated superclasses are inherited and all resolve to that selected instance.
+ * If no explicit key is declared anywhere in the annotated chain, only the selected class itself is
+ * used as the key; annotated superclasses are not implicitly added as fallback keys.
  *
  * The requirements and restrictions of {@link AutomaticallyRegisteredFeature} apply also to this
  * annotation.
@@ -60,9 +66,10 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 public @interface AutomaticallyRegisteredImageSingleton {
 
     /**
-     * The keys under which the singleton is registered in {@link ImageSingletons}. If the annotated
-     * class extends another annotated class, keys from the base class are inherited. If no keys are
-     * specified (or inherited), the annotated class itself is used as the key.
+     * The keys under which the singleton is registered in {@link ImageSingletons}. If the selected
+     * class extends another annotated class, explicit keys from annotated superclasses are
+     * inherited. If no explicit keys are specified anywhere in the annotated chain, only the
+     * selected class itself is used as the key.
      */
     Class<?>[] value() default {};
 

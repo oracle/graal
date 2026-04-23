@@ -59,6 +59,11 @@ public final class CremaLinkResolver {
         LinkResolver.checkFieldAccessOrThrow(runtime, symbolicResolution, fieldAccessType, currentClass, currentMethod);
     }
 
+    public static void checkFieldAccessOrThrow(CremaRuntimeAccess runtime, InterpreterResolvedJavaField symbolicResolution, int opcode, InterpreterResolvedJavaType currentClass,
+                    InterpreterResolvedJavaMethod currentMethod) {
+        checkFieldAccessOrThrow(runtime, symbolicResolution, FieldAccessType.fromOpCode(opcode), currentClass, currentMethod);
+    }
+
     public static boolean checkFieldAccess(CremaRuntimeAccess runtime, InterpreterResolvedJavaField symbolicResolution, FieldAccessType fieldAccessType, InterpreterResolvedJavaType currentClass,
                     InterpreterResolvedJavaMethod currentMethod) {
         return LinkResolver.checkFieldAccess(runtime, symbolicResolution, fieldAccessType, currentClass, currentMethod);

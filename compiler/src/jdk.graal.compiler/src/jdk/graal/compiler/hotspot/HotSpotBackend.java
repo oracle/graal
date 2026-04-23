@@ -30,7 +30,6 @@ import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Trans
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
-import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.UNSAFE_ARRAYCOPY;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_END_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_TOP_LOCATION;
 import static org.graalvm.word.LocationIdentity.any;
@@ -52,7 +51,6 @@ import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
@@ -183,20 +181,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native int sha3ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int blockSize, int ofs, int limit);
 
-    public static void unsafeSetMemory(Word objAddr, Word size, byte value) {
-        unsafeSetMemoryStub(UNSAFE_SETMEMORY, objAddr, size, value);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void unsafeSetMemoryStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word objAddr, Word size, byte value);
-
-    public static void unsafeArraycopy(Word srcAddr, Word dstAddr, Word size) {
-        unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void unsafeArraycopyStub(@ConstantNodeParameter ForeignCallSignature descriptor, Word srcAddr, Word dstAddr, Word size);
-
     public static final LocationIdentity CRC_TABLE_LOCATION = NamedLocationIdentity.immutable("crc32_table");
 
     public static final HotSpotForeignCallDescriptor UPDATE_BYTES_CRC32 = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "updateBytesCRC32", int.class, int.class,
@@ -261,6 +245,16 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor ARRAY_PARTITION = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_array_partition", void.class,
                     WordBase.class, int.class, int.class, int.class, WordBase.class, int.class, int.class);
 
+    public static final HotSpotForeignCallDescriptor UNSAFE_SETMEMORY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
+                    "unsafe_setmemory", void.class, Word.class, Word.class, byte.class);
+
+    /**
+     * For the semantics refer to
+     * {@link jdk.internal.misc.Unsafe#copyMemory(Object, long, Object, long, long)}.
+     */
+    public static final HotSpotForeignCallDescriptor UNSAFE_ARRAYCOPY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
+                    "unsafe_arraycopy", void.class, Word.class, Word.class, Word.class);
+
     public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_start", void.class,
                     Object.class, boolean.class, Word.class);
@@ -276,9 +270,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_unmount", void.class,
                     Object.class, boolean.class, Word.class);
-
-    public static final HotSpotForeignCallDescriptor UNSAFE_SETMEMORY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
-                    "unsafe_setmemory", void.class, Word.class, Word.class, byte.class);
 
     /**
      * @see VMErrorNode

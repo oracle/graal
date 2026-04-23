@@ -40,12 +40,14 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
 import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite;
 import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.TruffleBytecodeHandlerTypes;
 import jdk.graal.compiler.truffle.host.OutlineBytecodeHandlerPhase;
@@ -66,13 +68,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeHandlerPhase {
 
     /**
-     * A map of registered bytecode handlers, where the key is the original method and the value is
-     * the stub method. This map is collected in {@link TruffleBytecodeHandlerInvokePlugin} and both
-     * the keys and values are of {@link com.oracle.graal.pointsto.meta.AnalysisMethod}.
+     * A map of registered bytecode handlers, keyed by the original method and partitioned by
+     * {@link BytecodeHandlerConfig}. Each entry resolves to the corresponding stub wrapper method.
+     * This map is collected in {@link TruffleBytecodeHandlerInvokePlugin} and the contents are
+     * analysis-time {@link com.oracle.graal.pointsto.meta.AnalysisMethod} instances.
      */
-    private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers;
+    private final EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers;
 
-    public SubstrateOutlineBytecodeHandlerPhase(EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers) {
+    public SubstrateOutlineBytecodeHandlerPhase(EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers) {
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
     }
 
@@ -85,18 +88,16 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
         return asTruffleBytecodeHandlerTypes(truffleKnownHostTypes);
     }
 
-    /**
-     * Returns the stub for the given target method.
-     *
-     * @param targetMethod a {@link HostedMethod}
-     */
-    private SubstrateTruffleBytecodeHandlerStub getStub(ResolvedJavaMethod targetMethod) {
-        return (SubstrateTruffleBytecodeHandlerStub) unwrap(registeredBytecodeHandlers.get(unwrap(targetMethod)));
+    private ResolvedJavaMethod lookupStubWrapper(ResolvedJavaMethod targetMethod, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
+        BytecodeHandlerStubKey key = BytecodeHandlerStubKey.create(unwrap(targetMethod), interpreterHolder, handlerConfig);
+        ResolvedJavaMethod stubWrapper = registeredBytecodeHandlers.get(key);
+        GraalError.guarantee(stubWrapper != null, "No stub registered for %s with config %s", targetMethod, handlerConfig);
+        return stubWrapper;
     }
 
     @Override
     protected TruffleBytecodeHandlerCallsite getTruffleBytecodeHandlerCallsite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod, TruffleBytecodeHandlerTypes truffleTypes) {
-        return getStub(targetMethod).getCallsite();
+        return new TruffleBytecodeHandlerCallsite(unwrap(enclosingMethod), bci, unwrap(targetMethod), truffleTypes);
     }
 
     @Override
@@ -116,7 +117,8 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
         StructuredGraph graph = invoke.asNode().graph();
         CallTargetNode oldCallTargetNode = invoke.callTarget();
         ResolvedJavaMethod targetMethod = oldCallTargetNode.targetMethod();
-        ResolvedJavaMethod analysisStub = registeredBytecodeHandlers.get(unwrap(targetMethod));
+        ResolvedJavaType interpreterHolder = unwrap(callsite.getEnclosingMethod().getDeclaringClass());
+        ResolvedJavaMethod analysisStub = lookupStubWrapper(callsite.getTargetMethod(), interpreterHolder, callsite.getHandlerConfig());
         HostedMethod hostedStub = ((HostedMetaAccess) context.getMetaAccess()).getUniverse().optionalLookup(analysisStub);
 
         SubstrateMethodCallTargetNode newCallTargetNode = graph.add(new SubstrateMethodCallTargetNode(CallTargetNode.InvokeKind.Static, hostedStub, arguments,

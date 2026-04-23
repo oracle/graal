@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,19 +76,24 @@ final class ContinuationRootNodeImplElement extends AbstractElement {
     void lazyInit() {
         CodeExecutableElement constructor = this.add(GeneratorUtils.createConstructorUsingFields(
                         Set.of(), this,
-                        ElementFilter.constructorsIn(((TypeElement) types.RootNode.asElement()).getEnclosedElements()).stream().filter(x -> x.getParameters().size() == 2).findFirst().get()));
+                        ElementFilter.constructorsIn(types.RootNode.asElement().getEnclosedElements()).stream().filter(
+                                        x -> x.getParameters().size() == 1).findFirst().get()));
         CodeTreeBuilder b = constructor.createBuilder();
-        b.statement("super(BytecodeRootNodesImpl.VISIBLE_TOKEN, language, frameDescriptor)");
+        b.startStatement().startCall("super");
+        b.string("BytecodeRootNodesImpl.VISIBLE_TOKEN");
+        b.string("language");
+        b.startNew(types.FrameDescriptor).end();
+        b.end(2);
         b.statement("this.root = root");
         b.statement("this.sp = sp");
         b.statement("this.location = location");
 
         this.add(createExecute());
+        this.add(createSyncToMaterializedFrame());
         this.add(createGetSourceRootNode());
         this.add(createGetLocation());
         this.add(createFindFrame());
         this.add(createUpdateBytecodeLocation());
-        this.add(createCreateContinuation());
         this.add(createToString());
 
         // RootNode overrides.
@@ -126,28 +131,69 @@ final class ContinuationRootNodeImplElement extends AbstractElement {
         b.end();
         b.declaration(type(Object.class), "inputValue", "args[1]");
 
-        b.startIf().string("parentFrame.getFrameDescriptor() != frame.getFrameDescriptor()").end().startBlock();
+        b.startIf().string("parentFrame.getFrameDescriptor() != root.getFrameDescriptor()").end().startBlock();
         BytecodeRootNodeElement.emitThrowIllegalArgumentException(b, "Invalid continuation parent frame passed");
         b.end();
 
-        b.startIf().string("root.maxLocals < sp - 1").end().startBlock();
-        b.lineComment("Restore any stack operands below the resume value.");
-        b.lineComment("These operands belong to the interval [maxLocals, sp - 1).");
-        b.statement(BytecodeRootNodeElement.copyFrameTo("parentFrame", "root.maxLocals", "frame", "root.maxLocals", "sp - 1 - root.maxLocals"));
+        b.declaration(types.FrameWithoutBoxing, "targetFrame", "parentFrame");
+
+        b.startIf().string("CompilerDirectives.inCompiledCode()").end().startBlock();
+        b.lineComment("Create a fresh virtual frame in compiled code so frame accesses can be optimized.");
+        b.lineComment("If this execution deoptimizes, continueAt syncs active stack operands back to parentFrame.");
+        b.lineComment("Execution then re-enters the bytecode loop with the materialized frame.");
+        b.startDeclaration(types.FrameWithoutBoxing, "virtualFrame");
+        b.cast(types.FrameWithoutBoxing);
+        b.startCall(CodeTreeBuilder.createBuilder().startStaticCall(types.Truffle, "getRuntime").end().build(), "createVirtualFrame");
+        b.string("parentFrame.getArguments()");
+        b.string("root.getFrameDescriptor()");
         b.end();
-        b.statement(BytecodeRootNodeElement.setFrameObject(BytecodeRootNodeElement.COROUTINE_FRAME_INDEX, "parentFrame"));
-        b.statement(BytecodeRootNodeElement.setFrameObject("sp - 1", "inputValue"));
+        b.end();
+
+        emitRestoreStackOperands(b, "parentFrame", "virtualFrame");
+        b.statement(BytecodeRootNodeElement.setFrameObject("virtualFrame", BytecodeRootNodeElement.CONTINUATION_FRAME_INDEX, "parentFrame"));
+        b.statement("targetFrame = virtualFrame");
+        b.end();
+
+        b.statement(BytecodeRootNodeElement.setFrameObject("targetFrame", "sp - 1", "inputValue"));
 
         b.startReturn();
         b.startCall("root.continueAt");
         b.string("bytecodeNode");
         b.string("bytecodeLocation.getBytecodeIndex()");
         b.string("sp");
-        b.string("frame");
-        b.string("parentFrame");
+        b.string("targetFrame");
         b.string("this");
         b.end(2);
 
+        return ex;
+    }
+
+    private static void emitRestoreStackOperands(CodeTreeBuilder b, String srcFrame, String dstFrame) {
+        b.startIf().string("root.stackBase < sp - 1").end().startBlock();
+        b.lineComment("Restore any stack operands below the resume value.");
+        b.lineComment("These operands belong to the interval [stackBase, sp - 1).");
+        b.statement(BytecodeRootNodeElement.copyFrameTo(srcFrame, "root.stackBase", dstFrame, "root.stackBase", "sp - 1 - root.stackBase"));
+        b.end();
+    }
+
+    private CodeExecutableElement createSyncToMaterializedFrame() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(), types.FrameWithoutBoxing, "syncToMaterializedFrame");
+        ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
+        ex.addParameter(new CodeVariableElement(type(int.class), "currentSp"));
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.startIf().string("!").tree(parent.hasContinuationFrame("frame")).end().startBlock();
+        b.startReturn().string("frame").end();
+        b.end();
+
+        b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
+        b.cast(types.FrameWithoutBoxing).string("frame.getObject(" + BytecodeRootNodeElement.CONTINUATION_FRAME_INDEX + ")");
+        b.end();
+        b.startIf().string("root.stackBase < currentSp").end().startBlock();
+        b.statement(BytecodeRootNodeElement.copyFrameTo("frame", "root.stackBase",
+                        "materializedFrame", "root.stackBase", "currentSp - root.stackBase"));
+        b.end();
+        b.startReturn().string("materializedFrame").end();
         return ex;
     }
 
@@ -170,7 +216,7 @@ final class ContinuationRootNodeImplElement extends AbstractElement {
         CodeTreeBuilder b = ex.createBuilder();
         b.startReturn();
         b.cast(types.Frame);
-        BytecodeRootNodeElement.startGetFrame(b, "frame", type(Object.class), false).string(BytecodeRootNodeElement.COROUTINE_FRAME_INDEX).end();
+        b.string("frame.getArguments()[0]");
         b.end();
         return ex;
     }
@@ -194,21 +240,6 @@ final class ContinuationRootNodeImplElement extends AbstractElement {
         b.string("replaceReason");
         b.end(2);
         b.end();
-
-        return ex;
-    }
-
-    private CodeExecutableElement createCreateContinuation() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), types.ContinuationResult, "createContinuation");
-        ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
-        ex.addParameter(new CodeVariableElement(type(Object.class), "result"));
-        CodeTreeBuilder b = ex.createBuilder();
-
-        b.startReturn().startNew(types.ContinuationResult);
-        b.string("this");
-        b.string("frame.materialize()");
-        b.string("result");
-        b.end(2);
 
         return ex;
     }

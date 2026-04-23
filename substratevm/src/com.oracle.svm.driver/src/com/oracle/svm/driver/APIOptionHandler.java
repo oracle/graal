@@ -26,6 +26,7 @@ package com.oracle.svm.driver;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -35,9 +36,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -119,6 +122,14 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             ClassLoader cl = nativeImage.getClass().getClassLoader();
             apiOptions = extractOptions(OptionsContainer.getDiscoverableOptions(cl), groupInfos, pathOptions, allOptionNames);
         }
+    }
+
+    APIOptionHandler() {
+        super(null);
+        groupInfos = new HashMap<>();
+        pathOptions = new HashMap<>();
+        allOptionNames = new HashMap<>();
+        apiOptions = new TreeMap<>();
     }
 
     static SortedMap<String, OptionInfo> extractOptions(Iterable<OptionDescriptors> optionDescriptors, Map<String, GroupInfo> groupInfos, Map<String, PathsOptionInfo> pathOptions,
@@ -545,6 +556,69 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
+    String rewriteBundleHostedOptionArgument(String builderArgument, Function<String, String> pathRewriter) {
+        BuilderArgumentParts argumentParts = BuilderArgumentParts.from(builderArgument);
+        if (argumentParts.optionValue == null) {
+            return builderArgument;
+        }
+        PathsOptionInfo pathsOptionInfo = pathOptions.get(argumentParts.option.name);
+        if (pathsOptionInfo == null || pathsOptionInfo.role == BundleMember.Role.Ignore) {
+            return builderArgument;
+        }
+        argumentParts.optionValue = rewritePathAggregate(argumentParts.optionValue, pathsOptionInfo.delimiter, pathRewriter);
+        return argumentParts.toString();
+    }
+
+    /**
+     * Rewrites path-valued API options as they appear in bundle replay input.
+     *
+     * <p>
+     * The returned value preserves the original argument shape: either a single rewritten argument
+     * or the original option head plus a rewritten following value.
+     * </p>
+     */
+    List<String> rewriteBundleAPIOptionArgument(ArrayDeque<String> args, Function<String, String> pathRewriter) {
+        // Inspect the current head argument without consuming it so non-matches leave the queue
+        // untouched.
+        String headArg = args.peek();
+        if (headArg == null) {
+            return null;
+        }
+        for (OptionInfo optionInfo : apiOptions.values()) {
+            PathsOptionInfo pathsOptionInfo = pathOptions.get(rawBuilderOptionName(optionInfo.builderOption));
+            if (pathsOptionInfo == null || pathsOptionInfo.role == BundleMember.Role.Ignore) {
+                continue;
+            }
+            for (String variant : optionInfo.variants) {
+                String optionName = optionInfo.group == null ? APIOption.Utils.optionName(variant) : APIOption.Utils.groupName(optionInfo.group) + variant;
+                for (char valueSeparator : optionInfo.valueSeparator) {
+                    if (valueSeparator == APIOption.WHITESPACE_SEPARATOR) {
+                        if (headArg.equals(optionName) && args.size() > 1) {
+                            // Consume the matched API option head before normalizing its following
+                            // value.
+                            args.poll();
+                            // Consume the separate value argument owned by this
+                            // whitespace-separated option.
+                            String nextArg = args.poll();
+                            return List.of(headArg, rewritePathAggregate(nextArg, pathsOptionInfo.delimiter, pathRewriter));
+                        }
+                    } else {
+                        String optionNameWithSeparator = optionName + APIOption.Utils.valueSeparatorToString(valueSeparator);
+                        if (headArg.startsWith(optionNameWithSeparator)) {
+                            // Consume the matched inline API option before rewriting the embedded
+                            // value.
+                            args.poll();
+                            String optionValue = headArg.substring(optionNameWithSeparator.length());
+                            String rewrittenValue = rewritePathAggregate(optionValue, pathsOptionInfo.delimiter, pathRewriter);
+                            return List.of(optionNameWithSeparator + rewrittenValue);
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     static final class BuilderArgumentParts {
 
         final LocatableOption option;
@@ -576,6 +650,21 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Allow features to handle the path string. */
             return origPath;
         }
+    }
+
+    private static String rawBuilderOptionName(String builderOption) {
+        return builderOption.endsWith("=") ? builderOption.substring(0, builderOption.length() - 1) : builderOption;
+    }
+
+    private static String rewritePathAggregate(String value, String delimiter, Function<String, String> pathRewriter) {
+        return rewritePathAggregate(value, delimiter::isEmpty, delimiter, delimiter, pathRewriter);
+    }
+
+    static String rewritePathAggregate(String value, BooleanSupplier isSingleValue, String splitDelimiter, String joinDelimiter, Function<String, String> pathRewriter) {
+        if (isSingleValue.getAsBoolean()) {
+            return pathRewriter.apply(value);
+        }
+        return Arrays.stream(value.split(Pattern.quote(splitDelimiter), -1)).map(pathRewriter).collect(Collectors.joining(joinDelimiter));
     }
 
     void printOptions(Consumer<String> println, boolean extra) {

@@ -201,15 +201,16 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.declaration(parent.getStackPointerType(), "sp", VirtualStateElement.LOCAL_NAME + ".sp");
         }
 
+        boolean callsSlowPath = isQuickeningRootSlowPath() && getTier().isCached() && instruction.isQuickeningRoot();
+        if (needsEagerUnwrapLocalFrame(instruction, callsSlowPath)) {
+            unwrapLocalFrame(b, true);
+        }
+
         if (BytecodeRootNodeElement.isStoreBciBeforeExecute(model(), parent.tier, instruction)) {
             parent.storeBciInFrame(b);
         }
 
-        if (instruction.isYield()) {
-            emitYieldProlog(b);
-        }
-
-        if (isQuickeningRootSlowPath() && getTier().isCached() && instruction.isQuickeningRoot()) {
+        if (callsSlowPath) {
             emitSlowPath(b, name -> name, "null");
         } else {
             if (isEarlyDeclareUnexpectedOperands()) {
@@ -323,7 +324,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                     b.startReturn().string(BytecodeRootNodeElement.encodeReturnState("(" + returnSp + ")")).end();
                     break;
                 case INVALIDATE:
-                    b.startReturn().string(parent.parent.encodeState("bci", "sp")).end();
+                    b.startReturn().string(BytecodeRootNodeElement.encodeState("bci", "sp")).end();
                     break;
                 default:
                     throw new AssertionError();
@@ -332,6 +333,58 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
         emitCaseBlock(caseBuilder);
         return this;
+    }
+
+    private boolean needsEagerUnwrapLocalFrame(InstructionModel currentInstruction, boolean callsSlowPath) {
+        if (!parent.mayWrapLocalFrame()) {
+            // This interpreter has no local frame to unwrap.
+            return false;
+        }
+        if (BytecodeRootNodeElement.isStoreBciBeforeExecute(model(), parent.tier, currentInstruction)) {
+            // Unwrap the frame for bci stores.
+            return true;
+        }
+        if (callsSlowPath) {
+            // This handler just delegates to a slow-path method, no need to unwrap the frame.
+            return false;
+        }
+        // Else, unwrap the frame if the instruction implementation needs it.
+        if (currentInstruction.kind.isLocalVariableAccess()) {
+            return true;
+        }
+        if (currentInstruction.isTagInstrumentation() || currentInstruction.isTraceInstrumentation()) {
+            return true;
+        }
+        return switch (currentInstruction.kind) {
+            case YIELD -> true;
+            case CUSTOM -> parent.parent.needsFrame(currentInstruction, parent.tier);
+            default -> false;
+        };
+    }
+
+    private void unwrapLocalFrame(CodeTreeBuilder b, boolean checkInCompiledCode) {
+        if (!getTier().isCached()) {
+            throw new AssertionError("Should not try to unwrap frame outside of cached execution. Instruction: " + instruction);
+        }
+
+        TypeMirror frameType = instruction.kind == InstructionKind.YIELD ? types.MaterializedFrame : types.FrameWithoutBoxing;
+
+        b.declaration(frameType, "localFrame", "frame");
+        parent.startIfHasSeparateLocalFrame(b, checkInCompiledCode, !instruction.isYield());
+        b.startAssign("localFrame").tree(BytecodeNodeElement.readContinuationFrame("frame", frameType)).end();
+
+        if (instruction.isYield()) {
+            // We also need to sync the stack frame back to the local frame.
+            emitYieldProlog(b, "localFrame");
+
+            // When we don't unwrap a frame, the current one will be yielded. Materialize it.
+            // It is up to the user to materialize the frame for custom yields.
+            if (instruction.kind == InstructionKind.YIELD) {
+                b.end().startElseBlock();
+                b.startAssign("localFrame").string("frame.materialize()").end();
+            }
+        }
+        b.end();
     }
 
     private void emitBranchFalseCondition(CodeTreeBuilder b) {
@@ -416,7 +469,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                     b.startAssign("bci");
                     emitCallHandler(b);
                     b.end();
-                    b.startReturn().string(parent.parent.encodeState("bci", VirtualStateElement.LOCAL_NAME + ".sp")).end();
+                    b.startReturn().string(BytecodeRootNodeElement.encodeState("bci", VirtualStateElement.LOCAL_NAME + ".sp")).end();
                     break;
                 default:
                     throw new AssertionError();
@@ -651,6 +704,9 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             method.setReturnType(returnType);
 
             CodeTreeBuilder mb = method.createBuilder();
+            if (needsEagerUnwrapLocalFrame(instruction, false)) {
+                unwrapLocalFrame(mb, false);
+            }
 
             emitDynamicOperands(mb, (name) -> name, ExecutionMode.SLOW_PATH, unexpectedResult);
 
@@ -729,7 +785,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
                 b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().string(" && ").startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").string(
                                 "counter").end().end().startBlock();
-                /**
+                /*
                  * When a while loop is compiled by OSR, its "false" branch profile may be zero, in
                  * which case the compiler will stop at loop exits. To coerce the compiler to
                  * compile the code after the loop, we encode the branch profile index in the
@@ -747,7 +803,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
                 b.string("this");
                 String bci = BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.BYTECODE_INDEX)).toString();
-                b.string(parent.parent.encodeState(bci, VirtualStateElement.LOCAL_NAME + ".sp", model().hasYieldOperation() ? "frame != " + parent.parent.localFrame() : null));
+                b.string(BytecodeRootNodeElement.encodeState(bci, VirtualStateElement.LOCAL_NAME + ".sp"));
                 b.string("null"); // interpreterState
                 b.string("null"); // beforeTransfer
                 b.string("frame"); // parentFrame
@@ -764,7 +820,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.end(); // try-catch
 
                 b.startIf().string("osrResult != null").end().startBlock();
-                /**
+                /*
                  * executeOSR invokes BytecodeNode#continueAt, which returns a long encoding the sp
                  * and bci when it returns/when the bytecode is rewritten. Returning this value is
                  * correct in either case: If it's a return, we'll read the result out of the frame
@@ -799,7 +855,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.statement("getRoot().transitionToCached()");
                 b.startThrow().startNew(parent.parent.abstractBytecodeNode.branchBackwardReturnException.asType());
-                b.string(parent.parent.encodeState("bci", VirtualStateElement.LOCAL_NAME + ".sp"));
+                b.string(BytecodeRootNodeElement.encodeState("bci", VirtualStateElement.LOCAL_NAME + ".sp"));
                 b.end().end();
                 b.end(2);
                 b.startElseBlock();
@@ -816,7 +872,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
                 b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().string(" && ").startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").string(
                                 "counter").end().end().startBlock();
-                /**
+                /*
                  * When a while loop is compiled by OSR, its "false" branch profile may be zero, in
                  * which case the compiler will stop at loop exits. To coerce the compiler to
                  * compile the code after the loop, we encode the branch profile index in the
@@ -833,7 +889,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
                 b.string("this");
                 String bci = BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.BYTECODE_INDEX)).toString();
-                b.string(parent.parent.encodeState(bci, "sp", model().hasYieldOperation() ? "frame != " + parent.parent.localFrame() : null));
+                b.string(BytecodeRootNodeElement.encodeState(bci, "sp"));
                 b.string("null"); // interpreterState
                 b.string("null"); // beforeTransfer
                 b.string("frame"); // parentFrame
@@ -866,7 +922,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.startIf().string("uncachedExecuteCount_ != ", BytecodeNodeElement.FORCE_UNCACHED_THRESHOLD).end().startBlock();
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.statement("$root.transitionToCached()");
-            b.statement("return ", parent.parent.encodeState("bci", "sp"));
+            b.statement("return ", BytecodeRootNodeElement.encodeState("bci", "sp"));
             b.end(2);
             b.startElseBlock();
             b.statement("uncachedExecuteCount_--");
@@ -893,7 +949,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.end();
 
             b.startIf().string("osrResult != null").end().startBlock();
-            /**
+            /*
              * executeOSR invokes BytecodeNode#continueAt, which returns a long encoding the sp and
              * bci when it returns/when the bytecode is rewritten. Returning this value is correct
              * in either case: If it's a return, we'll read the result out of the frame (the OSR
@@ -1436,17 +1492,18 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         b.startStatement();
         b.tree(parent.parent.readConstFastPath(CodeTreeBuilder.singleString("Builder.INSTRUCTION_TRACER_CONSTANT_INDEX"), "this.constants",
                         parent.parent.instructionTracerAccessImplElement.asType()));
-        b.startCall(".onInstructionEnter").string("this").string("bci").string(parent.parent.localFrame()).end();
+        b.startCall(".onInstructionEnter").string("this").string("bci").string(parent.localFrame()).end();
         b.end(); // statement
         return null;
     }
 
     private TypeMirror emitClearLocal(CodeTreeBuilder b) {
         String index = BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.FRAME_INDEX)).toString();
+        String localsFrame = parent.localFrame();
         if (model().loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
-            b.statement(BytecodeRootNodeElement.setFrameObject("frame", index, "DEFAULT_LOCAL_VALUE"));
+            b.statement(BytecodeRootNodeElement.setFrameObject(localsFrame, index, "DEFAULT_LOCAL_VALUE"));
         } else {
-            b.statement(BytecodeRootNodeElement.clearFrame("frame", index));
+            b.statement(BytecodeRootNodeElement.clearFrame(localsFrame, index));
         }
         return null;
     }
@@ -1459,7 +1516,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
     private TypeMirror emitLoadException(CodeTreeBuilder b, String resultLocalName) {
         b.startDeclaration(type(Object.class), resultLocalName);
         BytecodeRootNodeElement.startGetFrameUnsafe(b, "frame", type(Object.class));
-        b.startGroup().string("getRoot().maxLocals + ").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.STACK_POINTER))).end();
+        b.startGroup().string("getRoot().stackBase + ").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.STACK_POINTER))).end();
         b.end(); // getFrameUnsafe
         b.end(); // declaration
         return type(Throwable.class);
@@ -1473,7 +1530,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.tree(BytecodeRootNodeElement.readTagNode(parent.parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", imm)));
             b.end();
             b.startStatement().startCall("tagNode.findProbe().onReturnValue");
-            b.string(parent.parent.localFrame());
+            b.string(parent.localFrame());
             b.string(valueOperand.localName());
             b.end().end();
         } else { // slow-path
@@ -1525,7 +1582,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.tree(BytecodeRootNodeElement.readTagNode(parent.parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", imm)));
             b.end();
             b.startStatement().startCall("tagNode.findProbe().onReturnValue");
-            b.string(parent.parent.localFrame());
+            b.string(parent.localFrame());
             b.string(valueOperand.localName());
             b.end(2);
         }
@@ -1537,7 +1594,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         b.tree(BytecodeRootNodeElement.readTagNode(parent.parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.TAG_NODE))));
         b.end();
         b.startStatement().startCall("tagNode.findProbe().onReturnValue");
-        b.string(parent.parent.localFrame());
+        b.string(parent.localFrame());
         b.string("null");
         b.end(2);
         return null;
@@ -1556,7 +1613,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         b.end();
 
         b.startStatement().startCall("tagNode.findProbe().onYield");
-        b.string(parent.parent.localFrame());
+        b.string(parent.localFrame());
         if (operand != null) {
             b.string(operand.localName());
         } else {
@@ -1570,7 +1627,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         b.startDeclaration(parent.parent.tagNode.asType(), "tagNode");
         b.tree(BytecodeRootNodeElement.readTagNode(parent.parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.TAG_NODE))));
         b.end();
-        b.startStatement().startCall("tagNode.findProbe().onEnter").string(parent.parent.localFrame()).end(2);
+        b.startStatement().startCall("tagNode.findProbe().onEnter").string(parent.localFrame()).end(2);
         return null;
     }
 
@@ -1578,7 +1635,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         b.startDeclaration(parent.parent.tagNode.asType(), "tagNode");
         b.tree(BytecodeRootNodeElement.readTagNode(parent.parent.tagNode.asType(), BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.getImmediate(ImmediateKind.TAG_NODE))));
         b.end();
-        b.startStatement().startCall("tagNode.findProbe().onResume").string(parent.parent.localFrame()).end(2);
+        b.startStatement().startCall("tagNode.findProbe().onResume").string(parent.localFrame()).end(2);
         return null;
     }
 
@@ -1678,7 +1735,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.startDeclaration(returnType, resultLocalName);
                 b.startStaticCall(parent.parent.lookupExpectMethod(type(Object.class), returnType));
                 b.startGroup();
-                b.startCall(parent.parent.localFrame(), "getArguments").end();
+                b.startCall("frame", "getArguments").end();
                 b.string("[").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", argIndex)).string("]");
                 b.end(); // expect
                 b.end(); // group
@@ -1686,7 +1743,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 return returnType;
             } else {
                 b.startDeclaration(type(Object.class), resultLocalName);
-                b.startCall(parent.parent.localFrame(), "getArguments").end();
+                b.startCall("frame", "getArguments").end();
                 b.string("[").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", argIndex)).string("]");
                 b.end(); // declaration
                 return type(Object.class);
@@ -1696,7 +1753,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                             b.create().tree(parent.parent.createInstructionConstant(instruction.getQuickeningRoot())).build());
 
             b.startDeclaration(type(Object.class), resultLocalName);
-            b.startCall(parent.parent.localFrame(), "getArguments").end();
+            b.startCall("frame", "getArguments").end();
             b.string("[").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", argIndex)).string("]");
             b.end(); // declaration
             return type(Object.class);
@@ -1739,7 +1796,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             Operand materializedFrame = instruction.signature.singleDynamicOperand();
             localsFrame = materializedFrame.localName();
         } else {
-            localsFrame = parent.parent.localFrame();
+            localsFrame = parent.localFrame();
         }
 
         if (materialized) {
@@ -1972,7 +2029,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             Operand materializedFrame = instruction.signature.dynamicOperands().get(instruction.signature.dynamicOperandCount() - 2);
             localsFrame = materializedFrame.localName();
         } else {
-            localsFrame = parent.parent.localFrame();
+            localsFrame = parent.localFrame();
         }
 
         final CodeTree slot;
@@ -2212,7 +2269,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
             b.declaration(type(short.class), "newInstruction");
             b.declaration(type(short.class), "newOperand");
-            b.declaration(type(int.class), "operandIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "child0")));
+            b.declaration(type(int.class), "operandIndex", BytecodeRootNodeElement.readImmediate("bc", "bci", instruction.findChildBciImmediate(0)));
             b.declaration(type(short.class), "operand", BytecodeRootNodeElement.readInstruction("bc", "operandIndex"));
 
             b.startIf().string("(newOperand = ").startCall(BytecodeRootNodeElement.createApplyQuickeningName(boxingType)).string("operand").end().string(") != -1").end().startBlock();
@@ -2233,17 +2290,17 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         return null;
     }
 
-    private void emitYieldProlog(CodeTreeBuilder b) {
-        b.declaration(parent.getStackPointerType(), "maxLocals", "getRoot().maxLocals");
+    private void emitYieldProlog(CodeTreeBuilder b, String localsFrame) {
         /*
          * The yield result will be stored at sp + stackEffect - 1 = sp + (1 - n) - 1 = sp - n (for
          * n dynamic operands). We need to copy operands lower on the stack for resumption.
          */
         String yieldResultIndex = (instruction.signature.dynamicOperandCount() == 0) ? "sp" : "sp - " + instruction.signature.dynamicOperandCount();
         b.lineCommentf("The yield result will be stored at %s. The operands below it need to be preserved for resumption.", yieldResultIndex);
-        b.lineCommentf("These operands belong to the interval [maxLocals, %s).", yieldResultIndex);
-        b.startIf().string("maxLocals < " + yieldResultIndex).end().startBlock();
-        b.statement(BytecodeRootNodeElement.copyFrameTo("frame", "maxLocals", "localFrame", "maxLocals", yieldResultIndex + " - maxLocals"));
+        b.lineCommentf("These operands belong to the interval [stackBase, %s).", yieldResultIndex);
+        b.declaration(parent.getStackPointerType(), "stackBase", "getRoot().stackBase");
+        b.startIf().string("stackBase < " + yieldResultIndex).end().startBlock();
+        b.statement(BytecodeRootNodeElement.copyFrameTo("frame", "stackBase", localsFrame, "stackBase", yieldResultIndex + " - stackBase"));
         b.end();
     }
 
@@ -2257,9 +2314,11 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             throw new AssertionError("Invalid number of operands for yield.");
         }
         Operand resultOperand = instruction.signature.dynamicOperands().get(0);
+
         b.startDeclaration(types.ContinuationResult, resultLocalName);
-        b.startCall("continuationRootNode.createContinuation");
-        b.string(parent.parent.localFrame());
+        b.startNew(types.ContinuationResult);
+        b.string("continuationRootNode");
+        b.string(parent.localFrame());
         b.string(resultOperand.localName());
         b.end(2);
 
@@ -2286,6 +2345,9 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
         CodeExecutableElement targetMethod = findCustomExecuteMethod(mode);
         TypeMirror returnType = targetMethod.getReturnType();
+
+        String frameForSpecialization = parent.localFrame();
+
         if (ElementUtils.isVoid(returnType)) {
             b.startStatement();
         } else {
@@ -2298,10 +2360,8 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
             b.startCall("node", targetMethod.getSimpleName().toString());
         }
 
-        // If we support yield, the frame forwarded to specializations should be the local frame
-        // and not the stack frame.
         if (parent.parent.needsFrame(instruction, parent.tier)) {
-            b.string(parent.parent.localFrame());
+            b.string(frameForSpecialization);
         }
 
         if (evaluatedArg != null) {

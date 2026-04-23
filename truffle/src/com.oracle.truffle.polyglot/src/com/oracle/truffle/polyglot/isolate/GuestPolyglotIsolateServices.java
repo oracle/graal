@@ -153,10 +153,11 @@ final class GuestPolyglotIsolateServices implements PolyglotIsolateServices {
 
     @Override
     public long buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
-                    Map<String, String> options, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler,
-                    AbstractPolyglotHostService polyglotHostService, Object hostLanguageServicePeer) {
+                    Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties, boolean allowExperimentalOptions,
+                    boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, AbstractPolyglotHostService polyglotHostService,
+                    Object hostLanguageServicePeer) {
         GuestHostLanguage hostLanguage = new GuestHostLanguage((Peer) hostLanguageServicePeer);
-        Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine,
+        Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, systemPropertiesOptions, useSystemProperties, allowExperimentalOptions, boundEngine,
                         messageInterceptor, logHandler, hostLanguage, false, false, polyglotHostService, null);
         Object engineReceiver = polyglot.getAPIAccess().getEngineReceiver(engine);
         setVMOptions(sandboxPolicy, engineReceiver);

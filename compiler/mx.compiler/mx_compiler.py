@@ -910,6 +910,9 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
         vmArgs.append(f"-Dtest.jdk.graal.compiler.disassembler.path={mx_graal_tools.get_hsdis_lib()}")
         vmArgs.append("--enable-native-access=ALL-UNNAMED")
 
+        # Command line arguments for jdk.graal.compiler.truffle.test.ConstantOptionKeyPartialEvaluationTest
+        vmArgs.append('-Dpolyglot.ConstantOptionKeyPartialEvaluationLanguage.ConstantOption1=true')
+
         return (vmArgs, mainClass, mainClassArgs)
 
 

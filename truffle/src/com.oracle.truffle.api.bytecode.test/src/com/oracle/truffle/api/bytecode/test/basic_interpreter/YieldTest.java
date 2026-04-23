@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -302,6 +303,45 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         assertEquals(42L, r1.getResult());
         r1.getFrame().getArguments()[0] = 123L;
         assertEquals(123L, r1.continueWith(null));
+    }
+
+    @Test
+    public void testYieldClearLocalAfterResume() {
+        RootCallTarget root = parse("yieldClearLocalAfterResume", b -> {
+            b.beginRoot();
+            BytecodeLocal local = b.createLocal();
+
+            b.beginStoreLocal(local);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.beginYield();
+            b.emitLoadConstant(1L);
+            b.endYield();
+
+            b.emitClearLocal(local);
+
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        ContinuationResult cont = (ContinuationResult) root.call();
+        assertEquals(1L, cont.getResult());
+
+        Object defaultLocalValue = run.getDefaultLocalValue();
+        if (defaultLocalValue == null) {
+            try {
+                cont.continueWith(null);
+                fail("Expected FrameSlotTypeException");
+            } catch (FrameSlotTypeException expected) {
+                // expected
+            }
+        } else {
+            assertEquals(defaultLocalValue, cont.continueWith(null));
+        }
     }
 
     @Test
@@ -629,5 +669,42 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         r2 = (ContinuationResult) r1.continueWith(3L);
         assertEquals(5L, r2.getResult());
         assertEquals(3L, r2.continueWith(4L));
+    }
+
+    @Test
+    public void testYieldGR73555() {
+        /*
+         * This is a regression test uncovered in GR-73555. When code is eagerly compiled, the
+         * continuation contains a deopt in the unreached branch; when we resume and hit this
+         * branch, the interpreter should detect the deopt and re-enter so that the correct frame is
+         * used in the interpreter.
+         */
+        BasicInterpreter rootNode = parseNode("yieldGR73555", b -> {
+            b.beginRoot();
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.beginYield();
+            b.emitLoadNull();
+            b.endYield();
+            b.endStoreLocal();
+
+            b.beginIfThenElse();
+            b.emitLoadLocal(result);
+            b.beginReturn();
+            b.emitLoadConstant(123L);
+            b.endReturn();
+            b.beginReturn();
+            b.emitLoadConstant(456L);
+            b.endReturn();
+            b.endIfThenElse();
+
+            b.endRoot();
+        });
+
+        ContinuationResult cont = (ContinuationResult) rootNode.getCallTarget().call();
+        assertEquals(123L, cont.continueWith(true));
+        cont = (ContinuationResult) rootNode.getCallTarget().call(false);
+        assertEquals(456L, cont.continueWith(false));
     }
 }

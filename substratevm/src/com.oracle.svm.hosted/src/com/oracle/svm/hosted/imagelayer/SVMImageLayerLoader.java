@@ -40,6 +40,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -98,6 +99,8 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
+import com.oracle.svm.hosted.imagelayer.BaseLayerMethodResolver.BaseLayerProvider;
+import com.oracle.svm.hosted.imagelayer.BaseLayerMethodResolver.PersistedMethod;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo;
@@ -157,6 +160,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -201,7 +205,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private EconomicMap<String, Integer> typeDescriptorToBaseLayerId;
     /** Map from {@link SVMImageLayerSnapshotUtil#getMethodDescriptor} to base layer method ids. */
     private EconomicMap<String, Integer> methodDescriptorToBaseLayerId;
-
+    /** Map from base layer type ids to base layer method ids. */
+    private EconomicMap<Integer, List<Integer>> declaringTypeIdToMethodIds;
     protected AnalysisUniverse universe;
     protected AnalysisMetaAccess metaAccess;
     protected HostedValuesProvider hostedValuesProvider;
@@ -211,6 +216,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      * Used to decode {@link NodeClass} ids in {@link #getEncodedGraph}.
      */
     private NodeClassMap nodeClassMap;
+    private final BaseLayerMethodResolver baseLayerMethodResolver = new BaseLayerMethodResolver(new LoaderBaseLayerProvider());
 
     public SVMImageLayerLoader(SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, HostedImageLayerBuildingSupport imageLayerBuildingSupport, SharedLayerSnapshot.Reader snapshot,
                     FileChannel graphChannel, boolean useSharedLayerGraphs) {
@@ -281,9 +287,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
         StructList.Reader<PersistedAnalysisMethod.Reader> methodsReader = snapshot.getMethods();
         methodDescriptorToBaseLayerId = EconomicMap.create(methodsReader.size());
+        declaringTypeIdToMethodIds = EconomicMap.create();
         for (PersistedAnalysisMethod.Reader methodData : methodsReader) {
             String descriptor = methodData.getDescriptor().toString();
             methodDescriptorToBaseLayerId.put(descriptor, methodData.getId());
+            List<Integer> methodIds = declaringTypeIdToMethodIds.computeIfAbsent(methodData.getDeclaringTypeId(), _ -> new ArrayList<>());
+            methodIds.add(methodData.getId());
         }
 
         CapnProtoAdapters.forEach(snapshot.getConstantsToRelink(), id -> prepareConstantRelinking(findConstant(id)));
@@ -614,8 +623,35 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             AnnotationValue[] annotations = getAnnotations(td.getAnnotationList());
 
             return new BaseLayerType(className, tid, td.getModifiers(), td.getIsInterface(), td.getIsEnum(), td.getIsRecord(), td.getIsInitialized(), td.getIsLinked(), sourceFileName,
-                            enclosingType, componentType, superClass, interfaces, objectType, annotations);
+                            enclosingType, componentType, superClass, interfaces, objectType, annotations, baseLayerMethodResolver);
         });
+    }
+
+    private final class LoaderBaseLayerProvider implements BaseLayerProvider {
+        @Override
+        public List<PersistedMethod> getDeclaredMethods(BaseLayerType declaringType) {
+            List<Integer> methodIds = declaringTypeIdToMethodIds.get(declaringType.getBaseLayerId());
+            if (methodIds == null) {
+                return List.of();
+            }
+
+            List<PersistedMethod> typeMethods = new ArrayList<>(methodIds.size());
+            for (int methodId : methodIds) {
+                PersistedAnalysisMethod.Reader methodData = findMethod(methodId);
+                int[] argumentTypeIds = new int[methodData.getArgumentTypeIds().size()];
+                for (int i = 0; i < argumentTypeIds.length; i++) {
+                    argumentTypeIds[i] = methodData.getArgumentTypeIds().get(i);
+                }
+                typeMethods.add(new PersistedMethod(methodData.getName().toString(), methodData.getModifiers(), methodData.getReturnTypeId(), argumentTypeIds,
+                                () -> getAnalysisMethodForBaseLayerId(methodId).getWrapped()));
+            }
+            return typeMethods;
+        }
+
+        @Override
+        public int getBaseLayerTypeId(JavaType type) {
+            return SVMImageLayerLoader.getBaseLayerTypeId(universe.lookup(type));
+        }
     }
 
     private AnnotationValue[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> reader) {

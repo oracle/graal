@@ -28,15 +28,20 @@ package com.oracle.graal.pointsto.standalone.test;
 
 import org.junit.Test;
 
-public class ClassEqualityTest {
+import com.oracle.graal.pointsto.standalone.test.classes.ClassEqualityCase;
+import com.oracle.graal.pointsto.standalone.test.classes.ClassEqualityCase.C;
 
+/**
+ * Verifies class-literal equality handling for standalone analysis using {@link ClassEqualityCase}.
+ */
+public class ClassEqualityTest extends StandaloneAnalysisTest {
+
+    /**
+     * Verifies that analyzing {@link ClassEqualityCase} still reaches {@link C#foo()}.
+     */
     @Test
-    public void test() throws NoSuchMethodException {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(ClassEqualityCase.class);
-        tester.setAnalysisArguments(tester.getTestClassName(),
-                        "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
-
-        tester.setExpectedReachableMethods(ClassEqualityCase.C.class.getDeclaredMethod("foo"));
-        tester.runAnalysisAndAssert();
+    public void test() {
+        runAnalysis(ClassEqualityCase.class);
+        assertReachable(findMethod(ClassEqualityCase.C.class, "foo"));
     }
 }

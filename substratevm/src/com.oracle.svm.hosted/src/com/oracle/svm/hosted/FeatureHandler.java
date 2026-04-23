@@ -24,33 +24,16 @@
  */
 package com.oracle.svm.hosted;
 
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.APIDeprecationSupport;
-
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.APIOption;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
@@ -59,10 +42,24 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.VMError.HostedError;
-
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
+
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Handles the registration and iterations of {@link Feature features}.
@@ -113,49 +110,21 @@ public class FeatureHandler {
     public void registerFeatures(ImageClassLoader loader, MetaAccessProvider originalMetaAccess, DebugContext debug) {
         IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, originalMetaAccess, debug);
 
-        LinkedHashSet<Class<?>> automaticFeatures = new LinkedHashSet<>();
-        NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
-        for (var serviceRegistration : ServiceLoader.load(AutomaticallyRegisteredFeatureServiceRegistration.class, nativeImageSystemClassLoader.defaultSystemClassLoader)) {
-            Class<?> annotatedFeatureClass = loader.findClass(serviceRegistration.getClassName()).getOrFail();
-            /*
-             * For simplicity, we do not look at the Platforms annotation ourselves and instead
-             * check if the ImageClassLoader found that class too.
-             */
-            if (loader.findSubclasses(annotatedFeatureClass, true).contains(annotatedFeatureClass)) {
-                automaticFeatures.add(annotatedFeatureClass);
-            }
-        }
-        for (Class<?> annotatedFeatureClass : loader.findAnnotatedClasses(AutomaticallyRegisteredFeature.class, true)) {
-            if (!automaticFeatures.contains(annotatedFeatureClass)) {
-                throw UserError.abort("Feature " + annotatedFeatureClass + " annotated with @" + AutomaticallyRegisteredFeature.class.getSimpleName() + " was not properly registered as a service. " +
-                                "Either the annotation processor did not run for the project containing the feature, or the class is not on the class path of the image generator. " +
-                                "The annotation is only for internal usage. Applications should register a feature using the option " +
-                                SubstrateOptionsParser.commandArgument(Options.Features, annotatedFeatureClass.getName()));
-            }
-        }
+        AutomaticallyRegisteredFeatureLoader automaticFeatureLoader = new AutomaticallyRegisteredFeatureLoader(loader);
+        LinkedHashSet<Class<?>> automaticFeatures = automaticFeatureLoader.loadRegisteredClasses();
+        automaticFeatureLoader.verifyGeneratedRegistrations(automaticFeatures);
 
         Map<Class<?>, Class<?>> specificAutomaticFeatures = new HashMap<>();
         for (Class<?> automaticFeature : automaticFeatures) {
-
-            Class<Feature> mostSpecific = (Class<Feature>) automaticFeature;
-            boolean foundMostSpecific = false;
-            do {
-                List<Class<? extends Feature>> featureSubclasses = loader.findSubclasses(mostSpecific, true);
-                featureSubclasses.remove(mostSpecific);
-                featureSubclasses.removeIf(o -> !automaticFeatures.contains(o));
-                if (featureSubclasses.isEmpty()) {
-                    foundMostSpecific = true;
-                } else {
-                    if (featureSubclasses.size() > 1) {
-                        String candidates = featureSubclasses.stream().map(Class::getName).collect(Collectors.joining(" "));
-                        VMError.shouldNotReachHere("Ambiguous @AutomaticallyRegisteredFeature extension. Conflicting candidates: " + candidates);
-                    }
-                    mostSpecific = (Class<Feature>) featureSubclasses.get(0);
-                }
-            } while (!foundMostSpecific);
-
-            if (mostSpecific != automaticFeature) {
-                specificAutomaticFeatures.put(automaticFeature, mostSpecific);
+            List<Class<?>> mostSpecificFeatures = automaticFeatureLoader.findMostSpecificClasses(automaticFeature, automaticFeatures);
+            if (mostSpecificFeatures.size() > 1) {
+                String candidates = mostSpecificFeatures.stream().map(Class::getName).collect(Collectors.joining(", "));
+                throw UserError.abort("Ambiguous @%s extension for %s. Expected one most-specific annotated class, but found %s.",
+                                AutomaticallyRegisteredFeature.class.getSimpleName(), automaticFeature.getName(), candidates);
+            }
+            Class<?> mostSpecificFeature = mostSpecificFeatures.getFirst();
+            if (mostSpecificFeature != automaticFeature) {
+                specificAutomaticFeatures.put(automaticFeature, mostSpecificFeature);
             }
         }
 
@@ -290,7 +259,46 @@ public class FeatureHandler {
         if (InternalFeature.class.isAssignableFrom(feature.getClass())) {
             throw VMError.shouldNotReachHere("InternalFeature defined by %s unexpectedly failed with a(n) %s".formatted(featureClassName, throwableClassName), throwable);
         }
-        throw UserError.abort(throwable, "Feature defined by %s unexpectedly failed with a(n) %s. Please report this problem to the authors of %s.", featureClassName, throwableClassName,
-                        featureClassName);
+        throw UserError.abort(throwable, "Feature defined by %s unexpectedly failed with a(n) %s. Please report this problem to the authors of %s.",
+                        featureClassName, throwableClassName, featureClassName);
+    }
+
+    private static final class AutomaticallyRegisteredFeatureLoader extends AutomaticallyRegisteredClassSupport<AutomaticallyRegisteredFeatureServiceRegistration, AutomaticallyRegisteredFeature> {
+        private AutomaticallyRegisteredFeatureLoader(ImageClassLoader loader) {
+            super(loader);
+        }
+
+        @Override
+        protected Class<AutomaticallyRegisteredFeatureServiceRegistration> serviceRegistrationClass() {
+            return AutomaticallyRegisteredFeatureServiceRegistration.class;
+        }
+
+        @Override
+        protected Class<AutomaticallyRegisteredFeature> annotationClass() {
+            return AutomaticallyRegisteredFeature.class;
+        }
+
+        @Override
+        protected Error missingClassError(Throwable cause, String className) {
+            throw UserError.abort(cause,
+                            "Could not load automatically registered feature class %s from generated service metadata. " +
+                                            "Either the annotation processor did not run for the project containing the feature, or the class is not on the class path of the image generator. " +
+                                            "Applications should register a feature using the option %s.",
+                            className, SubstrateOptionsParser.commandArgument(Options.Features, className));
+        }
+
+        @Override
+        protected Error missingGeneratedRegistrationError(Class<?> annotatedClass) {
+            throw UserError.abort("Feature %s annotated with @%s was not properly registered as a service. " +
+                            "Either the annotation processor did not run for the project containing the feature, or the class is not on the class path of the image generator. " +
+                            "The annotation is only for internal usage. Applications should register a feature using the option %s",
+                            annotatedClass, AutomaticallyRegisteredFeature.class.getSimpleName(), SubstrateOptionsParser.commandArgument(Options.Features, annotatedClass.getName()));
+        }
+
+        @Override
+        protected Error staleGeneratedRegistrationError(Class<?> registeredClass) {
+            throw UserError.abort("Class %s was registered as an @%s service but is no longer annotated. Clean and rebuild the affected project to refresh generated annotation-processor outputs.",
+                            registeredClass.getName(), AutomaticallyRegisteredFeature.class.getSimpleName());
+        }
     }
 }

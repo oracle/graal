@@ -1051,6 +1051,8 @@ public class NativeImageGenerator {
                 /* Init the BuildPhaseProvider before any features need it. */
                 BuildPhaseProvider.init();
 
+                AutomaticallyRegisteredImageSingletonHandler.registerImageSingletons(loader);
+
                 featureHandler.registerFeatures(loader, originalMetaAccess, debug);
                 BuildPhaseProvider.markFeatureRegistrationFinished();
 
@@ -1566,7 +1568,7 @@ public class NativeImageGenerator {
     protected void registerEntryPoints(Map<ResolvedJavaMethod, CEntryPointData> entryPoints) {
         for (ResolvedJavaMethod m : loader.guestTypes.findAnnotatedMethods(CEntryPoint.class)) {
             if (!m.isStatic()) {
-                throw UserError.abort("Entry point method %s.%s is not static. Add a static modifier to the method.", m.format("%H.%n"));
+                throw UserError.abort("Entry point method %s is not static. Add a static modifier to the method.", m.format("%H.%n"));
             }
             CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.from(AnnotationUtil.getAnnotationValue(m, CEntryPoint.class));
             if (GuestAccess.get().callBooleanSupplier(cEntryPoint.include())) {

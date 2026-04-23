@@ -127,7 +127,6 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
@@ -142,6 +141,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.LogUtils;
@@ -1101,15 +1101,7 @@ public class TruffleFeature implements InternalFeature {
          * TruffleCommunityCompilerConfiguration.
          */
         if (hosted && HostInliningPhase.Options.TruffleHostInlining.getValue(HostedOptionValues.singleton().get()) && suites.getHighTier() instanceof HighTier) {
-            SubstrateHostInliningPhase hostInliningPhase = new SubstrateHostInliningPhase(CanonicalizerPhase.create());
-            var position = suites.getHighTier().findPhase(SubstrateOutlineBytecodeHandlerPhase.class);
-            if (position != null) {
-                // Insert after SubstrateOutlineBytecodeHandlerPhase to allow outlining of the
-                // bytecode handler invocations
-                position.add(hostInliningPhase);
-            } else {
-                suites.getHighTier().prependPhase(hostInliningPhase);
-            }
+            suites.getHighTier().prependPhase(new SubstrateHostInliningPhase(CanonicalizerPhase.create()));
         }
         /*
          * On HotSpot, the InsertGuardFencesPhase is inserted into the mid-tier depending on the

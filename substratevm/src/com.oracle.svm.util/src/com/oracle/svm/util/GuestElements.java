@@ -94,6 +94,10 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType java_lang_Object = lookupType(Object.class);
     public final ResolvedJavaMethod java_lang_Object_clone = lookupMethod(java_lang_Object, "clone");
 
+    public final ResolvedJavaType java_lang_Throwable = lookupType(Throwable.class);
+    public final ResolvedJavaMethod java_lang_Throwable_init_String_Throwable_boolean_boolean = JVMCIReflectionUtil.getDeclaredConstructor(java_lang_Throwable,
+                    lookupType(String.class), java_lang_Throwable, lookupType(boolean.class), lookupType(boolean.class));
+
     public final ResolvedJavaType java_lang_ref_Reference = lookupType(Reference.class);
     public final ResolvedJavaMethod java_lang_ref_Reference_refersTo = lookupMethod(java_lang_ref_Reference, "refersTo", Object.class);
 

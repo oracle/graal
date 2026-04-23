@@ -28,24 +28,47 @@ package com.oracle.graal.pointsto.standalone.test;
 
 import org.junit.Test;
 
-public class StandaloneAnalyzerReachabilityTest {
+import com.oracle.graal.pointsto.standalone.test.classes.StandaloneAnalyzerReachabilityCase;
+import com.oracle.graal.pointsto.standalone.test.classes.StandaloneAnalyzerReachabilityCase.C;
+import com.oracle.graal.pointsto.standalone.test.classes.StandaloneAnalyzerReachabilityCase.C1;
+import com.oracle.graal.pointsto.standalone.test.classes.StandaloneAnalyzerReachabilityCase.C2;
+import com.oracle.graal.pointsto.standalone.test.classes.StandaloneAnalyzerReachabilityCase.D;
 
+/**
+ * Verifies reachable and unreachable analysis elements for
+ * {@link StandaloneAnalyzerReachabilityCase}.
+ */
+public class StandaloneAnalyzerReachabilityTest extends StandaloneAnalysisTest {
+
+    /**
+     * Verifies that analyzing {@link StandaloneAnalyzerReachabilityCase} preserves the original
+     * reachable and unreachable class/field split.
+     *
+     * The test checks that the reachable branch keeps {@link C}, {@link C1}, {@link C2}, and
+     * {@link C#val}, while {@link D} and {@link D#val} remain unreachable.
+     */
     @Test
-    public void testPointstoAnalyzer() throws NoSuchFieldException {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(StandaloneAnalyzerReachabilityCase.class);
-        tester.setAnalysisArguments(tester.getTestClassName(),
-                        "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
+    public void testPointstoAnalyzer() {
+        runAnalysis(StandaloneAnalyzerReachabilityCase.class);
         Class<StandaloneAnalyzerReachabilityCase.C> classC = StandaloneAnalyzerReachabilityCase.C.class;
         Class<StandaloneAnalyzerReachabilityCase.D> classD = StandaloneAnalyzerReachabilityCase.D.class;
-        tester.setExpectedReachableTypes(classC, StandaloneAnalyzerReachabilityCase.C1.class, StandaloneAnalyzerReachabilityCase.C2.class);
-        tester.setExpectedUnreachableTypes(classD);
-        tester.setExpectedReachableFields(classC.getDeclaredField("val"));
-        tester.setExpectedUnreachableFields(classD.getDeclaredField("val"));
-        tester.runAnalysisAndAssert();
+        assertReachable(findClass(classC));
+        assertReachable(findClass(StandaloneAnalyzerReachabilityCase.C1.class));
+        assertReachable(findClass(StandaloneAnalyzerReachabilityCase.C2.class));
+        assertNotReachable(findClass(classD));
+        assertReachable(findField(classC, "val"));
+        assertNotReachable(findField(classD, "val"));
     }
 
+    /**
+     * Verifies that repeatedly analyzing {@link StandaloneAnalyzerReachabilityCase} on the same
+     * test instance still produces stable results.
+     *
+     * This exists to guard the setup and cleanup paths in {@link StandaloneAnalysisTest}: each
+     * iteration must reset the previous analysis state instead of leaking results across runs.
+     */
     @Test
-    public void testMultipleAnalysis() throws NoSuchFieldException {
+    public void testMultipleAnalysis() {
         int times = 5;
         int i = 0;
         while (i++ < times) {

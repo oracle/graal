@@ -712,9 +712,9 @@ public abstract class ImageHeapScanner {
     /**
      * Trigger rescanning of a root field. If the value was not scanned before it will first be
      * scanned and added to the shadow heap, then it will be linked to the field. If the value is
-     * already in the shadow heap it will not be rescanned, i.e., it's fields will not be followed,
+     * already in the shadow heap it will not be rescanned, i.e., its fields will not be followed,
      * with an exception: if the value is a known collection type ({@code Object[]},
-     * {{@link Collection}, {@link Map} or {@link EconomicMap}} then its elements will be rescanned
+     * {@link Collection}, {@link Map}, or {@link EconomicMap}) then its elements will be rescanned
      * too.
      * <p>
      * The provided {@link ResolvedJavaField} must be the original field owned by
@@ -743,8 +743,8 @@ public abstract class ImageHeapScanner {
      * Trigger rescanning of an instance field. If the receiver value or field value were not
      * scanned before they will first be scanned and added to the shadow heap, then the value will
      * be linked to the field. If the value is already in the shadow heap it will not be rescanned,
-     * i.e., it's fields will not be followed, with an exception: if the value is a known collection
-     * type ({@code Object[]}, {{@link Collection}, {@link Map} or {@link EconomicMap}} then its
+     * i.e., its fields will not be followed, with an exception: if the value is a known collection
+     * type ({@code Object[]}, {@link Collection}, {@link Map}, or {@link EconomicMap}) then its
      * elements will be rescanned too.
      * <p>
      * The provided {@link ResolvedJavaField} must be the original field owned by
@@ -875,26 +875,43 @@ public abstract class ImageHeapScanner {
     }
 
     /**
-     * Add the object to the image heap and, if the object is a collection, rescan its elements.
+     * Add the constant to the image heap and, if the constant unwraps to a collection-like hosted
+     * object, rescan its elements.
+     */
+    public void rescanConstant(JavaConstant constant, ScanReason reason) {
+        if (constant == null || constant.isNull()) {
+            return;
+        }
+
+        maybeRunInExecutor(unused -> {
+            doScan(constant, reason);
+            rescanCollectionElements(constant, reason);
+        });
+    }
+
+    /**
+     * Temporary helper to add the object to the image heap until all clients can be migrated to the
+     * Terminus constant-based API.
      */
     public void rescanObject(Object object, ScanReason reason) {
         if (object == null) {
             return;
         }
 
-        maybeRunInExecutor(unused -> {
-            doScan(asConstant(object), reason);
-            rescanCollectionElements(object, reason);
-        });
+        rescanConstant(asConstant(object), reason);
     }
 
     private void rescanCollectionElements(JavaConstant constant, ScanReason reason) {
         if (isNonNullObjectConstant(constant)) {
-            rescanCollectionElements(snippetReflection.asObject(Object.class, constant), reason);
+            rescanCollectionElementsHosted(snippetReflection.asObject(Object.class, constant), reason);
         }
     }
 
-    private void rescanCollectionElements(Object object, ScanReason reason) {
+    /**
+     * Temporary hosted-object fallback for collection element rescanning until GR-72717 migrates
+     * this path to Terminus.
+     */
+    private void rescanCollectionElementsHosted(Object object, ScanReason reason) {
         if (object instanceof Object[] array) {
             for (Object element : array) {
                 doScan(asConstant(element), reason);

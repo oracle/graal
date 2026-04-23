@@ -43,6 +43,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
+import com.oracle.svm.interpreter.metadata.AccessChecks;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
@@ -99,7 +100,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
                 Object[] staticArguments = getStaticArguments(boostrapEntry, cremaAccessingType);
                 Symbol<Name> nameSymbol = dynamicName(cpi);
                 Symbol<Type> typeSymbol = dynamicType(cpi);
-                Class<?> type = resolveSymbolAndAccessCheck(cremaAccessingType, typeSymbol);
+                Class<?> type = resolveSymbolAndAccessCheck(typeSymbol, cremaAccessingType).getJavaClass();
                 Object result = Target_java_lang_invoke_MethodHandleNatives.linkDynamicConstant(
                                 cremaAccessingType.getJavaClass(),
                                 bootstrapmethodMethodHandle,
@@ -197,10 +198,9 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         return string;
     }
 
-    private static InterpreterResolvedObjectType resolveObjectType(Symbol<Type> type, InterpreterResolvedObjectType accessingClass) {
+    private static InterpreterResolvedJavaType resolveSymbolOrThrow(Symbol<Type> type, InterpreterResolvedObjectType accessingClass) {
         DynamicHub hub = DynamicHub.fromClass(CremaSupport.singleton().resolveOrThrow(type, accessingClass));
-        assert !hub.isPrimitive();
-        return (InterpreterResolvedObjectType) hub.getInterpreterType();
+        return (InterpreterResolvedJavaType) hub.getInterpreterType();
     }
 
     private InterpreterResolvedJavaType resolveClassConstant(int classIndex, InterpreterResolvedObjectType accessingKlass) {
@@ -232,7 +232,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
 
         try (var _ = ClassLoading.allowArbitraryClassLoading(allowArbitraryClassLoading)) {
             /*- GR-73965: Access Checks */
-            return resolveObjectType(type, accessingKlass);
+            return resolveSymbolAndAccessCheck(type, accessingKlass);
         } catch (LinkageError e) {
             // Comment from Hotspot:
             // Just throw the exception and don't prevent these classes from being loaded for
@@ -270,14 +270,12 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaField.getDeclaringClass().getName());
             assert !TypeSymbols.isPrimitive(holderType) && !TypeSymbols.isArray(holderType);
             // Perf. note: The holder is re-resolved every-time (never cached).
-            holder = resolveObjectType(holderType, accessingClass);
+            holder = resolveSymbolAndAccessCheck(holderType, accessingClass);
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved field, but got " + entry);
         }
 
-        // TODO(peterssen): Enable access checks and loading constraints.
-        InterpreterResolvedJavaField result = CremaLinkResolver.resolveFieldSymbolOrThrow(CremaRuntimeAccess.getInstance(), accessingClass, fieldName, fieldType, holder,
-                        false /*- GR-73965: Access Checks */, true);
+        InterpreterResolvedJavaField result = CremaLinkResolver.resolveFieldSymbolOrThrow(CremaRuntimeAccess.getInstance(), accessingClass, fieldName, fieldType, holder, true, true);
         return result;
     }
 
@@ -307,13 +305,13 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodSignature = SymbolsSupport.getSignatures().getOrCreateValidSignature(unresolvedJavaMethod.getSignature().toMethodDescriptor());
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
-            holder = resolveObjectType(holderType, accessingClass);
+            holder = resolveSymbolAndAccessCheck(holderType, accessingClass);
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }
 
         InterpreterResolvedJavaMethod classMethod = CremaLinkResolver.resolveMethodSymbol(CremaRuntimeAccess.getInstance(), accessingClass, methodName, methodSignature, holder, false,
-                        false /*- GR-73965: Access Checks */, true);
+                        true, true);
 
         if (classMethod.getSignaturePolymorphicIntrinsic() == SignaturePolymorphicIntrinsic.InvokeGeneric && classMethod.isNative()) {
             return InterpreterResolvedInvokeGenericJavaMethod.linkInvokeGeneric(classMethod, accessingClass);
@@ -347,17 +345,13 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodSignature = SymbolsSupport.getSignatures().getOrCreateValidSignature(unresolvedJavaMethod.getSignature().toMethodDescriptor());
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
-            holder = resolveObjectType(holderType, accessingClass);
+            holder = resolveSymbolAndAccessCheck(holderType, accessingClass);
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }
 
-        InterpreterResolvedJavaMethod interfaceMethod = CremaLinkResolver.resolveMethodSymbol(CremaRuntimeAccess.getInstance(), accessingClass, methodName, methodSignature, holder, true,
-                        false /*- GR-73965: Access Checks */, true);
-
-        // TODO(peterssen): Support MethodHandle invoke intrinsics.
-
-        return interfaceMethod;
+        return CremaLinkResolver.resolveMethodSymbol(CremaRuntimeAccess.getInstance(), accessingClass, methodName, methodSignature, holder, true,
+                        true, true);
     }
 
     public Object[] getStaticArguments(BootstrapMethodsAttribute.Entry entry, InterpreterResolvedObjectType accessingClass) {
@@ -386,18 +380,18 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         Class<?> rtype;
         for (int i = 0; i < pcount; i++) {
             Symbol<Type> paramType = SignatureSymbols.parameterType(signature, i);
-            ptypes[i] = resolveSymbolAndAccessCheck(accessingClass, paramType);
+            ptypes[i] = resolveSymbolAndAccessCheck(paramType, accessingClass).getJavaClass();
         }
-        rtype = resolveSymbolAndAccessCheck(accessingClass, rt);
+        rtype = resolveSymbolAndAccessCheck(rt, accessingClass).getJavaClass();
 
         return Target_java_lang_invoke_MethodHandleNatives.findMethodHandleType(rtype, ptypes);
     }
 
-    private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, Symbol<Type> type) {
+    private static InterpreterResolvedJavaType resolveSymbolAndAccessCheck(Symbol<Type> type, InterpreterResolvedObjectType accessingClass) {
         try (var _ = ClassLoading.allowArbitraryClassLoading()) {
-            Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
-            /*- GR-73965: Access Checks */
-            return clazz;
+            InterpreterResolvedJavaType resolvedType = resolveSymbolOrThrow(type, accessingClass);
+            AccessChecks.ensureTypeAccess(resolvedType, accessingClass);
+            return resolvedType;
         }
     }
 

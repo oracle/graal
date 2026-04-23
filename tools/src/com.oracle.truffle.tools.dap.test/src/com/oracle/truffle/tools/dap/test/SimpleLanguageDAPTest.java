@@ -622,6 +622,10 @@ public final class SimpleLanguageDAPTest {
         tester.finish();
     }
 
+    /**
+     * Asserts scope names in DAP responses, including the top scope label from the guest scope
+     * {@code toDisplayString} (Simple Language reports {@code "global"} for the top scope).
+     */
     @Test
     public void testScopes() throws Exception {
         tester = startDAPTester(true);
@@ -652,12 +656,12 @@ public final class SimpleLanguageDAPTest {
         // Ask for the local scope variables at the beginning of main:
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":7}");
         if (useBytecode) {
-            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Global\",\"variablesReference\":2,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"scopes\",\"seq\":13}");
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"global\",\"variablesReference\":2,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"scopes\",\"seq\":13}");
             // The bytecode interpreter doesn't have a local scope, but we still need to request something to keep the sequence numbers in sync.
             tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":8}");
             tester.getMessage();
         } else {
-            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"scopes\",\"seq\":13}");
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"scopes\",\"seq\":13}");
             tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":8}");
             tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[]},\"type\":\"response\",\"request_seq\":8,\"command\":\"variables\",\"seq\":14}");
         }
@@ -676,7 +680,7 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":5,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":12,\"command\":\"stackTrace\",\"seq\":20}");
         // Ask for the local scope variables at line 5:
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":13}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":13,\"command\":\"scopes\",\"seq\":21}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":13,\"command\":\"scopes\",\"seq\":21}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":14}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":14,\"command\":\"variables\",\"seq\":22}");
         // Step over:
@@ -693,14 +697,14 @@ public final class SimpleLanguageDAPTest {
         // Ask for the local scope variables at line 6:
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":18}");
         if (useBytecode) {
-            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Block\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"scopes\",\"seq\":28}");
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Block\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"scopes\",\"seq\":28}");
             tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":19}");
             tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"},{\"name\":\"c\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"12\"}]},\"type\":\"response\",\"request_seq\":19,\"command\":\"variables\",\"seq\":29}");
             // The bytecode interpreter doesn't have a second local scope, but we still need to request something to keep the sequence numbers in sync.
             tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":20}");
             tester.getMessage();
         } else {
-            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Block\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"scopes\",\"seq\":28}");
+            tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Block\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Local\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":18,\"command\":\"scopes\",\"seq\":28}");
             tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":19}");
             tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"c\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"12\"}]},\"type\":\"response\",\"request_seq\":19,\"command\":\"variables\",\"seq\":29}");
             tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":20}");
@@ -818,7 +822,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":15}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":13,\"name\":\"fn\",\"column\":2,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":6,\"name\":\"addThem\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":3,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":3},\"type\":\"response\",\"request_seq\":15,\"command\":\"stackTrace\",\"seq\":27}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":16}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":4,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":5,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":16,\"command\":\"scopes\",\"seq\":28}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"Local\",\"variablesReference\":4,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":5,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":16,\"command\":\"scopes\",\"seq\":28}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":4},\"type\":\"request\",\"seq\":17}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"Return value\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"1\"},{\"name\":\"n\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"1\"}]},\"type\":\"response\",\"request_seq\":17,\"command\":\"variables\",\"seq\":29}");
         // change return value from 1 to 10_000_000_000 (it must be long because of SL)
@@ -836,7 +840,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":21}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":6,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":21,\"command\":\"stackTrace\",\"seq\":35}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":22}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":22,\"command\":\"scopes\",\"seq\":36}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":22,\"command\":\"scopes\",\"seq\":36}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":23}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"1\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":23,\"command\":\"variables\",\"seq\":37}");
         // at addThem:6, step into steps to the next line and check that `a` is 10_000_000_000
@@ -851,7 +855,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":26}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":26,\"command\":\"stackTrace\",\"seq\":42}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":27}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":27,\"command\":\"scopes\",\"seq\":43}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":27,\"command\":\"scopes\",\"seq\":43}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":28}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10000000000\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":28,\"command\":\"variables\",\"seq\":44}");
         // at addThem:7
@@ -877,7 +881,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":34}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":7,\"name\":\"addThem\",\"column\":12,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}},{\"line\":2,\"name\":\"main\",\"column\":7,\"id\":2,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":2},\"type\":\"response\",\"request_seq\":34,\"command\":\"stackTrace\",\"seq\":54}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":35}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":35,\"command\":\"scopes\",\"seq\":55}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":3,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":4,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":35,\"command\":\"scopes\",\"seq\":55}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":3},\"type\":\"request\",\"seq\":36}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"a\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"10000000000\"},{\"name\":\"b\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"2\"}]},\"type\":\"response\",\"request_seq\":36,\"command\":\"variables\",\"seq\":56}");
         // Resume to finish:
@@ -1091,7 +1095,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":7}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":16,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":" + sourceJson + "}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":7,\"command\":\"stackTrace\",\"seq\":14}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":8}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":8,\"command\":\"scopes\",\"seq\":15}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":8,\"command\":\"scopes\",\"seq\":15}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":9}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"n\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"1\"},"
                 + "{\"name\":\"m\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"4\"},"
@@ -1121,7 +1125,7 @@ public final class SimpleLanguageDAPTest {
         tester.sendMessage("{\"command\":\"stackTrace\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":16}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":16,\"name\":\"main\",\"column\":5,\"id\":1,\"source\":" + sourceJson + "}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":16,\"command\":\"stackTrace\",\"seq\":25}");
         tester.sendMessage("{\"command\":\"scopes\",\"arguments\":{\"frameId\":1},\"type\":\"request\",\"seq\":17}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"Global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":17,\"command\":\"scopes\",\"seq\":26}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"scopes\":[{\"name\":\"" + (useBytecode ? "Block" : "Local") + "\",\"variablesReference\":2,\"expensive\":false},{\"name\":\"global\",\"variablesReference\":3,\"expensive\":true}]},\"type\":\"response\",\"request_seq\":17,\"command\":\"scopes\",\"seq\":26}");
         tester.sendMessage("{\"command\":\"variables\",\"arguments\":{\"variablesReference\":2},\"type\":\"request\",\"seq\":18}");
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"variables\":[{\"name\":\"n\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"0\"},"
                 + "{\"name\":\"m\",\"variablesReference\":0,\"type\":\"Number\",\"value\":\"1000\"},"

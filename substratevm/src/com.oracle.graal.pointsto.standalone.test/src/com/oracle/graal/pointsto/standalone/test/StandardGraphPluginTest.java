@@ -26,33 +26,37 @@
 
 package com.oracle.graal.pointsto.standalone.test;
 
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
+import java.lang.reflect.Array;
+
 import org.junit.Test;
 
-import java.lang.reflect.Array;
+import com.oracle.graal.pointsto.standalone.test.classes.ArrayNewInstancePluginCase;
+import com.oracle.graal.pointsto.standalone.test.classes.ArrayNewInstancePluginCase.C;
+
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 
 /**
  * Method {@link StandardGraphBuilderPlugins#registerInvocationPlugins} has registered many
  * {@link InvocationPlugin}s. This class tests a typical one of them to check if the
  * {@code registerInvocationPlugins} method has been invoked for standalone analysis.
  */
-public class StandardGraphPluginTest {
+public class StandardGraphPluginTest extends StandaloneAnalysisTest {
 
     /**
      * Check the invocation of method
-     * {@code StandardGraphBuilderPlugins#registerArrayPlugins(InvocationPlugins, Replacements)}
-     * which is invoked by {@link StandardGraphBuilderPlugins#registerInvocationPlugins}.
-     * 
-     * @throws NoSuchMethodException
+     * {@code StandardGraphBuilderPlugins#registerArrayPlugins(InvocationPlugins)} which is invoked
+     * by {@link StandardGraphBuilderPlugins#registerInvocationPlugins} while analyzing
+     * {@link ArrayNewInstancePluginCase}.
+     *
+     * The assertion pair documents why this matters: the plugin should make {@link C#foo()}
+     * reachable from the analyzed fixture without treating the reflective array helper itself as a
+     * reachable application method.
      */
     @Test
-    public void testArrayNewInstanceReachability() throws NoSuchMethodException {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(ArrayNewInstancePluginCase.class);
-        tester.setAnalysisArguments(tester.getTestClassName(),
-                        "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
-        tester.setExpectedReachableMethods(ArrayNewInstancePluginCase.C.class.getDeclaredMethod("foo"));
-        tester.setExpectedUnreachableMethods(Array.class.getDeclaredMethod("newArray", Class.class, int.class));
-        tester.runAnalysisAndAssert();
+    public void testArrayNewInstanceReachability() {
+        runAnalysis(ArrayNewInstancePluginCase.class);
+        assertReachable(findMethod(ArrayNewInstancePluginCase.C.class, "foo"));
+        assertNotReachable(findMethod(Array.class, "newArray", Class.class, int.class));
     }
 }

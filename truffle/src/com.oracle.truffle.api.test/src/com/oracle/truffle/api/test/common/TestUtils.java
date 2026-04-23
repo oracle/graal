@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test.common;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
@@ -49,6 +50,10 @@ import java.util.List;
 public class TestUtils {
 
     public static String getDefaultLanguageId(Class<? extends TruffleLanguage<?>> clazz) {
+        Registration registration = clazz.getAnnotation(Registration.class);
+        if (registration != null && !registration.id().isEmpty()) {
+            return registration.id();
+        }
         return clazz.getName().replaceAll("[.$]", "_").toLowerCase();
     }
 

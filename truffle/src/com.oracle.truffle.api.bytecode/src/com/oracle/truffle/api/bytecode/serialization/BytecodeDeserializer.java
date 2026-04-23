@@ -95,7 +95,9 @@ public interface BytecodeDeserializer {
      * The {@code context} is supplied so that a {@link BytecodeDeserializer} can transitively
      * deserialize other {@link BytecodeRootNode root nodes} (e.g., inner functions) if necessary.
      * <p>
-     * Must be idempotent.
+     * Must be idempotent. This method may be invoked multiple times for the same logical constant,
+     * so if object identity or footprint is a concern, this method may need to canonicalize such
+     * values (for example, using interning or caching).
      *
      * @since 24.2
      */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,7 +112,7 @@ public abstract class BytecodeNode extends Node {
      */
     public final BytecodeLocation getBytecodeLocation(Frame frame, Node location) {
         int bytecodeIndex = findBytecodeIndexImpl(frame, location);
-        if (bytecodeIndex < -1) {
+        if (bytecodeIndex == -1) {
             return null;
         }
         return new BytecodeLocation(this, bytecodeIndex);
@@ -241,7 +241,7 @@ public abstract class BytecodeNode extends Node {
      */
     public abstract SourceSection[] getSourceLocations(int bytecodeIndex);
 
-    private int findBytecodeIndexImpl(Frame frame, Node location) {
+    int findBytecodeIndexImpl(Frame frame, Node location) {
         Objects.requireNonNull(frame, "Provided frame must not be null.");
         Objects.requireNonNull(location, "Provided location must not be null.");
         Node operationNode = findOperationNode(location);
@@ -596,6 +596,7 @@ public abstract class BytecodeNode extends Node {
      */
     @ExplodeLoop
     public final Object[] getLocalNames(int bytecodeIndex) {
+        assert validateBytecodeIndex(bytecodeIndex);
         CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         int count = getLocalCount(bytecodeIndex);
         Object[] locals = new Object[count];
@@ -645,6 +646,7 @@ public abstract class BytecodeNode extends Node {
      */
     @ExplodeLoop
     public final Object[] getLocalInfos(int bytecodeIndex) {
+        assert validateBytecodeIndex(bytecodeIndex);
         CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         int count = getLocalCount(bytecodeIndex);
         Object[] locals = new Object[count];
@@ -1310,6 +1312,7 @@ public abstract class BytecodeNode extends Node {
         }
         Frame frame = bytecode.resolveFrameImpl(frameInstance, FrameAccess.READ_ONLY);
         int bci = bytecode.findBytecodeIndexImpl(frame, frameInstance.getCallNode());
+        assert bci != -1;
         return bytecode.getLocalValues(bci, frame);
     }
 
@@ -1331,6 +1334,7 @@ public abstract class BytecodeNode extends Node {
             return null;
         }
         int bci = bytecode.findBytecodeIndex(frameInstance);
+        assert bci != -1;
         return bytecode.getLocalNames(bci);
     }
 
@@ -1350,8 +1354,10 @@ public abstract class BytecodeNode extends Node {
         if (bytecode == null) {
             return false;
         }
-        int bci = bytecode.findBytecodeIndex(frameInstance);
-        bytecode.setLocalValues(bci, bytecode.resolveFrameImpl(frameInstance, FrameAccess.READ_WRITE), values);
+        Frame frame = bytecode.resolveFrameImpl(frameInstance, FrameAccess.READ_WRITE);
+        int bci = bytecode.findBytecodeIndexImpl(frame, frameInstance.getCallNode());
+        assert bci != -1;
+        bytecode.setLocalValues(bci, frame, values);
         return true;
     }
 

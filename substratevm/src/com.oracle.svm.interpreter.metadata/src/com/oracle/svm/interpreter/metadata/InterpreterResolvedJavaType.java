@@ -122,6 +122,10 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
         return MetadataUtil.requireNonNull(clazz);
     }
 
+    public static InterpreterResolvedJavaType fromClass(Class<?> javaClass) {
+        return (InterpreterResolvedJavaType) DynamicHub.fromClass(javaClass).getInterpreterType();
+    }
+
     public final DynamicHub getHub() {
         return DynamicHub.fromClass(getJavaClass());
     }

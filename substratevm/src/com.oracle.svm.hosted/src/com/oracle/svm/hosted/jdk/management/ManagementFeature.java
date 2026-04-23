@@ -45,7 +45,6 @@ import javax.management.openmbean.OpenType;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -54,12 +53,10 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.jdk.management.SubstrateRuntimeMXBean;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
-import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredImageUtils;
@@ -87,11 +84,6 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
                     ThreadMXBean.class, OperatingSystemMXBean.class, MemoryMXBean.class};
 
     private int[] manageObjectReplacementConstantIds = new int[]{EMPTY_ID, EMPTY_ID, EMPTY_ID, EMPTY_ID, EMPTY_ID, EMPTY_ID};
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeSupportFeature.class, ThreadListenerSupportFeature.class);
-    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

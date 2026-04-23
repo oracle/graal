@@ -1,4 +1,4 @@
-com.oracle.graal.pointsto.standalone.test.AnalysisEntryPointsFileTest$C.<clinit>
-com.oracle.graal.pointsto.standalone.test.AnalysisEntryPointsFileTest.foo
-com.oracle.graal.pointsto.standalone.test.AnalysisEntryPointsFileTest.foo1
-com.oracle.graal.pointsto.standalone.test.AnalysisEntryPointsFileTest.bar(String)
+com.oracle.graal.pointsto.standalone.test.classes.AnalysisEntryPointsFileCase$C.<clinit>
+com.oracle.graal.pointsto.standalone.test.classes.AnalysisEntryPointsFileCase.foo
+com.oracle.graal.pointsto.standalone.test.classes.AnalysisEntryPointsFileCase.foo1
+com.oracle.graal.pointsto.standalone.test.classes.AnalysisEntryPointsFileCase.bar(String)

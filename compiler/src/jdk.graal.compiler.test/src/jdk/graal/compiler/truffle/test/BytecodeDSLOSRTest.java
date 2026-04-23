@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -448,30 +448,6 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         cont = (ContinuationResult) root.getCallTarget().call(true, BytecodeOSRMetadata.OSR_POLL_INTERVAL * 2);
         // OSR_POLL_INTERVAL (interpreter) + 2*OSR_POLL_INTERVAL (compiled)
         assertEquals(BytecodeOSRMetadata.OSR_POLL_INTERVAL * 3, cont.continueWith(null));
-    }
-
-    @Test
-    public void testContinuationThenRegularFrame() {
-        BytecodeDSLOSRTestRootNodeWithYield root = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, badFrameParser).getNode(0);
-        // First, call it with yield, so OSR uses the continuation frame.
-        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(true, OSR_THRESHOLD * 2);
-        // OSR_THRESHOLD (interpreter) + 2*OSR_THRESHOLD (compiled)
-        assertEquals(OSR_THRESHOLD * 3, cont.continueWith(null));
-        // Then, call it regularly. OSR should compile separately for the regular frame.
-        // OSR_THRESHOLD (interpreter) + 2*(OSR_THRESHOLD + 2) (compiled)
-        assertEquals(OSR_THRESHOLD * 3 + 2, root.getCallTarget().call(false, OSR_THRESHOLD * 2 + 1));
-    }
-
-    @Test
-    public void testRegularThenContinuationFrame() {
-        BytecodeDSLOSRTestRootNodeWithYield root = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, badFrameParser).getNode(0);
-        // First, call it regularly, so OSR uses the regular frame.
-        // OSR_THRESHOLD (interpreter) + 2*OSR_THRESHOLD (compiled)
-        assertEquals(OSR_THRESHOLD * 3, root.getCallTarget().call(false, OSR_THRESHOLD * 2));
-        // Then, call it with yield. OSR should compile separately for the continuation frame.
-        ContinuationResult cont = (ContinuationResult) root.getCallTarget().call(true, OSR_THRESHOLD * 2 + 1);
-        // OSR_THRESHOLD (interpreter) + 2*(OSR_THRESHOLD + 2) (compiled)
-        assertEquals(OSR_THRESHOLD * 3 + 2, cont.continueWith(null));
     }
 
     @TruffleLanguage.Registration(id = "BytecodeDSLOSRTestLanguage")

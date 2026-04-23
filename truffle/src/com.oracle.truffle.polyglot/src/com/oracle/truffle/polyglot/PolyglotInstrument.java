@@ -132,7 +132,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         if (optionValues == null) {
             synchronized (instrumentLock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), engine.sandboxPolicy, false, false);
+                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), engine.sandboxPolicy, false);
                 }
             }
         }
@@ -177,7 +177,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
                         this.engineOptions = engineOptions;
                         this.contextOptions = contextOptions;
                         this.sourceOptions = sourceOptions;
-                        this.emptySourceOptionValues = new OptionValuesImpl(sourceOptions, SandboxPolicy.TRUSTED, false, false);
+                        this.emptySourceOptionValues = new OptionValuesImpl(sourceOptions, SandboxPolicy.TRUSTED, false);
                         this.allOptions = LANGUAGE.createOptionDescriptorsUnion(engineOptions, contextOptions);
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'. Message: %s.", cache.getId(), cache.getClassName(), e.getMessage()), e);

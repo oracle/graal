@@ -61,10 +61,10 @@ public final class TruffleCommunityCompilerConfiguration extends CommunityCompil
     }
 
     public static void installCommunityHighTier(OptionValues options, HighTier defaultHighTier) {
+        HotSpotHostInliningPhase.install(defaultHighTier, options);
         if (OutlineTruffleInterpreterBytecodeHandler.getValue(options)) {
             HotSpotOutlineBytecodeHandlerPhase.install(defaultHighTier);
         }
-        HotSpotHostInliningPhase.install(defaultHighTier, options);
     }
 
     @Override

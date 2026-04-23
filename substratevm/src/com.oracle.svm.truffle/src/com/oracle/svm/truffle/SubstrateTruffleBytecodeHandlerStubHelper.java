@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle;
 
-import static com.oracle.svm.truffle.SubstrateTruffleBytecodeHandlerStub.unwrap;
-
 import java.util.Arrays;
 
 import org.graalvm.collections.EconomicMap;
@@ -38,14 +36,19 @@ import com.oracle.svm.core.meta.MethodPointer;
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.host.TruffleKnownHostTypes;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * This class is used to manage the bytecode handlers stubs for Truffle, providing a way to
- * initialize and retrieve the handlers.
+ * Manages the SubstrateVM bytecode-handler tables for Truffle interpreters.
+ * <p>
+ * One handler table is created per interpreter (identified via {@code interpreterHolder} and
+ * {@code BytecodeHandlerConfig}). Each table is prefilled with that interpreter's default stub and
+ * then patched with opcode-specific stub entries for the bytecode handlers used from that
+ * interpreter.
  */
 @Platforms(Platform.HOSTED_ONLY.class) //
 public final class SubstrateTruffleBytecodeHandlerStubHelper {
@@ -54,60 +57,71 @@ public final class SubstrateTruffleBytecodeHandlerStubHelper {
      * Truffle bytecode handler table. This mapping is used during image building but each handler
      * array will be persisted in the generated image.
      */
-    private final EconomicMap<ResolvedJavaMethod, MethodPointer[]> bytecodeHandlers = EconomicMap.create();
+    private final EconomicMap<BytecodeHandlerStubKey, MethodPointer[]> bytecodeHandlers = EconomicMap.create();
 
     /**
-     * Initializes and populates the bytecode handler table.
+     * Initializes and populates all bytecode-handler tables from the registered stub wrappers.
      */
-    public void initializeBytecodeHandlers(EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers) {
+    public void initializeBytecodeHandlers(EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers) {
         if (registeredBytecodeHandlers.isEmpty()) {
             return;
         }
-        TruffleHostEnvironment truffleHostEnvironment = TruffleHostEnvironment.get(registeredBytecodeHandlers.getKeys().iterator().next());
+        ResolvedJavaMethod firstMethod = null;
+        for (BytecodeHandlerStubKey key : registeredBytecodeHandlers.getKeys()) {
+            if (key.method() != null) {
+                firstMethod = key.method();
+                break;
+            }
+        }
+        GraalError.guarantee(firstMethod != null, "No bytecode handler methods were registered");
+
+        TruffleHostEnvironment truffleHostEnvironment = TruffleHostEnvironment.get(firstMethod);
         if (truffleHostEnvironment == null) {
             // TruffleHostEnvironment is not initialized
             return;
         }
         TruffleKnownHostTypes truffleTypes = truffleHostEnvironment.types();
         ResolvedJavaType typeBytecodeInterpreterHandler = ((WrappedJavaType) truffleTypes.BytecodeInterpreterHandler).getWrapped();
-        ResolvedJavaType typeBytecodeInterpreterHandlerConfig = ((WrappedJavaType) truffleTypes.BytecodeInterpreterHandlerConfig).getWrapped();
 
-        for (ResolvedJavaMethod handler : registeredBytecodeHandlers.getKeys()) {
-            ResolvedJavaMethod stubWrapper = registeredBytecodeHandlers.get(handler);
-            ResolvedJavaMethod caller = ((SubstrateTruffleBytecodeHandlerStub) unwrap(stubWrapper)).getCallsite().getEnclosingMethod();
+        for (BytecodeHandlerStubKey key : registeredBytecodeHandlers.getKeys()) {
+            BytecodeHandlerStubKey tableKey = BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), key.handlerConfig());
+            BytecodeHandlerConfig handlerConfig = key.handlerConfig();
+            ResolvedJavaMethod stubWrapper = registeredBytecodeHandlers.get(key);
 
-            MethodPointer[] handlerTable = bytecodeHandlers.get(caller);
+            MethodPointer[] handlerTable = bytecodeHandlers.get(tableKey);
             if (handlerTable == null) {
-                // Creates a table large enough to host all opcodes
-                AnnotationValue bytecodeInterpreterHandlerConfigAnnotation = AnnotationValueSupport.getDeclaredAnnotationValue(typeBytecodeInterpreterHandlerConfig, caller);
-                int maxOpcode = bytecodeInterpreterHandlerConfigAnnotation.getInt("maximumOperationCode");
+                int maxOpcode = handlerConfig.getMaximumOperationCode();
                 GraalError.guarantee(maxOpcode >= 0 && maxOpcode < Integer.MAX_VALUE, "maximumOperationCode is %d", maxOpcode);
                 handlerTable = new MethodPointer[maxOpcode + 1];
-                // By default, all bytecode handlers point to defaultHandler, which is keyed by the
-                // caller in registeredBytecodeHandlers
-                ResolvedJavaMethod defaultHandler = registeredBytecodeHandlers.get(caller);
+
+                BytecodeHandlerStubKey defaultKey = BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), handlerConfig);
+                ResolvedJavaMethod defaultHandler = registeredBytecodeHandlers.get(defaultKey);
                 GraalError.guarantee(defaultHandler != null, "default handler is null");
                 MethodPointer defaultHandlerPointer = new MethodPointer(defaultHandler);
 
                 Arrays.fill(handlerTable, defaultHandlerPointer);
-                bytecodeHandlers.put(caller, handlerTable);
+                bytecodeHandlers.put(tableKey, handlerTable);
             }
 
-            if (caller.equals(handler)) {
+            if (key.method() == null) {
                 // default handler
                 continue;
             }
 
-            AnnotationValue annotation = AnnotationValueSupport.getDeclaredAnnotationValue(typeBytecodeInterpreterHandler, handler);
+            AnnotationValue annotation = AnnotationValueSupport.getDeclaredAnnotationValue(typeBytecodeInterpreterHandler, key.method());
             for (Integer opcode : annotation.getList("value", Integer.class)) {
-                // Assumes BytecodeInterpreterHandlerConfig is with a large enough maxOpcode
+                GraalError.guarantee(handlerTable[opcode].getMethod().equals(registeredBytecodeHandlers.get(tableKey)), "Method for opcode %d already set.", opcode);
                 handlerTable[opcode] = new MethodPointer(stubWrapper);
             }
         }
     }
 
-    public MethodPointer[] getBytecodeHandlers(ResolvedJavaMethod caller) {
-        MethodPointer[] handlers = bytecodeHandlers.get(caller);
+    /**
+     * Returns the handler table for one interpreter (identified via {@code interpreterHolder} and
+     * {@code BytecodeHandlerConfig}).
+     */
+    public MethodPointer[] getBytecodeHandlers(ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
+        MethodPointer[] handlers = bytecodeHandlers.get(BytecodeHandlerStubKey.createDefaultHandlerKey(interpreterHolder, handlerConfig));
         GraalError.guarantee(handlers != null, "Bytecode handlers not yet initialized!");
         return handlers;
     }

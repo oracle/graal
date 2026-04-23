@@ -57,9 +57,13 @@ import com.oracle.svm.core.properties.RuntimeSystemPropertyParser;
 public class LibJVMLauncherOptionTest {
 
     private static final String MISSING_MODULE_NAME = "com.oracle.svm.test.missing.module";
+    private static final String TEST_EXPORTS_SOURCE_MODULE = "java.logging";
+    private static final String TEST_EXPORTS_TARGET_MODULE = "java.base";
+    private static final String TEST_EXPORTS_PACKAGE = "sun.util.logging.internal";
 
     /// Verifies that runtime parsing consumes only the JVM-level `--module-path=...` and
-    /// `--add-modules=...` forms, leaving launcher-handled variants untouched.
+    /// `--add-modules=...`, `--add-exports=...`, and `--add-opens=...` forms, leaving
+    /// launcher-handled variants untouched.
     @Test
     public void launcherModuleOptionsOnlyParseJvmForms() {
         assumeLibJVMNativeImage();
@@ -68,6 +72,10 @@ public class LibJVMLauncherOptionTest {
                         RuntimeBootModuleLayerSupport.MODULE_PATH_PROPERTY,
                         RuntimeBootModuleLayerSupport.ADD_MODULES_PROPERTY_PREFIX + "0",
                         RuntimeBootModuleLayerSupport.ADD_MODULES_PROPERTY_PREFIX + "1",
+                        RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX + "0",
+                        RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX + "1",
+                        RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX + "0",
+                        RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX + "1",
                         "libjvm.launcher.option.test");
         try {
             clearProperties(previousValues.keySet());
@@ -79,6 +87,10 @@ public class LibJVMLauncherOptionTest {
                                             "--module-path", "long-mods-dir",
                                             "--add-modules=gamma",
                                             "--add-modules", "alpha,beta",
+                                            "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
+                                            "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
+                                            "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                                            "--add-opens", "java.base/java.io=ALL-UNNAMED",
                                             "-Dlibjvm.launcher.option.test=value",
                                             "user-arg"
                             },
@@ -88,11 +100,17 @@ public class LibJVMLauncherOptionTest {
                             "-p", "short-mods-dir",
                             "--module-path", "long-mods-dir",
                             "--add-modules", "alpha,beta",
+                            "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
+                            "--add-opens", "java.base/java.io=ALL-UNNAMED",
                             "user-arg"
             }, remainingArgs);
             Assert.assertEquals("mods-dir", System.getProperty(RuntimeBootModuleLayerSupport.MODULE_PATH_PROPERTY));
             Assert.assertEquals("gamma", System.getProperty(RuntimeBootModuleLayerSupport.ADD_MODULES_PROPERTY_PREFIX + "0"));
             Assert.assertNull(System.getProperty(RuntimeBootModuleLayerSupport.ADD_MODULES_PROPERTY_PREFIX + "1"));
+            Assert.assertEquals("java.base/jdk.internal.misc=ALL-UNNAMED", System.getProperty(RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX + "0"));
+            Assert.assertNull(System.getProperty(RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX + "1"));
+            Assert.assertEquals("java.base/java.lang=ALL-UNNAMED", System.getProperty(RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX + "0"));
+            Assert.assertNull(System.getProperty(RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX + "1"));
             Assert.assertEquals("value", System.getProperty("libjvm.launcher.option.test"));
         } finally {
             restoreProperties(previousValues);
@@ -169,6 +187,49 @@ public class LibJVMLauncherOptionTest {
                                             TestModuleReference.module("beta"),
                                             TestModuleReference.module("gamma")));
             Assert.assertEquals(new LinkedHashSet<>(Arrays.asList("main.module", "alpha", "beta", "gamma", "sys.api", "sys.internal")), roots);
+        } finally {
+            restoreProperties(previousValues);
+        }
+    }
+
+    /// Verifies that preserved runtime `--add-exports` and `--add-opens` options are replayed
+    /// onto the runtime boot layer that Crema consults for access checks.
+    @Test
+    public void runtimeExtraExportsAndOpensApplyToBootLayer() throws Exception {
+        assumeLibJVMNativeImage();
+
+        Map<String, String> previousValues = rememberProperties(
+                        RuntimeBootModuleLayerSupport.MODULE_PATH_PROPERTY,
+                        RuntimeBootModuleLayerSupport.MAIN_MODULE_PROPERTY,
+                        RuntimeBootModuleLayerSupport.ADD_MODULES_PROPERTY_PREFIX + "0",
+                        RuntimeBootModuleLayerSupport.ADD_MODULES_PROPERTY_PREFIX + "1",
+                        RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX + "0",
+                        RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX + "1",
+                        RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX + "0",
+                        RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX + "1");
+        try {
+            clearProperties(previousValues.keySet());
+            System.setProperty(RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX + "0",
+                            TEST_EXPORTS_SOURCE_MODULE + "/" + TEST_EXPORTS_PACKAGE + "=" + TEST_EXPORTS_TARGET_MODULE + ",ALL-UNNAMED");
+            System.setProperty(RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX + "0",
+                            TEST_EXPORTS_SOURCE_MODULE + "/" + TEST_EXPORTS_PACKAGE + "=" + TEST_EXPORTS_TARGET_MODULE + ",ALL-UNNAMED");
+
+            ModuleLayer layer = ModuleLayer.boot();
+            Module sourceModule = layer.findModule(TEST_EXPORTS_SOURCE_MODULE).orElseThrow();
+            Module targetModule = layer.findModule(TEST_EXPORTS_TARGET_MODULE).orElseThrow();
+            Module unnamedModule = LibJVMLauncherOptionTest.class.getModule();
+
+            Assert.assertFalse(sourceModule.isExported(TEST_EXPORTS_PACKAGE, targetModule));
+            Assert.assertFalse(sourceModule.isExported(TEST_EXPORTS_PACKAGE, unnamedModule));
+            Assert.assertFalse(sourceModule.isOpen(TEST_EXPORTS_PACKAGE, targetModule));
+            Assert.assertFalse(sourceModule.isOpen(TEST_EXPORTS_PACKAGE, unnamedModule));
+
+            invokeRuntimeBootLayerInitialize();
+
+            Assert.assertTrue(sourceModule.isExported(TEST_EXPORTS_PACKAGE, targetModule));
+            Assert.assertTrue(sourceModule.isExported(TEST_EXPORTS_PACKAGE, unnamedModule));
+            Assert.assertTrue(sourceModule.isOpen(TEST_EXPORTS_PACKAGE, targetModule));
+            Assert.assertTrue(sourceModule.isOpen(TEST_EXPORTS_PACKAGE, unnamedModule));
         } finally {
             restoreProperties(previousValues);
         }

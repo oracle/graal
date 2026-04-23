@@ -53,8 +53,8 @@ public final class SubstrateHostInliningPhase extends HostInliningPhase {
     private final TruffleFeature truffleFeature = ImageSingletons.lookup(TruffleFeature.class);
 
     SubstrateHostInliningPhase(CanonicalizerPhase canonicalizer) {
-        super(canonicalizer, -1.0d); // -1.0 effectively disables frequency based inlining by
-                                     // default.
+        // -1.0 effectively disables frequency based inlining by default.
+        super(canonicalizer, -1.0d);
     }
 
     @Override
@@ -63,7 +63,7 @@ public final class SubstrateHostInliningPhase extends HostInliningPhase {
     }
 
     @Override
-    protected boolean isBytecodeInterpreterHandler(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+    protected boolean isBytecodeInterpreterHandlerStub(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
         return truffleBaseFeature.isBytecodeHandler(translateMethod(targetMethod));
     }
 

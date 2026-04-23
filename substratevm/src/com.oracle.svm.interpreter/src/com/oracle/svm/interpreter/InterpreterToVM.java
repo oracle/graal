@@ -781,6 +781,11 @@ public final class InterpreterToVM {
         // First, find the target method.
         InterpreterResolvedJavaMethod target = resolveCallSiteTarget(seedMethod, calleeArgs, callKind, quiet);
 
+        // GR-74743: Should be an entry in the ITable throwing IllegalAccessError.
+        if (callKind == CallKind.ITABLE_LOOKUP && !target.isPublic() && !target.isPrivate()) {
+            throw SemanticJavaException.raise(new IllegalAccessError(MetadataUtil.fmt("invokeinterface selected method must be public or private: %s", target)));
+        }
+
         // Next, determine whether the call should stay in interpreter or call the compiled target.
         boolean callAOTEntryPoint = shouldCallAOTEntryPoint(forceStayInInterpreter, preferStayInInterpreter, target, quiet);
 

@@ -100,6 +100,7 @@ public class TruffleTypes {
     public static final String OptionDescriptor_Name = "org.graalvm.options.OptionDescriptor";
     public static final String OptionDescriptors_Name = "org.graalvm.options.OptionDescriptors";
     public static final String OptionKey_Name = "org.graalvm.options.OptionKey";
+    public static final String ConstantOptionKey_Name = "org.graalvm.options.ConstantOptionKey";
     public static final String OptionMap_Name = "org.graalvm.options.OptionMap";
     public static final String OptionStability_Name = "org.graalvm.options.OptionStability";
     public static final String SandboxPolicy_Name = "org.graalvm.polyglot.SandboxPolicy";
@@ -110,6 +111,7 @@ public class TruffleTypes {
     public final DeclaredType OptionDescriptor = c.getDeclaredType(OptionDescriptor_Name);
     public final DeclaredType OptionDescriptors = c.getDeclaredType(OptionDescriptors_Name);
     public final DeclaredType OptionKey = c.getDeclaredType(OptionKey_Name);
+    public final DeclaredType ConstantOptionKey = c.getDeclaredType(ConstantOptionKey_Name);
     public final DeclaredType OptionMap = c.getDeclaredType(OptionMap_Name);
     public final DeclaredType OptionStability = c.getDeclaredType(OptionStability_Name);
     public final DeclaredType SandboxPolicy = c.getDeclaredType(SandboxPolicy_Name);

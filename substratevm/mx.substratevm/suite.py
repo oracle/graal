@@ -691,6 +691,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
+                "com.oracle.graal.pointsto.standalone.test.classes",
                 "mx:JUNIT_TOOL",
                 "sdk:NATIVEIMAGE",
                 "STANDALONE_POINTSTO",
@@ -713,6 +714,20 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "javaCompliance" : "21+",
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.graal.pointsto.standalone.test.classes": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "compiler:GRAAL",
+            ],
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM,Test",
+            "annotationProcessors": [],
+            "javaCompliance" : "21+",
+            "testProject": True,
             "jacoco" : "exclude",
         },
 
@@ -1112,6 +1127,24 @@ suite = {
             ],
             "javaCompliance" : "21+",
             "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.driver.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "com.oracle.svm.driver",
+            ],
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance": "24+",
+            "jacoco": "exclude",
+            "testProject": True,
         },
 
         "com.oracle.svm.libjvm": {
@@ -1913,6 +1946,7 @@ suite = {
                             org.graalvm.nativeimage.agent.jvmtibase,
                             org.graalvm.nativeimage.agent.tracing,
                             org.graalvm.nativeimage.agent.diagnostics,
+                            org.graalvm.nativeimage.enterprise.builder.test,
                             org.graalvm.nativeimage.enterprise.testrunner,
                             com.oracle.svm.svm_enterprise,
                             com.oracle.svm.svm_enterprise.llvm,
@@ -1964,6 +1998,7 @@ suite = {
                     "com.oracle.svm.hosted.NativeImageGeneratorRunnerProvider",
                     "java.util.spi.ResourceBundleControlProvider",
                     "com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration",
+                    "com.oracle.svm.core.singleton.AutomaticallyRegisteredImageSingletonServiceRegistration",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
@@ -2036,6 +2071,7 @@ suite = {
                             org.graalvm.nativeimage.builder,
                             org.graalvm.nativeimage.configure,
                             org.graalvm.nativeimage.driver,
+                            org.graalvm.nativeimage.enterprise.builder.test,
                             org.graalvm.nativeimage.enterprise.testrunner,
                             org.graalvm.nativeimage.foreign,
                             org.graalvm.nativeimage.guest,
@@ -2715,6 +2751,21 @@ suite = {
                 "SVM_GUEST_STAGING",
             ],
             "testDistribution" : True,
+        },
+
+        "SVM_DRIVER_TESTS" : {
+          "subDir": "src",
+          "relpath" : True,
+          "dependencies" : [
+            "com.oracle.svm.driver.test",
+          ],
+          "unittestConfig" : "svm-driver-unittest",
+          "distDependencies": [
+            "mx:JUNIT_TOOL",
+            "sdk:NATIVEIMAGE",
+            "SVM_DRIVER",
+          ],
+          "testDistribution" : True,
         },
 
         "SVM_TESTS" : {

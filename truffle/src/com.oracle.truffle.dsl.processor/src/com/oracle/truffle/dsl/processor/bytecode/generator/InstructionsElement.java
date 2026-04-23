@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 
 import javax.lang.model.element.ElementKind;
@@ -244,7 +244,7 @@ final class InstructionsElement extends AbstractElement {
     static List<InstructionImmediate> resolveImmediates(InstructionModel instruction) {
         if (instruction.nodeData != null && instruction.canUseNodeSingleton()) {
             List<InstructionImmediate> immediates = new ArrayList<>(instruction.immediates);
-            immediates.add(new InstructionImmediate(ImmediateKind.NODE_PROFILE, "node", InstructionImmediateEncoding.NONE, true, Optional.empty()));
+            immediates.add(new InstructionImmediate(ImmediateKind.NODE_PROFILE, "node", InstructionImmediateEncoding.NONE, true, OptionalInt.empty()));
             return immediates;
         } else {
             return instruction.immediates;

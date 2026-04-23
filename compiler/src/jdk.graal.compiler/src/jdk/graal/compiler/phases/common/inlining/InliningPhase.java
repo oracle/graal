@@ -36,6 +36,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.inlining.policy.InliningPolicy;
 import jdk.graal.compiler.phases.common.inlining.walker.InliningData;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class InliningPhase extends AbstractInliningPhase {
 
@@ -76,6 +77,22 @@ public class InliningPhase extends AbstractInliningPhase {
     @Override
     public float codeSizeIncrease() {
         return 10_000f;
+    }
+
+    @Override
+    protected boolean isForceInlinedTarget(ResolvedJavaMethod targetMethod, Invoke invoke) {
+        if (!super.isForceInlinedTarget(targetMethod, invoke)) {
+            return false;
+        }
+        if (rootInvokes != null && isRootGraphInvoke(invoke)) {
+            /*
+             * Restricting the inliner to an explicit subset of root invokes only excludes the
+             * non-selected root invokes from this pass. Descendants under the allowed roots are
+             * still explored normally and must continue to satisfy force-inline verification.
+             */
+            return rootInvokes.contains(invoke);
+        }
+        return true;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -223,8 +223,13 @@ public final class BytecodeSupport {
             int index = size++;
             Object[] consts = this.constants;
             if (index >= consts.length) {
-                this.constants = Arrays.copyOf(consts, consts.length * 2);
+                consts = this.constants = Arrays.copyOf(consts, consts.length * 2);
             }
+            /*
+             * If this buffer is reused, the slot might have an old value C. Clear it so a later
+             * call add(C) won't try to reuse this slot.
+             */
+            consts[index] = null;
             if (index == HASH_THRESHOLD - 1) {
                 fillMapFromConsts();
             }

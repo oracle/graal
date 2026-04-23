@@ -184,10 +184,13 @@ public abstract class TruffleHostEnvironment {
         TruffleKnownHostTypes hostTypes = types();
         boolean isTruffleBoundary = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.TruffleBoundary));
         boolean isBytecodeInterpreterSwitch = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterSwitch));
+        boolean isBytecodeInterpreterHandler = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterHandler));
+        boolean isBytecodeInterpreterHandlerConfig = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterHandlerConfig));
         boolean isBytecodeInterpreterSwitchBoundary = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterSwitchBoundary));
         boolean isInliningCutoff = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.InliningCutoff));
         boolean isInliningRoot = hostTypes.InliningRoot != null && declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.InliningRoot));
-        return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterSwitchBoundary, isInliningCutoff, isInliningRoot);
+        return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterHandler, isBytecodeInterpreterHandlerConfig, isBytecodeInterpreterSwitchBoundary,
+                        isInliningCutoff, isInliningRoot);
     }
 
     @LibGraalService

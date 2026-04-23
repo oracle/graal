@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -330,9 +330,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         List<String> constantOperandBeforeNames = mergeConstantOperandNames(customOperation, constantOperands.before(), signatures, 0);
         List<String> constantOperandAfterNames = mergeConstantOperandNames(customOperation, constantOperands.after(), signatures,
                         constantOperands.before().size() + signature.dynamicOperandCount());
-        operation.constantOperandBeforeNames = constantOperandBeforeNames;
-        operation.constantOperandAfterNames = constantOperandAfterNames;
-
         operation.constantOperandBeforeNames = constantOperandBeforeNames;
         operation.constantOperandAfterNames = constantOperandAfterNames;
         operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), constantOperandBeforeNames);
@@ -987,11 +984,19 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         OperationModel operation = customOperation.operation;
         List<ConstantOperandModel> constantOperandsBefore = operation.constantOperands.before();
         for (int i = 0; i < constantOperandsBefore.size(); i++) {
-            instr.addConstantOperandImmediate(constantOperandsBefore.get(i), operation.getConstantOperandBeforeName(i));
+            Operand operand = signature.constantOperands().get(i);
+            if (!operand.isConstant() || operand.constant() != constantOperandsBefore.get(i)) {
+                throw new AssertionError("Operand should be the i-th constant operand before, but was " + operand);
+            }
+            instr.addConstantOperandImmediate(operand, operation.getConstantOperandBeforeName(i));
         }
         List<ConstantOperandModel> constantOperandsAfter = operation.constantOperands.after();
         for (int i = 0; i < constantOperandsAfter.size(); i++) {
-            instr.addConstantOperandImmediate(constantOperandsAfter.get(i), operation.getConstantOperandAfterName(i));
+            Operand operand = signature.constantOperands().get(constantOperandsBefore.size() + i);
+            if (!operand.isConstant() || operand.constant() != constantOperandsAfter.get(i)) {
+                throw new AssertionError("Operand should be the i-th constant operand after, but was " + operand);
+            }
+            instr.addConstantOperandImmediate(operand, operation.getConstantOperandAfterName(i));
         }
 
         if (customOperation.isCustomYield()) {

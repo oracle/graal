@@ -68,6 +68,7 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVM
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_ARRAYCOPY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNSAFE_SETMEMORY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_ADLER32;
@@ -267,17 +268,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     // void ShenandoahRuntime::write_barrier_pre(oopDesc*)
     public static final HotSpotForeignCallDescriptor SHENANDOAH_WRITE_BARRIER_PRE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS,
                     "ShenandoahRuntime::write_barrier_pre_stack_only", void.class, Object.class);
-
-    /**
-     * Signature of an unsafe {@link System#arraycopy} stub.
-     *
-     * The signature is equivalent to {@link jdk.internal.misc.Unsafe#copyMemory(long, long, long)}.
-     * For the semantics refer to
-     * {@link jdk.internal.misc.Unsafe#copyMemory(Object, long, Object, long, long)}.
-     *
-     * @see jdk.internal.misc.Unsafe#copyMemory
-     */
-    public static final ForeignCallSignature UNSAFE_ARRAYCOPY = new ForeignCallSignature("unsafe_arraycopy", void.class, Word.class, Word.class, Word.class);
 
     /**
      * Signature of a generic {@link System#arraycopy} stub.
@@ -613,7 +603,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerCheckcastArraycopyDescriptor(false, c.checkcastArraycopy);
 
         registerForeignCall(createDescriptor(GENERIC_ARRAYCOPY, LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.any()), c.genericArraycopy, NativeCall);
-        registerForeignCall(createDescriptor(UNSAFE_ARRAYCOPY, LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.any()), c.unsafeArraycopy, NativeCall);
+        if (c.unsafeArraycopy != 0L) {
+            registerForeignCall(UNSAFE_ARRAYCOPY, c.unsafeArraycopy, NativeCall);
+        }
         if (c.unsafeSetMemory != 0L) {
             registerForeignCall(UNSAFE_SETMEMORY, c.unsafeSetMemory, NativeCall);
         }

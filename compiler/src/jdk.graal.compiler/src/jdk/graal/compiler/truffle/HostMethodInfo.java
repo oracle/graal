@@ -29,6 +29,10 @@ package jdk.graal.compiler.truffle;
  * @param isTruffleBoundary specifies if the method is annotated by {@code TruffleBoundary}
  * @param isBytecodeInterpreterSwitch specifies if the method is annotated by
  *            {@code BytecodeInterpreterSwitch}.
+ * @param isBytecodeInterpreterHandler specifies if the method is annotated by
+ *            {@code BytecodeInterpreterHandler}
+ * @param hasBytecodeInterpreterHandlerConfig specifies if the method is annotated by
+ *            {@code BytecodeInterpreterHandlerConfig}
  * @param isBytecodeInterpreterSwitchBoundary specifies if the method is annotated by
  *            {@code BytecodeInterpreterSwitchBoundary}
  * @param isInliningCutoff specifies if the method is annotated by {@code InliningCutoff}
@@ -37,6 +41,8 @@ package jdk.graal.compiler.truffle;
 public record HostMethodInfo(
                 boolean isTruffleBoundary,
                 boolean isBytecodeInterpreterSwitch,
+                boolean isBytecodeInterpreterHandler,
+                boolean hasBytecodeInterpreterHandlerConfig,
                 boolean isBytecodeInterpreterSwitchBoundary,
                 boolean isInliningCutoff,
                 boolean isInliningRoot) {
@@ -45,9 +51,11 @@ public record HostMethodInfo(
     public HostMethodInfo(
                     boolean isTruffleBoundary,
                     boolean isBytecodeInterpreterSwitch,
+                    boolean isBytecodeInterpreterHandler,
+                    boolean hasBytecodeInterpreterHandlerConfig,
                     boolean isBytecodeInterpreterSwitchBoundary,
                     boolean isInliningCutoff) {
-        this(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterSwitchBoundary, isInliningCutoff, false);
+        this(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterHandler, hasBytecodeInterpreterHandlerConfig, isBytecodeInterpreterSwitchBoundary, isInliningCutoff, false);
     }
 
 }

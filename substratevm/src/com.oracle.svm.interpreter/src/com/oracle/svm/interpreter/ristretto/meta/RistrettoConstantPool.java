@@ -27,6 +27,8 @@ package com.oracle.svm.interpreter.ristretto.meta;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.svm.interpreter.CremaLinkResolver;
+import com.oracle.svm.interpreter.CremaRuntimeAccess;
 import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
@@ -87,6 +89,14 @@ public final class RistrettoConstantPool implements ConstantPool {
     @Override
     public JavaField lookupField(int rawIndex, ResolvedJavaMethod method, int opcode) {
         JavaField javaField = interpreterConstantPool.lookupField(rawIndex, method, opcode);
+        if (javaField instanceof InterpreterResolvedJavaField iField && method instanceof RistrettoMethod rMethod) {
+            /*
+             * Mirror the interpreter's opcode-specific field checks once a field has been resolved
+             * so runtime compilation observes the same linkage errors.
+             */
+            InterpreterResolvedJavaMethod interpreterMethod = rMethod.getInterpreterMethod();
+            CremaLinkResolver.checkFieldAccessOrThrow(CremaRuntimeAccess.getInstance(), iField, opcode, interpreterMethod.getDeclaringClass(), interpreterMethod);
+        }
         /*
          * A note on wrapping AOT fields into ristretto JVMCI API: When compiling dynamically loaded
          * types with ristretto every such interpreter type is a crema resolved type. All these

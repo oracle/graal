@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,8 +57,10 @@ public final class OptionDescriptor {
     private final boolean deprecated;
     private final String deprecationMessage;
     private final String usageSyntax;
+    private final boolean constant;
 
-    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated, String deprecationMessage, String usageSyntax) {
+    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated, String deprecationMessage, String usageSyntax,
+                    boolean constant) {
         this.key = key;
         this.name = name;
         this.help = help;
@@ -67,6 +69,7 @@ public final class OptionDescriptor {
         this.deprecated = deprecated;
         this.deprecationMessage = deprecationMessage;
         this.usageSyntax = usageSyntax;
+        this.constant = constant;
     }
 
     /**
@@ -177,6 +180,23 @@ public final class OptionDescriptor {
         return "";
     }
 
+    /**
+     * Returns {@code true} if this option is constant. Constant options value is static and final
+     * before the polyglot runtime is initialized and cannot be changed at runtime. The value is
+     * read from the system property {@code -Dpolyglot.<option-name>=<value>} during class
+     * initialization. If absent, the {@link org.graalvm.options.OptionKey#getDefaultValue() default
+     * value} is used. Once set, calls to
+     * {@link org.graalvm.options.ConstantOptionKey#getConstantValue()} on a {@code static final}
+     * field are eligible for constant folding by the GraalVM compiler, allowing dead branches to be
+     * eliminated.
+     *
+     * @see ConstantOptionKey
+     * @since 25.1
+     */
+    public boolean isConstant() {
+        return constant;
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static String enumUsageSyntax(Object defaultValue, Class<?> aClass) {
         StringBuilder sb = new StringBuilder();
@@ -260,7 +280,7 @@ public final class OptionDescriptor {
         return EMPTY.new Builder(key, name);
     }
 
-    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, null, "");
+    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, null, "", false);
 
     /**
      * Represents an option descriptor builder.
@@ -277,6 +297,7 @@ public final class OptionDescriptor {
         private OptionStability stability = OptionStability.EXPERIMENTAL;
         private String help = "";
         private String usageSyntax = "";
+        private boolean constant = false;
 
         Builder(OptionKey<?> key, String name) {
             this.key = key;
@@ -351,12 +372,40 @@ public final class OptionDescriptor {
         }
 
         /**
+         * Marks this option as constant. Constant options use {@link ConstantOptionKey} as their
+         * key type and must be configured using the system property
+         * {@code -Dpolyglot.<option-name>=<value>} before the polyglot runtime is initialized.
+         * Setting a constant option at runtime via
+         * {@link org.graalvm.polyglot.Engine.Builder#option(String, String)} throws an
+         * {@link IllegalArgumentException}. The default value is {@code false}.
+         *
+         * @see ConstantOptionKey
+         * @since 25.1
+         */
+        public Builder constant(boolean value) {
+            this.constant = value;
+            return this;
+        }
+
+        /**
          * Builds and returns a new option descriptor.
          *
+         * @throws IllegalArgumentException if this descriptor is marked with {@code constant(true)}
+         *             but the key is not a {@link ConstantOptionKey}, or if the key is a
+         *             {@link ConstantOptionKey} but the descriptor is not marked with
+         *             {@code constant(true)}.
          * @since 19.0
          */
         public OptionDescriptor build() {
-            return new OptionDescriptor(key, name, help, category, stability, deprecated, deprecationMessage, usageSyntax);
+            if (constant && !(key instanceof ConstantOptionKey<?>)) {
+                throw new IllegalArgumentException("Option marked with constant(true) must use ConstantOptionKey, but found OptionKey. " +
+                                "Either change the key type to ConstantOptionKey, or remove the constant(true) attribute.");
+            }
+            if (!constant && key instanceof ConstantOptionKey<?>) {
+                throw new IllegalArgumentException("Option using ConstantOptionKey must be marked with constant(true), but found constant(false). " +
+                                "Either set constant(true), or change the key type to OptionKey.");
+            }
+            return new OptionDescriptor(key, name, help, category, stability, deprecated, deprecationMessage, usageSyntax, constant);
         }
     }
 

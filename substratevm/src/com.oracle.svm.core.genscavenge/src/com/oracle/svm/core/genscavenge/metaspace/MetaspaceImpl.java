@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.OldGeneration;
@@ -41,9 +42,11 @@ import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
@@ -75,6 +78,9 @@ public class MetaspaceImpl implements Metaspace {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public MetaspaceImpl() {
+        if (ImageLayerBuildingSupport.firstImageBuild() && MetaspaceObjectAllocator.collectsStats()) {
+            SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new DumpMetaspaceInfo());
+        }
     }
 
     @Fold
@@ -180,15 +186,33 @@ public class MetaspaceImpl implements Metaspace {
         @Override
         public void execute(boolean isFirstIsolate) {
             if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
-                metaspace.printStats();
+                metaspace.logUsageAndStats();
             }
         }
     }
 
-    private void printStats() {
+    private void logUsageAndStats() {
         Log log = Log.log();
         logUsage(log);
-        log.string("Metaspace allocation stats:").newline();
-        allocator.printStats(log);
+        logStats(log);
+    }
+
+    private void logStats(Log log) {
+        log.string("Metaspace allocation stats:").indent(true);
+        allocator.logStats(log);
+        log.indent(false);
+    }
+
+    private static final class DumpMetaspaceInfo extends SubstrateDiagnostics.DiagnosticThunk {
+        @Override
+        public int maxInvocationCount() {
+            return 1;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, SubstrateDiagnostics.ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
+            ((MetaspaceImpl) Metaspace.singleton()).logStats(log);
+        }
     }
 }

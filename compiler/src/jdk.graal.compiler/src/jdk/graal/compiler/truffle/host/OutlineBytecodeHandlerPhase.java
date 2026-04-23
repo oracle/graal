@@ -28,8 +28,10 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeNode;
@@ -113,8 +115,16 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
                 }
 
                 // targetMethod is annotated with @BytecodeInterpreterHandler, replace the invoke
-                // with stub call
-                TruffleBytecodeHandlerCallsite callsite = getTruffleBytecodeHandlerCallsite(enclosingMethod, invoke.bci(), targetMethod, truffleTypes);
+                // with stub call. Use the invoke's frame-state owner so split inlinees keep their
+                // original caller method after host inlining into another interpreter method.
+                FrameState invokeState = invoke.stateAfter();
+                if (invokeState == null) {
+                    invokeState = invoke.stateDuring();
+                }
+                GraalError.guarantee(invokeState != null, "Missing frame state for handler invoke %s in %s", invoke, graph);
+                ResolvedJavaMethod invokeEnclosingMethod = invokeState.getMethod();
+                GraalError.guarantee(invokeEnclosingMethod != null, "Missing context method for handler invoke %s in %s", invoke, graph);
+                TruffleBytecodeHandlerCallsite callsite = getTruffleBytecodeHandlerCallsite(invokeEnclosingMethod, invoke.bci(), targetMethod, truffleTypes);
                 ValueNode[] oldArguments = invoke.callTarget().arguments().toArray(ValueNode.EMPTY_ARRAY);
                 ValueNode[] newArguments = callsite.createCallerArguments(oldArguments, invoke.asFixedNode(), getFieldMap(context.getMetaAccess()));
                 FixedNode next = invoke instanceof InvokeNode invokeNode ? invokeNode.next() : ((InvokeWithExceptionNode) invoke).next().next();

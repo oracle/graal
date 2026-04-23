@@ -392,9 +392,11 @@ suite = {
     "org.graalvm.options" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [],
+      "dependencies" : [
+        "sdk:NATIVEIMAGE",
+      ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.polyglot" : {

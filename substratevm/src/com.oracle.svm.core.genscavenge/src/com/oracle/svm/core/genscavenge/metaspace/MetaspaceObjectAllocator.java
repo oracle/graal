@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge.metaspace;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.SerialAndEpsilonGCOptions;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
@@ -42,6 +43,8 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.replacements.AllocationSnippets;
 
@@ -74,7 +77,7 @@ class MetaspaceObjectAllocator {
         assert LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding()) == KnownOffsets.singleton().getVTableBaseOffset();
 
         DynamicHub result = (DynamicHub) allocateArrayLikeObject(hub, vTableEntries, dynamicHubSize);
-        if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+        if (collectsStats()) {
             dynamicHubCount.getAndIncrement();
         }
         assert Heap.getHeap().getObjectHeader().verifyDynamicHubOffset(result);
@@ -83,7 +86,7 @@ class MetaspaceObjectAllocator {
 
     public byte[] allocateByteArray(int length) {
         DynamicHub hub = DynamicHub.fromClass(byte[].class);
-        if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+        if (collectsStats()) {
             byteArrayCount.getAndIncrement();
         }
         return (byte[]) allocateArrayLikeObject(hub, length, byteArraySize);
@@ -91,7 +94,7 @@ class MetaspaceObjectAllocator {
 
     public int[] allocateIntArray(int length) {
         DynamicHub hub = DynamicHub.fromClass(int[].class);
-        if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+        if (collectsStats()) {
             intArrayCount.getAndIncrement();
         }
         return (int[]) allocateArrayLikeObject(hub, length, intArraySize);
@@ -104,12 +107,18 @@ class MetaspaceObjectAllocator {
         Pointer ptr = memory.allocate(size);
         Object result = FormatArrayNode.formatArray(ptr, DynamicHub.toClass(hub), arrayLength, true, false, AllocationSnippets.FillContent.WITH_ZEROES, true);
         assert size == LayoutEncoding.getSizeFromObject(result);
-        if (SerialAndEpsilonGCOptions.PrintMetaspace.getValue()) {
+        if (collectsStats()) {
             counter.getAndAdd(size.rawValue());
         }
 
         enableRememberedSetTracking(result, size);
         return result;
+    }
+
+    @AlwaysInline("Folds to a constant: enable code elimination")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean collectsStats() {
+        return SerialAndEpsilonGCOptions.PrintMetaspace.getValue() || SerialAndEpsilonGCOptions.MetaspaceExhaustionIsFatal.getValue();
     }
 
     @Uninterruptible(reason = "Prevent GCs until first object table is updated.")
@@ -119,47 +128,47 @@ class MetaspaceObjectAllocator {
         RememberedSet.get().enableRememberedSetForObject(chunk, result, size);
     }
 
-    void printStats(Log log) {
+    void logStats(Log log) {
         long kilo = 1024;
         long mega = kilo * kilo;
         long hubCount = dynamicHubCount.get();
         long hubSize = dynamicHubSize.get();
         if (hubCount > 0) {
-            log.string(" + DynamicHub: ").unsigned(hubCount)
+            log.string("DynamicHub: ").unsigned(hubCount)
                             .string(" objects for a total of ").rational(hubSize, mega, 2)
                             .string("MB (avg: ").rational(hubSize, hubCount, 2).string("B)").newline();
         } else {
-            log.string(" + DynamicHub: 0 objects").newline();
+            log.string("DynamicHub: 0 objects").newline();
         }
 
         long byteCount = byteArrayCount.get();
         long byteSize = byteArraySize.get();
         if (byteCount > 0) {
-            log.string(" + byte[]: ").unsigned(byteCount)
+            log.string("byte[]: ").unsigned(byteCount)
                             .string(" objects for a total of ").rational(byteSize, mega, 2)
                             .string("MB (avg: ").rational(byteSize, byteCount, 2).string("B)").newline();
         } else {
-            log.string(" + byte[]: 0 objects").newline();
+            log.string("byte[]: 0 objects").newline();
         }
 
         long intCount = intArrayCount.get();
         long intSize = intArraySize.get();
         if (intCount > 0) {
-            log.string(" + int[]: ").unsigned(intCount)
+            log.string("int[]: ").unsigned(intCount)
                             .string(" objects for a total of ").rational(intSize, mega, 2)
                             .string("MB (avg: ").rational(intSize, intCount, 2).string("B)").newline();
         } else {
-            log.string(" + int[]: 0 objects").newline();
+            log.string("int[]: 0 objects").newline();
         }
 
         long totalCount = hubCount + byteCount + intCount;
         long totalSize = hubSize + byteSize + intSize;
         if (totalCount > 0) {
-            log.string(" = Total: ").unsigned(totalCount)
+            log.string("Total: ").unsigned(totalCount)
                             .string(" objects for a total of ").rational(totalSize, mega, 2)
                             .string("MB (avg: ").rational(totalSize, totalCount, 2).string("B)").newline();
         } else {
-            log.string(" = Total: 0 objects").newline();
+            log.string("Total: 0 objects").newline();
         }
     }
 }

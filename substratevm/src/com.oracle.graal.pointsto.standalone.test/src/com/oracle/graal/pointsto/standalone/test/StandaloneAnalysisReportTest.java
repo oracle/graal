@@ -29,53 +29,68 @@ package com.oracle.graal.pointsto.standalone.test;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
-public class StandaloneAnalysisReportTest {
-    // Take an arbitrary case for this test
+import com.oracle.graal.pointsto.standalone.test.classes.ClassEqualityCase;
+
+/**
+ * Verifies standalone analysis report emission using {@link ClassEqualityCase} as a small input.
+ */
+public class StandaloneAnalysisReportTest extends StandaloneAnalysisTest {
+    /*
+     * Takes an arbitrary small fixture because the report tests care about emitted files rather
+     * than about any fixture-specific reachability nuance.
+     */
     private static final Class<?> TEST_CLASS = ClassEqualityCase.class;
 
+    /**
+     * Owns report-output directories for this test class so each report scenario gets an isolated
+     * temporary root without relying on the shared harness temp-directory bookkeeping.
+     */
+    @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    /**
+     * Verifies that analyzing {@link ClassEqualityCase} with report generation enabled writes at
+     * least one call-tree report file.
+     *
+     * This checks the standalone report plumbing rather than a specific reachability fact: the
+     * analysis must honor the configured reports path, create the reports directory, and emit
+     * output into it.
+     */
     @Test
-    public void testPrintAnalysisCallTree() throws IOException {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(TEST_CLASS);
-        Path testTmpDir = tester.createTestTmpDir();
-        tester.setAnalysisArguments(tester.getTestClassName(),
-                        "-H:AnalysisTargetAppCP=" + tester.getTestClassJar(),
-                        "-H:ReportsPath=" + testTmpDir.toString(),
+    public void testPrintAnalysisCallTree() {
+        Path testTmpDir = temporaryFolder.getRoot().toPath();
+        runAnalysis(TEST_CLASS,
+                        "-H:ReportsPath=" + testTmpDir,
                         "-H:+PrintAnalysisCallTree");
-        try {
-            tester.runAnalysisAndAssert();
-            File reportDir = testTmpDir.resolve("reports").toFile();
-            assertTrue(reportDir.isDirectory());
-            File[] reportFiles = reportDir.listFiles();
-            assertTrue(reportFiles.length > 0);
-        } finally {
-            tester.deleteTestTmpDir();
-        }
+        File reportDir = testTmpDir.resolve("reports").toFile();
+        assertTrue(reportDir.isDirectory());
+        File[] reportFiles = reportDir.listFiles();
+        assertTrue(reportFiles.length > 0);
     }
 
+    /**
+     * Verifies object-tree report generation for {@link ClassEqualityCase} when that report becomes
+     * meaningful for the fixture.
+     *
+     * The test is currently ignored because the analyzed code does not produce a useful object tree
+     * yet, but the expected setup and output checks remain documented here for future re-enabling.
+     */
     @Test
-    @Ignore // Since there is no class initialization, printing the object tree is not a meaningful
-            // operation at the moment.
-    public void testPrintAnalysisObjectTree() throws IOException {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(TEST_CLASS);
-        Path testTmpDir = tester.createTestTmpDir();
-        tester.setAnalysisArguments(tester.getTestClassName(),
-                        "-H:AnalysisTargetAppCP=" + tester.getTestClassJar(),
-                        "-H:ReportsPath=" + testTmpDir.toString(),
+    @Ignore("There is no class initialization yet, so object-tree reporting is not meaningful for this fixture.")
+    public void testPrintAnalysisObjectTree() {
+        Path testTmpDir = temporaryFolder.getRoot().toPath();
+        runAnalysis(TEST_CLASS,
+                        "-H:ReportsPath=" + testTmpDir,
                         "-H:+PrintImageObjectTree");
-        try {
-            tester.runAnalysisAndAssert();
-            File reportDir = testTmpDir.resolve("reports").toFile();
-            assertTrue(reportDir.isDirectory());
-            File[] reportFiles = reportDir.listFiles();
-            assertTrue(reportFiles.length > 0);
-        } finally {
-            tester.deleteTestTmpDir();
-        }
+        File reportDir = testTmpDir.resolve("reports").toFile();
+        assertTrue(reportDir.isDirectory());
+        File[] reportFiles = reportDir.listFiles();
+        assertTrue(reportFiles.length > 0);
     }
 }

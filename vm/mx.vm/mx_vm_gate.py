@@ -952,6 +952,7 @@ def _polyglot_isolate_unittest(isolate_mode):
         truffle_isolate_guest_options = truffle_isolate_common_options + [
             '--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.os=ALL-UNNAMED',
         ]
+        mx_truffle.append_unittest_image_build_time_options(truffle_isolate_guest_options)
         tests = ['com.oracle.truffle.api.test', 'com.oracle.truffle.tck.tests', 'com.oracle.truffle.sl.test']
         tests_image_path = _build_polyglot_isolate_library(svmbuild,
                                                            [

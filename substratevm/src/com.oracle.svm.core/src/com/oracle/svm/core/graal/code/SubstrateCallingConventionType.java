@@ -56,7 +56,9 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
          * Denotes an argument location whose value is unchanged by the call. That is, the location
          * is guaranteed to hold the same value upon return from the call.
          */
-        IMMUTABLE,
+        IMMUTABLE;
+
+        static final SubstrateCallingConventionArgumentKind[] EMPTY_ARRAY = {};
     }
 
     public final SubstrateCallingConventionKind kind;
@@ -88,7 +90,7 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
 
     private SubstrateCallingConventionType(SubstrateCallingConventionKind kind, boolean outgoing) {
         this(kind, outgoing, AssignedLocation.EMPTY_ARRAY, AssignedLocation.EMPTY_ARRAY,
-                        new SubstrateCallingConventionArgumentKind[0], true, true);
+                        SubstrateCallingConventionArgumentKind.EMPTY_ARRAY, true, true);
     }
 
     private SubstrateCallingConventionType(SubstrateCallingConventionKind kind, boolean outgoing, AssignedLocation[] fixedRegisters, AssignedLocation[] returnSaving,

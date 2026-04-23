@@ -54,13 +54,13 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
  * Represents the encoding of a bytecode config into a long. A config has the following encoding:
  *
  * <pre>
- * [padding][tags][instrumentations][2 source bits]
+ * [padding/internal metadata][tags][instrumentations][2 source bits]
  * </pre>
  *
  * When tracing is enabled, the least significant bit of instrumentations is used to encode the
  * tracing bit.
  */
-public record BytecodeConfigEncoding(int numTags, IdentityHashMap<OperationModel, Integer> instrumentationToIndex, boolean trackSourceContent, boolean tracingEnabled) {
+public record BytecodeConfigEncoding(int numTags, IdentityHashMap<OperationModel, Integer> instrumentationToIndex, boolean trackSourceContent, boolean tracingEnabled, boolean hasYieldOperation) {
 
     // NOTE: These should be kept in sync with BytecodeConfig.java
     private static final long SOURCE_MASK = 0b1;
@@ -109,7 +109,7 @@ public record BytecodeConfigEncoding(int numTags, IdentityHashMap<OperationModel
             throw new AssertionError();
         }
 
-        return new BytecodeConfigEncoding(numTags, instrumentationToIndex, model.sourceContentSupplier != null, model.enableInstructionTracing);
+        return new BytecodeConfigEncoding(numTags, instrumentationToIndex, model.sourceContentSupplier != null, model.enableInstructionTracing, model.hasYieldOperation());
     }
 
     public int numInstrumentations() {
@@ -219,6 +219,25 @@ public record BytecodeConfigEncoding(int numTags, IdentityHashMap<OperationModel
     }
 
     /**
+     * A bitmask representing whether the interpreter has yields.
+     * <p>
+     * If {@code config & hasYieldsMask() != 0}, the node contains yields.
+     */
+    public long hasYieldsMask() {
+        if (!hasYieldOperation) {
+            return 0L;
+        }
+        return 1L << hasYieldsShift();
+    }
+
+    /**
+     * @see #hasYieldsMask()
+     */
+    public int hasYieldsShift() {
+        return tagShift() + numTags;
+    }
+
+    /**
      * A bitmask for all source bits used by this encoding.
      */
     public long sourceBitsMask() {
@@ -226,10 +245,18 @@ public record BytecodeConfigEncoding(int numTags, IdentityHashMap<OperationModel
     }
 
     /**
-     * A bitmask for all bits used by this encoding.
+     * A bitmask for all public {@link com.oracle.truffle.api.bytecode.BytecodeConfig} bits used by
+     * this encoding.
      */
     public long completeBitsMask() {
         return sourceBitsMask() | (instrumentationMask() << instrumentationShift()) | (tagMask() << tagShift());
+    }
+
+    /**
+     * A bitmask for all bits used by a bytecode node encoding, including internal metadata bits.
+     */
+    public long nodeBitsMask() {
+        return completeBitsMask() | hasYieldsMask();
     }
 
     /**
@@ -237,9 +264,12 @@ public record BytecodeConfigEncoding(int numTags, IdentityHashMap<OperationModel
      */
     public String description() {
         StringBuilder sb = new StringBuilder();
-        int numPaddingBits = 64 - (tagShift() + numTags);
+        int numPaddingBits = 64 - (hasYieldsShift() + (hasYieldOperation ? 1 : 0));
         if (numPaddingBits > 0) {
             sb.append("[unused: ").append(numPaddingBits).append("]");
+        }
+        if (hasYieldOperation) {
+            sb.append("[has yields: 1]");
         }
         if (numTags > 0) {
             sb.append("[tags: ").append(numTags).append("]");

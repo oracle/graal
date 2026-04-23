@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -334,6 +334,8 @@ public final class BytecodeLocation {
      *
      * @return the {@link BytecodeLocation} or {@code null} if no bytecode interpreter can be found
      *         in the stack trace element.
+     * @throws IllegalArgumentException if the element has an invalid bytecode index.
+     * 
      * @since 24.2
      */
     public static BytecodeLocation get(TruffleStackTraceElement element) {
@@ -341,7 +343,11 @@ public final class BytecodeLocation {
         if (location == null) {
             return null;
         }
-        return get(location, element.getBytecodeIndex());
+        int bytecodeIndex = element.getBytecodeIndex();
+        if (bytecodeIndex < 0) {
+            throw new IllegalArgumentException("Bytecode index of TruffleStackTraceElement cannot be negative.");
+        }
+        return get(location, bytecodeIndex);
     }
 
 }

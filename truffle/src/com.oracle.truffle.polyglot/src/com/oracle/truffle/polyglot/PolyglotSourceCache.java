@@ -214,7 +214,7 @@ final class PolyglotSourceCache {
 
                 OptionValuesImpl targetOptions = optionsById.get(id);
                 if (targetOptions == null) {
-                    targetOptions = new OptionValuesImpl(descriptors, policy, false, true);
+                    targetOptions = new OptionValuesImpl(descriptors, policy, true);
                     optionsById.put(id, targetOptions);
                 }
 

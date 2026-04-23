@@ -143,9 +143,6 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         continueAt = add(new CodeExecutableElement(Set.of(ABSTRACT), type(long.class), "continueAt"));
         continueAt.addParameter(new CodeVariableElement(parent.asType(), "$root"));
         continueAt.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
-        if (parent.model.hasYieldOperation()) {
-            continueAt.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "localFrame"));
-        }
         continueAt.addParameter(new CodeVariableElement(type(long.class), "startState"));
 
         var getRoot = add(new CodeExecutableElement(Set.of(FINAL), parent.asType(), "getRoot"));
@@ -827,7 +824,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                     case STACK_POINTER:
                         b.tree(declareImmediate);
                         b.startAssign("root").string("this.getRoot()").end();
-                        b.declaration(type(int.class), "maxStackHeight", "root.getFrameDescriptor().getNumberOfSlots() - root.maxLocals");
+                        b.declaration(type(int.class), "maxStackHeight", "root.getFrameDescriptor().getNumberOfSlots() - root.stackBase");
                         b.startIf().string(localName, " < 0 || ", localName, " > maxStackHeight").end().startBlock();
                         b.tree(createValidationErrorWithBci("stack pointer is out of bounds"));
                         b.end();
@@ -839,7 +836,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                         }
                         b.startIf().string(localName).string(" < USER_LOCALS_START_INDEX");
                         if (rootNodeAvailable) {
-                            b.string(" || ").string(localName).string(" >= root.maxLocals");
+                            b.string(" || ").string(localName).string(" >= root.stackBase");
                         }
                         b.end().startBlock();
                         b.tree(createValidationErrorWithBci("local offset is out of bounds"));
@@ -1248,7 +1245,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), returnType, "transition");
         ex.addParameter(new CodeVariableElement(this.asType(), "bc"));
         ex.addParameter(new CodeVariableElement(type(long.class), "state"));
-        ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, parent.localFrame()));
+        if (parent.model.needsCachedTagsTransition() || parent.model.traceTransition != null) {
+            ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
+        }
         if (parent.model.hasYieldOperation()) {
             ex.addParameter(new CodeVariableElement(parent.continuationRootNodeImpl.asType(), "continuationRootNode"));
         }
@@ -1338,7 +1337,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
             b.startDeclaration(type(int.class), "localCount").startCall("bc.getLocalCount").string(parent.castBytecodeIndexToInt(transitionBciExpr)).end(2);
             b.startFor().string("int localOffset = 0; localOffset < localCount; localOffset++").end().startBlock();
-            b.startIf().startCall("FRAMES.getTag").string(parent.localFrame()).string(BytecodeRootNodeElement.USER_LOCALS_START_INDEX + " + localOffset").end().string(" == ").staticReference(
+            b.startIf().startCall("FRAMES.getTag").string("frame").string(BytecodeRootNodeElement.USER_LOCALS_START_INDEX + " + localOffset").end().string(" == ").staticReference(
                             parent.frameTagsElement.getIllegal()).end().startBlock();
             // Setting the cached tag for a cleared slot would pollute the tag to generic.
             b.statement("continue");
@@ -1346,9 +1345,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
             b.startStatement().startCall("bc.setLocalValue");
             b.string(parent.castBytecodeIndexToInt(transitionBciExpr));
-            b.string(parent.localFrame());
+            b.string("frame");
             b.string("localOffset");
-            b.startCall("bc.getLocalValue").string(parent.castBytecodeIndexToInt(transitionBciExpr)).string(parent.localFrame()).string("localOffset").end();
+            b.startCall("bc.getLocalValue").string(parent.castBytecodeIndexToInt(transitionBciExpr)).string("frame").string("localOffset").end();
             b.end(2);
             b.end();
             b.end();
@@ -1372,7 +1371,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         if (hasUserTrace) {
             b.startStatement().startCall("root", "traceTransition");
             b.string("transition");
-            b.string(parent.localFrame());
+            b.string("frame");
             b.end(2);
         }
 
@@ -1745,9 +1744,6 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         b.declaration(arrayOf(type(byte.class)), "bc", "this.bytecodes");
         b.declaration(parent.getBytecodeIndexType(), "bci", "0");
-        if (parent.model.hasYieldOperation()) {
-            b.declaration(type(int.class), "continuationIndex", "0");
-        }
 
         b.startWhile().string("bci < bc.length").end().startBlock();
         b.declaration(type(short.class), "op", BytecodeRootNodeElement.readInstruction("bc", "bci"));

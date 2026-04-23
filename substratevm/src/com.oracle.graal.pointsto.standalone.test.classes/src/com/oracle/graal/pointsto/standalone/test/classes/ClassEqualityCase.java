@@ -24,32 +24,39 @@
  * questions.
  */
 
-package com.oracle.graal.pointsto.standalone.test;
+package com.oracle.graal.pointsto.standalone.test.classes;
 
-public class ConstantFieldCase {
-    public static final ConstantType constantField = new ConstantType();
-    /*
-     * This sink keeps the hash computation side-effectful for the standalone analysis test without
-     * adding extra observable behavior to the exercised code path.
+/**
+ * Fixture for class-literal equality handling.
+ *
+ * The test checks that comparing a runtime class value against a constant class literal keeps the
+ * matching branch reachable.
+ */
+public class ClassEqualityCase {
+    /**
+     * Nested target type whose method becomes reachable through the successful equality branch.
      */
-    @SuppressWarnings("unused") private static volatile int sink;
-
-    public static void main(String[] args) {
-        constantField.foo();
-    }
-
-    static class ConstantType {
-        public void foo() {
-            consume("first");
-            consume("second");
+    public static class C {
+        /**
+         * Reachability marker for the class-equality branch.
+         */
+        public static void foo() {
         }
     }
 
     /**
-     * Forces the test constant to execute {@link String#hashCode()} without changing the expected
-     * observable behavior of the test case.
+     * Entry point that feeds a constant class literal into the equality check.
      */
-    private static void consume(String value) {
-        sink ^= value.hashCode();
+    public static void main(String[] args) {
+        equals(C.class);
+    }
+
+    /**
+     * Performs the class-literal equality test that should resolve to the reachable branch.
+     */
+    private static void equals(Class<?> clazz) {
+        if (clazz == C.class) {
+            C.foo();
+        }
     }
 }

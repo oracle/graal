@@ -95,6 +95,11 @@ public final class TruffleAPIFeature implements Feature {
         }
     }
 
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        DefaultRuntimeAccessor.ENGINE.collectNativeImagePresetOptions();
+    }
+
     private static String doVersionCheck() {
         if (TruffleVersions.isVersionCheckEnabled()) {
             Version truffleAPIVersion = TruffleVersions.TRUFFLE_API_VERSION;

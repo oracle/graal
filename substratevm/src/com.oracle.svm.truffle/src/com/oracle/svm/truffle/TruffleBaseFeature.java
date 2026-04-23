@@ -165,6 +165,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
 import jdk.internal.misc.Unsafe;
@@ -285,9 +286,11 @@ public final class TruffleBaseFeature implements InternalFeature {
     private final SubstrateTruffleBytecodeHandlerStubHelper stubHelper = new SubstrateTruffleBytecodeHandlerStubHelper();
 
     /**
-     * Contains tuples of (handlerMethod, handlerStub) but also (callerMethod, defaultHandlerStub).
+     * Contains mappings of handler/interpreter methods paired with their
+     * {@link BytecodeHandlerConfig} to stub wrappers. Interpreter root methods map to default stubs
+     * while handler methods map to specialized stubs.
      */
-    private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> registeredBytecodeHandlers = EconomicMap.create();
+    private final EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers = EconomicMap.create();
     private EconomicSet<ResolvedJavaMethod> bytecodeHandlers;
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {

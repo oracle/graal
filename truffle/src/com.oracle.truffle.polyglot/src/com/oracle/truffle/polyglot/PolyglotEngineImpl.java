@@ -274,6 +274,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
                     EngineLoggerProvider engineLoggerSupplier, Map<String, String> options,
+                    Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
                     MessageTransport messageTransport, LogHandler logHandler,
                     TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly, AbstractPolyglotHostService polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
@@ -356,12 +357,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
-        parseOptions(options, languagesOptions, instrumentsOptions);
+        parseOptions(options, systemPropertiesOptions, useSystemProperties, languagesOptions, instrumentsOptions);
 
         for (PolyglotLanguage language : languagesOptions.keySet()) {
             OptionValuesImpl languageOptions = language.getOptionValues();
             Map<String, String> unparsedOptions = languagesOptions.get(language);
-            parseAllOptions(languageOptions, unparsedOptions, deprecatedDescriptors);
+            parseAllOptions(languageOptions, unparsedOptions, allowExperimentalOptions, deprecatedDescriptors);
         }
 
         if (engineOptionValues.get(PolyglotEngineOptions.SpecializationStatistics)) {
@@ -402,10 +403,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.weakAPI = engineAPI;
     }
 
-    private void parseAllOptions(OptionValuesImpl targetOptions, Map<String, String> unparsedOptions, List<OptionDescriptor> deprecatedDescriptors) {
+    private void parseAllOptions(OptionValuesImpl targetOptions, Map<String, String> unparsedOptions, boolean allowExperimental,
+                    List<OptionDescriptor> deprecatedDescriptors) {
         for (var entry : unparsedOptions.entrySet()) {
-            OptionDescriptor d = targetOptions.put(entry.getKey(), entry.getValue(), allowExperimentalOptions, this::getAllOptions);
-            if (d != null && d.isDeprecated()) {
+            OptionDescriptor d = targetOptions.put(entry.getKey(), entry.getValue(), allowExperimental, this::getAllOptions);
+            if (d.isDeprecated()) {
                 deprecatedDescriptors.add(d);
             }
         }
@@ -718,6 +720,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     LogConfig newLogConfig,
                     EngineLoggerProvider logSupplier,
                     Map<String, String> newOptions,
+                    Map<String, String> newSystemPropertiesOptions,
+                    boolean newUseSystemProperties,
                     boolean newAllowExperimentalOptions,
                     boolean newBoundEngine, LogHandler newLogHandler,
                     TruffleLanguage<?> newHostLanguage,
@@ -759,7 +763,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
-        parseOptions(newOptions, languagesOptions, instrumentsOptions);
+        parseOptions(newOptions, newSystemPropertiesOptions, newUseSystemProperties, languagesOptions, instrumentsOptions);
 
         sourceCacheStatisticsListener = SourceCacheStatisticsListener.createOrNull(this);
 
@@ -767,23 +771,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         List<OptionDescriptor> deprecatedDescriptors = new ArrayList<>();
         for (PolyglotLanguage language : languagesOptions.keySet()) {
-            for (Map.Entry<String, String> languageOption : languagesOptions.get(language).entrySet()) {
-                OptionDescriptor descriptor = language.getOptionValues().put(languageOption.getKey(), languageOption.getValue(), newAllowExperimentalOptions, this::getAllOptions);
-                if (descriptor.isDeprecated()) {
-                    deprecatedDescriptors.add(descriptor);
-                }
-            }
+            parseAllOptions(language.getOptionValues(), languagesOptions.get(language), newAllowExperimentalOptions, deprecatedDescriptors);
         }
 
         // Set instruments options but do not call onCreate. OnCreate is called only in case of
         // successful context patch.
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            for (Map.Entry<String, String> instrumentOption : instrumentsOptions.get(instrument).entrySet()) {
-                OptionDescriptor descriptor = instrument.getEngineOptionValues().put(instrumentOption.getKey(), instrumentOption.getValue(), newAllowExperimentalOptions, this::getAllOptions);
-                if (descriptor.isDeprecated()) {
-                    deprecatedDescriptors.add(descriptor);
-                }
-            }
+            parseAllOptions(instrument.getEngineOptionValues(), instrumentsOptions.get(instrument), newAllowExperimentalOptions, deprecatedDescriptors);
         }
         validateSandbox();
         printDeprecatedOptionsWarning(deprecatedDescriptors);
@@ -814,7 +808,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     private void createInstruments(Map<PolyglotInstrument, Map<String, String>> instrumentsOptions, List<OptionDescriptor> deprecatedDescriptors) {
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            parseAllOptions(instrument.getEngineOptionValues(), instrumentsOptions.get(instrument), deprecatedDescriptors);
+            parseAllOptions(instrument.getEngineOptionValues(), instrumentsOptions.get(instrument), allowExperimentalOptions, deprecatedDescriptors);
         }
         ensureInstrumentsCreated(instrumentsOptions.keySet());
     }
@@ -856,8 +850,24 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     private void parseOptions(Map<String, String> options,
+                    Map<String, String> systemPropertiesOptions,
+                    boolean useSystemProperties,
                     Map<PolyglotLanguage, Map<String, String>> languagesOptions,
                     Map<PolyglotInstrument, Map<String, String>> instrumentsOptions) {
+        parseOptionsInto(options, languagesOptions, instrumentsOptions, false);
+        /*
+         * In native-image, constant options do not need to be looked up because both constant and
+         * preset options are set during the native-image build.
+         */
+        if (!systemPropertiesOptions.isEmpty() && (useSystemProperties || !ImageInfo.inImageRuntimeCode())) {
+            parseOptionsInto(systemPropertiesOptions, languagesOptions, instrumentsOptions, !useSystemProperties);
+        }
+    }
+
+    private void parseOptionsInto(Map<String, String> options,
+                    Map<PolyglotLanguage, Map<String, String>> languagesOptions,
+                    Map<PolyglotInstrument, Map<String, String>> instrumentsOptions,
+                    boolean constantOptionsOnly) {
         for (String key : options.keySet()) {
             String group = parseOptionGroup(key);
             String value = options.get(key);
@@ -868,7 +878,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     languageOptions = new HashMap<>();
                     languagesOptions.put(language, languageOptions);
                 }
-                languageOptions.put(key, value);
+                if (!constantOptionsOnly || isConstantOption(language.getOptionValues(), key)) {
+                    languageOptions.putIfAbsent(key, value);
+                }
                 continue;
             }
             PolyglotInstrument instrument = idToInstrument.get(group);
@@ -878,7 +890,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     instrumentOptions = new HashMap<>();
                     instrumentsOptions.put(instrument, instrumentOptions);
                 }
-                instrumentOptions.put(key, value);
+                if (!constantOptionsOnly || isConstantOption(instrument.getEngineOptionValues(), key)) {
+                    instrumentOptions.putIfAbsent(key, value);
+                }
                 continue;
             }
 
@@ -889,9 +903,23 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     throw new AssertionError("Log or engine options should already be parsed.");
                 case OPTION_GROUP_IMAGE_BUILD_TIME:
                     throw PolyglotEngineException.illegalArgument("Image build-time option '" + key + "' cannot be set at runtime");
+                default:
+                    /*
+                     * When constantOptionsOnly is true (HotSpot with system properties disabled),
+                     * only constant options are considered. Since non-constant system properties
+                     * are not read in this mode, unknown option names must be tolerated and ignored
+                     * instead of causing a failure.
+                     */
+                    if (!constantOptionsOnly) {
+                        throw OptionValuesImpl.failNotFound(getAllOptions(), key);
+                    }
             }
-            throw OptionValuesImpl.failNotFound(getAllOptions(), key);
         }
+    }
+
+    private static boolean isConstantOption(OptionValuesImpl targetOptions, String key) {
+        OptionDescriptor descriptor = targetOptions.getDescriptors().get(key);
+        return descriptor != null && descriptor.isConstant();
     }
 
     static String parseOptionGroup(String key) {

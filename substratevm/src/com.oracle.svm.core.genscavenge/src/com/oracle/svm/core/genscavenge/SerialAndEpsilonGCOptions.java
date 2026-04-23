@@ -26,10 +26,10 @@ package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.shared.option.HostedOptionKey;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -74,6 +74,9 @@ public final class SerialAndEpsilonGCOptions {
 
     @Option(help = "Print information about the metaspace on shutdown. Serial and epsilon GC only.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> PrintMetaspace = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
+
+    @Option(help = "Terminates the VM instead of throwing OutOfMemoryError when metaspace allocation fails.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> MetaspaceExhaustionIsFatal = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
 
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {

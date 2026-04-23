@@ -63,6 +63,14 @@ public class HotSpotOutlineBytecodeHandlerPhase extends OutlineBytecodeHandlerPh
 
     public static void install(HighTier highTier) {
         HotSpotOutlineBytecodeHandlerPhase phase = new HotSpotOutlineBytecodeHandlerPhase();
+
+        var hostInliningPos = highTier.findPhase(HotSpotHostInliningPhase.class, true);
+        if (hostInliningPos != null) {
+            // insert after HotSpotHostInliningPhase
+            hostInliningPos.add(phase);
+            return;
+        }
+        // fallback: before regular InliningPhase
         HostInliningPhase.insertBeforeInlining(highTier, phase);
     }
 

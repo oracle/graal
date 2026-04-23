@@ -125,6 +125,11 @@ public final class DevirtualizeInterfaceCallPlugin implements NodePlugin {
             return false;
         }
 
+        AnalysisType analysisSingleImplementor = (AnalysisType) singleImplementor;
+        if (analysisSingleImplementor.isInstanceClass() && !analysisSingleImplementor.isAbstract()) {
+            analysisSingleImplementor.registerAsInstantiated("parse-time devirtualized single implementor");
+        }
+
         b.append(condition);
         JavaConstant javaClass = b.getConstantReflection().asJavaClass(referencedType);
         ConstantNode cls = b.add(ConstantNode.forConstant(StampFactory.forKind(JavaKind.Object), javaClass, b.getMetaAccess(), b.getGraph()));

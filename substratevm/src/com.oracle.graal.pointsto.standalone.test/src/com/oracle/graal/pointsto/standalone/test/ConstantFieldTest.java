@@ -28,6 +28,8 @@ package com.oracle.graal.pointsto.standalone.test;
 
 import org.junit.Test;
 
+import com.oracle.graal.pointsto.standalone.test.classes.ConstantFieldCase;
+
 /**
  * This test can test 2 facts for standalone pointsto analysis:
  * <ol>
@@ -37,16 +39,21 @@ import org.junit.Test;
  * constant at analysis time.</li>
  * </ol>
  */
-public class ConstantFieldTest {
+public class ConstantFieldTest extends StandaloneAnalysisTest {
 
+    /**
+     * Verifies that analyzing {@link ConstantFieldCase} reaches the class initializer, the constant
+     * field, and the method triggered through the constant value flow.
+     *
+     * The test exists to guard two behaviors at once: standalone analysis should model
+     * {@link ConstantFieldCase#constantField} through analysis instead of folding it away, and it
+     * should keep the class initializer as analysis work rather than assuming eager initialization.
+     */
     @Test
-    public void testConstantField() throws NoSuchMethodException, NoSuchFieldException {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(ConstantFieldCase.class);
-        tester.setAnalysisArguments(tester.getTestClassName(),
-                        "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
-        tester.setExpectedReachableMethods(ConstantFieldCase.ConstantType.class.getDeclaredMethod("foo"));
-        tester.setExpectedReachableClinits(ConstantFieldCase.class);
-        tester.setExpectedReachableFields(ConstantFieldCase.class.getDeclaredField("constantField"));
-        tester.runAnalysisAndAssert();
+    public void testConstantField() {
+        runAnalysis(ConstantFieldCase.class);
+        assertReachable(findMethod(ConstantFieldCase.ConstantType.class, "foo"));
+        assertReachable(findClassInitializer(ConstantFieldCase.class));
+        assertReachable(findField(ConstantFieldCase.class, "constantField"));
     }
 }

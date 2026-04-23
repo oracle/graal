@@ -210,14 +210,6 @@ public class HotSpotReplacementsUtil {
         return config.useSerialGC();
     }
 
-    /**
-     * @see GraalHotSpotVMConfig#doingUnsafeAccessOffset
-     */
-    @Fold
-    public static int doingUnsafeAccessOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.doingUnsafeAccessOffset;
-    }
-
     public static final LocationIdentity EXCEPTION_OOP_LOCATION = NamedLocationIdentity.mutable("ExceptionOop");
 
     /**

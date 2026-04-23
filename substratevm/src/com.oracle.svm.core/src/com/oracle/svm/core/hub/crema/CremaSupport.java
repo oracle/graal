@@ -159,4 +159,7 @@ public interface CremaSupport {
     void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint);
 
     <T extends ConstantPool & jdk.vm.ci.meta.ConstantPool> T getConstantPool(DynamicHub hub);
+
+    void verifySuperAccesses(String externalName, ClassLoader loader, ByteSequence pkgName, Module module,
+                    Class<?> superClass, Class<?>[] superInterfaces);
 }

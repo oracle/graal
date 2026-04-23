@@ -104,6 +104,16 @@ public final class RuntimeSystemPropertyParser {
                             arg.substring(RuntimeBootModuleLayerSupport.ADD_MODULES_OPTION.length() + 1), properties);
             return 1;
         }
+        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_EXPORTS_OPTION + "=")) {
+            addNumberedProperty(RuntimeBootModuleLayerSupport.ADD_EXPORTS_PROPERTY_PREFIX,
+                            arg.substring(RuntimeBootModuleLayerSupport.ADD_EXPORTS_OPTION.length() + 1), properties);
+            return 1;
+        }
+        if (arg.startsWith(RuntimeBootModuleLayerSupport.ADD_OPENS_OPTION + "=")) {
+            addNumberedProperty(RuntimeBootModuleLayerSupport.ADD_OPENS_PROPERTY_PREFIX,
+                            arg.substring(RuntimeBootModuleLayerSupport.ADD_OPENS_OPTION.length() + 1), properties);
+            return 1;
+        }
         return 0;
     }
 

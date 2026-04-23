@@ -25,18 +25,12 @@
  */
 package com.oracle.svm.core.attach;
 
-import java.util.Collections;
-import java.util.List;
-
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.svm.core.SigQuitFeature;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -51,11 +45,6 @@ public class AttachApiFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return ImageLayerBuildingSupport.firstImageBuild() && VMInspectionOptions.hasJCmdSupport();
-    }
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(RuntimeSupportFeature.class);
     }
 
     @Override

@@ -359,12 +359,19 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
         # Disable VirtualThread warning
         vmArgs = [*vmArgs, "-Dpolyglot.engine.WarnVirtualThreadSupport=false"]
+        append_unittest_image_build_time_options(vmArgs)
         enable_truffle_native_access(vmArgs)
         enable_sun_misc_unsafe(vmArgs)
         return (vmArgs, mainClass, mainClassArgs)
 
 
 mx_unittest.register_unittest_config(TruffleUnittestConfig())
+
+
+def append_unittest_image_build_time_options(vmArgs):
+    # Command line arguments for com.oracle.truffle.api.test.option.ConstantOptionTest
+    vmArgs.append('-Dpolyglot.ConstantOptionsLanguage.ConstantOption1=configuredValue')
+    return vmArgs
 
 
 class _DisableOptimizedRuntimeAction(Action):
@@ -707,6 +714,10 @@ def gate_truffle_native(tasks):
         if t:
             _sl_native_fallback_gate_tests(force_cp=False)
             _sl_native_optimized_gate_tests(force_cp=False)
+
+    with Task("Truffle SL Native Open World Test", tasks, tags=TruffleGateTags.truffle_native) as t:
+        if t:
+            _sl_native_open_world_gate_tests(force_cp=False)
 
     with Task("Truffle SL Native ClassPath", tasks, tags=TruffleGateTags.truffle_native) as t:
         if t:
@@ -1064,6 +1075,27 @@ def _sl_native_optimized_gate_tests(force_cp):
     mx.rmtree(target_dir)
 
 
+def _sl_native_open_world_gate_tests(force_cp):
+    jdk = mx.get_jdk(tag="graalvm")
+    vm_args = [
+        "-H:+UnlockExperimentalVMOptions",
+        "-H:-ClosedTypeWorld",
+        "-H:-PrintRestrictHeapAccessWarnings",
+        "-H:-UnlockExperimentalVMOptions",
+    ]
+    target_dir = tempfile.mkdtemp()
+    try:
+        image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=force_cp)
+
+        def run_native_open_world(test_file):
+            return [image, test_file, "--disable-launcher-output"]
+
+        mx.log("Run SL Native Open World Test")
+        _run_sl_tests(run_native_open_world)
+    finally:
+        mx.rmtree(target_dir)
+
+
 def truffle_native_context_preinitialization_tests(build_args=None):
     # ContextPreInitializationNativeImageTest can only run with its own image.
     # See class javadoc for details.
@@ -1133,7 +1165,10 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
             else ["--enable-monitoring=threaddump"]
         )
         + ["-Dpolyglot.engine.AllowExperimentalOptions=true"]
+        # Command line arguments for pre-set polyglot option in com.oracle.truffle.api.test.option.ConstantOptionTest
+        + ['-Dpolyglot.ConstantOptionsLanguage.PreSetOption=configuredValue']
     )
+    append_unittest_image_build_time_options(build_args)
     run_args = (
         run_truffle_runtime_args
         + (["-Xss1m"] if is_libc_musl else [])
@@ -2013,7 +2048,7 @@ def register_polyglot_isolate_distributions(
             deps=resources_dist_dependencies,
             mainClass=None,
             excludedLibs=[],
-            distDependencies=["truffle:TRUFFLE_API"],
+            distDependencies=["truffle:TRUFFLE_RUNTIME"],
             javaCompliance=str(build_internal_resource.javaCompliance) + "+",
             platformDependent=True,
             theLicense=licenses,

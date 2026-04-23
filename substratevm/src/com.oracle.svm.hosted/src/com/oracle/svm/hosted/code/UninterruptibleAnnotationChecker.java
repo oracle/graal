@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.code;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.Collection;
 import java.util.Set;
 import java.util.TreeSet;
@@ -31,15 +33,15 @@ import java.util.TreeSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 
-import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils.UninterruptibleGuestValue;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -119,57 +121,65 @@ public final class UninterruptibleAnnotationChecker {
     }
 
     private void checkSpecifiedOptions(HostedMethod method, UninterruptibleGuestValue annotation) {
-        if (annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE)) {
+        if (annotation.reason().equals(CALLED_FROM_UNINTERRUPTIBLE_CODE)) {
             if (!annotation.mayBeInlined() && !AnnotationUtil.isAnnotationPresent(method, NeverInline.class)) {
-                violations.add("Method " + method.format("%H.%n(%p)") +
-                                " uses an unspecific reason but prevents inlining into interruptible code. " +
+                addViolation("Inconsistent @Uninterruptible annotation on %s: reason '%s' is too generic for a method that is annotated with 'mayBeInlined = false'. " +
                                 "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please improve the reason. " +
-                                "Otherwise, allow inlining into interruptible callers via 'mayBeInlined = true'.");
+                                "Otherwise, use 'mayBeInlined = true' to allow inlining into interruptible code.",
+                                formatMethod(method), CALLED_FROM_UNINTERRUPTIBLE_CODE);
             }
 
             if (annotation.callerMustBe()) {
-                violations.add("Method " + method.format("%H.%n(%p)") +
-                                " uses an unspecific reason but is annotated with 'callerMustBe = true'. Please document in the reason why the callers need to be uninterruptible.");
+                addViolation("Inconsistent @Uninterruptible annotation on %s: reason '%s' is too generic for a method that is annotated with 'callerMustBe = true'. " +
+                                "Please explain in the reason why callers must be uninterruptible.",
+                                formatMethod(method), CALLED_FROM_UNINTERRUPTIBLE_CODE);
             }
 
             if (!annotation.calleeMustBe()) {
-                violations.add("Method " + method.format("%H.%n(%p)") +
-                                " uses an unspecific reason but is annotated with 'calleeMustBe = false'. Please document in the reason why it is safe to execute interruptible code.");
+                addViolation("Inconsistent @Uninterruptible annotation on %s: reason '%s' is too generic for a method that is annotated with 'calleeMustBe = false'. " +
+                                "Please explain in the reason why calling interruptible code is safe.",
+                                formatMethod(method), CALLED_FROM_UNINTERRUPTIBLE_CODE);
             }
         } else if (isSimilarToUnspecificReason(annotation.reason())) {
-            violations.add("Method " + method.format("%H.%n(%p)") + " uses a reason that is similar to the unspecific reason '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'. " +
+            addViolation("Inconsistent @Uninterruptible annotation on %s: reason '%s' is too similar to '%s'. " +
                             "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please improve the reason. " +
-                            "Otherwise, use exactly the reason from above.");
+                            "Otherwise, use 'CALLED_FROM_UNINTERRUPTIBLE_CODE' as the reason.",
+                            formatMethod(method), annotation.reason(), CALLED_FROM_UNINTERRUPTIBLE_CODE);
         }
 
         if (annotation.mayBeInlined()) {
             if (AnnotationUtil.isAnnotationPresent(method, NeverInline.class)) {
-                violations.add("Method " + method.format("%H.%n(%p)") +
-                                " is annotated with conflicting annotations: @Uninterruptible('mayBeInlined = true') and @NeverInline");
+                addViolation("Inconsistent @Uninterruptible annotation on %s: 'mayBeInlined = true' conflicts with @NeverInline.",
+                                formatMethod(method));
             }
 
             if (annotation.callerMustBe()) {
-                violations.add("Method " + method.format("%H.%n(%p)") + " is annotated with conflicting options: 'mayBeInlined = true' and 'callerMustBe = true'. " +
-                                "If the callers of the method need to be uninterruptible, then it should not be allowed to inline the method into interruptible code.");
+                addViolation("Inconsistent @Uninterruptible annotation on %s: 'mayBeInlined = true' conflicts with 'callerMustBe = true'. " +
+                                "If it is safe to inline the method into interruptible code, please remove 'callerMustBe = true'. " +
+                                "Otherwise, please remove 'mayBeInlined = true'.",
+                                formatMethod(method));
             }
         }
 
         if (annotation.mayBeInlined() && annotation.calleeMustBe()) {
-            if (!annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE) && !AnnotationUtil.isAnnotationPresent(method, AlwaysInline.class)) {
-                violations.add("Method " + method.format("%H.%n(%p)") + " is annotated with @Uninterruptible('mayBeInlined = true') which allows the method to be inlined into interruptible code. " +
+            if (!annotation.reason().equals(CALLED_FROM_UNINTERRUPTIBLE_CODE) && !AnnotationUtil.isAnnotationPresent(method, AlwaysInline.class)) {
+                addViolation("Inconsistent @Uninterruptible annotation on %s: 'mayBeInlined = true' can only be used with '%s'. " +
                                 "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please remove 'mayBeInlined = true'. " +
-                                "Otherwise, use the following reason: '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'");
+                                "Otherwise, use 'CALLED_FROM_UNINTERRUPTIBLE_CODE' as the reason.",
+                                formatMethod(method), CALLED_FROM_UNINTERRUPTIBLE_CODE);
             }
         }
 
         if (!annotation.mayBeInlined() && !annotation.callerMustBe() && AnnotationUtil.isAnnotationPresent(method, AlwaysInline.class)) {
-            violations.add("Method " + method.format("%H.%n(%p)") +
-                            " is annotated with @Uninterruptible and @AlwaysInline. If the method may be inlined into interruptible code, please specify 'mayBeInlined = true'. Otherwise, specify 'callerMustBe = true'.");
+            addViolation("Inconsistent @Uninterruptible annotation on %s: @AlwaysInline requires either 'mayBeInlined = true' or 'callerMustBe = true'. " +
+                            "If the method may be inlined into interruptible code, please use 'mayBeInlined = true'. " +
+                            "Otherwise, use 'callerMustBe = true'.",
+                            formatMethod(method));
         }
     }
 
     private static boolean isSimilarToUnspecificReason(String reason) {
-        return OptionsParser.stringSimilarity(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, reason) > 0.75;
+        return OptionsParser.stringSimilarity(CALLED_FROM_UNINTERRUPTIBLE_CODE, reason) > 0.75;
     }
 
     /**
@@ -186,13 +196,15 @@ public final class UninterruptibleAnnotationChecker {
             UninterruptibleGuestValue implAnnotation = UninterruptibleAnnotationUtils.getAnnotation(impl);
             if (implAnnotation != null) {
                 if (methodAnnotation.callerMustBe() != implAnnotation.callerMustBe()) {
-                    violations.add("callerMustBe: " + method.format("%H.%n(%p):%r") + " != " + impl.format("%H.%n(%p):%r"));
+                    addViolation("Inconsistent @Uninterruptible annotations: %s overrides %s but differs in 'callerMustBe' (base=%s, override=%s).",
+                                    formatMethod(impl), formatMethod(method), methodAnnotation.callerMustBe(), implAnnotation.callerMustBe());
                 }
                 if (methodAnnotation.calleeMustBe() != implAnnotation.calleeMustBe()) {
-                    violations.add("calleeMustBe: " + method.format("%H.%n(%p):%r") + " != " + impl.format("%H.%n(%p):%r"));
+                    addViolation("Inconsistent @Uninterruptible annotations: %s overrides %s but differs in 'calleeMustBe' (base=%s, override=%s).",
+                                    formatMethod(impl), formatMethod(method), methodAnnotation.calleeMustBe(), implAnnotation.calleeMustBe());
                 }
             } else {
-                violations.add("method " + method.format("%H.%n(%p):%r") + " is annotated but " + impl.format("%H.%n(%p):%r" + " is not"));
+                addViolation("Missing @Uninterruptible annotation: %s is not annotated but overrides %s.", formatMethod(impl), formatMethod(method));
             }
         }
     }
@@ -220,8 +232,8 @@ public final class UninterruptibleAnnotationChecker {
 
             UninterruptibleGuestValue directCallerAnnotation = UninterruptibleAnnotationUtils.getAnnotation(directCaller);
             if (directCallerAnnotation == null) {
-                violations.add("Unannotated callee: " + directCaller.format("%H.%n(%p):%r") + " inlined into annotated caller " + method.format("%H.%n(%p):%r") +
-                                System.lineSeparator() + invoke.getNodeSourcePosition());
+                addViolation("Missing @Uninterruptible annotation: %s is annotated with @Uninterruptible, but inlines %s which is not annotated.%s",
+                                formatMethod(method), formatMethod(directCaller), formatSourcePosition(invoke));
                 continue;
             }
 
@@ -229,32 +241,39 @@ public final class UninterruptibleAnnotationChecker {
              * Code that is annotated with 'mayBeInlined = true' must not call any code that has a
              * good reason for being uninterruptible (i.e., 'mayBeInlined = false'). Otherwise, we
              * could accidentally inline uninterruptible code into an interruptible caller.
+             *
+             * Note that we tolerate such calls if the caller itself is annotated
+             * with @AlwaysInline. This is primarily relevant for GC code, where we do some forced
+             * inlining for performance reasons.
              */
             if (directCallerAnnotation.mayBeInlined() && !callee.isNative()) {
                 UninterruptibleGuestValue calleeAnnotation = UninterruptibleAnnotationUtils.getAnnotation(callee);
                 if (calleeAnnotation != null && !calleeAnnotation.mayBeInlined() && !AnnotationUtil.isAnnotationPresent(callee, NeverInline.class) &&
                                 !AnnotationUtil.isAnnotationPresent(directCaller, AlwaysInline.class)) {
-                    violations.add("Method " + directCaller.format("%H.%n(%p):%r") + " is annotated with @Uninterruptible(mayBeInlined = true) " +
-                                    "but calls " + callee.format("%H.%n(%p):%r") + " which is annotated with @Uninterruptible(mayBeInlined = false). " +
-                                    "Either remove 'mayBeInlined = true' from the caller, annotate the caller with @AlwaysInline, add 'mayBeInlined = true' in the callee, or annotate the callee with @NeverInline." +
-                                    System.lineSeparator() + invoke.getNodeSourcePosition());
+                    addViolation("Inconsistent @Uninterruptible annotations: %s is annotated with 'mayBeInlined = true', but calls %s which is annotated with 'mayBeInlined = false'. " +
+                                    "This can unexpectedly inline the callee into interruptible code. " +
+                                    "To prevent such inlining, either remove 'mayBeInlined = true' from the caller or annotate the callee with @NeverInline. " +
+                                    "Alternatively, if inlining into interruptible code is safe, add 'mayBeInlined = true' to the callee.%s",
+                                    formatMethod(directCaller), formatMethod(callee), formatSourcePosition(invoke));
                 }
             }
 
             if (directCallerAnnotation.calleeMustBe()) {
                 if (!UninterruptibleAnnotationUtils.isUninterruptible(callee)) {
-                    violations.add("Unannotated callee: " + callee.format("%H.%n(%p):%r") + " called by annotated caller " + directCaller.format("%H.%n(%p):%r") +
-                                    System.lineSeparator() + invoke.getNodeSourcePosition());
+                    addViolation("Missing @Uninterruptible annotation: %s is annotated with @Uninterruptible, but calls %s which is not annotated.%s",
+                                    formatMethod(directCaller), formatMethod(callee), formatSourcePosition(invoke));
                 }
             } else {
                 if (callee.isSynthetic()) {
                     /*
                      * Synthetic callees are dangerous because they may slip in accidentally. This
                      * can cause issues in callers that are annotated with 'calleeMustBe = false'
-                     * because the synthetic callee may introduce unexpected safepoints.
+                     * because the synthetic callee may introduce unexpected safepoints in code
+                     * parts that need to be fully uninterruptible.
                      */
-                    violations.add("Synthetic method " + callee.format("%H.%n(%p):%r") + " cannot be called directly from " + directCaller.format("%H.%n(%p):%r") +
-                                    System.lineSeparator() + invoke.getNodeSourcePosition() + " because the caller is annotated with '@Uninterruptible(calleeMustBe = false)'.");
+                    addViolation("Potentially unexpected call of interruptible code: %s is annotated with @Uninterruptible(calleeMustBe = false), but calls synthetic method %s. " +
+                                    "If calling interruptible code is intended, please call the synthetic method from an unannotated method.%s",
+                                    formatMethod(directCaller), formatMethod(callee), formatSourcePosition(invoke));
                 }
             }
         }
@@ -272,7 +291,8 @@ public final class UninterruptibleAnnotationChecker {
         for (CompilationGraph.InvokeInfo invoke : graph.getInvokeInfos()) {
             HostedMethod callee = invoke.getTargetMethod();
             if (isCallerMustBe(callee)) {
-                violations.add("Unannotated caller: " + caller.format("%H.%n(%p)") + " calls annotated callee " + callee.format("%H.%n(%p)"));
+                addViolation("Missing @Uninterruptible annotation: %s is not annotated, but calls %s which is annotated with 'callerMustBe = true'.%s",
+                                formatMethod(caller), formatMethod(callee), formatSourcePosition(invoke));
             }
         }
     }
@@ -281,9 +301,9 @@ public final class UninterruptibleAnnotationChecker {
         UninterruptibleGuestValue annotation = UninterruptibleAnnotationUtils.getAnnotation(method);
         for (Node node : graph.getNodes()) {
             if (isAllocationNode(node)) {
-                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to allocate.");
+                addViolation("Unexpected allocation: %s is annotated with @Uninterruptible and therefore must not allocate.", formatMethod(method));
             } else if (node instanceof MonitorEnterNode) {
-                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to use 'synchronized'.");
+                addViolation("Unexpected synchronization: %s is annotated with @Uninterruptible and therefore must not use synchronization.", formatMethod(method));
             } else if (node instanceof EnsureClassInitializedNode && annotation.calleeMustBe()) {
                 /*
                  * Class initialization nodes are lowered to some simple nodes and a foreign call.
@@ -293,9 +313,25 @@ public final class UninterruptibleAnnotationChecker {
                 ValueNode hub = ((EnsureClassInitializedNode) node).getHub();
 
                 var culprit = hub.isConstant() ? constantReflectionProvider.asJavaType(hub.asConstant()).toClassName() : "unknown";
-                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to do class initialization. Initialized type: " + culprit);
+                addViolation("Unexpected class initialization: %s is annotated with @Uninterruptible and therefore must not trigger class initialization. Initialized type: %s.",
+                                formatMethod(method), culprit);
             }
         }
+    }
+
+    private void addViolation(String format, Object... args) {
+        violations.add(String.format(format, args));
+    }
+
+    private static String formatMethod(ResolvedJavaMethod method) {
+        return method.format("%H.%n(%p):%r");
+    }
+
+    private static String formatSourcePosition(CompilationGraph.InvokeInfo invoke) {
+        if (invoke.getNodeSourcePosition() == null) {
+            return "";
+        }
+        return System.lineSeparator() + "  at " + invoke.getNodeSourcePosition();
     }
 
     public static boolean isAllocationNode(Node node) {

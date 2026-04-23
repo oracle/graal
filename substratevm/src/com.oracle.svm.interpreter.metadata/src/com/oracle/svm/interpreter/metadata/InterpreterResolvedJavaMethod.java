@@ -98,7 +98,7 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  * Encapsulates resolved methods used under close-world assumptions, compiled and interpretable, but
  * also abstract methods for vtable calls.
  */
-public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implements ResolvedJavaMethod, CremaMethodAccess, ResolvedMember, SubstrateMetadata {
+public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implements ResolvedJavaMethod, CremaMethodAccess, CremaResolvedMember, ResolvedMember, SubstrateMetadata {
     @Platforms(Platform.HOSTED_ONLY.class)//
     @SuppressWarnings("unchecked") //
     private static final Class<? extends Annotation> CALLER_SENSITIVE_CLASS = (Class<? extends Annotation>) ReflectionUtil.lookupClass("jdk.internal.reflect.CallerSensitive");
@@ -864,11 +864,6 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     @Override
     public CodeAttribute getCodeAttribute() {
         throw VMError.unimplemented("code attribute unavailable for AOT methods.");
-    }
-
-    @Override
-    public final boolean accessChecks(InterpreterResolvedJavaType accessingClass, InterpreterResolvedJavaType holderClass) {
-        throw VMError.unimplemented("accessChecks");
     }
 
     @Override

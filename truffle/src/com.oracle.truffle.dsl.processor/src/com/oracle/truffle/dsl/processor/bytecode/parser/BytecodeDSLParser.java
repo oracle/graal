@@ -1011,7 +1011,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     case CUSTOM:
                         for (Operand dynamicOperand : instruction.signature.dynamicOperands()) {
                             if (instruction.getQuickeningRoot().needsChildBciForBoxingElimination(model, dynamicOperand)) {
-                                instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(dynamicOperand.dynamicIndex()));
+                                instruction.addChildBciImmediate(dynamicOperand);
                             }
                         }
 
@@ -1059,7 +1059,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         break;
                     case BRANCH_FALSE:
                         if (model.isBoxingEliminated(type(boolean.class))) {
-                            instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
+                            instruction.addChildBciImmediate(instruction.signature.dynamicOperands().get(0));
 
                             model.quickenInstruction(instruction,
                                             instruction.signature,
@@ -1071,8 +1071,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         }
                         break;
                     case MERGE_CONDITIONAL:
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(1));
+                        instruction.addChildBciImmediate(instruction.signature.dynamicOperands().get(0));
+                        instruction.addChildBciImmediate(instruction.signature.dynamicOperands().get(1));
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
                             InstructionModel specializedInstruction = model.quickenInstruction(instruction,
                                             instruction.signature.withOperandType(1, boxedType, boxedType),
@@ -1088,7 +1088,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                         "generic", QuickeningKind.GENERIC, null, false);
                         break;
                     case POP:
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
+                        instruction.addChildBciImmediate(instruction.signature.dynamicOperands().get(0));
 
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
                             model.quickenInstruction(instruction,
@@ -1105,7 +1105,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         // we are always returning and returns do not support boxing elimination.
                         break;
                     case TAG_LEAVE:
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
+                        instruction.addChildBciImmediate(instruction.signature.dynamicOperands().get(0));
 
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
                             InstructionModel specializedInstruction = model.quickenInstruction(instruction,
@@ -1149,7 +1149,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     case STORE_LOCAL:
                     case STORE_LOCAL_MATERIALIZED:
                         // needed for boxing elimination
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
+                        instruction.addChildBciImmediate(instruction.signature.dynamicOperands().get(0));
 
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
                             InstructionModel specializedInstruction = model.quickenInstruction(instruction,
@@ -1460,10 +1460,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             }
         }
         return foundMirror;
-    }
-
-    private static String createChildBciName(int i) {
-        return "child" + i;
     }
 
     private static long countBoxingEliminatedTypes(BytecodeDSLModel model, List<TypeMirror> s0) {

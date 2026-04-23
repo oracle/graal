@@ -87,8 +87,10 @@ meth public java.lang.Object getLocalValue(int)
 meth public java.lang.Object[] getLocalNames()
 meth public static com.oracle.truffle.api.bytecode.BytecodeFrame get(com.oracle.truffle.api.TruffleStackTraceElement)
 meth public static com.oracle.truffle.api.bytecode.BytecodeFrame get(com.oracle.truffle.api.frame.FrameInstance,com.oracle.truffle.api.frame.FrameInstance$FrameAccess)
+meth public static com.oracle.truffle.api.bytecode.BytecodeFrame getTop(com.oracle.truffle.api.frame.FrameInstance$FrameAccess,com.oracle.truffle.api.nodes.Node,int)
 meth public static com.oracle.truffle.api.bytecode.BytecodeFrame getNonVirtual(com.oracle.truffle.api.TruffleStackTraceElement)
 meth public static com.oracle.truffle.api.bytecode.BytecodeFrame getNonVirtual(com.oracle.truffle.api.frame.FrameInstance)
+meth public static <%0 extends java.lang.Object> {%%0} iterateBytecodeFrames(java.util.function.Function<com.oracle.truffle.api.bytecode.BytecodeFrame,{%%0}>,com.oracle.truffle.api.frame.FrameInstance$FrameAccess,com.oracle.truffle.api.nodes.Node,int,int)
 meth public void setArgument(int,java.lang.Object)
 meth public void setLocalValue(int,java.lang.Object)
 supr java.lang.Object
@@ -1223,4 +1225,3 @@ meth public abstract java.lang.annotation.ElementType[] value()
 
 CLSS public abstract interface java.lang.constant.Constable
 meth public abstract java.util.Optional<? extends java.lang.constant.ConstantDesc> describeConstable()
-

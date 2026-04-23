@@ -27,6 +27,7 @@
 package com.oracle.graal.pointsto.standalone;
 
 import java.io.File;
+import java.lang.reflect.Executable;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -48,6 +49,7 @@ import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -128,17 +130,20 @@ public final class PointsToAnalyzer {
     private final StandalonePointsToAnalysis bigbang;
     private final StandaloneAnalysisFeatureManager standaloneAnalysisFeatureManager;
     private final ClassLoaderAccess classLoaderAccess;
+    private final List<Executable> directEntryMethods;
     private final DebugContext debugContext;
     private StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl onAnalysisExitAccess;
     private final String analysisName;
     private boolean entrypointsAreSet;
     private boolean mainEntryIsSet;
+    private boolean directEntryMethodsAreSet;
 
     @SuppressWarnings({"try"})
-    private PointsToAnalyzer(String mainEntryClass, OptionValues options, ClassLoaderAccess classLoaderAccess) {
+    private PointsToAnalyzer(String mainEntryClass, OptionValues options, ClassLoaderAccess classLoaderAccess, List<Executable> directEntryMethods) {
         this.options = options;
         standaloneAnalysisFeatureManager = new StandaloneAnalysisFeatureManager(options);
         this.classLoaderAccess = classLoaderAccess;
+        this.directEntryMethods = List.copyOf(directEntryMethods);
         Providers originalProviders = GuestAccess.get().getProviders();
         SnippetReflectionProvider snippetReflection = originalProviders.getSnippetReflection();
         MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
@@ -234,12 +239,15 @@ public final class PointsToAnalyzer {
         String entryPointsFileOptionName = StandaloneOptions.AnalysisEntryPointsFile.getName();
         mainEntryIsSet = entryClass != null && !entryClass.isBlank();
         entrypointsAreSet = entryPointsFile != null && entryPointsFile.length() != 0;
-        if (!mainEntryIsSet && !entrypointsAreSet) {
+        directEntryMethodsAreSet = !directEntryMethods.isEmpty();
+        if (!mainEntryIsSet && !entrypointsAreSet && !directEntryMethodsAreSet) {
             AnalysisError.shouldNotReachHere(
-                            "No analysis entry are specified. Must set entry class or -H:" + entryPointsFileOptionName + " to specify the analysis entries.");
+                            "No analysis entry are specified. Must set entry class, direct entry method, or -H:" + entryPointsFileOptionName + " to specify the analysis entries.");
         }
         if (mainEntryIsSet) {
             return entryClass;
+        } else if (directEntryMethodsAreSet) {
+            return directEntryMethods.get(0).getDeclaringClass().getName();
         } else {
             Path entryFilePath = Paths.get(entryPointsFile);
             Path fileName = entryFilePath.getFileName();
@@ -261,6 +269,25 @@ public final class PointsToAnalyzer {
      * @return PointsToAnalyzer instance
      */
     public static PointsToAnalyzer createAnalyzer(String[] args) {
+        return createAnalyzer(args, new Executable[0]);
+    }
+
+    /**
+     * Create a {@link PointsToAnalyzer} instance with given arguments and reflective entry methods.
+     * The arguments should specify hosted-style analysis options and may also specify one analysis
+     * entry class. Reuses the process-global {@link ClassLoaderAccess} cache when it has already
+     * been initialized.
+     *
+     * GR-74882 intentionally keeps this first direct-root API reflection-based so standalone tests
+     * can register roots without temporary entry-points files. Follow-up issue GR-74896 tracks the
+     * richer API that should accept resolved JVMCI elements directly instead of requiring
+     * {@link Executable} handles.
+     *
+     * @param args entry class name and additional analysis options
+     * @param entryMethods reflective entry methods to register as analysis roots
+     * @return PointsToAnalyzer instance
+     */
+    public static PointsToAnalyzer createAnalyzer(String[] args, Executable... entryMethods) {
         String mainEntryClass = null;
         List<String> optionArgs = new ArrayList<>();
         for (String arg : args) {
@@ -281,7 +308,7 @@ public final class PointsToAnalyzer {
                             "Standalone analysis reuses a process-global VMAccess cache and cannot switch classpath from '%s' to '%s' within the same process.",
                             cachedClasspath, classpath);
         }
-        return new PointsToAnalyzer(mainEntryClass, options, cachedAccess);
+        return new PointsToAnalyzer(mainEntryClass, options, cachedAccess, Arrays.asList(entryMethods));
     }
 
     /**
@@ -430,6 +457,13 @@ public final class PointsToAnalyzer {
         return bigbang.getUniverse();
     }
 
+    /**
+     * Returns the completed standalone analysis instance from the most recent {@link #run()} call.
+     */
+    public StandalonePointsToAnalysis getResultAnalysis() {
+        return bigbang;
+    }
+
     public Object getResultFromFeature(Class<? extends Feature> feature) {
         return onAnalysisExitAccess.getResult(feature);
     }
@@ -459,16 +493,29 @@ public final class PointsToAnalyzer {
         if (entrypointsAreSet) {
             String entryPointsFile = StandaloneOptions.AnalysisEntryPointsFile.getValue(options);
             MethodConfigReader.readMethodFromFile(entryPointsFile, bigbang, classLoaderAccess, m -> {
-                // We need to start analyzing from any method given by user, even it is a virtual
-                // method.
-                boolean isInvokeSpecial = m.isConstructor() || m.isFinal();
-                AnalysisType t = m.getDeclaringClass();
-                if (!t.isAbstract()) {
-                    t.registerAsInstantiated("Root class.");
-                }
-                bigbang.addRootMethod(m, isInvokeSpecial, "Entry point from file, registered in " + PointsToAnalyzer.class);
+                registerUserEntryMethod(m, "Entry point from file, registered in " + PointsToAnalyzer.class);
             });
         }
+
+        for (Executable entryMethod : directEntryMethods) {
+            registerUserEntryMethod(bigbang.getMetaAccess().lookupJavaMethod(entryMethod), "Direct entry point, registered in " + PointsToAnalyzer.class);
+        }
+    }
+
+    /**
+     * Registers a user-specified entry method and preserves the same virtual-entry semantics used
+     * for file-driven roots.
+     */
+    private void registerUserEntryMethod(AnalysisMethod method, String reason) {
+        /*
+         * We need to start analyzing from any method given by user, even if it is a virtual method.
+         */
+        boolean isInvokeSpecial = method.isConstructor() || method.isFinal();
+        AnalysisType declaringType = method.getDeclaringClass();
+        if (!declaringType.isAbstract()) {
+            declaringType.registerAsInstantiated("Root class.");
+        }
+        bigbang.addRootMethod(method, isInvokeSpecial, reason);
     }
 
     /**

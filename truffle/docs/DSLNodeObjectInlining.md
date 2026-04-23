@@ -468,7 +468,7 @@ In order to support inlining across stable API boundaries, it is recommended to 
 
 As an example, consider the following node:
 
-```
+```java
 @GenerateInline
 @GenerateUncached
 @GeneratePackagePrivate

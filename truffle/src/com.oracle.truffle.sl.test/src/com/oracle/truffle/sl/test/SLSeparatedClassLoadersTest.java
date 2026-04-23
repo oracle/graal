@@ -107,8 +107,10 @@ public class SLSeparatedClassLoadersTest {
         Thread.currentThread().setContextClassLoader(slLoader);
 
         Class<?> engineClass = sdkLoader.loadClass(Engine.class.getName());
-        Object engine = engineClass.getMethod("create").invoke(null);
-        assertNotNull("Engine has been created", engine);
+        Class<?> builderClass = sdkLoader.loadClass(Engine.Builder.class.getName());
+        Object builder = engineClass.getMethod("newBuilder").invoke(null);
+        builderClass.getMethod("useSystemProperties", boolean.class).invoke(builder, false);
+        Object engine = builderClass.getMethod("build").invoke(builder);
 
         Map<?, ?> languages = (Map<?, ?>) engineClass.getMethod("getLanguages").invoke(engine);
         Object lang = languages.get("sl");

@@ -21,6 +21,8 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-73792: `SandboxPolicy.ISOLATED` and `SandboxPolicy.UNTRUSTED` are now supported in GraalVM Community Edition.
 * GR-73792: Sandbox resource limits are now available in GraalVM Community Edition. For supported options and configuration, see the [Resource Limits section](https://www.graalvm.org/latest/security-guide/sandboxing/#resource-limits) in the sandboxing guide.
 * GR-73792: Isolated `Engine` and `Context` are now available in GraalVM Community Edition; enable with `engine.SpawnIsolate=true`. For community language libraries, use `-isolate-community` artifacts (for example, `js-isolate-community`). See the [Polyglot Isolates documentation](https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates) for details.
+* GR-73872: Added constant-option support with `ConstantOptionKey<T>`, `OptionDescriptor#isConstant()`, and `OptionDescriptor.Builder#constant(boolean)`. Constant values are resolved from `-Dpolyglot.<option-name>=<value>` (or the declared default) before polyglot runtime initialization and cannot be changed at runtime. On native-image, they are captured during image build.
+* GR-73872: Added support for native-image preset options. Polyglot options provided during native-image build are captured and validated as preset defaults, then applied at runtime (including default engine creation) with normal builder-option precedence.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
