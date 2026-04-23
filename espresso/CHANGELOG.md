@@ -1,6 +1,8 @@
 # Espresso Changelog
 
 ## Version 25.1.0
+### User-visible changes
+* Added boolean option `java.EnableImplicitInterop`. Performance is better when implicit interop is disabled.
 ### Internal changes
 * Added branch profiles. It generates branch probability hints for the JIT compiler and therefore improves peak performance in some cases.
 
