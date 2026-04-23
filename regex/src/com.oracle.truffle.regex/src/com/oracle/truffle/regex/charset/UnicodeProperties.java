@@ -116,6 +116,21 @@ public class UnicodeProperties {
         return evaluatePropertySpecStrings(normalizePropertySpec(propertySpec));
     }
 
+    public CodePointSet unionOfProperties(String... properties) {
+        return unionOfProperties(null, properties);
+    }
+
+    public CodePointSet unionOfProperties(CodePointSet initial, String... properties) {
+        CodePointSetAccumulator acc = new CodePointSetAccumulator();
+        if (initial != null) {
+            acc.addSet(initial);
+        }
+        for (String property : properties) {
+            acc.addSet(getProperty(property));
+        }
+        return acc.toCodePointSet();
+    }
+
     /**
      * @param propertySpec *Normalized* Unicode character property specification (i.e. only
      *            abbreviated properties and property values)

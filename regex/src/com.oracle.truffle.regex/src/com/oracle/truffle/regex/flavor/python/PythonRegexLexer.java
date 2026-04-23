@@ -91,6 +91,22 @@ public final class PythonRegexLexer extends RegexLexer {
     // "[^\n]"
     private static final CodePointSet PYTHON_DOT = CodePointSet.createNoDedup(0, '\n' - 1, '\n' + 1, 0x10ffff);
 
+    /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+
+    private static final CodePointSet NUMERIC_EXTRAS = CodePointSet.createNoDedup(0x003405, 0x003405, 0x003483, 0x003483, 0x00382a, 0x00382a, 0x003b4d, 0x003b4d, 0x004e00, 0x004e00, 0x004e03,
+                    0x004e03, 0x004e07, 0x004e07, 0x004e09, 0x004e09, 0x004e24, 0x004e24, 0x004e5d, 0x004e5d, 0x004e8c, 0x004e8c, 0x004e94, 0x004e94, 0x004e96, 0x004e96, 0x004eac, 0x004eac, 0x004ebf,
+                    0x004ec0, 0x004edf, 0x004edf, 0x004ee8, 0x004ee8, 0x004f0d, 0x004f0d, 0x004f70, 0x004f70, 0x004fe9, 0x004fe9, 0x005006, 0x005006, 0x005104, 0x005104, 0x005146, 0x005146, 0x005169,
+                    0x005169, 0x00516b, 0x00516b, 0x00516d, 0x00516d, 0x005341, 0x005341, 0x005343, 0x005345, 0x00534c, 0x00534c, 0x0053c1, 0x0053c4, 0x0056db, 0x0056db, 0x0058f1, 0x0058f1, 0x0058f9,
+                    0x0058f9, 0x005e7a, 0x005e7a, 0x005efe, 0x005eff, 0x005f0c, 0x005f0e, 0x005f10, 0x005f10, 0x0062d0, 0x0062d0, 0x0062fe, 0x0062fe, 0x00634c, 0x00634c, 0x0067d2, 0x0067d2, 0x006d1e,
+                    0x006d1e, 0x006f06, 0x006f06, 0x007396, 0x007396, 0x00767e, 0x00767e, 0x007695, 0x007695, 0x0079ed, 0x0079ed, 0x008086, 0x008086, 0x00842c, 0x00842c, 0x008cae, 0x008cae, 0x008cb3,
+                    0x008cb3, 0x008d30, 0x008d30, 0x00920e, 0x00920e, 0x0094a9, 0x0094a9, 0x009621, 0x009621, 0x009646, 0x009646, 0x00964c, 0x00964c, 0x009678, 0x009678, 0x0096f6, 0x0096f6, 0x00f96b,
+                    0x00f96b, 0x00f973, 0x00f973, 0x00f978, 0x00f978, 0x00f9b2, 0x00f9b2, 0x00f9d1, 0x00f9d1, 0x00f9d3, 0x00f9d3, 0x00f9fd, 0x00f9fd, 0x012038, 0x012039, 0x012079, 0x012079, 0x012226,
+                    0x012226, 0x01222b, 0x01222b, 0x01230b, 0x01230b, 0x01230d, 0x01230d, 0x012399, 0x012399, 0x020001, 0x020001, 0x020064, 0x020064, 0x0200e2, 0x0200e2, 0x020121, 0x020121, 0x02092a,
+                    0x02092a, 0x020983, 0x020983, 0x02098c, 0x02098c, 0x02099c, 0x02099c, 0x020aea, 0x020aea, 0x020afd, 0x020afd, 0x020b19, 0x020b19, 0x022390, 0x022390, 0x022998, 0x022998, 0x023b1b,
+                    0x023b1b, 0x02626d, 0x02626d, 0x02f890, 0x02f890);
+
+    /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+
     static {
         UNICODE_CHAR_CLASS_SETS = new HashMap<>();
 
@@ -123,35 +139,14 @@ public final class PythonRegexLexer extends RegexLexer {
         // Word characters: \w
         // As alphabetic characters, Python accepts those in the general category L.
         // As numeric, it takes any character with either Numeric_Type=Decimal,
-        // Numeric_Type=Digit or Numeric_Type=Numeric. As of Unicode 11.0.0, this
-        // corresponds to the general category Number, along with the following
-        // code points:
-        // F96B;CJK COMPATIBILITY IDEOGRAPH-F96B;Lo;0;L;53C3;;;3;N;;;;;
-        // F973;CJK COMPATIBILITY IDEOGRAPH-F973;Lo;0;L;62FE;;;10;N;;;;;
-        // F978;CJK COMPATIBILITY IDEOGRAPH-F978;Lo;0;L;5169;;;2;N;;;;;
-        // F9B2;CJK COMPATIBILITY IDEOGRAPH-F9B2;Lo;0;L;96F6;;;0;N;;;;;
-        // F9D1;CJK COMPATIBILITY IDEOGRAPH-F9D1;Lo;0;L;516D;;;6;N;;;;;
-        // F9D3;CJK COMPATIBILITY IDEOGRAPH-F9D3;Lo;0;L;9678;;;6;N;;;;;
-        // F9FD;CJK COMPATIBILITY IDEOGRAPH-F9FD;Lo;0;L;4EC0;;;10;N;;;;;
-        // 2F890;CJK COMPATIBILITY IDEOGRAPH-2F890;Lo;0;L;5EFE;;;9;N;;;;;
+        // Numeric_Type=Digit or Numeric_Type=Numeric. In Unicode 17.0.0, this is the general
+        // category Number plus a set of Han ideographs with numeric values.
         // Non-word characters: \W
         // Similarly as for \S, we will not be able to produce a replacement string for \W.
         // We will need to construct the set ourselves.
-        CodePointSet alpha = UNICODE.getProperty("General_Category=Letter");
-        CodePointSet numericExtras = CodePointSet.createNoDedup(
-                        0xf96b, 0xf96b,
-                        0xf973, 0xf973,
-                        0xf978, 0xf978,
-                        0xf9b2, 0xf9b2,
-                        0xf9d1, 0xf9d1,
-                        0xf9d3, 0xf9d3,
-                        0xf9fd, 0xf9fd,
-                        0x2f890, 0x2f890);
-        CodePointSet numeric = UNICODE.getProperty("General_Category=Number").union(numericExtras);
-        CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_'));
-        CodePointSet nonWordChars = wordChars.createInverse(Encoding.UTF_32);
+        CodePointSet wordChars = UNICODE.unionOfProperties(NUMERIC_EXTRAS, "General_Category=Number", "General_Category=Letter").union(CodePointSet.create('_'));
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
-        UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
+        UNICODE_CHAR_CLASS_SETS.put('W', wordChars.createInverse(Encoding.UTF_32));
     }
 
     /**

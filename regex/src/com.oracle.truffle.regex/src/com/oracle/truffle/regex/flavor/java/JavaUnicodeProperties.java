@@ -45,7 +45,6 @@ import java.util.Locale;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.charset.UnicodePropertyData;
@@ -149,54 +148,54 @@ final class JavaUnicodeProperties {
 
         identifierIgnorable = CodePointSet.createNoDedup(0x0000, 0x0008, 0x000E, 0x001B, 0x007F, 0x009F).union(unicode.getProperty("General_Category=Format"));
 
-        spaceChar = unionOfProperties(
+        spaceChar = unicode.unionOfProperties(
                         "General_Category=Space_Separator",
                         "General_Category=Line_Separator",
                         "General_Category=Paragraph_Separator");
 
         // Character::isLowerCase
-        lowerCase = unionOfProperties(
+        lowerCase = unicode.unionOfProperties(
                         "General_Category=Lowercase_Letter",
                         "Other_Lowercase");
 
-        upperCase = unionOfProperties(
+        upperCase = unicode.unionOfProperties(
                         "General_Category=Uppercase_Letter",
                         "Other_Uppercase");
 
-        lowerUpperTitleCase = unionOfProperties(lowerCase.union(upperCase),
+        lowerUpperTitleCase = unicode.unionOfProperties(lowerCase.union(upperCase),
                         "General_Category=Titlecase_Letter");
 
-        CodePointSet letterLetterNumber = unionOfProperties(
+        CodePointSet letterLetterNumber = unicode.unionOfProperties(
                         "General_Category=Letter",
                         "General_Category=Letter_Number");
 
-        alphabetic = unionOfProperties(letterLetterNumber,
+        alphabetic = unicode.unionOfProperties(letterLetterNumber,
                         "Other_Alphabetic");
 
-        letterOrDigit = unionOfProperties(
+        letterOrDigit = unicode.unionOfProperties(
                         "General_Category=Letter",
                         "General_Category=Decimal_Number");
 
-        javaIdentifierStart = unionOfProperties(letterLetterNumber,
+        javaIdentifierStart = unicode.unionOfProperties(letterLetterNumber,
                         "General_Category=Currency_Symbol",
                         "General_Category=Connector_Punctuation");
 
-        javaIdentifierPart = unionOfProperties(javaIdentifierStart.union(identifierIgnorable),
+        javaIdentifierPart = unicode.unionOfProperties(javaIdentifierStart.union(identifierIgnorable),
                         "General_Category=Decimal_Number",
                         "General_Category=Spacing_Mark",
                         "General_Category=Nonspacing_Mark");
 
-        unicodeIdentifierStart = unionOfProperties(letterLetterNumber,
+        unicodeIdentifierStart = unicode.unionOfProperties(letterLetterNumber,
                         "Other_ID_Start");
 
-        unicodeIdentifierPart = unionOfProperties(unicodeIdentifierStart.union(identifierIgnorable),
+        unicodeIdentifierPart = unicode.unionOfProperties(unicodeIdentifierStart.union(identifierIgnorable),
                         "General_Category=Connector_Punctuation",
                         "General_Category=Decimal_Number",
                         "General_Category=Spacing_Mark",
                         "General_Category=Nonspacing_Mark",
                         "Other_ID_Continue");
 
-        unicodeLetterOrDigit = unionOfProperties(
+        unicodeLetterOrDigit = unicode.unionOfProperties(
                         "General_Category=Lowercase_Letter",
                         "General_Category=Uppercase_Letter",
                         "General_Category=Titlecase_Letter",
@@ -205,7 +204,7 @@ final class JavaUnicodeProperties {
                         "General_Category=Decimal_Number");
 
         blank = unicode.getProperty("General_Category=Space_Separator").union(CodePointSet.create(0x9));
-        graph = unionOfProperties(
+        graph = unicode.unionOfProperties(
                         "General_Category=Space_Separator",
                         "General_Category=Line_Separator",
                         "General_Category=Paragraph_Separator",
@@ -213,7 +212,7 @@ final class JavaUnicodeProperties {
                         "General_Category=Surrogate",
                         "General_Category=Unassigned").createInverse(Encoding.UTF_16);
 
-        whiteSpace = unionOfProperties(CodePointSet.createNoDedup(0x9, 0xd, 0x85, 0x85),
+        whiteSpace = unicode.unionOfProperties(CodePointSet.createNoDedup(0x9, 0xd, 0x85, 0x85),
                         "General_Category=Space_Separator",
                         "General_Category=Line_Separator",
                         "General_Category=Paragraph_Separator");
@@ -221,7 +220,7 @@ final class JavaUnicodeProperties {
         digit = unicode.getProperty("General_Category=Decimal_Number");
         nonDigit = digit.createInverse(Encoding.UTF_16);
 
-        word = unionOfProperties(alphabetic, "Join_Control",
+        word = unicode.unionOfProperties(alphabetic, "Join_Control",
                         "General_Category=Nonspacing_Mark",
                         "General_Category=Enclosing_Mark",
                         "General_Category=Spacing_Mark",
@@ -268,21 +267,6 @@ final class JavaUnicodeProperties {
             return UnicodePropertyDataVersion.UNICODE_15_1_0;
         }
         return UnicodePropertyDataVersion.UNICODE_16_0_0;
-    }
-
-    private CodePointSet unionOfProperties(String... properties) {
-        return unionOfProperties(null, properties);
-    }
-
-    private CodePointSet unionOfProperties(CodePointSet initial, String... properties) {
-        CodePointSetAccumulator acc = new CodePointSetAccumulator();
-        if (initial != null) {
-            acc.addSet(initial);
-        }
-        for (String property : properties) {
-            acc.addSet(unicode.getProperty(property));
-        }
-        return acc.toCodePointSet();
     }
 
     CodePointSet getBlock(String name) {
