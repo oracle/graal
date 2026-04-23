@@ -109,7 +109,8 @@ public final class TruffleTierContext extends HighTierContext {
                     DebugContext debug,
                     TruffleCompilable compilable,
                     CompilationIdentifier compilationId, SpeculationLog log,
-                    TruffleCompilationTask task, PerformanceInformationHandler handler) {
+                    TruffleCompilationTask task,
+                    PerformanceInformationHandler handler) {
 
         boolean readyForCompilation = compilable.prepareForCompilation(true, task.tier(), !task.hasNextTier());
         if (!readyForCompilation) {
