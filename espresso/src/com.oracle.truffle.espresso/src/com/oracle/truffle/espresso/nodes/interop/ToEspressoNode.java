@@ -27,6 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism.Megamorphic;
@@ -219,14 +220,15 @@ public abstract class ToEspressoNode extends EspressoNode {
         public static Object doArray(Object value, ArrayKlass targetType,
                         @Bind Node node,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
+                        @Cached InlinedBranchProfile error,
+                        @Bind("getLanguage()") EspressoLanguage language) throws UnsupportedTypeException {
             Meta meta = EspressoContext.get(node).getMeta();
-            if (targetType == meta._byte_array) {
+            if (language.isImplicitInteropEnabled() && targetType == meta._byte_array) {
                 if (interop.hasBufferElements(value) && !isHostString(value)) {
                     return StaticObject.createForeign(EspressoLanguage.get(node), meta._byte_array, value, interop);
                 }
             }
-            if (interop.hasArrayElements(value) && !isHostString(value)) {
+            if (language.isImplicitInteropEnabled() && interop.hasArrayElements(value) && !isHostString(value)) {
                 return StaticObject.createForeign(EspressoLanguage.get(node), targetType, value, interop);
             }
             error.enter(node);
@@ -251,7 +253,8 @@ public abstract class ToEspressoNode extends EspressoNode {
                 // check if there's a specific type mapping available
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverter.execute(metaName);
                 if (converter != null) {
-                    StaticObject foreignWrapper = StaticObject.createForeign(EspressoLanguage.get(node), targetType.getRawType(), value, interop);
+                    EspressoContext context = EspressoContext.get(node);
+                    StaticObject foreignWrapper = StaticObject.createForeign(EspressoLanguage.get(node), context.getMeta().java_lang_Object, value, interop);
                     if (targetType instanceof ParameterizedEspressoType parameterizedEspressoType) {
                         EspressoLanguage.get(node).getTypeArgumentProperty().setObject(foreignWrapper, parameterizedEspressoType.getTypeArguments());
                     }
@@ -361,10 +364,15 @@ public abstract class ToEspressoNode extends EspressoNode {
             if (result != null) {
                 return result;
             }
-            if (targetType.getRawType() instanceof ObjectKlass rawType) {
+            if (EspressoLanguage.get(node).isImplicitInteropEnabled() && targetType.getRawType() instanceof ObjectKlass rawType) {
                 checkHasAllFieldsOrThrow(value, rawType, interop, meta);
                 return StaticObject.createForeign(EspressoLanguage.get(node), rawType, value, interop);
             }
+            throw UnsupportedTypeException.create(new Object[]{value}, targetType.getRawType().getTypeAsString());
+        }
+
+        @Fallback
+        public static Object doUnsupported(Object value, EspressoType targetType) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, targetType.getRawType().getTypeAsString());
         }
     }

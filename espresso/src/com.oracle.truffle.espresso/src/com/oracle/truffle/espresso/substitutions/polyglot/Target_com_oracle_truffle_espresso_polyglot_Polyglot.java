@@ -185,7 +185,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject value,
-                        @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject targetType,
+                        @SuppressWarnings("unused") @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject targetType,
                         @Bind Node node,
                         @SuppressWarnings("unused") @Bind("get(node)") EspressoContext context,
                         @Cached InlinedBranchProfile reWrappingProfile,

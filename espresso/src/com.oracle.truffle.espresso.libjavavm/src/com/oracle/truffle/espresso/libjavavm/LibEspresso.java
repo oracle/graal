@@ -66,12 +66,15 @@ public final class LibEspresso {
         }
         Context.Builder builder = Context.newBuilder().allowAllAccess(true);
 
-        // These option need to be set before calling `Arguments.setupContext()` so that cmd line
+        // These options need to be set before calling `Arguments.setupContext()` so that cmd line
         // args can override the default behavior.
 
         // Since Espresso has a verifier, the Static Object Model does not need to perform shape
         // checks and can use unsafe casts.
         builder.option("engine.RelaxStaticObjectSafetyChecks", "true");
+
+        // Disable implicit interop by default to improve performance.
+        builder.option("java.EnableImplicitInterop", "false");
 
         int result = Arguments.setupContext(builder, args, asBitSet(ignoredIndices, nIgnoredIndices));
         if (result != JNIErrors.JNI_OK()) {
