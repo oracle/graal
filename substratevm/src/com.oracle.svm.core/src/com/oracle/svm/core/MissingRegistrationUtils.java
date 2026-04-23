@@ -57,6 +57,8 @@ import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class MissingRegistrationUtils {
+    private static final String MATCHING_METADATA_HEADER = "The matching metadata element in the '";
+    private static final String METADATA_HEADER = "The metadata element in the '";
 
     public static boolean throwMissingRegistrationErrors() {
         return ThrowMissingRegistrationErrors.hasBeenSet();
@@ -196,18 +198,28 @@ public class MissingRegistrationUtils {
         String paragraphSeparator = lineSeparator + lineSeparator;
         int splitIndex = message.indexOf(paragraphSeparator);
         if (splitIndex == -1) {
-            return message + paragraphSeparator +
+            return replaceFirst(message + paragraphSeparator +
                             "Reachability metadata for this access was found, but it is inactive because its runtime conditions were not satisfied." + lineSeparator +
                             "To fix this, either change/remove the metadata condition, or make sure the condition is reached before this access." + lineSeparator +
                             "Unsatisfied runtime conditions:" + paragraphSeparator +
-                            conditions;
+                            conditions,
+                            MATCHING_METADATA_HEADER, METADATA_HEADER);
         }
-        return message.substring(0, splitIndex) + paragraphSeparator +
+        return replaceFirst(message.substring(0, splitIndex) + paragraphSeparator +
                         "Reachability metadata for this access was found, but it is inactive because its runtime conditions were not satisfied." + lineSeparator +
                         "To fix this, either change/remove the metadata condition, or make sure the condition is reached before this access." + lineSeparator +
                         "Unsatisfied runtime conditions:" + paragraphSeparator +
                         conditions + paragraphSeparator +
-                        message.substring(splitIndex + paragraphSeparator.length());
+                        message.substring(splitIndex + paragraphSeparator.length()),
+                        MATCHING_METADATA_HEADER, METADATA_HEADER);
+    }
+
+    private static String replaceFirst(String text, String oldValue, String newValue) {
+        int index = text.indexOf(oldValue);
+        if (index == -1) {
+            return text;
+        }
+        return text.substring(0, index) + newValue + text.substring(index + oldValue.length());
     }
 
     protected static ConfigurationType namedConfigurationType(String typeName) {
