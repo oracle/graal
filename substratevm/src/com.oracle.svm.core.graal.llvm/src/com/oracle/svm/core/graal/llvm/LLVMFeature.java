@@ -69,6 +69,10 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ModuleSupport;
 
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.PointerPointer;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMContextRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
+
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
@@ -128,6 +132,23 @@ public class LLVMFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         accessImpl.registerAsRoot((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true, "LLVM exception unwind, registered in " + LLVMFeature.class);
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        /*
+         * Force-load the LLVM native library and pre-initialize Pointer$DeallocatorThread on
+         * the main thread before ForkJoin compilation workers start. On slow hardware (e.g.
+         * riscv64), multiple workers race to initialize these concurrently via
+         * PointerPointer.<init> inside LLVMIRBuilder.functionType(), deadlocking on the
+         * synchronized(DeallocatorThread.class) block. LLVMContextCreate() loads the javacpp
+         * and llvm native libs. PointerPointer(1) triggers a real native allocation so
+         * Pointer.init() -> deallocator() -> synchronized(DeallocatorThread.class) runs on
+         * the main thread; subsequent worker calls find the path warm and contention-free.
+         */
+        LLVMContextRef ctx = LLVM.LLVMContextCreate();
+        LLVM.LLVMContextDispose(ctx);
+        try (PointerPointer<?> warmup = new PointerPointer<>(1)) { /* discard */ }
     }
 
     @Override
