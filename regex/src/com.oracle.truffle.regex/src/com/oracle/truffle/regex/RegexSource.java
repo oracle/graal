@@ -150,8 +150,7 @@ public final class RegexSource implements JsonConvertible {
 
     @TruffleBoundary
     public String toNodeName() {
-        String esc = toStringEscaped();
-        return "tregex " + (esc.length() > 30 ? esc.substring(0, 30) + "..." : esc);
+        return "tregex " + DebugUtil.pruneToSize(toStringEscaped(), 30);
     }
 
     @TruffleBoundary
