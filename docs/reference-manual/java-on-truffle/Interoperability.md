@@ -114,6 +114,14 @@ System.out.println(Interop.fitsInInt(elem0)); // prints true
 System.out.println(Interop.asInt(elem0));     // prints 2
 ```
 
+## Implicit Interop
+
+With implicit interop, a foreign object can be typed not just as `java.lang.Object`, but possibly a more concrete class or an array. This can happen at a guest `Polyglot.cast` call, or when receiving a foreign object as a parameter. This requires the foreign object to "fit in" the new type, i.e. support necessary member or array accesses through interop protocol messages. When this happens, a group of bytecode instructions (e.g. field and array accesses) can work on it.
+
+However, this feature brings extra checks at runtime. When implicit interop is enabled, Espresso runs slower even if no foreign object is actually encountered.
+
+This feature can be enabled through `--java.EnableImplicitInterop=true`.
+
 ## Embedding in Host Java
 
 Espresso is embedded via the [Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html), which is part of GraalVM.

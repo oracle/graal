@@ -31,6 +31,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.JavaKind;
@@ -90,6 +92,15 @@ public abstract class AbstractSetFieldNode extends EspressoNode {
                             "Could not cast the value to the actual type of the foreign field %s", fieldName);
         }
     }
+
+    @ExplodeLoop
+    public BytecodeNode getBytecodeNode() {
+        Node parent = getParent();
+        while (!(parent instanceof BytecodeNode)) {
+            parent = parent.getParent();
+        }
+        return (BytecodeNode) parent;
+    }
 }
 
 abstract class IntSetFieldNode extends AbstractSetFieldNode {
@@ -107,12 +118,17 @@ abstract class IntSetFieldNode extends AbstractSetFieldNode {
 
     abstract void executeSetField(StaticObject receiver, int value);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    void doEspressoUnchecked(StaticObject receiver, int value) {
+        field.setInt(receiver, value);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     void doEspresso(StaticObject receiver, int value) {
         field.setInt(receiver, value);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, int fieldValue,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
@@ -136,12 +152,17 @@ abstract class BooleanSetFieldNode extends AbstractSetFieldNode {
 
     abstract void executeSetField(StaticObject receiver, boolean value);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    void doEspressoUnchecked(StaticObject receiver, boolean value) {
+        field.setBoolean(receiver, value);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     void doEspresso(StaticObject receiver, boolean value) {
         field.setBoolean(receiver, value);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, boolean fieldValue,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
@@ -165,12 +186,17 @@ abstract class CharSetFieldNode extends AbstractSetFieldNode {
 
     abstract void executeSetField(StaticObject receiver, char value);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    void doEspressoUnchecked(StaticObject receiver, char value) {
+        field.setChar(receiver, value);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     void doEspresso(StaticObject receiver, char value) {
         field.setChar(receiver, value);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, char fieldValue,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
@@ -194,12 +220,17 @@ abstract class ShortSetFieldNode extends AbstractSetFieldNode {
 
     abstract void executeSetField(StaticObject receiver, short value);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    void doEspressoUnchecked(StaticObject receiver, short value) {
+        field.setShort(receiver, value);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     void doEspresso(StaticObject receiver, short value) {
         field.setShort(receiver, value);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, short fieldValue,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
@@ -223,12 +254,17 @@ abstract class ByteSetFieldNode extends AbstractSetFieldNode {
 
     abstract void executeSetField(StaticObject receiver, byte value);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    void doEspressoUnchecked(StaticObject receiver, byte value) {
+        field.setByte(receiver, value);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     void doEspresso(StaticObject receiver, byte value) {
         field.setByte(receiver, value);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, byte fieldValue,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
@@ -252,12 +288,17 @@ abstract class LongSetFieldNode extends AbstractSetFieldNode {
 
     abstract void executeSetField(StaticObject receiver, long value);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    void doEspressoUnchecked(StaticObject receiver, long value) {
+        field.setLong(receiver, value);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     void doEspresso(StaticObject receiver, long value) {
         field.setLong(receiver, value);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, long fieldValue,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
@@ -281,12 +322,17 @@ abstract class FloatSetFieldNode extends AbstractSetFieldNode {
 
     abstract void executeSetField(StaticObject receiver, float value);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    void doEspressoUnchecked(StaticObject receiver, float value) {
+        field.setFloat(receiver, value);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     void doEspresso(StaticObject receiver, float value) {
         field.setFloat(receiver, value);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, float fieldValue,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
@@ -310,12 +356,17 @@ abstract class DoubleSetFieldNode extends AbstractSetFieldNode {
 
     abstract void executeSetField(StaticObject receiver, double value);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    void doEspressoUnchecked(StaticObject receiver, double value) {
+        field.setDouble(receiver, value);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     void doEspresso(StaticObject receiver, double value) {
         field.setDouble(receiver, value);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, double fieldValue,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
@@ -339,12 +390,17 @@ abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
 
     abstract void executeSetField(StaticObject receiver, Object value);
 
-    @Specialization(guards = "receiver.isEspressoObject()")
+    @Specialization(assumptions = "getBytecodeNode().getNoForeignObjectsAssumption()")
+    void doEspressoUnchecked(StaticObject receiver, StaticObject value) {
+        field.setObject(receiver, value);
+    }
+
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isEspressoObject()"})
     void doEspresso(StaticObject receiver, StaticObject value) {
         field.setObject(receiver, value);
     }
 
-    @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = {"!getBytecodeNode().getNoForeignObjectsAssumption().isValid()", "receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, StaticObject fieldValue,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
