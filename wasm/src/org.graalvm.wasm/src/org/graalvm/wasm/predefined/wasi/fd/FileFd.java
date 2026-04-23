@@ -55,6 +55,7 @@ import org.graalvm.wasm.predefined.wasi.types.Rights;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
@@ -78,6 +79,7 @@ class FileFd extends SeekableByteChannelFd {
 
     private final TruffleFile file;
     private final short oflags;
+    private final boolean followSymlinks;
 
     /**
      * @throws FileAlreadyExistsException if {@link StandardOpenOption#CREATE_NEW} option is set and
@@ -89,13 +91,14 @@ class FileFd extends SeekableByteChannelFd {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @see TruffleFile#newByteChannel(Set, FileAttribute[])
      */
-    FileFd(TruffleFile file, short oflags, long fsRightsBase, long fsRightsInheriting, short fdFlags) throws IOException {
-        super(file.newByteChannel(parseOptions(oflags, fdFlags)), Filetype.RegularFile, fsRightsBase, fsRightsInheriting, fdFlags);
+    FileFd(TruffleFile file, short oflags, long fsRightsBase, long fsRightsInheriting, short fdFlags, boolean followSymlinks) throws IOException {
+        super(file.newByteChannel(parseOptions(oflags, fdFlags, followSymlinks)), Filetype.RegularFile, fsRightsBase, fsRightsInheriting, fdFlags);
         this.file = file;
         this.oflags = oflags;
+        this.followSymlinks = followSymlinks;
     }
 
-    private static Set<? extends OpenOption> parseOptions(short oflags, short fdFlags) {
+    private static Set<? extends OpenOption> parseOptions(short oflags, short fdFlags, boolean followSymlinks) {
         final Set<OpenOption> openOptions = new LinkedHashSet<>();
 
         // In WASI, the file access mode (read vs. write) is not specified when opening a file.
@@ -103,6 +106,9 @@ class FileFd extends SeekableByteChannelFd {
         // reading and writing.
         openOptions.add(StandardOpenOption.READ);
         openOptions.add(StandardOpenOption.WRITE);
+        if (!followSymlinks) {
+            openOptions.add(LinkOption.NOFOLLOW_LINKS);
+        }
         if (isSet(oflags, Oflags.Creat)) {
             openOptions.add(StandardOpenOption.CREATE);
         }
@@ -166,7 +172,7 @@ class FileFd extends SeekableByteChannelFd {
         try {
             close();
             fdFlags = newFsflags;
-            setChannel(file.newByteChannel(parseOptions(oflags, newFsflags)));
+            setChannel(file.newByteChannel(parseOptions(oflags, newFsflags, followSymlinks)));
             return Errno.Success;
         } catch (IOException e) {
             return Errno.Io;
