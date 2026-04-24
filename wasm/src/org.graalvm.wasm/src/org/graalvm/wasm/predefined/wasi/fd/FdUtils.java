@@ -56,12 +56,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.LinkOption;
 import java.util.concurrent.TimeUnit;
 
 final class FdUtils {
 
+    static final LinkOption[] FOLLOW_LINKS = new LinkOption[0];
+    static final LinkOption[] NOFOLLOW_LINKS = new LinkOption[]{LinkOption.NOFOLLOW_LINKS};
+
     private FdUtils() {
 
+    }
+
+    static LinkOption[] linkOptions(boolean followSymlinks) {
+        return followSymlinks ? FOLLOW_LINKS : NOFOLLOW_LINKS;
     }
 
     static Errno writeToStream(Node node, WasmMemory memory, OutputStream stream, int iovecArrayAddress, int iovecCount, int sizeAddress) {
@@ -160,21 +168,21 @@ final class FdUtils {
      * "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-filestat-struct"><code>filestat</code></a>
      * structure to memory.
      */
-    static Errno writeFilestat(Node node, WasmMemory memory, int address, TruffleFile file) {
+    static Errno writeFilestat(Node node, WasmMemory memory, int address, TruffleFile file, LinkOption[] linkOptions) {
         // Write filestat structure
         // https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#-filestat-struct
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         try {
-            Filestat.writeFiletype(node, memoryLib, memory, address, getType(file));
-            Filestat.writeSize(node, memoryLib, memory, address, file.getAttribute(TruffleFile.SIZE));
-            Filestat.writeAtim(node, memoryLib, memory, address, file.getAttribute(TruffleFile.LAST_ACCESS_TIME).to(TimeUnit.NANOSECONDS));
-            Filestat.writeMtim(node, memoryLib, memory, address, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME).to(TimeUnit.NANOSECONDS));
+            Filestat.writeFiletype(node, memoryLib, memory, address, getType(file, linkOptions));
+            Filestat.writeSize(node, memoryLib, memory, address, file.getAttribute(TruffleFile.SIZE, linkOptions));
+            Filestat.writeAtim(node, memoryLib, memory, address, file.getAttribute(TruffleFile.LAST_ACCESS_TIME, linkOptions).to(TimeUnit.NANOSECONDS));
+            Filestat.writeMtim(node, memoryLib, memory, address, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME, linkOptions).to(TimeUnit.NANOSECONDS));
 
             try {
-                Filestat.writeDev(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_DEV));
-                Filestat.writeIno(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_INODE));
-                Filestat.writeNlink(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_NLINK));
-                Filestat.writeCtim(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_CTIME).to(TimeUnit.NANOSECONDS));
+                Filestat.writeDev(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_DEV, linkOptions));
+                Filestat.writeIno(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_INODE, linkOptions));
+                Filestat.writeNlink(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_NLINK, linkOptions));
+                Filestat.writeCtim(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_CTIME, linkOptions).to(TimeUnit.NANOSECONDS));
             } catch (UnsupportedOperationException e) {
                 // GR-29297: these attributes are currently not supported on non-Unix platforms.
             }
@@ -186,7 +194,7 @@ final class FdUtils {
         return Errno.Success;
     }
 
-    static int writeDirent(Node node, WasmMemory memory, int address, TruffleFile file, int nameLength, long offset) throws IOException {
+    static int writeDirent(Node node, WasmMemory memory, int address, TruffleFile file, int nameLength, long offset, LinkOption[] linkOptions) throws IOException {
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         Dirent.writeDNext(node, memoryLib, memory, address, offset);
         try {
@@ -195,11 +203,20 @@ final class FdUtils {
             // GR-29297: these attributes are currently not supported on non-Unix platforms.
         }
         Dirent.writeDNamlen(node, memoryLib, memory, address, nameLength);
-        Dirent.writeDType(node, memoryLib, memory, address, FdUtils.getType(file));
+        Dirent.writeDType(node, memoryLib, memory, address, FdUtils.getType(file, linkOptions));
         return Dirent.BYTES;
     }
 
-    static byte[] writeDirentToByteArray(TruffleFile file, int nameLength, long offset) throws IOException {
+    static int writeSyntheticDirent(Node node, WasmMemory memory, int address, int nameLength, long offset, Filetype type) {
+        WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
+        Dirent.writeDNext(node, memoryLib, memory, address, offset);
+        Dirent.writeDIno(node, memoryLib, memory, address, 0);
+        Dirent.writeDNamlen(node, memoryLib, memory, address, nameLength);
+        Dirent.writeDType(node, memoryLib, memory, address, type);
+        return Dirent.BYTES;
+    }
+
+    static byte[] writeDirentToByteArray(TruffleFile file, int nameLength, long offset, LinkOption[] linkOptions) throws IOException {
         byte[] buffer = new byte[Dirent.BYTES];
         Dirent.writeDNextToByteArray(buffer, 0, offset);
         try {
@@ -208,16 +225,29 @@ final class FdUtils {
             // GR-29297: these attributes are currently not supported on non-Unix platforms.
         }
         Dirent.writeDNamlen(buffer, 0, nameLength);
-        Dirent.writeDType(buffer, 0, FdUtils.getType(file));
+        Dirent.writeDType(buffer, 0, FdUtils.getType(file, linkOptions));
+        return buffer;
+    }
+
+    static byte[] writeSyntheticDirentToByteArray(int nameLength, long offset, Filetype type) {
+        byte[] buffer = new byte[Dirent.BYTES];
+        Dirent.writeDNextToByteArray(buffer, 0, offset);
+        Dirent.writeDInoToByteArray(buffer, 0, 0);
+        Dirent.writeDNamlen(buffer, 0, nameLength);
+        Dirent.writeDType(buffer, 0, type);
         return buffer;
     }
 
     static Filetype getType(TruffleFile file) throws IOException {
-        if (file.getAttribute(TruffleFile.IS_DIRECTORY)) {
+        return getType(file, FOLLOW_LINKS);
+    }
+
+    static Filetype getType(TruffleFile file, LinkOption[] linkOptions) throws IOException {
+        if (file.getAttribute(TruffleFile.IS_DIRECTORY, linkOptions)) {
             return Filetype.Directory;
-        } else if (file.getAttribute(TruffleFile.IS_REGULAR_FILE)) {
+        } else if (file.getAttribute(TruffleFile.IS_REGULAR_FILE, linkOptions)) {
             return Filetype.RegularFile;
-        } else if (file.getAttribute(TruffleFile.IS_SYMBOLIC_LINK)) {
+        } else if (file.getAttribute(TruffleFile.IS_SYMBOLIC_LINK, linkOptions)) {
             return Filetype.SymbolicLink;
         } else {
             return Filetype.Unknown;

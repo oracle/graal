@@ -48,7 +48,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.Comparator;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
@@ -58,6 +60,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
+import org.graalvm.wasm.predefined.wasi.types.Filetype;
 import org.junit.Test;
 
 public class GR75058Test {
@@ -106,8 +109,7 @@ public class GR75058Test {
                             """));
 
             Source source = Source.newBuilder(WasmLanguage.ID, binary, "main").build();
-            try (Context context = Context.newBuilder(WasmLanguage.ID).allowExperimentalOptions(true).allowIO(IOAccess.ALL).option("wasm.Builtins", "wasi_snapshot_preview1").option("wasm.WasiMapDirs",
-                            "test::" + preopenedDirectory.toAbsolutePath()).build()) {
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
                 Value exports = context.eval(source).newInstance().getMember("exports");
                 assertEquals(Errno.Success.ordinal(), exports.getMember("direct").execute().asInt());
                 assertNotEquals(Errno.Success.ordinal(), exports.getMember("escaped").execute().asInt());
@@ -115,6 +117,104 @@ public class GR75058Test {
         } finally {
             deleteTree(tempRoot);
         }
+    }
+
+    @Test
+    public void testPathFilestatGetDoesNotFollowFinalSymlinkByDefault() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
+            Files.writeString(outsideDirectory.resolve("secret.txt"), "secret", StandardCharsets.UTF_8);
+            Files.createSymbolicLink(preopenedDirectory.resolve("final-link"), outsideDirectory.resolve("secret.txt").toAbsolutePath());
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_filestat_get"
+                                (func $path_filestat_get (param i32 i32 i32 i32 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) "final-link")
+                              (export "memory" (memory 0))
+                              (func (export "nofollow") (result i32) (local $ret i32)
+                                (local.set $ret
+                                  (call $path_filestat_get
+                                    (i32.const 3)
+                                    (i32.const 0)
+                                    (i32.const 0)
+                                    (i32.const 10)
+                                    (i32.const 32)))
+                                (if (i32.ne (local.get $ret) (i32.const 0))
+                                  (then (return (local.get $ret))))
+                                (i32.load8_u (i32.const 48)))
+                              (func (export "follow") (result i32)
+                                (call $path_filestat_get
+                                  (i32.const 3)
+                                  (i32.const 1)
+                                  (i32.const 0)
+                                  (i32.const 10)
+                                  (i32.const 32))
+                                ))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Filetype.SymbolicLink.ordinal(), exports.getMember("nofollow").execute().asInt());
+                assertEquals(Errno.Noent.ordinal(), exports.getMember("follow").execute().asInt());
+            }
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
+    @Test
+    public void testPathFilestatSetTimesDoesNotMutateSymlinkTargetByDefault() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
+            Path outsideTarget = outsideDirectory.resolve("secret.txt");
+            Files.writeString(outsideTarget, "secret", StandardCharsets.UTF_8);
+            FileTime initialTime = FileTime.from(1_000_000L, TimeUnit.MILLISECONDS);
+            Files.setLastModifiedTime(outsideTarget, initialTime);
+            FileTime observedInitialTime = Files.getLastModifiedTime(outsideTarget);
+            Files.createSymbolicLink(preopenedDirectory.resolve("final-link"), outsideTarget.toAbsolutePath());
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_filestat_set_times"
+                                (func $path_filestat_set_times (param i32 i32 i32 i32 i64 i64 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) "final-link")
+                              (export "memory" (memory 0))
+                              (func (export "nofollow") (result i32)
+                                (call $path_filestat_set_times
+                                  (i32.const 3)
+                                  (i32.const 0)
+                                  (i32.const 0)
+                                  (i32.const 10)
+                                  (i64.const 0)
+                                  (i64.const 9000000000000)
+                                  (i32.const 4))))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                exports.getMember("nofollow").execute();
+            }
+
+            assertEquals(observedInitialTime.to(TimeUnit.MILLISECONDS), Files.getLastModifiedTime(outsideTarget).to(TimeUnit.MILLISECONDS));
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
+    private static Context contextForPreopenedDirectory(Path preopenedDirectory) {
+        Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.allowExperimentalOptions(true);
+        contextBuilder.allowIO(IOAccess.ALL);
+        contextBuilder.option("wasm.Builtins", "wasi_snapshot_preview1");
+        contextBuilder.option("wasm.WasiMapDirs", "test::" + preopenedDirectory.toAbsolutePath());
+        return contextBuilder.build();
     }
 
     private static void deleteTree(Path root) throws IOException {

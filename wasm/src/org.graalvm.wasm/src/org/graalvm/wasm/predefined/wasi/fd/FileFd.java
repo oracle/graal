@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,6 +81,10 @@ class FileFd extends SeekableByteChannelFd {
     private final short oflags;
     private final boolean followSymlinks;
 
+    private LinkOption[] linkOptions() {
+        return FdUtils.linkOptions(followSymlinks);
+    }
+
     /**
      * @throws FileAlreadyExistsException if {@link StandardOpenOption#CREATE_NEW} option is set and
      *             a file already exists on given path
@@ -161,7 +165,7 @@ class FileFd extends SeekableByteChannelFd {
         if (!isSet(fsRightsBase, Rights.FdFilestatGet)) {
             return Errno.Notcapable;
         }
-        return FdUtils.writeFilestat(node, memory, resultAddress, file);
+        return FdUtils.writeFilestat(node, memory, resultAddress, file, linkOptions());
     }
 
     @Override
@@ -232,16 +236,16 @@ class FileFd extends SeekableByteChannelFd {
         }
         try {
             if (isSet(fstFlags, Fstflags.Atim)) {
-                file.setLastAccessTime(FileTime.from(atim, TimeUnit.NANOSECONDS));
+                file.setLastAccessTime(FileTime.from(atim, TimeUnit.NANOSECONDS), linkOptions());
             }
             if (isSet(fstFlags, Fstflags.AtimNow)) {
-                file.setLastAccessTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS));
+                file.setLastAccessTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS), linkOptions());
             }
             if (isSet(fstFlags, Fstflags.Mtim)) {
-                file.setLastModifiedTime(FileTime.from(mtim, TimeUnit.NANOSECONDS));
+                file.setLastModifiedTime(FileTime.from(mtim, TimeUnit.NANOSECONDS), linkOptions());
             }
             if (isSet(fstFlags, Fstflags.MtimNow)) {
-                file.setLastModifiedTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS));
+                file.setLastModifiedTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS), linkOptions());
             }
         } catch (IOException e) {
             return Errno.Io;

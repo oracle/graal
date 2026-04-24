@@ -223,7 +223,7 @@ class DirectoryFd extends Fd {
         if (!isSet(fsRightsBase, Rights.FdFilestatGet)) {
             return Errno.Notcapable;
         }
-        return FdUtils.writeFilestat(node, memory, resultAddress, virtualFile);
+        return FdUtils.writeFilestat(node, memory, resultAddress, virtualFile, FdUtils.FOLLOW_LINKS);
     }
 
     @Override
@@ -254,6 +254,7 @@ class DirectoryFd extends Fd {
             return Errno.Notcapable;
         }
 
+        final boolean followSymlinks = isSet(flags, Lookupflags.SymlinkFollow);
         final TruffleFile hostChildFile;
         try {
             hostChildFile = resolveHostFile(node, memory, pathAddress, pathLength, flags);
@@ -265,7 +266,7 @@ class DirectoryFd extends Fd {
         if (hostChildFile == null) {
             return Errno.Noent;
         }
-        return FdUtils.writeFilestat(node, memory, resultAddress, hostChildFile);
+        return FdUtils.writeFilestat(node, memory, resultAddress, hostChildFile, FdUtils.linkOptions(followSymlinks));
     }
 
     @Override
@@ -273,22 +274,24 @@ class DirectoryFd extends Fd {
         if (!isSet(fsRightsBase, Rights.PathFilestatSetTimes)) {
             return Errno.Notcapable;
         }
+        final boolean followSymlinks = isSet(flags, Lookupflags.SymlinkFollow);
+        final LinkOption[] linkOptions = FdUtils.linkOptions(followSymlinks);
         try {
             final TruffleFile hostChildFile = resolveHostFile(node, memory, pathAddress, pathLength, flags);
             if (hostChildFile == null) {
                 return Errno.Noent;
             }
             if (isSet(fstFlags, Fstflags.Atim)) {
-                hostChildFile.setLastAccessTime(FileTime.from(atim, TimeUnit.NANOSECONDS));
+                hostChildFile.setLastAccessTime(FileTime.from(atim, TimeUnit.NANOSECONDS), linkOptions);
             }
             if (isSet(fstFlags, Fstflags.AtimNow)) {
-                hostChildFile.setLastAccessTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS));
+                hostChildFile.setLastAccessTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS), linkOptions);
             }
             if (isSet(fstFlags, Fstflags.Mtim)) {
-                hostChildFile.setLastModifiedTime(FileTime.from(mtim, TimeUnit.NANOSECONDS));
+                hostChildFile.setLastModifiedTime(FileTime.from(mtim, TimeUnit.NANOSECONDS), linkOptions);
             }
             if (isSet(fstFlags, Fstflags.MtimNow)) {
-                hostChildFile.setLastModifiedTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS));
+                hostChildFile.setLastModifiedTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS), linkOptions);
             }
         } catch (IOException e) {
             return Errno.Io;
@@ -361,7 +364,7 @@ class DirectoryFd extends Fd {
 
             if (isSet(childOflags, Oflags.Directory)) {
                 final boolean isDirectory = hostChildFile.exists() &&
-                                hostChildFile.getAttribute(TruffleFile.IS_DIRECTORY, followSymlinks ? new LinkOption[0] : new LinkOption[]{LinkOption.NOFOLLOW_LINKS});
+                                hostChildFile.getAttribute(TruffleFile.IS_DIRECTORY, FdUtils.linkOptions(followSymlinks));
                 if (isDirectory) {
                     final int fd = fdManager.put(new DirectoryFd(fdManager, virtualChildFile, preopenedRoot, childFsRightsBase, childFsRightsInheriting, childFdFlags));
                     WasmMemoryLibrary.getUncached().store_i32(memory, node, fdAddress, fd);
@@ -396,6 +399,7 @@ class DirectoryFd extends Fd {
             entries.add(virtualFile.resolve("."));
             entries.add(virtualFile.resolve(".."));
             entries.addAll(children);
+            final LinkOption[] linkOptions = FdUtils.NOFOLLOW_LINKS;
 
             int bufPointer = bufAddress;
             int bufEnd = bufAddress + bufLength;
@@ -407,12 +411,18 @@ class DirectoryFd extends Fd {
                 // Only write entries whose index is past the received "cookie"
                 if (currentEntry >= cookie) {
                     byte[] name = file.getName().getBytes(StandardCharsets.UTF_8);
+                    final boolean syntheticDirectoryEntry = ".".equals(file.getName()) || "..".equals(file.getName());
+                    final TruffleFile metadataFile = syntheticDirectoryEntry ? null : preopenedRoot.virtualFileToHostFile(file);
 
                     if (bufEnd - bufPointer >= Dirent.BYTES) {
-                        bufPointer += FdUtils.writeDirent(node, memory, bufPointer, file, name.length, currentEntry + 1);
+                        bufPointer += syntheticDirectoryEntry
+                                        ? FdUtils.writeSyntheticDirent(node, memory, bufPointer, name.length, currentEntry + 1, Filetype.Directory)
+                                        : FdUtils.writeDirent(node, memory, bufPointer, metadataFile, name.length, currentEntry + 1, linkOptions);
                     } else {
                         // Write dirent to temp buffer and truncate
-                        byte[] dirent = FdUtils.writeDirentToByteArray(file, name.length, currentEntry + 1);
+                        byte[] dirent = syntheticDirectoryEntry
+                                        ? FdUtils.writeSyntheticDirentToByteArray(name.length, currentEntry + 1, Filetype.Directory)
+                                        : FdUtils.writeDirentToByteArray(metadataFile, name.length, currentEntry + 1, linkOptions);
                         for (int i = 0; bufPointer < bufEnd; i++, bufPointer++) {
                             assert i < dirent.length;
                             memories.store_i32_8(memory, node, bufPointer, dirent[i]);
@@ -480,7 +490,7 @@ class DirectoryFd extends Fd {
             if (hostChildFile == null) {
                 return Errno.Noent;
             }
-            if (!hostChildFile.isDirectory()) {
+            if (!hostChildFile.getAttribute(TruffleFile.IS_DIRECTORY, FdUtils.NOFOLLOW_LINKS)) {
                 return Errno.Notdir;
             }
             hostChildFile.delete();
@@ -560,7 +570,7 @@ class DirectoryFd extends Fd {
             if (hostChildFile == null) {
                 return Errno.Noent;
             }
-            if (hostChildFile.isDirectory()) {
+            if (hostChildFile.getAttribute(TruffleFile.IS_DIRECTORY, FdUtils.NOFOLLOW_LINKS)) {
                 return Errno.Isdir;
             }
             hostChildFile.delete();
