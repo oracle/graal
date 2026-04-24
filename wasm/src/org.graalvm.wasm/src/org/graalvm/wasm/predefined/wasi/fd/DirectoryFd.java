@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -168,18 +168,18 @@ class DirectoryFd extends Fd {
             return true;
         }
 
-        final String relativePath = virtualFile.relativize(virtualChildFile).getPath();
-        if (relativePath.isEmpty()) {
-            return false;
-        }
+        final TruffleFile relativePath = virtualFile.relativize(virtualChildFile);
 
         TruffleFile currentHostPath = currentHostDirectory;
-        final String[] segments = relativePath.split("/");
-        for (int i = 0; i < segments.length - 1; i++) {
-            if (segments[i].isEmpty()) {
-                continue;
+        final List<String> segments = new ArrayList<>();
+        for (TruffleFile path = relativePath.getParent(); path != null; path = path.getParent()) {
+            final String name = path.getName();
+            if (name != null && !name.isEmpty()) {
+                segments.add(name);
             }
-            currentHostPath = currentHostPath.resolve(segments[i]);
+        }
+        for (String segment : segments.reversed()) {
+            currentHostPath = currentHostPath.resolve(segment);
             if (currentHostPath.isSymbolicLink()) {
                 return true;
             }
