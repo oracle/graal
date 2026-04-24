@@ -196,6 +196,25 @@ class DirectoryFd extends Fd {
         return resolveHostFileByCanonicalizing(virtualChildFile);
     }
 
+    private static Errno errnoForIoException(IOException e) {
+        if (e instanceof NoSuchFileException) {
+            return Errno.Noent;
+        }
+        if (e instanceof FileSystemLoopException) {
+            return Errno.Loop;
+        }
+        if (e instanceof FileAlreadyExistsException) {
+            return Errno.Exist;
+        }
+        if (e instanceof NotLinkException) {
+            return Errno.Nolink;
+        }
+        if (e instanceof DirectoryNotEmptyException) {
+            return Errno.Notempty;
+        }
+        return Errno.Io;
+    }
+
     @Override
     public Errno filestatGet(Node node, WasmMemory memory, int resultAddress) {
         if (!isSet(fsRightsBase, Rights.FdFilestatGet)) {
@@ -216,9 +235,9 @@ class DirectoryFd extends Fd {
                 return Errno.Noent;
             }
             hostChildFile.createDirectory();
-        } catch (FileAlreadyExistsException e) {
-            return Errno.Exist;
-        } catch (IOException | UnsupportedOperationException e) {
+        } catch (IOException e) {
+            return errnoForIoException(e);
+        } catch (UnsupportedOperationException e) {
             return Errno.Io;
         } catch (SecurityException e) {
             return Errno.Acces;
@@ -237,7 +256,7 @@ class DirectoryFd extends Fd {
         try {
             hostChildFile = resolveHostFile(node, memory, pathAddress, pathLength, flags);
         } catch (IOException e) {
-            return Errno.Io;
+            return errnoForIoException(e);
         } catch (SecurityException e) {
             return Errno.Acces;
         }
@@ -272,7 +291,7 @@ class DirectoryFd extends Fd {
                 hostChildFile.setLastModifiedTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS), linkOptions);
             }
         } catch (IOException e) {
-            return Errno.Io;
+            return errnoForIoException(e);
         } catch (SecurityException e) {
             return Errno.Acces;
         }
@@ -297,9 +316,9 @@ class DirectoryFd extends Fd {
                 return Errno.Noent;
             }
             newHostChildFile.createLink(oldHostChildFile);
-        } catch (FileAlreadyExistsException e) {
-            return Errno.Exist;
-        } catch (IOException | UnsupportedOperationException e) {
+        } catch (IOException e) {
+            return errnoForIoException(e);
+        } catch (UnsupportedOperationException e) {
             return Errno.Io;
         } catch (SecurityException e) {
             return Errno.Acces;
@@ -355,13 +374,13 @@ class DirectoryFd extends Fd {
                 WasmMemoryLibrary.getUncached().store_i32(memory, node, fdAddress, fd);
                 return Errno.Success;
             }
-        } catch (FileAlreadyExistsException e) {
-            return Errno.Exist;
         } catch (IllegalArgumentException e) {
             return Errno.Inval;
         } catch (SecurityException e) {
             return Errno.Acces;
-        } catch (IOException | UnsupportedOperationException e) {
+        } catch (IOException e) {
+            return errnoForIoException(e);
+        } catch (UnsupportedOperationException e) {
             return Errno.Io;
         }
     }
@@ -449,9 +468,9 @@ class DirectoryFd extends Fd {
             int bytesWritten = memory.writeString(node, content, buf, bufLen);
             WasmMemoryLibrary.getUncached().store_i32(memory, node, sizeAddress, bytesWritten);
             return Errno.Success.ordinal();
-        } catch (NotLinkException e) {
-            return Errno.Nolink.ordinal();
-        } catch (IOException | UnsupportedOperationException e) {
+        } catch (IOException e) {
+            return errnoForIoException(e).ordinal();
+        } catch (UnsupportedOperationException e) {
             return Errno.Io.ordinal();
         } catch (SecurityException e) {
             return Errno.Acces.ordinal();
@@ -472,12 +491,8 @@ class DirectoryFd extends Fd {
                 return Errno.Notdir;
             }
             hostChildFile.delete();
-        } catch (DirectoryNotEmptyException e) {
-            return Errno.Notempty;
-        } catch (NoSuchFileException e) {
-            return Errno.Noent;
         } catch (IOException e) {
-            return Errno.Io;
+            return errnoForIoException(e);
         } catch (SecurityException e) {
             return Errno.Acces;
         }
@@ -503,9 +518,9 @@ class DirectoryFd extends Fd {
                 return Errno.Noent;
             }
             oldHostChildFile.move(newHostChildFile);
-        } catch (FileAlreadyExistsException e) {
-            return Errno.Exist;
-        } catch (IOException | UnsupportedOperationException e) {
+        } catch (IOException e) {
+            return errnoForIoException(e);
+        } catch (UnsupportedOperationException e) {
             return Errno.Io;
         } catch (SecurityException e) {
             return Errno.Acces;
@@ -528,9 +543,9 @@ class DirectoryFd extends Fd {
                 return Errno.Noent;
             }
             newHostChildFile.createSymbolicLink(oldHostChildFile);
-        } catch (FileAlreadyExistsException e) {
-            return Errno.Exist;
-        } catch (IOException | UnsupportedOperationException e) {
+        } catch (IOException e) {
+            return errnoForIoException(e);
+        } catch (UnsupportedOperationException e) {
             return Errno.Io;
         } catch (SecurityException e) {
             return Errno.Acces;
@@ -552,10 +567,8 @@ class DirectoryFd extends Fd {
                 return Errno.Isdir;
             }
             hostChildFile.delete();
-        } catch (NoSuchFileException e) {
-            return Errno.Noent;
         } catch (IOException e) {
-            return Errno.Io;
+            return errnoForIoException(e);
         } catch (SecurityException e) {
             return Errno.Acces;
         }
