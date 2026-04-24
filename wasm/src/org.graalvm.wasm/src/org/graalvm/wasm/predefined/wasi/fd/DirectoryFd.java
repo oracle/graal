@@ -101,21 +101,31 @@ class DirectoryFd extends Fd {
     /**
      * Maps a virtual child path to a host path for default no-follow semantics.
      * <p>
-     * This keeps the result inside the preopened root and rejects paths whose intermediate
-     * components would traverse a symbolic link.
+     * Intermediate components are resolved on the host and must stay inside the preopened root, but
+     * the final component is kept unresolved so callers can apply the default no-follow policy to
+     * it.
      */
-    private TruffleFile resolveHostFile(TruffleFile virtualChildFile) throws SecurityException {
+    private TruffleFile resolveHostFile(TruffleFile virtualChildFile) throws IOException, SecurityException {
         final TruffleFile hostChildFile = preopenedRoot.virtualFileToHostFile(virtualChildFile);
         if (hostChildFile == null) {
             return null;
         }
 
-        // Default WASI path resolution is no-follow: reject paths that would traverse an
-        // intermediate symbolic link before reaching the final component.
-        if (usesSymlinkTraversal(virtualChildFile)) {
+        final TruffleFile hostParent = hostChildFile.getParent();
+        if (hostParent == null) {
+            // No parent component to canonicalize. This is effectively just a containment check on
+            // the path itself while still leaving the final component unresolved.
+            return preopenedRoot.containedHostFile(hostChildFile);
+        }
+        final TruffleFile canonicalParent = preopenedRoot.containedHostFile(hostParent.getCanonicalFile());
+        if (canonicalParent == null) {
+            // The parent resolves outside the preopened root, so the requested path must be
+            // rejected as an escape.
             return null;
         }
-        return hostChildFile;
+        // Canonicalize the parent chain, then reattach the unresolved final component so callers
+        // can decide whether the last path element may be followed.
+        return preopenedRoot.containedHostFile(canonicalParent.resolve(hostChildFile.getName()));
     }
 
     /**
@@ -156,42 +166,10 @@ class DirectoryFd extends Fd {
     }
 
     /**
-     * Returns {@code true} if reaching {@code virtualChildFile} from this directory fd would cross
-     * an intermediate symbolic link on the host filesystem.
-     * <p>
-     * The final path component is intentionally excluded here. Callers that care about the final
-     * component, such as {@code path_open}, perform that check separately.
-     */
-    private boolean usesSymlinkTraversal(TruffleFile virtualChildFile) throws SecurityException {
-        final TruffleFile currentHostDirectory = preopenedRoot.virtualFileToHostFile(virtualFile);
-        if (currentHostDirectory == null) {
-            return true;
-        }
-
-        final TruffleFile relativePath = virtualFile.relativize(virtualChildFile);
-
-        TruffleFile currentHostPath = currentHostDirectory;
-        final List<String> segments = new ArrayList<>();
-        for (TruffleFile path = relativePath.getParent(); path != null; path = path.getParent()) {
-            final String name = path.getName();
-            if (name != null && !name.isEmpty()) {
-                segments.add(name);
-            }
-        }
-        for (int i = segments.size() - 1; i >= 0; i--) {
-            currentHostPath = currentHostPath.resolve(segments.get(i));
-            if (currentHostPath.isSymbolicLink()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * Convenience wrapper that reads a guest path from memory and resolves it using the default
      * no-follow sandboxing policy.
      */
-    private TruffleFile resolveHostFile(Node node, WasmMemory memory, int pathAddress, int pathLength) throws SecurityException {
+    private TruffleFile resolveHostFile(Node node, WasmMemory memory, int pathAddress, int pathLength) throws IOException, SecurityException {
         final TruffleFile virtualChildFile = resolveVirtualFile(node, memory, pathAddress, pathLength);
         if (virtualChildFile == null) {
             return null;

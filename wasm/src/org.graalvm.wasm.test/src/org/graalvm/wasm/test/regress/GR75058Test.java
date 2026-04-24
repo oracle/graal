@@ -122,6 +122,47 @@ public class GR75058Test {
         }
     }
 
+    // Verifies that path_open allows intermediate symlinks when their resolved target stays inside
+    // the preopen root.
+    @Test
+    public void testPathOpenAllowsIntermediateSymlinkInsidePreopenedDirectory() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Path releasesDirectory = Files.createDirectories(preopenedDirectory.resolve("releases/v1"));
+            Files.writeString(releasesDirectory.resolve("log.txt"), "inside", StandardCharsets.UTF_8);
+            Files.createSymbolicLink(preopenedDirectory.resolve("current"), releasesDirectory.toAbsolutePath());
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_open"
+                                (func $path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) "current/log.txt")
+                              (export "memory" (memory 0))
+                              (func (export "open") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 0)   ;; dirflags: none
+                                  (i32.const 0)   ;; path pointer: "current/log.txt"
+                                  (i32.const 15)  ;; path length
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                )))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Errno.Success.ordinal(), exports.getMember("open").execute().asInt());
+            }
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
     // Verifies that path_open rejects final symlinks by default and only follows them when asked.
     @Test
     public void testPathOpenHandlesFinalSymlinksAccordingToLookupFlags() throws IOException, InterruptedException {
