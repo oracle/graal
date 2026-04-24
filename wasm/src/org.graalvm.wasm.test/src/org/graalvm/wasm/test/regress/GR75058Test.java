@@ -43,10 +43,12 @@ package org.graalvm.wasm.test.regress;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.util.Comparator;
@@ -64,6 +66,7 @@ import org.graalvm.wasm.predefined.wasi.types.Filetype;
 import org.junit.Test;
 
 public class GR75058Test {
+    // Verifies that path_open rejects intermediate symlink traversal outside the preopen root.
     @Test
     public void testPathOpenCannotEscapePreopenedDirectoryThroughSymlink() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
@@ -85,25 +88,25 @@ public class GR75058Test {
                               (func (export "direct") (result i32)
                                 (call $path_open
                                   (i32.const 3)   ;; fd
-                                  (i32.const 0)   ;; dirflags
-                                  (i32.const 0)   ;; path pointer
+                                  (i32.const 0)   ;; dirflags: none
+                                  (i32.const 0)   ;; path pointer: "inside.txt"
                                   (i32.const 10)  ;; path length
-                                  (i32.const 0)   ;; oflags
-                                  (i64.const 0)   ;; rights base
-                                  (i64.const 0)   ;; rights inheriting
-                                  (i32.const 0)   ;; fdflags
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
                                   (i32.const 64)  ;; fd address
                                 ))
                               (func (export "escaped") (result i32)
                                 (call $path_open
                                   (i32.const 3)   ;; fd
-                                  (i32.const 0)   ;; dirflags
-                                  (i32.const 16)  ;; path pointer
+                                  (i32.const 0)   ;; dirflags: none
+                                  (i32.const 16)  ;; path pointer: "escape/secret.txt"
                                   (i32.const 17)  ;; path length
-                                  (i32.const 0)   ;; oflags
-                                  (i64.const 0)   ;; rights base
-                                  (i64.const 0)   ;; rights inheriting
-                                  (i32.const 0)   ;; fdflags
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
                                   (i32.const 64)  ;; fd address
                                 )))
                             """));
@@ -119,14 +122,87 @@ public class GR75058Test {
         }
     }
 
+    // Verifies that path_open rejects final symlinks by default and only follows them when asked.
+    @Test
+    public void testPathOpenHandlesFinalSymlinksAccordingToLookupFlags() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
+            Path insideTarget = preopenedDirectory.resolve("inside.txt");
+            Path outsideTarget = outsideDirectory.resolve("secret.txt");
+            Files.writeString(insideTarget, "inside", StandardCharsets.UTF_8);
+            Files.writeString(outsideTarget, "secret", StandardCharsets.UTF_8);
+            Files.createSymbolicLink(preopenedDirectory.resolve("inside-link"), insideTarget.toAbsolutePath());
+            Files.createSymbolicLink(preopenedDirectory.resolve("outside-link"), outsideTarget.toAbsolutePath());
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_open"
+                                (func $path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) "inside-link")
+                              (data (i32.const 16) "outside-link")
+                              (export "memory" (memory 0))
+                              (func (export "nofollowInside") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 0)   ;; dirflags: none
+                                  (i32.const 0)   ;; path pointer: "inside-link"
+                                  (i32.const 11)  ;; path length
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                ))
+                              (func (export "followInside") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; dirflags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 0)   ;; path pointer: "inside-link"
+                                  (i32.const 11)  ;; path length
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                ))
+                              (func (export "followOutside") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; dirflags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 16)  ;; path pointer: "outside-link"
+                                  (i32.const 12)  ;; path length
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                )))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Errno.Loop.ordinal(), exports.getMember("nofollowInside").execute().asInt());
+                assertEquals(Errno.Success.ordinal(), exports.getMember("followInside").execute().asInt());
+                assertEquals(Errno.Noent.ordinal(), exports.getMember("followOutside").execute().asInt());
+            }
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
+    // Verifies that path_filestat_get inspects the final symlink itself unless follow is requested.
     @Test
     public void testPathFilestatGetDoesNotFollowFinalSymlinkByDefault() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
         try {
             Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
             Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
-            Files.writeString(outsideDirectory.resolve("secret.txt"), "secret", StandardCharsets.UTF_8);
-            Files.createSymbolicLink(preopenedDirectory.resolve("final-link"), outsideDirectory.resolve("secret.txt").toAbsolutePath());
+            Path outsideTarget = outsideDirectory.resolve("secret.txt");
+            Files.writeString(outsideTarget, "secret", StandardCharsets.UTF_8);
+            Files.createSymbolicLink(preopenedDirectory.resolve("final-link"), outsideTarget.toAbsolutePath());
 
             ByteSequence binary = ByteSequence.create(compileWat("main", """
                             (module
@@ -138,21 +214,23 @@ public class GR75058Test {
                               (func (export "nofollow") (result i32) (local $ret i32)
                                 (local.set $ret
                                   (call $path_filestat_get
-                                    (i32.const 3)
-                                    (i32.const 0)
-                                    (i32.const 0)
-                                    (i32.const 10)
-                                    (i32.const 32)))
+                                    (i32.const 3)   ;; fd
+                                    (i32.const 0)   ;; flags: none
+                                    (i32.const 0)   ;; path pointer: "final-link"
+                                    (i32.const 10)  ;; path length
+                                    (i32.const 32)  ;; result address
+                                  ))
                                 (if (i32.ne (local.get $ret) (i32.const 0))
                                   (then (return (local.get $ret))))
                                 (i32.load8_u (i32.const 48)))
                               (func (export "follow") (result i32)
                                 (call $path_filestat_get
-                                  (i32.const 3)
-                                  (i32.const 1)
-                                  (i32.const 0)
-                                  (i32.const 10)
-                                  (i32.const 32))
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; flags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 0)   ;; path pointer: "final-link"
+                                  (i32.const 10)  ;; path length
+                                  (i32.const 32)  ;; result address
+                                )
                                 ))
                             """));
 
@@ -166,6 +244,7 @@ public class GR75058Test {
         }
     }
 
+    // Verifies that path_filestat_set_times does not mutate the final symlink target by default.
     @Test
     public void testPathFilestatSetTimesDoesNotMutateSymlinkTargetByDefault() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
@@ -188,13 +267,14 @@ public class GR75058Test {
                               (export "memory" (memory 0))
                               (func (export "nofollow") (result i32)
                                 (call $path_filestat_set_times
-                                  (i32.const 3)
-                                  (i32.const 0)
-                                  (i32.const 0)
-                                  (i32.const 10)
-                                  (i64.const 0)
-                                  (i64.const 9000000000000)
-                                  (i32.const 4))))
+                                  (i32.const 3)               ;; fd
+                                  (i32.const 0)               ;; flags: none
+                                  (i32.const 0)               ;; path pointer: "final-link"
+                                  (i32.const 10)              ;; path length
+                                  (i64.const 0)               ;; atim
+                                  (i64.const 9000000000000)   ;; mtim
+                                  (i32.const 4)               ;; fstflags: MTIM
+                                )))
                             """));
 
             try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
@@ -203,6 +283,83 @@ public class GR75058Test {
             }
 
             assertEquals(observedInitialTime.to(TimeUnit.MILLISECONDS), Files.getLastModifiedTime(outsideTarget).to(TimeUnit.MILLISECONDS));
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
+    // Verifies that path_unlink_file removes the symlink itself instead of its target.
+    @Test
+    public void testPathUnlinkFileUnlinksFinalSymlinkWithoutTouchingTarget() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
+            Path outsideTarget = outsideDirectory.resolve("secret.txt");
+            Path symlink = preopenedDirectory.resolve("final-link");
+            Files.writeString(outsideTarget, "secret", StandardCharsets.UTF_8);
+            Files.createSymbolicLink(symlink, outsideTarget.toAbsolutePath());
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_unlink_file"
+                                (func $path_unlink_file (param i32 i32 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) "final-link")
+                              (export "memory" (memory 0))
+                              (func (export "unlink") (result i32)
+                                (call $path_unlink_file
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 0)   ;; path pointer: "final-link"
+                                  (i32.const 10)  ;; path length
+                                )))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Errno.Success.ordinal(), exports.getMember("unlink").execute().asInt());
+            }
+
+            assertEquals(false, Files.exists(symlink, LinkOption.NOFOLLOW_LINKS));
+            assertTrue(Files.exists(outsideTarget));
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
+    // Verifies that path_remove_directory rejects a final symlink instead of acting on its target.
+    @Test
+    public void testPathRemoveDirectoryRejectsFinalSymlinkToDirectory() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
+            Path outsideTarget = Files.createDirectory(outsideDirectory.resolve("target-dir"));
+            Path symlink = preopenedDirectory.resolve("final-link");
+            Files.createSymbolicLink(symlink, outsideTarget.toAbsolutePath());
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_remove_directory"
+                                (func $path_remove_directory (param i32 i32 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) "final-link")
+                              (export "memory" (memory 0))
+                              (func (export "remove") (result i32)
+                                (call $path_remove_directory
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 0)   ;; path pointer: "final-link"
+                                  (i32.const 10)  ;; path length
+                                )))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Errno.Notdir.ordinal(), exports.getMember("remove").execute().asInt());
+            }
+
+            assertTrue(Files.exists(symlink, LinkOption.NOFOLLOW_LINKS));
+            assertTrue(Files.exists(outsideTarget));
         } finally {
             deleteTree(tempRoot);
         }
