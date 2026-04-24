@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -198,7 +198,7 @@ final class FdUtils {
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         Dirent.writeDNext(node, memoryLib, memory, address, offset);
         try {
-            Dirent.writeDIno(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_INODE));
+            Dirent.writeDIno(node, memoryLib, memory, address, file.getAttribute(TruffleFile.UNIX_INODE, linkOptions));
         } catch (UnsupportedOperationException e) {
             // GR-29297: these attributes are currently not supported on non-Unix platforms.
         }
@@ -220,7 +220,7 @@ final class FdUtils {
         byte[] buffer = new byte[Dirent.BYTES];
         Dirent.writeDNextToByteArray(buffer, 0, offset);
         try {
-            Dirent.writeDInoToByteArray(buffer, 0, file.getAttribute(TruffleFile.UNIX_INODE));
+            Dirent.writeDInoToByteArray(buffer, 0, file.getAttribute(TruffleFile.UNIX_INODE, linkOptions));
         } catch (UnsupportedOperationException e) {
             // GR-29297: these attributes are currently not supported on non-Unix platforms.
         }
