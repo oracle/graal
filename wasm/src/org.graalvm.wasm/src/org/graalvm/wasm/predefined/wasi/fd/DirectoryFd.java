@@ -178,8 +178,8 @@ class DirectoryFd extends Fd {
                 segments.add(name);
             }
         }
-        for (String segment : segments.reversed()) {
-            currentHostPath = currentHostPath.resolve(segment);
+        for (int i = segments.size() - 1; i >= 0; i--) {
+            currentHostPath = currentHostPath.resolve(segments.get(i));
             if (currentHostPath.isSymbolicLink()) {
                 return true;
             }
