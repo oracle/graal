@@ -63,6 +63,7 @@ import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class GR75058Test {
@@ -71,6 +72,7 @@ public class GR75058Test {
     public void testPathOpenCannotEscapePreopenedDirectoryThroughSymlink() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
         try {
+            assumeSymbolicLinksSupported(tempRoot);
             Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
             Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
             Files.writeString(preopenedDirectory.resolve("inside.txt"), "inside", StandardCharsets.UTF_8);
@@ -128,6 +130,7 @@ public class GR75058Test {
     public void testPathOpenAllowsIntermediateSymlinkInsidePreopenedDirectory() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
         try {
+            assumeSymbolicLinksSupported(tempRoot);
             Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
             Path releasesDirectory = Files.createDirectories(preopenedDirectory.resolve("releases/v1"));
             Files.writeString(releasesDirectory.resolve("log.txt"), "inside", StandardCharsets.UTF_8);
@@ -168,6 +171,7 @@ public class GR75058Test {
     public void testPathOpenHandlesFinalSymlinksAccordingToLookupFlags() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
         try {
+            assumeSymbolicLinksSupported(tempRoot);
             Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
             Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
             Path insideTarget = preopenedDirectory.resolve("inside.txt");
@@ -239,6 +243,7 @@ public class GR75058Test {
     public void testPathFilestatGetDoesNotFollowFinalSymlinkByDefault() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
         try {
+            assumeSymbolicLinksSupported(tempRoot);
             Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
             Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
             Path outsideTarget = outsideDirectory.resolve("secret.txt");
@@ -290,6 +295,7 @@ public class GR75058Test {
     public void testPathFilestatSetTimesDoesNotMutateSymlinkTargetByDefault() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
         try {
+            assumeSymbolicLinksSupported(tempRoot);
             Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
             Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
             Path outsideTarget = outsideDirectory.resolve("secret.txt");
@@ -334,6 +340,7 @@ public class GR75058Test {
     public void testPathUnlinkFileUnlinksFinalSymlinkWithoutTouchingTarget() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
         try {
+            assumeSymbolicLinksSupported(tempRoot);
             Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
             Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
             Path outsideTarget = outsideDirectory.resolve("secret.txt");
@@ -373,6 +380,7 @@ public class GR75058Test {
     public void testPathRemoveDirectoryRejectsFinalSymlinkToDirectory() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
         try {
+            assumeSymbolicLinksSupported(tempRoot);
             Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
             Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
             Path outsideTarget = Files.createDirectory(outsideDirectory.resolve("target-dir"));
@@ -413,6 +421,19 @@ public class GR75058Test {
         contextBuilder.option("wasm.Builtins", "wasi_snapshot_preview1");
         contextBuilder.option("wasm.WasiMapDirs", "test::" + preopenedDirectory.toAbsolutePath());
         return contextBuilder.build();
+    }
+
+    private static void assumeSymbolicLinksSupported(Path tempRoot) throws IOException {
+        Path target = Files.createFile(tempRoot.resolve("symlink-target"));
+        Path link = tempRoot.resolve("symlink-link");
+        try {
+            Files.createSymbolicLink(link, target.getFileName());
+        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+            Assume.assumeTrue("symbolic links are not supported in this environment", false);
+        } finally {
+            Files.deleteIfExists(link);
+            Files.deleteIfExists(target);
+        }
     }
 
     private static void deleteTree(Path root) throws IOException {
