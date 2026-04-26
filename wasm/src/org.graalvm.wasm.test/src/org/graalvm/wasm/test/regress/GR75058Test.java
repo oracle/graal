@@ -166,6 +166,50 @@ public class GR75058Test {
         }
     }
 
+    // Verifies that LOOKUP_SYMLINK_FOLLOW still rejects paths that escape through an intermediate
+    // symlink before reaching a final symlink.
+    @Test
+    public void testPathOpenFollowRejectsIntermediateEscapeBeforeFinalSymlink() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            assumeSymbolicLinksSupported(tempRoot);
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
+            Path insideTarget = preopenedDirectory.resolve("inside.txt");
+            Files.writeString(insideTarget, "inside", StandardCharsets.UTF_8);
+            Files.createSymbolicLink(outsideDirectory.resolve("final-link"), insideTarget.toAbsolutePath());
+            Files.createSymbolicLink(preopenedDirectory.resolve("escape"), outsideDirectory.toAbsolutePath());
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_open"
+                                (func $path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) "escape/final-link")
+                              (export "memory" (memory 0))
+                              (func (export "followEscapedFinalLink") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; dirflags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 0)   ;; path pointer: "escape/final-link"
+                                  (i32.const 17)  ;; path length
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                )))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Errno.Noent.ordinal(), exports.getMember("followEscapedFinalLink").execute().asInt());
+            }
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
     // Verifies that paths which normalize to the preopened directory itself remain accessible.
     @Test
     public void testPathOpsCanAddressThePreopenedDirectoryItself() throws IOException, InterruptedException {
@@ -220,7 +264,8 @@ public class GR75058Test {
         }
     }
 
-    // Verifies that path_open rejects final symlinks by default and only follows them when asked.
+    // Verifies that path_open rejects final symlinks by default and only follows them when asked,
+    // including dangling and looping final links.
     @Test
     public void testPathOpenHandlesFinalSymlinksAccordingToLookupFlags() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
@@ -230,10 +275,13 @@ public class GR75058Test {
             Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
             Path insideTarget = preopenedDirectory.resolve("inside.txt");
             Path outsideTarget = outsideDirectory.resolve("secret.txt");
+            Path missingTarget = preopenedDirectory.resolve("missing.txt");
             Files.writeString(insideTarget, "inside", StandardCharsets.UTF_8);
             Files.writeString(outsideTarget, "secret", StandardCharsets.UTF_8);
             Files.createSymbolicLink(preopenedDirectory.resolve("inside-link"), insideTarget.toAbsolutePath());
             Files.createSymbolicLink(preopenedDirectory.resolve("outside-link"), outsideTarget.toAbsolutePath());
+            Files.createSymbolicLink(preopenedDirectory.resolve("dangling-link"), missingTarget.toAbsolutePath());
+            Files.createSymbolicLink(preopenedDirectory.resolve("loop-link"), Path.of("loop-link"));
 
             ByteSequence binary = ByteSequence.create(compileWat("main", """
                             (module
@@ -242,6 +290,8 @@ public class GR75058Test {
                               (memory 1)
                               (data (i32.const 0) "inside-link")
                               (data (i32.const 16) "outside-link")
+                              (data (i32.const 32) "dangling-link")
+                              (data (i32.const 48) "loop-link")
                               (export "memory" (memory 0))
                               (func (export "nofollowInside") (result i32)
                                 (call $path_open
@@ -278,6 +328,42 @@ public class GR75058Test {
                                   (i64.const 0)   ;; rights inheriting: none
                                   (i32.const 0)   ;; fdflags: none
                                   (i32.const 64)  ;; fd address
+                                ))
+                              (func (export "nofollowDangling") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 0)   ;; dirflags: none
+                                  (i32.const 32)  ;; path pointer: "dangling-link"
+                                  (i32.const 13)  ;; path length
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                ))
+                              (func (export "followDangling") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; dirflags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 32)  ;; path pointer: "dangling-link"
+                                  (i32.const 13)  ;; path length
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                ))
+                              (func (export "followLoop") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; dirflags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 48)  ;; path pointer: "loop-link"
+                                  (i32.const 9)   ;; path length
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
                                 )))
                             """));
 
@@ -286,13 +372,78 @@ public class GR75058Test {
                 assertEquals(Errno.Loop.ordinal(), exports.getMember("nofollowInside").execute().asInt());
                 assertEquals(Errno.Success.ordinal(), exports.getMember("followInside").execute().asInt());
                 assertEquals(Errno.Noent.ordinal(), exports.getMember("followOutside").execute().asInt());
+                assertEquals(Errno.Loop.ordinal(), exports.getMember("nofollowDangling").execute().asInt());
+                assertEquals(Errno.Noent.ordinal(), exports.getMember("followDangling").execute().asInt());
+                assertEquals(Errno.Loop.ordinal(), exports.getMember("followLoop").execute().asInt());
             }
         } finally {
             deleteTree(tempRoot);
         }
     }
 
-    // Verifies that path_filestat_get inspects the final symlink itself unless follow is requested.
+    // Verifies that path_open with LOOKUP_SYMLINK_FOLLOW preserves O_CREAT and O_EXCL semantics on
+    // dangling final symlinks.
+    @Test
+    public void testPathOpenCreateFollowsDanglingFinalSymlinks() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            assumeSymbolicLinksSupported(tempRoot);
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Path targetsDirectory = Files.createDirectory(preopenedDirectory.resolve("targets"));
+            Path createTarget = targetsDirectory.resolve("created.txt");
+            Path exclTarget = targetsDirectory.resolve("excl.txt");
+            Files.createSymbolicLink(preopenedDirectory.resolve("create-link"), Path.of("targets", "created.txt"));
+            Files.createSymbolicLink(preopenedDirectory.resolve("excl-link"), Path.of("targets", "excl.txt"));
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_open"
+                                (func $path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) "create-link")
+                              (data (i32.const 16) "excl-link")
+                              (export "memory" (memory 0))
+                              (func (export "createThroughDanglingLink") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; dirflags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 0)   ;; path pointer: "create-link"
+                                  (i32.const 11)  ;; path length
+                                  (i32.const 1)   ;; oflags: CREAT
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                ))
+                              (func (export "createExclusiveThroughDanglingLink") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; dirflags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 16)  ;; path pointer: "excl-link"
+                                  (i32.const 9)   ;; path length
+                                  (i32.const 5)   ;; oflags: CREAT | EXCL
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                )))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Errno.Success.ordinal(), exports.getMember("createThroughDanglingLink").execute().asInt());
+                assertEquals(Errno.Exist.ordinal(), exports.getMember("createExclusiveThroughDanglingLink").execute().asInt());
+            }
+
+            assertTrue(Files.exists(createTarget));
+            assertEquals(false, Files.exists(exclTarget));
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
+    // Verifies that path_filestat_get inspects the final symlink itself unless follow is requested,
+    // including for dangling final links.
     @Test
     public void testPathFilestatGetDoesNotFollowFinalSymlinkByDefault() throws IOException, InterruptedException {
         Path tempRoot = Files.createTempDirectory("gr-75058-");
@@ -301,8 +452,10 @@ public class GR75058Test {
             Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
             Path outsideDirectory = Files.createDirectory(tempRoot.resolve("outside"));
             Path outsideTarget = outsideDirectory.resolve("secret.txt");
+            Path missingTarget = preopenedDirectory.resolve("missing.txt");
             Files.writeString(outsideTarget, "secret", StandardCharsets.UTF_8);
             Files.createSymbolicLink(preopenedDirectory.resolve("final-link"), outsideTarget.toAbsolutePath());
+            Files.createSymbolicLink(preopenedDirectory.resolve("dangling-link"), missingTarget.toAbsolutePath());
 
             ByteSequence binary = ByteSequence.create(compileWat("main", """
                             (module
@@ -310,8 +463,9 @@ public class GR75058Test {
                                 (func $path_filestat_get (param i32 i32 i32 i32 i32) (result i32)))
                               (memory 1)
                               (data (i32.const 0) "final-link")
+                              (data (i32.const 16) "dangling-link")
                               (export "memory" (memory 0))
-                              (func (export "nofollow") (result i32) (local $ret i32)
+                              (func (export "nofollowOutside") (result i32) (local $ret i32)
                                 (local.set $ret
                                   (call $path_filestat_get
                                     (i32.const 3)   ;; fd
@@ -331,13 +485,36 @@ public class GR75058Test {
                                   (i32.const 10)  ;; path length
                                   (i32.const 32)  ;; result address
                                 )
+                                )
+                              (func (export "nofollowDangling") (result i32) (local $ret i32)
+                                (local.set $ret
+                                  (call $path_filestat_get
+                                    (i32.const 3)   ;; fd
+                                    (i32.const 0)   ;; flags: none
+                                    (i32.const 16)  ;; path pointer: "dangling-link"
+                                    (i32.const 13)  ;; path length
+                                    (i32.const 32)  ;; result address
+                                  ))
+                                (if (i32.ne (local.get $ret) (i32.const 0))
+                                  (then (return (local.get $ret))))
+                                (i32.load8_u (i32.const 48)))
+                              (func (export "followDangling") (result i32)
+                                (call $path_filestat_get
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; flags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 16)  ;; path pointer: "dangling-link"
+                                  (i32.const 13)  ;; path length
+                                  (i32.const 32)  ;; result address
+                                )
                                 ))
                             """));
 
             try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
                 Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
-                assertEquals(Filetype.SymbolicLink.ordinal(), exports.getMember("nofollow").execute().asInt());
+                assertEquals(Filetype.SymbolicLink.ordinal(), exports.getMember("nofollowOutside").execute().asInt());
                 assertEquals(Errno.Noent.ordinal(), exports.getMember("follow").execute().asInt());
+                assertEquals(Filetype.SymbolicLink.ordinal(), exports.getMember("nofollowDangling").execute().asInt());
+                assertEquals(Errno.Noent.ordinal(), exports.getMember("followDangling").execute().asInt());
             }
         } finally {
             deleteTree(tempRoot);

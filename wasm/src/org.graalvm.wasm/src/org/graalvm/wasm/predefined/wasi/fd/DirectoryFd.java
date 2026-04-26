@@ -48,13 +48,16 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileSystemLoopException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.NotLinkException;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.wasm.memory.WasmMemory;
@@ -78,6 +81,12 @@ import com.oracle.truffle.api.nodes.Node;
  */
 class DirectoryFd extends Fd {
 
+    private enum FinalSymlinkPolicy {
+        NoFollow,
+        Follow,
+        FollowAllowMissingTarget
+    }
+
     private final FdManager fdManager;
     private final PreopenedDirectory preopenedRoot;
     private final TruffleFile virtualFile;
@@ -99,63 +108,87 @@ class DirectoryFd extends Fd {
     }
 
     /**
-     * Maps a virtual child path to a host path for default no-follow semantics.
+     * Maps a virtual child path to a host path according to the requested final-symlink policy.
      * <p>
-     * Intermediate components are resolved on the host and must stay inside the preopened root, but
-     * the final component is kept unresolved so callers can apply the default no-follow policy to
-     * it.
+     * Intermediate components are resolved on the host and must stay inside the preopened root. The
+     * final component is either kept unresolved, followed, or followed with a missing target
+     * allowed for {@code path_open(O_CREAT)}.
      */
-    private TruffleFile resolveHostFile(TruffleFile virtualChildFile) throws IOException, SecurityException {
-        final TruffleFile hostChildFile = preopenedRoot.virtualFileToHostFile(virtualChildFile);
+    private TruffleFile resolveHostFile(TruffleFile virtualChildFile, FinalSymlinkPolicy finalSymlinkPolicy) throws IOException, SecurityException {
+        final TruffleFile lexicalHostChildFile = preopenedRoot.virtualFileToHostFile(virtualChildFile);
+        if (lexicalHostChildFile == null) {
+            return null;
+        }
+        final TruffleFile hostChildFile = resolveWithCanonicalParent(lexicalHostChildFile);
         if (hostChildFile == null) {
             return null;
         }
-        return resolveHostFileWithCanonicalParent(hostChildFile);
+
+        if (finalSymlinkPolicy == FinalSymlinkPolicy.NoFollow) {
+            return hostChildFile;
+        }
+        if (isSymbolicLink(hostChildFile)) {
+            // Canonicalize the parent chain first, then resolve the final symlink from that real
+            // parent so relative targets and escape checks both match the host filesystem.
+            final boolean allowMissingTargetOfFinalSymlink = finalSymlinkPolicy == FinalSymlinkPolicy.FollowAllowMissingTarget;
+            return resolveFollowedFinalSymlink(hostChildFile, allowMissingTargetOfFinalSymlink);
+        }
+        if (hostChildFile.exists()) {
+            return preopenedRoot.containedHostFile(hostChildFile.getCanonicalFile());
+        }
+        return hostChildFile;
     }
 
     /**
-     * Canonicalizes the parent chain of a host path while leaving the final component unresolved.
-     * Paths that already denote the preopened root itself are returned unchanged.
+     * Resolves a final symlink explicitly, following chains of final symlinks while preserving the
+     * distinction between missing targets, actual symlink loops, and other host failures.
      */
-    private TruffleFile resolveHostFileWithCanonicalParent(TruffleFile hostChildFile) throws IOException, SecurityException {
+    private TruffleFile resolveFollowedFinalSymlink(TruffleFile hostSymlinkFile, boolean allowMissingTarget) throws IOException, SecurityException {
+        final Set<String> visitedPaths = new HashSet<>();
+        TruffleFile currentFile = hostSymlinkFile;
+        while (true) {
+            final String currentPath = currentFile.normalize().getPath();
+            if (!visitedPaths.add(currentPath)) {
+                throw new FileSystemLoopException(hostSymlinkFile.getPath());
+            }
+            final TruffleFile linkTarget;
+            try {
+                linkTarget = currentFile.readSymbolicLink();
+            } catch (NoSuchFileException e) {
+                if (!allowMissingTarget) {
+                    throw new NoSuchFileException(hostSymlinkFile.getPath());
+                }
+                return currentFile;
+            } catch (NotLinkException | UnsupportedOperationException e) {
+                if (currentFile.exists()) {
+                    return preopenedRoot.containedHostFile(currentFile.getCanonicalFile());
+                }
+                if (!allowMissingTarget) {
+                    throw new NoSuchFileException(hostSymlinkFile.getPath());
+                }
+                return currentFile;
+            }
+            final TruffleFile currentParent = currentFile.getParent();
+            currentFile = linkTarget.isAbsolute() || currentParent == null ? linkTarget : currentParent.resolve(linkTarget.getPath());
+            currentFile = resolveWithCanonicalParent(currentFile.normalize());
+            if (currentFile == null) {
+                return null;
+            }
+        }
+    }
+
+    /**
+     * Canonicalizes the parent chain of a host path, verifies that parent stays inside the
+     * preopened root, and then reattaches the final path segment without resolving it. Paths that
+     * already denote the preopened root itself are returned unchanged.
+     */
+    private TruffleFile resolveWithCanonicalParent(TruffleFile hostChildFile) throws IOException, SecurityException {
         if (preopenedRoot.isHostRoot(hostChildFile)) {
             // Paths like "." or "dir/.." may normalize to the preopened root itself. Treat that
             // as an in-sandbox result instead of canonicalizing the parent one level above it.
             return hostChildFile;
         }
-        // Canonicalize the parent chain, then reattach the unresolved final component so callers
-        // can decide whether the last path element may be followed.
-        return resolveHostFileUnderCanonicalParent(hostChildFile);
-    }
 
-    /**
-     * Maps a virtual child path to a host path for operations that explicitly request
-     * {@code LOOKUP_SYMLINK_FOLLOW}.
-     * <p>
-     * Existing targets are canonicalized directly. For paths whose final component does not yet
-     * exist, only the parent is canonicalized and the last segment is reattached under the verified
-     * in-sandbox parent.
-     */
-    private TruffleFile resolveHostFileByCanonicalizing(TruffleFile virtualChildFile) throws IOException, SecurityException {
-        final TruffleFile hostChildFile = preopenedRoot.virtualFileToHostFile(virtualChildFile);
-        if (hostChildFile == null) {
-            return null;
-        }
-
-        if (hostChildFile.exists()) {
-            // Existing target: canonicalize the whole path, then verify the resolved location is
-            // still inside the preopened root.
-            return preopenedRoot.containedHostFile(hostChildFile.getCanonicalFile());
-        }
-
-        return resolveHostFileUnderCanonicalParent(hostChildFile);
-    }
-
-    /**
-     * Canonicalizes the parent chain of a host path, verifies that parent stays inside the
-     * preopened root, and then reattaches the final path segment without resolving it.
-     */
-    private TruffleFile resolveHostFileUnderCanonicalParent(TruffleFile hostChildFile) throws IOException, SecurityException {
         final TruffleFile hostParent = hostChildFile.getParent();
         if (hostParent == null) {
             // No parent component to canonicalize. This is effectively just a containment check on
@@ -181,7 +214,7 @@ class DirectoryFd extends Fd {
             return null;
         }
 
-        return resolveHostFile(virtualChildFile);
+        return resolveHostFile(virtualChildFile, FinalSymlinkPolicy.NoFollow);
     }
 
     /**
@@ -197,9 +230,9 @@ class DirectoryFd extends Fd {
             return null;
         }
         if (!isSet(lookupFlags, Lookupflags.SymlinkFollow)) {
-            return resolveHostFile(virtualChildFile);
+            return resolveHostFile(virtualChildFile, FinalSymlinkPolicy.NoFollow);
         }
-        return resolveHostFileByCanonicalizing(virtualChildFile);
+        return resolveHostFile(virtualChildFile, FinalSymlinkPolicy.Follow);
     }
 
     private static Errno errnoForIoException(IOException e) {
@@ -349,11 +382,30 @@ class DirectoryFd extends Fd {
 
         final boolean followSymlinks = isSet(dirFlags, Lookupflags.SymlinkFollow);
         try {
-            final TruffleFile hostChildFile = followSymlinks ? resolveHostFileByCanonicalizing(virtualChildFile) : resolveHostFile(virtualChildFile);
-            if (hostChildFile == null) {
+            final boolean createRequested = isSet(childOflags, Oflags.Creat);
+            final boolean exclusiveRequested = isSet(childOflags, Oflags.Excl);
+            final FinalSymlinkPolicy finalSymlinkPolicy;
+            if (followSymlinks && createRequested) {
+                finalSymlinkPolicy = FinalSymlinkPolicy.FollowAllowMissingTarget;
+            } else if (followSymlinks) {
+                finalSymlinkPolicy = FinalSymlinkPolicy.Follow;
+            } else {
+                finalSymlinkPolicy = FinalSymlinkPolicy.NoFollow;
+            }
+            final TruffleFile resolvedHostChildFile = resolveHostFile(virtualChildFile, finalSymlinkPolicy);
+            if (resolvedHostChildFile == null) {
                 return Errno.Noent;
             }
-            // As they are non-null, virtualChildFile and hostChildFile are guaranteed to be
+            if (followSymlinks && exclusiveRequested) {
+                final TruffleFile lexicalHostChildFile = resolveHostFile(virtualChildFile, FinalSymlinkPolicy.NoFollow);
+                if (lexicalHostChildFile == null) {
+                    return Errno.Noent;
+                }
+                if (isSymbolicLink(lexicalHostChildFile)) {
+                    return Errno.Exist;
+                }
+            }
+            // As they are non-null, virtualChildFile and resolvedHostChildFile are guaranteed to be
             // contained in preopenedRoot.
 
             if (isSet(childFdFlags, Fdflags.Rsync)) {
@@ -361,13 +413,13 @@ class DirectoryFd extends Fd {
                 return Errno.Inval;
             }
 
-            if (!followSymlinks && hostChildFile.exists() && hostChildFile.isSymbolicLink()) {
+            if (!followSymlinks && isSymbolicLink(resolvedHostChildFile)) {
                 return Errno.Loop;
             }
 
             if (isSet(childOflags, Oflags.Directory)) {
-                final boolean isDirectory = hostChildFile.exists() &&
-                                hostChildFile.getAttribute(TruffleFile.IS_DIRECTORY, FdUtils.linkOptions(followSymlinks));
+                final boolean isDirectory = resolvedHostChildFile.exists() &&
+                                resolvedHostChildFile.getAttribute(TruffleFile.IS_DIRECTORY, FdUtils.linkOptions(followSymlinks));
                 if (isDirectory) {
                     final int fd = fdManager.put(new DirectoryFd(fdManager, virtualChildFile, preopenedRoot, childFsRightsBase, childFsRightsInheriting, childFdFlags));
                     WasmMemoryLibrary.getUncached().store_i32(memory, node, fdAddress, fd);
@@ -376,7 +428,7 @@ class DirectoryFd extends Fd {
                     return Errno.Notdir;
                 }
             } else {
-                final int fd = fdManager.put(new FileFd(hostChildFile, childOflags, childFsRightsBase, childFsRightsInheriting, childFdFlags, followSymlinks));
+                final int fd = fdManager.put(new FileFd(resolvedHostChildFile, childOflags, childFsRightsBase, childFsRightsInheriting, childFdFlags, followSymlinks));
                 WasmMemoryLibrary.getUncached().store_i32(memory, node, fdAddress, fd);
                 return Errno.Success;
             }
@@ -388,6 +440,20 @@ class DirectoryFd extends Fd {
             return errnoForIoException(e);
         } catch (UnsupportedOperationException e) {
             return Errno.Io;
+        }
+    }
+
+    /**
+     * Best-effort symlink probe used for errno shaping in path operations. It relies on readlink
+     * instead of basic:isSymbolicLink metadata so plain opens keep working on custom file systems
+     * that do not expose that attribute.
+     */
+    private static boolean isSymbolicLink(TruffleFile file) throws IOException, SecurityException {
+        try {
+            file.readSymbolicLink();
+            return true;
+        } catch (NotLinkException | NoSuchFileException | UnsupportedOperationException e) {
+            return false;
         }
     }
 
