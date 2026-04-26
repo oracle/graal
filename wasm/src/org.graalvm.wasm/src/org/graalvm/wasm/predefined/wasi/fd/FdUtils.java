@@ -207,10 +207,10 @@ final class FdUtils {
         return Dirent.BYTES;
     }
 
-    static int writeSyntheticDirent(Node node, WasmMemory memory, int address, int nameLength, long offset, Filetype type) {
+    static int writeSyntheticDirent(Node node, WasmMemory memory, int address, int nameLength, long offset, long inode, Filetype type) {
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         Dirent.writeDNext(node, memoryLib, memory, address, offset);
-        Dirent.writeDIno(node, memoryLib, memory, address, 0);
+        Dirent.writeDIno(node, memoryLib, memory, address, inode);
         Dirent.writeDNamlen(node, memoryLib, memory, address, nameLength);
         Dirent.writeDType(node, memoryLib, memory, address, type);
         return Dirent.BYTES;
@@ -229,10 +229,10 @@ final class FdUtils {
         return buffer;
     }
 
-    static byte[] writeSyntheticDirentToByteArray(int nameLength, long offset, Filetype type) {
+    static byte[] writeSyntheticDirentToByteArray(int nameLength, long offset, long inode, Filetype type) {
         byte[] buffer = new byte[Dirent.BYTES];
         Dirent.writeDNextToByteArray(buffer, 0, offset);
-        Dirent.writeDInoToByteArray(buffer, 0, 0);
+        Dirent.writeDInoToByteArray(buffer, 0, inode);
         Dirent.writeDNamlen(buffer, 0, nameLength);
         Dirent.writeDType(buffer, 0, type);
         return buffer;

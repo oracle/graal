@@ -486,15 +486,16 @@ class DirectoryFd extends Fd {
                     byte[] name = file.getName().getBytes(StandardCharsets.UTF_8);
                     final boolean syntheticDirectoryEntry = ".".equals(file.getName()) || "..".equals(file.getName());
                     final TruffleFile metadataFile = syntheticDirectoryEntry ? null : preopenedRoot.virtualFileToHostFile(file);
+                    final long syntheticInode = syntheticDirectoryEntry ? inodeOrZero(preopenedRoot.virtualFileToHostFile(file)) : 0;
 
                     if (bufEnd - bufPointer >= Dirent.BYTES) {
                         bufPointer += syntheticDirectoryEntry
-                                        ? FdUtils.writeSyntheticDirent(node, memory, bufPointer, name.length, currentEntry + 1, Filetype.Directory)
+                                        ? FdUtils.writeSyntheticDirent(node, memory, bufPointer, name.length, currentEntry + 1, syntheticInode, Filetype.Directory)
                                         : FdUtils.writeDirent(node, memory, bufPointer, metadataFile, name.length, currentEntry + 1, linkOptions);
                     } else {
                         // Write dirent to temp buffer and truncate
                         byte[] dirent = syntheticDirectoryEntry
-                                        ? FdUtils.writeSyntheticDirentToByteArray(name.length, currentEntry + 1, Filetype.Directory)
+                                        ? FdUtils.writeSyntheticDirentToByteArray(name.length, currentEntry + 1, syntheticInode, Filetype.Directory)
                                         : FdUtils.writeDirentToByteArray(metadataFile, name.length, currentEntry + 1, linkOptions);
                         for (int i = 0; bufPointer < bufEnd; i++, bufPointer++) {
                             assert i < dirent.length;
@@ -523,6 +524,17 @@ class DirectoryFd extends Fd {
             return Errno.Io;
         }
         return Errno.Success;
+    }
+
+    private static long inodeOrZero(TruffleFile file) throws IOException {
+        if (file == null) {
+            return 0;
+        }
+        try {
+            return file.getAttribute(TruffleFile.UNIX_INODE, FdUtils.NOFOLLOW_LINKS);
+        } catch (UnsupportedOperationException e) {
+            return 0;
+        }
     }
 
     @Override
