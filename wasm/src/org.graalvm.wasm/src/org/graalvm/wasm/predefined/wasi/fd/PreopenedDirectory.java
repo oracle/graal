@@ -136,6 +136,14 @@ final class PreopenedDirectory {
     }
 
     /**
+     * Returns whether the given host file denotes the pre-opened directory itself.
+     */
+    boolean isHostRoot(TruffleFile hostFile) {
+        Objects.requireNonNull(hostFile);
+        return hostPath.equals(hostFile.normalize());
+    }
+
+    /**
      * Returns the normalized host file for the given virtual file if it is contained in this
      * pre-opened directory, or {@code null} otherwise.
      */

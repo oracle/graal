@@ -166,6 +166,60 @@ public class GR75058Test {
         }
     }
 
+    // Verifies that paths which normalize to the preopened directory itself remain accessible.
+    @Test
+    public void testPathOpsCanAddressThePreopenedDirectoryItself() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Files.createDirectory(preopenedDirectory.resolve("dir"));
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_open"
+                                (func $path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+                              (import "wasi_snapshot_preview1" "path_filestat_get"
+                                (func $path_filestat_get (param i32 i32 i32 i32 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) ".")
+                              (data (i32.const 16) "dir/..")
+                              (export "memory" (memory 0))
+                              (func (export "openRoot") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 0)   ;; dirflags: none
+                                  (i32.const 0)   ;; path pointer: "."
+                                  (i32.const 1)   ;; path length
+                                  (i32.const 2)   ;; oflags: DIRECTORY
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                ))
+                              (func (export "statRootViaDotDot") (result i32) (local $ret i32)
+                                (local.set $ret
+                                  (call $path_filestat_get
+                                    (i32.const 3)   ;; fd
+                                    (i32.const 0)   ;; flags: none
+                                    (i32.const 16)  ;; path pointer: "dir/.."
+                                    (i32.const 6)   ;; path length
+                                    (i32.const 32)  ;; result address
+                                  ))
+                                (if (i32.ne (local.get $ret) (i32.const 0))
+                                  (then (return (local.get $ret))))
+                                (i32.load8_u (i32.const 48))))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Errno.Success.ordinal(), exports.getMember("openRoot").execute().asInt());
+                assertEquals(Filetype.Directory.ordinal(), exports.getMember("statRootViaDotDot").execute().asInt());
+            }
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
     // Verifies that path_open rejects final symlinks by default and only follows them when asked.
     @Test
     public void testPathOpenHandlesFinalSymlinksAccordingToLookupFlags() throws IOException, InterruptedException {

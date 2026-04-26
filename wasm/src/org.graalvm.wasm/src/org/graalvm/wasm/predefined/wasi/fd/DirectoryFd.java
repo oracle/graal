@@ -110,22 +110,22 @@ class DirectoryFd extends Fd {
         if (hostChildFile == null) {
             return null;
         }
+        return resolveHostFileWithCanonicalParent(hostChildFile);
+    }
 
-        final TruffleFile hostParent = hostChildFile.getParent();
-        if (hostParent == null) {
-            // No parent component to canonicalize. This is effectively just a containment check on
-            // the path itself while still leaving the final component unresolved.
-            return preopenedRoot.containedHostFile(hostChildFile);
-        }
-        final TruffleFile canonicalParent = preopenedRoot.containedHostFile(hostParent.getCanonicalFile());
-        if (canonicalParent == null) {
-            // The parent resolves outside the preopened root, so the requested path must be
-            // rejected as an escape.
-            return null;
+    /**
+     * Canonicalizes the parent chain of a host path while leaving the final component unresolved.
+     * Paths that already denote the preopened root itself are returned unchanged.
+     */
+    private TruffleFile resolveHostFileWithCanonicalParent(TruffleFile hostChildFile) throws IOException, SecurityException {
+        if (preopenedRoot.isHostRoot(hostChildFile)) {
+            // Paths like "." or "dir/.." may normalize to the preopened root itself. Treat that
+            // as an in-sandbox result instead of canonicalizing the parent one level above it.
+            return hostChildFile;
         }
         // Canonicalize the parent chain, then reattach the unresolved final component so callers
         // can decide whether the last path element may be followed.
-        return preopenedRoot.containedHostFile(canonicalParent.resolve(hostChildFile.getName()));
+        return resolveHostFileUnderCanonicalParent(hostChildFile);
     }
 
     /**
@@ -148,6 +148,14 @@ class DirectoryFd extends Fd {
             return preopenedRoot.containedHostFile(hostChildFile.getCanonicalFile());
         }
 
+        return resolveHostFileUnderCanonicalParent(hostChildFile);
+    }
+
+    /**
+     * Canonicalizes the parent chain of a host path, verifies that parent stays inside the
+     * preopened root, and then reattaches the final path segment without resolving it.
+     */
+    private TruffleFile resolveHostFileUnderCanonicalParent(TruffleFile hostChildFile) throws IOException, SecurityException {
         final TruffleFile hostParent = hostChildFile.getParent();
         if (hostParent == null) {
             // No parent component to canonicalize. This is effectively just a containment check on
@@ -160,8 +168,6 @@ class DirectoryFd extends Fd {
             // rejected as an escape.
             return null;
         }
-        // The final component does not exist yet, so canonicalize only the parent and reattach the
-        // last path segment under the verified in-sandbox parent.
         return preopenedRoot.containedHostFile(canonicalParent.resolve(hostChildFile.getName()));
     }
 
