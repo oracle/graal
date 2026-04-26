@@ -264,6 +264,81 @@ public class GR75058Test {
         }
     }
 
+    // Verifies that LOOKUP_SYMLINK_FOLLOW resolves final relative symlink targets from the real
+    // parent directory and that followed directory fds stay anchored to the resolved target.
+    @Test
+    public void testFollowedPathsUseRealParentAndResolvedDirectoryFd() throws IOException, InterruptedException {
+        Path tempRoot = Files.createTempDirectory("gr-75058-");
+        try {
+            assumeSymbolicLinksSupported(tempRoot);
+            Path preopenedDirectory = Files.createDirectory(tempRoot.resolve("preopen"));
+            Path releasesV1 = Files.createDirectories(preopenedDirectory.resolve("releases/v1"));
+            Path sharedDirectory = Files.createDirectories(preopenedDirectory.resolve("releases/shared"));
+            Files.writeString(sharedDirectory.resolve("inside.txt"), "inside", StandardCharsets.UTF_8);
+            Files.createSymbolicLink(preopenedDirectory.resolve("current"), Path.of("releases", "v1"));
+            Files.createSymbolicLink(releasesV1.resolve("final-link"), Path.of("..", "shared", "inside.txt"));
+
+            ByteSequence binary = ByteSequence.create(compileWat("main", """
+                            (module
+                              (import "wasi_snapshot_preview1" "path_open"
+                                (func $path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+                              (import "wasi_snapshot_preview1" "path_filestat_get"
+                                (func $path_filestat_get (param i32 i32 i32 i32 i32) (result i32)))
+                              (memory 1)
+                              (data (i32.const 0) "current/final-link")
+                              (data (i32.const 32) "current")
+                              (data (i32.const 48) ".")
+                              (export "memory" (memory 0))
+                              (func (export "followRelativeFinalLink") (result i32)
+                                (call $path_open
+                                  (i32.const 3)   ;; fd
+                                  (i32.const 1)   ;; dirflags: LOOKUP_SYMLINK_FOLLOW
+                                  (i32.const 0)   ;; path pointer: "current/final-link"
+                                  (i32.const 18)  ;; path length
+                                  (i32.const 0)   ;; oflags: none
+                                  (i64.const 0)   ;; rights base: none
+                                  (i64.const 0)   ;; rights inheriting: none
+                                  (i32.const 0)   ;; fdflags: none
+                                  (i32.const 64)  ;; fd address
+                                ))
+                              (func (export "statSelfOfFollowedDirectoryFd") (result i32) (local $ret i32)
+                                (local.set $ret
+                                  (call $path_open
+                                    (i32.const 3)   ;; fd
+                                    (i32.const 1)   ;; dirflags: LOOKUP_SYMLINK_FOLLOW
+                                    (i32.const 32)  ;; path pointer: "current"
+                                    (i32.const 7)   ;; path length
+                                    (i32.const 2)   ;; oflags: DIRECTORY
+                                    (i64.const 262144) ;; rights base: PATH_FILESTAT_GET
+                                    (i64.const 0)   ;; rights inheriting: none
+                                    (i32.const 0)   ;; fdflags: none
+                                    (i32.const 64)  ;; fd address
+                                  ))
+                                (if (i32.ne (local.get $ret) (i32.const 0))
+                                  (then (return (local.get $ret))))
+                                (local.set $ret
+                                  (call $path_filestat_get
+                                    (i32.load (i32.const 64))  ;; fd loaded from memory
+                                    (i32.const 0)              ;; flags: none
+                                    (i32.const 48)             ;; path pointer: "."
+                                    (i32.const 1)              ;; path length
+                                    (i32.const 96)             ;; result address
+                                  ))
+                                (if (i32.ne (local.get $ret) (i32.const 0))
+                                  (then (return (local.get $ret))))
+                                (i32.load8_u (i32.const 112))))
+                            """));
+
+            try (Context context = contextForPreopenedDirectory(preopenedDirectory)) {
+                Value exports = context.eval(Source.newBuilder(WasmLanguage.ID, binary, "main").build()).newInstance().getMember("exports");
+                assertEquals(Errno.Success.ordinal(), exports.getMember("followRelativeFinalLink").execute().asInt());
+                assertEquals(Filetype.Directory.ordinal(), exports.getMember("statSelfOfFollowedDirectoryFd").execute().asInt());
+            }
+        } finally {
+            deleteTree(tempRoot);
+        }
+    }
+
     // Verifies that path_open rejects final symlinks by default and only follows them when asked,
     // including dangling and looping final links.
     @Test

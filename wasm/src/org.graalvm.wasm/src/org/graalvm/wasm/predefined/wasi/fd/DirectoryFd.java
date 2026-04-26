@@ -421,7 +421,11 @@ class DirectoryFd extends Fd {
                 final boolean isDirectory = resolvedHostChildFile.exists() &&
                                 resolvedHostChildFile.getAttribute(TruffleFile.IS_DIRECTORY, FdUtils.linkOptions(followSymlinks));
                 if (isDirectory) {
-                    final int fd = fdManager.put(new DirectoryFd(fdManager, virtualChildFile, preopenedRoot, childFsRightsBase, childFsRightsInheriting, childFdFlags));
+                    final TruffleFile directoryVirtualFile = followSymlinks ? preopenedRoot.hostFileToVirtualFile(resolvedHostChildFile) : virtualChildFile;
+                    if (directoryVirtualFile == null) {
+                        return Errno.Noent;
+                    }
+                    final int fd = fdManager.put(new DirectoryFd(fdManager, directoryVirtualFile, preopenedRoot, childFsRightsBase, childFsRightsInheriting, childFdFlags));
                     WasmMemoryLibrary.getUncached().store_i32(memory, node, fdAddress, fd);
                     return Errno.Success;
                 } else {
