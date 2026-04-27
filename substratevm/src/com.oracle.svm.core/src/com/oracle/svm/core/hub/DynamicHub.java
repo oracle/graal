@@ -2220,7 +2220,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         var dynamicAccessMetadata = arrayHub == null ? null : arrayHub.getDynamicAccessMetadata();
         if (arrayHub == null || (throwMissingRegistrationErrors() && (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied()))) {
             // Fail in Native Image, or if Crema follows reflection-access restrictions
-            if (!RuntimeClassLoading.isSupported() || !ClassLoadingSupport.singleton().followReflectionConfiguration()) {
+            if (!RuntimeClassLoading.isSupported() || ClassLoadingSupport.singleton().followReflectionConfiguration()) {
                 MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]", dynamicAccessMetadata);
             }
         }
