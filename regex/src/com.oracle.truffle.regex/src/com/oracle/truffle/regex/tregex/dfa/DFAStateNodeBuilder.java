@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,7 +109,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
 
     /**
      * Used in pruneUnambiguousPaths mode. States that are NOT final states or successors of final
-     * states may have their last matcher replaced with an AnyMatcher.
+     * states may have their last matcher replaced with a no-match successor.
      */
     public boolean isFinalStateSuccessor() {
         return getFlag(FLAG_FINAL_STATE_SUCCESSOR);

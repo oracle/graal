@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,11 +92,15 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return id;
     }
 
-    protected short getFlags() {
+    public short getFlags() {
         return flags;
     }
 
     protected boolean getFlag(short flag) {
+        return (flags & flag) != 0;
+    }
+
+    protected static boolean isFlagSet(int flags, short flag) {
         return (flags & flag) != 0;
     }
 
@@ -154,12 +158,20 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return getFlag(FLAG_ANCHORED_FINAL_STATE);
     }
 
+    public static boolean isAnchoredFinalState(int flags) {
+        return isFlagSet(flags, FLAG_ANCHORED_FINAL_STATE);
+    }
+
     public void setAnchoredFinalState() {
         setFlag(FLAG_ANCHORED_FINAL_STATE);
     }
 
     public boolean isUnAnchoredFinalState() {
         return getFlag(FLAG_UN_ANCHORED_FINAL_STATE);
+    }
+
+    public static boolean isUnAnchoredFinalState(int flags) {
+        return isFlagSet(flags, FLAG_UN_ANCHORED_FINAL_STATE);
     }
 
     public void setUnAnchoredFinalState() {

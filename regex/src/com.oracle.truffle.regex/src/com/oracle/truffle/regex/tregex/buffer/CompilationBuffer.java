@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,13 +44,10 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
-import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.string.Encoding;
-import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * This class is instantiated once per compilation of a regular expression in
@@ -79,8 +76,6 @@ public class CompilationBuffer {
     private IntRangesBuffer intRangesBuffer3;
     private CodePointSetAccumulator codePointSetAccumulator1;
     private CodePointSetAccumulator codePointSetAccumulator2;
-    private TBitSet byteSizeBitSet;
-    private EconomicMap<CodePointSet, CharMatcher> matcherDeduplicationMap;
     private EconomicMap<DFACaptureGroupPartialTransition, DFACaptureGroupPartialTransition> lazyTransitionDeduplicationMap;
 
     public CompilationBuffer(Encoding encoding) {
@@ -180,21 +175,6 @@ public class CompilationBuffer {
         }
         codePointSetAccumulator2.clear();
         return codePointSetAccumulator2;
-    }
-
-    public TBitSet getByteSizeBitSet() {
-        if (byteSizeBitSet == null) {
-            byteSizeBitSet = new TBitSet(256);
-        }
-        byteSizeBitSet.clear();
-        return byteSizeBitSet;
-    }
-
-    public EconomicMap<CodePointSet, CharMatcher> getMatcherDeduplicationMap() {
-        if (matcherDeduplicationMap == null) {
-            matcherDeduplicationMap = EconomicMap.create();
-        }
-        return matcherDeduplicationMap;
     }
 
     public EconomicMap<DFACaptureGroupPartialTransition, DFACaptureGroupPartialTransition> getLazyTransitionDeduplicationMap() {

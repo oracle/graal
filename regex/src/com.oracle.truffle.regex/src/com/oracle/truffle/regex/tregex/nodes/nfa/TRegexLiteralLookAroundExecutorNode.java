@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,9 +47,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
+import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
@@ -63,13 +62,15 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexBacktracker
 
     private final boolean forward;
     private final boolean negated;
-    @CompilationFinal(dimensions = 1) private CharMatcher[] matchers;
+    @CompilationFinal(dimensions = 1) private final int[] matchers;
+    @CompilationFinal(dimensions = 1) private final int[] matcherRefs;
 
-    private TRegexLiteralLookAroundExecutorNode(RegexAST ast, int numberOfTransitions, boolean forward, boolean negated, CharMatcher[] matchers) {
+    private TRegexLiteralLookAroundExecutorNode(RegexAST ast, int numberOfTransitions, boolean forward, boolean negated, int[] matchers, int[] matcherRefs) {
         super(ast, numberOfTransitions, null);
         this.forward = forward;
         this.negated = negated;
         this.matchers = matchers;
+        this.matcherRefs = matcherRefs;
     }
 
     private TRegexLiteralLookAroundExecutorNode(TRegexLiteralLookAroundExecutorNode copy) {
@@ -77,18 +78,20 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexBacktracker
         this.forward = copy.forward;
         this.negated = copy.negated;
         this.matchers = copy.matchers;
+        this.matcherRefs = copy.matcherRefs;
     }
 
     public static TRegexLiteralLookAroundExecutorNode create(RegexAST ast, LookAroundAssertion lookAround, CompilationBuffer compilationBuffer) {
         assert lookAround.isLiteral();
         boolean forward = lookAround.isLookAheadAssertion();
         boolean negated = lookAround.isNegated();
-        CharMatcher[] matchers = new CharMatcher[lookAround.getLiteralLength()];
-        for (int i = 0; i < matchers.length; i++) {
-            CharMatcher matcher = CharMatchers.createMatcher(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
-            matchers[forward ? i : matchers.length - (i + 1)] = matcher;
+        CharMatchers.Builder matcherBuilder = new CharMatchers.Builder();
+        int[] matcherRefs = new int[lookAround.getLiteralLength()];
+        for (int i = 0; i < matcherRefs.length; i++) {
+            int matcherRef = matcherBuilder.getOrCreateMatcher(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
+            matcherRefs[forward ? i : matcherRefs.length - (i + 1)] = matcherRef;
         }
-        return new TRegexLiteralLookAroundExecutorNode(ast, matchers.length, forward, negated, matchers);
+        return new TRegexLiteralLookAroundExecutorNode(ast, matcherRefs.length, forward, negated, matcherBuilder.toArray(), matcherRefs);
     }
 
     @Override
@@ -98,7 +101,7 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexBacktracker
 
     @Override
     public int getNumberOfStates() {
-        return matchers.length;
+        return matcherRefs.length;
     }
 
     @Override
@@ -126,8 +129,8 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexBacktracker
     @Override
     public Object execute(VirtualFrame frame, TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
-        for (int i = 0; i < matchers.length; i++) {
-            if (!inputHasNext(locals) || !matchers[i].match(inputReadAndDecode(locals, codeRange))) {
+        for (int i = 0; i < matcherRefs.length; i++) {
+            if (!inputHasNext(locals) || !CharMatchers.matchPE(matchers, matcherRefs[i], inputReadAndDecode(locals, codeRange))) {
                 return negated;
             }
             inputAdvance(locals);

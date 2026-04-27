@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,20 +44,19 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 
 public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
 
     /**
-     * Frame size = 1 (state ID) + 2 * nCaptureGroups (start and end indices) + 1 (last group).
+     * Frame size = 1 (state record) + 2 * nCaptureGroups (start and end indices) + 1 (last group).
      */
     private final int frameSize;
     private final int nCaptureGroups;
     private final int maxSize;
     /**
      * A record of the paths that we are considering for our optimal match. Every path is
-     * represented as a frame which consists of the ID of the last state on the path and the capture
+     * represented as a frame which consists of the state record of the last state on the path and the capture
      * group indices that have been set along the path. The paths in this array is sorted in
      * priority order, from highest priority to lowest priority.
      */
@@ -105,8 +104,8 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         return trackLastGroup ? recordOffset + 1 + nCaptureGroups * 2 : -1;
     }
 
-    public void addInitialState(int stateId) {
-        curStates[curStatesLength] = stateId;
+    public void addInitialState(int stateRecord) {
+        curStates[curStatesLength] = stateRecord;
         Arrays.fill(curStates, curStatesLength + 1, curStatesLength + frameSize, -1);
         curStatesLength += frameSize;
     }
@@ -132,17 +131,17 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         return marks;
     }
 
-    public void pushSuccessor(NFAStateTransition t, boolean copy) {
+    void pushSuccessor(TRegexNFAExecutorNode nfa, int transitionRecord, boolean copy) {
         if (nextStatesLength >= nextStates.length) {
             nextStates = Arrays.copyOf(nextStates, Math.min(nextStates.length * 2, maxSize));
         }
-        nextStates[nextStatesLength] = t.getTarget().getId();
+        nextStates[nextStatesLength] = nfa.getTransitionTargetStateRecord(transitionRecord);
         if (copy) {
             System.arraycopy(curStates, offsetCaptureGroups(iCurStates - frameSize), nextStates, offsetCaptureGroups(nextStatesLength), frameSize - 1);
         } else {
             Arrays.fill(nextStates, offsetCaptureGroups(nextStatesLength), nextStatesLength + frameSize, -1);
         }
-        t.getGroupBoundaries().apply(nextStates, offsetCaptureGroups(nextStatesLength), offsetLastGroup(nextStatesLength), getIndex(), trackLastGroup);
+        nfa.applyGroupBoundaries(transitionRecord, nextStates, offsetCaptureGroups(nextStatesLength), offsetLastGroup(nextStatesLength), getIndex(), trackLastGroup);
         nextStatesLength += frameSize;
     }
 
@@ -157,7 +156,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         resultPushed = false;
     }
 
-    public void pushResult(NFAStateTransition t, boolean copy) {
+    void pushResult(TRegexNFAExecutorNode nfa, int transitionRecord, boolean copy) {
         resultPushed = true;
         if (result == null) {
             result = new int[nCaptureGroups * 2 + (trackLastGroup ? 1 : 0)];
@@ -167,7 +166,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         } else {
             Arrays.fill(result, -1);
         }
-        t.getGroupBoundaries().apply(result, 0, nCaptureGroups * 2, getIndex(), trackLastGroup);
+        nfa.applyGroupBoundaries(transitionRecord, result, 0, nCaptureGroups * 2, getIndex(), trackLastGroup);
     }
 
     public boolean hasResult() {

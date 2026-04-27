@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -181,7 +181,11 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     }
 
     public boolean isLookAround() {
-        return getFlag(FLAG_IS_LOOK_AROUND);
+        return isLookAround(getFlags());
+    }
+
+    public static boolean isLookAround(int flags) {
+        return isFlagSet(flags, FLAG_IS_LOOK_AROUND);
     }
 
     public void setLookAround(boolean value) {
@@ -189,7 +193,11 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     }
 
     public boolean isSubMatcherNegated() {
-        return getFlag(FLAG_IS_SUB_MATCHER_NEGATED);
+        return isSubMatcherNegated(getFlags());
+    }
+
+    public static boolean isSubMatcherNegated(int flags) {
+        return isFlagSet(flags, FLAG_IS_SUB_MATCHER_NEGATED);
     }
 
     public void setSubMatcherNegated(boolean value) {
@@ -197,7 +205,11 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     }
 
     public boolean isIgnoreCaseReference() {
-        return getFlag(FLAG_IS_IGNORE_CASE_REFERENCE);
+        return isIgnoreCaseReference(getFlags());
+    }
+
+    public static boolean isIgnoreCaseReference(int flags) {
+        return isFlagSet(flags, FLAG_IS_IGNORE_CASE_REFERENCE);
     }
 
     public void setIgnoreCaseReference(boolean value) {
@@ -205,7 +217,11 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     }
 
     public boolean isRecursiveReference() {
-        return getFlag(FLAG_IS_RECURSIVE_REFERENCE);
+        return isRecursiveReference(getFlags());
+    }
+
+    public static boolean isRecursiveReference(int flags) {
+        return isFlagSet(flags, FLAG_IS_RECURSIVE_REFERENCE);
     }
 
     public void setRecursiveReference(boolean value) {
@@ -213,7 +229,11 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     }
 
     public boolean isIgnoreCaseReferenceAlternativeMode() {
-        return getFlag(FLAG_IS_IGNORE_CASE_REFERENCE_ALTERNATIVE_MODE);
+        return isIgnoreCaseReferenceAlternativeMode(getFlags());
+    }
+
+    public static boolean isIgnoreCaseReferenceAlternativeMode(int flags) {
+        return isFlagSet(flags, FLAG_IS_IGNORE_CASE_REFERENCE_ALTERNATIVE_MODE);
     }
 
     public void setIgnoreCaseReferenceAlternativeMode(boolean value) {
@@ -228,7 +248,11 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
      * @see #initIsDeterministic(CompilationBuffer)
      */
     public boolean isDeterministic() {
-        return getFlag(FLAG_IS_DETERMINISTIC);
+        return isDeterministic(getFlags());
+    }
+
+    public static boolean isDeterministic(int flags) {
+        return isFlagSet(flags, FLAG_IS_DETERMINISTIC);
     }
 
     public void setDeterministic(boolean value) {
