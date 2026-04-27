@@ -85,7 +85,7 @@ public class LLVMObjectFile extends ObjectFile {
 
     private final List<LLVMDataSectionPart> dataSectionParts = new ArrayList<>();
 
-    public static Map<String, String> sectionToFirstSymbol = new HashMap<>();
+    static final Map<String, String> sectionToFirstSymbol = new HashMap<>();
 
     public LLVMObjectFile(int pageSize, Path tempDir, BigBang bb) {
         super(pageSize);
@@ -200,6 +200,8 @@ public class LLVMObjectFile extends ObjectFile {
     }
 
     private void initializeAllSectionParts(List<ObjectFile.Element> sortedObjectFileElements) {
+        sectionToFirstSymbol.clear();
+        dataSectionParts.clear();
         int id = 0;
 
         for (Element e : sortedObjectFileElements) {
@@ -240,11 +242,16 @@ public class LLVMObjectFile extends ObjectFile {
                                         .filter(relocOffset -> relocOffset >= finalI * Long.BYTES && relocOffset < finalI * Long.BYTES + batchSize)
                                         .collect(Collectors.toList());
                         LLVMDataSectionPart sectionPart = new LLVMDataSectionPart(id, i * Long.BYTES, getPageSize(), e, batchContent, batchRelocOffsets, i == 0 ? symbols : null);
+                        sectionPart.declareBaseSymbol();
                         dataSectionParts.add(sectionPart);
                         id++;
                     }
                 }
             }
+        }
+
+        for (LLVMDataSectionPart sectionPart : dataSectionParts) {
+            sectionPart.computeBitcode();
         }
     }
 

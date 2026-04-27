@@ -44,10 +44,15 @@ import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import com.oracle.svm.core.graal.llvm.replacements.LLVMIntrinsicNode.LLVMIntrinsicOperation;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     @Override
@@ -78,7 +83,7 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerMathPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Math.class);
+        Registration r = new Registration(plugins, Math.class).setAllowOverwrite(true);
         registerUnaryMath(r, "log", UnaryOperation.LOG);
         registerUnaryMath(r, "log10", UnaryOperation.LOG10);
         registerUnaryMath(r, "exp", UnaryOperation.EXP);

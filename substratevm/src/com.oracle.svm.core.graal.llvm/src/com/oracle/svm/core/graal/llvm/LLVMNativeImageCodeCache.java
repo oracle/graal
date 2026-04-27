@@ -56,6 +56,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.BatchExecutor;
 import com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile;
@@ -107,7 +108,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     @Override
     public int getCodeCacheSize() {
-        return 0;
+        return getCodeAreaSize();
     }
 
     @Override
@@ -292,7 +293,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                 if (dataPatch.reference instanceof CGlobalDataDirectReference ref) {
                     CGlobalDataInfo info = ref.getDataInfo();
                     CGlobalDataImpl<?> data = info.getData();
-                    if (info.isSymbolReference() && objectFile.getOrCreateSymbolTable().getSymbol(data.symbolName) == null) {
+                    if (info.isSymbolReference() && !isImageHeapSymbol(data.symbolName) && objectFile.getOrCreateSymbolTable().getSymbol(data.symbolName) == null) {
                         objectFile.createUndefinedSymbol(data.symbolName, true);
                     }
 
@@ -312,6 +313,18 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                 }
             }
         }
+    }
+
+    private static boolean isImageHeapSymbol(String symbolName) {
+        return symbolName.equals(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME) ||
+                        symbolName.equals(Isolates.IMAGE_HEAP_END_SYMBOL_NAME) ||
+                        symbolName.equals(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME) ||
+                        symbolName.equals(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME) ||
+                        symbolName.equals(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME) ||
+                        symbolName.equals(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME) ||
+                        symbolName.equals(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME) ||
+                        symbolName.equals(Isolates.IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME) ||
+                        symbolName.equals(Isolates.IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME);
     }
 
     @Override

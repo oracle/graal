@@ -37,6 +37,7 @@ import static jdk.graal.compiler.debug.GraalError.shouldNotReachHere;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static jdk.graal.compiler.debug.GraalError.unimplemented;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -77,9 +78,11 @@ import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMStackSlot;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -94,6 +97,7 @@ import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.DataSection;
+import jdk.graal.compiler.code.DataSection.Patches;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -349,6 +353,9 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         if (stamp instanceof RawPointerStamp) {
             return builder.rawPointerType();
         }
+        if (stamp instanceof SubstrateMethodPointerStamp) {
+            return builder.wordType();
+        }
         if (stamp instanceof IllegalStamp) {
             return builder.undefType();
         }
@@ -483,6 +490,9 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     }
 
     LLVMValueRef emitLLVMConstant(LLVMTypeRef type, JavaConstant constant) {
+        if (constant instanceof TLABObjectHeaderConstant) {
+            return builder.buildLoad(getLLVMPlaceholderForConstant(constant), type);
+        }
         switch (getJavaKind(type)) {
             case Boolean:
                 return builder.constantBoolean(constant.asBoolean());
@@ -531,11 +541,42 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
             constants.put(constant, symbolName);
 
             Constant storedConstant = uncompressedObject ? ((CompressibleConstant) constant).compress() : constant;
-            DataSection.Data data = dataBuilder.createDataItem(storedConstant);
+            DataSection.Data data = createDataItem(storedConstant);
             DataSectionReference reference = compilationResult.getDataSection().insertData(data);
             compilationResult.recordDataPatchWithNote(0, reference, symbolName);
         }
         return builder.getExternalObject(symbolName, isUncompressedObjectConstant(constant));
+    }
+
+    private static DataSection.Data createDataItem(Constant constant) {
+        if (constant instanceof TLABObjectHeaderConstant objectHeaderConstant) {
+            return new TLABObjectHeaderData(objectHeaderConstant);
+        }
+        return dataBuilder.createDataItem(constant);
+    }
+
+    private static final class TLABObjectHeaderData extends DataSection.Data {
+        private final TLABObjectHeaderConstant constant;
+
+        private TLABObjectHeaderData(TLABObjectHeaderConstant constant) {
+            super(sizeOf(constant), sizeOf(constant));
+            this.constant = constant;
+        }
+
+        private static int sizeOf(TLABObjectHeaderConstant constant) {
+            return constant.getJavaKind() == JavaKind.Int ? Integer.BYTES : Long.BYTES;
+        }
+
+        @Override
+        protected void emit(ByteBuffer buffer, Patches patches) {
+            int position = buffer.position();
+            if (getSize() == Integer.BYTES) {
+                buffer.putInt(0);
+            } else {
+                buffer.putLong(0L);
+            }
+            patches.registerPatch(position, constant);
+        }
     }
 
     private static boolean isUncompressedObjectConstant(Constant constant) {
@@ -752,18 +793,12 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     @Override
     public Variable emitReadRegister(Register register, ValueKind<?> kind) {
         LLVMValueRef value;
-        if (register.equals(ReservedRegisters.singleton().getThreadRegister())) {
-            LLVMValueRef specialRegister = builder.register(LLVMTargetSpecific.get().getLLVMRegisterName(ReservedRegisters.singleton().getThreadRegister().name));
+        if (isGlobalReservedRegister(register)) {
+            String registerName = register.name;
             if (isEntryPoint || modifiesSpecialRegisters) {
-                return new LLVMPendingSpecialRegisterRead(this, specialRegister);
+                return new LLVMPendingSpecialRegisterRead(this, registerName);
             }
-            value = builder.buildReadRegister(specialRegister);
-        } else if (register.equals(ReservedRegisters.singleton().getHeapBaseRegister())) {
-            LLVMValueRef specialRegister = builder.register(LLVMTargetSpecific.get().getLLVMRegisterName(ReservedRegisters.singleton().getHeapBaseRegister().name));
-            if (isEntryPoint || modifiesSpecialRegisters) {
-                return new LLVMPendingSpecialRegisterRead(this, specialRegister);
-            }
-            value = builder.buildReadRegister(specialRegister);
+            value = buildInlineGetRegister(registerName);
         } else if (register.equals(ReservedRegisters.singleton().getFrameRegister())) {
             value = builder.buildReadRegister(builder.register(ReservedRegisters.singleton().getFrameRegister().name));
         } else {
@@ -774,18 +809,8 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
 
     @Override
     public void emitWriteRegister(Register dst, Value src, ValueKind<?> kind) {
-        if (dst.equals(ReservedRegisters.singleton().getThreadRegister())) {
-            if (isEntryPoint) {
-                builder.buildWriteRegister(builder.register(LLVMTargetSpecific.get().getLLVMRegisterName(ReservedRegisters.singleton().getThreadRegister().name)), getVal(src));
-            } else {
-                buildInlineSetRegister(ReservedRegisters.singleton().getThreadRegister().name, getVal(src));
-            }
-        } else if (dst.equals(ReservedRegisters.singleton().getHeapBaseRegister())) {
-            if (isEntryPoint) {
-                builder.buildWriteRegister(builder.register(LLVMTargetSpecific.get().getLLVMRegisterName(ReservedRegisters.singleton().getHeapBaseRegister().name)), getVal(src));
-            } else {
-                buildInlineSetRegister(ReservedRegisters.singleton().getHeapBaseRegister().name, getVal(src));
-            }
+        if (isGlobalReservedRegister(dst)) {
+            buildInlineSetRegister(dst.name, getVal(src));
         } else {
             throw VMError.shouldNotReachHereUnexpectedInput(dst); // ExcludeFromJacocoGeneratedReport
         }
@@ -1060,6 +1085,9 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     }
 
     public LLVMValueRef buildInlineGetRegister(String registerName) {
+        if (isGlobalReservedRegister(registerName)) {
+            return builder.buildLoad(getGlobalReservedRegister(registerName), builder.wordType());
+        }
         LLVMTypeRef inlineAsmType = builder.functionType(builder.wordType());
         String asmSnippet = LLVMTargetSpecific.get().getRegisterInlineAsm(registerName);
         InlineAssemblyConstraint outputConstraint = new InlineAssemblyConstraint(Type.Output, Location.register());
@@ -1071,6 +1099,10 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     }
 
     public void buildInlineSetRegister(String registerName, LLVMValueRef value) {
+        if (isGlobalReservedRegister(registerName)) {
+            builder.buildStore(value, getGlobalReservedRegister(registerName));
+            return;
+        }
         LLVMTypeRef inlineAsmType = builder.functionType(builder.voidType(), builder.wordType());
         String asmSnippet = LLVMTargetSpecific.get().setRegisterInlineAsm(registerName);
         InlineAssemblyConstraint inputConstraint = new InlineAssemblyConstraint(Type.Input, Location.register());
@@ -1078,6 +1110,23 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         LLVMValueRef setRegister = builder.buildInlineAsm(inlineAsmType, asmSnippet, true, false, inputConstraint);
         LLVMValueRef call = builder.buildCall(setRegister, value);
         builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
+    }
+
+    private LLVMValueRef getGlobalReservedRegister(String registerName) {
+        return builder.getUniqueThreadLocalGlobal("__llvm_reserved_register_" + registerName, builder.wordType(), true);
+    }
+
+    private static boolean isGlobalReservedRegister(Register register) {
+        ReservedRegisters reservedRegisters = ReservedRegisters.singleton();
+        return register.equals(reservedRegisters.getThreadRegister()) || register.equals(reservedRegisters.getHeapBaseRegister());
+    }
+
+    private static boolean isGlobalReservedRegister(String registerName) {
+        ReservedRegisters reservedRegisters = ReservedRegisters.singleton();
+        Register threadRegister = reservedRegisters.getThreadRegister();
+        Register heapBaseRegister = reservedRegisters.getHeapBaseRegister();
+        return threadRegister != null && registerName.equals(threadRegister.name) ||
+                        heapBaseRegister != null && registerName.equals(heapBaseRegister.name);
     }
 
     private void buildInlineAdd(String outputRegisterName, String inputRegisterName) {
@@ -1606,6 +1655,20 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         }
 
         @Override
+        public Value emitMathMin(LIRKind cmpKind, Value x, Value y) {
+            LLVMValueRef valX = getVal(x);
+            if (LLVMIRBuilder.isFloatType(typeOf(valX)) || LLVMIRBuilder.isDoubleType(typeOf(valX))) {
+                return emitMathMin(x, y);
+            }
+            return emitMinMax(x, y, Condition.LT);
+        }
+
+        @Override
+        public Value emitMathUnsignedMin(LIRKind cmpKind, Value x, Value y) {
+            return emitMinMax(x, y, Condition.BT);
+        }
+
+        @Override
         public Variable emitReverseBits(Value operand) {
             LLVMValueRef reversed = builder.buildBitReverse(getVal(operand));
             return new LLVMVariable(reversed);
@@ -1615,6 +1678,27 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         public Value emitMathMax(Value a, Value b) {
             LLVMValueRef max = builder.buildMax(getVal(a), getVal(b));
             return new LLVMVariable(max);
+        }
+
+        @Override
+        public Value emitMathMax(LIRKind cmpKind, Value x, Value y) {
+            LLVMValueRef valX = getVal(x);
+            if (LLVMIRBuilder.isFloatType(typeOf(valX)) || LLVMIRBuilder.isDoubleType(typeOf(valX))) {
+                return emitMathMax(x, y);
+            }
+            return emitMinMax(x, y, Condition.GT);
+        }
+
+        @Override
+        public Value emitMathUnsignedMax(LIRKind cmpKind, Value x, Value y) {
+            return emitMinMax(x, y, Condition.AT);
+        }
+
+        private Value emitMinMax(Value x, Value y, Condition condition) {
+            LLVMValueRef valX = getVal(x);
+            LLVMValueRef valY = getVal(y);
+            LLVMValueRef selected = builder.buildSelect(builder.buildCompare(condition, valX, valY, true), valX, valY);
+            return new LLVMVariable(selected);
         }
 
         @Override

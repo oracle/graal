@@ -24,11 +24,9 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -46,11 +44,6 @@ public class LLVMDirectives implements CContext.Directives {
 
     @Override
     public List<String> getLibraries() {
-        List<String> libraries = new ArrayList<>();
-        libraries.add("m");
-        if (Platform.includedIn(Platform.LINUX.class) && LLVMOptions.BitcodeOptimizations.getValue()) {
-            libraries.add("atomic");
-        }
-        return libraries;
+        return Collections.singletonList("m");
     }
 }

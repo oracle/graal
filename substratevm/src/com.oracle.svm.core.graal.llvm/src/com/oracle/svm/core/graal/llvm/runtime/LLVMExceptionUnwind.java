@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.impl.Word;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateOptions;
@@ -49,6 +49,10 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -141,16 +145,19 @@ public class LLVMExceptionUnwind {
     }
 
     public static ExceptionUnwind createRaiseExceptionHandler() {
-        return new ExceptionUnwind() {
-            @Override
-            @Uninterruptible(reason = "Code that is fully uninterruptible may throw and catch exceptions. Therefore, the exception handling must be fully uninterruptible as well.")
-            protected void customUnwindException(Pointer callerSP) {
-                _Unwind_Exception exceptionStructure = UnsafeStackValue.get(_Unwind_Exception.class);
-                exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
-                exceptionStructure.set_exception_cleanup(Word.nullPointer());
-                raiseException(exceptionStructure);
-            }
-        };
+        return new LLVMExceptionUnwindHandler();
+    }
+
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    private static final class LLVMExceptionUnwindHandler extends ExceptionUnwind {
+        @Override
+        @Uninterruptible(reason = "Code that is fully uninterruptible may throw and catch exceptions. Therefore, the exception handling must be fully uninterruptible as well.")
+        protected void customUnwindException(Pointer callerSP) {
+            _Unwind_Exception exceptionStructure = UnsafeStackValue.get(_Unwind_Exception.class);
+            exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
+            exceptionStructure.set_exception_cleanup(WordFactory.nullPointer());
+            raiseException(exceptionStructure);
+        }
     }
 
     // Allow methods with non-standard names: Checkstyle: stop

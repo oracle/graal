@@ -151,28 +151,28 @@ public class LLVMUtils {
      */
     public static class LLVMPendingSpecialRegisterRead extends LLVMVariable implements LLVMValueWrapper {
         private final LLVMGenerator gen;
-        private final LLVMValueRef reg;
+        private final String registerName;
         private final LLVMValueRef offset;
 
-        public LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef reg) {
-            this(gen, reg, null);
+        public LLVMPendingSpecialRegisterRead(LLVMGenerator gen, String registerName) {
+            this(gen, registerName, null);
         }
 
         public LLVMPendingSpecialRegisterRead(LLVMPendingSpecialRegisterRead pendingRead, LLVMValueRef offset) {
-            this(pendingRead.gen, pendingRead.reg, offset);
+            this(pendingRead.gen, pendingRead.registerName, offset);
         }
 
-        private LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef reg, LLVMValueRef offset) {
+        private LLVMPendingSpecialRegisterRead(LLVMGenerator gen, String registerName, LLVMValueRef offset) {
             super(LLVMKind.toLIRKind(gen.getBuilder().wordType()));
             this.gen = gen;
-            this.reg = reg;
+            this.registerName = registerName;
             this.offset = offset;
         }
 
         @Override
         public LLVMValueRef get() {
             LLVMIRBuilder builder = gen.getBuilder();
-            LLVMValueRef register = builder.buildReadRegister(reg);
+            LLVMValueRef register = gen.buildInlineGetRegister(registerName);
             return offset == null ? register : builder.buildGEP(builder.buildIntToPtr(register, builder.rawPointerType()), offset);
         }
     }

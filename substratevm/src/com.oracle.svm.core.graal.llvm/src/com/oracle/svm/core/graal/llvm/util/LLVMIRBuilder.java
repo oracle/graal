@@ -224,7 +224,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public enum GCStrategy {
-        CompressedPointers("compressed-pointer");
+        CompressedPointers("statepoint-example");
 
         private final String name;
 
@@ -676,6 +676,13 @@ public class LLVMIRBuilder implements AutoCloseable {
             }
             setLinkage(global, LinkageType.LinkOnceODR);
         }
+        return global;
+    }
+
+    public LLVMValueRef getUniqueThreadLocalGlobal(String name, LLVMTypeRef type, boolean zeroInitialized) {
+        LLVMValueRef global = getUniqueGlobal(name, type, zeroInitialized);
+        LLVM.LLVMSetThreadLocal(global, TRUE);
+        LLVM.LLVMSetThreadLocalMode(global, LLVM.LLVMGeneralDynamicTLSModel);
         return global;
     }
 

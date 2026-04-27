@@ -48,23 +48,11 @@ public class LLVMToolchainUtils {
     public static void llvmOptimize(DebugContext debug, String outputPath, String inputPath, Path basePath, Function<String, String> outputPathFormat) {
         List<String> args = new ArrayList<>();
         List<String> passes = new ArrayList<>();
-        if (LLVMOptions.BitcodeOptimizations.getValue()) {
-            /*
-             * This runs LLVM's bitcode optimizations in addition to the Graal optimizations.
-             * Inlining has to be disabled in this case as the functions are already stored in the
-             * image heap and inlining them would produce bogus runtime information for garbage
-             * collection and exception handling. Starting with LLVM 16, the -disable-inlining flag
-             * doesn't work anymore. But inlining is implicitly disabled by adding no-inline to all
-             * bitcode functions.
-             */
-            passes.add("default<O2>");
-        } else {
-            /*
-             * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
-             * not supported for statepoints.
-             */
-            passes.add("function(mem2reg)");
-        }
+        /*
+         * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are not
+         * supported for statepoints.
+         */
+        passes.add("function(mem2reg)");
         passes.add("rewrite-statepoints-for-gc");
         passes.add("always-inline");
 

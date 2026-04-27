@@ -56,6 +56,7 @@ import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -714,7 +715,7 @@ class CodeInfoVerifier {
                     CodeReferenceMapDecoder.walkOffsetsFromPointer(base, CodeInfoAccess.getStackReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor, null);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
-                    assert expected.equals(visitor.result) : infopoint;
+                    assert expected.equals(visitor.result) : "expected " + expected + " but got " + visitor.result + " at " + infopoint;
 
                     if (queryResult.frameInfo != CodeInfoQueryResult.NO_FRAME_INFO) {
                         verifyFrame(compilation, infopoint.debugInfo.frame(), queryResult.frameInfo, new BitSet());
@@ -961,6 +962,7 @@ class MethodTableFirstIDTracker {
 class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
     private final Pointer base;
     protected final SubstrateReferenceMap result = new SubstrateReferenceMap();
+    private final TreeMap<Integer, Boolean> compressedByOffset = new TreeMap<>();
 
     CollectingObjectReferenceVisitor(Pointer base) {
         this.base = base;
@@ -979,5 +981,15 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
     private void visitObjectReference(Pointer objRef, boolean compressed) {
         int offset = NumUtil.safeToInt(objRef.subtract(base).rawValue());
         result.markReferenceAtOffset(offset, compressed);
+        compressedByOffset.put(offset, compressed);
+    }
+
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Verification visitor records derived references in hosted data structures.")
+    @Uninterruptible(reason = "Verifier visitor is called through the decoder bridge and uses hosted collections.", mayBeInlined = true, calleeMustBe = false)
+    public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, Object holderObject) {
+        int baseOffset = NumUtil.safeToInt(baseObjRef.subtract(base).rawValue());
+        int derivedOffset = NumUtil.safeToInt(derivedObjRef.subtract(base).rawValue());
+        result.markReferenceAtOffset(derivedOffset, baseOffset, compressedByOffset.get(baseOffset));
     }
 }
