@@ -49,7 +49,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.IntRingBuffer;
-import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -61,7 +60,7 @@ import com.oracle.truffle.regex.util.BitSets;
  * a snapshot of the backtracker's state. The backtracker state consists of:
  * <ul>
  * <li>the current index in the input string</li>
- * <li>the current NFA state</li>
+ * <li>the current compact NFA state record</li>
  * <li>all current capture group boundaries (including the number of the last matched group, if
  * tracked)</li>
  * <li>all current quantifier loop counters</li>
@@ -218,12 +217,13 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return newSubLocals(newDontOverwriteLastGroup);
     }
 
-    public TRegexBacktrackingNFAExecutorLocals createSubNFALocals(PureNFATransition t, boolean newDontOverwriteLastGroup) {
+    public TRegexBacktrackingNFAExecutorLocals createSubNFALocals(int[] groupBoundaries, int groupBoundaryRecord, boolean newDontOverwriteLastGroup) {
         dupFrame();
         if (trackLastGroup && newDontOverwriteLastGroup) {
             stack()[offsetLastGroup() + stackFrameSize] = -1;
         }
-        t.getGroupBoundaries().applyExploded(stack(), offsetCaptureGroups() + stackFrameSize, offsetLastGroup() + stackFrameSize, getIndex(), trackLastGroup, dontOverwriteLastGroup);
+        EncodedGroupBoundaries.applyExploded(groupBoundaries, groupBoundaryRecord, stack(), offsetCaptureGroups() + stackFrameSize, offsetLastGroup() + stackFrameSize, getIndex(), trackLastGroup,
+                        dontOverwriteLastGroup);
         return newSubLocals(newDontOverwriteLastGroup);
     }
 
@@ -295,8 +295,8 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return offsetZeroWidthQuantifierCG() + zeroWidthQuantifierCGOffsets[zeroWidthIndex];
     }
 
-    public void apply(PureNFATransition t, int index) {
-        t.getGroupBoundaries().applyExploded(stack(), offsetCaptureGroups(), offsetLastGroup(), index, trackLastGroup, dontOverwriteLastGroup);
+    public void apply(int[] groupBoundaries, int groupBoundaryRecord, int index) {
+        EncodedGroupBoundaries.applyExploded(groupBoundaries, groupBoundaryRecord, stack(), offsetCaptureGroups(), offsetLastGroup(), index, trackLastGroup, dontOverwriteLastGroup);
     }
 
     public void resetToInitialState() {
@@ -376,8 +376,8 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         throw new UnsupportedRegexException("backtracking stack limit exceeded");
     }
 
-    public void pushResult(PureNFATransition t, int index) {
-        t.getGroupBoundaries().applyExploded(result, 0, result.length - 1, index, trackLastGroup, dontOverwriteLastGroup);
+    public void pushResult(int[] groupBoundaries, int groupBoundaryRecord, int index) {
+        EncodedGroupBoundaries.applyExploded(groupBoundaries, groupBoundaryRecord, result, 0, result.length - 1, index, trackLastGroup, dontOverwriteLastGroup);
         pushResult();
     }
 

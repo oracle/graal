@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -395,25 +395,6 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
             possibleResults = new TBitSet(TRegexOptions.TRegexTraceFinderMaxNumberOfResults);
         }
         possibleResults.set(index);
-    }
-
-    /**
-     * Creates a copy of the {@code original} state. This copy is shallow as the state is just a
-     * part of a larger cyclic graph. However, it has its own copy of the {@link #getSuccessors()}
-     * and {@link #getPredecessors()} arrays. When copying the entire NFA, the
-     * {@link #getSuccessors()} and {@link #getPredecessors()} must be updated to point to
-     * transitions in the new NFA.
-     */
-    public NFAState(NFAState original) {
-        super(original);
-        this.stateSet = original.stateSet;
-        this.transitionToAnchoredFinalState = original.transitionToAnchoredFinalState;
-        this.transitionToUnAnchoredFinalState = original.transitionToUnAnchoredFinalState;
-        this.revTransitionToAnchoredFinalState = original.revTransitionToAnchoredFinalState;
-        this.revTransitionToUnAnchoredFinalState = original.revTransitionToUnAnchoredFinalState;
-        this.possibleResults = original.possibleResults;
-        this.finishedLookBehinds = original.finishedLookBehinds;
-        this.matchedConditionGroupsMap = original.matchedConditionGroupsMap;
     }
 
     @TruffleBoundary

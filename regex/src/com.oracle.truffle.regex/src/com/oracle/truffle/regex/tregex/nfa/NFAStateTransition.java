@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,21 +121,6 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
      */
     public GroupBoundaries getGroupBoundaries() {
         return groupBoundaries;
-    }
-
-    /**
-     * Creates a (shallow) copy of the {@code original} transition. If this is called as part of a
-     * deep copy of the NFA, the {@link #getSource()} and {@link #getTarget()} have to be updated to
-     * point to states in the copied NFA.
-     */
-    public NFAStateTransition(NFAStateTransition original) {
-        this.id = original.id;
-        this.source = original.source;
-        this.target = original.target;
-        this.codePointSet = original.codePointSet;
-        this.groupBoundaries = original.groupBoundaries;
-        this.constraints = original.constraints;
-        this.operations = original.operations;
     }
 
     @Override

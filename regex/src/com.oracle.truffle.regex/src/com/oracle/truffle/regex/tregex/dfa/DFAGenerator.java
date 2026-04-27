@@ -378,8 +378,8 @@ public final class DFAGenerator implements JsonConvertible {
         checkIfAllQuantifierOperationsAreSupported(nodes, counterTrackers);
 
         return new TRegexDFAExecutorNode(nfa.getAst().getSource(), executorProps, getNfa().getAst().getNumberOfCaptureGroups(), maxNumberOfNfaStates,
-                        indexOfParams.toArray(TruffleString.CodePointSet[]::new), nodes.toArray(DFAAbstractNode[]::new),
-                        debugRecorder, innerLiteralPrefixMatcher, counterDataBuilder, counterTrackers, nfa.getNumberOfStates(), getOptions().isRegressionTestMode());
+                        indexOfParams.toArray(TruffleString.CodePointSet[]::new), nodes.toArray(DFAAbstractNode[]::new), matchersBuilder.finish(),
+                        debugRecorder, innerLiteralPrefixMatcher, counterDataBuilder, counterTrackers);
     }
 
     /**
@@ -1503,7 +1503,7 @@ public final class DFAGenerator implements JsonConvertible {
             assert innerLiteralPrefixMatcher == null;
             int minResultLength = rootSeq.getTerms().get(literalStart).getMinPath() - 1;
             innerLiteralPrefixMatcher = compilationRequest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, doSimpleCG, false, minResultLength), "innerLiteralPrefix");
-            innerLiteralPrefixMatcher.getProperties().setSimpleCGMustCopy(false);
+            innerLiteralPrefixMatcher.setSimpleCGMustCopy(false);
             doSimpleCG = doSimpleCG && innerLiteralPrefixMatcher.isSimpleCG();
             nfa.setInitialLoopBack(true);
             nfa.getReverseAnchoredEntry().setSource(reverseAnchoredInitialState);
@@ -1704,8 +1704,8 @@ public final class DFAGenerator implements JsonConvertible {
                     }
                 }
                 if (i == nSuccessors - 1 && (coversCharSpace || (pruneUnambiguousPaths && !s.isFinalStateSuccessor()))) {
-                    // replace the last matcher with an AnyMatcher, since it must always cover the
-                    // remaining input space
+                    // replace the last matcher with a no-match successor, since it must always
+                    // cover the remaining input space
                     matchersBuilder.setNoMatchSuccessor((short) i);
                 } else {
                     nRanges += cps.size();

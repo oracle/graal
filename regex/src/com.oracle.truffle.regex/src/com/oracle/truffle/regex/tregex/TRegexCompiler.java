@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode.LazyCaptureGroupRegexSearchNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
-import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackerSubExecutorNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.Loggers;
 
@@ -100,12 +100,17 @@ public final class TRegexCompiler {
     }
 
     @TruffleBoundary
-    public static LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(RegexLanguage language, NFA nfa, RegexProfile rootNodeProfile, boolean allowSimpleCG) {
-        return new TRegexCompilationRequest(language, nfa).compileLazyDFAExecutor(rootNodeProfile, allowSimpleCG);
+    public static LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(RegexLanguage language, RegexSource source, NFA nfa, RegexProfile rootNodeProfile, boolean allowSimpleCG) {
+        assert nfa == null || nfa.getAst().getSource() == source;
+        if (nfa == null) {
+            return new TRegexCompilationRequest(language, source).compileLazyDFAExecutorFromSource(rootNodeProfile, allowSimpleCG);
+        } else {
+            return new TRegexCompilationRequest(language, nfa).compileLazyDFAExecutor(rootNodeProfile, allowSimpleCG);
+        }
     }
 
     @TruffleBoundary
-    public static TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor(RegexLanguage language, NFA nfa) {
+    public static TRegexBacktrackerSubExecutorNode compileBacktrackingExecutor(RegexLanguage language, NFA nfa) {
         return new TRegexCompilationRequest(language, nfa).compileBacktrackingExecutor();
     }
 
