@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmAddTextSectionSymbols;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmCleanupStackMaps;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmCompile;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmLink;
@@ -53,6 +54,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
@@ -68,6 +70,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -109,6 +112,11 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     @Override
     public int getCodeCacheSize() {
         return getCodeAreaSize();
+    }
+
+    @Override
+    public boolean definesTextSectionBoundarySymbols() {
+        return false;
     }
 
     @Override
@@ -214,6 +222,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         llvmCleanupStackMaps(debug, getLinkedFilename(), basePath);
         long codeAreaSize = textSectionInfo.getCodeSize();
         assert codeAreaSize <= Integer.MAX_VALUE;
+        llvmAddTextSectionSymbols(debug, getLinkedFilename(), NativeImage.getTextSectionStartSymbol(), NativeImage.getTextSectionEndSymbol(), codeAreaSize, basePath);
         setCodeAreaSize((int) textSectionInfo.getCodeSize());
     }
 
@@ -336,6 +345,25 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                 if (global) {
                     globalSymbols.add(symbol);
                 }
+            }
+
+            /*
+             * The real text content is linked from llvm.o. Keep this section present while building
+             * the image object, but do not emit a second zero-filled text section into that object.
+             */
+            @Override
+            public int getOrDecideSize(Map<Element, LayoutDecisionMap> alreadyDecided, int sizeHint) {
+                return 0;
+            }
+
+            @Override
+            public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
+                return new byte[0];
+            }
+
+            @Override
+            public int getMemSize(Map<Element, LayoutDecisionMap> alreadyDecided) {
+                return 0;
             }
         };
     }

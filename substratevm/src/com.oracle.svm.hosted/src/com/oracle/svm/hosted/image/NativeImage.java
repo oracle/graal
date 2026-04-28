@@ -440,6 +440,10 @@ public abstract class NativeImage extends AbstractImage {
         }
     }
 
+    public static String getTextSectionEndSymbol() {
+        return "__svm_text_end";
+    }
+
     /**
      * Create the image sections for code, constants, and the heap.
      */
@@ -475,12 +479,14 @@ public abstract class NativeImage extends AbstractImage {
             rwDataSection = objectFile.newProgbitsSection(SectionName.DATA.getFormatDependentName(objectFile.getFormat()), pageSize, true, false, rwDataImpl);
 
             // Define symbols for the sections.
-            objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false);
-            if (ImageLayerBuildingSupport.buildingSharedLayer() || SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                /* add a dummy function symbol at the start of the code section */
-                objectFile.createDefinedSymbol(getTextSectionStartSymbol(), textSection, 0, 0, true, true);
+            if (codeCache.definesTextSectionBoundarySymbols()) {
+                objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false);
+                if (ImageLayerBuildingSupport.buildingSharedLayer() || SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                    /* add a dummy function symbol at the start of the code section */
+                    objectFile.createDefinedSymbol(getTextSectionStartSymbol(), textSection, 0, 0, true, true);
+                }
+                objectFile.createDefinedSymbol(getTextSectionEndSymbol(), textSection, textSectionSize, 0, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
             }
-            objectFile.createDefinedSymbol("__svm_text_end", textSection, textSectionSize, 0, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
             objectFile.createDefinedSymbol(roDataSection.getName(), roDataSection, 0, 0, false, false);
             objectFile.createDefinedSymbol(rwDataSection.getName(), rwDataSection, 0, 0, false, false);
 

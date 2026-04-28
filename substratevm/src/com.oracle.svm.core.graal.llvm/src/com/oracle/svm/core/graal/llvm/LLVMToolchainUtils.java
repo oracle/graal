@@ -154,6 +154,21 @@ public class LLVMToolchainUtils {
         }
     }
 
+    public static void llvmAddTextSectionSymbols(DebugContext debug, String inputPath, String startSymbolName, String endSymbolName, long textSectionSize, Path basePath) {
+        String textSectionName = SectionName.TEXT.getFormatDependentName(ObjectFile.getNativeFormat());
+        List<String> args = new ArrayList<>();
+        args.add("--add-symbol=" + startSymbolName + "=" + textSectionName + ":0,global");
+        args.add("--add-symbol=" + endSymbolName + "=" + textSectionName + ":" + textSectionSize + ",global");
+        args.add(inputPath);
+
+        try {
+            LLVMToolchain.runLLVMCommand("llvm-objcopy", basePath, args);
+        } catch (LLVMToolchain.RunFailureException e) {
+            debug.log("%s", e.getOutput());
+            throw new GraalError("Adding text section symbols failed for " + inputPath + ": " + e.getStatus() + System.lineSeparator() + "Command: llvm-objcopy " + String.join(" ", args));
+        }
+    }
+
     public static final class BatchExecutor {
         private CompletionExecutor executor;
 
