@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.monitor.JavaMonitor;
+import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
@@ -123,16 +124,12 @@ final class ThreadSnapshotUtil {
 
         /* Setting the blocker info in cases other than PARK_BLOCKER is non-trivial. */
         Object blocker = LockSupport.getBlocker(thread);
-        if (blocker != null && !(blocker instanceof JavaMonitor) && !isJavaMonitorConditionObject(blocker)) {
+        if (blocker != null && !(blocker instanceof JavaMonitor) && !(blocker instanceof JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject)) {
             snapshot.blockerTypeOrdinal = SubstrateUtil.cast(Target_jdk_internal_vm_ThreadSnapshot_BlockerLockType.PARK_BLOCKER, Enum.class).ordinal();
             snapshot.blockerObject = blocker;
         }
 
         return snapshot;
-    }
-
-    private static boolean isJavaMonitorConditionObject(Object blocker) {
-        return blocker.getClass().getName().equals("com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer$JavaMonitorConditionObject");
     }
 
     private static class CreateThreadSnapshotOperation extends JavaVMOperation {
