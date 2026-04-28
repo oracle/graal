@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.shared.Uninterruptible;
@@ -62,8 +64,7 @@ public interface ObjectReferenceVisitor {
      *            not part of a Java object (e.g., the reference is on the stack or in a data
      *            structure that is located in native memory).
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
-    @Uninterruptible(reason = "Visitors are called through decoder bridge methods that explicitly allow interruptible implementations.", mayBeInlined = true, calleeMustBe = false)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     default void visitDerivedReference(@SuppressWarnings("unused") Pointer baseObjRef, @SuppressWarnings("unused") Pointer derivedObjRef, @SuppressWarnings("unused") Object holderObject) {
         throw VMError.shouldNotReachHere("Derived references are not supported by this visitor.");
     }

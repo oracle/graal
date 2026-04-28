@@ -54,7 +54,7 @@ import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.InterruptibleDerivedReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -959,7 +959,7 @@ class MethodTableFirstIDTracker {
     }
 }
 
-class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
+class CollectingObjectReferenceVisitor implements InterruptibleDerivedReferenceVisitor {
     private final Pointer base;
     protected final SubstrateReferenceMap result = new SubstrateReferenceMap();
     private final TreeMap<Integer, Boolean> compressedByOffset = new TreeMap<>();
@@ -987,7 +987,7 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
     @Override
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Verification visitor records derived references in hosted data structures.")
     @Uninterruptible(reason = "Verifier visitor is called through the decoder bridge and uses hosted collections.", mayBeInlined = true, calleeMustBe = false)
-    public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, Object holderObject) {
+    public void visitDerivedReferenceInterruptibly(Pointer baseObjRef, Pointer derivedObjRef, Object holderObject) {
         int baseOffset = NumUtil.safeToInt(baseObjRef.subtract(base).rawValue());
         int derivedOffset = NumUtil.safeToInt(derivedObjRef.subtract(base).rawValue());
         result.markReferenceAtOffset(derivedOffset, baseOffset, compressedByOffset.get(baseOffset));

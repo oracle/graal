@@ -932,8 +932,7 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                ModuleLayer builderModuleLayer = SubstrateOptions.class.getModule().getLayer();
-                boolean isLLVMBackendMissing = builderModuleLayer == null || builderModuleLayer.findModule("org.graalvm.nativeimage.llvm").isEmpty();
+                boolean isLLVMBackendMissing = ModuleLayer.boot().findModule("org.graalvm.nativeimage.llvm").isEmpty();
                 if (isLLVMBackendMissing) {
                     throw UserError.invalidOptionValue(CompilerBackend, newValue,
                                     "The LLVM backend for GraalVM Native Image is missing and needs to be built from source. " +

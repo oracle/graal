@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,6 +56,20 @@ public class CodeReferenceMapDecoder {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor,
                     Object holderObject) {
+        walkOffsetsFromPointer(baseAddress, referenceMapEncoding, referenceMapIndex, visitor, null, holderObject);
+    }
+
+    @AlwaysInline("de-virtualize calls to InterruptibleDerivedReferenceVisitor")
+    @Uninterruptible(reason = "Called from hosted verification code through decoder bridge methods that explicitly allow interruptible implementations.", mayBeInlined = true, calleeMustBe = false)
+    public static void walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, InterruptibleDerivedReferenceVisitor visitor,
+                    Object holderObject) {
+        walkOffsetsFromPointer(baseAddress, referenceMapEncoding, referenceMapIndex, visitor, visitor, holderObject);
+    }
+
+    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor,
+                    InterruptibleDerivedReferenceVisitor interruptibleDerivedReferenceVisitor, Object holderObject) {
         assert referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP;
         assert referenceMapEncoding.isNonNull();
         int uncompressedSize = FrameAccess.uncompressedReferenceSize();
@@ -146,7 +160,11 @@ public class CodeReferenceMapDecoder {
                     } else {
                         derivedRef = objRef.subtract(Word.unsigned(-refOffset).multiply(refSize));
                     }
-                    callVisitDerivedReferenceInline(visitor, objRef, derivedRef, holderObject);
+                    if (interruptibleDerivedReferenceVisitor != null) {
+                        callVisitDerivedReferenceInterruptiblyInline(interruptibleDerivedReferenceVisitor, objRef, derivedRef, holderObject);
+                    } else {
+                        callVisitDerivedReferenceInline(visitor, objRef, derivedRef, holderObject);
+                    }
                 }
                 objRef = objRef.add(refSize);
             } else {
@@ -170,8 +188,14 @@ public class CodeReferenceMapDecoder {
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    @Uninterruptible(reason = "Bridge between uninterruptible code and uninterruptible derived-reference visitors.", mayBeInlined = true)
     private static void callVisitDerivedReferenceInline(ObjectReferenceVisitor visitor, Pointer baseObjRef, Pointer derivedObjRef, Object holderObject) {
         visitor.visitDerivedReference(baseObjRef, derivedObjRef, holderObject);
+    }
+
+    @AlwaysInline("de-virtualize calls to InterruptibleDerivedReferenceVisitor")
+    @Uninterruptible(reason = "Bridge between uninterruptible code and potentially interruptible verifier visitors.", mayBeInlined = true, calleeMustBe = false)
+    private static void callVisitDerivedReferenceInterruptiblyInline(InterruptibleDerivedReferenceVisitor visitor, Pointer baseObjRef, Pointer derivedObjRef, Object holderObject) {
+        visitor.visitDerivedReferenceInterruptibly(baseObjRef, derivedObjRef, holderObject);
     }
 }

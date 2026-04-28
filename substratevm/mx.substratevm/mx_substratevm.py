@@ -447,6 +447,7 @@ def llvm_backend_gate_task(extra_image_args=None):
 
     llvm_backend_runtime_smoke(output_path, llvm_args, 'llvm-smoke')
     llvm_backend_runtime_smoke(output_path, llvm_args + svm_experimental_options(['-H:+UseLLVMDataSection']), 'llvm-smoke-data-section')
+    llvm_backend_foreign_api_disabled_smoke(output_path, llvm_args)
 
 
 def llvm_backend_runtime_smoke(output_path, image_args, image_name):
@@ -503,6 +504,32 @@ public final class LlvmBackendSmoke {
     with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
         native_image(['--native-image-info', '-o', image_path, '-cp', smoke_dir, 'LlvmBackendSmoke'] + image_args)
     test_run([image_path], 'LLVM smoke ok: 60489' + os.linesep)
+
+
+def llvm_backend_foreign_api_disabled_smoke(output_path, image_args):
+    smoke_dir = join(output_path, 'llvm-foreign-api-disabled')
+    mx_util.ensure_dir_exists(smoke_dir)
+    source_file = join(smoke_dir, 'LlvmForeignApiDisabledSmoke.java')
+    with open(source_file, 'w', encoding='utf-8') as fp:
+        fp.write('''
+public final class LlvmForeignApiDisabledSmoke {
+    public static void main(String[] args) {
+    }
+}
+''')
+    mx.run([mx.get_jdk().javac, source_file])
+    stdout_capture = mx.OutputCapture()
+    stderr_capture = mx.OutputCapture()
+    expected_error = "Support for the Foreign Function and Memory API is not available with the LLVM backend"
+    with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+        exit_code = native_image(['--native-image-info', '-o', join(smoke_dir, 'llvm-foreign-api-disabled'), '-cp', smoke_dir, 'LlvmForeignApiDisabledSmoke'] +
+                                 image_args + svm_experimental_options(['-H:+ForeignAPISupport']),
+                                 nonZeroIsFatal=False, out=stdout_capture, err=stderr_capture)
+    output = stdout_capture.data + stderr_capture.data
+    if exit_code == 0:
+        mx.abort('LLVM backend accepted -H:+ForeignAPISupport, but it should be rejected.')
+    if expected_error not in output:
+        mx.abort('LLVM backend rejected -H:+ForeignAPISupport without the expected diagnostic.')
 
 
 def truffle_args(extra_build_args):

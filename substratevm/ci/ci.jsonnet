@@ -150,6 +150,7 @@
     }),
     "llvm-backend": mxgate("build,llvm_backend") + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": tier3 + t("30:00"),
+      "linux:aarch64:jdk-latest": tier3 + t("30:00"),
     }),
     "standalone-pointsto-unittests": mxgate("build,standalone_pointsto_unittests") + standalone_pointsto_deps + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": tier2 + t("20:00"),
