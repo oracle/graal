@@ -46,6 +46,11 @@ import com.oracle.svm.configure.filters.ModuleFilterTools;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class ConfigurationGenerateFiltersCommand extends ConfigurationCommand {
+    private static final String DEPRECATION_NOTICE = "Deprecation notice: 'native-image-utils generate-filters' is deprecated and " +
+                    "may be removed in a future release. The native-image agent applies built-in filters by default. " +
+                    "For custom filters, pass filter JSON directly to the native-image agent with " +
+                    "'caller-filter-file=<path>' or 'access-filter-file=<path>'.";
+
     @Override
     public String getName() {
         return "generate-filters";
@@ -53,6 +58,7 @@ public final class ConfigurationGenerateFiltersCommand extends ConfigurationComm
 
     @Override
     public void apply(Iterator<String> argumentsIterator) throws IOException {
+        warnDeprecated();
         Path outputPath = null;
         boolean reduce = false;
         List<String> args = new ArrayList<>();
@@ -133,7 +139,12 @@ public final class ConfigurationGenerateFiltersCommand extends ConfigurationComm
     @Override
     protected String getDescription0() {
         return """
-                                  builds a class filter according to the parameters.
+                                  [deprecated] builds a class filter according to the parameters.
+                                                  The native-image agent applies built-in filters by
+                                                  default. For custom filters, pass filter JSON
+                                                  directly to the native-image agent with
+                                                  caller-filter-file=<path> or
+                                                  access-filter-file=<path>.
                                                   Filter rules are created according to the order of
                                                   these parameters, and filter rules are applied in
                                                   their order so that the last matching one "wins", so
@@ -172,6 +183,10 @@ public final class ConfigurationGenerateFiltersCommand extends ConfigurationComm
         try (JsonWriter writer = new JsonWriter(new OutputStreamWriter(targetStream))) {
             filter.printJson(writer);
         }
+    }
+
+    private static void warnDeprecated() {
+        System.out.println(DEPRECATION_NOTICE);
     }
 
     private static void addSingleRule(HierarchyFilterNode root, String argName, String qualifiedPkg, HierarchyFilterNode.Inclusion inclusion) {
