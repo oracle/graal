@@ -27,14 +27,14 @@ package com.oracle.svm.core.posix.darwin;
 
 // Checkstyle: stop
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
-import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
+
+import com.oracle.svm.core.posix.headers.PosixDirectives;
 
 /**
  * Manually translated definitions from the C header file semaphore.h.
@@ -48,26 +48,26 @@ public class DarwinSemaphore {
     @CConstant
     public static native int SYNC_POLICY_FIFO();
 
-    @CPointerTo(semaphore_t.class)
-    public interface semaphore_tPointer extends PointerBase {
-        semaphore_t read();
-    }
-
-    @CStruct(value = "semaphore", addStructKeyword = true, isIncomplete = true)
-    public interface semaphore_t extends PointerBase {
-    }
-
     @CFunction(transition = CFunction.Transition.TO_NATIVE)
-    public static native int semaphore_wait(semaphore_t semaphore);
+    public static native int semaphore_wait(int semaphore);
+
+    /**
+     * Note that {@code semaphore_t} is an unsigned int on Darwin. This is verified in
+     * {@link DarwinVMSemaphore}.
+     */
+    @CPointerTo(nameOfCType = "semaphore_t")
+    public interface semaphore_t extends PointerBase {
+        int read();
+    }
 
     public static class NoTransition {
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int semaphore_create(WordPointer task, semaphore_tPointer semaphore, int policy, int value);
+        public static native int semaphore_create(WordPointer task, semaphore_t semaphore, int policy, int value);
 
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int semaphore_destroy(WordPointer task, semaphore_t semaphore);
+        public static native int semaphore_destroy(WordPointer task, int semaphore);
 
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int semaphore_signal(semaphore_t semaphore);
+        public static native int semaphore_signal(int semaphore);
     }
 }
