@@ -361,7 +361,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                 continue;
             }
 
-            values.orig[i] = inputVar;
+            values.orig[i] = RAValue.cast(inputVar, values.orig[i]);
 
             if (!outputSpeculative) {
                 // Do not remove from input map if this operation could be removed.

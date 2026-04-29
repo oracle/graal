@@ -730,12 +730,12 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
         @Override
         protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
-            var name = target.arch.getName();
+            var name = target.arch.toString();
 
             // Select first paramter register for this
             switch (name) {
-                case "AMD64" -> register = AMD64.rsi;
-                case "ARM64" -> register = AArch64.r0;
+                case "amd64" -> register = AMD64.rsi;
+                case "aarch64" -> register = AArch64.r1;
             }
 
             super.run(target, lirGenRes, context);
@@ -743,6 +743,8 @@ public class RegAllocVerifierTest extends GraalCompilerTest {
 
         @Override
         protected RegisterAllocationConfig getRegisterAllocationConfig(AllocationContext context) {
+            assert register != null : "Callee save register not selected";
+
             var regCfg = context.registerAllocationConfig.getRegisterConfig();
             var newRegCfg = new RegisterConfig() {
 
