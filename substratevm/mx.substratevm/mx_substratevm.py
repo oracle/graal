@@ -429,7 +429,11 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
 # image, which is not covered by the restored LLVM backend smoke surface yet.
 def llvm_backend_gate_task(extra_image_args=None):
     extra_image_args = extra_image_args or []
-    llvm_args = svm_experimental_options(['--tool:llvm-backend']) + extra_image_args
+    llvm_args = (
+        svm_experimental_options(['--tool:llvm-backend']) +
+        llvm_backend_image_builder_args() +
+        extra_image_args
+    )
     output_path = join(svmbuild_dir(), 'llvm-backend')
 
     hello_world_configs = [
@@ -448,6 +452,16 @@ def llvm_backend_gate_task(extra_image_args=None):
     llvm_backend_runtime_smoke(output_path, llvm_args, 'llvm-smoke')
     llvm_backend_runtime_smoke(output_path, llvm_args + svm_experimental_options(['-H:+UseLLVMDataSection']), 'llvm-smoke-data-section')
     llvm_backend_foreign_api_disabled_smoke(output_path, llvm_args)
+
+
+def llvm_backend_image_builder_args():
+    if not mx.is_linux() or not os.environ.get('LD_LIBRARY_PATH'):
+        return []
+    return [
+        '-ELD_LIBRARY_PATH',
+        '-J-Dcom.oracle.svm.shadowed.org.bytedeco.javacpp.pathsFirst=true',
+        '-J-Dcom.oracle.svm.shadowed.org.bytedeco.javacpp.platform.preload=stdc++@.6',
+    ]
 
 
 def llvm_backend_runtime_smoke(output_path, image_args, image_name):
