@@ -25,9 +25,14 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.LIRKindWithCast;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRValueUtil;
+import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Wrapper around Value to change how indexing in data structures like {@link java.util.Map} or
@@ -37,6 +42,12 @@ import jdk.vm.ci.meta.Value;
  * Values are indexed without their {@link LIRKind kind} associated with them, this is necessary for
  * {@link AllocationStateMap} because locations can change kinds and still be associated with one
  * key/value pair in the map.
+ * </p>
+ *
+ * <p>
+ * Some value types like {@link RAVConstant constants}, {@link RAVariable variables},
+ * {@link RAVRegister registers} have their own subclass, to use them as types for keys and values
+ * in collections.
  * </p>
  */
 public class RAValue {
@@ -52,13 +63,39 @@ public class RAValue {
         }
 
         if (ValueUtil.isRegister(value)) {
-            return new RARegister(ValueUtil.asRegisterValue(value));
+            return new RAVRegister(ValueUtil.asRegisterValue(value));
+        }
+
+        if (LIRValueUtil.isConstantValue(value)) {
+            return new RAVConstant(LIRValueUtil.asConstantValue(value), true);
         }
 
         return new RAValue(value);
     }
 
-    protected Value value;
+    protected static boolean kindsEqual(RAValue orig, RAValue location) {
+        var origKind = orig.getLIRKind();
+        var currKind = location.getLIRKind();
+        if (currKind instanceof LIRKindWithCast castKind) {
+            currKind = (LIRKind) castKind.getActualKind();
+        }
+
+        return origKind.equals(currKind);
+    }
+
+    public static RAValue cast(RAValue symbol, RAValue kindSrc) {
+        RAValue castOrig;
+        if (symbol.isVariable()) {
+            castOrig = RAValue.create(new Variable(kindSrc.getLIRKind(), symbol.asVariable().getVariable().index));
+        } else if (symbol.isConstant()) {
+            castOrig = RAValue.create(new ConstantValue(kindSrc.getLIRKind(), symbol.asConstant().getConstant()));
+        } else {
+            throw new GraalError("should not reach here: cannot cast orig " + symbol);
+        }
+        return castOrig;
+    }
+
+    protected final Value value;
 
     protected RAValue(Value value) {
         this.value = value;
@@ -80,16 +117,36 @@ public class RAValue {
         return false;
     }
 
+    public boolean isConstant() {
+        return false;
+    }
+
+    public RAVConstant asConstant() {
+        return (RAVConstant) this;
+    }
+
     public boolean isRegister() {
         return false;
     }
 
-    public RARegister asRegister() {
-        return (RARegister) this;
+    public RAVRegister asRegister() {
+        return (RAVRegister) this;
     }
 
     public LIRKind getLIRKind() {
+        if (isIllegal() || value.getValueKind().equals(ValueKind.Illegal)) {
+            return LIRKind.Illegal;
+        }
+
         return value.getValueKind(LIRKind.class);
+    }
+
+    public boolean isLocation() {
+        return isRegister() || isStackSlot();
+    }
+
+    public boolean isStackSlot() {
+        return LIRValueUtil.isStackSlotValue(value);
     }
 
     @Override

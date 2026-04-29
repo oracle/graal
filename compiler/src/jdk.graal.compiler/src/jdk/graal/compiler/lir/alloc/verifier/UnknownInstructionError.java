@@ -34,8 +34,8 @@ import jdk.graal.compiler.lir.StandardOp;
  */
 @SuppressWarnings("serial")
 public class UnknownInstructionError extends RAVError {
-    public LIRInstruction instruction;
-    public BasicBlock<?> block;
+    public final LIRInstruction instruction;
+    public final BasicBlock<?> block;
 
     public UnknownInstructionError(LIRInstruction instruction, BasicBlock<?> block) {
         super(UnknownInstructionError.getErrorMessage(instruction, block));

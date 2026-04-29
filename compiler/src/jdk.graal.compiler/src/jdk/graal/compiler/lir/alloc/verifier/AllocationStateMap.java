@@ -24,22 +24,23 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
-import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.alloc.verifier.exceptions.InvalidRegisterUsedException;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
-import jdk.vm.ci.meta.ValueKind;
 
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Mapping between a location and allocation state that stores one of these: -
- * {@link UnknownAllocationState unknown} - our null state, nothing was stored yet -
- * {@link ValueAllocationState value} - symbol that is stored at said location -
- * {@link ConflictedAllocationState conflicted} - set of Values that are supposed to be at same
- * location
+ * Mapping between a location and allocation state that stores one of these:
+ * <ul>
+ * <li>{@link UnknownAllocationState unknown} - our null state, nothing was stored yet</li>
+ * <li>{@link ValueAllocationState value} - symbol that is stored at said location</li>
+ * <li>{@link ConflictedAllocationState conflicted} - set of Values that are supposed to be at same
+ * location</li>
+ * </ul>
  *
  * <p>
  * Conflicts are resolved by assigning new {@link ValueAllocationState value} to same location.
@@ -49,34 +50,26 @@ import java.util.Set;
  * </p>
  */
 public class AllocationStateMap {
-    protected BasicBlock<?> block;
+    protected final BasicBlock<?> block;
 
     /**
      * Internal map maintaining the mapping.
      */
-    protected Map<RAValue, AllocationState> internalMap;
-
-    /**
-     * Map of casts for locations that was forced by allocator-inserted move, see
-     * {@link BlockVerifierState#isMoveKindChange}.
-     */
-    protected Map<RAValue, ValueKind<LIRKind>> castMap;
+    protected final Map<RAValue, AllocationState> internalMap;
 
     /**
      * Register allocation config describing which registers can be used.
      */
-    protected RegisterAllocationConfig registerAllocationConfig;
+    protected final RegisterAllocationConfig registerAllocationConfig;
 
     public AllocationStateMap(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig) {
         internalMap = new EconomicHashMap<>();
-        castMap = new EconomicHashMap<>();
         this.block = block;
         this.registerAllocationConfig = registerAllocationConfig;
     }
 
     public AllocationStateMap(BasicBlock<?> block, AllocationStateMap other) {
         internalMap = new EconomicHashMap<>(other.internalMap);
-        castMap = new EconomicHashMap<>(other.castMap);
         registerAllocationConfig = other.registerAllocationConfig;
         this.block = block;
     }
@@ -86,15 +79,7 @@ public class AllocationStateMap {
     }
 
     public AllocationState get(RAValue key) {
-        return this.get(key, AllocationState.getDefault());
-    }
-
-    public AllocationState get(RAValue key, AllocationState defaultValue) {
-        var state = internalMap.get(key);
-        if (state == null) {
-            return defaultValue;
-        }
-        return state;
+        return this.internalMap.getOrDefault(key, AllocationState.getDefault());
     }
 
     /**
@@ -121,8 +106,11 @@ public class AllocationStateMap {
      * @param state State to store
      */
     public void putWithoutRegCheck(RAValue key, AllocationState state) {
+        if (state.isUnknown()) {
+            internalMap.remove(key); // Do not propagate unknown further
+        }
+
         internalMap.put(key, state);
-        castMap.remove(key); // Always remove the cast when new value is inserted.
     }
 
     /**
@@ -167,22 +155,45 @@ public class AllocationStateMap {
     public boolean mergeWith(AllocationStateMap source) {
         boolean changed = false;
         for (var entry : source.internalMap.entrySet()) {
-            if (!this.internalMap.containsKey(entry.getKey())) {
+            var location = entry.getKey();
+            var incomingState = entry.getValue();
+            if (!this.internalMap.containsKey(location)) {
+                if (incomingState.isUnknown()) {
+                    continue; // Unknown and Unknown can be skipped
+                }
+
                 changed = true;
 
-                this.putWithoutRegCheck(entry.getKey(), UnknownAllocationState.INSTANCE);
+                this.putWithoutRegCheck(location, incomingState.clone());
+                continue;
             }
 
-            var currentValue = this.internalMap.get(entry.getKey());
-            var result = this.internalMap.get(entry.getKey()).meet(entry.getValue(), source.block, this.block);
-            if (!currentValue.equals(result)) {
+            var currentState = this.internalMap.get(location);
+            var newState = currentState.meet(incomingState, source.block, this.block);
+            if (newState != null) {
                 changed = true;
-            }
 
-            this.putWithoutRegCheck(entry.getKey(), result);
+                this.putWithoutRegCheck(location, newState);
+            }
         }
 
-        castMap.putAll(source.castMap); // This should not affect the merge logic
+        // Process remaining locations from our map that have not yet been processed.
+        for (var entry : this.internalMap.entrySet()) {
+            var location = entry.getKey();
+            if (source.internalMap.containsKey(location) || entry.getValue().isUnknown()) {
+                // Only care about unprocessed locations
+                continue;
+            }
+
+            var currentState = entry.getValue();
+            var resultState = currentState.meet(UnknownAllocationState.INSTANCE, source.block, this.block);
+            if (resultState != null) {
+                changed = true;
+
+                entry.setValue(resultState);
+            }
+        }
+
         return changed;
     }
 

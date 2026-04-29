@@ -22,18 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
+import jdk.graal.compiler.lir.alloc.verifier.RAValue;
 
 /**
  * Kinds are not matching between two values.
  */
 @SuppressWarnings("serial")
 public class KindsMismatchException extends RAVException {
-    public RAValue value1;
-    public RAValue value2;
-    public boolean origVsCurr;
+    public final RAValue value1;
+    public final RAValue value2;
+    public final boolean origVsCurr;
 
     /**
      * Construct a KindsMismatchException.

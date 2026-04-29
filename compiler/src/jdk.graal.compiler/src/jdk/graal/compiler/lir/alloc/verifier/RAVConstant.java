@@ -24,34 +24,55 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.ConstantValue;
+import jdk.vm.ci.meta.Constant;
 
-/**
- * Violation of the alive inputs occurred, the same location was marked as alive argument as well as
- * temp or output.
- */
-@SuppressWarnings("serial")
-public class AliveConstraintViolationException extends RAVException {
-    public RAVInstruction.Op instruction;
+public class RAVConstant extends RAValue {
+    protected final ConstantValue value;
 
     /**
-     * Construct an AliveConstraintViolationException.
-     *
-     * @param instruction Instruction where violation occurred
-     * @param block Block where violation occurred
-     * @param location Location that is being shared
-     * @param asDest Alive location was used as an output
+     * Setting from
+     * {@link jdk.graal.compiler.lir.StandardOp.LoadConstantOp#canRematerializeToStack}, stored in
+     * here to be able to check, if it was not violated, if a constant was rematerialized by the
+     * allocator.
      */
-    public AliveConstraintViolationException(RAVInstruction.Op instruction, BasicBlock<?> block, RAValue location, boolean asDest) {
-        super(AliveConstraintViolationException.getErrorMessage(location, asDest), instruction, block);
-        this.instruction = instruction;
+    public final boolean canRematerializeToStack;
+
+    public RAVConstant(ConstantValue value, boolean canRematerializeToStack) {
+        super(value);
+
+        this.value = value;
+        this.canRematerializeToStack = canRematerializeToStack;
     }
 
-    static String getErrorMessage(RAValue location, boolean asDest) {
-        if (asDest) {
-            return "Location " + location + " used as both alive and output";
-        }
+    public Constant getConstant() {
+        return value.getConstant();
+    }
 
-        return "Location " + location + " used as both alive and temp";
+    public ConstantValue getConstantValue() {
+        return value;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof RAVConstant ravConstant) {
+            return value.getConstant().equals(ravConstant.value.getConstant());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return value.getConstant().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return value.getConstant().toString();
+    }
+
+    @Override
+    public boolean isConstant() {
+        return true;
     }
 }

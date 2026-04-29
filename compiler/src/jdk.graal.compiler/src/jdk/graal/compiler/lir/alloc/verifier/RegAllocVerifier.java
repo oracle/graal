@@ -28,12 +28,13 @@ import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.alloc.verifier.exceptions.RAVException;
+import jdk.graal.compiler.lir.alloc.verifier.exceptions.RAVFailedVerificationException;
+import jdk.graal.compiler.lir.dfa.UniqueWorkList;
 
 import java.io.OutputStream;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 
 /**
  * Class encapsulating the whole Register Allocation Verification. Maintaining entry states for
@@ -44,44 +45,33 @@ public class RegAllocVerifier {
     /**
      * Verifier IR that abstracts LIR instructions and marks moves inserted by the allocator.
      */
-    protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
+    protected final BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
     /**
      * State of the block on entry, calculated from its predecessors.
      */
-    protected BlockMap<BlockVerifierState> blockEntryStates;
+    protected final BlockMap<BlockVerifierState> blockEntryStates;
 
     /**
      * LIR necessary for to access the program graph.
      */
-    protected LIR lir;
+    protected final LIR lir;
 
     /**
      * Register Allocator config used for validating if the allocator uses a valid register.
      */
-    protected RegisterAllocationConfig registerAllocationConfig;
+    protected final RegisterAllocationConfig registerAllocationConfig;
 
     /**
      * Resolves locations for label variables by finding their first usage and walking back to the
      * defining label.
      */
-    protected FromUsageResolverGlobal fromUsageResolverGlobal;
-
-    /**
-     * Conflict resolver for re-materialized constants.
-     */
-    protected ConflictResolver constantMaterializationConflictResolver;
-
-    /**
-     * Conflict resolver for variable synonyms, some virtual moves can be in form vx = MOVE vy, and
-     * so variables are interchangeable.
-     */
-    protected VariableSynonymMap synonymMap;
+    protected final FromUsageResolverGlobal fromUsageResolverGlobal;
 
     /**
      * Track callee saved values from start block to exit blocks.
      */
-    protected CalleeSaveMap calleeSaveMap;
+    protected final CalleeSaveMap calleeSaveMap;
 
     public RegAllocVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, RegisterAllocationConfig registerAllocationConfig) {
         this.lir = lir;
@@ -92,9 +82,6 @@ public class RegAllocVerifier {
         this.blockEntryStates = new BlockMap<>(cfg);
 
         this.fromUsageResolverGlobal = new FromUsageResolverGlobal(lir, blockInstructions);
-
-        this.synonymMap = new VariableSynonymMap();
-        this.constantMaterializationConflictResolver = new ConstantMaterializationConflictResolver(this.synonymMap);
 
         this.calleeSaveMap = new CalleeSaveMap(registerAllocationConfig.getRegisterConfig());
     }
@@ -108,8 +95,8 @@ public class RegAllocVerifier {
      * This is necessary to verify instruction inputs correctly.
      * </p>
      */
-    public void calculateEntryBlocks() {
-        Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
+    public void computeEntryStates() {
+        var worklist = new UniqueWorkList(lir.getBlocks().length);
 
         var startBlock = this.lir.getControlFlowGraph().getStartBlock();
         var startBlockState = createNewBlockState(startBlock);
@@ -118,6 +105,10 @@ public class RegAllocVerifier {
         worklist.add(startBlock);
         while (!worklist.isEmpty()) {
             var block = worklist.poll();
+            if (block.getSuccessorCount() == 0) {
+                continue; // No entry state to compute for successors
+            }
+
             var instructions = this.blockInstructions.get(block);
 
             // Create new entry state for successor blocks out of current block state
@@ -140,13 +131,19 @@ public class RegAllocVerifier {
                 }
 
                 this.blockEntryStates.put(succ, succState);
+
+                /*
+                 * Remove block from the worklist to delay processing this can reduce the number of
+                 * times that merge block is processed due to changes.
+                 */
+                worklist.remove(succ);
                 worklist.add(succ);
             }
         }
     }
 
     protected BlockVerifierState createNewBlockState(BasicBlock<?> block) {
-        return new BlockVerifierState(block, registerAllocationConfig, constantMaterializationConflictResolver, synonymMap, calleeSaveMap);
+        return new BlockVerifierState(block, registerAllocationConfig, calleeSaveMap);
     }
 
     /**
@@ -161,9 +158,6 @@ public class RegAllocVerifier {
             var instructions = this.blockInstructions.get(block);
 
             for (var instr : instructions) {
-                this.constantMaterializationConflictResolver.prepareFromInstr(instr, block);
-                this.synonymMap.prepareFromInstr(instr, block);
-
                 state.check(instr);
                 state.update(instr);
             }
@@ -185,9 +179,6 @@ public class RegAllocVerifier {
             var instructions = this.blockInstructions.get(block);
 
             for (var instr : instructions) {
-                this.constantMaterializationConflictResolver.prepareFromInstr(instr, block);
-                this.synonymMap.prepareFromInstr(instr, block);
-
                 try {
                     state.check(instr);
                     state.update(instr);
@@ -228,9 +219,7 @@ public class RegAllocVerifier {
      */
     @SuppressWarnings("try")
     public void run(boolean failOnFirst) {
-        this.fromUsageResolverGlobal.resolvePhiFromUsage();
-
-        this.calculateEntryBlocks();
+        this.computeEntryStates();
 
         if (failOnFirst) {
             this.verifyInstructionInputs();

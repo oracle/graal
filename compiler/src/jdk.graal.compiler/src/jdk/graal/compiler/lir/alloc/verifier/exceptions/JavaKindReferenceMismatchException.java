@@ -22,25 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaKind;
 
-/**
- * Callee-saved register was not retrieved on an exit block.
- */
 @SuppressWarnings("serial")
-public class CalleeSavedRegisterNotRetrievedException extends RAVException {
-    public RARegister register;
-    public BlockVerifierState blockVerifierState;
+public class JavaKindReferenceMismatchException extends RAVException {
+    public final AllocatableValue orig;
+    public final AllocatableValue curr;
+    public final JavaKind kind;
 
-    public CalleeSavedRegisterNotRetrievedException(RARegister register, BasicBlock<?> block, BlockVerifierState blockVerifierState) {
-        super(getErrorMessage(register), null, block);
-        this.register = register;
-        this.blockVerifierState = new BlockVerifierState(block, blockVerifierState);
+    public JavaKindReferenceMismatchException(AllocatableValue orig, AllocatableValue curr, JavaKind kind, RAVInstruction.Base instruction, BasicBlock<?> block) {
+        super(getMessage(orig, curr, kind), instruction, block);
+        this.orig = orig;
+        this.curr = curr;
+        this.kind = kind;
     }
 
-    public static String getErrorMessage(RARegister register) {
-        return "Callee saved register " + register + " not retrieved on exit";
+    public static String getMessage(AllocatableValue orig, AllocatableValue curr, JavaKind kind) {
+        if (JavaKind.Object.equals(kind)) {
+            return orig + " -> " + curr + " not an object java kind when marked as a reference";
+        } else {
+            return orig + " -> " + curr + " is a reference but not marked as a reference";
+        }
     }
 }

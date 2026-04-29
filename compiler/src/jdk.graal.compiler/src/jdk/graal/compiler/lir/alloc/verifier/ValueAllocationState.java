@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRValueUtil;
@@ -35,19 +36,23 @@ import jdk.vm.ci.meta.Value;
  * accompanied by {@link RAVInstruction instruction} and {@link BasicBlock block} where it was
  * created.
  */
-public class ValueAllocationState extends AllocationState implements Cloneable {
-    protected RAValue value;
-    protected RAVInstruction.Base source;
-    protected BasicBlock<?> block;
+public class ValueAllocationState extends AllocationState {
+    protected final RAValue value;
+    protected final RAVInstruction.Base source;
+    protected final BasicBlock<?> block;
+
+    /**
+     * Kind that this value was cast to, this is done by move instruction.
+     */
+    protected LIRKind castKind;
 
     public ValueAllocationState(RAValue raValue, RAVInstruction.Base source, BasicBlock<?> block) {
         var v = raValue.getValue();
         if (ValueUtil.isRegister(v) || LIRValueUtil.isVariable(v) || LIRValueUtil.isConstantValue(v) || LIRValueUtil.isStackSlotValue(v) || Value.ILLEGAL.equals(v)) {
-            // Here, we make sure that no new value class is used here, without consideration.
-
-            // StackSlot, RegisterValue is present in start block in label as predefined argument
-            // VirtualStackSlot is used for RESTORE_REGISTERS and SAVE_REGISTERS
-            // ConstantValue act as Variable
+            /*
+             * Making sure only allowed values are flowing to here. Although, the relevant ones are
+             * only the constant and the variable.
+             */
             this.value = raValue;
             this.source = source;
             this.block = block;
@@ -60,6 +65,37 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
         this.value = other.getRAValue();
         this.source = other.getSource();
         this.block = other.getBlock();
+        this.castKind = other.castKind;
+    }
+
+    public ValueAllocationState(ValueAllocationState other, LIRKind castKind) {
+        this(other);
+        this.castKind = castKind;
+    }
+
+    public boolean isCast() {
+        return castKind != null;
+    }
+
+    /**
+     * Get the lir kind of this state, can be cast by a move.
+     *
+     * @return Value kind or cast kind
+     */
+    public LIRKind getKind() {
+        if (isCast()) {
+            return castKind;
+        }
+
+        return value.getLIRKind();
+    }
+
+    public boolean isReference() {
+        if (isCast()) {
+            return !castKind.isValue();
+        }
+
+        return !value.getLIRKind().isValue();
     }
 
     /**
@@ -97,8 +133,7 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
      * @param other The other state coming from a predecessor edge
      * @param otherBlock Where the other state is coming from
      * @param currBlock Where the current state is coming from
-     * @return {@link ValueAllocationState} if their contents are equal, otherwise
-     *         {@link ConflictedAllocationState}.
+     * @return Newly allocated {@link ConflictedAllocationState} or null, if nothing changed.
      */
     @Override
     public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> currBlock) {
@@ -122,12 +157,20 @@ public class ValueAllocationState extends AllocationState implements Cloneable {
             return new ConflictedAllocationState(this, otherValueAllocState);
         }
 
-        return this;
+        return null;
     }
 
     @Override
-    public boolean equals(AllocationState other) {
-        return other instanceof ValueAllocationState otherVal && this.value.equals(otherVal.getRAValue());
+    public boolean equals(Object other) {
+        if (other instanceof ValueAllocationState otherVal) {
+            if (isUndefinedFromBlock()) {
+                return otherVal.isUndefinedFromBlock() && otherVal.getBlock().equals(this.block);
+            } else {
+                return otherVal.getRAValue().equals(this.value);
+            }
+        }
+
+        return false;
     }
 
     @Override

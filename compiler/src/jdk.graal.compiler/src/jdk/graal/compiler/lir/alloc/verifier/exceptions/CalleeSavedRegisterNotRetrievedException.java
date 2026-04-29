@@ -22,56 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
-import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.alloc.verifier.BlockVerifierState;
+import jdk.graal.compiler.lir.alloc.verifier.RAVRegister;
 
 /**
- * Wrapper around {@link Variable} to change how indexing in data structures like
- * {@link java.util.Map} or {@link java.util.Set} is done.
- *
- * <p>
- * We index only by the {@link Variable} index instead of including the kind as well.
- * </p>
+ * Callee-saved register was not retrieved on an exit block.
  */
-public class RAVariable extends RAValue {
-    protected final Variable variable;
+@SuppressWarnings("serial")
+public class CalleeSavedRegisterNotRetrievedException extends RAVException {
+    public final RAVRegister register;
+    public final BlockVerifierState blockVerifierState;
 
-    protected RAVariable(Variable variable) {
-        super(variable);
-        this.variable = variable;
+    public CalleeSavedRegisterNotRetrievedException(RAVRegister register, BasicBlock<?> block, BlockVerifierState blockVerifierState) {
+        super(getErrorMessage(register), null, block);
+        this.register = register;
+        this.blockVerifierState = new BlockVerifierState(block, blockVerifierState);
     }
 
-    @Override
-    public RAVariable asVariable() {
-        return this;
-    }
-
-    @Override
-    public boolean isVariable() {
-        return true;
-    }
-
-    public Variable getVariable() {
-        return variable;
-    }
-
-    @Override
-    public int hashCode() {
-        return variable.index;
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (other instanceof RAVariable raVariable) {
-            return variable.index == raVariable.variable.index;
-        }
-
-        return false;
-    }
-
-    @Override
-    public String toString() {
-        return "v" + variable.index;
+    public static String getErrorMessage(RAVRegister register) {
+        return "Callee saved register " + register + " not retrieved on exit";
     }
 }

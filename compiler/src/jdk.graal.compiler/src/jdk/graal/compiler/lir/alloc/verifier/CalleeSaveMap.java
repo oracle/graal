@@ -33,27 +33,35 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 
 /**
- * Make sure callee-saved register values are retrieved at an exit block.
+ * This class helps with checking that callee-saved register got retrieved at an exit block, in
+ * {@link BlockVerifierState#checkCalleeSavedRegisters()}.
  *
  * <p>
- * Virtual moves assigning to the same registers need to also be handled, because both values could
- * be retrieved.
+ * We save values that are supposed to be retrieved in a map for each callee-saved register.
+ * </p>
+ *
+ * <p>
+ * It can be an instance of {@link CalleeSavedRAVRegister} which is just a special class denoting
+ * that this value is the callee-saved value saved in start block, before first instruction using
+ * {@link BlockVerifierState#updateCalleeSavedRegisters}.
+ * </p>
+ *
+ * <p>
+ * Or it can be a {@link RAValue} that was set by the first label, meaning we are preserving
+ * parameter that was received.
  * </p>
  */
 public class CalleeSaveMap {
-    protected RegisterConfig registerConfig;
-    protected List<Register> calleeSaveRegisters;
-
-    protected Map<RARegister, RAValue> virtualValues;
+    protected final RegisterConfig registerConfig;
+    protected final Map<RAVRegister, RAValue> virtualValues;
 
     public CalleeSaveMap(RegisterConfig registerConfig) {
         this.registerConfig = registerConfig;
-        calleeSaveRegisters = registerConfig.getCalleeSaveRegisters();
         virtualValues = new EconomicHashMap<>();
     }
 
-    public class CalleeSavedRegister extends RARegister {
-        protected CalleeSavedRegister(RegisterValue registerValue) {
+    public class CalleeSavedRAVRegister extends RAVRegister {
+        protected CalleeSavedRAVRegister(RegisterValue registerValue) {
             super(registerValue);
         }
 
@@ -70,8 +78,8 @@ public class CalleeSaveMap {
      * @param registerValue Callee saved register
      * @return Instance of callee saved register
      */
-    public CalleeSavedRegister createCalleeSavedRegister(RegisterValue registerValue) {
-        var calleeSavedRegister = new CalleeSavedRegister(registerValue);
+    public CalleeSavedRAVRegister createCalleeSavedRegister(RegisterValue registerValue) {
+        var calleeSavedRegister = new CalleeSavedRAVRegister(registerValue);
         virtualValues.put(calleeSavedRegister, calleeSavedRegister);
         return calleeSavedRegister;
     }
@@ -83,12 +91,12 @@ public class CalleeSaveMap {
      * @param register Callee saved register
      * @param value New callee saved value
      */
-    public void addValue(RARegister register, RAValue value) {
+    public void addValue(RAVRegister register, RAValue value) {
         if (!isCalleeSaveRegister(register)) {
             return;
         }
 
-        if (virtualValues.get(register) instanceof CalleeSavedRegister) {
+        if (virtualValues.get(register) instanceof CalleeSavedRAVRegister) {
             virtualValues.put(register, value);
         }
     }
@@ -99,7 +107,7 @@ public class CalleeSaveMap {
      * @param register Callee saved register
      * @return Get callee saved value for this register
      */
-    public RAValue getCalleeSavedValue(RARegister register) {
+    public RAValue getCalleeSavedValue(RAVRegister register) {
         return virtualValues.get(register);
     }
 
@@ -109,7 +117,8 @@ public class CalleeSaveMap {
      * @param register Register
      * @return true, if register is callee saved
      */
-    public boolean isCalleeSaveRegister(RARegister register) {
+    public boolean isCalleeSaveRegister(RAVRegister register) {
+        var calleeSaveRegisters = registerConfig.getCalleeSaveRegisters();
         if (calleeSaveRegisters == null) {
             return false;
         }
@@ -123,6 +132,6 @@ public class CalleeSaveMap {
      * @return callee saved registers
      */
     public List<Register> getCalleeSaveRegisters() {
-        return calleeSaveRegisters;
+        return registerConfig.getCalleeSaveRegisters();
     }
 }

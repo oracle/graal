@@ -22,23 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
+
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
+import jdk.vm.ci.meta.Value;
+
+import java.util.EnumSet;
 
 /**
- * Re-materialized constant has a wrong source (not a {@link RAVInstruction.ValueMove}), but either
- * undefined or some different Operation or Move.
+ * Value used in instruction does not satisfy it's
+ * {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag operand flags}, for example if an
+ * operand is a stack slot, but should only be a register.
  */
 @SuppressWarnings("serial")
-public class RematerializedConstantSourceMissingError extends RAVError {
-    public RematerializedConstantSourceMissingError(RAVInstruction.Base instruction, RAVariable variable) {
-        super(getErrorMessage(instruction, variable));
+public class OperandFlagMismatchException extends RAVException {
+    public final RAVInstruction.Op instruction;
+    public final Value value;
+    public final EnumSet<LIRInstruction.OperandFlag> flags;
+
+    public OperandFlagMismatchException(RAVInstruction.Op op, BasicBlock<?> block, Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
+        super(getErrorMessage(value, flags), op, block);
+        this.value = value;
+        this.flags = flags;
+        this.instruction = op;
     }
 
-    public static String getErrorMessage(RAVInstruction.Base instruction, RAVariable variable) {
-        if (instruction == null) {
-            return "Variable " + variable + " has no materialization source.";
-        }
-
-        return "Variable " + variable + " was materialized to " + instruction;
+    static String getErrorMessage(Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
+        return "Value " + value + " does not satisfy operand flags " + flags.toString();
     }
 }

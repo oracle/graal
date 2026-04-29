@@ -28,12 +28,12 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 
 /**
- * Wrap around {@link RegisterValue} to only index by the name of the {@link Register} it holds.
+ * Wrap around {@link RegisterValue} to only index by the id of the {@link Register} it holds.
  */
-public class RARegister extends RAValue {
-    protected RegisterValue registerValue;
+public class RAVRegister extends RAValue {
+    protected final RegisterValue registerValue;
 
-    protected RARegister(RegisterValue registerValue) {
+    protected RAVRegister(RegisterValue registerValue) {
         super(registerValue);
 
         this.registerValue = registerValue;
@@ -48,7 +48,7 @@ public class RARegister extends RAValue {
     }
 
     @Override
-    public RARegister asRegister() {
+    public RAVRegister asRegister() {
         return this;
     }
 
@@ -70,7 +70,7 @@ public class RARegister extends RAValue {
      */
     @Override
     public boolean equals(Object other) {
-        if (other instanceof RARegister otherReg) {
+        if (other instanceof RAVRegister otherReg) {
             return this.registerValue.getRegister().equals(otherReg.registerValue.getRegister());
         }
 

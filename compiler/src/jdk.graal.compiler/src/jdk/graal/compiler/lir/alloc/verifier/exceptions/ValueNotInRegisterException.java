@@ -22,16 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.alloc.verifier.AllocationState;
+import jdk.graal.compiler.lir.alloc.verifier.BlockVerifierState;
+import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
+import jdk.graal.compiler.lir.alloc.verifier.RAValue;
 
 /**
  * Value was not found in the location we needed it in.
  */
 @SuppressWarnings("serial")
 public class ValueNotInRegisterException extends RAVException {
-    public RAVInstruction.Op instruction;
+    public final RAVInstruction.Op instruction;
 
     /**
      * Symbol that was not found at the location.
@@ -40,7 +44,7 @@ public class ValueNotInRegisterException extends RAVException {
      * Can be a constant, variable, or other symbolic value.
      * </p>
      */
-    public RAValue variable;
+    public final RAValue variable;
 
     /**
      * Location where the symbol was not found.
@@ -49,9 +53,9 @@ public class ValueNotInRegisterException extends RAVException {
      * Can be a register or a (virtual) stack slot.
      * </p>
      */
-    public RAValue location;
-    public AllocationState state;
-    public BlockVerifierState blockVerifierState;
+    public final RAValue location;
+    public final AllocationState state;
+    public final BlockVerifierState blockVerifierState;
 
     /**
      * Construct a ValueNotInRegisterException.

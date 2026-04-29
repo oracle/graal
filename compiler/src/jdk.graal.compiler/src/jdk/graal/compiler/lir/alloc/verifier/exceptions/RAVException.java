@@ -22,35 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.GraalError;
-
-import java.util.List;
+import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
 
 /**
- * Composite exception taking every {@link RAVException exception} that occurred (exceptions caused
- * by the {@link jdk.graal.compiler.lir.alloc.RegisterAllocationPhase}) and combining them to one
- * exception.
+ * Register Allocation Verification Exception - a violation made by the
+ * {@link jdk.graal.compiler.lir.alloc.RegisterAllocationPhase register allocation} occurred and
+ * will be thrown in verification phase.
  */
 @SuppressWarnings("serial")
-public class RAVFailedVerificationException extends GraalError {
-    public List<RAVException> exceptions;
+public class RAVException extends GraalError {
+    public final RAVInstruction.Base instruction;
+    public final BasicBlock<?> block;
 
-    public RAVFailedVerificationException(List<RAVException> exceptions) {
-        super(RAVFailedVerificationException.getMessage(exceptions));
+    public RAVException(String message, RAVInstruction.Base instruction, BasicBlock<?> block) {
+        super(message);
 
-        this.exceptions = exceptions;
+        this.instruction = instruction;
+        this.block = block;
     }
 
-    static String getMessage(List<RAVException> exceptions) {
-        StringBuilder sb = new StringBuilder("Failed to verify ");
-        sb.append(":");
-        for (var e : exceptions) {
-            sb.append(" - ");
-            sb.append(e.getMessage());
-            sb.append("\n");
-        }
-        return sb.toString();
+    public RAVException(String message, RAVException cause) {
+        super(cause, message);
+
+        this.instruction = cause.instruction;
+        this.block = cause.block;
+    }
+
+    @Override
+    public synchronized RAVException getCause() {
+        return (RAVException) super.getCause();
+    }
+
+    public String getLocationString() {
+        return instruction + " in " + block;
+    }
+
+    public String getFullMessage() {
+        return getMessage() + " in " + getLocationString();
     }
 }

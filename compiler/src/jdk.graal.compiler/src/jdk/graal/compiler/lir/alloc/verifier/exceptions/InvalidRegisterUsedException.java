@@ -22,33 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.vm.ci.meta.Value;
-
-import java.util.EnumSet;
+import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
+import jdk.vm.ci.code.Register;
 
 /**
- * Value used in instruction does not satisfy it's
- * {@link jdk.graal.compiler.lir.LIRInstruction.OperandFlag operand flags}, for example if an
- * operand is a stack slot, but should only be a register.
+ * Invalid register was used in allocation as defined by the
+ * {@link jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig}.
  */
 @SuppressWarnings("serial")
-public class OperandFlagMismatchException extends RAVException {
-    public RAVInstruction.Op instruction;
-    public Value value;
-    public EnumSet<LIRInstruction.OperandFlag> flags;
+public class InvalidRegisterUsedException extends RAVException {
+    public final Register register;
 
-    public OperandFlagMismatchException(RAVInstruction.Op op, BasicBlock<?> block, Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
-        super(getErrorMessage(value, flags), op, block);
-        this.value = value;
-        this.flags = flags;
-        this.instruction = op;
+    public InvalidRegisterUsedException(Register register, RAVInstruction.Base instruction, BasicBlock<?> block) {
+        super(getErrorMessage(register), instruction, block);
+        this.register = register;
     }
 
-    static String getErrorMessage(Value value, EnumSet<LIRInstruction.OperandFlag> flags) {
-        return "Value " + value + " does not satisfy operand flags " + flags.toString();
+    static String getErrorMessage(Register register) {
+        return "Register " + register + " is not allowed to be used by RegisterAllocatorConfig";
     }
 }

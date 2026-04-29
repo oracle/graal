@@ -26,6 +26,11 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.LogStream;
+import jdk.graal.compiler.lir.alloc.verifier.exceptions.CalleeSavedRegisterNotRetrievedException;
+import jdk.graal.compiler.lir.alloc.verifier.exceptions.MissingReferenceException;
+import jdk.graal.compiler.lir.alloc.verifier.exceptions.RAVException;
+import jdk.graal.compiler.lir.alloc.verifier.exceptions.RAVFailedVerificationException;
+import jdk.graal.compiler.lir.alloc.verifier.exceptions.ValueNotInRegisterException;
 
 import java.io.OutputStream;
 
@@ -33,8 +38,8 @@ public class VerifierPrinter {
     public static int PADDING = 4;
     public static int INDENT = 4;
 
-    protected LogStream out;
-    protected RegAllocVerifier verifier;
+    protected final LogStream out;
+    protected final RegAllocVerifier verifier;
 
     protected VerifierPrinter(OutputStream out, RegAllocVerifier verifier) {
         this.out = new LogStream(out);
@@ -69,9 +74,10 @@ public class VerifierPrinter {
 
                 String lirInstrString;
                 if (instruction.lirInstruction == null) {
-                    // Test cases do this, here we just
-                    // indicate that it's not part of LIR
-                    // and never was.
+                    /*
+                     * Test cases do this, here we just indicate that it's not part of LIR and never
+                     * was.
+                     */
                     lirInstrString = "<missing lir instruction>";
                 } else {
                     lirInstrString = instruction.lirInstruction.toString();
@@ -387,7 +393,7 @@ public class VerifierPrinter {
         var registers = verifier.registerAllocationConfig.getRegisterConfig().getCalleeSaveRegisters();
         out.adjustIndentation(INDENT);
         for (var reg : registers) {
-            var regValue = new RARegister(reg.asValue());
+            var regValue = new RAVRegister(reg.asValue());
             var state = exception.blockVerifierState.values.get(regValue);
             printAllocationStateInDetail(regValue, state);
         }

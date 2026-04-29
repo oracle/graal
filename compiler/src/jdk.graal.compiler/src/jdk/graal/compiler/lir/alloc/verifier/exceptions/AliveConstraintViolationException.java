@@ -22,25 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.vm.ci.code.Register;
+import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
+import jdk.graal.compiler.lir.alloc.verifier.RAValue;
 
 /**
- * Invalid register was used in allocation as defined by the
- * {@link jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig}.
+ * Violation of the alive inputs occurred, the same location was marked as alive argument as well as
+ * temp or output.
  */
 @SuppressWarnings("serial")
-public class InvalidRegisterUsedException extends RAVException {
-    public Register register;
+public class AliveConstraintViolationException extends RAVException {
+    public final RAVInstruction.Op instruction;
 
-    public InvalidRegisterUsedException(Register register, RAVInstruction.Base instruction, BasicBlock<?> block) {
-        super(getErrorMessage(register), instruction, block);
-        this.register = register;
+    /**
+     * Construct an AliveConstraintViolationException.
+     *
+     * @param instruction Instruction where violation occurred
+     * @param block Block where violation occurred
+     * @param location Location that is being shared
+     * @param asDest Alive location was used as an output
+     */
+    public AliveConstraintViolationException(RAVInstruction.Op instruction, BasicBlock<?> block, RAValue location, boolean asDest) {
+        super(AliveConstraintViolationException.getErrorMessage(location, asDest), instruction, block);
+        this.instruction = instruction;
     }
 
-    static String getErrorMessage(Register register) {
-        return "Register " + register + " is not allowed to be used by RegisterAllocatorConfig";
+    static String getErrorMessage(RAValue location, boolean asDest) {
+        if (asDest) {
+            return "Location " + location + " used as both alive and output";
+        }
+
+        return "Location " + location + " used as both alive and temp";
     }
 }

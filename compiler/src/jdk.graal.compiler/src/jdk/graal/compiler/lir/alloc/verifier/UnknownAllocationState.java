@@ -45,12 +45,12 @@ public class UnknownAllocationState extends AllocationState {
      * {@link ConflictedAllocationState conflict} occurs.
      *
      * @param other The other state coming from a predecessor edge
-     * @return {@link UnknownAllocationState Unknown} if both are, otherwise a conflict
+     * @return null, if both states are Unknown, otherwise a new {@link ConflictedAllocationState}
      */
     @Override
     public AllocationState meet(AllocationState other, BasicBlock<?> otherBlock, BasicBlock<?> block) {
         if (other.isUnknown()) {
-            return this;
+            return null;
         }
 
         if (other instanceof ConflictedAllocationState conflictedState) {
@@ -68,8 +68,13 @@ public class UnknownAllocationState extends AllocationState {
     }
 
     @Override
-    public boolean equals(AllocationState other) {
+    public boolean equals(Object other) {
         return other == INSTANCE;
+    }
+
+    @Override
+    public int hashCode() {
+        return 0;
     }
 
     @Override

@@ -22,27 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.debug.GraalError;
+
+import java.util.List;
 
 /**
- * No location found in an instruction after allocation for certain variable.
+ * Composite exception taking every {@link RAVException exception} that occurred (exceptions caused
+ * by the {@link jdk.graal.compiler.lir.alloc.RegisterAllocationPhase}) and combining them to one
+ * exception.
  */
 @SuppressWarnings("serial")
-public class MissingLocationException extends RAVException {
-    /**
-     * Construct a MissingLocationError.
-     *
-     * @param instruction Instruction where violation occurred
-     * @param block Block where violation occurred
-     * @param variable Variable before allocation that has no location afterward
-     */
-    public MissingLocationException(RAVInstruction.Op instruction, BasicBlock<?> block, RAValue variable) {
-        super(MissingLocationException.getMessage(variable), instruction, block);
+public class RAVFailedVerificationException extends GraalError {
+    public final List<RAVException> exceptions;
+
+    public RAVFailedVerificationException(List<RAVException> exceptions) {
+        super(RAVFailedVerificationException.getMessage(exceptions));
+
+        this.exceptions = exceptions;
     }
 
-    static String getMessage(RAValue variable) {
-        return "Variable " + variable + " is missing a location";
+    static String getMessage(List<RAVException> exceptions) {
+        StringBuilder sb = new StringBuilder("Failed to verify ");
+        sb.append(":");
+        for (var e : exceptions) {
+            sb.append(" - ");
+            sb.append(e.getMessage());
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 }

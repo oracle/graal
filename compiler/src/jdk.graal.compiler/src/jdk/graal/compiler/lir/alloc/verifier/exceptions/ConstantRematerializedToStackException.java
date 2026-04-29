@@ -22,21 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
+
+import jdk.graal.compiler.lir.alloc.verifier.RAVConstant;
+import jdk.graal.compiler.lir.alloc.verifier.RAValue;
+import jdk.graal.compiler.lir.alloc.verifier.ValueAllocationState;
 
 /**
  * Constant was rematerialized to a stack location, which was forbidden for this variable/constant.
  */
 @SuppressWarnings("serial")
 public class ConstantRematerializedToStackException extends RAVException {
-    public RAVariable variable;
-    public RAValue location;
-    public ValueAllocationState state;
+    public final RAVConstant constant;
+    public final RAValue location;
+    public final ValueAllocationState state;
 
-    public ConstantRematerializedToStackException(RAVariable variable, RAValue location, ValueAllocationState state) {
-        super("Variable " + variable + " cannot be rematerialized to stack location " + location, state.getSource(), state.getBlock());
+    public ConstantRematerializedToStackException(RAVConstant constant, RAValue location, ValueAllocationState state) {
+        super("Constant " + constant + " cannot be rematerialized to stack location " + location, state.getSource(), state.getBlock());
 
-        this.variable = variable;
+        this.constant = constant;
         this.location = location;
         this.state = state;
     }

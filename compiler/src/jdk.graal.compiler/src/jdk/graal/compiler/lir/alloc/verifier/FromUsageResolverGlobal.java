@@ -28,10 +28,10 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.StandardOp;
+import jdk.graal.compiler.lir.dfa.UniqueWorkList;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.EconomicHashSet;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -67,35 +67,35 @@ public class FromUsageResolverGlobal {
     /**
      * LIR of the compilation unit we are resolving for.
      */
-    protected LIR lir;
+    protected final LIR lir;
 
     /**
      * Verifier IR.
      */
-    protected BlockMap<List<RAVInstruction.Base>> blockInstructions;
+    protected final BlockMap<List<RAVInstruction.Base>> blockInstructions;
 
     /**
      * Mapping of variables to the labels that defined them.
      */
-    public Map<RAVariable, RAVInstruction.Op> labelMap;
+    public final Map<RAVariable, RAVInstruction.Op> labelMap;
 
     /**
      * Mapping of operation to a set of variable for which this operation is a first usage.
      */
-    public Map<RAVInstruction.Op, Set<RAVariable>> firstUsages;
+    public final Map<RAVInstruction.Op, Set<RAVariable>> firstUsages;
 
     /**
      * Initial locations of label-defined variables to set them to when their first usage is found.
      */
-    public Map<RAVariable, RAValue> initialLocations;
+    public final Map<RAVariable, RAValue> initialLocations;
 
     /**
      * Variable and a block where it's coming from (last jump instruction), this variable is aliased
      * by the succeeding label, which needs to be resolved first, before this one can be.
      */
     class AliasPair {
-        RAVariable variable;
-        BasicBlock<?> block;
+        final RAVariable variable;
+        final BasicBlock<?> block;
 
         AliasPair(RAVariable variable, BasicBlock<?> block) {
             this.variable = variable;
@@ -107,17 +107,17 @@ public class FromUsageResolverGlobal {
      * Map of variables are aliases for a list of variables used in predecessor jump instructions.
      * First, the successor label variable needs to be resolved and after the predecessor labels.
      */
-    private Map<RAVariable, List<AliasPair>> aliasMap;
+    private final Map<RAVariable, List<AliasPair>> aliasMap;
 
     /**
      * Block map of their usage objects.
      */
-    protected BlockMap<BlockUsage> blockUsageMap;
+    protected final BlockMap<BlockUsage> blockUsageMap;
 
     /**
      * Set of blocks that have no successors.
      */
-    public Set<BasicBlock<?>> endBlocks;
+    public final Set<BasicBlock<?>> endBlocks;
 
     /**
      * Information about locations of variables found when traversing LIR, from the first usage,
@@ -167,7 +167,7 @@ public class FromUsageResolverGlobal {
      * information.
      */
     public void resolvePhiFromUsage() {
-        Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
+        Queue<BasicBlock<?>> worklist = new UniqueWorkList(lir.getBlocks().length);
 
         this.initializeUsages();
 
@@ -186,7 +186,8 @@ public class FromUsageResolverGlobal {
     }
 
     protected void processBlock(Queue<BasicBlock<?>> worklist) {
-        var block = worklist.remove();
+        var block = worklist.poll();
+        assert block != null;
 
         var exitUsage = blockUsageMap.get(block);
         exitUsage.processed = true;
@@ -223,14 +224,13 @@ public class FromUsageResolverGlobal {
                 if (!mergeInto(predReached, usage)) {
                     if (predReached.processed) {
                         continue;
-                    } else if (worklist.contains(pred)) {
-                        continue;
                     }
 
-                    // Not yet processed, but also not in a worklist
-                    // this can happen when alias has been resolved and
-                    // predecessor block needs to be processed again
-                    // (the processed flag is set to false)
+                    /*
+                     * Either it has not been processed, or the processed flag was set by alias
+                     * resolution (see resolveLabel end) to force block to be processed again to
+                     * resolve another variable.
+                     */
                 }
             }
 
@@ -254,7 +254,7 @@ public class FromUsageResolverGlobal {
             }
 
             RAValue defValue = successor.locations.get(variable);
-            if (block.locations.containsKey(variable) && block.locations.get(variable).equals(defValue)) {
+            if (defValue.equals(block.locations.get(variable))) {
                 continue;
             }
 
@@ -270,37 +270,12 @@ public class FromUsageResolverGlobal {
      * for the resolution.
      */
     protected void initializeUsages() {
-        Queue<BasicBlock<?>> worklist = new ArrayDeque<>();
-
-        var startBlock = this.lir.getControlFlowGraph().getStartBlock();
-        worklist.add(startBlock);
-
-        // Calculate what is defined when + usages
-        Set<BasicBlock<?>> visited = new EconomicHashSet<>();
-        while (!worklist.isEmpty()) {
-            var block = worklist.poll();
-            if (visited.contains(block)) {
-                continue;
-            }
-
-            visited.add(block);
-
+        for (var block : lir.getControlFlowGraph().getBlocks()) {
             var instructions = blockInstructions.get(block);
             var label = (RAVInstruction.Op) instructions.getFirst();
 
             for (var i = 0; i < label.dests.count; i++) {
-                if (label.dests.orig[i].isVariable()) {
-                    if (label.dests.curr[i] != null) {
-                        // TestCase: TruffleSafepointTest
-                        // java.concurrent.ForkJoinPool
-                        // some methods for this class have location kept in
-                        // them after the register allocation is complete,
-                        // but such information should be stripped by the allocator.
-                        // This information uses one register for 2 variables in a label
-                        // and triggers an error in the verification
-                        label.dests.curr[i] = null;
-                    }
-
+                if (label.dests.orig[i].isVariable() && label.dests.curr[i] == null) {
                     var variable = label.dests.orig[i].asVariable();
                     labelMap.put(variable, label);
                 }
@@ -350,11 +325,11 @@ public class FromUsageResolverGlobal {
             }
 
             if (block.isLoopHeader()) {
-                // Here we handle loops without any exit that might
-                // also need a resolution of label variables, but
-                // are not reachable from endBlocks set, so we
-                // add predecessors of such loops that are part of the loop
-                // into the endBlocks set to process them.
+                /*
+                 * Here we handle loops without any exit that might also need a resolution of label
+                 * variables, but are not reachable from endBlocks set, so we add predecessors of
+                 * such loops that are part of the loop into the endBlocks set to process them.
+                 */
                 var loop = block.getLoop();
                 if (loop.getNaturalExits().isEmpty() && loop.getLoopExits().isEmpty()) {
                     var loopBlocks = loop.getBlocks();
@@ -365,12 +340,6 @@ public class FromUsageResolverGlobal {
                         }
                     }
                 }
-            }
-
-            for (int i = 0; i < block.getSuccessorCount(); i++) {
-                var succ = block.getSuccessorAt(i);
-
-                worklist.add(succ);
             }
         }
     }
@@ -462,11 +431,25 @@ public class FromUsageResolverGlobal {
                 var pred = block.getPredecessorAt(j);
                 var jump = (RAVInstruction.Op) blockInstructions.get(pred).getLast();
 
+                var orig = jump.alive.orig[i];
+                if (!RAValue.kindsEqual(orig, location)) {
+                    /*
+                     * TestCase: DerivedOopTest <pre> B3: rdx|QWORD[*] = REGMOVE rcx|QWORD[.+] <--
+                     * Type is cast here [] = JUMP [] [v8|QWORD[.+] -> rdx|QWORD[*]] [] <-- Needs
+                     * the type change B5: [v12|QWORD[*] -> rdx|QWORD[*]] = LABEL [] [] [] [] =
+                     * BLACKHOLE [v12|QWORD[*] -> rdx|QWORD[*]] [] [] </pre>
+                     */
+
+                    jump.alive.orig[i] = RAValue.cast(orig, location);
+                }
+
                 jump.alive.curr[i] = location; // Set predecessor location
             }
 
-            // Variables that are passed into jumps without any other usage are resolved
-            // after variable, it's alias, in successor label.
+            /*
+             * Variables that are passed into jumps without any other usage are resolved after
+             * variable, it's alias, in successor label.
+             */
             if (aliasMap.containsKey(variable)) {
                 var aliasedVariables = aliasMap.get(variable);
                 for (var aliasPair : aliasedVariables) {

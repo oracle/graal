@@ -22,45 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
+import jdk.graal.compiler.lir.alloc.verifier.RAValue;
 
 /**
- * Register Allocation Verification Exception - a violation made by the
- * {@link jdk.graal.compiler.lir.alloc.RegisterAllocationPhase register allocation} occurred and
- * will be thrown in verification phase.
+ * No location found in an instruction after allocation for certain variable.
  */
 @SuppressWarnings("serial")
-public class RAVException extends GraalError {
-    public RAVInstruction.Base instruction;
-    public BasicBlock<?> block;
-
-    public RAVException(String message, RAVInstruction.Base instruction, BasicBlock<?> block) {
-        super(message);
-
-        this.instruction = instruction;
-        this.block = block;
+public class MissingLocationException extends RAVException {
+    /**
+     * Construct a MissingLocationError.
+     *
+     * @param instruction Instruction where violation occurred
+     * @param block Block where violation occurred
+     * @param variable Variable before allocation that has no location afterward
+     */
+    public MissingLocationException(RAVInstruction.Op instruction, BasicBlock<?> block, RAValue variable) {
+        super(MissingLocationException.getMessage(variable), instruction, block);
     }
 
-    public RAVException(String message, RAVException cause) {
-        super(cause, message);
-
-        this.instruction = cause.instruction;
-        this.block = cause.block;
-    }
-
-    @Override
-    public synchronized RAVException getCause() {
-        return (RAVException) super.getCause();
-    }
-
-    public String getLocationString() {
-        return instruction + " in " + block;
-    }
-
-    public String getFullMessage() {
-        return getMessage() + " in " + getLocationString();
+    static String getMessage(RAValue variable) {
+        return "Variable " + variable + " is missing a location";
     }
 }

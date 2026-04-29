@@ -22,16 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.alloc.verifier;
+package jdk.graal.compiler.lir.alloc.verifier.exceptions;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.alloc.verifier.AllocationState;
+import jdk.graal.compiler.lir.alloc.verifier.BlockVerifierState;
+import jdk.graal.compiler.lir.alloc.verifier.RAVInstruction;
+import jdk.graal.compiler.lir.alloc.verifier.RAValue;
 
 @SuppressWarnings("serial")
 public class MissingReferenceException extends RAVException {
-    public RAValue reference;
-    public AllocationState state;
-    public RAVInstruction.Op instruction;
-    public BlockVerifierState blockVerifierState;
+    public final RAValue reference;
+    public final AllocationState state;
+    public final RAVInstruction.Op instruction;
+    public final BlockVerifierState blockVerifierState;
 
     public MissingReferenceException(RAVInstruction.Op instruction, BasicBlock<?> block, RAValue reference, AllocationState state, BlockVerifierState blockVerifierState) {
         super(getMessage(reference, state), instruction, block);
