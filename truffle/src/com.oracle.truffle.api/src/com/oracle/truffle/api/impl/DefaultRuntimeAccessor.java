@@ -254,6 +254,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
+        public void onEnginePatchSuccess(Object runtimeData) {
+
+        }
+
+        @Override
         public boolean onEngineClosing(Object runtimeData) {
             return false;
         }

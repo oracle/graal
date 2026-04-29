@@ -788,11 +788,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         validateSandbox();
         printDeprecatedOptionsWarning(deprecatedDescriptors);
 
-        long currentTimestamp = System.nanoTime();
-        for (CallTarget loadedCallTarget : getCallTargets()) {
-            RUNTIME.setInitializedTimestamp(loadedCallTarget, currentTimestamp);
-        }
-
+        RUNTIME.onEnginePatchSuccess(this.runtimeData);
         return true;
     }
 

@@ -180,6 +180,7 @@ public final class EngineData {
     @CompilationFinal public int callThresholdInFirstTier;
     @CompilationFinal public int callAndLoopThresholdInFirstTier;
     @CompilationFinal public long interpreterCallStackHeadRoom;
+    volatile long patchEpochNanos;
 
     public BooleanSupplier cancelledPredicate;
 
@@ -213,6 +214,10 @@ public final class EngineData {
 
     public boolean isClosed() {
         return this.closed;
+    }
+
+    void onEnginePatchSuccess() {
+        patchEpochNanos = System.nanoTime();
     }
 
     public void preinitializeContext() {

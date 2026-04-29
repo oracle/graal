@@ -1372,7 +1372,8 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     public final long getInitializedTimestamp() {
-        return initializedTimestamp;
+        long patchTimestamp = engine.patchEpochNanos;
+        return patchTimestamp > initializedTimestamp ? patchTimestamp : initializedTimestamp;
     }
 
     final void setInitializedTimestamp(long timestamp) {

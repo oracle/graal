@@ -352,6 +352,11 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
+    public void onEnginePatchSuccess(Object runtimeData) {
+        ((EngineData) runtimeData).onEnginePatchSuccess();
+    }
+
+    @Override
     public boolean onEngineClosing(Object runtimeData) {
         return ((EngineData) runtimeData).onEngineClosing();
     }
