@@ -192,8 +192,8 @@ public abstract class NativeImageCodeCache {
 
     /**
      * Some code cache implementations emit their method code into a separate linker input. In that
-     * case, the native image object file still needs a text section while it is being built, but that
-     * section must not define the final code section boundary symbols.
+     * case, the native image object file still needs a text section while it is being built, but
+     * that section must not define the final code section boundary symbols.
      */
     public boolean definesTextSectionBoundarySymbols() {
         return true;

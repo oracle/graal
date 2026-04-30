@@ -2019,7 +2019,7 @@ ce_llvm_backend = mx_sdk_vm.GraalVmSvmTool(
     jlink=False,
 )
 # GR-34811
-llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "aarch64"))
+llvm_supported = not mx.is_windows()
 if llvm_supported:
     mx_sdk_vm.register_graalvm_component(ce_llvm_backend)
 

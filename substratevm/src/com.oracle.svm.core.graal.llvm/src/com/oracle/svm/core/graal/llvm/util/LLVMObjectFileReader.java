@@ -43,6 +43,7 @@ import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.llvm.LLVMGenerator;
 import com.oracle.svm.core.graal.llvm.LLVMNativeImageCodeCache.StackMapDumper;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -169,7 +170,8 @@ public class LLVMObjectFileReader {
 
         long startPatchpointID = compilation.getInfopoints().stream().filter(ip -> ip.reason == InfopointReason.METHOD_START).findFirst()
                         .orElseThrow(() -> new GraalError("No method start infopoint: " + methodSymbolName)).pcOffset;
-        int totalFrameSize = NumUtil.safeToInt(info.getFunctionStackSize(startPatchpointID) + LLVMTargetSpecific.get().getCallFrameSeparation());
+        long frameSize = info.getFunctionStackSize(startPatchpointID) + LLVMTargetSpecific.get().getCallFrameSeparation();
+        int totalFrameSize = NumUtil.safeToInt(frameSize == 0 ? SubstrateTarget.singleton().stackAlignment : frameSize);
         compilation.setTotalFrameSize(totalFrameSize);
         stackMapDumper.startDumpingFunction(methodSymbolName, id, totalFrameSize);
 
@@ -213,12 +215,31 @@ public class LLVMObjectFileReader {
         private LLVMTextSectionInfo(LLVMSectionInfo<Long, SymbolOffset> sectionInfo) {
             this.codeSize = sectionInfo.sectionInfo;
             for (SymbolOffset symbolOffset : sectionInfo.symbolInfo) {
-                if (LLVMTargetSpecific.get().isSymbolValid(symbolOffset.symbol)) {
+                if (isCodeSymbol(symbolOffset)) {
                     offsetToSymbol.put(symbolOffset.offset, symbolOffset.symbol);
                     symbolToOffset.put(symbolOffset.symbol, symbolOffset.offset);
                 }
             }
             this.sortedMethodOffsets = computeSortedMethodOffsets();
+        }
+
+        private boolean isCodeSymbol(SymbolOffset symbolOffset) {
+            String symbol = symbolOffset.symbol;
+            int offset = symbolOffset.offset;
+            return offset >= 0 && offset < codeSize && isPlatformCodeSymbol(symbol) && !isTextSectionMarker(symbol) &&
+                            LLVMTargetSpecific.get().isSymbolValid(symbol);
+        }
+
+        private static boolean isPlatformCodeSymbol(String symbol) {
+            if (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) {
+                return symbol.startsWith(SYMBOL_PREFIX);
+            }
+            return true;
+        }
+
+        private static boolean isTextSectionMarker(String symbol) {
+            return symbol.equals("__svm_code_section") || symbol.equals(SYMBOL_PREFIX + "__svm_code_section") ||
+                            symbol.equals("__svm_text_end") || symbol.equals(SYMBOL_PREFIX + "__svm_text_end");
         }
 
         public long getCodeSize() {

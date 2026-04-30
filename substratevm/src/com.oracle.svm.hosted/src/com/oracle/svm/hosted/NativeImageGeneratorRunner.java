@@ -274,6 +274,9 @@ public class NativeImageGeneratorRunner {
 
     private static void transitiveReaders(ResolvedModule readModule, Set<ResolvedModule> potentialReaders, ModuleLayer bootLayer, Set<Module> actualReaders) {
         for (ResolvedModule potentialReader : potentialReaders) {
+            if (isNativeResourceOnlyPlatformModule(potentialReader)) {
+                continue;
+            }
             if (potentialReader.equals(readModule) || potentialReader.reads().contains(readModule)) {
                 Module potentialReaderModule = bootLayer.findModule(potentialReader.name()).orElseThrow();
                 if (actualReaders.add(potentialReaderModule)) {
@@ -283,11 +286,24 @@ public class NativeImageGeneratorRunner {
         }
     }
 
+    private static boolean isNativeResourceOnlyPlatformModule(ResolvedModule module) {
+        return module.reference().descriptor().isAutomatic() && isNativeResourceOnlyPlatformModule(module.name());
+    }
+
+    private static boolean isNativeResourceOnlyPlatformModule(Module module) {
+        return module.getDescriptor().isAutomatic() && isNativeResourceOnlyPlatformModule(module.getName());
+    }
+
+    private static boolean isNativeResourceOnlyPlatformModule(String name) {
+        return name.equals("llvm.platform.specific.shadowed") || name.equals("javacpp.platform.specific.shadowed");
+    }
+
     private static void transitiveRequires(boolean verbose, Module requiringModule, Set<Module> potentialNeededModules, Set<Module> actualNeededModules) {
         for (Module potentialNeedModule : potentialNeededModules) {
             if (requiringModule.canRead(potentialNeedModule)) {
                 /* Filter out GraalVM modules */
                 if (potentialNeedModule.getName().equals("jdk.internal.vm.ci") || /* JVMCI */
+                                isNativeResourceOnlyPlatformModule(potentialNeedModule) ||
                                 /* graal */
                                 potentialNeedModule.getName().startsWith("org.graalvm.") ||
                                 potentialNeedModule.getName().startsWith("jdk.graal.compiler") ||

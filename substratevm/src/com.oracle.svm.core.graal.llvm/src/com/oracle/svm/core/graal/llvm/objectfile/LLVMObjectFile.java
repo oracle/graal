@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.llvm.objectfile;
 
 import static com.oracle.objectfile.ObjectFile.Format.LLVM;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmCompile;
+import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmLink;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.nativeLink;
 
 import java.io.FileOutputStream;
@@ -194,7 +195,9 @@ public class LLVMObjectFile extends ObjectFile {
 
         BatchExecutor batchExecutor = new BatchExecutor(context, bb);
 
-        compileBitcodeBatches(batchExecutor, context, numBatches);
+        if (ObjectFile.getNativeFormat() != ObjectFile.Format.MACH_O) {
+            compileBitcodeBatches(batchExecutor, context, numBatches);
+        }
 
         linkCompiledBatches(context, numBatches);
     }
@@ -237,11 +240,19 @@ public class LLVMObjectFile extends ObjectFile {
 
                     for (int i = 0; i < valueArray.length; i += (batchSize / Long.BYTES)) {
                         LLVMValueRef[] batchContent = Arrays.copyOfRange(valueArray, i, Math.min(valueArray.length, i + (batchSize / Long.BYTES)));
-                        int finalI = i;
+                        int batchOffset = i * Long.BYTES;
+                        long batchEnd = Math.min(content.length, batchOffset + batchSize);
+                        boolean isLastBatch = batchEnd == content.length;
                         List<Integer> batchRelocOffsets = section.getRelocations().keySet().stream()
-                                        .filter(relocOffset -> relocOffset >= finalI * Long.BYTES && relocOffset < finalI * Long.BYTES + batchSize)
+                                        .filter(relocOffset -> relocOffset >= batchOffset && relocOffset < batchEnd)
                                         .collect(Collectors.toList());
-                        LLVMDataSectionPart sectionPart = new LLVMDataSectionPart(id, i * Long.BYTES, getPageSize(), e, batchContent, batchRelocOffsets, i == 0 ? symbols : null);
+                        List<LLVMSymtab.Entry> batchSymbols = symbols == null ? null
+                                        : symbols.stream()
+                                                        .filter(symbol -> symbol.getDefinedOffset() >= batchOffset &&
+                                                                        (symbol.getDefinedOffset() < batchEnd || (isLastBatch && symbol.getDefinedOffset() == batchEnd)))
+                                                        .collect(Collectors.toList());
+                        LLVMDataSectionPart sectionPart = new LLVMDataSectionPart(id, batchOffset, getPageSize(), e, batchContent,
+                                        batchRelocOffsets, batchSymbols);
                         sectionPart.declareBaseSymbol();
                         dataSectionParts.add(sectionPart);
                         id++;
@@ -272,8 +283,14 @@ public class LLVMObjectFile extends ObjectFile {
     }
 
     private void linkCompiledBatches(DebugContext context, int numBatches) {
-        List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(this::getCompiledBitcodeFilename).collect(Collectors.toList());
-        nativeLink(context, getLinkedFilename(), compiledBatches, basePath, (s -> s));
+        if (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) {
+            List<String> bitcodeBatches = IntStream.range(0, numBatches).mapToObj(LLVMObjectFile::getBitcodeFilename).collect(Collectors.toList());
+            llvmLink(context, getLinkedBitcodeFilename(), bitcodeBatches, basePath, (s -> s));
+            llvmCompile(context, getLinkedFilename(), getLinkedBitcodeFilename(), basePath, (s -> s));
+        } else {
+            List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(this::getCompiledBitcodeFilename).collect(Collectors.toList());
+            nativeLink(context, getLinkedFilename(), compiledBatches, basePath, (s -> s));
+        }
     }
 
     private Path getBitcodePath(int id) {
@@ -286,6 +303,10 @@ public class LLVMObjectFile extends ObjectFile {
 
     private String getCompiledBitcodeFilename(int id) {
         return "dataSection" + id + ".o";
+    }
+
+    private static String getLinkedBitcodeFilename() {
+        return "dataSection.bc";
     }
 
     public static String getLinkedFilename() {

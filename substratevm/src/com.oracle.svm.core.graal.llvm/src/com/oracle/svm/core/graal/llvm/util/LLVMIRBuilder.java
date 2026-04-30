@@ -36,6 +36,8 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.graalvm.nativeimage.Platform;
+
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
@@ -238,11 +240,11 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public void setFunctionCallingConvention(LLVMValueRef func, LLVMCallingConvention cc) {
-        LLVM.LLVMSetFunctionCallConv(func, cc.value);
+        LLVM.LLVMSetFunctionCallConv(func, cc.value());
     }
 
     public void setInstructionCallingConvention(LLVMValueRef instr, LLVMCallingConvention cc) {
-        LLVM.LLVMSetInstructionCallConv(instr, cc.value);
+        LLVM.LLVMSetInstructionCallConv(instr, cc.value());
     }
 
     public enum LLVMCallingConvention {
@@ -252,6 +254,13 @@ public class LLVMIRBuilder implements AutoCloseable {
 
         LLVMCallingConvention(int value) {
             this.value = value;
+        }
+
+        private int value() {
+            if (this == GraalCallingConvention && Platform.includedIn(Platform.DARWIN.class) && Platform.includedIn(Platform.AARCH64.class)) {
+                return 0;
+            }
+            return value;
         }
     }
     /* Basic blocks */

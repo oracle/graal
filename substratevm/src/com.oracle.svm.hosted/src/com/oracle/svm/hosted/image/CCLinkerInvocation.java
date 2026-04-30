@@ -497,7 +497,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
         @Override
         String getSymbolName(ObjectFile.Symbol symbol) {
-            return ((MachOSymtab.Entry) symbol).getNameInObject();
+            if (symbol instanceof MachOSymtab.Entry machoSymbol) {
+                return machoSymbol.getNameInObject();
+            }
+            return "_" + symbol.getName();
         }
 
         @Override

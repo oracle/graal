@@ -70,6 +70,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.image.LLVMToolchain;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -200,6 +201,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     private void linkCompiledBatches(DebugContext debug, BatchExecutor executor, int numBatches) {
         List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(this::getBatchCompiledFilename).collect(Collectors.toList());
+        if (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) {
+            compiledBatches.add(0, createMachOTextMarkerObject("llvm-text-start", NativeImage.getTextSectionStartSymbol()));
+            compiledBatches.add(createMachOTextMarkerObject("llvm-text-end", NativeImage.getTextSectionEndSymbol()));
+        }
         nativeLink(debug, getLinkedFilename(), compiledBatches, basePath, this::getFunctionName);
 
         LLVMTextSectionInfo textSectionInfo = objectFileReader.parseCode(getLinkedPath());
@@ -222,8 +227,24 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         llvmCleanupStackMaps(debug, getLinkedFilename(), basePath);
         long codeAreaSize = textSectionInfo.getCodeSize();
         assert codeAreaSize <= Integer.MAX_VALUE;
-        llvmAddTextSectionSymbols(debug, getLinkedFilename(), NativeImage.getTextSectionStartSymbol(), NativeImage.getTextSectionEndSymbol(), codeAreaSize, basePath);
+        if (ObjectFile.getNativeFormat() != ObjectFile.Format.MACH_O) {
+            llvmAddTextSectionSymbols(debug, getLinkedFilename(), NativeImage.getTextSectionStartSymbol(), NativeImage.getTextSectionEndSymbol(), codeAreaSize, basePath);
+        }
         setCodeAreaSize((int) textSectionInfo.getCodeSize());
+    }
+
+    private String createMachOTextMarkerObject(String fileName, String symbolName) {
+        Path sourcePath = basePath.resolve(fileName + ".s");
+        Path objectPath = basePath.resolve(fileName + ".o");
+        try {
+            Files.writeString(sourcePath, ".section __TEXT,__text,regular,pure_instructions\n.globl " + symbolName + "\n" + symbolName + ":\n");
+            LLVMToolchain.runCommand(basePath, List.of("cc", "-arch", "arm64", "-c", sourcePath.getFileName().toString(), "-o", objectPath.getFileName().toString()));
+        } catch (IOException e) {
+            throw new GraalError(e);
+        } catch (LLVMToolchain.RunFailureException e) {
+            throw new GraalError("Creating Mach-O text marker object failed: " + e.getStatus() + System.lineSeparator() + e.getOutput());
+        }
+        return objectPath.getFileName().toString();
     }
 
     private Path getBitcodePath(int id) {

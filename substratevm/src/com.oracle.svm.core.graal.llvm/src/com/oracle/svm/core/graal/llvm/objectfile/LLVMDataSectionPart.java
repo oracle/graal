@@ -65,14 +65,18 @@ public class LLVMDataSectionPart {
         }
 
         String sectionName = element.getName();
+        String llvmSectionName = getLLVMSectionName(sectionName);
         String baseSymbol = sectionName + "_base_" + id;
         if (batchOffset == 0) {
             LLVMObjectFile.sectionToFirstSymbol.put(sectionName, baseSymbol);
         }
 
         baseGlobal = builder.getUniqueGlobal(baseSymbol, builder.arrayType(builder.wordType(), content.length), false);
+        if (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) {
+            LLVMIRBuilder.setLinkage(baseGlobal, LLVMIRBuilder.LinkageType.External);
+        }
         builder.setAlignment(baseGlobal, pageSize);
-        LLVMIRBuilder.setSection(baseGlobal, sectionName);
+        LLVMIRBuilder.setSection(baseGlobal, llvmSectionName);
 
         symbolsToGlobal.put(baseSymbol, baseGlobal);
     }
@@ -115,20 +119,30 @@ public class LLVMDataSectionPart {
 
     private void computeSymbolsToGlobals() {
         String sectionName = element.getName();
+        String llvmSectionName = getLLVMSectionName(sectionName);
 
         symbols.sort(Comparator.comparingLong(LLVMSymtab.Entry::getDefinedOffset));
 
         for (int i = 0; i < symbols.size(); ++i) {
             ObjectFile.Symbol symbol = symbols.get(i);
-            long offset = symbol.getDefinedOffset();
+            long offset = symbol.getDefinedOffset() - batchOffset;
             String name = symbol.getName();
 
             LLVMValueRef aliasOffset = builder.buildAdd(builder.buildPtrToInt(baseGlobal), builder.constantLong(offset));
             LLVMValueRef aliasAddress = builder.buildIntToPtr(aliasOffset, builder.pointerType(builder.wordType()));
             LLVMValueRef alias = builder.addAlias(aliasAddress, name);
-            LLVMIRBuilder.setSection(alias, sectionName);
+            if (ObjectFile.getNativeFormat() != ObjectFile.Format.MACH_O) {
+                LLVMIRBuilder.setSection(alias, llvmSectionName);
+            }
             symbolsToGlobal.put(name, alias);
         }
+    }
+
+    private static String getLLVMSectionName(String sectionName) {
+        if (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O && !sectionName.contains(",")) {
+            return "__DATA," + sectionName;
+        }
+        return sectionName;
     }
 
     public byte[] getBitcode() {
