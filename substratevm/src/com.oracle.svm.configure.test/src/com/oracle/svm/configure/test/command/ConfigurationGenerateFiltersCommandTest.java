@@ -36,10 +36,12 @@ import org.junit.Test;
 import com.oracle.svm.configure.command.ConfigurationGenerateFiltersCommand;
 import com.oracle.svm.configure.test.AddExports;
 
+import jdk.graal.compiler.util.json.JsonParser;
+
 @AddExports({"jdk.graal.compiler/jdk.graal.compiler.util.json"})
 public class ConfigurationGenerateFiltersCommandTest {
     @Test
-    public void deprecationWarningIsPrintedToStdout() throws IOException {
+    public void deprecationWarningDoesNotCorruptStdoutJson() throws IOException {
         PrintStream originalOut = System.out;
         PrintStream originalErr = System.err;
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
@@ -58,9 +60,10 @@ public class ConfigurationGenerateFiltersCommandTest {
         String out = stdout.toString(StandardCharsets.UTF_8);
         String err = stderr.toString(StandardCharsets.UTF_8);
 
-        Assert.assertTrue(out, out.contains("'native-image-utils generate-filters' is deprecated"));
-        Assert.assertTrue(out, out.contains("caller-filter-file=<path>"));
+        new JsonParser(out).parse();
+        Assert.assertFalse(out, out.contains("'native-image-utils generate-filters' is deprecated"));
         Assert.assertTrue(out, out.contains("\"includeClasses\""));
-        Assert.assertTrue(err, err.isEmpty());
+        Assert.assertTrue(err, err.contains("'native-image-utils generate-filters' is deprecated"));
+        Assert.assertTrue(err, err.contains("caller-filter-file=<path>"));
     }
 }
