@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import java.lang.reflect.Proxy;
 import java.util.List;
 
 import org.graalvm.nativeimage.hosted.Feature;
@@ -70,6 +71,11 @@ public class RegisterTestClassesForReflectionFeature implements Feature {
                     GR40903Outer.Inner.class,
                     HostObjectToStringTest.class);
 
+    /* Keep proxy implementation reflection metadata explicit for HostAccess tests using getMethods(). */
+    private static final List<Class<?>[]> TEST_PROXY_INTERFACES = List.<Class<?>[]> of(
+                    new Class<?>[]{HostAccessTest.ProxiedPoint.class},
+                    new Class<?>[]{HostAccessTest.ProxiedPoint2.class});
+
     protected static void registerClass(Class<?> clazz) {
         RuntimeReflection.register(clazz);
         RuntimeReflection.register(clazz.getConstructors());
@@ -80,11 +86,20 @@ public class RegisterTestClassesForReflectionFeature implements Feature {
         RuntimeReflection.register(clazz.getDeclaredFields());
     }
 
+    @SuppressWarnings("deprecation")
+    protected static void registerProxyClass(Class<?>... interfaces) {
+        Class<?> proxyClass = Proxy.getProxyClass(interfaces[0].getClassLoader(), interfaces);
+        registerClass(proxyClass);
+    }
+
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         for (Class<?> testClass : TEST_CLASSES) {
             for (Class<?> innerClass : testClass.getDeclaredClasses()) {
                 registerClass(innerClass);
             }
+        }
+        for (Class<?>[] proxyInterfaces : TEST_PROXY_INTERFACES) {
+            registerProxyClass(proxyInterfaces);
         }
     }
 
