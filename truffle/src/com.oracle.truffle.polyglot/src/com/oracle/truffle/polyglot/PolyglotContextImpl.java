@@ -1720,6 +1720,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         // guaranteed by migrateValue
         assert value instanceof TruffleObject;
         if (value instanceof OtherContextGuestObject) {
+            // Same logic as in migrateException()
             OtherContextGuestObject otherValue = (OtherContextGuestObject) value;
             if (otherValue.receiverContext == this && otherValue.delegateContext == valueContext) {
                 // reuse wrapper it is already wrapped
