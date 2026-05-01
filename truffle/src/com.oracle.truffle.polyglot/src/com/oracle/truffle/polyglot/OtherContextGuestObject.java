@@ -181,10 +181,16 @@ final class OtherContextGuestObject implements TruffleObject {
     @TruffleBoundary
     static <T extends Throwable> RuntimeException migrateException(PolyglotContextImpl receiverContext, Throwable e, PolyglotContextImpl valueContext) throws T {
         if (e instanceof OtherContextException) {
+            // Same logic as in migrateValue()
             OtherContextException other = (OtherContextException) e;
             if (other.receiverContext == receiverContext && other.delegateContext == valueContext) {
+                // reuse wrapper it is already wrapped
                 throw other;
+            } else if (other.receiverContext == valueContext && other.delegateContext == receiverContext) {
+                // unpack foreign value it belongs to that context
+                throw (T) other.delegate;
             } else {
+                // Preserve original context of the delegate when forwarding through third context
                 throw new OtherContextException(receiverContext, other.delegate, other.delegateContext);
             }
         } else if (InteropLibrary.getUncached().isException(e)) {
