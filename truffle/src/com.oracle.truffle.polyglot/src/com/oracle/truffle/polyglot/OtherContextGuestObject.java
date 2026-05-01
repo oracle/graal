@@ -338,13 +338,13 @@ final class OtherContextGuestObject implements TruffleObject {
         }
 
         @TruffleBoundary
-        OtherContextException(PolyglotContextImpl thisContext, Exception delegate, PolyglotContextImpl delegateContext) {
+        OtherContextException(PolyglotContextImpl receiverContext, Exception delegate, PolyglotContextImpl delegateContext) {
             super(delegate.getMessage());
             assert !(delegate instanceof OtherContextException) : "recursive host foreign value found";
-            assert thisContext != null && delegateContext != null : "Must have associated contexts.";
-            assert thisContext != delegateContext : "no need for foreign value if contexts match";
+            assert receiverContext != null && delegateContext != null : "Must have associated contexts.";
+            assert receiverContext != delegateContext : "no need for foreign value if contexts match";
             this.delegate = delegate;
-            this.receiverContext = thisContext;
+            this.receiverContext = receiverContext;
             this.delegateContext = delegateContext;
         }
 
