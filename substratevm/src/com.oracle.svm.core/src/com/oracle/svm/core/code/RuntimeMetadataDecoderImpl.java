@@ -786,7 +786,12 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                 result[valueCount++] = element;
             }
         }
-        return Arrays.copyOf(result, valueCount);
+        if (valueCount == length) {
+            return result;
+        }
+        T[] trimmedResult = (T[]) KnownIntrinsics.unvalidatedNewArray(elementType, valueCount);
+        System.arraycopy(result, 0, trimmedResult, 0, valueCount);
+        return trimmedResult;
     }
 
     private static byte[] decodeByteArray(UnsafeArrayTypeReader buf) {
