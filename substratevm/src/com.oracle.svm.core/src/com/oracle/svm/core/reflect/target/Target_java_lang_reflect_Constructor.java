@@ -91,11 +91,11 @@ public final class Target_java_lang_reflect_Constructor {
 
     @Substitute
     public Target_jdk_internal_reflect_ConstructorAccessor acquireConstructorAccessor() {
-        if (MetadataTracer.enabled()) {
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
             ConstructorUtil.traceConstructorAccess(SubstrateUtil.cast(this, Executable.class));
         }
 
-        RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
         assert constructorAccessor == null : "acquireConstructorAccessor() method must not be called if instance is in image heap.";
         if (constructorAccessorFromMetadata == null || !dynamicAccessMetadata.satisfied()) {
             throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));

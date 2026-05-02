@@ -35,6 +35,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.metadata.MetadataTracer;
@@ -387,7 +388,14 @@ final class Target_java_lang_reflect_Array {
     @Substitute
     private static Object newArray(Class<?> componentType, int length)
                     throws NegativeArraySizeException {
-        if (MetadataTracer.enabled()) {
+        if (componentType == null) {
+            throw new NullPointerException();
+        } else if (componentType == void.class || (componentType.isArray() && SubstrateUtil.arrayTypeDimension(componentType) >= 255)) {
+            throw new IllegalArgumentException();
+        } else if (length < 0) {
+            throw new NegativeArraySizeException(String.valueOf(length));
+        }
+        if (MetadataTracer.enabled() && shouldTraceReflectionArrayType(componentType, 1)) {
             MetadataTracer.singleton().traceReflectionArrayType(componentType);
         }
         return KnownIntrinsics.unvalidatedNewArray(componentType, length);
@@ -412,7 +420,7 @@ final class Target_java_lang_reflect_Array {
                 throw new NegativeArraySizeException(String.valueOf(dimensions[i]));
             }
         }
-        if (MetadataTracer.enabled()) {
+        if (MetadataTracer.enabled() && shouldTraceReflectionArrayType(componentType, dimensions.length)) {
             MetadataTracer.singleton().traceReflectionArrayType(componentType, dimensions.length);
         }
 
@@ -427,6 +435,18 @@ final class Target_java_lang_reflect_Array {
         }
 
         return Util_java_lang_reflect_Array.createMultiArrayAtIndex(0, arrayHub, dimensions);
+    }
+
+    private static boolean shouldTraceReflectionArrayType(Class<?> componentType, int dimensions) {
+        DynamicHub arrayHub = DynamicHub.fromClass(componentType);
+        for (int i = 0; i < dimensions; i++) {
+            arrayHub = arrayHub.getArrayHub();
+            if (arrayHub == null) {
+                return true;
+            }
+        }
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = arrayHub.getDynamicAccessMetadata();
+        return MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata);
     }
 }
 

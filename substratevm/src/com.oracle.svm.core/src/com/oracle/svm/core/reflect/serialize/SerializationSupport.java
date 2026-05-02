@@ -280,12 +280,12 @@ public class SerializationSupport {
             declaringClass = SerializedLambda.class;
         }
 
-        if (MetadataTracer.enabled()) {
+        DynamicHub declaringHub = SubstrateUtil.cast(declaringClass, DynamicHub.class);
+        DynamicHub targetConstructorHub = SubstrateUtil.cast(targetConstructorClass, DynamicHub.class);
+        if (MetadataTracer.enabled() && shouldTraceSerialization(declaringHub)) {
             MetadataTracer.singleton().traceSerializationType(declaringClass);
         }
         for (var singleton : layeredSingletons()) {
-            DynamicHub declaringHub = SubstrateUtil.cast(declaringClass, DynamicHub.class);
-            DynamicHub targetConstructorHub = SubstrateUtil.cast(targetConstructorClass, DynamicHub.class);
             Object constructorAccessor = singleton.getSerializationConstructorAccessor0(declaringHub, targetConstructorHub, declaringClass.getModifiers());
             if (constructorAccessor != null) {
                 return constructorAccessor;
@@ -338,6 +338,20 @@ public class SerializationSupport {
         SubstrateUtil.guaranteeRuntimeOnly();
         var conditionSet = classes.get(dynamicHub.getTypeID());
         return conditionSet != null && conditionSet.satisfied();
+    }
+
+    public static boolean shouldTraceSerialization(DynamicHub dynamicHub) {
+        boolean metadataFound = false;
+        for (SerializationSupport singleton : SerializationSupport.layeredSingletons()) {
+            var conditionSet = singleton.classes.get(dynamicHub.getTypeID());
+            if (conditionSet != null) {
+                metadataFound = true;
+                if (conditionSet.isPreserved()) {
+                    return true;
+                }
+            }
+        }
+        return !metadataFound;
     }
 
     public static boolean isPreservedForSerialization(DynamicHub dynamicHub) {

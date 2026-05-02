@@ -313,7 +313,7 @@ public class ResourcesFeature implements InternalFeature {
         @Override
         public void addResourceBundles(AccessCondition condition, boolean preserved, String name) {
             abortIfSealed();
-            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, name));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, name, preserved));
         }
 
         @Override

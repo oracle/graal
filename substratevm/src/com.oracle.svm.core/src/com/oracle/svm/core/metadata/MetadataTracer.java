@@ -47,6 +47,7 @@ import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
@@ -70,9 +71,9 @@ import jdk.graal.compiler.options.OptionStability;
 
 /**
  * Implements reachability metadata tracing during native image execution. Enabling
- * {@link Options#MetadataTracingSupport} at build time will generate code to trace all accesses of
- * reachability metadata, and then the run-time option {@link Options#TraceMetadata} enables
- * tracing.
+ * {@link Options#MetadataTracingSupport} at build time will generate code to trace selected
+ * accesses of reachability metadata, and then the run-time option {@link Options#TraceMetadata}
+ * enables tracing.
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class MetadataTracer {
@@ -84,6 +85,7 @@ public final class MetadataTracer {
 
         static final String TRACE_METADATA_HELP = """
                         Enables metadata tracing at run time. This option is only supported if -H:+MetadataTracingSupport is set when building the image.
+                        The tracer emits only metadata that was preserved with -H:Preserve, or metadata that is missing completely.
                         The value of this option is a comma-separated list of arguments specified as key-value pairs. The following arguments are supported:
 
                         - path=<trace-output-directory> (required): Specifies the directory to write traced metadata to.
@@ -168,6 +170,19 @@ public final class MetadataTracer {
     @AlwaysInline("tracing should fold away when disabled")
     public static boolean enabled() {
         return Options.MetadataTracingSupport.getValue() && singleton().enabledAtRunTime();
+    }
+
+    /**
+     * Returns whether an access to the provided metadata should be traced. The tracer emits
+     * metadata only for image contents brought in by {@code -H:Preserve}, or for accesses with no
+     * matching metadata at all.
+     */
+    public static boolean shouldTraceMetadata(RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        return dynamicAccessMetadata == null || dynamicAccessMetadata.isPreserved();
+    }
+
+    public static boolean shouldTraceMetadata(boolean metadataMissing, boolean metadataPreserved) {
+        return metadataMissing || metadataPreserved;
     }
 
     /**

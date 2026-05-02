@@ -858,7 +858,6 @@ public final class Resources {
                 if (missingResourceMatchesIncludePattern(resourceName, moduleName) || missingResourceMatchesIncludePattern(canonicalResourceName, moduleName)) {
                     // This resource name matches a pattern/glob from the provided metadata, but no
                     // resource with the name actually exists. Do not report missing metadata.
-                    traceResource(resourceName, moduleName);
                     return null;
                 }
                 traceResourceMissingMetadata(resourceName, moduleName, probe);
@@ -871,7 +870,7 @@ public final class Resources {
                 return null;
             }
         }
-        traceResource(resourceName, moduleName);
+        traceResource(resourceName, moduleName, entry.getDynamicAccessMetadata());
         if (!entry.getDynamicAccessMetadata().satisfied()) {
             return missingMetadata(module, resourceName, probe);
         }
@@ -917,8 +916,8 @@ public final class Resources {
     }
 
     @AlwaysInline("tracing should fold away when disabled")
-    private static void traceResource(String resourceName, String moduleName) {
-        if (MetadataTracer.enabled()) {
+    private static void traceResource(String resourceName, String moduleName, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
             MetadataTracer.singleton().traceResource(resourceName, moduleName);
         }
     }
