@@ -1126,6 +1126,7 @@ public final class Resources {
         }
 
         if (missingMetadata) {
+            traceResourceMissingMetadata(resourceName, moduleName(module));
             MissingResourceRegistrationUtils.reportResourceAccess(module, resourceName);
         }
 
