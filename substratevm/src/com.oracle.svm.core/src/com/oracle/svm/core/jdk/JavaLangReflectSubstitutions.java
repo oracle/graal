@@ -395,7 +395,7 @@ final class Target_java_lang_reflect_Array {
         } else if (length < 0) {
             throw new NegativeArraySizeException(String.valueOf(length));
         }
-        if (MetadataTracer.enabled() && shouldTraceReflectionArrayType(componentType, 1)) {
+        if (MetadataTracer.enabled() && Util_java_lang_reflect_Array.shouldTraceReflectionArrayType(componentType, 1)) {
             MetadataTracer.singleton().traceReflectionArrayType(componentType);
         }
         return KnownIntrinsics.unvalidatedNewArray(componentType, length);
@@ -420,7 +420,7 @@ final class Target_java_lang_reflect_Array {
                 throw new NegativeArraySizeException(String.valueOf(dimensions[i]));
             }
         }
-        if (MetadataTracer.enabled() && shouldTraceReflectionArrayType(componentType, dimensions.length)) {
+        if (MetadataTracer.enabled() && Util_java_lang_reflect_Array.shouldTraceReflectionArrayType(componentType, dimensions.length)) {
             MetadataTracer.singleton().traceReflectionArrayType(componentType, dimensions.length);
         }
 
@@ -437,7 +437,11 @@ final class Target_java_lang_reflect_Array {
         return Util_java_lang_reflect_Array.createMultiArrayAtIndex(0, arrayHub, dimensions);
     }
 
-    private static boolean shouldTraceReflectionArrayType(Class<?> componentType, int dimensions) {
+}
+
+final class Util_java_lang_reflect_Array {
+
+    static boolean shouldTraceReflectionArrayType(Class<?> componentType, int dimensions) {
         DynamicHub arrayHub = DynamicHub.fromClass(componentType);
         for (int i = 0; i < dimensions; i++) {
             arrayHub = arrayHub.getArrayHub();
@@ -448,9 +452,6 @@ final class Target_java_lang_reflect_Array {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = arrayHub.getDynamicAccessMetadata();
         return MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata);
     }
-}
-
-final class Util_java_lang_reflect_Array {
 
     static Object createMultiArrayAtIndex(int index, DynamicHub arrayHub, int[] dimensions) {
         final int length = dimensions[index];
