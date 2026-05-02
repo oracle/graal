@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1033,6 +1033,18 @@ public class SandboxPolicyTest {
         if (configuration.sandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED) &&
                         (SandboxPolicy.ISOLATED.isStricterThan(configuration.sandboxPolicy) || configuration.hasIsolateLibrary())) {
             try (Engine engine = newEngineBuilder(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).option("engine.CompilerThreads", "1").build()) {
+                // deliberately empty
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings({"try"})
+    public void testCompilerThreadStackSize() {
+        Assume.assumeTrue(configuration.hasIsolateLibrary() || !(Truffle.getRuntime() instanceof DefaultTruffleRuntime));
+        if (configuration.sandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED) &&
+                        (SandboxPolicy.ISOLATED.isStricterThan(configuration.sandboxPolicy) || configuration.hasIsolateLibrary())) {
+            try (Engine engine = newEngineBuilder(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).option("engine.CompilerThreadStackSize", "256KB").build()) {
                 // deliberately empty
             }
         }
