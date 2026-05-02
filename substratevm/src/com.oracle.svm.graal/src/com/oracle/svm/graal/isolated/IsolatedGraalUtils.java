@@ -65,6 +65,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.vm.ci.code.InstalledCode;
@@ -291,8 +292,9 @@ public final class IsolatedGraalUtils {
     }
 
     private static byte[] encodeNonNativeImageRuntimeOptionValues() {
+        var options = RuntimeOptionValues.singleton().get();
         EconomicMap<OptionKey<?>, Object> result = EconomicMap.create();
-        var cur = RuntimeOptionValues.singleton().get().getMap().getEntries();
+        var cur = options.getMap().getEntries();
         while (cur.advance()) {
             OptionKey<?> optionKey = cur.getKey();
             if (!(optionKey instanceof RuntimeOptionKey)) {
@@ -300,13 +302,22 @@ public final class IsolatedGraalUtils {
             }
         }
 
-        /*
-         * All compilation isolates should use the same folder for debug dumps, to avoid confusion
-         * of users. Always setting the DumpPath option in the compilation isolates is the easiest
-         * way to achieve that.
-         */
-        result.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton().get()));
+        if (shouldShareDumpPathAcrossCompilationIsolates(options)) {
+            /*
+             * All compilation isolates should use the same folder for debug dumps, to avoid
+             * confusion of users. Only compute the directory eagerly when some dump-producing
+             * feature is actually enabled.
+             */
+            result.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(options));
+        }
         return OptionValuesEncoder.encode(result);
+    }
+
+    private static boolean shouldShareDumpPathAcrossCompilationIsolates(OptionValues options) {
+        return DebugOptions.DumpPath.hasBeenSet(options) ||
+                        DebugOptions.DumpOnError.getValue(options) ||
+                        DebugOptions.Dump.getValue(options) != null ||
+                        DebugOptions.DumpOnPhaseChange.getValue(options) != null;
     }
 
     private static void applyClientRuntimeOptionValues(PointerBase encodedOptionsPtr, int encodedOptionsLength) {
