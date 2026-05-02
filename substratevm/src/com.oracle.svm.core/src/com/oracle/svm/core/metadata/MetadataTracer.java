@@ -205,9 +205,13 @@ public final class MetadataTracer {
     }
 
     public void traceReflectionArrayType(Class<?> componentClazz) {
+        traceReflectionArrayType(componentClazz, 1);
+    }
+
+    public void traceReflectionArrayType(Class<?> componentClazz, int dimensions) {
         ConfigurationTypeDescriptor typeDescriptor = ConfigurationTypeDescriptor.fromClass(componentClazz);
         if (typeDescriptor instanceof NamedConfigurationTypeDescriptor(String name)) {
-            traceReflectionType(name + "[]");
+            traceReflectionType(name + "[]".repeat(dimensions));
         } else {
             debug("array type not registered for reflection (component type is not a named type)", typeDescriptor);
         }

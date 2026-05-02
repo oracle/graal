@@ -412,6 +412,9 @@ final class Target_java_lang_reflect_Array {
                 throw new NegativeArraySizeException(String.valueOf(dimensions[i]));
             }
         }
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceReflectionArrayType(componentType, dimensions.length);
+        }
 
         // get the ultimate outer array type
         DynamicHub arrayHub = DynamicHub.fromClass(componentType);
