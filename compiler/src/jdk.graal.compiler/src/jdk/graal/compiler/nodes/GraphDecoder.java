@@ -1003,18 +1003,18 @@ public class GraphDecoder {
         }
 
         /**
-         * Traverses the virtual-object portion of a {@link FrameState} to collect index paths
-         * to any {@link LoopExplosionKeyNode} reachable from the given {@code value}.
+         * Traverses the virtual-object portion of a {@link FrameState} to collect index paths to
+         * any {@link LoopExplosionKeyNode} reachable from the given {@code value}.
          * <p>
-         * Each discovered path represents the sequence of slot indexes that leads from the
-         * starting value through nested {@link VirtualObjectState} entries to a key marker.
-         * When such a marker is found, the current path is recorded in {@code slotPaths},
-         * the marker is replaced in the loop scope's created-node maps, and the node itself
-         * is rewritten to its inner value and deleted.
+         * Each discovered path represents the sequence of slot indexes that leads from the starting
+         * value through nested {@link VirtualObjectState} entries to a key marker. When such a
+         * marker is found, the current path is recorded in {@code slotPaths}, the marker is
+         * replaced in the loop scope's created-node maps, and the node itself is rewritten to its
+         * inner value and deleted.
          * <p>
-         * The traversal is recursive and only follows {@link VirtualObjectNode}s that have
-         * a corresponding {@link VirtualObjectState}. The {@code activeObjects} list is used
-         * as a recursion stack to detect cycles and prevent infinite descent through cyclic
+         * The traversal is recursive and only follows {@link VirtualObjectNode}s that have a
+         * corresponding {@link VirtualObjectState}. The {@code activeObjects} list is used as a
+         * recursion stack to detect cycles and prevent infinite descent through cyclic
          * virtual-object graphs.
          *
          * @param slotPaths collects the discovered slot-index paths to loop explosion key markers
@@ -1022,7 +1022,8 @@ public class GraphDecoder {
          * @param frameState the frame state from which virtual object state is resolved
          * @param value the current value being inspected
          * @param currentPath the path accumulated so far while descending through nested slots
-         * @param activeObjects the set/stack of virtual objects currently being visited to avoid cycles
+         * @param activeObjects the set/stack of virtual objects currently being visited to avoid
+         *            cycles
          */
         private static void collectSlotPaths(List<int[]> slotPaths, LoopScope loopScope, FrameState frameState, ValueNode value, ArrayList<Integer> currentPath,
                         ArrayList<VirtualObjectNode> activeObjects) {
@@ -1245,8 +1246,10 @@ public class GraphDecoder {
                         h = h * 31 + 1234;
                     } else {
                         if (value instanceof VirtualObjectNode) {
-                            // ignore virtual object node parts of the hash - they are treated specially
-                            // in the equals logic
+                            /*
+                             * ignore virtual object node parts of the hash - they are treated
+                             * specially in the equals logic
+                             */
                             hasVirtualObjects = true;
                             continue;
                         }

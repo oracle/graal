@@ -811,6 +811,7 @@ public final class CompilerDirectives {
      *
      * This method must be used directly before a loop and the return value has to be assigned back
      * to the variable:
+     *
      * <pre>
      * int bci = 0;
      * // ...
@@ -824,14 +825,14 @@ public final class CompilerDirectives {
      * also be marked, for example {@code state.inner.key =
      * CompilerDirectives.mergeExplodeKey(state.inner.key);}. This is only supported while every
      * object on that access path remains virtual and never escapes.
-     *
+     * <p>
      * Only a single variable can currently be annotated with this method; annotating multiple
      * variables causes a compilation failure. This restriction will be lifted in a future release.
-     *
+     * <p>
      * At every iteration, the key value must be a compile-time constant {@code int} so the compiler
      * can create a distinct merge point for each key value and correctly handle irreducibly
      * exploded structures. If this is not upheld, a compilation failure occurs.
-     *
+     * <p>
      * Other variables must have the same value at every iteration where the key matches (e.g.,
      * partial evaluate to the same constant or remain unchanged). If a non-key variable changes
      * while the key stays the same, a compilation failure occurs because the states cannot be
