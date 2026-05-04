@@ -4771,13 +4771,24 @@ class NativeImageBenchmarkMixin(StageAwareBenchmarkMixin):
 
     def is_native_mode(self, bm_suite_args: list[str]):
         """Checks whether the given arguments request a Native Image benchmark"""
-        jvm_flag = self.jvm(bm_suite_args)
-        if not jvm_flag:
-            # In case the --jvm argument was not given explicitly, let the registry load the appropriate vm and extract
-            # the name from there.
-            # This is much more expensive, so it is only used as a fallback
-            jvm_flag = self.get_vm_registry().get_vm_from_suite_args(bm_suite_args).name()
-        return "native-image" in jvm_flag
+        vm_args = self.vmAndRunArgs(bm_suite_args)[0]
+        if "--guest" not in vm_args:
+            # The common non-guest path can avoid registry resolution unless --jvm was omitted.
+            jvm_flag = self.jvm(bm_suite_args)
+            if not jvm_flag:
+                # In case the --jvm argument was not given explicitly, let the registry load the appropriate vm and extract
+                # the name from there.
+                # This is much more expensive, so it is only used as a fallback
+                jvm_flag = self.get_vm_registry().get_vm_from_suite_args(bm_suite_args).name()
+            return "native-image" in jvm_flag
+
+        # Guest syntax selects the guest VM as the effective VM. For native PolyBench dispatch we still need to look
+        # through it and treat a native-image host as native mode.
+        vm = self.get_vm_registry().get_vm_from_suite_args(bm_suite_args, quiet=True)
+        if isinstance(vm, mx_benchmark.GuestVm):
+            host_vm = vm.host_vm()
+            return host_vm is not None and "native-image" in host_vm.name()
+        return "native-image" in vm.name()
 
     def apply_command_mapper_hooks(self, cmd, vm):
         return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
