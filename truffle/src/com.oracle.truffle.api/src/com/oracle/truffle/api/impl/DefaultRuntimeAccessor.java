@@ -318,11 +318,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public void setInitializedTimestamp(CallTarget target, long timestamp) {
-
-        }
-
-        @Override
         public void initializeInterpreterCallStackHeadRoom(Object engineData, long interpreterCallStackHeadRoom) {
             throw new UnsupportedOperationException();
         }

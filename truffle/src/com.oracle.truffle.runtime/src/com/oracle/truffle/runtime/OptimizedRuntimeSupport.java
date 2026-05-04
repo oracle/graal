@@ -427,13 +427,6 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public void setInitializedTimestamp(CallTarget target, long timestamp) {
-        if (target instanceof OptimizedCallTarget optimizedCallTarget) {
-            optimizedCallTarget.setInitializedTimestamp(timestamp);
-        }
-    }
-
-    @Override
     public void initializeInterpreterCallStackHeadRoom(Object engineData, long interpreterCallStackHeadRoom) {
         ((EngineData) engineData).interpreterCallStackHeadRoom = interpreterCallStackHeadRoom;
     }

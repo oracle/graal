@@ -1372,8 +1372,6 @@ public abstract class Accessor {
 
         public abstract <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination);
 
-        public abstract void setInitializedTimestamp(CallTarget target, long timestamp);
-
         public abstract void initializeInterpreterCallStackHeadRoom(Object engineData, long interpreterCallStackHeadRoom);
 
         public abstract boolean supportsHeapMemoryLimits();
