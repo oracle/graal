@@ -139,6 +139,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SVMImageLayerLoader extends ImageLayerLoader {
     private final boolean useSharedLayerGraphs;
+    private final boolean useSharedLayerStrengthenedGraphs;
     private final SVMImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
     private final SharedLayerSnapshotData.Loader snapshot;
@@ -181,12 +182,13 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final BaseLayerMethodResolver baseLayerMethodResolver = new BaseLayerMethodResolver(new LoaderBaseLayerProvider());
 
     public SVMImageLayerLoader(SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, HostedImageLayerBuildingSupport imageLayerBuildingSupport, SharedLayerSnapshotData.Loader snapshot,
-                    FileChannel graphChannel, boolean useSharedLayerGraphs) {
+                    FileChannel graphChannel, boolean useSharedLayerGraphs, boolean useSharedLayerStrengthenedGraphs) {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
         this.imageLayerBuildingSupport = imageLayerBuildingSupport;
         this.snapshot = snapshot;
         this.graphStore = graphChannel == null ? null : ImageLayerGraphStore.openForReading(graphChannel);
         this.useSharedLayerGraphs = useSharedLayerGraphs;
+        this.useSharedLayerStrengthenedGraphs = useSharedLayerStrengthenedGraphs;
         classInitializationSupport = ClassInitializationSupport.singleton();
         buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
     }
@@ -1000,6 +1002,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
+        if (!useSharedLayerStrengthenedGraphs) {
+            return false;
+        }
         return hasGraph(analysisMethod, PersistedAnalysisMethodData.Loader::hasStrengthenedGraphLocation);
     }
 

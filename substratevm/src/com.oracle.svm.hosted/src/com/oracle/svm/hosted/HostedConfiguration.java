@@ -252,8 +252,10 @@ public class HostedConfiguration {
         return new SVMImageLayerWriter(imageLayerSnapshotUtil, useSharedLayerGraphs, useSharedLayerStrengthenedGraphs);
     }
 
-    public SVMImageLayerLoader createSVMImageLayerLoader(SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, HostedImageLayerBuildingSupport imageLayerBuildingSupport, boolean useSharedLayerGraphs) {
-        return new SVMImageLayerLoader(imageLayerSnapshotUtil, imageLayerBuildingSupport, imageLayerBuildingSupport.getSnapshot(), imageLayerBuildingSupport.getGraphsChannel(), useSharedLayerGraphs);
+    public SVMImageLayerLoader createSVMImageLayerLoader(SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, HostedImageLayerBuildingSupport imageLayerBuildingSupport,
+                    boolean useSharedLayerGraphs, boolean useSharedLayerStrengthenedGraphs) {
+        return new SVMImageLayerLoader(imageLayerSnapshotUtil, imageLayerBuildingSupport, imageLayerBuildingSupport.getSnapshot(), imageLayerBuildingSupport.getGraphsChannel(),
+                        useSharedLayerGraphs, useSharedLayerStrengthenedGraphs);
     }
 
     public SVMImageLayerSnapshotUtil createSVMImageLayerSnapshotUtil(ImageClassLoader imageClassLoader) {
