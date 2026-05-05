@@ -291,9 +291,8 @@ public final class IsolatedGraalUtils {
     }
 
     private static byte[] encodeNonNativeImageRuntimeOptionValues() {
-        var options = RuntimeOptionValues.singleton().get();
         EconomicMap<OptionKey<?>, Object> result = EconomicMap.create();
-        var cur = options.getMap().getEntries();
+        var cur = RuntimeOptionValues.singleton().get().getMap().getEntries();
         while (cur.advance()) {
             OptionKey<?> optionKey = cur.getKey();
             if (!(optionKey instanceof RuntimeOptionKey)) {
@@ -306,7 +305,7 @@ public final class IsolatedGraalUtils {
          * of users. Always setting the DumpPath option in the compilation isolates is the easiest
          * way to achieve that.
          */
-        result.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(options));
+        result.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton().get()));
         return OptionValuesEncoder.encode(result);
     }
 
