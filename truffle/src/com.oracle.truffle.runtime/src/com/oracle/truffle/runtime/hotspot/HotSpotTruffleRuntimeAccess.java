@@ -75,6 +75,33 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
     }
 
     protected static TruffleRuntime createRuntime() {
+        if (TruffleVersions.isVersionCheckEnabled()) {
+            /*
+             * Check the JDK version before checking compilerModule or jvmci to improve usability.
+             * Otherwise, on an unsupported JDK we would first suggest putting the compiler module
+             * on the --upgrade-module-path, even though that would fail anyway.
+             *
+             * JVMCIVersionCheck#getMinVersion reads JVMCI_MIN_VERSIONS keyed by
+             * java.specification.version. Outside the supported JDK feature range
+             * there may be no minimum entry, so enforce the range before invoking it.
+             */
+            Version truffleVersion = TruffleVersions.TRUFFLE_API_VERSION;
+            if (truffleVersion.compareTo(TruffleVersions.NEXT_VERSION_UPDATE) >= 0) {
+                throw new AssertionError("MIN_COMPILER_VERSION, MIN_JDK_VERSION and MAX_JDK_VERSION must be updated!");
+            }
+            int jdkFeatureVersion = Runtime.version().feature();
+            if (jdkFeatureVersion < TruffleVersions.MIN_JDK_VERSION || jdkFeatureVersion >= TruffleVersions.MAX_JDK_VERSION) {
+                return new DefaultTruffleRuntime(formatVersionWarningMessage(
+                                """
+                                                Your Java runtime '%s' is incompatible with polyglot version '%s'.
+                                                The Java runtime version must be greater or equal to JDK '%d' and smaller than JDK '%d'.
+                                                In order to use the optimizing runtime:
+                                                - Update your Java runtime to resolve this. See https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support for optimizing runtime compatibility.
+                                                - Switch to polyglot isolates to run the guest language as a native image. See https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates for instructions.
+                                                """,
+                                Runtime.version(), truffleVersion, TruffleVersions.MIN_JDK_VERSION, TruffleVersions.MAX_JDK_VERSION));
+            }
+        }
         String reason = ModulesSupport.exportJVMCI(HotSpotTruffleRuntimeAccess.class);
         if (reason != null) {
             return new DefaultTruffleRuntime(reason);
@@ -140,20 +167,11 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             compilationSupport = new LibGraalTruffleCompilationSupport();
             if (TruffleVersions.isVersionCheckEnabled()) {
                 Version truffleVersion = TruffleVersions.TRUFFLE_API_VERSION;
-                if (truffleVersion.compareTo(TruffleVersions.NEXT_VERSION_UPDATE) >= 0) {
-                    throw new AssertionError("MIN_COMPILER_VERSION, MIN_JDK_VERSION and MAX_JDK_VERSION must be updated!");
-                }
                 Version truffleMajorMinorVersion = stripUpdateVersion(truffleVersion);
                 Version compilerVersion = getCompilerVersion(compilationSupport);
                 Version compilerMajorMinorVersion = stripUpdateVersion(compilerVersion);
                 int jdkFeatureVersion = Runtime.version().feature();
-                if (jdkFeatureVersion < TruffleVersions.MIN_JDK_VERSION || jdkFeatureVersion >= TruffleVersions.MAX_JDK_VERSION) {
-                    return new DefaultTruffleRuntime(formatVersionWarningMessage("""
-                                    Your Java runtime '%s' with compiler version '%s' is incompatible with polyglot version '%s'.
-                                    The Java runtime version must be greater or equal to JDK '%d' and smaller than JDK '%d'.
-                                    Update your Java runtime to resolve this.
-                                    """, Runtime.version(), compilerVersion, truffleVersion, TruffleVersions.MIN_JDK_VERSION, TruffleVersions.MAX_JDK_VERSION));
-                } else if (compilerMajorMinorVersion.compareTo(truffleMajorMinorVersion) > 0) {
+                if (compilerMajorMinorVersion.compareTo(truffleMajorMinorVersion) > 0) {
                     /*
                      * Forward compatibility is supported only for minor updates, not for major
                      * releases.
@@ -186,20 +204,17 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                     Version truffleMajorMinorVersion = stripUpdateVersion(truffleVersion);
                     Version compilerVersion = getCompilerVersion(compilationSupport);
                     Version compilerMajorMinorVersion = stripUpdateVersion(compilerVersion);
-                    int jdkFeatureVersion = Runtime.version().feature();
-                    // JVMCIVersionCheck#getMinVersion reads JVMCI_MIN_VERSIONS keyed by
-                    // java.specification.version. Outside the supported JDK feature range
-                    // there may be no minimum entry, so enforce the range before invoking it.
-                    if (jdkFeatureVersion < TruffleVersions.MIN_JDK_VERSION || jdkFeatureVersion >= TruffleVersions.MAX_JDK_VERSION) {
-                        return new DefaultTruffleRuntime(formatVersionWarningMessage("""
-                                        Your Java runtime '%s' is incompatible with compiler version '%s'.
-                                        The Java runtime version must be greater or equal to JDK '%d' and smaller than JDK '%d'.
-                                        Update your Java runtime to resolve this.
-                                        """, Runtime.version(), compilerVersion, TruffleVersions.MIN_JDK_VERSION, TruffleVersions.MAX_JDK_VERSION));
-                    }
                     String jvmciVersionCheckError = verifyJVMCIVersion(compilationSupport.getClass());
                     if (jvmciVersionCheckError != null) {
-                        return new DefaultTruffleRuntime(jvmciVersionCheckError);
+                        String errorMessageWithResolution = String.format(
+                                        """
+                                                        %s
+                                                        In order to use the optimizing runtime:
+                                                        - Update your Java runtime to resolve this. See https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support for optimizing runtime compatibility.
+                                                        - Switch to polyglot isolates to run the guest language as a native image. See https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates for instructions.
+                                                        """,
+                                        jvmciVersionCheckError);
+                        return new DefaultTruffleRuntime(formatVersionWarningMessage(errorMessageWithResolution));
                     }
                     if (!compilerMajorMinorVersion.equals(truffleMajorMinorVersion)) {
                         return new DefaultTruffleRuntime(formatVersionWarningMessage("""

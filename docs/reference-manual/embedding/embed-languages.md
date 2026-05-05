@@ -404,28 +404,29 @@ The following access parameters may be configured:
 
 Polyglot Truffle runtimes can be used on several host virtual machines with varying support for runtime optimization.
 Runtime optimization of guest application code is crucial for the efficient execution of embedded guest applications.
-This table shows the level of optimizations the Java runtimes currently provide:
+Runtime optimization support depends on both the Java runtime and the Polyglot version. This table summarizes how to get the optimizing runtime and when the fallback runtime is used:
 
-| Java Runtime                                  | Runtime Optimization Level                            |
-|-----------------------------------------------|-------------------------------------------------------|
-| Oracle GraalVM                                | Best (includes additional compiler optimizations)     |
-| GraalVM Community Edition                     | Optimized                                             |
-| Oracle JDK                                    | Optimized via VM option (up to 25.0 LTS)              |
-| OpenJDK                                       | Optimized via VM option and `--upgrade-module-path` (up to 25.0 LTS) |
-| JDK without JVMCI capability                  | No runtime optimizations (interpreter-only)           |
+| Polyglot Version | Java Runtime / JDK Version | Optimizing Runtime | Fallback Runtime |
+|------------------|----------------------------|--------------------|------------------|
+| 25.1 | Oracle GraalVM for JDK 25 | Supported with additional compiler optimizations. No extra configuration is required. | Supported |
+| 25.1 | GraalVM Community Edition for JDK 25 | Supported. No extra configuration is required. | Supported |
+| 25.1 | Oracle JDK or OpenJDK for JDK 25 | Not supported directly. Use a GraalVM JDK, or use a [polyglot isolate](#polyglot-isolates). | Supported |
+| 25.1 | JDK 21 | [Polyglot isolate](#polyglot-isolates) only. | Supported |
+| 25.0 LTS and earlier | Oracle JDK on a supported JDK version | Supported with `-XX:+EnableJVMCI`. | Supported |
+| 25.0 LTS and earlier | OpenJDK on a supported JDK version | Supported with `-XX:+EnableJVMCI` and the Graal compiler on `--upgrade-module-path`. | Supported |
+| Any | JDK without JVMCI capability | Not supported directly. Use the fallback runtime, or use a [polyglot isolate](#polyglot-isolates) if available. | Supported |
 
 ### Explanations
 
-* **Optimized:** Executed guest application code can be compiled and executed as highly efficient machine code at run time.
-* **Optimized with additional compiler passes:** Oracle GraalVM implements additional optimizations performed during runtime compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better runtime performance and memory consumption.
-* **Optimized via VM option:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher. This configuration is supported up to Polyglot 25.0 LTS. Starting with Polyglot 25.1, plain Oracle JDK uses the fallback runtime instead.
-* **Optimized via VM option and `--upgrade-module-path`:** Optimization is enabled by specifying `-XX:+EnableJVMCI` to the `java` launcher. Additionally, the Graal compiler must be downloaded as a JAR file and specified to the `java` launcher with `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application. This configuration is supported up to Polyglot 25.0 LTS. Starting with Polyglot 25.1, plain OpenJDK uses the fallback runtime instead.
-* **No runtime optimizations:** With no runtime optimizations or if JVMCI is not enabled, the guest application code is executed in interpreter-only mode.
+* **Optimizing runtime:** Executed guest application code can be compiled and executed as highly efficient machine code at run time.
+* **Additional compiler optimizations:** Oracle GraalVM implements additional optimizations performed during runtime compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better runtime performance and memory consumption.
+* **Polyglot isolate only:** The host Java application uses the fallback runtime, and the guest language runs as a Native Image in a [polyglot isolate](#polyglot-isolates).
+* **Fallback runtime:** The guest application code is executed in interpreter-only mode, without runtime compilation to machine code.
 * **JVMCI:** Refers to the [Java-Level JVM Compiler Interface](https://openjdk.org/jeps/243) supported by most Java runtimes.
 
-### Enable Optimization on OpenJDK and Oracle JDK
+### Legacy Optimization Setup on OpenJDK and Oracle JDK
 
-The configurations described below are supported up to Polyglot 25.0 LTS. Starting with Polyglot 25.1, plain OpenJDK and Oracle JDK no longer support the optimizing Truffle runtime and use the fallback runtime instead. If you need the optimizing runtime on these JDKs, continue using the 25.0 LTS release.
+The `-XX:+EnableJVMCI` and `--upgrade-module-path` configurations are supported only up to Polyglot 25.0 LTS. Starting with Polyglot 25.1, plain OpenJDK and Oracle JDK no longer support the optimizing Truffle runtime and use the fallback runtime instead. If you need the optimizing runtime on these JDKs without using polyglot isolates, continue using Polyglot 25.0 LTS.
 
 When running on OpenJDK or Oracle JDK with Polyglot 25.1 or later, you might see a warning like this:
 
@@ -435,8 +436,8 @@ Execution without runtime compilation will negatively impact the guest applicati
 ```
 
 This indicates that the guest application is executed with no runtime optimizations enabled.
-The warning can be suppressed by either suppressing using the `--engine.WarnInterpreterOnly=false` option or the `-Dpolyglot.engine.WarnInterpreterOnly=false` system property.
-If you are using Polyglot 25.0 LTS or earlier, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`.
+The warning can be suppressed using either the `--engine.WarnInterpreterOnly=false` option or the `-Dpolyglot.engine.WarnInterpreterOnly=false` system property.
+If you are using Polyglot 25.0 LTS or earlier on OpenJDK, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and provided to the `java` launcher with `--upgrade-module-path`.
 Note that `compiler.jar` must *not* be put on the module or class path.
 Refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) for an example configuration using Maven or Gradle.
 

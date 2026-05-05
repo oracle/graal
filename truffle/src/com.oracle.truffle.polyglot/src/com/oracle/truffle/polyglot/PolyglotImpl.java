@@ -574,18 +574,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private static void logTruffleRuntimeWarning(Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                     OptionValuesImpl engineOptions, EngineLoggerProvider loggerProvider) {
         boolean warnInterpreterOnly;
+        boolean useIsolate;
         if (engineOptions == null) {
-            warnInterpreterOnly = true;
-            if (options.containsKey("engine.WarnInterpreterOnly")) {
-                warnInterpreterOnly = !"false".equals(options.get("engine.WarnInterpreterOnly"));
-            } else if (useSystemProperties && systemPropertiesOptions.containsKey("engine.WarnInterpreterOnly")) {
-                warnInterpreterOnly = !"false".equals(systemPropertiesOptions.get("engine.WarnInterpreterOnly"));
-            }
+            warnInterpreterOnly = parseOption(PolyglotEngineOptions.WarnInterpreterOnly, "engine.WarnInterpreterOnly", options, systemPropertiesOptions, useSystemProperties);
+            useIsolate = parseOption(PolyglotEngineOptions.SpawnIsolate, "engine.SpawnIsolate", options, systemPropertiesOptions, useSystemProperties) != null;
         } else {
             warnInterpreterOnly = engineOptions.get(PolyglotEngineOptions.WarnInterpreterOnly);
+            useIsolate = engineOptions.get(PolyglotEngineOptions.SpawnIsolate) != null;
         }
 
-        if (warnInterpreterOnly && Truffle.getRuntime().getClass() == DefaultTruffleRuntime.class) {
+        if (warnInterpreterOnly && Truffle.getRuntime().getClass() == DefaultTruffleRuntime.class && !useIsolate) {
             DefaultTruffleRuntime runtime = (DefaultTruffleRuntime) Truffle.getRuntime();
             String reason = runtime.getFallbackReason();
             if (reason == null) {
