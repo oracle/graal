@@ -206,7 +206,7 @@ public class AMD64AddressLoweringAndMaskingByNodePhase extends AddressLoweringBy
     }
 
     private boolean isOffHeap(AMD64AddressNode address) {
-        return floatingReservedRegisterIsNotHeapBase(address.getBase()) || fixedReservedRegisterIsNotHeapBase(address.getBase());
+        return reservedRegisterIsNotHeapBase(address.getBase()) || reservedRegisterIsNotHeapBase(address.getIndex());
     }
 
     private static boolean isOffHeapOrUnknownByUsage(Node node) {
@@ -258,11 +258,13 @@ public class AMD64AddressLoweringAndMaskingByNodePhase extends AddressLoweringBy
         return true;
     }
 
-    private boolean floatingReservedRegisterIsNotHeapBase(ValueNode value) {
-        return (value instanceof ReadReservedRegisterFloatingNode floatingNode && !floatingNode.getRegister().equals(heapBaseRegister));
-    }
-
-    private boolean fixedReservedRegisterIsNotHeapBase(ValueNode value) {
-        return (value instanceof ReadReservedRegisterFixedNode fixedNode && !fixedNode.getRegister().equals(heapBaseRegister));
+    private boolean reservedRegisterIsNotHeapBase(ValueNode value) {
+        if (value instanceof ReadReservedRegisterFloatingNode floatingNode) {
+            return !floatingNode.getRegister().equals(heapBaseRegister);
+        }
+        if (value instanceof ReadReservedRegisterFixedNode fixedNode) {
+            return !fixedNode.getRegister().equals(heapBaseRegister);
+        }
+        return false;
     }
 }
