@@ -27,7 +27,7 @@ import at.ssw.dataflow.options.OptionProvider;
 
 /**
  * Extended Interface for LayoutManager supporting options and advanced
- * features like clustering and movemement.
+ * features like clustering and movement.
  *
  * @author Stefan Loidl
  */
@@ -37,7 +37,7 @@ public interface ExternalGraphLayouter extends OptionProvider, LayoutManager{
     public boolean isClusteringSupported();
     /** Is the routing algorithms fast enough to handle an animation task? */
     public boolean isAnimationSupported();
-    /** Is routing possible independet from the layout task? */
+    /** Is routing possible independent from the layout task? */
     public boolean isMovementSupported();
 
     /**Defines if the layouter should build on the current node positions*/

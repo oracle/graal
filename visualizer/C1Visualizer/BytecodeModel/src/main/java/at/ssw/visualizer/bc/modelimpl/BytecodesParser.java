@@ -53,7 +53,7 @@ public class BytecodesParser {
     }
     
     /**
-     * Trys to read the bytecode of the given method name.
+     * Tries to read the bytecode of the given method name.
      *
      * @param   method  full name of the method
      */

@@ -234,7 +234,7 @@ public class JavaStackProcessor2 implements StackProcessor {
         @NbBundle.Messages({
                 "# adds HTML tags to method name",
                 "# {0} - class name",
-                "# {1} - metod name",
+                "# {1} - method name",
                 "HtmlFormat_MethodName={0}.<b>{1}()</b>",
                 "# Adds decoration to unresolved locations",
                 "# {0} - the formatted name",

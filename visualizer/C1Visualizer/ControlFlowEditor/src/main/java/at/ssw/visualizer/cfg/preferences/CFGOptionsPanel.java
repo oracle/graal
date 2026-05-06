@@ -366,7 +366,7 @@ public class CFGOptionsPanel extends JPanel {
         //apply changes to preferences
         public void apply();
         
-        //optain current value from preferences
+        //obtain current value from preferences
         public void update();
         
         //reset to default value

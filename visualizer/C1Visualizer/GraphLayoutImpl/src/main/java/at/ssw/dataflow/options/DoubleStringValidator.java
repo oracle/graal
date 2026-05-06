@@ -24,7 +24,7 @@ package at.ssw.dataflow.options;
 
 /**
  * Validates if the string option is parsable as double.
- * Optinally min and max value can be given.
+ * Optionally min and max value can be given.
  *
  * @author Stefan Loidl
  */
@@ -60,7 +60,7 @@ public class DoubleStringValidator implements Validator{
                 error=null;
                 return true;
             }
-            error="Value not within intervall: ["+min+","+max+"]";
+            error="Value not within interval: ["+min+","+max+"]";
             return false;
         }catch(Exception e){
             error="No double value.";

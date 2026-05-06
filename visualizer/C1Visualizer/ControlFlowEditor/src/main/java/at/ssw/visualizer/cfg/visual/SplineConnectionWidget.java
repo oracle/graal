@@ -53,7 +53,7 @@ import org.netbeans.api.visual.widget.Widget;
  *  algorithm. Between two control points a curve is painted as cubic bezier 
  *  curve the, inner bezier points are calculated automatically with FMILL 
  *  tangents and a chord parametrization, this interpolant is also known as
- *  cutmull-rom spline. The resulting spline fullfills c^1 continuity.
+ *  cutmull-rom spline. The resulting spline fulfills c^1 continuity.
  *  The the end points the interpolation algorithm uses the bessel end condition.
  */
 
@@ -152,7 +152,7 @@ public class SplineConnectionWidget extends ConnectionWidget {
         Point2D [] bezPoints  = this.createBezierPoints(contrPoints);
         curvePath.moveTo(bezPoints[0].getX(), bezPoints[0].getY());//b00
         
-        //last segment is added by subdivision thats why its -5
+        //last segment is added by subdivision that's why its -5
         for (int i = 1; i < bezPoints.length-5; i+=3) {          
             curvePath.curveTo(
                     bezPoints[i].getX(), bezPoints[i].getY(),//b1i
@@ -266,7 +266,7 @@ public class SplineConnectionWidget extends ConnectionWidget {
         }                                      
     }
      
-    //returns prefered location for an edge -1 for left and 1 for right
+    //returns preferred location for an edge -1 for left and 1 for right
     private int edgeBalance(Widget nodeWidget) {   
         if(scene == null)
             return 1;
@@ -491,8 +491,8 @@ public class SplineConnectionWidget extends ConnectionWidget {
      * widget. 
      * First it make a rough bounds check
      * for Line Segments => use Super call (ConnectionWidget.isHitAt(pL)). 
-     * for self-edges => its sufficent to return getBounds.contains(pL).
-     * for Splines => Interate over all Partitial segments of the curve and make 
+     * for self-edges => its sufficient to return getBounds.contains(pL).
+     * for Splines => Interate over all Partial segments of the curve and make 
      * a minmax check with the bezier points. If pL is inside the minmax 
      * rectangle of one segment the curve is constructed and subdivided until 
      * the distance d between center point pC (of the bounding rectangle) 

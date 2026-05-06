@@ -31,7 +31,7 @@ import org.apache.bcel.classfile.Method;
 import org.apache.bcel.generic.Type;
 
 /**
- * This class holds informations like package, class, arguments, return values
+ * This class holds information like package, class, arguments, return values
  * and name of a method.
  *
  * @author Alexander Reder

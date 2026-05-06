@@ -59,7 +59,7 @@ public class JavascriptWrapperImpl implements UserScriptProcessor {
     @Override
     public String processUserCode(ScriptDefinition def, String userCode) {
         if (def.isExecuteFunction()) {
-            // excute a named function: append a functional, so evaluated script
+            // execute a named function: append a functional, so evaluated script
             // results in an executable
             StringBuilder sb = new StringBuilder(userCode);
             sb.append("\n"); // NOI18N

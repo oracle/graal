@@ -158,7 +158,7 @@ public class ShellUtils {
         if (ff != null) {
             return f;
         }
-        // attemp to create the file on disk
+        // attempt to create the file on disk
         File rf = FileUtil.toFile(FileUtil.getConfigRoot());
         if (rf == null || !rf.exists() || !rf.isDirectory()) {
             throw new FileNotFoundException("Could not create script folder");

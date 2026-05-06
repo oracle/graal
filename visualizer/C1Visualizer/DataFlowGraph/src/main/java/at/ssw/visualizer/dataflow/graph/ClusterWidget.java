@@ -71,7 +71,7 @@ public class ClusterWidget extends Widget{
         label.setForeground(col);
         addChild(label);
 
-        //If edit suppored by scene
+        //If edit supported by scene
         if(scene instanceof EditProvider){
             WidgetAction.Chain actions = getActions ();
             actions.addAction(ActionFactory.createEditAction((EditProvider)scene));

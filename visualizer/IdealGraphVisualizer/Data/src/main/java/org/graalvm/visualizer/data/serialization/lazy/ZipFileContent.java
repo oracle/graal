@@ -105,7 +105,7 @@ public final class ZipFileContent implements SeekableByteChannel, CachedContent,
 
         URI archiveURI = URI.create("jar:" + archivePath.toUri()); // NOI18N
 
-        // puny attempt to synchronize, but the filesysem can be freed between new and
+        // puny attempt to synchronize, but the filesystem can be freed between new and
         // get ...
         FileSystem as;
 

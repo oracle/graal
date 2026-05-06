@@ -103,7 +103,7 @@ public interface GraphContainer {
 
     /**
      * Determines if a node has been changed. If the node was changed between contained graphs
-     * `base' and `to' (inclusive), the mehod returns true.
+     * `base' and `to' (inclusive), the method returns true.
      *
      * @param base first graph to inspect
      * @param to last graph to inspect

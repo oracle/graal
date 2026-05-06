@@ -4,7 +4,7 @@
 # Developing the C1Visualizer
 
 C1Visualizer is based on Netbeans 26 but can be often be worked on with later releases or with any
-IDE that supports Maven.  Care must be taken not to commmit anything that would keep it from working
+IDE that supports Maven.  Care must be taken not to commit anything that would keep it from working
 with 26 so any automatic changes to property file updates by later NetBeans versions shouldn't be
 pushed.  The packaged product is built by:
 ```

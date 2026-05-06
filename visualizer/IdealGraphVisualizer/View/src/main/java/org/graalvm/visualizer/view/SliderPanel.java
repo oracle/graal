@@ -237,7 +237,7 @@ public class SliderPanel extends javax.swing.JPanel {
             }
             int w = parent.getWidth();
             if (w == 0) {
-                // hack: the slider is burried in two BorderLayouts, one
+                // hack: the slider is buried in two BorderLayouts, one
                 // of them ought to have NORTH or SOUTH position
                 Container p = parent.getParent();
                 w = p.getWidth();

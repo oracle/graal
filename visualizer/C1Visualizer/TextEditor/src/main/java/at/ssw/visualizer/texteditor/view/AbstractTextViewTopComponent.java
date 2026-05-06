@@ -47,7 +47,7 @@ public abstract class AbstractTextViewTopComponent extends TopComponent {
 
     private JEditorPane editorPane;
     
-    // EditorKit must be set in the imlementation class
+    // EditorKit must be set in the implementation class
     public AbstractTextViewTopComponent(EditorKit kit) {
         editorPane = new JEditorPane();
         editorPane.setEditorKit(kit);

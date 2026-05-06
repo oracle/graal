@@ -425,7 +425,7 @@ public class CfgScene extends GraphScene<CfgNode, CfgEdge> implements ChangeList
     }
 
     //this function is not invoked by any class  of the module
-    //however to ensure that the edge switches are treatet corretly
+    //however to ensure that the edge switches are treatet correctly
     //when a future version removes nodes it was implemented too.
     
     @Override

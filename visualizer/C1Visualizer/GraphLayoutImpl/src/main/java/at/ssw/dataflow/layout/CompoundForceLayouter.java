@@ -44,7 +44,7 @@ import java.util.Random;
 
 /**
  * This class implements a force directed layout algorithm. It uses the well
- * known spring model that relys on springs and electrical forces. To implement
+ * known spring model that relies on springs and electrical forces. To implement
  * clustering additional virtual nodes are inserted to the original graph.
  * For each cluster one such node is inserted that is connected to all of the
  * nodes within the cluster. Moreover it is connected to each cluster that has
@@ -261,7 +261,7 @@ public class CompoundForceLayouter implements ExternalGraphLayouter{
                 adjacentVertices.add(succ);
         }
 
-        //Calcualte Spring len between all adjacent Nodes
+        //Calculate Spring len between all adjacent Nodes
         double  SpringX = 0, SpringY = 0;
         for(Node adjacent:adjacentVertices) {
             double stiffness, springlen;
@@ -306,13 +306,13 @@ public class CompoundForceLayouter implements ExternalGraphLayouter{
                 SpringY +=stiffness*Math.log(distance/springlen)*((Y-adjY)/distance);
             }
             else{
-                //Hookes Law with relativ springkonstant
+                //Hookes Law with relative springkonstant
                 SpringX +=stiffness*((distance-springlen)/(2*springlen)) *((X-adjX)/distance);
                 SpringY +=stiffness*((distance-springlen)/(2*springlen)) *((Y-adjY)/distance);
             }
         }
 
-        //Calcualte Repulsion
+        //Calculate Repulsion
         double  RepulsionX = 0, RepulsionY = 0;
         for(Node w: dg.getNodes()) {
             if(w == n) continue;
@@ -344,7 +344,7 @@ public class CompoundForceLayouter implements ExternalGraphLayouter{
             double distance = Point2D.distance( nX, nY, X, Y );
             if(distance == 0) distance = 0.01d;
 
-            //If Spring energy is positiv- this one is negativ
+            //If Spring energy is positiv- this one is negative
             RepulsionX -= (repulsion/distance)*((X-nX)/distance);
             RepulsionY -= (repulsion/distance)*((Y-nY)/distance);
         }
@@ -352,7 +352,7 @@ public class CompoundForceLayouter implements ExternalGraphLayouter{
         // Move Node in direction of the force
         double dx =  -(SpringX + RepulsionX);
         double dy =  -(SpringY + RepulsionY);
-        //Make shure the node moves not too far off the others
+        //Make sure the node moves not too far off the others
         if(dx>MAXIMUMMOVEMENT) dx=MAXIMUMMOVEMENT;
         if(dx*-1>MAXIMUMMOVEMENT) dx=-MAXIMUMMOVEMENT;
         if(dy>MAXIMUMMOVEMENT) dy=MAXIMUMMOVEMENT;

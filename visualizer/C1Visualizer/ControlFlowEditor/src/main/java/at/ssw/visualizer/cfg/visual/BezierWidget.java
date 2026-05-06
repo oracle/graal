@@ -44,7 +44,7 @@ import org.netbeans.api.visual.widget.Widget;
  *  In comparison to the default ConnectionWidget this class is able to connect 
  *  Widgets with a curve instead of a straight line sequence. Between two control
  *  points a curve is painted as cubic bezier curve the control points are 
- *  calculated automaticaly they depend on the position of the prior- and the 
+ *  calculated automatically they depend on the position of the prior- and the 
  *  following control points.
  *  In conjunction with a suitable router the connection will be a straight line 
  *  or a curve depending on the amount and the position of the controlpoints. 
@@ -100,7 +100,7 @@ public class BezierWidget extends ConnectionWidget {
     
  
     
-    //returns prefered location for an edge -1 for left and 1 for right
+    //returns preferred location for an edge -1 for left and 1 for right
     private int edgeBalance(Widget nodeWidget) {   
         if(scene == null)
             return 1;

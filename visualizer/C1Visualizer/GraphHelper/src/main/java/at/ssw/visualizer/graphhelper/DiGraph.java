@@ -413,7 +413,7 @@ public class DiGraph {
         //determine the cycle C(e0)
         Node x=e0.source;
         Node y=e0.destination;
-        //get first adiacent edge to y
+        //get first adjacent edge to y
         Edge e= getEdge(y,y.succ.getFirst());
 
         Node wk=y;
@@ -436,7 +436,7 @@ public class DiGraph {
                 e=getEdge(w,r);
                 count++;
                 if(count!=1){
-                    //Test Recursivly
+                    //Test Recursively
                     LinkedList<Integer> A=new LinkedList<Integer>();
                     //if: tree edge
                     if(((PlanarityNodePayload)w.data).dfsNum < ((PlanarityNodePayload)e.destination.data).dfsNum){
@@ -601,7 +601,7 @@ public class DiGraph {
     public Embedding createEmbedding(){
 
         DiGraph G=clone();
-        //Planar- algorithm makes shure the correct
+        //Planar- algorithm makes sure the correct
         //payload types are in the nodes.
         if(G.planar()){
             if(G.nodes.size()<4) return new Embedding(clone());
@@ -682,7 +682,7 @@ public class DiGraph {
                 Edge e=G.getEdge(w,n);
                 count++;
                 if(count!=1){
-                    //Embed recursivly
+                    //Embed recursively
                     //tree edge
                     if(((PlanarityNodePayload)w.data).dfsNum < ((PlanarityNodePayload)e.destination.data).dfsNum){
                         int tprime=(t==((PlanarityEdgePayload)e.data).alpha) ? LEFT : RIGHT;
@@ -790,7 +790,7 @@ public class DiGraph {
 
     /**
      * This class encapsulates the payloade a node
-     * has to carry within the algotithm for making it
+     * has to carry within the algorithm for making it
      * biconnectional
      */
     public class BiConPayload{

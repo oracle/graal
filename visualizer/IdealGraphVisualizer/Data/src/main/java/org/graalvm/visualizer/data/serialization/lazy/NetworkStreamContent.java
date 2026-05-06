@@ -44,7 +44,7 @@ import org.openide.util.Exceptions;
 /**
  * Captures data from the network in a temporary file. This class piggybacks on the main reading
  * {@link BinaryParser} loop - copies data read into the parser's input buffer. The data is received
- * into a temp buffer, then flushed to a file. Chunks from that file (sized as the origial receive
+ * into a temp buffer, then flushed to a file. Chunks from that file (sized as the original receive
  * buffer) are memory mapped into {@link #cacheBuffers} in a hope that the OS does the memmap
  * effectively and discards pages which are not needed.
  * <p/>

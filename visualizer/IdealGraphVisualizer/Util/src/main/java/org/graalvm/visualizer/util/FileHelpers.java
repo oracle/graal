@@ -42,7 +42,7 @@ public class FileHelpers {
     }
 
     public static FileObject ensureConfigWritable(String pathInRoot) throws IOException {
-        // attemp to create the file on disk
+        // attempt to create the file on disk
         FileObject target = FileUtil.getConfigFile(pathInRoot);
         if (target == null) {
             return FileUtil.getConfigRoot().createFolder(pathInRoot);

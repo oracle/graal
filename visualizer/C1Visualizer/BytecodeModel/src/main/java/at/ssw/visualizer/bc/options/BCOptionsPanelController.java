@@ -30,7 +30,7 @@ import org.openide.util.HelpCtx;
 import org.openide.util.Lookup;
 
 /**
- * Controlls the communication.
+ * Controls the communication.
  *
  * @author Alexander Reder
  * @author Christian Wimmer

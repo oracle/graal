@@ -122,7 +122,7 @@ public class InstructionNodeGraphScene extends GraphScene<Instruction, String> i
     //Used to determine planarity, cycles...
     private DiGraph calculationModel;
 
-    //Is layouting done automaticly?
+    //Is layouting done automatically?
     private boolean autoLayout=true;
 
     //Are invisible Nodes layouted?
@@ -877,7 +877,7 @@ public class InstructionNodeGraphScene extends GraphScene<Instruction, String> i
         else{
             for(Vertex v: layoutGraph.getVertices()){
                 InstructionNodeWidget nw=VertexToWidget.get(v);
-                //Instruction widget inset correction: Neccessary because layouter do not support insets!
+                //Instruction widget inset correction: Necessary because layouter do not support insets!
                 Point pos=v.getPosition();
                 pos.translate(InstructionNodeWidget.BORDERINSET,InstructionNodeWidget.BORDERINSET);
                 nw.setPreferredLocation(pos);
@@ -1048,7 +1048,7 @@ public class InstructionNodeGraphScene extends GraphScene<Instruction, String> i
 
     /**
      * Defines if the layout algorithms should build on the current node positions.
-     * This does only applys to layout-algorithms optimizing from a predefined positioning
+     * This does only applies to layout-algorithms optimizing from a predefined positioning
      * (like force layouts)
      */
     public void setUseCurrentNodePositions(boolean b){
@@ -1057,7 +1057,7 @@ public class InstructionNodeGraphScene extends GraphScene<Instruction, String> i
 
     /**
      * Returns if the current node position is used to build on by the external layouter.
-     * This does only applys to layout-algorithms optimizing from a predefined positioning
+     * This does only applies to layout-algorithms optimizing from a predefined positioning
      * (like force layouts)
      */
     public boolean isUseCurrentNodePositions(){
@@ -1135,7 +1135,7 @@ public class InstructionNodeGraphScene extends GraphScene<Instruction, String> i
     // </editor-fold>
 
 
-    //<editor-fold defaultstate="collapsed" desc=" Mulit widget movement and selection strategy and provider ">
+    //<editor-fold defaultstate="collapsed" desc=" Multi widget movement and selection strategy and provider ">
     /**
     * RectangularSelect Method returning a widget to be use as
     * selection boarder
@@ -1179,7 +1179,7 @@ public class InstructionNodeGraphScene extends GraphScene<Instruction, String> i
     }
 
     /**
-     * Selectes exactly one widget defined by the id and centers the view
+     * Selects exactly one widget defined by the id and centers the view
      * on it if centeron==true.
      */
     public void setSingleSelectedWidget(String id, boolean centeron) {
@@ -1219,7 +1219,7 @@ public class InstructionNodeGraphScene extends GraphScene<Instruction, String> i
 
 
     /**
-     * This class implements a MoveProvider to achieve the funktionality of
+     * This class implements a MoveProvider to achieve the functionality of
      * a multi widget movement.
      */
     private class MultiWidgetMovementProvider implements MoveProvider{

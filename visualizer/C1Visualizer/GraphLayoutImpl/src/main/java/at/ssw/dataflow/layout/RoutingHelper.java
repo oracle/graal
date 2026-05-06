@@ -31,7 +31,7 @@ import java.util.LinkedList;
 
 /**
  * This class is a standard implementation of a direct routing algorithm, making it
- * possible to seperate two lines between the same two nodes.
+ * possible to separate two lines between the same two nodes.
  *
  * @author Stefan Loidl
  */
@@ -55,7 +55,7 @@ public class RoutingHelper {
 
             if(!(from.isDirty() || to.isDirty())) continue;
 
-            //Search for twin link (in diffent direction!)
+            //Search for twin link (in different direction!)
             for(Port p:graph.getInputPorts(from)){
                 for(Link l2: graph.getPortLinks(p)){
                     if(l2.getFrom().getVertex()==l.getTo().getVertex()) twin=true;

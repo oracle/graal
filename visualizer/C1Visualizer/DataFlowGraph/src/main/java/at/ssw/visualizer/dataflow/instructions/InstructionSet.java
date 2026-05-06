@@ -85,7 +85,7 @@ public class InstructionSet {
 
      /**
       * Removes all nodes of the specified type from the set.
-      * Currently no Control Flow Instrucitons are shown within the
+      * Currently no Control Flow Instructions are shown within the
       * Graph. For this purpose this method is used.
       */
     public static Instruction[] filterInstructionType(Instruction[] iset,Instruction.InstructionType type){

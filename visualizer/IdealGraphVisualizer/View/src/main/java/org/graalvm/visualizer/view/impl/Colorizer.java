@@ -40,7 +40,7 @@ import java.util.Set;
 /**
  * Colorizes the RangeSlider based on node selection.
  * Selected nodes need to be set by {@link #setTrackNodes}. Automatically tracks changes to
- * the range slider and retrieves the matching grpahs from the graph container.
+ * the range slider and retrieves the matching graphs from the graph container.
  *
  * @author sdedic
  */

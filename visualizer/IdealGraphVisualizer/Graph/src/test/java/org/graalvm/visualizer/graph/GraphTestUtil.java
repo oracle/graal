@@ -48,7 +48,7 @@ import jdk.graal.compiler.graphio.parsing.model.InputNode;
 /**
  * @author Ondřej Douda <ondrej.douda@oracle.com>
  */
-public class GraphTestUtil {//uncomplete/incorrect
+public class GraphTestUtil {//incomplete/incorrect
 
     public static void assertDiagramCorrectState(InputGraph sourceGraph, String name, Diagram diagram) {
         assertNotNull(sourceGraph);

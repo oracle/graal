@@ -50,7 +50,7 @@ public class DelayedLoadTest extends BinaryDataTestBase {
     }
 
     /**
-     * All references must be GCed, if noone holds them
+     * All references must be GCed, if no one holds them
      *
      * @throws Exception
      */

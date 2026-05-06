@@ -144,7 +144,7 @@ public class EdgeSwitchWidget extends Widget {
     
     /**
      *  Update the status of the switch to the current state of the edges
-     *  usually needed when the opposit switch changes the state
+     *  usually needed when the opposite switch changes the state
      */
     private void updateStatus(){
         Collection<CfgEdge> edges = this.getEdges(); 

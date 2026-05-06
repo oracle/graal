@@ -41,7 +41,7 @@ import java.util.Random;
 
 /**
  * This class implements a force-directed layout algorithm. It uses the well
- * known spring model that relys on springs and electrical forces.
+ * known spring model that relies on springs and electrical forces.
  *
  * @author Stefan Loidl
  */
@@ -110,7 +110,7 @@ public class ForceLayouter implements ExternalGraphLayouter{
         layout(graph,dg,idtoverticles,verticlestoid);
     }
 
-    /* Peforms the layout per connected component */
+    /* Performs the layout per connected component */
     private void layout(LayoutGraph lg, DiGraph digraph, Hashtable<String, Vertex> idtoverticles, Hashtable<Vertex, String> verticlestoid) {
         int lastmax=0;
         int max=0;
@@ -189,7 +189,7 @@ public class ForceLayouter implements ExternalGraphLayouter{
                 adjacentVertices.add(succ);
         }
 
-        //Calcualte Spring len between all adjacent Nodes
+        //Calculate Spring len between all adjacent Nodes
         double  SpringX = 0, SpringY = 0;
         for(Node adjacent:adjacentVertices) {
             //determine if one of the nodes is expanded
@@ -219,13 +219,13 @@ public class ForceLayouter implements ExternalGraphLayouter{
                 SpringY +=stiffness*Math.log(distance/springlen)*((Y-adjY)/distance);
             }
             else{
-                //Hookes Law with relativ springkonstant
+                //Hookes Law with relative springkonstant
                 SpringX +=stiffness*((distance-springlen)/(2*springlen)) *((X-adjX)/distance);
                 SpringY +=stiffness*((distance-springlen)/(2*springlen)) *((Y-adjY)/distance);
             }
         }
 
-        //Calcualte Repulsion
+        //Calculate Repulsion
         double  RepulsionX = 0, RepulsionY = 0;
         for(Node w: dg.getNodes()) {
             if(w == n) continue;
@@ -244,7 +244,7 @@ public class ForceLayouter implements ExternalGraphLayouter{
             double distance = Point2D.distance( nX, nY, X, Y );
             if(distance == 0) distance = 0.01d;
 
-            //If Spring energy is positiv- this one is negativ
+            //If Spring energy is positiv- this one is negative
             RepulsionX -= (repulsion/distance)*((X-nX)/distance);
             RepulsionY -= (repulsion/distance)*((Y-nY)/distance);
 
@@ -254,7 +254,7 @@ public class ForceLayouter implements ExternalGraphLayouter{
         double dx =  -(SpringX + RepulsionX);
         double dy =  -(SpringY + RepulsionY);
 
-        //Make shure the node moves not too far off the others
+        //Make sure the node moves not too far off the others
         if(dx>MAXIMUMMOVEMENT) dx=MAXIMUMMOVEMENT;
         if(dx*-1>MAXIMUMMOVEMENT) dx=-MAXIMUMMOVEMENT;
         if(dy>MAXIMUMMOVEMENT) dy=MAXIMUMMOVEMENT;

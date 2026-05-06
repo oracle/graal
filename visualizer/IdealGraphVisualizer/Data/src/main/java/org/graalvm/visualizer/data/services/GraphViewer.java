@@ -79,7 +79,7 @@ public interface GraphViewer {
 
     /**
      * Finds Providers display the given graph. Note that even though a Provider may
-     * exist for the graph's group it may display a differen graph; this method does
+     * exist for the graph's group it may display a different graph; this method does
      * not return such Providers.
      *
      * @param graph compiler grap

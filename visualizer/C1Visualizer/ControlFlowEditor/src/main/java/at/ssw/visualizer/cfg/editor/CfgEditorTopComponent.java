@@ -96,7 +96,7 @@ public class CfgEditorTopComponent extends CloneableTopComponent implements Prop
         jScrollPane.getVerticalScrollBar().setEnabled(true);
         jScrollPane.getHorizontalScrollBar().setEnabled(true);
 
-        //setup enviroment,register listeners
+        //setup environment,register listeners
         selection = new Selection();
         selection.put(cfg);
         selection.put(scene);

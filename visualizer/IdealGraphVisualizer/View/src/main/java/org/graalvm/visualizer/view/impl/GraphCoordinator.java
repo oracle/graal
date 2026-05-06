@@ -349,7 +349,7 @@ public class GraphCoordinator implements PropertyChangeListener, TimelineListene
             class Initializer implements BiConsumer<Boolean, InputGraphProvider> {
                 @Override
                 public void accept(Boolean t, InputGraphProvider u) {
-                    // PEDNING: synchronize the non-primary compartments with
+                    // PENDING: synchronize the non-primary compartments with
                     // existing viewers.
                 }
             }

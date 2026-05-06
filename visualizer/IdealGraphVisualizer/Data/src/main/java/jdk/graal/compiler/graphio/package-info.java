@@ -51,7 +51,7 @@
  *
  * Now you are ready to dump your graph into <b>IGV</b>. Where to obtain the right channel? One
  * option is to create a {@link java.nio.channels.FileChannel} and dump the data into a file
- * (preferrably with <code>.bgv</code> extension). The other is to open a socket to port
+ * (preferably with <code>.bgv</code> extension). The other is to open a socket to port
  * <code>4445</code> (the default port <b>IGV</b> listens to) and dump the data there. Here is an
  * example:
  *

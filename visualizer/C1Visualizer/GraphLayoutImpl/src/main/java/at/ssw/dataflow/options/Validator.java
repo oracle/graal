@@ -23,7 +23,7 @@
 package at.ssw.dataflow.options;
 
 /**
- * A Validator is used to verifiy if an option has the correct format.
+ * A Validator is used to verify if an option has the correct format.
  *
  * @author Stefan Loidl
  */

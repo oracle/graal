@@ -38,7 +38,7 @@ import org.eclipse.draw2d.graph.Edge;
 import org.eclipse.draw2d.graph.Node;
 
 /**
- * Node Layout using Hirachical Layout from GEF draw2d library.
+ * Node Layout using Hierarchical Layout from GEF draw2d library.
  * This class is a wrapper that transforms the input graph models.
  *
  * @author Stefan Loidl

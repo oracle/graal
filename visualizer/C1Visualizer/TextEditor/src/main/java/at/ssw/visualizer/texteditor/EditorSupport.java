@@ -43,11 +43,11 @@ import org.openide.windows.CloneableOpenSupport;
 
 /**
  * Abstract template class of a <code> EditorSupport </code> class of the 
- * Visulizer.
+ * Visualizer.
  * 
  * The <code> text </code> field must be initialized by the implementing class
  * and the methods <code> createCloneableEditor </code> and <code> 
- * initializeCloneableEditor </code> must be overwritten by the implenting class.
+ * initializeCloneableEditor </code> must be overwritten by the implementing class.
  * <code> createCloneableEditor </code> must return a custom implementation
  * of the <code> Editor </code> class.
  * <code> initializeClonableEditor </code> is used to set the icon, e.g.

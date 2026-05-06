@@ -1239,7 +1239,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         if (getTopComponent().isShowing()) {
             componentHidden();//detach old listeners
             selectionCoordinator = SelectionCoordinator.getInstanceForContainer(model.getContainer());
-            componentShowing();//atach new listeners
+            componentShowing();//attach new listeners
         } else {
             selectionCoordinator = SelectionCoordinator.getInstanceForContainer(model.getContainer());
         }

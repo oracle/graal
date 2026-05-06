@@ -82,7 +82,7 @@ public class Instruction {
 
     /**
      * As we are in single static assignment form two instructions are
-     * equal if their id is eqaul.
+     * equal if their id is equal.
      */
     public boolean equals(Object o){
         if(o instanceof Instruction)

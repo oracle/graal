@@ -72,7 +72,7 @@ public class Diagram {
     private static final Font FONT_BOLD = FONT.deriveFont(Font.BOLD);
 
     private final InputGraph graph;
-    private final String nodeText;//TODO: make nodeText dynamicaly changeable
+    private final String nodeText;//TODO: make nodeText dynamically changeable
 
     private final Map<Integer, Figure> figureMap;
     private final Map<InputBlock, Block> blocks;
@@ -224,7 +224,7 @@ public class Diagram {
                 d.figureMap.put(cf.getId(), cf);
             }
             replaceConnections(this, d);
-            //Commented, as this part is essental only for extraction speedup of BlockView
+            //Commented, as this part is essential only for extraction speedup of BlockView
             for (Map.Entry<InputBlock, Block> entry : blocks.entrySet()) {
                 d.getBlock(entry.getKey()).setBounds(entry.getValue().getBounds());
             }

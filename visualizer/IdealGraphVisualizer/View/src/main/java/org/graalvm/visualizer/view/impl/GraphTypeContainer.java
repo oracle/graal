@@ -95,7 +95,7 @@ public class GraphTypeContainer implements GraphContainer {
 
     /**
      * Creates a type container for a specific graph type.
-     * The container may optionally use an "accptor" to filter contained graphs. If "acceptor" is null,
+     * The container may optionally use an "acceptor" to filter contained graphs. If "acceptor" is null,
      * the default filter based on {@link InputGraph#getGraphType()} will be used. {@code null} graph
      * type will accept all graph types. When acceptor is provided, it must ensure its results
      * comply with the type.

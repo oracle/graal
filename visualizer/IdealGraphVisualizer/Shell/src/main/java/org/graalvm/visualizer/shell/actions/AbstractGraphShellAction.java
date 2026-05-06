@@ -43,7 +43,7 @@ import java.util.Map;
 
 /**
  * Basis on actions which operate on a script window (a {@link FilterchainSource}
- * and the activ graph.
+ * and the active graph.
  *
  * @author sdedic
  */
