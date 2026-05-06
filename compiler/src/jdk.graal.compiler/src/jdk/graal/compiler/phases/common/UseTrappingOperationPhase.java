@@ -130,7 +130,7 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
                 ValueNode thisReason = reasons != null ? reasons.get(index) : reason;
                 ValueNode thisSpeculation = speculations != null ? speculations.get(index) : speculation;
                 if (!merge.isAlive()) {
-                    // When evacuating a merge the last successor simplfies the merge away so it
+                    // When evacuating a merge the last successor simplifies the merge away so it
                     // must be handled specially.
                     assert predecessors.get(predecessors.size() - 1) == end : "must be last end";
                     endPredecesssor = deopt.predecessor();

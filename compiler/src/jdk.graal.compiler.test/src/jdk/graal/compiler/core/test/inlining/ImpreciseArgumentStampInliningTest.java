@@ -176,7 +176,7 @@ public class ImpreciseArgumentStampInliningTest extends GraalCompilerTest {
                 loader.resolveableClasses.add(UnresolveableClass.class.getName());
                 /*
                  * With eager resolving and the set of resolveable classes updated, the inlined
-                 * method will have succesfully resolved UnresolveableClass, but the caller will
+                 * method will have successfully resolved UnresolveableClass, but the caller will
                  * not.
                  */
                 createInliningPhase(hints, createCanonicalizerPhase()).apply(graph, getEagerHighTierContext());

@@ -88,7 +88,7 @@ public class HotSpotMonitorValueTest extends GraalCompilerTest {
 
     @Test
     public void test() {
-        // Disable incremental inlining so that the call to Objec.wait(long) in
+        // Disable incremental inlining so that the call to Object.wait(long) in
         // locks2 is not inlined.
         OptionValues options = new OptionValues(getInitialOptions(), HighTier.Options.Inline, false);
         test(options, "testSnippet", "a", "b");

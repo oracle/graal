@@ -88,7 +88,7 @@ public class EarlyEscapeAnalysisTest extends PartialEvaluationTest {
     @EarlyEscapeAnalysis
     private static int earlyNotEscaping1Actual() {
         TestEscape v = new TestEscape(42);
-        escape(v); // escapes the value, hence not escape analysied
+        escape(v); // escapes the value, hence not escape analysed
         return v.value;
     }
 

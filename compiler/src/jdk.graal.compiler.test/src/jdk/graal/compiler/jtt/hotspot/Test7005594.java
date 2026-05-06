@@ -27,7 +27,7 @@ package jdk.graal.compiler.jtt.hotspot;
 //@formatter:off
 
 /**
- * Array overflow not handled correctly with loop optimzations.
+ * Array overflow not handled correctly with loop optimizations.
  *
  * @test
  * @bug 7005594

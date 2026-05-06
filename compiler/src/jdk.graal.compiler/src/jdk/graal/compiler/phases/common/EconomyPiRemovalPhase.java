@@ -46,7 +46,7 @@ public class EconomyPiRemovalPhase extends PostRunCanonicalizationPhase<LowTierC
     @Override
     public boolean shouldApply(StructuredGraph graph) {
         /*
-         * We do not want to run this phase for stubs and other subsitutions.
+         * We do not want to run this phase for stubs and other substitutions.
          */
         return !graph.isSubstitution();
     }

@@ -106,7 +106,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
     // test the limit by setting a small one, normally the limit is not enabled
     @Test(expected = PermanentBailoutException.class)
     public void testSetLimit() {
-        // a small resonable default to ensure if a user sets it the functionality works
+        // a small reasonable default to ensure if a user sets it the functionality works
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.MaximumGraalGraphSize", String.valueOf(5000)).build());
 
         // NOTE: the following code is intentionally written to explode during partial evaluation!

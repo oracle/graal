@@ -52,8 +52,8 @@ final class ForeignCalculatorFactory {}
 
 This generates a `ForeignCalculatorFactoryGen` class with methods:
 
-* `ForeignCalculator create(NativeIsolateConfig config)`: Spawn a Native Image isolate returning foreing reference to `Calculator` implementation allocated in the Native Image heap.
-* `ForeignCalculator create(ProcessIsolateConfig config)`: Spawn an isolate in s sparate OS process returning foreing reference to `Calculator` implementation allocated in the separate process.
+* `ForeignCalculator create(NativeIsolateConfig config)`: Spawn a Native Image isolate returning foreign reference to `Calculator` implementation allocated in the Native Image heap.
+* `ForeignCalculator create(ProcessIsolateConfig config)`: Spawn an isolate in s separate OS process returning foreign reference to `Calculator` implementation allocated in the separate process.
 * `void listen(ProcessIsolateConfig isolateConfig)`: An entry point for an external process isolate.
 
 ### Bridging an Interface

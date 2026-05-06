@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 
 /**
  * Tests the correctness of conditional elimination when inverting stamps along
- * {@link SignExtendNode}. The test artificially creates a graph whith the optimizable pattern:
+ * {@link SignExtendNode}. The test artificially creates a graph with the optimizable pattern:
  * {@code ((val & CONST) == CONST)}, which provides information about the set bits in val, if the
  * condition is used in a guard which is assumed to hold. The partial information about bits which
  * are set in {@code x} are propagated "upwards". A {@link SignExtendNode} must treat the partial

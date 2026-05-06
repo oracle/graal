@@ -41,7 +41,7 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * Jumps to the exception handler specified by {@link #address}. This node is specific for the
- * {@link ExceptionHandlerStub} and should not be used elswhere.
+ * {@link ExceptionHandlerStub} and should not be used elsewhere.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class JumpToExceptionHandlerNode extends FixedWithNextNode implements LIRLowerable {

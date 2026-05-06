@@ -280,7 +280,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
-     * Test that if a call target is called a min invocation theshold times it is unlikely that it
+     * Test that if a call target is called a min invocation threshold times it is unlikely that it
      * needs OSR at all.
      */
     @Theory

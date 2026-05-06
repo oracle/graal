@@ -165,7 +165,7 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
      * performed. The immediate is sufficient to specify the permutation for 128bits of register
      * data. To extend these operations to 256bit and 512bit vector registers the operation is
      * applied repeatedly across each 128bit register segment. These segments are referred to as
-     * vector lanes in Intel documentation. This fucntion checks if the specified permutation can be
+     * vector lanes in Intel documentation. This function checks if the specified permutation can be
      * contained by the range addressable by an immediate and is symmetric across lanes to allow for
      * a higher performance instruction to be used rather than PSHUFB which requires expensive
      * constant loading in the general case.
@@ -189,7 +189,7 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
         }
 
         // Highspeed word shuffles are handled in two self-contained parts (low-word and high-word)
-        // so we need to check first that we satify this condition for the first lane of match
+        // so we need to check first that we satisfy this condition for the first lane of match
         // indices
         if (elementSize == 2) {
             for (int i = 0; i < destinationMapping.length && i < 4; ++i) {

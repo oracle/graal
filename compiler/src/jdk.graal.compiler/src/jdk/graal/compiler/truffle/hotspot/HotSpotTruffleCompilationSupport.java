@@ -53,7 +53,7 @@ public final class HotSpotTruffleCompilationSupport extends AbstractTruffleCompi
             return compilerConfig;
         }
 
-        // compiler not yet intitialized. try to resolve the configuration name without initializing
+        // compiler not yet initialized. try to resolve the configuration name without initializing
         // a JVMCI compiler for lazy class loading.
         return getLazyCompilerConfigurationName();
     }

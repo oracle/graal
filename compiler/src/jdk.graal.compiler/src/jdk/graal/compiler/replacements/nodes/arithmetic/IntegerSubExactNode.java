@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Node representing an exact integer substraction that will throw an {@link ArithmeticException} in
+ * Node representing an exact integer subtraction that will throw an {@link ArithmeticException} in
  * case the addition would overflow the 32 bit range.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)

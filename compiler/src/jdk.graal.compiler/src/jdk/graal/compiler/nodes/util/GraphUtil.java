@@ -1282,7 +1282,7 @@ public class GraphUtil {
             }
         }
         if (readLength < newLengthInt) {
-            /* Pad the copy with the default value of its elment kind. */
+            /* Pad the copy with the default value of its element kind. */
             ValueNode defaultValue = ConstantNode.defaultForKind(elementKind, graph);
             for (int i = readLength; i < newLengthInt; i++) {
                 newEntryState[i] = defaultValue;

@@ -194,7 +194,7 @@ public class CompilationUnit {
      * Formats a header identifying this compilation unit.
      *
      * Includes the {@link #getCompilationKind() kind}, {@link #getMethodVariantKey() method variant
-     * key}, {@link #createExecutionSummary() exeuction summary}, and {@link ExperimentId}. For
+     * key}, {@link #createExecutionSummary() execution summary}, and {@link ExperimentId}. For
      * example:
      *
      * <pre>

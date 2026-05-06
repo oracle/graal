@@ -25,7 +25,7 @@
 /*
  *
  * This test sleeps the thread that is joined to, which should ensure that the joining thread
- * actually does wait for completeion.
+ * actually does wait for completion.
  */
 package jdk.graal.compiler.jtt.threads;
 

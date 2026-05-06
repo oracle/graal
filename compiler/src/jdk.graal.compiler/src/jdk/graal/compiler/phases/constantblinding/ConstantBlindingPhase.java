@@ -52,7 +52,7 @@ import jdk.graal.compiler.phases.tiers.LowTierContext;
  *
  * <pre>
  * long evilConstant = 0x9090909090;
- * Sytem.out.println(evilConstant);
+ * System.out.println(evilConstant);
  * </pre>
  * <p>
  * The constant would be compiled to the following machine code:

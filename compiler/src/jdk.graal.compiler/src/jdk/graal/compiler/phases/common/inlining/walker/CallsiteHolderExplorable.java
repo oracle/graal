@@ -59,7 +59,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class CallsiteHolderExplorable extends CallsiteHolder {
 
     /**
-     * Graph in which inlining may be performed at one or more of the callsites containined in
+     * Graph in which inlining may be performed at one or more of the callsites contained in
      * {@link #remainingInvokes}.
      */
     private final StructuredGraph graph;

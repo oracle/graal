@@ -46,7 +46,7 @@ public class ArrayLengthProviderTest extends GraalCompilerTest {
             }
             if (array[0] instanceof String || a) {
                 /*
-                 * This code is outside of the loop. Accessing the array reqires a ValueProxyNode.
+                 * This code is outside of the loop. Accessing the array requires a ValueProxyNode.
                  * When the simplification of the ArrayLengthNode replaces the length access with
                  * the ArrayList.size used to create the array, then the value needs to have a
                  * ValueProxyNode too. In addition, the two parts of the if-condition actually lead

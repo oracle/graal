@@ -375,7 +375,7 @@ public class CountedLoopInfo {
         if (isLimitIncluded) {
             range = BinaryArithmeticNode.add(range, one);
         }
-        // round-away-from-zero divison: (range + stride -/+ 1) / stride
+        // round-away-from-zero division: (range + stride -/+ 1) / stride
         ValueNode denominator = BinaryArithmeticNode.add(graph, range, BinaryArithmeticNode.sub(absStride, one), NodeView.DEFAULT);
         /*
          * While the divisor can never be zero because that would mean the direction of the loop is
