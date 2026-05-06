@@ -379,7 +379,7 @@ class Cell {
     }
 
     public final JSValue jsName() {
-        // This is a virtual call that may be targetting a JS-annotated method, which means that the
+        // This is a virtual call that may be targeting a JS-annotated method, which means that the
         // supplier's SAM should be preserved.
         return buildJsName(() -> value);
     }

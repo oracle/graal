@@ -506,7 +506,7 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
      * Replaces methods that copy data with the signature
      * {@code (Object from, UnsignedWord fromOffset, Object to, UnsignedWord toOffset, UnsignedWord size}
      * with a {@link WasmMemoryCopyNode} by first adding {@code from + fromOffset} and
-     * {@code to + toOffset} to get the absolute addresse to get the absolute addressess.
+     * {@code to + toOffset} to get the absolute addresse to get the absolute addresses.
      */
     private static class CopyOffsetPlugin extends InvocationPlugin.RequiredInvocationPlugin {
 

@@ -295,7 +295,7 @@ public class WasmGCElementCreator extends WasmElementCreator {
      * This is required to satisfy Wasm's structural subtyping rules for checking type definitions.
      * <p>
      * It seems that {@link ResolvedJavaType#getInstanceFields(boolean)} does not guarantee that, it
-     * only guarantees that it returns the field in the same order everytime for each individual
+     * only guarantees that it returns the field in the same order every time for each individual
      * type.
      *
      * TODO GR-56746 Consolidate with and reuse

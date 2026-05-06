@@ -73,7 +73,7 @@ public class JSExceptionSupport {
      * @param s Text is printed to here
      * @param toString Custom {@code toString} for throwables.
      * @param caption Caption used for inner exceptions (e.g. 'Caused by: ')
-     * @param prefix Prefix to print before every line (identation)
+     * @param prefix Prefix to print before every line (indentation)
      */
     public static void printStackTrace(Target_java_lang_Throwable_Web t, Printer s, ExceptionToString toString, String caption, String prefix) {
         // Differentiate between caught Java exceptions and caught JS objects.

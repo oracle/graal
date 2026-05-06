@@ -119,7 +119,7 @@ public class BootHeapMetricsCollector {
         switch (valueType.kind) {
             case Boolean:
                 /*
-                 * The size of the boolean type is VM dependant, but we assume that it's 1 byte.
+                 * The size of the boolean type is VM dependent, but we assume that it's 1 byte.
                  */
                 primitiveSize = 1;
                 break;

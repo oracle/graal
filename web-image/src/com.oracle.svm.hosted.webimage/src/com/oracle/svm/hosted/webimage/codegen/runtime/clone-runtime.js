@@ -35,7 +35,7 @@ function object_clone_runtime(clonee) {
 
     if (isArray(clonee)) {
         var clone = clonee.slice();
-        // set the artifical hub field
+        // set the artificial hub field
         clone.hub = clonee.hub;
 
         if (clone instanceof BigInt64Array) {

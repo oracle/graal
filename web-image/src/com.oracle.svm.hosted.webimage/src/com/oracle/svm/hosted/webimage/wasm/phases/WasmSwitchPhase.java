@@ -133,7 +133,7 @@ public class WasmSwitchPhase extends BasePhase<CoreProviders> {
         }
 
         ValueNode correctedValue = SubNode.sub(graph, switchNode.value(), ConstantNode.forInt(firstKey), NodeView.DEFAULT);
-        // The new keys are jus from 0 to keyCount - 1
+        // The new keys are just from 0 to keyCount - 1
         int[] newKeys = IntStream.range(0, switchNode.keyCount()).toArray();
 
         // The successors stay the same
