@@ -125,7 +125,7 @@ final class BundleSupport {
     private long fileSizeWarningTotalLimit = 1024 * 1024 * 500; // 500 MB
 
     /**
-     * Counter for all the files addd to a bundle (except .nil), to print warnings.
+     * Counter for all the files add to a bundle (except .nil), to print warnings.
      */
     private long cumulativeFileSize = 0;
 

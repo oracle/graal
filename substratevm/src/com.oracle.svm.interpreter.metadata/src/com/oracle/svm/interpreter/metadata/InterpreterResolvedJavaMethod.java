@@ -124,7 +124,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      */
     public static final int VTBL_ONE_IMPL = -2;
     /**
-     * This method is never overriden, and is always inlined in the image.
+     * This method is never overridden, and is always inlined in the image.
      */
     public static final int VTBL_ALWAYS_INLINED = -3;
     /**

@@ -587,7 +587,7 @@ public class CremaSupportImpl implements CremaSupport {
                 return new CremaInterfaceDispatchTable(partialType);
             } else {
                 /*
-                 * GR-70607: once we handle vtable indicies better in crema we should enable
+                 * GR-70607: once we handle vtable indices better in crema we should enable
                  * mirandas.
                  */
                 boolean addMirandas = false;

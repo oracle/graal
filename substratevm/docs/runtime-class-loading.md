@@ -24,4 +24,4 @@ A typical way to address this is to use `-H:Preserve=package=...` at build time 
 * "condy" entries are not supported in the constant pool of run-time-loaded classes.
 * The boot layer modules are frozen at build time, and it may not be possible to load additional classes at run time from modules of the build-time module path.
 * The assertion status of classes is fixed at image build time.
-* Methods or static fields that are removed by analysis in a class that is inluded in the image have no fall-back and will cause an error if used by runtime loaded code.
+* Methods or static fields that are removed by analysis in a class that is included in the image have no fall-back and will cause an error if used by runtime loaded code.

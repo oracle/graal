@@ -94,7 +94,7 @@ class Checker:
     # Check that successive lines of a gdb command's output text
     # match the corresponding regexp patterns provided when this
     # Checker was created.
-    # text - the full output of a gdb comand run by calling
+    # text - the full output of a gdb command run by calling
     # gdb.execute and passing to_string = True.
     # Exits with status 1 if there are less lines in the text
     # than regexp patterns or if any line fails to match the

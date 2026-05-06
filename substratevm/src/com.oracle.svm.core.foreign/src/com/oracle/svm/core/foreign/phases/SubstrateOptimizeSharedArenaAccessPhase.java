@@ -240,7 +240,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * }
  * </pre>
  *
- * In order to transport this information during optimziation we create a so called "sugared" graph.
+ * In order to transport this information during optimization we create a so called "sugared" graph.
  * That is a mapping of the nodes of the structured graph to scope using accesses. For this we
  * record a mapping of each node to a list of scoped accesses
  * {@code EconomicMap<Node, List<ScopedAccess>>}. A {@code ScopedAccess} can be a safepoint or a
