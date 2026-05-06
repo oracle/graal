@@ -54,7 +54,7 @@ public class SubstrateAMD64MacroAssembler extends AMD64MacroAssembler {
     @Override
     public void interceptMemorySrcOperands(AMD64Address addr) {
         if (memorySrcNeedsFence(addr)) {
-            lfence();
+            lfenceBeforeLock();
         }
     }
 
