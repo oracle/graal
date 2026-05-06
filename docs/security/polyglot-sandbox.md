@@ -141,7 +141,6 @@ try (Context context = Context.newBuilder("js")
                               .option("sandbox.MaxHeapMemory", "128MB")
                               .option("sandbox.MaxCPUTime","2s")
                               .option("sandbox.MaxStatements","50000")
-                              .option("sandbox.MaxStackFrames","2")
                               .option("sandbox.MaxThreads","1")
                               .option("sandbox.MaxASTDepth","10")
                               .option("sandbox.MaxOutputStreamSize","32B")
@@ -180,7 +179,7 @@ As an example, an antipattern would be to implement a third party interface and 
 
 ## Resource Limits
 
-The ISOLATED and UNTRUSTED sandbox policies require setting resource limits for a context.
+The ISOLATED and UNTRUSTED sandbox policies require setting certain resource limits for a context.
 Different configurations can be provided for each context.
 If a limit is exceeded, evaluation of the code fails and the context is cancelled with a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html) which returns `true` for `isResourceExhausted()`.
 At this point, no more guest code can be executed in the context
