@@ -1389,7 +1389,7 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     /*
-     * Tests that return reachability optimization does not eliminate instrutions if there is a
+     * Tests that return reachability optimization does not eliminate instructions if there is a
      * jump.
      */
     @Test

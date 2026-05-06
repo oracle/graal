@@ -251,7 +251,7 @@ public final class BytecodeLocation {
     }
 
     /**
-     * Returns all source informations available at this location.
+     * Returns all source information available at this location.
      *
      * @since 24.2
      */

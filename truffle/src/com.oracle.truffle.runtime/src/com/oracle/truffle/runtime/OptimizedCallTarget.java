@@ -293,7 +293,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     /**
      * When this field is not null, this {@link OptimizedCallTarget} is
-     * {@linkplain #isSubmittedForCompilation() submited for compilation}.<br/>
+     * {@linkplain #isSubmittedForCompilation() submitted for compilation}.<br/>
      *
      * It is only set to non-null in {@link #compile(boolean)} in a synchronized block.
      *

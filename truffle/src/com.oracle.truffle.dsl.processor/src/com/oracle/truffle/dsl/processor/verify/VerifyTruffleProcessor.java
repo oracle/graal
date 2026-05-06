@@ -259,7 +259,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
 
     private void checkExclusivity(Element element, TypeMirror annotationType, TypeMirror otherAnnotationType, String hint) {
         if (ElementUtils.findAnnotationMirror(element, annotationType) != null && ElementUtils.findAnnotationMirror(element, otherAnnotationType) != null) {
-            emitError(String.format("@%s and @%s are mutually exlusive and cannot be used on the same element.%s", ElementUtils.getSimpleName(annotationType),
+            emitError(String.format("@%s and @%s are mutually exclusive and cannot be used on the same element.%s", ElementUtils.getSimpleName(annotationType),
                             ElementUtils.getSimpleName(otherAnnotationType), hint), element);
             return;
         }

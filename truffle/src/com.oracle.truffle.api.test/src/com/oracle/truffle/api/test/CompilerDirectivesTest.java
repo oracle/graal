@@ -109,25 +109,25 @@ public class CompilerDirectivesTest {
 
         @EarlyInline
         @TruffleBoundary
-        @ExpectError("@EarlyInline and @TruffleBoundary are mutually exlusive and cannot be used on the same element.%")
+        @ExpectError("@EarlyInline and @TruffleBoundary are mutually exclusive and cannot be used on the same element.%")
         private void error4() {
         }
 
         @EarlyInline
         @ExplodeLoop
-        @ExpectError("@EarlyInline and @ExplodeLoop are mutually exlusive and cannot be used on the same element.%")
+        @ExpectError("@EarlyInline and @ExplodeLoop are mutually exclusive and cannot be used on the same element.%")
         private void error5() {
         }
 
         @EarlyEscapeAnalysis
         @EarlyInline
-        @ExpectError("@EarlyInline and @EarlyEscapeAnalysis are mutually exlusive and cannot be used on the same element.%")
+        @ExpectError("@EarlyInline and @EarlyEscapeAnalysis are mutually exclusive and cannot be used on the same element.%")
         private void error6() {
         }
 
         @EarlyEscapeAnalysis
         @TruffleBoundary
-        @ExpectError("@EarlyEscapeAnalysis and @TruffleBoundary are mutually exlusive and cannot be used on the same element.%")
+        @ExpectError("@EarlyEscapeAnalysis and @TruffleBoundary are mutually exclusive and cannot be used on the same element.%")
         private void error7() {
         }
 

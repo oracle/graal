@@ -46,7 +46,7 @@
  */
 
 /**
- * This package contains classes that specify the contract for inter-operability between Truffle
+ * This package contains classes that specify the contract for interoperability between Truffle
  * guest languages and tools.
  *
  * @see com.oracle.truffle.api.interop.InteropLibrary

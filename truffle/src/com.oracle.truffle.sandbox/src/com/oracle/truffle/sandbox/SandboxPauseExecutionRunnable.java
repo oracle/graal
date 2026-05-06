@@ -63,7 +63,7 @@ class SandboxPauseExecutionRunnable implements Runnable {
     /**
      * Initiate (pause contexts -> computed retained sizes -> resume contexts) operation for the
      * instrument. Resume operation can be in progress if new stop the world situation was triggered
-     * and the previous one haven't finshed yet.
+     * and the previous one haven't finished yet.
      */
     void initiatePauseAndResume(long triggerNumber) {
         synchronized (instrument) {

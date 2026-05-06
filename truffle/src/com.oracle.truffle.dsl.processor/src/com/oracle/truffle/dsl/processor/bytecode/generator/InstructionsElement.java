@@ -314,7 +314,7 @@ final class InstructionsElement extends AbstractElement {
             }
         }
 
-        b.end(); // indention
+        b.end(); // indentation
         b.end(); // line
         b.end(); // group
     }

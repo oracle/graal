@@ -739,7 +739,7 @@ public final class PEParser {
         Element<BasicNode> inputStatement = seq(ref(INPUT), varlist,
                         (i, v) -> new BasicNode("input", v));
         Element<BasicNode> assignStatement = seq(opt(ref(LET)), vara, ref(EQUALS), expression,
-                        (l, v, s, e) -> new BasicNode(l.isPresent() ? "let" : "assing", v, e));
+                        (l, v, s, e) -> new BasicNode(l.isPresent() ? "let" : "assign", v, e));
         Element<BasicNode> gosubStatement = seq(ref(GOSUB), expression,
                         (g, e) -> new BasicNode("gosub", e));
         Element<BasicNode> returnStatement = ref(RETURN,

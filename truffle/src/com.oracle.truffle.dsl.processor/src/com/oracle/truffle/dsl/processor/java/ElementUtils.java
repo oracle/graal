@@ -2265,7 +2265,7 @@ public class ElementUtils {
     }
 
     /**
-     * Loads all members in declaration order. This returns members of the entire type hierarcy.
+     * Loads all members in declaration order. This returns members of the entire type hierarchy.
      */
     public static List<Element> loadAllMembers(TypeElement templateType) {
         return newElementList(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(ProcessorContext.getInstance().getEnvironment(), templateType));

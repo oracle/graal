@@ -98,7 +98,7 @@ def validate_polybench_registrations():
     During registration, the `suppress_validation_warnings` argument can be
     used to suppress warning messages.
 
-    Emitting suppressable warnings instead of aborting allows to register
+    Emitting suppressible warnings instead of aborting allows to register
     languages and suites that cannot always run (e.g., you can register a
     suite that is only available when a particular language is dynamically
     imported).

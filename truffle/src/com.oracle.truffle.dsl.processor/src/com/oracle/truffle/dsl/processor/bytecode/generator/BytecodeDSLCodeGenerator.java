@@ -181,7 +181,7 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
             b.startIndention();
             b.staticReference(new GeneratedTypeMirror(ElementUtils.getPackageName(model.getTemplateType()),
                             model.getName()), "BYTECODE");
-            b.end(); // indention
+            b.end(); // indentation
             b.end(); // group
         }
         b.end().end();

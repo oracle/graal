@@ -6,7 +6,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/TCK/
 ---
 # Polyglot API-based Test Compatibility Kit
 
-The Test Compatibility Kit (TCK) is a collection of tests verifying the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) inter-operability and instrumentation.
+The Test Compatibility Kit (TCK) is a collection of tests verifying the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) interoperability and instrumentation.
 The TCK is based on the `org.graalvm.polyglot` API.
 
 ## Adding a Language
@@ -20,7 +20,7 @@ The `LanguageProvider` should also provide simple but representative scripts whi
 
 ## Running TCK Tests with `mx`
 
-The tests are executed using `mx unitest`. When running the tests, all `LanguageProvider`s in the primary suite and dependent suites are used. The `truffle` suite provides the `java-host` `LanguageProvider`, creating Java data types and [Proxies](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/proxy/Proxy.html) to test Java inter-operability.
+The tests are executed using `mx unitest`. When running the tests, all `LanguageProvider`s in the primary suite and dependent suites are used. The `truffle` suite provides the `java-host` `LanguageProvider`, creating Java data types and [Proxies](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/proxy/Proxy.html) to test Java interoperability.
 
 To run just the TCK tests use:
 

@@ -663,7 +663,7 @@ public class RewriteUnexpectedResultTest {
     }
 
     /*
-     * Warning if specialization siganture match but the specialization is not replaced.
+     * Warning if specialization signature match but the specialization is not replaced.
      */
     @GenerateInline(false)
     @SuppressWarnings({"unused", "truffle-sharing"})
@@ -677,7 +677,7 @@ public class RewriteUnexpectedResultTest {
         }
 
         @ExpectError("The specialization 'doInt(Object, Object, Node, InlinableNode)' throws an UnexpectedResultException and is compatible for boxing elimination but the specialization does not replace it. " +
-                        "It is recommmended to specify a @Specialization(..., replaces=\"doInt\") attribute to resolve this.")
+                        "It is recommended to specify a @Specialization(..., replaces=\"doInt\") attribute to resolve this.")
         @Specialization(guards = "arg == cachedArg", limit = "3")
         static Object doGeneric(Object arg, @Cached("arg") Object cachedArg, @Bind Node node,
                         @Cached InlinableNode inlinableNode) {

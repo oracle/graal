@@ -76,7 +76,7 @@ public abstract class InteropException extends Exception {
     }
 
     /**
-     * Initializes the casue for an interop exception. Will no longer be supported as of 20.3. Pass
+     * Initializes the cause for an interop exception. Will no longer be supported as of 20.3. Pass
      * in the cause using the interop constructors instead.
      *
      * @deprecated Do no longer use the cause will be initialized finally.

@@ -764,7 +764,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else {
             /*
              * We currently cannot support doing interop without a context so we create our own
-             * value representations wit null for this case. No interop messages are used until they
+             * value representations with null for this case. No interop messages are used until they
              * are unboxed in PolyglotContextImpl#toGuestValue where a context will be attached.
              */
             if (hostValue instanceof TruffleObject) {

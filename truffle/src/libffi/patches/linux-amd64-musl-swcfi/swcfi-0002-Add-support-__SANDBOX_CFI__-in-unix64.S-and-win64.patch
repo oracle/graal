@@ -40,10 +40,10 @@ index d9c5bd4..3239ea3 100644
  /* ??? The clang assembler doesn't handle .org with symbolic expressions.  */
 -#ifdef __CET__
 +#ifdef __SANDBOX_SWCFI__
-+/* Increase slot size to accomodate ENDBR64 (+4 bytes) and SWCFI pattern (+24 bytes) for ret.  */
++/* Increase slot size to accommodate ENDBR64 (+4 bytes) and SWCFI pattern (+24 bytes) for ret.  */
 +# define E(BASE, X)	.balign 8; .org BASE + (X) * 40
 +#elif defined __SANDBOX_HWCFI__
-+/* Increase slot size to accomodate ENDBR64 (+4 bytes) and HWCFI pattern (+6 bytes) for ret.  */
++/* Increase slot size to accommodate ENDBR64 (+4 bytes) and HWCFI pattern (+6 bytes) for ret.  */
 +# define E(BASE, X)	.balign 8; .org BASE + (X) * 24
 +#elif defined __CET__
  /* Double slot size to 16 byte to add 4 bytes of ENDBR64.  */
@@ -144,10 +144,10 @@ index 58ec6a1..8b142d9 100644
  /* ??? The clang assembler doesn't handle .org with symbolic expressions.  */
 -#if defined(__clang__) || defined(__APPLE__) || (defined (__sun__) && defined(__svr4__))
 +#ifdef __SANDBOX_SWCFI__
-+/* Increase slot size to accomodate ENDBR64 (+4 bytes) and SWCFI pattern (+24 bytes) for ret.  */
++/* Increase slot size to accommodate ENDBR64 (+4 bytes) and SWCFI pattern (+24 bytes) for ret.  */
 +# define E(BASE, X)	.balign 8; .org BASE + (X) * 40
 +#elif defined __SANDBOX_HWCFI__
-+/* Increase slot size to accomodate ENDBR64 (+4 bytes) and HWCFI pattern (+6 bytes) for ret.  */
++/* Increase slot size to accommodate ENDBR64 (+4 bytes) and HWCFI pattern (+6 bytes) for ret.  */
 +# define E(BASE, X)	.balign 8; .org BASE + (X) * 24
 +#elif defined(__clang__) || defined(__APPLE__) || (defined (__sun__) && defined(__svr4__))
  # define E(BASE, X)	.balign 8

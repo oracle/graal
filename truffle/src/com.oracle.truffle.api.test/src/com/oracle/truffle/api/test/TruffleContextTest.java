@@ -175,7 +175,7 @@ public class TruffleContextTest {
         @Override
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             try (TruffleContext innerContext = env.newInnerContextBuilder().inheritAllAccess(true).initializeCreatorContext(true).build()) {
-                Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "DEFINE(statememt, STATEMENT)", "").build();
+                Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "DEFINE(statement, STATEMENT)", "").build();
                 Object executable = innerContext.evalPublic(node, src);
 
                 innerContext.closeCancelled(null, "cancel upfront");
@@ -215,7 +215,7 @@ public class TruffleContextTest {
                     throw new OtherContextDiedException(outerContext, "Inner context cancelled");
                 }
             }).build()) {
-                Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "DEFINE(statememt, STATEMENT)", "").build();
+                Source src = Source.newBuilder(INSTRUMENTATION_TEST_LANGUAGE, "DEFINE(statement, STATEMENT)", "").build();
                 Object executable = innerContext.evalPublic(node, src);
 
                 innerContext.closeCancelled(null, "cancel upfront");

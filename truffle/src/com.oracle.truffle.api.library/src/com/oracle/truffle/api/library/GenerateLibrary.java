@@ -109,7 +109,7 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
  * updated.
  *
  * @see DefaultExport to specify default exports.
- * @see Abstract to make messages abstract if they have a default implemetnation
+ * @see Abstract to make messages abstract if they have a default implementation
  * @since 19.0
  */
 @Retention(RetentionPolicy.RUNTIME)
