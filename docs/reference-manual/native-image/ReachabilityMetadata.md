@@ -74,7 +74,7 @@ Computing metadata in code can be achieved in two ways:
       * A literal (for example, `"Foo"` or `1`).
       * Access to a static field that is [initialized at build time](ClassInitialization.md).
       * Access to an effectively final variable.
-      * Defining an array that whose lenght is constant, and all values are constant.
+      * Defining an array that whose length is constant, and all values are constant.
       * Simple computations on other constants (for example, `"F"` + `"oo"`, or an indexing into an array).
 
     When passing constant arrays, the following approaches to declare and populate an array are equivalent from the point of view of the `native-image` builder:

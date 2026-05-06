@@ -105,7 +105,7 @@ The words are delimited by commas and may be enclosed by an arbitrary number of 
 
     ![Initial Code Breakdown - Drill-Down To Java Package](img/build-report-initial-code-breakdown-java.png)
 
-7.  Drill-down to the `text` pacakge:
+7.  Drill-down to the `text` package:
 
     ![Initial Code Breakdown - Drill-Down To Text Package](img/build-report-initial-code-breakdown-text.png)
 

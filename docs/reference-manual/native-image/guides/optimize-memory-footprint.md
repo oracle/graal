@@ -149,7 +149,7 @@ G1 GC is a generational, incremental, parallel, mostly concurrent, stop-the-worl
 
 > We recommend using G1 GC in combination with [Profile-Guided Optimization (PGO)](optimize-native-executable-with-pgo.md) for the best application performance. However, PGO is not applied in this guide to keep the instructions straightforward.
 
-1. Build the second native executable with G1 GC, specifing a different name for the output file, so the executables will not overwrite each other:
+1. Build the second native executable with G1 GC, specifying a different name for the output file, so the executables will not overwrite each other:
     ```bash
     native-image --gc=G1 -o testgc-g1 StringManipulation
     ```
