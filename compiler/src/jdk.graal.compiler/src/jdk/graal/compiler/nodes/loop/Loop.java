@@ -627,7 +627,8 @@ public class Loop {
                     boolean isValidConvert = op instanceof PiNode || op instanceof SignExtendNode;
                     if (!isValidConvert && op instanceof ZeroExtendNode) {
                         ZeroExtendNode zeroExtendNode = (ZeroExtendNode) op;
-                        isValidConvert = ((IntegerStamp) zeroExtendNode.stamp(NodeView.DEFAULT)).isPositive();
+                        /* A zero extension only preserves its input's numeric value if the input is not negative. */
+                        isValidConvert = ((IntegerStamp) zeroExtendNode.getValue().stamp(NodeView.DEFAULT)).isPositive();
                     }
                     if (!isValidConvert && op instanceof NarrowNode) {
                         NarrowNode narrow = (NarrowNode) op;
