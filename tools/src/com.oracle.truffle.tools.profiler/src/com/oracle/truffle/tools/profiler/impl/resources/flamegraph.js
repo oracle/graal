@@ -72,7 +72,7 @@ function fg_create_element_for_sample(sample, width, x) {
         r.style.fill = fg_color_for_sample(color_type, sample);
     }
     r.rx.baseVal.value = 2;
-    r.ry.baseVal.vlaue = 2;
+    r.ry.baseVal.value = 2;
 
     let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
     t.style.textAnchor = "left";

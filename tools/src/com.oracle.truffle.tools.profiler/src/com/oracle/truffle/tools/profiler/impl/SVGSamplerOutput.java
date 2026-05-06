@@ -939,7 +939,7 @@ final class SVGSamplerOutput {
             Map<String, String> svgattr = new HashMap<>();
             svgattr.put("x", Double.toString(x));
             svgattr.put("y", Double.toString(y));
-            svgattr.put("wdith", Double.toString(width()));
+            svgattr.put("width", Double.toString(width()));
             svgattr.put("height", Double.toString(height()));
             svgattr.put("viewBox", String.format(Locale.ROOT, "0.0 -%f %f %f", height(), width(), height()));
             output.append(startSubDrawing(svgattr));
@@ -1180,7 +1180,7 @@ final class SVGSamplerOutput {
             Map<String, String> svgattr = new HashMap<>();
             svgattr.put("x", Double.toString(x));
             svgattr.put("y", Double.toString(y));
-            svgattr.put("wdith", Double.toString(width()));
+            svgattr.put("width", Double.toString(width()));
             svgattr.put("height", Double.toString(height()));
             svgattr.put("viewBox", String.format(Locale.ROOT, "0.0 0.0 %f %f", width(), height()));
             output.append(startSubDrawing(svgattr));
