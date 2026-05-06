@@ -75,7 +75,7 @@ public class ClassInitializationTracking {
     }
 
     /**
-     * If the stack trace contains class initializaiton, returns the stack frames up to the last
+     * If the stack trace contains class initialization, returns the stack frames up to the last
      * initialization. Otherwise returns the whole stack trace. The method never returns the stack
      * from the instrumented part.
      *

@@ -577,7 +577,7 @@ public class LockFreePrefixTree {
      * To ensure that the internal pools have sufficiently many preallocated objects, this allocator
      * has a housekeeping thread that periodically wakes up, allocates objects and inserts them into
      * the pools. This allocator tracks the requests that failed since the last housekeeping
-     * session, and the housekeeping thread will strive to accomodate requests that have not been
+     * session, and the housekeeping thread will strive to accommodate requests that have not been
      * fulfilled since the last housekeeping session (i.e. it will preallocate those types of
      * additional objects whose allocation request previously failed, and it will allocate at least
      * as many objects as there were previous failed allocation requests).

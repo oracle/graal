@@ -144,7 +144,7 @@ def is_nativeimage_ee():
             _is_nativeimage_ee_cache = exists(join(_external_bootstrap_graalvm, 'lib', 'svm', 'builder', 'svm-enterprise.jar'))
     return _is_nativeimage_ee_cache
 
-# Whether the produced standalone uses anything enterprise, either from source or prebuilt (i.e., a boostrap Oracle GraalVM)
+# Whether the produced standalone uses anything enterprise, either from source or prebuilt (i.e., a bootstrap Oracle GraalVM)
 def is_enterprise():
     return uses_enterprise_sources() or is_nativeimage_ee()
 
