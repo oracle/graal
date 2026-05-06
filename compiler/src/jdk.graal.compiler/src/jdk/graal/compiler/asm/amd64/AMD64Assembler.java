@@ -630,6 +630,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
             emitOpcode(asm, size, getRXB(src, dst), src.encoding, 0);
             asm.emitOperandHelper(src, dst, 0);
         }
+
+        public boolean isMemRead() {
+            return isMemRead;
+        }
     }
 
     /**
@@ -689,6 +693,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
             }
             emitOpcode(asm, size, getRXB(null, dst), 0, 0);
             asm.emitOperandHelper(ext, dst, 0);
+        }
+
+        public boolean isMemRead() {
+            return isMemRead;
         }
     }
 
