@@ -99,5 +99,5 @@ get_filename_component(clang_lib_dir2 ${clang_lib_dir} DIRECTORY)
 get_filename_component(llvm_dir ${clang_lib_dir2} DIRECTORY)
 
 # add file-prefix-map, but not for the "LL" language
-# the LL language is used by our test bulid scripts to refer to the llvm-link command, it doesn't understand this option
+# the LL language is used by our test build scripts to refer to the llvm-link command, it doesn't understand this option
 add_compile_options($<IF:$<COMPILE_LANGUAGE:LL>,,-ffile-prefix-map=${llvm_dir}=LLVM_TOOLCHAIN>)

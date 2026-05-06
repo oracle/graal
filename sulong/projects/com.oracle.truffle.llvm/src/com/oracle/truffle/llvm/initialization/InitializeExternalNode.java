@@ -62,8 +62,8 @@ import java.util.ArrayList;
  * symbols of a given bitcode file.
  * <p>
  * External bitcode functions will have their entry into the symbol table be replaced with the entry
- * of it's corresponding defined function in the local scope, or the gloabl scope if the function is
- * loaded in a previous parsing phase. Otherwise an instrinic or native function will be created if
+ * of it's corresponding defined function in the local scope, or the global scope if the function is
+ * loaded in a previous parsing phase. Otherwise an intrinsic or native function will be created if
  * they are available. Similarly, external global will have their entry into the symbol table be
  * that of the corresponding defined global symbol in the local scope. If no global of such name
  * exists, a native global is created if it exists in the NFI context.

@@ -209,7 +209,7 @@ public final class LLVMParser {
             defineAlias(target, targetDataLayout);
             defineAlias(target.getName(), aliasName, isAliasExported);
         } else if (value instanceof CastConstant) {
-            // TODO (chaeubl): this is not perfectly accurate as we are loosing the type cast
+            // TODO (chaeubl): this is not perfectly accurate as we are losing the type cast
             CastConstant cast = (CastConstant) value;
             defineAlias(aliasName, isAliasExported, cast.getValue(), targetDataLayout);
         } else if (value instanceof GetElementPointerConstant) {

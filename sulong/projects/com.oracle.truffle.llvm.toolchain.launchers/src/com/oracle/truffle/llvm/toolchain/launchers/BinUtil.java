@@ -55,7 +55,7 @@ public final class BinUtil extends Driver {
         if (config != null) {
             toolName = config.toolName();
         } else {
-            // this is the boostrap toolchain...
+            // this is the bootstrap toolchain...
             toolName = System.getProperty("org.graalvm.launcher.executablename");
 
             // ... or a legacy GraalVM

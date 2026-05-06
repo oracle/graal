@@ -107,7 +107,7 @@ static bool is_handle(void *nativeHandle);
  * Check whether a pointer points to the special memory area reserved for handles.
  *
  * This function is guaranteed to return true for valid handles. It is also guaranteed to return false
- * for valid (dereferencable) pointers that are not handles.
+ * for valid (dereferenceable) pointers that are not handles.
  *
  * Note that this function can still return true for values that randomly fall in the address range of
  * handles, but are not valid handles themselves.

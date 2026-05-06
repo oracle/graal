@@ -371,7 +371,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
     @Override
     public final Object[] storeParentFrameInArguments(VirtualFrame parentFrame) {
         /*
-         * We need to forward the argumnts array since it might be used by va_start.
+         * We need to forward the arguments array since it might be used by va_start.
          */
         Object[] args = parentFrame.getArguments();
         /*
