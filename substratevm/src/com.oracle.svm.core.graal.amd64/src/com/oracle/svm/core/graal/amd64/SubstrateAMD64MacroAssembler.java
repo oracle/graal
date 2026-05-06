@@ -40,13 +40,6 @@ import jdk.vm.ci.code.TargetDescription;
  */
 public class SubstrateAMD64MacroAssembler extends AMD64MacroAssembler {
 
-    /**
-     * Position of the most recent emitted protection marker, either from an explicit {@code lfence}
-     * or from a source-address computation that was already protected before the dereference. A
-     * value of {@code -1} means that no protection marker has been recorded yet.
-     */
-    private int lastMarkedPosition = -1;
-
     public SubstrateAMD64MacroAssembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
         super(target, optionValues, hasIntelJccErratum);
     }
@@ -58,7 +51,7 @@ public class SubstrateAMD64MacroAssembler extends AMD64MacroAssembler {
         }
     }
 
-    private boolean memorySrcNeedsFence(AMD64Address addr) {
+    private static boolean memorySrcNeedsFence(AMD64Address addr) {
 
         if (!AMD64MemoryMaskingAndFencing.isEnabled()) {
             return false;
@@ -81,10 +74,12 @@ public class SubstrateAMD64MacroAssembler extends AMD64MacroAssembler {
         }
 
         /*
-         * If the current position has been marked, then we either already emitted the lfence, or we
-         * don't need it.
+         * Some LIR lowerings prove that the source address has already been protected by masking or
+         * an explicit LFENCE. Keep that proof attached to the address that is eventually
+         * dereferenced. The check here only sees the final AMD64Address, not the earlier graph or
+         * LIR node that established the proof.
          */
-        if (position() == lastMarkedPosition) {
+        if (addr.canSkipMemoryReadFence()) {
             return false;
         }
 
@@ -95,36 +90,5 @@ public class SubstrateAMD64MacroAssembler extends AMD64MacroAssembler {
     @Override
     public int extraSourceAddressBytes(AMD64Address addr) {
         return memorySrcNeedsFence(addr) ? 3 : 0;
-    }
-
-    @Override
-    public void lfence() {
-        super.lfence();
-        lastMarkedPosition = position();
-    }
-
-    @Override
-    public void lock() {
-        /**
-         * The lock prefix can only be added to read-modify-write instruction. Those instructions,
-         * even if executed speculatively on a memory location that shouldn't be accessible, will
-         * require an additional read to the same memory location, which will be properly masked. An
-         * exception are the "compare and exchange" instructions, since they can return the value
-         * stored in the memory location used as destination operand.
-         */
-        super.lock();
-        lastMarkedPosition = position();
-    }
-
-    public void markImageHeapConstantLea() {
-        markProtectedMemorySourceAddress();
-    }
-
-    public void markProtectedMemorySourceAddress() {
-        /*
-         * The next source-memory operand uses an address that was already protected by the lowering
-         * or emission phase, so it does not need an additional fallback fence.
-         */
-        this.lastMarkedPosition = position();
     }
 }

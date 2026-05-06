@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -302,7 +302,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (NumUtil.isInt(src)) {
             emitAMD64MIOp(AMD64MIOp.MOV, OperandSize.QWORD, dst, (int) src, false);
         } else {
-            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4, dst.getDisplacementAnnotation(), dst.instructionStartPosition);
+            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4, dst.getDisplacementAnnotation(), dst.instructionStartPosition,
+                            dst.canSkipMemoryReadFence());
             movl(dst, (int) (src & 0xFFFFFFFF));
             movl(high, (int) (src >> 32));
         }

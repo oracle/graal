@@ -127,7 +127,7 @@ public class AMD64MaskedAddressNode extends AMD64AddressNode implements LIRLower
             gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement));
         } else if (isOffHeap) {
             tool.append(new AMD64LFenceOp());
-            gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement));
+            gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement, true));
         } else {
             // Creating the space to temporarily store the index before masking.
             AllocatableValue tempIndex = tool.newVariable(LIRKind.unknownReference(AMD64Kind.QWORD));
@@ -143,7 +143,7 @@ public class AMD64MaskedAddressNode extends AMD64AddressNode implements LIRLower
                 r14base = tool.asAllocatable(gen.operand(heapBase));
             }
 
-            gen.setResult(this, new AMD64AddressValue(kind, r14base, maskedIndex, Stride.S1, 0));
+            gen.setResult(this, new AMD64AddressValue(kind, r14base, maskedIndex, Stride.S1, 0, true));
         }
     }
 }
@@ -222,10 +222,5 @@ final class AMD64MaskAddressOp extends AMD64LIRInstruction {
 
         assert AMD64MemoryMaskingAndFencing.isEnabled() : "masked addresses must only be emitted when memory masking and fencing is enabled";
 
-        /*
-         * The next source-memory operand consumes the masked offset produced here, so the backend
-         * must not add an additional fallback fence for that dereference.
-         */
-        ((SubstrateAMD64MacroAssembler) masm).markProtectedMemorySourceAddress();
     }
 }
