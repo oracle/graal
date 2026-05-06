@@ -45,7 +45,7 @@ import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
 
 /**
- * An exception thrown if an interop {@link Object} does not support the type of one ore more
+ * An exception thrown if an interop {@link Object} does not support the type of one or more
  * arguments.
  *
  * @since 21.0

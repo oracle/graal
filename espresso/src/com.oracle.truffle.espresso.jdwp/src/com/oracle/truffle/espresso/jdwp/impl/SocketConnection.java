@@ -157,7 +157,7 @@ public final class SocketConnection {
          * Check that the byte array contains the complete packet
          */
         if (len > b.length) {
-            throw new IllegalArgumentException("length mis-match");
+            throw new IllegalArgumentException("length mismatch");
         }
         /*
          * Send the packet (ignoring any bytes that follow the packet in the byte array).

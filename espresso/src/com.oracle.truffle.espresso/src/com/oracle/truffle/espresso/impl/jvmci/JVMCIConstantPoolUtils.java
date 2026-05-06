@@ -117,7 +117,7 @@ public final class JVMCIConstantPoolUtils {
                 return false;
             }
             case INVOKEDYNAMIC: {
-                // resolve this indy and call boostrap method
+                // resolve this indy and call bootstrap method
                 assert isIndyCPI(cpi);
                 JVMCIIndyData indyData = JVMCIIndyData.getExisting(cpHolderKlass, meta);
                 LOGGER.finer(() -> "ECP.loadReferencedType0(" + Bytecodes.nameOf(opcode) + ") Looking up CallSiteLink for index=" + cpi + " in " + cpHolderKlass);

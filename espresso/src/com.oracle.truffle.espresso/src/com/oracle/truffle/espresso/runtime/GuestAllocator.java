@@ -168,7 +168,7 @@ public final class GuestAllocator implements LanguageAccess {
         if (klass.isArray() && meta.java_lang_Class_componentType != null) {
             meta.java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().initializeGuestClassMirror());
         }
-        // Will be overriden if necessary, but should be initialized to non-host null.
+        // Will be overridden if necessary, but should be initialized to non-host null.
         meta.java_lang_Class_0protectedDomain.setMaybeHiddenObject(newObj, StaticObject.NULL);
         // Final hidden field assignment
         meta.java_lang_Class_0klass.setHiddenObject(newObj, klass);

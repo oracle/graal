@@ -53,7 +53,7 @@ public abstract class Member<T extends Descriptor> implements MemberAccess<Klass
 
     @Override
     @Idempotent
-    // Re-implement here for indempotent annotation. Some of our nodes benefit from it.
+    // Re-implement here for idempotent annotation. Some of our nodes benefit from it.
     public boolean isAbstract() {
         return MemberAccess.super.isAbstract();
     }

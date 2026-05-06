@@ -1263,7 +1263,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     @Override
     @Idempotent
-    // Re-implement here for indempotent annotation. Some of our nodes benefit from it.
+    // Re-implement here for idempotent annotation. Some of our nodes benefit from it.
     public boolean isAbstract() {
         return super.isAbstract();
     }

@@ -278,7 +278,7 @@ public final class DebuggerController {
     }
 
     public boolean isDebuggerThread(Thread hostThread) {
-        // only the procesor thread enters the context
+        // only the processor thread enters the context
         return hostThread == processorThread;
     }
 

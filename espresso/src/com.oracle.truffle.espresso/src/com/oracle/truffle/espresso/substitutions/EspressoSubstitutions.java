@@ -33,7 +33,7 @@ import java.lang.annotation.Target;
  * By default, a class whose name is {@code Target_a_b_c} will create substitutions for the guest
  * class {@code a/b/c}.
  * <p>
- * Changing {@link #value()} will result in a substitution for the class targetted by the new value.
+ * Changing {@link #value()} will result in a substitution for the class targeted by the new value.
  * <p>
  * When it is not possible to represent the class name of a guest class in the form of
  * {@code Target_a_b_c} (for example, when it is an inner class, with the symbol {@code $}, or if it

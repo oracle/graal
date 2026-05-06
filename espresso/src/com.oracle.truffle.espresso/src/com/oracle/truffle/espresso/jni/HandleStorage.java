@@ -130,7 +130,7 @@ public abstract class HandleStorage<T, REF> {
     }
 
     /**
-     * Abstract method for obtaining a storgae Refrence from the object to store.
+     * Abstract method for obtaining a storgae Reference from the object to store.
      */
     abstract REF toREF(T object);
 

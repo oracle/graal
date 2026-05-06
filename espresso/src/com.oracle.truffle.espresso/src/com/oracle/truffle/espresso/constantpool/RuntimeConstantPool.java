@@ -650,7 +650,7 @@ public final class RuntimeConstantPool extends ConstantPool {
      * Otherwise, the result is nondeterministic. This is not new: The Java&reg; Virtual Machine
      * Specification has never identified exactly which method is chosen, and how "ties" should be
      * broken. Prior to Java SE 8, this was mostly an unobservable distinction. However, beginning
-     * with Java SE 8, the set of interface methods is more heterogenous, so care must be taken to
+     * with Java SE 8, the set of interface methods is more heterogeneous, so care must be taken to
      * avoid problems with nondeterministic behavior. Thus:
      *
      * <ul>
