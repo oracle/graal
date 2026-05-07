@@ -56,6 +56,7 @@ import org.graalvm.collections.MapCursor;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexOptions;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
@@ -321,6 +322,7 @@ public final class DFAGenerator implements JsonConvertible {
             createInitialStatesBackward();
         }
         while (!expansionQueue.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             expandState(expansionQueue.pop());
         }
         optimizeDFA();
@@ -1224,6 +1226,7 @@ public final class DFAGenerator implements JsonConvertible {
                 bfsTraversalCur.add(successorState.getSuccessors());
             }
             while (!bfsTraversalCur.isEmpty()) {
+                RegexRootNode.checkThreadInterrupted();
                 bfsTraversalNext.clear();
                 for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
                     for (DFAStateTransitionBuilder t : cur) {
@@ -1363,6 +1366,7 @@ public final class DFAGenerator implements JsonConvertible {
                 bfsCur.add(anchoredInitialState);
             }
             while (!bfsCur.isEmpty()) {
+                RegexRootNode.checkThreadInterrupted();
                 for (NFAState s : bfsCur) {
                     for (NFAStateTransition t : s.getSuccessors()) {
                         NFAState target = t.getTarget();
@@ -1391,6 +1395,7 @@ public final class DFAGenerator implements JsonConvertible {
         bfsTraversalCur.clear();
         bfsTraversalCur.add(unanchoredInitialState.getSuccessors());
         outer: while (!bfsTraversalCur.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             bfsTraversalNext.clear();
             for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
                 for (DFAStateTransitionBuilder t : cur) {
@@ -1524,6 +1529,7 @@ public final class DFAGenerator implements JsonConvertible {
         bfsTraversalCur.clear();
         bfsTraversalCur.add(literalLastDFAState.getSuccessors());
         while (!bfsTraversalCur.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             bfsTraversalNext.clear();
             for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
                 for (DFAStateTransitionBuilder t : cur) {
@@ -1628,6 +1634,7 @@ public final class DFAGenerator implements JsonConvertible {
         boolean utf16MustDecode = false;
         ObjectArrayBuffer<ObjectArrayBuffer<long[]>> constraints = new ObjectArrayBuffer<>();
         for (DFAStateNodeBuilder s : stateMap.values()) {
+            RegexRootNode.checkThreadInterrupted();
             matchersBuilder.reset(s.getSuccessors().length);
             constraints.clear();
 

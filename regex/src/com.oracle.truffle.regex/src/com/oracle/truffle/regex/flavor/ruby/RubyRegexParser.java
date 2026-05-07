@@ -61,6 +61,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
@@ -735,6 +736,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     // The parser
 
     private void run() {
+        RegexRootNode.checkThreadInterrupted();
         scanForCaptureGroups();
 
         flagsStack.push(globalFlags);
@@ -763,6 +765,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
 
             while (true) {
+                RegexRootNode.checkThreadInterrupted();
                 alternative();
 
                 if (match("|")) {
@@ -819,6 +822,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         // vertical bar (|) or right parenthesis.
         flagsStack.push(getLocalFlags());
         while (!atEnd() && curChar() != '|' && curChar() != ')') {
+            RegexRootNode.checkThreadInterrupted();
             term();
         }
         flagsStack.pop();
@@ -1797,6 +1801,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
         int firstPosInside = position;
         classBody: while (true) {
+            RegexRootNode.checkThreadInterrupted();
             if (atEnd()) {
                 throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_CHARACTER_SET, beginPos, ErrorCode.InvalidCharacterClass);
             }

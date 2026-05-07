@@ -44,6 +44,7 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
 
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
@@ -78,6 +79,7 @@ public final class PureNFAGenerator {
         Deque<PureNFA> subtreeExpansionQueue = new ArrayDeque<>();
         subtreeExpansionQueue.push(rootNFA);
         while (!subtreeExpansionQueue.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             PureNFA parentNFA = subtreeExpansionQueue.pop();
             RegexASTSubtreeRootNode parentRoot = parentNFA.getASTSubtree(ast);
             for (int i = 0; i < parentNFA.getSubtrees().length; i++) {
@@ -183,6 +185,7 @@ public final class PureNFAGenerator {
 
     private void expandAllStates() {
         while (!expansionQueue.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             expandNFAState(expansionQueue.pop());
         }
     }

@@ -45,6 +45,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -209,6 +210,7 @@ public final class NFATraceFinderGenerator {
         dummyInitialState.setPredecessors(new NFAStateTransition[]{newAnchoredEntry, newUnAnchoredEntry});
         ArrayList<PathElement> graphPath = new ArrayList<>();
         for (NFAStateTransition entry : new NFAStateTransition[]{originalNFA.getAnchoredEntry()[0], originalNFA.getUnAnchoredEntry()[0]}) {
+            RegexRootNode.checkThreadInterrupted();
             if (entry == null) {
                 continue;
             }
@@ -217,9 +219,11 @@ public final class NFATraceFinderGenerator {
                 // become leaf nodes in the tree.
                 PathElement curElement = new PathElement(t);
                 while (true) {
+                    RegexRootNode.checkThreadInterrupted();
                     // The graph-path contains nodes that have not been converted to tree form
                     // yet, and must be treated differently than the rest of the path.
                     while (duplicatedStatesMap[curElement.getTransition().getTarget().getId()] == null) {
+                        RegexRootNode.checkThreadInterrupted();
                         graphPath.add(curElement);
                         curElement = new PathElement(curElement.getNextTransition());
                     }
@@ -253,6 +257,7 @@ public final class NFATraceFinderGenerator {
                         NFAStateTransition parentTransition = curElement.getTransition();
                         NFAState treeNode = duplicate;
                         while (!treeNode.isFinalState()) {
+                            RegexRootNode.checkThreadInterrupted();
                             iResult += getEncodedSize(parentTransition);
                             assert treeNode.getSuccessors().length == 1;
                             parentTransition = treeNode.getSuccessors()[0];
@@ -275,6 +280,7 @@ public final class NFATraceFinderGenerator {
                     // We processed one full path. Now, we have to explore all branches in the
                     // graph-path, depth-first.
                     while (!graphPath.isEmpty() && !graphPath.get(graphPath.size() - 1).hasNextTransition()) {
+                        RegexRootNode.checkThreadInterrupted();
                         graphPath.remove(graphPath.size() - 1);
                     }
                     if (graphPath.isEmpty()) {

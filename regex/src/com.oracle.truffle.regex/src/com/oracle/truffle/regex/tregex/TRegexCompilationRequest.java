@@ -53,6 +53,7 @@ import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 import com.oracle.truffle.regex.RegexProfile;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.analysis.RegexUnifier;
@@ -216,6 +217,7 @@ public final class TRegexCompilationRequest {
         int totalNumberOfStates = 0;
         int totalNumberOfTransitions = 0;
         while (true) {
+            RegexRootNode.checkThreadInterrupted();
             assert !stack.isEmpty();
             StackEntry cur = stack.peek();
             for (; cur.i < cur.subExecutors.length; cur.i++) {

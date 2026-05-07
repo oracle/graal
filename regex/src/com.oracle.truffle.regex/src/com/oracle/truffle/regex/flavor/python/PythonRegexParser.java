@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
@@ -116,6 +117,7 @@ public final class PythonRegexParser implements RegexParser {
         Token prev;
         Token.Kind prevKind;
         while (lexer.hasNext()) {
+            RegexRootNode.checkThreadInterrupted();
             prev = token;
             prevKind = prev == null ? null : prev.kind;
             token = lexer.next();

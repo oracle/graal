@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
@@ -113,6 +114,7 @@ public final class OracleDBRegexParser implements RegexParser {
         Token token = null;
         Token.Kind prevKind;
         while (lexer.hasNext()) {
+            RegexRootNode.checkThreadInterrupted();
             prevKind = token == null ? null : token.kind;
             token = lexer.next();
             if (token.kind != Token.Kind.literalChar && !literalStringBuffer.isEmpty()) {

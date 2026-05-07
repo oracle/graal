@@ -48,6 +48,7 @@ import java.util.Set;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.ASTStepVisitor;
@@ -320,6 +321,7 @@ public abstract class NFATraversalRegexASTVisitor {
         boolean foundNextTarget = false;
         while (!done) {
             while (!done && !foundNextTarget) {
+                RegexRootNode.checkThreadInterrupted();
                 // advance until we reach the next node to visit
                 foundNextTarget = doAdvance();
                 if (isBuildingDFA() && cur.isOptionalQuantifier()) {
