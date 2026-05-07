@@ -33,6 +33,9 @@ import com.oracle.svm.core.posix.cosmo.headers.Time;
 import com.oracle.svm.core.posix.cosmo.headers.Time.timespec;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -40,6 +43,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
+@SingletonTraits(access = BuiltinTraits.RuntimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(value = ThreadCpuTimeSupport.class, onlyWith = CosmoLibCSupplier.class)
 public class CosmoThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 

@@ -28,7 +28,11 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibMSupport;
 import com.oracle.svm.core.posix.cosmo.headers.PosixLibM;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(value = LibMSupport.class, onlyWith = CosmoLibCSupplier.class)
 public class CosmoLibMSupport implements LibMSupport {
     @Override

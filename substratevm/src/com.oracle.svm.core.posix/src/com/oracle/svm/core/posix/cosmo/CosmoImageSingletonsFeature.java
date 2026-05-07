@@ -30,8 +30,11 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibCSupport;
 import com.oracle.svm.core.os.ImageHeapProvider;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import org.graalvm.nativeimage.ImageSingletons;
 
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class CosmoImageSingletonsFeature implements InternalFeature {
     @Override

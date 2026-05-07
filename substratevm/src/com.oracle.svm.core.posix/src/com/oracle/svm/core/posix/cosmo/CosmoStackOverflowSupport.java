@@ -28,11 +28,15 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.cosmo.headers.Pthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(value = StackOverflowCheck.PlatformSupport.class, onlyWith = CosmoLibCSupplier.class)
 final class CosmoStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override

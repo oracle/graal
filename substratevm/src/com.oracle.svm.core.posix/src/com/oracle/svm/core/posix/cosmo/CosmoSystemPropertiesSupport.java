@@ -34,12 +34,16 @@ import com.oracle.svm.core.posix.cosmo.headers.Limits;
 import com.oracle.svm.core.posix.cosmo.headers.Stdlib;
 import com.oracle.svm.core.posix.cosmo.headers.Unistd;
 import com.oracle.svm.core.posix.cosmo.headers.Utsname;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 public class CosmoSystemPropertiesSupport extends SystemPropertiesSupport {
 
     public CosmoSystemPropertiesSupport(boolean compatibilityMode) {
@@ -121,6 +125,7 @@ public class CosmoSystemPropertiesSupport extends SystemPropertiesSupport {
     }
 }
 
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class CosmoSystemPropertiesFeature implements InternalFeature {
 

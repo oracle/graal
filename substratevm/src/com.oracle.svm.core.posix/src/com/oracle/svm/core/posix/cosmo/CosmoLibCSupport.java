@@ -28,6 +28,9 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.headers.LibCSupport;
 import com.oracle.svm.core.posix.cosmo.headers.Errno;
 import com.oracle.svm.core.posix.cosmo.headers.PosixLibC;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.PointerBase;
@@ -36,6 +39,7 @@ import org.graalvm.word.UnsignedWord;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 public class CosmoLibCSupport implements LibCSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

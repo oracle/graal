@@ -28,8 +28,12 @@ import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.jdk.LoadAverageSupport;
 import com.oracle.svm.core.posix.cosmo.headers.Stdlib;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @AutomaticallyRegisteredImageSingleton(value = LoadAverageSupport.class, onlyWith = CosmoLibCSupplier.class)
+@SingletonTraits(access = BuiltinTraits.RuntimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 class CosmoLoadAverageSupport implements LoadAverageSupport {
     @Override
     public int getLoadAverage(double[] loadavg, int nelems) {

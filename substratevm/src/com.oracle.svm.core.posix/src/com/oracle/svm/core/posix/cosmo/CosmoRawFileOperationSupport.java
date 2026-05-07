@@ -33,6 +33,8 @@ import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 import com.oracle.svm.core.posix.cosmo.headers.Fcntl;
 import com.oracle.svm.core.posix.cosmo.headers.Unistd;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -200,6 +202,7 @@ public class CosmoRawFileOperationSupport extends AbstractRawFileOperationSuppor
     }
 }
 
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class CosmoRawFileOperationFeature implements InternalFeature {
     @Override

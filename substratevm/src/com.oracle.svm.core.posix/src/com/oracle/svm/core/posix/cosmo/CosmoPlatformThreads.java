@@ -48,6 +48,9 @@ import com.oracle.svm.core.thread.Parker;
 import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -68,6 +71,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.NoLayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.Duplicable.class, other = BuiltinTraits.PartiallyLayerAware.class)
 @AutomaticallyRegisteredImageSingleton(value = PlatformThreads.class, onlyWith = CosmoLibCSupplier.class)
 public final class CosmoPlatformThreads extends PlatformThreads {
 
@@ -406,6 +410,7 @@ final class CosmoParker extends Parker {
     }
 }
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(value = ParkerFactory.class, onlyWith = CosmoLibCSupplier.class)
 class CosmoParkerFactory implements ParkerFactory {
     @Override

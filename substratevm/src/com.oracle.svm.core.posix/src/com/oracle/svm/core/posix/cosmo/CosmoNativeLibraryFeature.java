@@ -36,6 +36,9 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.cosmo.headers.Dlfcn;
 import com.oracle.svm.core.posix.cosmo.headers.Resource;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -48,6 +51,7 @@ import org.graalvm.word.UnsignedWord;
 
 import java.util.function.BooleanSupplier;
 
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 class CosmoNativeLibraryFeature implements InternalFeature {
     @Override
@@ -67,6 +71,7 @@ class CosmoNativeLibraryFeature implements InternalFeature {
     }
 }
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.NoLayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.Duplicable.class)
 final class CosmoNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)

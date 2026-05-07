@@ -35,6 +35,9 @@ import com.oracle.svm.core.posix.cosmo.headers.Time;
 import com.oracle.svm.core.posix.cosmo.headers.Time.timespec;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -46,6 +49,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
 
+@SingletonTraits(access = BuiltinTraits.RuntimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(value = VMThreads.class, onlyWith = CosmoLibCSupplier.class)
 public final class CosmoVMThreads extends VMThreads {
 
@@ -117,6 +121,7 @@ public final class CosmoVMThreads extends VMThreads {
     }
 
     @AutomaticallyRegisteredImageSingleton(value = ThreadLookup.class, onlyWith = CosmoLibCSupplier.class)
+    @SingletonTraits(access = BuiltinTraits.RuntimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
     public static class PosixThreadLookup extends ThreadLookup {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

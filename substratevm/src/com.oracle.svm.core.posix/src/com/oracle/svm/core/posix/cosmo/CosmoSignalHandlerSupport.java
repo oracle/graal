@@ -50,6 +50,9 @@ import com.oracle.svm.core.posix.cosmo.headers.Signal.SignalEnum;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.sigset_tPointer;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.impl.Word;
@@ -91,6 +94,7 @@ import static com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal.Constants.
  * NOTE: when installing or querying native signal handlers, we use a process-wide lock to avoid
  * races between isolates.
  */
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(value = {SignalHandlerSupport.class, CosmoSignalHandlerSupport.class}, onlyWith = CosmoLibCSupplier.class)
 public final class CosmoSignalHandlerSupport implements SignalHandlerSupport {
     private static final CGlobalData<Pointer> NOOP_HANDLERS_INSTALLED = CGlobalDataFactory.createWord();
@@ -469,6 +473,7 @@ public final class CosmoSignalHandlerSupport implements SignalHandlerSupport {
     }
 }
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 @AutomaticallyRegisteredFeature
 class CosmoSignalHandlerFeature implements InternalFeature {
     @Override

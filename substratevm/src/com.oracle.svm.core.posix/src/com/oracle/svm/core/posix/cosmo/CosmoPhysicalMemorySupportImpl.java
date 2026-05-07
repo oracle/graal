@@ -30,6 +30,9 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.posix.cosmo.headers.Unistd;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -37,6 +40,7 @@ import org.graalvm.word.UnsignedWord;
 
 import java.util.function.BooleanSupplier;
 
+@SingletonTraits(access = BuiltinTraits.RuntimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 public class CosmoPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
     private static final long K = 1024;
@@ -67,6 +71,7 @@ public class CosmoPhysicalMemorySupportImpl implements PhysicalMemorySupport {
     }
 }
 
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class CosmoPhysicalMemorySupportFeature implements InternalFeature {
     @Override

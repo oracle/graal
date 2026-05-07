@@ -43,6 +43,7 @@ import org.graalvm.word.UnsignedWord;
 import java.io.FileDescriptor;
 import java.util.EnumSet;
 
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class CosmoLogHandlerFeature implements InternalFeature {
     @Override

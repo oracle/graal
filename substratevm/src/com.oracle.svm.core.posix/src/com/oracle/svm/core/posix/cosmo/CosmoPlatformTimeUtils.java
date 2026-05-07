@@ -24,13 +24,17 @@
  */
 package com.oracle.svm.core.posix.cosmo;
 
+import com.oracle.svm.core.posix.cosmo.headers.Time;
+import com.oracle.svm.core.util.PlatformTimeUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.posix.cosmo.headers.Time;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.PlatformTimeUtils;
 import org.graalvm.nativeimage.StackValue;
 
+@SingletonTraits(access = BuiltinTraits.RuntimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(value = PlatformTimeUtils.class, onlyWith = CosmoLibCSupplier.class)
 public final class CosmoPlatformTimeUtils extends PlatformTimeUtils {
 

@@ -33,6 +33,9 @@ import com.oracle.svm.core.posix.cosmo.headers.Dlfcn;
 import com.oracle.svm.core.posix.cosmo.headers.Signal;
 import com.oracle.svm.core.posix.cosmo.headers.Stdlib;
 import com.oracle.svm.core.posix.cosmo.headers.Unistd;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -50,6 +53,7 @@ import static com.oracle.svm.core.posix.cosmo.headers.Signal.SignalEnum.SIGKILL;
 import static com.oracle.svm.core.posix.cosmo.headers.Signal.SignalEnum.SIGTERM;
 
 @AutomaticallyRegisteredImageSingleton(value = ProcessPropertiesSupport.class, onlyWith = CosmoLibCSupplier.class)
+@SingletonTraits(access = BuiltinTraits.RuntimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 public class CosmoProcessPropertiesSupport extends BaseProcessPropertiesSupport {
 
     @Override

@@ -39,6 +39,9 @@ import com.oracle.svm.core.posix.cosmo.headers.Signal;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.AdvancedSignalDispatcher;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.siginfo_t;
 import com.oracle.svm.core.posix.cosmo.headers.Signal.ucontext_t;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
@@ -46,6 +49,7 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 @AutomaticallyRegisteredImageSingleton(value = {SubstrateSegfaultHandler.class, CosmoSubstrateSegfaultHandler.class}, onlyWith = CosmoLibCSupplier.class)
 class CosmoSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     static final CEntryPointLiteral<AdvancedSignalDispatcher> SIGNAL_HANDLER = CEntryPointLiteral.create(CosmoSubstrateSegfaultHandler.class,

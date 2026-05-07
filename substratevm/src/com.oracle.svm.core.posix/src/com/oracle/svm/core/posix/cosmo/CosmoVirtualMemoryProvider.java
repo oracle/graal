@@ -35,6 +35,9 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.cosmo.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import org.graalvm.word.impl.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -57,6 +60,7 @@ import static com.oracle.svm.core.posix.cosmo.headers.Mman.PROT_READ;
 import static com.oracle.svm.core.posix.cosmo.headers.Mman.PROT_WRITE;
 import static org.graalvm.word.impl.Word.nullPointer;
 
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class CosmoVirtualMemoryProviderFeature implements InternalFeature {
     @Override
@@ -69,6 +73,7 @@ class CosmoVirtualMemoryProviderFeature implements InternalFeature {
     }
 }
 
+@SingletonTraits(access = BuiltinTraits.AllAccess.class, layeredCallbacks = BuiltinTraits.SingleLayer.class, layeredInstallationKind = SingletonLayeredInstallationKind.InitialLayerOnly.class)
 public class CosmoVirtualMemoryProvider implements VirtualMemoryProvider {
     protected static final int NO_FD = -1;
     protected static final int NO_FD_OFFSET = 0;

@@ -6,9 +6,12 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import org.graalvm.nativeimage.Platform;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.SingleLayer.class)
 public class CosmoFixedOptionsFeature implements InternalFeature {
 
     private final long DEFAULT_RESERVED_ADDRESS_SPACE_SIZE = 1073741824L;

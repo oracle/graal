@@ -3,12 +3,15 @@ package com.oracle.svm.hosted.c.libc;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.CosmoLibC;
 import com.oracle.svm.hosted.image.AbstractImage;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import org.graalvm.nativeimage.Platform;
 
 import java.util.List;
 
+@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = BuiltinTraits.NoLayeredCallbacks.class)
 public class HostedCosmoLibC extends CosmoLibC implements HostedLibCBase{
     @Override
     public String getTargetCompiler() {
