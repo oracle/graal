@@ -174,7 +174,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             node.graph().addBeforeFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
 
             ResolvedJavaMethod target = prologue.getMethod();
-            Stamp returnStamp = StampFactory.forKind(target.getSignature().getReturnKind());
+            Stamp returnStamp = SubstrateTarget.getWordStamp();
             StructuredGraph graph = node.graph();
             final Supplier<SnippetTemplate> templateSupplier = new Supplier<>() {
                 @Override
@@ -204,7 +204,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                 return;
             }
             node.graph().addAfterFixed(node, node.graph().add(new VerificationMarkerNode(node.getMarker())));
-            ResolvedJavaMethod target = prologue.getMethod();
+            ResolvedJavaMethod target = epilogue.getMethod();
             Stamp returnStamp = StampFactory.forKind(target.getSignature().getReturnKind());
             StructuredGraph graph = node.graph();
             Supplier<SnippetTemplate> templateSupplier = new Supplier<>() {

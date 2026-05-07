@@ -976,7 +976,7 @@ public abstract class Node implements Cloneable, Formattable {
      * If {@code replacement == null}, then the edges are simply removed.
      */
     public final void replaceAtUsages(Node replacement) {
-        replaceAtAllUsages(replacement, false);
+        replaceAtUsages(replacement, null, false, true);
     }
 
     /**
@@ -1011,6 +1011,18 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
+     * For each use of {@code this} in another node, replace it with {@code replacement} without
+     * checking replacement invariants and then {@linkplain #safeDelete() remove} {@code this} from
+     * the graph.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public final void replaceAtUsagesAndDeleteWithoutCheckingInvariants(Node replacement) {
+        replaceAtUsages(replacement, null, true, false);
+        safeDelete();
+    }
+
+    /**
      * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
      * if {@code filter == null} or {@code filter.test(n) == true}.
      *
@@ -1019,21 +1031,53 @@ public abstract class Node implements Cloneable, Formattable {
      * @see #replaceAtUsages(Node)
      */
     private void replaceAtUsages(Node replacement, Predicate<Node> filter, boolean forDeletion, boolean checkInvariants) {
+        checkReplaceWith(replacement);
         if (filter == null) {
-            replaceAtAllUsages(replacement, forDeletion);
+            if (checkInvariants) {
+                checkReplaceAtUsagesBeforeReplacementInvariants(replacement);
+            }
+            replaceAtAllUsagesWithoutChecking(replacement, forDeletion);
+            if (checkInvariants) {
+                checkReplaceAtUsagesAfterReplacementInvariants(replacement);
+            }
         } else {
-            replaceAtMatchingUsages(replacement, filter, forDeletion);
+            replaceAtMatchingUsages(replacement, filter, forDeletion, checkInvariants);
+            if (checkInvariants) {
+                checkReplaceAtUsagesAfterReplacementInvariants(replacement);
+            }
         }
-        assert !checkInvariants || checkReplaceAtUsagesInvariants(replacement);
     }
 
     /**
-     * Subclasses can override this to check invariants related to replacing uses of {@code this}.
+     * Subclasses can override this to check invariants related to replacing uses of {@code this}
+     * before the replacement updates those usages.
      *
      * @param replacement
      * @return {@code true} if all invariants hold
      */
-    protected boolean checkReplaceAtUsagesInvariants(Node replacement) {
+    protected boolean checkReplaceAtUsagesBeforeReplacementInvariants(Node replacement) {
+        return true;
+    }
+
+    /**
+     * Subclasses can override this to check invariants related to replacing uses of {@code this}
+     * after the replacement updated those usages.
+     *
+     * @param replacement
+     * @return {@code true} if all invariants hold
+     */
+    protected boolean checkReplaceAtUsagesAfterReplacementInvariants(Node replacement) {
+        return true;
+    }
+
+    /**
+     * Subclasses can override this to check invariants related to replacing one use of {@code this}
+     * with {@code replacement}.
+     *
+     * @param replacement
+     * @return {@code true} if all invariants hold
+     */
+    protected boolean checkReplaceInputInvariants(Node replacement) {
         return true;
     }
 
@@ -1045,16 +1089,26 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public final void replaceAtAllUsages(Node replacement, boolean forDeletion) {
         checkReplaceWith(replacement);
+        checkReplaceAtUsagesBeforeReplacementInvariants(replacement);
+        replaceAtAllUsagesWithoutChecking(replacement, forDeletion);
+        checkReplaceAtUsagesAfterReplacementInvariants(replacement);
+    }
+
+    /**
+     * Like {@link #replaceAtAllUsages(Node, boolean)}, but assumes that replacement validity and the
+     * invariants that must be checked before replacement were already checked.
+     */
+    private void replaceAtAllUsagesWithoutChecking(Node replacement, boolean forDeletion) {
         if (usage0 == null) {
             return;
         }
-        replaceAtUsage(replacement, forDeletion, usage0);
+        replaceAtUsage(replacement, forDeletion, usage0, false);
         usage0 = null;
 
         if (usage1 == null) {
             return;
         }
-        replaceAtUsage(replacement, forDeletion, usage1);
+        replaceAtUsage(replacement, forDeletion, usage1, false);
         usage1 = null;
 
         if (extraUsagesCount <= 0) {
@@ -1062,7 +1116,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
         for (int i = 0; i < extraUsagesCount; i++) {
             Node usage = extraUsages[i];
-            replaceAtUsage(replacement, forDeletion, usage);
+            replaceAtUsage(replacement, forDeletion, usage, false);
         }
         this.extraUsages = EMPTY_ARRAY;
         this.extraUsagesCount = 0;
@@ -1076,8 +1130,9 @@ public abstract class Node implements Cloneable, Formattable {
      *            {@code this} from the graph after this method returns
      * @see #replaceAtUsages(Node)
      */
-    private void replaceAtUsage(Node replacement, boolean forDeletion, Node usage) {
-        boolean result = usage.getNodeClass().replaceFirstInput(usage, this, replacement);
+    private void replaceAtUsage(Node replacement, boolean forDeletion, Node usage, boolean checkInputInvariants) {
+        boolean result = checkInputInvariants ? usage.getNodeClass().replaceFirstInput(usage, this, replacement)
+                        : usage.getNodeClass().replaceFirstInputWithoutCheckingInvariants(usage, this, replacement);
         assertTrue(result, "not found in inputs, usage: %s", usage);
         /*
          * Don't notify for nodes which are about to be deleted.
@@ -1099,14 +1154,22 @@ public abstract class Node implements Cloneable, Formattable {
      * @see #replaceAtUsages(Node)
      */
     private void replaceAtMatchingUsages(Node replacement, Predicate<Node> filter, boolean forDeletion) {
-        Objects.requireNonNull(filter);
         checkReplaceWith(replacement);
+        replaceAtMatchingUsages(replacement, filter, forDeletion, true);
+    }
+
+    /**
+     * Like {@link #replaceAtMatchingUsages(Node, Predicate, boolean)}, but assumes that replacement
+     * validity was already checked.
+     */
+    private void replaceAtMatchingUsages(Node replacement, Predicate<Node> filter, boolean forDeletion, boolean checkInputInvariants) {
+        Objects.requireNonNull(filter);
         int i = 0;
         int usageCount = this.getUsageCount();
         while (i < usageCount) {
             Node usage = this.getUsageAt(i);
             if (filter.test(usage)) {
-                replaceAtUsage(replacement, forDeletion, usage);
+                replaceAtUsage(replacement, forDeletion, usage, checkInputInvariants);
                 this.movUsageFromEndTo(i);
                 usageCount--;
             } else {
@@ -1142,6 +1205,9 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private void replaceAtUsagePos(Node replacement, Node usage, Position pos) {
+        if (pos.getInputType() == InputType.Value) {
+            checkReplaceInputInvariants(replacement);
+        }
         pos.initialize(usage, replacement);
         maybeNotifyInputChanged(usage);
         if (replacement != null) {
@@ -1302,6 +1368,24 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
+     * Replaces {@code this} at its predecessor (if any) and its usages with {@code replacement}
+     * without checking replacement invariants, and removes it from its graph.
+     *
+     * @see #replaceAndDelete(Node)
+     */
+    public void replaceAndDeleteWithoutCheckingInvariants(Node replacement) {
+        checkReplaceWith(replacement);
+        if (replacement == null) {
+            fail("cannot replace with null");
+        }
+        if (this.hasUsages()) {
+            replaceAtUsages(replacement, null, false, false);
+        }
+        replaceAtPredecessor(replacement);
+        this.safeDelete();
+    }
+
+    /**
      * Finds the first {@link Successor} in {@code this} whose value is {@code oldSuccessor} and
      * replaces it with {@code newSuccessor}. The predecessor fields in {@code oldSuccessor} and
      * {@code newSuccessor} are updated to reflect any change made.
@@ -1343,6 +1427,18 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public void replaceFirstInput(Node oldInput, Node newInput) {
         if (nodeClass.replaceFirstInput(this, oldInput, newInput)) {
+            updateUsages(oldInput, newInput);
+        }
+    }
+
+    /**
+     * Finds the first {@link Input} or {@link OptionalInput} in {@code this} whose value is
+     * {@code oldInput} and replaces it with {@code newInput}, without checking replacement
+     * invariants. If the input is changed, the usage info for {@code oldInput} and {@code newInput}
+     * is updated as well.
+     */
+    public void replaceFirstInputWithoutCheckingInvariants(Node oldInput, Node newInput) {
+        if (nodeClass.replaceFirstInputWithoutCheckingInvariants(this, oldInput, newInput)) {
             updateUsages(oldInput, newInput);
         }
     }

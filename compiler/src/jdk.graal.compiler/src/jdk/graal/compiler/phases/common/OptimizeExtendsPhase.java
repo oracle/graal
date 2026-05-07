@@ -252,8 +252,12 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
                     extendInput = graph.addOrUnique(new NarrowNode(extendedDef, inputBitsSize));
                     def.replaceAtUsages(extendInput, InputType.Value);
 
-                    // replace original access with new extended memory access
-                    graph.replaceFixedWithFixed(access.asFixedWithNextNode(), extendedDef);
+                    /*
+                     * The access result stamp has changed. Value usages were updated above. There may
+                     * be guard usages that use the read as a null check. They do not depend on the
+                     * result stamp. Replace without checking stamps.
+                     */
+                    graph.replaceFixedWithFixedWithoutCheckingInvariants(access.asFixedWithNextNode(), extendedDef);
                 }
             }
 
