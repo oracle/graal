@@ -50,15 +50,15 @@ import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.extended.MultiGuardNode;
+import jdk.graal.compiler.nodes.extended.SpeculationFenceNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.phases.Phase;
 import jdk.vm.ci.meta.DeoptimizationReason;
 
 /**
- * This phase sets the {@linkplain AbstractBeginNode#setHasSpeculationFence() speculation fence}
- * flag on {@linkplain AbstractBeginNode begin nodes} in order to mitigate speculative execution
- * attacks.
+ * This phase inserts {@link SpeculationFenceNode speculation fence nodes} after
+ * {@link AbstractBeginNode begin nodes} in order to mitigate speculative execution attacks.
  */
 public class InsertGuardFencesPhase extends Phase {
 
@@ -77,7 +77,7 @@ public class InsertGuardFencesPhase extends Phase {
         for (AbstractBeginNode beginNode : graph.getNodes(AbstractBeginNode.TYPE)) {
             if (hasPotentialUnsafeAccess(cfg, beginNode)) {
                 graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Adding speculation fence at %s because of unguarded fixed access", beginNode);
-                beginNode.setHasSpeculationFence();
+                addSpeculationFence(beginNode);
                 continue;
             }
             if (hasGuardUsages(beginNode)) {
@@ -98,10 +98,16 @@ public class InsertGuardFencesPhase extends Phase {
                 } else {
                     graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Adding speculation fence at %s", beginNode);
                 }
-                beginNode.setHasSpeculationFence();
+                addSpeculationFence(beginNode);
             } else {
                 graph.getDebug().log(DebugContext.DETAILED_LEVEL, "No guards on %s", beginNode);
             }
+        }
+    }
+
+    private static void addSpeculationFence(AbstractBeginNode beginNode) {
+        if (!(beginNode.next() instanceof SpeculationFenceNode)) {
+            beginNode.graph().addAfterFixed(beginNode, beginNode.graph().add(SpeculationFenceNode.forBlockEntry()));
         }
     }
 

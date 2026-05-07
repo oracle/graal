@@ -1033,16 +1033,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void reduceDegenerateLoopBegin(LoopBeginNode begin, boolean forKillCFG) {
         assert begin.loopEnds().isEmpty() : "Loop begin still has backedges";
+        GraalError.guarantee(begin.forwardEndCount() == 1, "loop begin must have exactly one forward end: %s", begin);
         begin.removeSafepoints();
-        if (begin.forwardEndCount() == 1) { // bypass merge and remove
-            reduceTrivialMerge(begin, forKillCFG);
-        } else { // convert to merge
-            AbstractMergeNode merge = this.add(new MergeNode());
-            for (EndNode end : begin.forwardEnds()) {
-                merge.addForwardEnd(end);
-            }
-            this.replaceFixedWithFixed(begin, merge);
-        }
+        reduceTrivialMerge(begin, forKillCFG);
     }
 
     public void reduceTrivialMerge(AbstractMergeNode merge) {
