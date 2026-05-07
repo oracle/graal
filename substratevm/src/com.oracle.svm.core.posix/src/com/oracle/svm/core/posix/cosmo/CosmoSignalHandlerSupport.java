@@ -38,7 +38,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.jdk.SignalHandlerSupport;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal;
 import com.oracle.svm.core.log.Log;
@@ -472,11 +471,6 @@ public final class CosmoSignalHandlerSupport implements SignalHandlerSupport {
 
 @AutomaticallyRegisteredFeature
 class CosmoSignalHandlerFeature implements InternalFeature {
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(RuntimeSupportFeature.class);
-    }
-
     @Override
     public void duringSetup(DuringSetupAccess access) {
         BooleanSupplier x = new CosmoLibCSupplier();
