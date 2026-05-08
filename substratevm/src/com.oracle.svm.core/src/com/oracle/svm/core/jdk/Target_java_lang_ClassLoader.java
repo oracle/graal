@@ -31,6 +31,7 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +39,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
@@ -55,7 +57,6 @@ import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.Digest;
@@ -103,6 +104,15 @@ public final class Target_java_lang_ClassLoader {
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AssertionLockComputer.class, isFinal = true) // GR-62338
     private Object assertionLock;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    private boolean defaultAssertionStatus;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    private Map<String, Boolean> packageAssertionStatus;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    Map<String, Boolean> classAssertionStatus;
 
     @Delete private static ClassLoader scl;
 
@@ -261,41 +271,17 @@ public final class Target_java_lang_ClassLoader {
     @Alias
     native Stream<Package> packages();
 
-    /*
-     * The assertion status of classes is fixed at image build time because it is baked into the AOT
-     * compiled code. All methods that modify the assertion status are substituted to throw an
-     * error.
-     *
-     * Note that the assertion status can be queried at run time, see the relevant method in
-     * DynamicHub.
-     */
-
     @Substitute
-    @SuppressWarnings({"unused"})
-    private void setDefaultAssertionStatus(boolean enabled) {
-        throw VMError.unsupportedFeature("The assertion status of classes is fixed at image build time.");
+    private static Target_java_lang_AssertionStatusDirectives retrieveDirectives() {
+        RuntimeAssertionsSupport.ClassLoaderAssertionStatusDirectives assertionSupport = RuntimeAssertionsSupport.singleton().createClassLoaderAssertionStatusDirectives();
+        Target_java_lang_AssertionStatusDirectives directives = new Target_java_lang_AssertionStatusDirectives();
+        directives.classes = assertionSupport.classes();
+        directives.classEnabled = assertionSupport.classEnabled();
+        directives.packages = assertionSupport.packages();
+        directives.packageEnabled = assertionSupport.packageEnabled();
+        directives.deflt = assertionSupport.deflt();
+        return directives;
     }
-
-    @Substitute
-    @SuppressWarnings({"unused"})
-    private void setPackageAssertionStatus(String packageName, boolean enabled) {
-        throw VMError.unsupportedFeature("The assertion status of classes is fixed at image build time.");
-    }
-
-    @Substitute
-    @SuppressWarnings({"unused"})
-    private void setClassAssertionStatus(String className, boolean enabled) {
-        throw VMError.unsupportedFeature("The assertion status of classes is fixed at image build time.");
-    }
-
-    @Substitute
-    @SuppressWarnings({"unused"})
-    private void clearAssertionStatus() {
-        throw VMError.unsupportedFeature("The assertion status of classes is fixed at image build time.");
-    }
-
-    @Delete
-    private native void initializeJavaAssertionMaps();
 
     /*
      * We are defensive and also handle private native methods by marking them as deleted. If they
@@ -426,8 +412,6 @@ public final class Target_java_lang_ClassLoader {
         return ClassRegistries.findBootstrapClass(name);
     }
 
-    @Delete
-    private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();
 }
 
 final class ClassLoaderHelper {
@@ -446,6 +430,11 @@ final class ClassLoaderHelper {
 
 @TargetClass(className = "java.lang.AssertionStatusDirectives") //
 final class Target_java_lang_AssertionStatusDirectives {
+    @Alias String[] classes;
+    @Alias boolean[] classEnabled;
+    @Alias String[] packages;
+    @Alias boolean[] packageEnabled;
+    @Alias boolean deflt;
 }
 
 @TargetClass(className = "java.lang.NamedPackage") //

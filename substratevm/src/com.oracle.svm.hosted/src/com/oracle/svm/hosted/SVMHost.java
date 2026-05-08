@@ -80,7 +80,6 @@ import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.NeverStrengthenGraphWithConstants;
-import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.annotate.Delete;
@@ -624,7 +623,6 @@ public class SVMHost extends HostVM {
 
         boolean isHidden = javaClass.isHidden();
         boolean isRecord = javaClass.isRecord();
-        boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
         boolean isSealed = javaClass.isSealed();
         boolean isVMInternal = AnnotationUtil.isAnnotationPresent(type, GuestAccess.elements().InternalVMMethod);
         boolean isLambdaFormHidden = AnnotationUtil.isAnnotationPresent(type, LambdaFormHiddenMethod.class);
@@ -638,7 +636,7 @@ public class SVMHost extends HostVM {
          */
         boolean isProxyClass = Proxy.isProxyClass(javaClass);
 
-        short flags = DynamicHub.makeFlags(javaClass.isPrimitive(), javaClass.isInterface(), isHidden, isRecord, assertionStatus,
+        short flags = DynamicHub.makeFlags(javaClass.isPrimitive(), javaClass.isInterface(), isHidden, isRecord,
                         type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal,
                         isLambdaFormHidden, isLinked, isProxyClass);
 

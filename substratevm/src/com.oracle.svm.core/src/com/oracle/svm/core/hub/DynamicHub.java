@@ -137,8 +137,8 @@ import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
-import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
@@ -369,20 +369,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static final int IS_HIDDEN_FLAG_BIT = 2;
     /** Is this a Record Class. */
     private static final int IS_RECORD_FLAG_BIT = 3;
-    /** Holds assertionStatus determined by {@link RuntimeAssertionsSupport}. */
-    private static final int ASSERTION_STATUS_FLAG_BIT = 4;
     /**
      * Class/superclass/implemented interfaces has default methods. Necessary metadata for class
      * initialization, but even for classes/interfaces that are already initialized during image
      * generation, so it cannot be a field in {@link ClassInitializationInfo}.
      */
-    private static final int HAS_DEFAULT_METHODS_FLAG_BIT = 5;
+    private static final int HAS_DEFAULT_METHODS_FLAG_BIT = 4;
     /**
      * Directly declares default methods. Necessary metadata for class initialization, but even for
      * interfaces that are already initialized during image generation, so it cannot be a field in
      * {@link ClassInitializationInfo}.
      */
-    private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 6;
+    private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 5;
     /** Is this a Sealed Class. */
     private static final int IS_SEALED_FLAG_BIT = 7;
     /** Is this a VM-internal class that should be hidden from stack traces. */
@@ -688,13 +686,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return hub;
     }
 
-    public static short makeFlags(boolean isPrimitive, boolean isInterface, boolean isHidden, boolean isRecord, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
+    public static short makeFlags(boolean isPrimitive, boolean isInterface, boolean isHidden, boolean isRecord, boolean hasDefaultMethods, boolean declaresDefaultMethods,
                     boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, boolean isProxyClass) {
         return NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, isPrimitive) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, isInterface) |
                         makeFlag(IS_HIDDEN_FLAG_BIT, isHidden) |
                         makeFlag(IS_RECORD_FLAG_BIT, isRecord) |
-                        makeFlag(ASSERTION_STATUS_FLAG_BIT, assertionStatus) |
                         makeFlag(HAS_DEFAULT_METHODS_FLAG_BIT, hasDefaultMethods) |
                         makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods) |
                         makeFlag(IS_SEALED_FLAG_BIT, isSealed) |
@@ -1227,14 +1224,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * modifiers for inner classes.
      * <p>
      * Consider the following:
-     * 
+     *
      * <pre>
      * public class A {
      *     protected class B {
      *     }
      * }
      * </pre>
-     * 
+     *
      * The Java view of {@code B}'s access flag has its {@link Modifier#PROTECTED protected} bit
      * set, whereas the JVM considers {@code B}'s access flags to have its {@link Modifier#PUBLIC
      * public} bit set.
@@ -2067,10 +2064,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         companion.protectionDomain = protectionDomain;
     }
 
-    @Substitute
-    public boolean desiredAssertionStatus() {
-        return isFlagSet(flags, ASSERTION_STATUS_FLAG_BIT);
-    }
+    @KeepOriginal
+    public native boolean desiredAssertionStatus();
 
     @Substitute //
     public Module getModule() {
@@ -2341,8 +2336,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return hubMetadata().getDeclaredClasses(this);
     }
 
-    @Delete
-    private static native boolean desiredAssertionStatus0(Class<?> clazz);
+    // Retrieves the desired assertion status of the class from the VM
+    @Substitute
+    private static boolean desiredAssertionStatus0(Class<?> clazz) {
+        DynamicHub hub = DynamicHub.fromClass(clazz);
+        return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(hub.getName(), hub.getClassLoader());
+    }
 
     @Delete
     private native Class<?> getNestHost0();

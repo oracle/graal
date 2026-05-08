@@ -302,14 +302,12 @@ public class CremaSupportImpl implements CremaSupport {
          */
         boolean isInterface = Modifier.isInterface(modifiers);
         boolean isRecord = Modifier.isFinal(modifiers) && superClass == Record.class && parsed.getAttribute(RecordAttribute.NAME) != null;
-        // GR-62320 This should be set based on build-time and run-time arguments.
-        boolean assertionsEnabled = true;
         boolean isSealed = isSealed(parsed);
         boolean declaresDefaultMethods = isInterface && declaresDefaultMethods(parsed);
         boolean hasDefaultMethods = declaresDefaultMethods || hasInheritedDefaultMethods(superClass, superInterfaces);
         boolean isLambdaFormHidden = false;
         boolean isProxyClass = false;
-        short hubFlags = DynamicHub.makeFlags(false, isInterface, info.isHidden(), isRecord, assertionsEnabled, hasDefaultMethods, declaresDefaultMethods, isSealed, false, isLambdaFormHidden, false,
+        short hubFlags = DynamicHub.makeFlags(false, isInterface, info.isHidden(), isRecord, hasDefaultMethods, declaresDefaultMethods, isSealed, false, isLambdaFormHidden, false,
                         isProxyClass);
 
         Object interfacesEncoding = getInterfaceEncodings(superInterfaces);
@@ -623,7 +621,7 @@ public class CremaSupportImpl implements CremaSupport {
         DynamicHub superHub = DynamicHub.fromClass(Object.class);
         int javaModifiers = (componentHub.getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
         int jvmModifiers = (componentHub.getInterpreterType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
-        short flags = DynamicHub.makeFlags(false, false, false, false, false, false, false, false, false, false, true, false);
+        short flags = DynamicHub.makeFlags(false, false, false, false, false, false, false, false, false, true, false);
         ClassLoader loader = componentHub.getClassLoader();
         Module module = componentHub.getModule();
         int typeID = TypeIDs.singleton().nextTypeId();
