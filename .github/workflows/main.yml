@@ -194,6 +194,8 @@ jobs:
       if: ${{ matrix.env.TOOLS_JDK_VERSION != '' }}
       run: |
         ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${TOOLS_JDK_VERSION} --to jdk-dl --alias ${TOOLS_JAVA_HOME_LOCATION}
+    - name: Install libelf.h
+      run: sudo apt update && sudo apt-get install -y libelf-dev
     - name: Update dependency cache
       if: ${{ env.MX_RUNS_DEBUG == 'true' || env.MX_RUNS_STYLE == 'true' }}
       run: sudo apt update
