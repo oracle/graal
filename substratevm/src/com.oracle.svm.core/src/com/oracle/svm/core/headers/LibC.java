@@ -47,8 +47,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 /** Platform-independent LibC support. */
 public class LibC {
-    public static final int EXIT_CODE_ABORT = 99;
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int errno() {
         return libc().errno();
