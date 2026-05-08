@@ -227,6 +227,11 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getSize(Header<?> that) {
+        return that.getEndOffset();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getEndPointer(Header<?> that) {
         return asPointer(that).add(getEndOffset(that));
     }

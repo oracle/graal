@@ -89,7 +89,7 @@ final class HeapChunkProvider {
             AlignedHeapChunk.initialize(result, chunkSize);
         }
         assert HeapChunk.getTopOffset(result).equal(AlignedHeapChunk.getObjectsStartOffset());
-        assert HeapChunk.getEndOffset(result).equal(chunkSize);
+        assert HeapChunk.getSize(result).equal(chunkSize);
 
         if (HeapParameters.getZapProducedHeapChunks()) {
             zapUnusedObjectMemory(result, HeapParameters.getProducedHeapChunkZapWord());
@@ -298,11 +298,6 @@ final class HeapChunkProvider {
 
     @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     private static void freeUnalignedChunk(UnalignedHeader chunk) {
-        ChunkBasedCommittedMemoryProvider.get().freeUnalignedChunk(chunk, unalignedChunkSize(chunk));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static UnsignedWord unalignedChunkSize(UnalignedHeader chunk) {
-        return HeapChunk.getEndOffset(chunk);
+        ChunkBasedCommittedMemoryProvider.get().freeUnalignedChunk(chunk, HeapChunk.getSize(chunk));
     }
 }
