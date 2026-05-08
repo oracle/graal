@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -34,13 +33,14 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 
@@ -67,11 +67,14 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
  * An UnalignedHeapChunk is laid out:
  *
  * <pre>
- * +=================+-------+--------------+-------------------------------------+
- * | UnalignedHeader | Card  | Object Start | Object                              |
- * | Fields          | Table | Offset       |                                     |
- * +=================+-------+--------------+-------------------------------------+
+ * +=================+-------+--------------+------------------+------------------+
+ * | UnalignedHeader | Card  | Object Start | Object           | Unused Committed |
+ * | Fields          | Table | Offset       |                  | Chunk Memory     |
+ * +=================+-------+--------------+------------------+------------------+
  * </pre>
+ *
+ * The chunk top points to the end of the object, while the chunk end points to the end of the
+ * memory committed for the chunk, which (in the runtime heap) is a page alignment boundary.
  *
  * The HeapChunk fields can be accessed as declared fields. The card table and the field for the
  * object start offset are optional. Whether these fields are present depends on the used
@@ -104,7 +107,10 @@ public final class UnalignedHeapChunk {
     public static void initialize(UnalignedHeader chunk, UnsignedWord chunkSize, UnsignedWord objectSize) {
         assert chunk.isNonNull();
         UnsignedWord objectStartOffset = calculateObjectStartOffset(objectSize);
-        HeapChunk.initialize(chunk, HeapChunk.asPointer(chunk).add(objectStartOffset), chunkSize);
+        Pointer objectStart = HeapChunk.asPointer(chunk).add(objectStartOffset);
+        Pointer objectEnd = objectStart.add(objectSize);
+        assert objectEnd.belowOrEqual(HeapChunk.asPointer(chunk).add(chunkSize));
+        HeapChunk.initialize(chunk, objectEnd, chunkSize);
         setObjectStartOffset(chunk, objectStartOffset);
     }
 
@@ -114,7 +120,7 @@ public final class UnalignedHeapChunk {
     }
 
     public static Pointer getObjectEnd(UnalignedHeader that) {
-        return HeapChunk.getEndPointer(that);
+        return HeapChunk.getTopPointer(that);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -122,19 +128,6 @@ public final class UnalignedHeapChunk {
         UnsignedWord objectStart = RememberedSet.get().getHeaderSizeOfUnalignedChunk(objectSize);
         UnsignedWord alignment = Word.unsigned(ObjectLayout.singleton().getAlignment());
         return UnsignedUtils.roundUp(objectStart.add(objectSize), alignment);
-    }
-
-    /** Allocate uninitialized memory within this UnalignedHeapChunk. */
-    @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
-    public static Pointer allocateMemory(UnalignedHeader that, UnsignedWord size) {
-        UnsignedWord available = HeapChunk.availableObjectMemory(that);
-        Pointer result = Word.nullPointer();
-        if (size.belowOrEqual(available)) {
-            result = HeapChunk.getTopPointer(that);
-            Pointer newTop = result.add(size);
-            HeapChunk.setTopPointerCarefully(that, newTop);
-        }
-        return result;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -186,10 +179,5 @@ public final class UnalignedHeapChunk {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void walkObjectsInline(UnalignedHeader that, UninterruptibleObjectVisitor visitor) {
         HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static UnsignedWord getCommittedObjectMemory(UnalignedHeader that) {
-        return HeapChunk.getEndOffset(that).subtract(getObjectStartOffset(that));
     }
 }

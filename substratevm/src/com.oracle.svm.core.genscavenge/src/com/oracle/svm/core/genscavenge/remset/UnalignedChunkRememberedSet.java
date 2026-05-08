@@ -52,8 +52,8 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
@@ -93,7 +93,8 @@ final class UnalignedChunkRememberedSet {
         UnsignedWord headerSize = getCardTableStartOffset();
         UnsignedWord objectStartOffsetSize = Word.unsigned(sizeOfObjectStartOffsetField());
         UnsignedWord alignedObjectStartOffsetSize = UnsignedUtils.roundUp(objectStartOffsetSize, alignment);
-        UnsignedWord ctAndObjSize = chunk.getEndOffset().subtract(headerSize).subtract(alignedObjectStartOffsetSize);
+        UnsignedWord topOffset = chunk.getTopOffset(HeapChunk.CHUNK_HEADER_TOP_IDENTITY);
+        UnsignedWord ctAndObjSize = topOffset.subtract(headerSize).subtract(alignedObjectStartOffsetSize);
 
         /*
          * The combined card table and object size is roundUp(objSize / BYTES_COVERED_BY_ENTRY,
@@ -103,7 +104,7 @@ final class UnalignedChunkRememberedSet {
         UnsignedWord objSizeWithCtAlignment = ctAndObjSize.multiply(CardTable.BYTES_COVERED_BY_ENTRY).unsignedDivide(CardTable.BYTES_COVERED_BY_ENTRY + 1);
         UnsignedWord objSize = UnsignedUtils.roundDown(objSizeWithCtAlignment, alignment);
 
-        UnsignedWord objectStartOffset = HeapChunk.getEndOffset(chunk).subtract(objSize);
+        UnsignedWord objectStartOffset = topOffset.subtract(objSize);
 
         assert objectStartOffset.equal(getOffsetForObject(HeapChunk.asPointer(chunk).add(objectStartOffset)));
 

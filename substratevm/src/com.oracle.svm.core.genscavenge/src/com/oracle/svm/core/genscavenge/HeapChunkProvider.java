@@ -229,13 +229,15 @@ final class HeapChunkProvider {
     @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     UnalignedHeader produceUnalignedChunk(UnsignedWord objectSize) {
         UnsignedWord chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objectSize);
+        ChunkBasedCommittedMemoryProvider memoryProvider = ChunkBasedCommittedMemoryProvider.get();
+        UnsignedWord committedChunkSize = UnsignedUtils.roundUp(chunkSize, memoryProvider.getGranularity());
 
-        UnalignedHeader result = (UnalignedHeader) ChunkBasedCommittedMemoryProvider.get().allocateUnalignedChunk(chunkSize);
-        UnalignedHeapChunk.initialize(result, chunkSize, objectSize);
-        assert objectSize.belowOrEqual(HeapChunk.availableObjectMemory(result)) : "UnalignedHeapChunk insufficient for requested object";
+        UnalignedHeader result = (UnalignedHeader) memoryProvider.allocateUnalignedChunk(committedChunkSize);
+        UnalignedHeapChunk.initialize(result, committedChunkSize, objectSize);
+        assert HeapChunk.getTopPointer(result).belowOrEqual(HeapChunk.getEndPointer(result)) : "UnalignedHeapChunk insufficient for requested object";
 
         /* Avoid zapping if unaligned chunks are pre-zeroed. */
-        if (!ChunkBasedCommittedMemoryProvider.get().areUnalignedChunksZeroed() && HeapParameters.getZapProducedHeapChunks()) {
+        if (!memoryProvider.areUnalignedChunksZeroed() && HeapParameters.getZapProducedHeapChunks()) {
             zapUnusedObjectMemory(result, HeapParameters.getProducedHeapChunkZapWord());
         }
         return result;
