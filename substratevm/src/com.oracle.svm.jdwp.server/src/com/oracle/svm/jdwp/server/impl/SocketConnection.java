@@ -208,7 +208,7 @@ public final class SocketConnection implements Runnable {
          * Check that the byte array contains the complete packet
          */
         if (len > b.length) {
-            throw new IllegalArgumentException("Length mis-match");
+            throw new IllegalArgumentException("Length mismatch");
         }
 
         synchronized (sendLock) {
