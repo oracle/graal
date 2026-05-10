@@ -707,7 +707,7 @@ final class PolyglotLoggers {
 
         @Override
         public void setMessage(String message) {
-            throw new UnsupportedOperationException("Setting Messag is not supported.");
+            throw new UnsupportedOperationException("Setting Message is not supported.");
         }
 
         @SuppressWarnings("deprecation")
