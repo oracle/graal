@@ -1486,7 +1486,7 @@ _tckHelpSuffix = """
     TCK options:
 
       --tck-configuration                  configuration {compiler|debugger|default}
-          compile                          executes TCK tests with immediate comilation
+          compile                          executes TCK tests with immediate compilation
           debugger                         executes TCK tests with enabled debugalot instrument
           default                          executes TCK tests
 """
