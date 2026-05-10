@@ -75,7 +75,7 @@ public final class Target_sun_nio_ch_TruffleSelector {
              * sun.nio.ch.EPollSelectorImpl.processUpdateQueue error numbers from the native
              * sun.nio.ch.EPoll.ctl are just ignored. So we do the same here.
              */
-            LibsState.getLogger().log(Level.WARNING, "In io.register the following exception was ingored: ", e);
+            LibsState.getLogger().log(Level.WARNING, "In io.register the following exception was ignored: ", e);
         }
     }
 
