@@ -178,7 +178,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
                 ByteBuffer pkg = reader.getRawString(CompressedIndexes.readInt(input));
                 ByteBuffer clazz = reader.getRawString(CompressedIndexes.readInt(input));
                 if (input.position() > indiciesLimit) {
-                    throw new RuntimeException("Missing indicies");
+                    throw new RuntimeException("Missing indices");
                 }
                 // 'L' (pkg '/')? clazz
                 output.put((byte) 'L');
@@ -195,7 +195,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
             transfert(desc, runStart, output, runLength);
         }
         if (input.position() < indiciesLimit) {
-            BasicImageReader.LOGGER.warning("StringSharingDecompressor: " + (indiciesLimit - input.position()) + " indicies bytes remain unused after reconstructing descriptor");
+            BasicImageReader.LOGGER.warning("StringSharingDecompressor: " + (indiciesLimit - input.position()) + " indices bytes remain unused after reconstructing descriptor");
             input.position(indiciesLimit);
         }
     }
