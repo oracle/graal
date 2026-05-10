@@ -47,7 +47,7 @@ public class DataBinarySourceTest extends DataSourceTest {
             FileChannel fch2 = FileChannel.open(f.toPath(), StandardOpenOption.READ);
             return new BinarySource(null, fch2);
         } catch (URISyntaxException ex) {
-            throw new AssertionError("Canot convert " + bigv, ex);
+            throw new AssertionError("Cannot convert " + bigv, ex);
         }
     }
 }
