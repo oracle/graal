@@ -351,7 +351,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append("Method info for ").append(method).append(System.lineSeparator());
-            sb.append("\tValid asserion usage ?").append(correctAssertionMethod).append(System.lineSeparator());
+            sb.append("\tValid assertion usage ?").append(correctAssertionMethod).append(System.lineSeparator());
             sb.append("\troot?").append(root).append(System.lineSeparator());
             sb.append("\tcalls assertion(transitively)?").append(callsAssertionTransitively).append(System.lineSeparator());
             sb.append("\tValid use as assertion method based on paths?").append(allPathsAssertionDominated).append(System.lineSeparator());
