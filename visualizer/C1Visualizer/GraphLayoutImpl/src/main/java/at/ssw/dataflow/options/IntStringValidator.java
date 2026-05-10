@@ -60,7 +60,7 @@ public class IntStringValidator implements Validator{
                 error=null;
                 return true;
             }
-            error="Value not within intervall: ["+min+","+max+"]";
+            error="Value not within interval: ["+min+","+max+"]";
             return false;
         }catch(Exception e){
             error="No integer value.";
