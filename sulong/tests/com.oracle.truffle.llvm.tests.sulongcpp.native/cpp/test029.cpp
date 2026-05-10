@@ -38,7 +38,7 @@ void bar() throw() {
     try {
         foo();
     } catch (...) {
-        printf("Hander in bar");
+        printf("Handler in bar");
     }
 }
 

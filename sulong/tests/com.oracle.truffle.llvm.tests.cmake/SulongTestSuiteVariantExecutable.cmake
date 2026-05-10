@@ -63,7 +63,7 @@ macro(setupOptions)
         string(APPEND CMAKE_CXX_FLAGS " -${SULONG_CURRENT_OPT_LEVEL}")
     elseif(SULONG_CURRENT_OPT_LEVEL)
         # non-empty but not in the known list
-        message(FATAL_ERROR "Unknonw opt-level: ${SULONG_CURRENT_OPT_LEVEL}")
+        message(FATAL_ERROR "Unknown opt-level: ${SULONG_CURRENT_OPT_LEVEL}")
     endif()
 
     if(SULONG_CURRENT_POST_OPT)
