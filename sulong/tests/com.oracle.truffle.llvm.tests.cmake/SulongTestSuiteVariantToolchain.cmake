@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2026, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -59,7 +59,7 @@ macro(setupOptions)
         # do nothing
     elseif(SULONG_CURRENT_OPT_LEVEL)
         # non-empty but not in the known list
-        message(FATAL_ERROR "Unknonw opt-level: ${SULONG_CURRENT_OPT_LEVEL}")
+        message(FATAL_ERROR "Unknown opt-level: ${SULONG_CURRENT_OPT_LEVEL}")
     endif()
 
     # verbose output to help debugging problems with the toolchain wrappers

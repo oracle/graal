@@ -328,7 +328,7 @@ public class ProgressReporterJsonHelper {
             } else if (value instanceof Long v) {
                 helper.putAnalysisResults(this, v);
             } else {
-                VMError.shouldNotReachHere("Imcompatible type of 'value': " + value.getClass());
+                VMError.shouldNotReachHere("Incompatible type of 'value': " + value.getClass());
             }
         }
     }
@@ -371,7 +371,7 @@ public class ProgressReporterJsonHelper {
             if (value instanceof String || value instanceof Boolean || value instanceof List || value == null) {
                 helper.putGeneralInfo(this, value);
             } else {
-                VMError.shouldNotReachHere("Imcompatible type of 'value': " + value.getClass());
+                VMError.shouldNotReachHere("Incompatible type of 'value': " + value.getClass());
             }
         }
     }
