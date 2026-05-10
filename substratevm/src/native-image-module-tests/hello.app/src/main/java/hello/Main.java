@@ -28,9 +28,10 @@ import hello.lib.Greeter;
 
 import java.io.IOException;
 import java.lang.module.Configuration;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,7 +39,12 @@ import java.util.stream.Collectors;
 import jdk.dynalink.StandardOperation;
 
 public class Main {
-    public static void main(String[] args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public static void main(String[] args) throws Exception {
+        if (args.length > 0 && "print".equals(args[0])) {
+            List<String> toPrint = Arrays.asList(args).subList(1, args.length);
+            System.out.println(toPrint);
+            System.exit(0);
+        }
         failIfAssertionsAreDisabled();
 
         Module helloAppModule = Main.class.getModule();
@@ -62,6 +68,8 @@ public class Main {
 
         /* Use classes from Java module jdk.dynalink (which the builder does NOT depend on) */
         System.out.println("jdk.dynalink.StandardOperation enum values: " + String.join(" ", Arrays.stream(StandardOperation.values()).map(StandardOperation::toString).collect(Collectors.joining(" "))));
+
+        testPassingArguments();
     }
 
     private static void failIfAssertionsAreDisabled() {
@@ -155,5 +163,24 @@ public class Main {
         try (Scanner s = new Scanner(Greeter.class.getResourceAsStream("/" + sameResourcePathName))) {
             assert helloLibModuleResourceContents.equals(s.nextLine()) : "Class.getResourceAsStream(String) result differs from Module.getResourceAsStream(String) result";
         }
+    }
+
+    private static void testPassingArguments() throws Exception {
+        Optional<String> cmd = ProcessHandle.current().info().command();
+        if (cmd.isEmpty() || cmd.get().endsWith("java") || cmd.get().endsWith("java.exe")) {
+            return;
+        }
+        System.err.println("Now testing passing arguments to " + cmd);
+        String t1 = "使";
+        String t2 = "用";
+        String t3 = "者";
+        Process proc = new ProcessBuilder(cmd.get(), "print", t1, t2, t3).start();
+        int exitCode = proc.waitFor();
+        assert exitCode == 0 : "Can't invoke " + cmd.get();
+
+        List<String> lines = proc.inputReader().lines().toList();
+        assert lines.size() == 1 : "Assuming one line " + lines;
+        // System.err.println("got: " + lines.get(0));
+        assert lines.get(0).equals("[" + t1 + ", " + t2 + ", " + t3 + "]");
     }
 }

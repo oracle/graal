@@ -43,11 +43,15 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
+import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -272,7 +276,11 @@ public class JavaMainWrapper {
              * exceptions in a InvocationTargetException.
              */
             JavaMainSupport mainSupport = ImageSingletons.lookup(JavaMainSupport.class);
-            invokeMain(mainSupport.mainArgs);
+            String[] args = mainSupport.mainArgs;
+            if (Platform.includedIn(Platform.WINDOWS.class)) {
+                args = WindowsArguments.alterArgs(args);
+            }
+            invokeMain(args);
 
             return 0;
         } catch (Throwable ex) {
@@ -284,6 +292,88 @@ public class JavaMainWrapper {
              * HotSpot VM.
              */
             return 1;
+        }
+    }
+
+    @CContext(WindowsArguments.Directives.class)
+    final class WindowsArguments {
+
+        private WindowsArguments() {
+        }
+
+        public static String[] alterArgs(String[] originalArgs) {
+            return readCommandLineArgs();
+        }
+
+        private static final int WCHAR_SIZE = 2;
+
+        private static String[] readCommandLineArgs() {
+            var cmd = GetCommandLineW();
+
+            CIntPointer numOfArgs = StackValue.get(Long.BYTES);
+
+            WCharPointerPointer args = CommandLineToArgvW(cmd, numOfArgs);
+            try {
+                var numArgs = numOfArgs.read();
+
+                var results = new String[numArgs - 1];
+                for (var i = 0; i < results.length; i++) {
+                    var arg = args.read(i + 1);
+                    results[i] = toJavaString(arg);
+                }
+
+                return results;
+            } finally {
+                LocalFree(args);
+            }
+        }
+
+        private static String toJavaString(WCharPointer arg) {
+            return CTypeConversion.asByteBuffer(arg, wcslen(arg) * WCHAR_SIZE)
+                    .order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                    .asCharBuffer()
+                    .toString();
+        }
+
+        @CPointerTo(nameOfCType = "wchar_t")
+        private interface WCharPointer extends PointerBase {
+        }
+
+        @CPointerTo(WCharPointer.class)
+        private interface WCharPointerPointer extends PointerBase {
+
+            WCharPointer read(int index);
+        }
+
+        @CFunction
+        private static native WCharPointer GetCommandLineW();
+
+        @CFunction
+        private static native WCharPointerPointer CommandLineToArgvW(
+                WCharPointer cmdLine, CIntPointer numArgsOut);
+
+        @CFunction
+        private static native int wcslen(WCharPointer str);
+
+        @CFunction
+        private static native void LocalFree(PointerBase p);
+
+        static final class Directives implements CContext.Directives {
+
+            @Override
+            public boolean isInConfiguration() {
+                return Platform.includedIn(Platform.WINDOWS.class);
+            }
+
+            @Override
+            public List<String> getHeaderFiles() {
+                return List.of("<windows.h>", "<wchar.h>");
+            }
+
+            @Override
+            public List<String> getLibraries() {
+                return List.of("Kernel32", "Shell32");
+            }
         }
     }
 
