@@ -819,7 +819,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
         if (callsite.getOverriddenParent() != null) {
             EconomicMap<String, Object> parentMap = replacements.get(callsite.getOverriddenParent());
-            assert parentMap != null : "there must already exist a JSON map for the overriden parent";
+            assert parentMap != null : "there must already exist a JSON map for the overridden parent";
             List<Object> parentInvokesProperty = (List<Object>) parentMap.get(INVOKES_PROPERTY);
             if (parentInvokesProperty == null) {
                 parentInvokesProperty = new ArrayList<>();
