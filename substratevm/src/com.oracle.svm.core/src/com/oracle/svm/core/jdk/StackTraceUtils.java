@@ -112,8 +112,8 @@ public class StackTraceUtils {
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
-    public static Class<?>[] getClassContext(int skip, Pointer startSP) {
-        GetClassContextVisitor visitor = new GetClassContextVisitor(skip);
+    public static Class<?>[] getClassContext(Pointer startSP) {
+        GetClassContextVisitor visitor = new GetClassContextVisitor();
         JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.trace.toArray(NO_CLASSES);
     }
@@ -382,19 +382,15 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
 }
 
 class GetClassContextVisitor extends JavaStackFrameVisitor {
-    private int skip;
     final ArrayList<Class<?>> trace;
 
-    GetClassContextVisitor(final int skip) {
+    GetClassContextVisitor() {
         trace = new ArrayList<>();
-        this.skip = skip;
     }
 
     @Override
     public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
-        if (skip > 0) {
-            skip--;
-        } else if (StackTraceUtils.shouldShowFrame(frameSourceInfo, true, false, false)) {
+        if (StackTraceUtils.shouldShowFrame(frameSourceInfo, true, false, false)) {
             trace.add(frameSourceInfo.getSourceClass());
         }
         return true;
