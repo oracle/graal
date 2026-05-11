@@ -25,6 +25,7 @@
 
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.jdk.StackTraceUtils.shouldShowFrame;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.StackWalker.Option;
@@ -110,7 +111,7 @@ final class Target_java_lang_StackWalker {
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), new JavaStackFrameVisitor() {
             @Override
             public boolean visitFrame(FrameSourceInfo frameInfo, Pointer sp) {
-                if (StackTraceUtils.shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
+                if (shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames)) {
                     action.accept(new StackFrameImpl(frameInfo));
                 }
                 return true;
@@ -211,7 +212,7 @@ final class Target_java_lang_StackWalker {
                     return false;
                 }
 
-                if (vFrame != null && shouldShowFrame(vFrame, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
+                if (vFrame != null && shouldShowFrame(vFrame, showHiddenFrames, showReflectFrames)) {
                     action.accept(new StackFrameImpl(vFrame));
                     return true;
                 }
@@ -255,10 +256,6 @@ final class Target_java_lang_StackWalker {
         @Uninterruptible(reason = "Wraps the now safe call to query frame information.", calleeMustBe = false)
         protected static CodeInfoQueryResult queryCodeInfoInterruptibly(CodeInfo info, CodePointer ip) {
             return CodeInfoTable.lookupCodeInfoQueryResult(info, ip);
-        }
-
-        private static boolean shouldShowFrame(FrameSourceInfo frameInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
-            return StackTraceUtils.shouldShowFrame(frameInfo, showLambdaFrames, showReflectFrames, showHiddenFrames);
         }
 
         protected abstract void invalidate();

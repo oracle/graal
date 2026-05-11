@@ -136,11 +136,11 @@ public class StackTraceUtils {
      * true if so, and false otherwise. Backtracing means that there are no lambda or hidden frames
      * present. To learn more about backtracing, refer to {@link BacktraceDecoder}. For more
      * fine-grained control over what is displayed, see
-     * {@link #shouldShowFrame(Class, String, boolean, boolean, boolean)}.
+     * {@link #shouldShowFrame(Class, String, boolean, boolean)}.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean shouldShowFrame(Class<?> clazz, String method) {
-        return shouldShowFrame(clazz, method, false, true, false);
+        return shouldShowFrame(clazz, method, false, true);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -149,8 +149,8 @@ public class StackTraceUtils {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean shouldShowFrame(FrameSourceInfo frameSourceInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
-        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName(), showLambdaFrames, showReflectFrames, showHiddenFrames);
+    public static boolean shouldShowFrame(FrameSourceInfo frameSourceInfo, boolean showLambdaFrames, boolean showReflectFrames) {
+        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName(), showLambdaFrames, showReflectFrames);
     }
 
     /*
@@ -159,12 +159,7 @@ public class StackTraceUtils {
      * results than stack walking at run time.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean shouldShowFrame(Class<?> clazz, String methodName, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
-        if (showHiddenFrames) {
-            /* No filtering, all frames including internal frames are shown. */
-            return true;
-        }
-
+    public static boolean shouldShowFrame(Class<?> clazz, String methodName, boolean showLambdaFrames, boolean showReflectFrames) {
         if (isVMInternalFrameClass(clazz)) {
             return false;
         }
@@ -212,11 +207,7 @@ public class StackTraceUtils {
      * Note that this method is duplicated (and commented) above for stack walking at run time. Make
      * sure to always keep both versions in sync.
      */
-    public static boolean shouldShowFrame(MetaAccessProvider metaAccess, ResolvedJavaMethod method, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
-        if (showHiddenFrames) {
-            return true;
-        }
-
+    public static boolean shouldShowFrame(MetaAccessProvider metaAccess, ResolvedJavaMethod method, boolean showLambdaFrames, boolean showReflectFrames) {
         ResolvedJavaType clazz = method.getDeclaringClass();
         if (AnnotationUtil.isAnnotationPresent(clazz, InternalVMMethod.class)) {
             return false;
@@ -236,7 +227,7 @@ public class StackTraceUtils {
     }
 
     public static boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, ResolvedJavaMethod method) {
-        return !shouldShowFrame(metaAccess, method, true, false, false);
+        return !shouldShowFrame(metaAccess, method, true, false);
     }
 
     public static ClassLoader latestUserDefinedClassLoader(Pointer startSP) {
@@ -361,7 +352,7 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
             }
             return true;
 
-        } else if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, showLambdaFrames, false, false)) {
+        } else if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, showLambdaFrames, false)) {
             /*
              * Always ignore the frame. It is an internal frame of the VM or a frame related to
              * reflection.
@@ -405,7 +396,7 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
 
     @Override
     public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
-        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true, true, false)) {
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true, true)) {
             // Skip internal frames.
             return true;
         }
