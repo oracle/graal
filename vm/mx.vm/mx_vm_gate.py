@@ -75,6 +75,7 @@ class VmGateTasks:
     truffle_native_tck_js = 'truffle-native-tck-js'
     truffle_native_tck_python = 'truffle-native-tck-python'
     truffle_native_tck_wasm = 'truffle-native-tck-wasm'
+    truffle_isolate_build_unittest_library = 'truffle_isolate_build_unittest_library'
     truffle_isolate_internal_unittest = 'truffle_isolate_internal_unittest'
     truffle_isolate_external_unittest = 'truffle_isolate_external_unittest'
     maven_downloader = 'maven-downloader'
@@ -773,13 +774,41 @@ def gate_truffle_native_tck_wasm(tasks):
                                  additional_options=['-Djdk.internal.lambda.disableEagerInitialization=false'] + wasm_extensions.libwasmvm_dynamic_build_args())
 
 def gate_polyglot_isolate(tasks):
+
+    class _DisableOptimizedTruffleRuntime:
+
+        def __enter__(self):
+            self.orig = mx_truffle.TruffleUnittestConfig._use_optimized_runtime
+            mx_truffle.TruffleUnittestConfig._use_optimized_runtime = False
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            mx_truffle.TruffleUnittestConfig._use_optimized_runtime = self.orig
+            return self
+
+        def runtime_options(self):
+            return ["-Dtruffle.UseFallbackRuntime=true", "-Dpolyglot.engine.WarnInterpreterOnly=false"]
+
+    with Task('TruffleIsolate:build-unittest-library', tasks, tags=[VmGateTasks.truffle_isolate_build_unittest_library]) as t:
+        if t:
+            _build_unittest_polyglot_isolate_library()
+
     with Task('TruffleIsolate:internal:unittest', tasks, tags=[VmGateTasks.truffle_isolate_internal_unittest]) as t:
         if t:
-            _polyglot_isolate_unittest('internal')
+            _polyglot_isolate_hotspot_unittest('internal')
+            _polyglot_isolate_native_unittest('internal')
+            with _DisableOptimizedTruffleRuntime() as fallback:
+                _polyglot_isolate_hotspot_unittest('internal', fallback.runtime_options())
+                _polyglot_isolate_native_unittest('internal', fallback.runtime_options())
 
     with Task('TruffleIsolate:external:unittest', tasks, tags=[VmGateTasks.truffle_isolate_external_unittest]) as t:
         if t:
-            _polyglot_isolate_unittest('external')
+            _polyglot_isolate_hotspot_unittest('external')
+            _polyglot_isolate_native_unittest('external')
+            with _DisableOptimizedTruffleRuntime() as fallback:
+                _polyglot_isolate_hotspot_unittest('external', fallback.runtime_options())
+                _polyglot_isolate_native_unittest('external', fallback.runtime_options())
+
 
 def gate_maven(tasks):
     # Runs truffle deploy to maven tests
@@ -877,19 +906,22 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
             build_deps = build_deps + additional_deps
         extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
         native_image(build_options + extra_image_args)
-        artifacts_file_path = join(image_dir, 'build-artifacts.json')
-        if not exists(artifacts_file_path):
-            mx.abort(f'{artifacts_file_path} for tests image not found.')
-        with open(artifacts_file_path, encoding='utf-8') as f:
-            artifacts = json.load(f)
-        kind = 'shared_libraries' if shared_lib else 'executables'
-        if kind not in artifacts:
-            mx.abort(f'{kind} not found in {artifacts_file_path}.')
-        if len(artifacts[kind]) != 1:
-            mx.abort(f"Expected {kind} list with one element, found {len(artifacts[kind])}: {', '.join(artifacts[kind])}.")
-        tests_image_path = join(image_dir, artifacts[kind][0])
+        tests_image_path = _find_library(image_dir, shared_lib)
         mx.logv(f'Test image path: {tests_image_path}')
         return tests_image_path, unittests_file
+
+def _find_library(image_dir, shared_lib):
+    artifacts_file_path = join(image_dir, 'build-artifacts.json')
+    if not exists(artifacts_file_path):
+        mx.abort(f'{artifacts_file_path} for tests image not found.')
+    with open(artifacts_file_path, encoding='utf-8') as f:
+        artifacts = json.load(f)
+    kind = 'shared_libraries' if shared_lib else 'executables'
+    if kind not in artifacts:
+        mx.abort(f'{kind} not found in {artifacts_file_path}.')
+    if len(artifacts[kind]) != 1:
+        mx.abort(f"Expected {kind} list with one element, found {len(artifacts[kind])}: {', '.join(artifacts[kind])}.")
+    return join(image_dir, artifacts[kind][0])
 
 def gate_truffle_native_tck_sl(tasks):
     with Task('SL Truffle Native TCK', tasks, tags=[VmGateTasks.truffle_native_tck_sl]) as t:
@@ -929,6 +961,37 @@ def _build_polyglot_isolate_library(target_folder, dist_names, native_image_opti
                 shared_lib=True,
             )[0]
 
+_POLYGLOT_ISOLATE_SUPPORTED_TESTS = [
+    'com.oracle.truffle.api.test',
+    'com.oracle.truffle.tck.tests',
+    'com.oracle.truffle.sl.test'
+]
+
+def _resolve_unittest_polyglot_isolate_library_folder():
+    return os.path.join(_suite.get_mx_output_dir(platformDependent=True, jdkDependent=False), 'unittest-polyglot-isolate-library')
+
+def _build_unittest_polyglot_isolate_library():
+    truffle_isolate_guest_options = [
+        '--enable-url-protocols=http',
+        '--add-opens org.graalvm.polyglot/org.graalvm.polyglot=ALL-UNNAMED',
+        '--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.os=ALL-UNNAMED',
+        *mx_sdk_vm_impl.svm_experimental_options([
+            # Disable a native-image check of `HostSpot` in element name. JFluid library used by unittest uses such a names.
+            # For example, org.graalvm.visualvm.lib.jfluid.heap.NearestGCRoot#initHotSpotReference
+            '-H:-VerifyNamingConventions',
+        ])
+    ]
+    mx_truffle.append_unittest_image_build_time_options(truffle_isolate_guest_options)
+    dists = [
+        'truffle:TRUFFLE_SL_TCK',
+        'truffle:TRUFFLE_TCK_INSTRUMENTATION',
+        *mx_truffle.resolve_truffle_dist_names()
+    ]
+    target_folder = _resolve_unittest_polyglot_isolate_library_folder()
+    shutil.rmtree(target_folder, ignore_errors=True)
+    os.makedirs(target_folder, exist_ok=True)
+    _build_polyglot_isolate_library(target_folder, dists, truffle_isolate_guest_options, _POLYGLOT_ISOLATE_SUPPORTED_TESTS)
+
 def _isolate_mode_vm_options(isolate_mode):
     if isolate_mode == 'external':
         return ["-Dpolyglot.engine.AllowExperimentalOptions=true", "-Dpolyglot.engine.IsolateMode=external"]
@@ -937,74 +1000,68 @@ def _isolate_mode_vm_options(isolate_mode):
     else:
         mx.abort(f"Invalid isolate_mode {isolate_mode}")
 
-def _polyglot_isolate_unittest(isolate_mode):
-    svmbuild = mkdtemp()
-    try:
-        isolate_mode_vm_options = _isolate_mode_vm_options(isolate_mode)
-        truffle_isolate_common_options = [
-                                             '--enable-url-protocols=http',
-                                             '--add-opens org.graalvm.polyglot/org.graalvm.polyglot=ALL-UNNAMED',
-                                         ] + mx_sdk_vm_impl.svm_experimental_options([
+def _isolate_library_vm_options():
+    tests_image_path = _find_library(_resolve_unittest_polyglot_isolate_library_folder(), True)
+    isolate_launcher = next(mx.distribution('sdk:NATIVEBRIDGE_LAUNCHER_RESOURCES').getArchivableResults(use_relpath=False))[0]
+    return [
+        "-Dpolyglot.engine.AllowExperimentalOptions=true",
+        "-Dpolyglot.engine.IsolateLibrary=" + tests_image_path,
+        "-Dpolyglot.engine.IsolateLauncher=" + isolate_launcher
+    ]
+
+def _polyglot_isolate_hotspot_unittest(isolate_mode, truffle_runtime_options=None):
+    if not truffle_runtime_options:
+        truffle_runtime_options = []
+    isolate_mode_vm_options = _isolate_mode_vm_options(isolate_mode)
+    extra_vm_arguments_isolate_library = _isolate_library_vm_options()
+    extra_vm_arguments_spawn_isolate = ["-Dpolyglot.engine.AllowExperimentalOptions=true",
+                                        "-Dpolyglot.engine.SpawnIsolate=true"]
+    unittest_args = ['--verbose']
+
+    mx_unittest.unittest(
+        unittest_args + extra_vm_arguments_isolate_library + isolate_mode_vm_options + truffle_runtime_options + ['com.oracle.truffle.api.test.polyglot.isolate'])
+    mx_unittest.unittest(unittest_args + extra_vm_arguments_isolate_library + isolate_mode_vm_options + truffle_runtime_options + extra_vm_arguments_spawn_isolate + [
+        'com.oracle.truffle.sandbox.test.ResourceLimitsTest',
+        'com.oracle.truffle.sandbox.test.HeapMemoryLimitTest'])
+    unittest_args_tck = unittest_args + ['-Dtck.inlineVerifierInstrument=false']
+    mx_unittest.unittest(
+        unittest_args_tck + extra_vm_arguments_isolate_library + isolate_mode_vm_options + truffle_runtime_options + extra_vm_arguments_spawn_isolate + _POLYGLOT_ISOLATE_SUPPORTED_TESTS)
+
+def _polyglot_isolate_native_unittest(isolate_mode, truffle_runtime_options=None):
+    jdk = mx.get_jdk(tag="graalvm")
+    native_image_path = jdk.exe_path("native-image")
+    if not os.path.exists(native_image_path):
+        mx.warn(f"Skipping polyglot isolate native host unittests because native-image does not exist in JDK {jdk.home}")
+        return
+
+    if not truffle_runtime_options:
+        truffle_runtime_options = []
+
+    truffle_isolate_options = [
+        '--enable-url-protocols=http',
+        '--add-opens org.graalvm.polyglot/org.graalvm.polyglot=ALL-UNNAMED',
+        *mx_sdk_vm_impl.svm_experimental_options([
             # Disable a native-image check of `HostSpot` in element name. JFluid library used by unittest uses such a names.
             # For example, org.graalvm.visualvm.lib.jfluid.heap.NearestGCRoot#initHotSpotReference
-            '-H:-VerifyNamingConventions',
+            '-H:-VerifyNamingConventions'
         ])
-        truffle_isolate_guest_options = truffle_isolate_common_options + [
-            '--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.os=ALL-UNNAMED',
-        ]
-        mx_truffle.append_unittest_image_build_time_options(truffle_isolate_guest_options)
-        tests = ['com.oracle.truffle.api.test', 'com.oracle.truffle.tck.tests', 'com.oracle.truffle.sl.test']
-        tests_image_path = _build_polyglot_isolate_library(svmbuild,
-                                                           [
-                                                               'truffle:TRUFFLE_SL_TCK',
-                                                               'truffle:TRUFFLE_TCK_INSTRUMENTATION'
-                                                           ] + mx_truffle.resolve_truffle_dist_names(),
-                                                           truffle_isolate_guest_options,
-                                                           tests)
-        isolate_launcher = next(mx.distribution('sdk:NATIVEBRIDGE_LAUNCHER_RESOURCES').getArchivableResults(use_relpath=False))[0]
-        extra_vm_arguments_isolate_library = ["-Dpolyglot.engine.AllowExperimentalOptions=true",
-                                              '-Dpolyglot.engine.IsolateLibrary=' + tests_image_path,
-                                              '-Dpolyglot.engine.IsolateLauncher=' + isolate_launcher]
-        extra_vm_arguments_spawn_isolate = ["-Dpolyglot.engine.AllowExperimentalOptions=true",
-                                            "-Dpolyglot.engine.SpawnIsolate=true"]
-        unittest_args = ['--verbose']
-
-        truffle_runtime_modes = [
-            # Run with default options using optimized Truffle runtime
-            [],
-            # Run using fallback Truffle runtime
-            ["-Dtruffle.UseFallbackRuntime=true", "-Dpolyglot.engine.WarnInterpreterOnly=false"]
-        ]
-
-        for truffle_runtime_options in truffle_runtime_modes:
-            mx_unittest.unittest(
-                unittest_args + extra_vm_arguments_isolate_library + isolate_mode_vm_options + truffle_runtime_options + ['com.oracle.truffle.api.test.polyglot.isolate'])
-            mx_unittest.unittest(unittest_args + extra_vm_arguments_isolate_library + isolate_mode_vm_options + truffle_runtime_options + extra_vm_arguments_spawn_isolate + [
-                'com.oracle.truffle.sandbox.test.ResourceLimitsTest',
-                'com.oracle.truffle.sandbox.test.HeapMemoryLimitTest'])
-            unittest_args_tck = unittest_args + ['-Dtck.inlineVerifierInstrument=false']
-            mx_unittest.unittest(
-                unittest_args_tck + extra_vm_arguments_isolate_library + isolate_mode_vm_options + truffle_runtime_options + extra_vm_arguments_spawn_isolate + tests)
-
-            # Run PolyglotIsolateTest in native-to-native with external truffle isolate library
-            truffle_isolate_options = truffle_isolate_common_options
-            vm_telemetry_options = ['--enable-monitoring=jvmstat', '--enable-monitoring=threaddump']
-            args = [
-                'com.oracle.truffle.api.test.polyglot.isolate',
-                '--build-args',
-                *vm_telemetry_options,
-                *truffle_isolate_options,
-                *isolate_mode_vm_options,
-                *truffle_runtime_options,
-                '--run-args',
-                *extra_vm_arguments_isolate_library,
-                *isolate_mode_vm_options,
-                *truffle_runtime_options,
-            ]
-            mx_truffle.native_truffle_unittest(args)
-    finally:
-        if not mx._opts.verbose:
-            mx.rmtree(svmbuild)
+    ]
+    vm_telemetry_options = ['--enable-monitoring=jvmstat', '--enable-monitoring=threaddump']
+    isolate_mode_vm_options = _isolate_mode_vm_options(isolate_mode)
+    extra_vm_arguments_isolate_library = _isolate_library_vm_options()
+    args = [
+        'com.oracle.truffle.api.test.polyglot.isolate',
+        '--build-args',
+        *truffle_isolate_options,
+        *vm_telemetry_options,
+        *isolate_mode_vm_options,
+        *truffle_runtime_options,
+        '--run-args',
+        *extra_vm_arguments_isolate_library,
+        *isolate_mode_vm_options,
+        *truffle_runtime_options,
+    ]
+    mx_truffle.native_truffle_unittest(args)
 
 def run_truffle_maven_tests(use_classpath=False, use_native_image=False, use_isolate=False, always_use_fast_build=True, use_default_truffle_runtime=False,
                              select_id=None, truffle_runtime_version=None, polyglot_options=None):
