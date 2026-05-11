@@ -27,9 +27,6 @@ package com.oracle.svm.core.jdk;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.IsolateThread;
@@ -429,45 +426,5 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
 
     private static boolean isExtensionOrPlatformLoader(ClassLoader classLoader) {
         return classLoader == Target_jdk_internal_loader_ClassLoaders.platformClassLoader();
-    }
-}
-
-/* Reimplementation of JVM_GetStackAccessControlContext from JDK15 */
-class StackAccessControlContextVisitor extends JavaStackFrameVisitor {
-    final ArrayList<ProtectionDomain> localArray;
-    boolean isPrivileged;
-    ProtectionDomain previousProtectionDomain;
-    AccessControlContext privilegedContext;
-
-    StackAccessControlContextVisitor() {
-        localArray = new ArrayList<>();
-        isPrivileged = false;
-        privilegedContext = null;
-    }
-
-    @Override
-    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
-        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true, false, false)) {
-            return true;
-        }
-
-        Class<?> clazz = frameSourceInfo.getSourceClass();
-        String method = frameSourceInfo.getSourceMethodName();
-
-        ProtectionDomain protectionDomain;
-        if (PrivilegedStack.length() > 0 && clazz.equals(AccessController.class) && method.equals("doPrivileged")) {
-            isPrivileged = true;
-            privilegedContext = PrivilegedStack.peekContext();
-            protectionDomain = PrivilegedStack.peekCaller().getProtectionDomain();
-        } else {
-            protectionDomain = clazz.getProtectionDomain();
-        }
-
-        if ((protectionDomain != null) && (previousProtectionDomain == null || !previousProtectionDomain.equals(protectionDomain))) {
-            localArray.add(protectionDomain);
-            previousProtectionDomain = protectionDomain;
-        }
-
-        return !isPrivileged;
     }
 }
