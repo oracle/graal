@@ -82,7 +82,7 @@ import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
+import com.oracle.svm.core.meta.SubstrateMethodRefStamp;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -353,7 +353,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         if (stamp instanceof RawPointerStamp) {
             return builder.rawPointerType();
         }
-        if (stamp instanceof SubstrateMethodPointerStamp) {
+        if (stamp instanceof SubstrateMethodRefStamp) {
             return builder.wordType();
         }
         if (stamp instanceof IllegalStamp) {
