@@ -372,7 +372,8 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
 
         @Override
         public String getTargetTriple() {
-            return "arm64" + LLVMTargetSpecific.super.getTargetTriple();
+            String archName = Platform.includedIn(Platform.LINUX.class) ? "aarch64" : "arm64";
+            return archName + LLVMTargetSpecific.super.getTargetTriple();
         }
     }
 }

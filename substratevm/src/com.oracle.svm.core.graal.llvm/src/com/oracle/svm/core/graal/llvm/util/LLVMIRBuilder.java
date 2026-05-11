@@ -257,7 +257,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         }
 
         private int value() {
-            if (this == GraalCallingConvention && Platform.includedIn(Platform.DARWIN.class) && Platform.includedIn(Platform.AARCH64.class)) {
+            if (this == GraalCallingConvention && Platform.includedIn(Platform.AARCH64.class)) {
                 return 0;
             }
             return value;
