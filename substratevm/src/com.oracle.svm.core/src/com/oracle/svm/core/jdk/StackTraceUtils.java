@@ -55,7 +55,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class StackTraceUtils {
 
-    private static final Class<?>[] NO_CLASSES = new Class<?>[0];
     private static final StackTraceElement[] NO_ELEMENTS = new StackTraceElement[0];
 
     /**
@@ -110,12 +109,6 @@ public class StackTraceUtils {
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
         JavaStackWalker.walkThread(isolateThread, startSP, endSP, Word.nullPointer(), visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
-    }
-
-    public static Class<?>[] getClassContext(Pointer startSP) {
-        GetClassContextVisitor visitor = new GetClassContextVisitor();
-        JavaStackWalker.walkCurrentThread(startSP, visitor);
-        return visitor.trace.toArray(NO_CLASSES);
     }
 
     /**
@@ -369,22 +362,6 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
             result = frameSourceInfo.getSourceClass();
             return false;
         }
-    }
-}
-
-class GetClassContextVisitor extends JavaStackFrameVisitor {
-    final ArrayList<Class<?>> trace;
-
-    GetClassContextVisitor() {
-        trace = new ArrayList<>();
-    }
-
-    @Override
-    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
-        if (StackTraceUtils.shouldShowFrame(frameSourceInfo, true, false, false)) {
-            trace.add(frameSourceInfo.getSourceClass());
-        }
-        return true;
     }
 }
 
