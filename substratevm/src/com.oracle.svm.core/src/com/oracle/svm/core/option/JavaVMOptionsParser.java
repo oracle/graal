@@ -150,7 +150,8 @@ public final class JavaVMOptionsParser {
 
     /// Parses implemented Java VM options and removes them from the returned list.
     ///
-    /// In legacy mode, parsing is limited to the regular `-Dkey` and `-Dkey=value` properties. HotSpot-style
+    /// In legacy mode, parsing is limited to the regular `-Dkey` and `-Dkey=value` properties.
+    /// HotSpot-style
     /// memory sizing `-X` options are handled later by [RuntimeOptionParser] in command-line order
     /// with their `-XX:` aliases.
     ///

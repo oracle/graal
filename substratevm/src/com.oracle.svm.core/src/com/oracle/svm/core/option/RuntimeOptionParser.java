@@ -85,7 +85,8 @@ public final class RuntimeOptionParser {
     /// returned array contains all arguments that were not consumed, i.e., were not recognized as
     /// options.
     ///
-    /// Note that the logic of whether to parse options must be in sync with [IsolateArgumentParser#shouldParseArguments].
+    /// Note that the logic of whether to parse options must be in sync with
+    /// [IsolateArgumentParser#shouldParseArguments].
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
         String[] args = initialArgs;
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {

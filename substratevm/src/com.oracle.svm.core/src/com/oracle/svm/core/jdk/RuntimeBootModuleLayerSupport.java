@@ -143,7 +143,8 @@ public final class RuntimeBootModuleLayerSupport {
     ///
     /// The flow is:
     ///
-    /// 1. Read the runtime-initialized `jdk.module.*` properties for the launcher-selected main module,
+    /// 1. Read the runtime-initialized `jdk.module.*` properties for the launcher-selected main
+    /// module,
     /// `--upgrade-module-path`, `--module-path`, `--add-modules`, `--add-reads`,
     /// `--add-exports`, `--add-opens`, and `--enable-native-access`.
     /// 2. Resolve only those roots that are not already part of the build-time boot layer. Modules

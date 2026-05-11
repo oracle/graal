@@ -237,8 +237,8 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
     private InterpreterResolvedJavaMethod resolveMethod(InterpreterResolvedJavaMethod method) {
         /*
          * This query asks which implementation a concrete receiver class would dispatch to for the
-         * seed method. Interface types do not own such a class dispatch table, and unrelated receiver
-         * classes may have an arbitrary method at the same vtable index.
+         * seed method. Interface types do not own such a class dispatch table, and unrelated
+         * receiver classes may have an arbitrary method at the same vtable index.
          */
         if (isInterface() || !method.getDeclaringClass().isAssignableFrom(this)) {
             return null;
@@ -262,8 +262,8 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
     private InterpreterResolvedJavaMethod resolveInterpreterDispatch(InterpreterResolvedJavaMethod method) {
         if (isArray()) {
             /*
-             * Interpreter virtual dispatch keeps array receivers on the seed method because arrays do
-             * not have an interpreter vtable.
+             * Interpreter virtual dispatch keeps array receivers on the seed method because arrays
+             * do not have an interpreter vtable.
              */
             return method;
         }

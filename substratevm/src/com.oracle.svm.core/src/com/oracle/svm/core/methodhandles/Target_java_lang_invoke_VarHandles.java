@@ -37,10 +37,11 @@ import jdk.internal.misc.Unsafe;
 final class Target_java_lang_invoke_VarHandles {
 
     /**
-     * Resolves the static field in {@code declaringClass} whose static field offset is {@code offset}
-     * and whose type is {@code fieldType}. Static fields are stored in separate primitive and object
-     * Native Image storage arrays; see {@link StaticFieldsSupport}. Fields using different arrays can
-     * therefore have the same numeric {@link Unsafe#staticFieldOffset(Field) static field offset}.
+     * Resolves the static field in {@code declaringClass} whose static field offset is
+     * {@code offset} and whose type is {@code fieldType}. Static fields are stored in separate
+     * primitive and object Native Image storage arrays; see {@link StaticFieldsSupport}. Fields
+     * using different arrays can therefore have the same numeric
+     * {@link Unsafe#staticFieldOffset(Field) static field offset}.
      */
     @Substitute
     static Field getStaticFieldFromBaseAndOffset(Class<?> declaringClass, long offset, Class<?> fieldType) {
