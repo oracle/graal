@@ -1725,7 +1725,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 // unpack foreign value it belongs to that context
                 return otherValue.delegate;
             } else {
-                return new OtherContextGuestObject(this, otherValue.delegate, valueContext);
+                // Preserve original context of the delegate when forwarding through third context
+                return new OtherContextGuestObject(this, otherValue.delegate, otherValue.delegateContext);
             }
         }
         assert value instanceof TruffleObject;
