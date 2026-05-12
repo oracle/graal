@@ -47,9 +47,6 @@ import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSu
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 
@@ -223,7 +220,6 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class PosixRawFileOperationFeature implements InternalFeature {
     @Override

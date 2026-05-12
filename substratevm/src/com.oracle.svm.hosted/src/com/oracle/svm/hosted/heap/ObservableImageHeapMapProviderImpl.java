@@ -82,7 +82,6 @@ public class ObservableImageHeapMapProviderImpl implements ObservableImageHeapMa
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 final class ObservableHeapMapFeature implements InternalFeature {
 
     @Override

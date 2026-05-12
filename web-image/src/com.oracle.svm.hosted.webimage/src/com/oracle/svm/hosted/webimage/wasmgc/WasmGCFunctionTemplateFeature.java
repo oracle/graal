@@ -87,7 +87,6 @@ import jdk.graal.compiler.nodes.UnreachableControlSinkNode;
  */
 @AutomaticallyRegisteredFeature
 @Platforms(WebImageWasmGCPlatform.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class WasmGCFunctionTemplateFeature implements InternalFeature {
     @Override
     public void afterAnalysis(Feature.AfterAnalysisAccess a) {

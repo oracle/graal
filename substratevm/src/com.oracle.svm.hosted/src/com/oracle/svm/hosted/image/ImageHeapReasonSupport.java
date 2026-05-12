@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.image;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -425,7 +424,6 @@ public class ImageHeapReasonSupport {
  * already registered.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class ImageHeapReasonSupportFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

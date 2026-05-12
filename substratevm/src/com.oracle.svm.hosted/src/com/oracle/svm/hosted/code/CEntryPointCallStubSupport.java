@@ -130,7 +130,6 @@ public final class CEntryPointCallStubSupport {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class CEntryPointCallStubFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess arg) {

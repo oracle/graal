@@ -95,15 +95,11 @@ public class LayeredAnnotationProcessor extends AbstractProcessor {
 
                             import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
                             import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-                            import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-                            import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
-                            import com.oracle.svm.shared.singletons.traits.SingletonTraits;
                             import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
                             import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
                             import com.oracle.svm.shared.util.ReflectionUtil;
 
                             @AutomaticallyRegisteredFeature
-                            @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
                             public class %4$s implements com.oracle.svm.core.feature.InternalFeature {
                                 @Override
                                 public boolean isInConfiguration(IsInConfigurationAccess access) {

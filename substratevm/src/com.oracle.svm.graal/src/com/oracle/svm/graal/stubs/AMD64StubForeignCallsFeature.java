@@ -38,9 +38,6 @@ import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.replacements.StringLatin1InflateNode;
 import jdk.graal.compiler.replacements.StringUTF16CompressNode;
@@ -100,7 +97,6 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 
 @AutomaticallyRegisteredFeature
 @Platforms(AMD64.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
 
     private static final EnumSet<CPUFeature> BASELINE = EnumSet.of(SSE2);

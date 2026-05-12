@@ -37,9 +37,6 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 public abstract class PlatformNativeLibrarySupport {
@@ -216,7 +213,6 @@ public abstract class PlatformNativeLibrarySupport {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class PlatformNativeLibrarySupportFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

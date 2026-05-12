@@ -89,7 +89,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 @AutomaticallyRegisteredFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class LLVMFeature implements InternalFeature {
 
     @Override
