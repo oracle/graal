@@ -33,12 +33,13 @@ import org.graalvm.nativeimage.StackValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.shared.Uninterruptible;
 
-@TargetClass(java.lang.System.class)
+@TargetClass(value = java.lang.System.class, onlyWith = NotCosmoLibCSupplier.class)
 final class Target_java_lang_System_Linux {
 
     @Substitute

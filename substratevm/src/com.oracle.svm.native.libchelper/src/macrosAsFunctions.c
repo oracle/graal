@@ -23,7 +23,7 @@
  * questions.
  */
 
-#if (defined(__APPLE__) || defined(__linux__))
+#if defined(__APPLE__) || defined(__linux__) || defined(__COSMOPOLITAN__)
 /*
  * Macros from <sys/select.h> made available as C functions.
  */
@@ -39,7 +39,7 @@ void sys_select_FD_ZERO(fd_set *set) {
 }
 #endif // (defined(__APPLE__) || defined(__linux__))
 
-#if (defined(__APPLE__) || defined(__linux__))
+#if defined(__APPLE__) || defined(__linux__) || defined(__COSMOPOLITAN__)
 /*
  * Macros from <sys/param.h> made available as C functions.
  */

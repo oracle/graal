@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -36,7 +37,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.PlatformTimeUtils;
 
-@AutomaticallyRegisteredImageSingleton(PlatformTimeUtils.class)
+@AutomaticallyRegisteredImageSingleton(value = PlatformTimeUtils.class, onlyWith = NotCosmoLibCSupplier.class)
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class PosixPlatformTimeUtils extends PlatformTimeUtils {
 

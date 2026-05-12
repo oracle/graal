@@ -24,7 +24,7 @@
  * questions.
  */
 
-#ifdef __linux__
+#if defined(__linux__)
 
 #include <sys/syscall.h>
 #include <sys/types.h>
@@ -40,5 +40,12 @@ pid_t getThreadId() {
   return (pid_t)syscall(SYS_gettid);
 }
 
+#elif defined(__COSMOPOLITAN__)
+#define _COSMO_SOURCE
+#include <unistd.h>
+
+pid_t getThreadId() {
+  return (pid_t)gettid();
+}
 #endif
 

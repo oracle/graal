@@ -511,13 +511,17 @@ public final class NativeLibraries {
     private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
         String libSuffix = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ? ".lib" : ".a";
-        for (String libraryPath : getLibraryPaths()) {
-            try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
+        for (String libraryPath0 : getLibraryPaths()) {
+            Path libraryPath = Path.of(libraryPath0);
+            if (!Files.exists(libraryPath) && SubstrateOptions.UseLibC.getValue().equals("cosmo")) {
+                continue;
+            }
+            try (Stream<Path> paths = Files.list(libraryPath)) {
                 paths.filter(Files::isRegularFile)
                                 .filter(path -> path.getFileName().toString().endsWith(libSuffix))
                                 .forEachOrdered(candidate -> allStaticLibs.put(candidate.getFileName(), candidate));
             } catch (IOException e) {
-                UserError.abort(e, "Invalid library path %s", libraryPath);
+                UserError.abort(e, "Invalid library path %s", libraryPath0);
             }
         }
         return allStaticLibs;

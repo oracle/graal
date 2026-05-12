@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.locks.PlatformLockingSupport;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.Semaphore;
 import com.oracle.svm.core.posix.pthread.PosixLockingSupport;
 import com.oracle.svm.shared.Uninterruptible;
@@ -39,7 +40,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@AutomaticallyRegisteredImageSingleton(PlatformLockingSupport.class)
+@AutomaticallyRegisteredImageSingleton(value = PlatformLockingSupport.class, onlyWith = NotCosmoLibCSupplier.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 final class LinuxLockingSupport extends PosixLockingSupport {
     @Override

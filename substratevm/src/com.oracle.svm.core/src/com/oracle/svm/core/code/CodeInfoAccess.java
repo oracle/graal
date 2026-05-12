@@ -180,10 +180,15 @@ public final class CodeInfoAccess {
         return state == CodeInfo.STATE_CODE_CONSTANTS_LIVE || state == CodeInfo.STATE_NON_ENTRANT;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CodePointer getActualCodeStart(CodeInfo info) {
+        return (CodePointer) ((UnsignedWord) cast(info).getCodeStart()).subtract(cast(info).getNopsBeforeEntry());
+    }
+
     /** @see CodeInfoImpl#getCodeStart */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodePointer getCodeStart(CodeInfo info) {
-        return cast(info).getCodeStart();
+        return getActualCodeStart(info);
     }
 
     /** @see CodeInfoImpl#setCodeStart */
@@ -255,19 +260,20 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean contains(CodeInfo info, CodePointer ip) {
         CodeInfoImpl impl = cast(info);
-        return ((UnsignedWord) ip).subtract((UnsignedWord) impl.getCodeStart()).belowThan(impl.getCodeSize());
+        return ((UnsignedWord) ip).subtract((UnsignedWord) getActualCodeStart(info)).belowThan(impl.getCodeSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long relativeIP(CodeInfo info, CodePointer ip) {
         assert contains(info, ip);
         CodeInfoImpl impl = cast(info);
-        UnsignedWord baseOffset = ((UnsignedWord) ip).subtract((UnsignedWord) impl.getCodeStart());
+        // TODO (ahgamut): use nopsBeforeEntry around getRelativeIPOffset?
+        UnsignedWord baseOffset = ((UnsignedWord) ip).subtract((UnsignedWord) getActualCodeStart(info));
         return baseOffset.add(impl.getRelativeIPOffset()).rawValue();
     }
 
     public static CodePointer absoluteIP(CodeInfo info, long relativeIP) {
-        return (CodePointer) ((UnsignedWord) cast(info).getCodeStart()).add(Word.unsigned(relativeIP));
+        return (CodePointer) ((UnsignedWord) getActualCodeStart(info)).add(Word.unsigned(relativeIP));
     }
 
     @SuppressWarnings("unchecked")
@@ -385,7 +391,7 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static CodePointer getCodeEnd(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
-        return (CodePointer) ((UnsignedWord) impl.getCodeStart()).add(impl.getCodeSize());
+        return (CodePointer) ((UnsignedWord) getActualCodeStart(info)).add(impl.getCodeSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

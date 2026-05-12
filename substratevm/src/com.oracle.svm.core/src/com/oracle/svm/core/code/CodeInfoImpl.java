@@ -128,6 +128,9 @@ interface CodeInfoImpl extends CodeInfo {
     @RawField
     UnsignedWord getCodeEntryPointOffset();
 
+    @RawField
+    UnsignedWord getNopsBeforeEntry();
+
     /** The size of the instructions of this compiled code. */
     @RawField
     UnsignedWord getCodeSize();
@@ -159,6 +162,9 @@ interface CodeInfoImpl extends CodeInfo {
 
     @RawField
     void setCodeEntryPointOffset(UnsignedWord offset);
+
+    @RawField
+    void setNopsBeforeEntry(UnsignedWord offset);
 
     @RawField
     void setDataOffset(UnsignedWord dataOffset);

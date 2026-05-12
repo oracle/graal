@@ -29,6 +29,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.c.libc.CosmoLibC;
+import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
@@ -74,6 +76,9 @@ public class PosixDirectives implements CContext.Directives {
 
     @Override
     public boolean isInConfiguration() {
+        if (LibCBase.singleton() instanceof CosmoLibC) {
+            return false;
+        }
         return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
 

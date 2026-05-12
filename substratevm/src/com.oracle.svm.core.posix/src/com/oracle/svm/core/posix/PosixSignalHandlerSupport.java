@@ -32,6 +32,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -60,6 +61,8 @@ import com.oracle.svm.core.jdk.SignalHandlerSupport;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.core.posix.cosmo.CosmoLibCSupplier;
+import com.oracle.svm.core.posix.cosmo.NotCosmoLibCSupplier;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
@@ -96,7 +99,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * NOTE: when installing or querying native signal handlers, we use a process-wide lock to avoid
  * races between isolates.
  */
-@AutomaticallyRegisteredImageSingleton({SignalHandlerSupport.class, PosixSignalHandlerSupport.class})
+@AutomaticallyRegisteredImageSingleton(value = {SignalHandlerSupport.class, PosixSignalHandlerSupport.class}, onlyWith = NotCosmoLibCSupplier.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
     private static final CGlobalData<Pointer> NOOP_HANDLERS_INSTALLED = CGlobalDataFactory.createWord();
@@ -484,11 +487,15 @@ class PosixSignalHandlerFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if(x.getAsBoolean()) return;
         setSignalData();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        BooleanSupplier x = new CosmoLibCSupplier();
+        if(x.getAsBoolean()) return;
         if (!SubstrateGuestOptions.installSignalHandlersEarly()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new IgnoreSignalsStartupHook());
         }
