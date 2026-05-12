@@ -682,8 +682,13 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
 
         @Override
-        protected int getVMPageSize() {
-            return SubstrateOptions.getPageSize();
+        protected int getPageSizeForReadBoundaryCheck() {
+            /*
+             * Native images are built for an image page size that can be larger than the run-time
+             * page size. Use the minimum supported run-time page size so read-boundary checks are
+             * conservative for every compatible run-time page size.
+             */
+            return SubstrateOptions.MINIMUM_PAGE_SIZE;
         }
 
         @Override
