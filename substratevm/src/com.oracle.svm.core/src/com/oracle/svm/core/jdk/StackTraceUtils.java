@@ -112,7 +112,7 @@ public class StackTraceUtils {
     }
 
     /**
-     * Implements the shared semantic of Reflection.getCallerClass and StackWalker.getCallerClass.
+     * Implements the semantic of Reflection.getCallerClass.
      */
     public static Class<?> getCallerClass(Pointer startSP, boolean showLambdaFrames) {
         return getCallerClass(startSP, showLambdaFrames, true);

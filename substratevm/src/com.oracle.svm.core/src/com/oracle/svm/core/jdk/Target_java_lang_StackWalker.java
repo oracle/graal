@@ -31,6 +31,8 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Consumer;
@@ -81,7 +83,11 @@ import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_ContinuationScope;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.VMError;
+
+import jdk.internal.reflect.ConstructorAccessor;
+import jdk.internal.reflect.MethodAccessor;
 
 @TargetClass(value = java.lang.StackWalker.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -140,7 +146,10 @@ final class Target_java_lang_StackWalker {
          * with.
          */
 
-        Class<?> result = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), false);
+        Pointer startSP = KnownIntrinsics.readCallerStackPointer();
+        StackWalkerGetCallerClassVisitor visitor = new StackWalkerGetCallerClassVisitor();
+        JavaStackWalker.walkCurrentThread(startSP, visitor);
+        Class<?> result = visitor.result;
         if (result == null) {
             throw new IllegalCallerException("No calling frame");
         }
@@ -587,4 +596,71 @@ final class Target_java_lang_StackFrameInfo {
 @TargetClass(className = "java.lang.StackStreamFactory")
 @Delete
 final class Target_java_lang_StackStreamFactory {
+}
+
+/// This visitor finds the caller class as required for [StackWalker#getCallerClass()]. Note
+/// that this is different from the semantics of [jdk.internal.reflect.Reflection#getCallerClass()].
+///
+/// The expected frame layout is:
+/// ```
+/// StackWalker::getCallerClass method
+/// 0: caller-sensitive method
+/// 1: caller class
+/// ```
+///
+/// However, during the walk the following frames are ignored:
+/// * [jdk.internal.vm.annotation.Hidden] frames (currently approximated in this implementation)
+/// * Any frame from the `java.lang.invoke` package
+/// * Any frame from the following reflection classes:
+///   * [Method]
+///   * [Constructor]
+///   * [MethodAccessor] or its subtypes
+///   * [ConstructorAccessor] or its subtypes
+///
+/// See `java.lang.StackStreamFactory.CallerClassFinder`.
+@BasedOnJDKClass(className = "java.lang.StackStreamFactory", innerClass = "CallerClassFinder")
+class StackWalkerGetCallerClassVisitor extends JavaStackFrameVisitor {
+    /// This is used to skip the caller-sensitive method
+    private boolean ignoreFirst;
+    Class<?> result;
+
+    StackWalkerGetCallerClassVisitor() {
+        this.ignoreFirst = true;
+    }
+
+    @Override
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
+        if (skipFrame(frameSourceInfo)) {
+            return true;
+        }
+        if (ignoreFirst) {
+            // this should be the caller-sensitive frame.
+            ignoreFirst = false;
+            return true;
+        } else {
+            // Found the caller frame, remember it and end the stack walk.
+            result = frameSourceInfo.getSourceClass();
+            return false;
+        }
+    }
+
+    private static boolean skipFrame(FrameSourceInfo frameSourceInfo) {
+        // The reflection check is done differently here
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, false, true)) {
+            return true;
+        }
+        Class<?> clazz = frameSourceInfo.getSourceClass();
+        return isReflectionFrame(clazz) || isMethodHandleFrame(clazz);
+    }
+
+    private static boolean isMethodHandleFrame(Class<?> c) {
+        return c.getPackageName().equals("java.lang.invoke");
+    }
+
+    private static boolean isReflectionFrame(Class<?> c) {
+        return c == Method.class ||
+                        c == Constructor.class ||
+                        MethodAccessor.class.isAssignableFrom(c) ||
+                        ConstructorAccessor.class.isAssignableFrom(c);
+    }
 }
