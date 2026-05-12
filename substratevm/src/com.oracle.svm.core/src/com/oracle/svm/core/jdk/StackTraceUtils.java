@@ -168,16 +168,7 @@ public class StackTraceUtils {
             return true;
         }
 
-        if (clazz == null) {
-            /*
-             * We don't have a Java class. This must be an internal frame. This path mostly exists
-             * to be defensive, there should actually never be a frame where we do not have a Java
-             * class.
-             */
-            return false;
-        }
-
-        if (DynamicHub.fromClass(clazz).isVMInternal()) {
+        if (isVMInternalFrameClass(clazz)) {
             return false;
         }
 
@@ -204,6 +195,20 @@ public class StackTraceUtils {
         }
 
         return true;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static boolean isVMInternalFrameClass(Class<?> clazz) {
+        if (clazz == null) {
+            /*
+             * We don't have a Java class. This must be an internal frame. This path mostly exists
+             * to be defensive, there should actually never be a frame where we do not have a Java
+             * class. GR-76063: We should remove the need for this defensive check and ensure no
+             * such frames reach here.
+             */
+            return true;
+        }
+        return DynamicHub.fromClass(clazz).isVMInternal();
     }
 
     /*
@@ -346,10 +351,17 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
              * not ignore it: For example, Constructor.newInstance calls Reflection.getCallerClass
              * and for this check Constructor.newInstance counts as a frame. But if the actual
              * invoked constructor calls Reflection.getCallerClass, then Constructor.newInstance
-             * does not count as as frame (handled by the shouldShowFrame check below because this
+             * does not count as a frame (handled by the shouldShowFrame check below because this
              * path was already taken for the constructor frame).
              */
-            ignoreFirst = false;
+            /*
+             * We want to make sure to use `ignoreFirst` for the first real frame. For example if
+             * Reflection.getCallerClass was called from the interpreter, we must skip the internal
+             * frames that are in between the caller and Reflection.getCallerClass.
+             */
+            if (!StackTraceUtils.isVMInternalFrameClass(frameSourceInfo.getSourceClass())) {
+                ignoreFirst = false;
+            }
             return true;
 
         } else if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, showLambdaFrames, false, false)) {
