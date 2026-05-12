@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle;
+package jdk.graal.compiler.phases.util;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,10 +30,8 @@ import java.util.List;
 import java.util.Objects;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
-import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.TruffleBytecodeHandlerTypes;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -70,7 +68,7 @@ public final class BytecodeHandlerConfig {
     }
 
     /**
-     * Builds a {@link BytecodeHandlerConfig} by interpreting the Truffle handler annotation located
+     * Builds a {@link BytecodeHandlerConfig} by interpreting the bytecode handler annotation located
      * on {@code targetMethod}.
      */
     public static BytecodeHandlerConfig fromAnnotation(AnnotationValue handlerConfig, ResolvedJavaMethod targetMethod) {
@@ -108,14 +106,11 @@ public final class BytecodeHandlerConfig {
     /**
      * Derives the {@link BytecodeHandlerConfig} used for stubs targeting {@code targetMethod} when
      * called from {@code enclosingMethod}. The annotation is read from the enclosing interpreter
-     * method, not from the handler method itself. Returns {@code null} if {@code enclosingMethod}
-     * does not declare bytecode-handler metadata.
+     * method, not from the handler method itself.
      */
-    public static BytecodeHandlerConfig getHandlerConfig(ResolvedJavaMethod enclosingMethod, ResolvedJavaMethod targetMethod, TruffleBytecodeHandlerTypes truffleTypes) {
-        AnnotationValue configAnnotation = AnnotationValueSupport.getDeclaredAnnotationValue(truffleTypes.typeBytecodeInterpreterHandlerConfig(), enclosingMethod);
-        if (configAnnotation == null) {
-            return null;
-        }
+    public static BytecodeHandlerConfig getHandlerConfig(ResolvedJavaMethod enclosingMethod, ResolvedJavaMethod targetMethod) {
+        AnnotationValue configAnnotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandlerConfig(enclosingMethod);
+        GraalError.guarantee(configAnnotation != null, "Method %s is missing @BytecodeInterpreterHandlerConfig", enclosingMethod.format("%H.%n(%p)"));
         return BytecodeHandlerConfig.fromAnnotation(configAnnotation, targetMethod);
     }
 

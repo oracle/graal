@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle;
+package jdk.graal.compiler.phases.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,10 +55,10 @@ import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.FieldAliasNode;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig.ArgumentInfo;
 import jdk.graal.compiler.replacements.GraphKit;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig.ArgumentInfo;
-import jdk.graal.compiler.truffle.nodes.TruffleBytecodeHandlerDispatchAddressNode;
+import jdk.graal.compiler.nodes.extended.BytecodeHandlerDispatchAddressNode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -68,9 +68,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Shared helper for constructing bytecode handler stubs across HotSpot and Substrate backends.
  */
-public final class TruffleBytecodeHandlerStubHelper {
+public final class BytecodeHandlerStubHelper {
 
-    private TruffleBytecodeHandlerStubHelper() {
+    private BytecodeHandlerStubHelper() {
     }
 
     /**
@@ -256,14 +256,14 @@ public final class TruffleBytecodeHandlerStubHelper {
         kit.noExceptionPart();
         kit.append(new ControlFlowAnchorNode());
 
-        TruffleBytecodeHandlerDispatchAddressNode tailCallTarget = null;
+        BytecodeHandlerDispatchAddressNode tailCallTarget = null;
         if (threading) {
             GraalError.guarantee(nextOpcodeMethod != null, "Threaded bytecode handler stubs require a BytecodeInterpreterFetchOpcode method");
             GraalError.guarantee(nextOpcodeMethod.getSignature().getReturnType(nextOpcodeMethod.getDeclaringClass()).getJavaKind() != JavaKind.Void,
                             "BytecodeInterpreterFetchOpcode method must not return void: %s", nextOpcodeMethod);
             ValueNode[] updatedHandlerArguments = loadCurrentHandlerArguments(handlerConfig, handlerArguments, handlerResult);
             ValueNode nextOpcode = createFetchOpcodeInvoke(kit, nextOpcodeMethod, frameStateBuilder, bci, updatedHandlerArguments);
-            tailCallTarget = kit.append(new TruffleBytecodeHandlerDispatchAddressNode(nextOpcode, bytecodeHandlerTableSupplier));
+            tailCallTarget = kit.append(new BytecodeHandlerDispatchAddressNode(nextOpcode, bytecodeHandlerTableSupplier));
         }
 
         ValueNode[] normalPathStubArguments = loadCurrentStubArguments(handlerConfig, kit, stubParameters, handlerArguments, handlerResult);

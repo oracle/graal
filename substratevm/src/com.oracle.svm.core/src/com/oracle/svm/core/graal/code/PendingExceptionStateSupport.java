@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.core.graal.code;
 
 import java.util.Arrays;
 
@@ -48,15 +48,15 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 
 /**
- * Image singleton that owns the thread-local pending exception state for threaded Truffle bytecode
+ * Image singleton that owns the thread-local pending exception state for threaded bytecode
  * handler stubs. During image building it records the largest stub ABI arity that can publish
  * pending state. At run time it installs one holder per Java thread and exposes the VM thread-local
  * offset folded into generated unwind-path snippets.
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public final class PendingExceptionStateSupport implements ThreadListener {
-    static final Object OBJECT_SLOT_SENTINEL = new ObjectSlotSentinel();
-    static final long PRIMITIVE_SLOT_SENTINEL = 0xBAAD_CAFE_BAAD_CAFEL;
+    public static final Object OBJECT_SLOT_SENTINEL = new ObjectSlotSentinel();
+    public static final long PRIMITIVE_SLOT_SENTINEL = 0xBAAD_CAFE_BAAD_CAFEL;
 
     private static final FastThreadLocalObject<PendingExceptionStateHolder> pendingExceptionState = FastThreadLocalFactory.createObject(PendingExceptionStateHolder.class,
                     "PendingExceptionStateSupport.pendingExceptionState");

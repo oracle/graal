@@ -1788,6 +1788,7 @@ suite = {
                 "com.oracle.svm.interpreter.metadata",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.graal",
+                "compiler:GRAAL",
             ],
             "requires" : [
                 "java.base"

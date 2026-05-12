@@ -22,13 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle;
+package jdk.graal.compiler.phases.util;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
-import jdk.graal.compiler.annotation.AnnotationValueSupport;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -39,7 +39,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig.ArgumentInfo;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig.ArgumentInfo;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -47,37 +47,26 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Represents one call from an interpreter method to a Truffle bytecode handler. The callsite owns
+ * Represents one call from an interpreter method to a bytecode handler. The callsite owns
  * the handler metadata resolved in the context of the enclosing interpreter method and uses it to
  * translate between the Java call shape and the generated stub ABI.
  */
-public final class TruffleBytecodeHandlerCallsite {
-
-    /**
-     * Holds the annotation types used by Truffle interpreters.
-     */
-    public record TruffleBytecodeHandlerTypes(ResolvedJavaType typeBytecodeInterpreterSwitch,
-                    ResolvedJavaType typeBytecodeInterpreterHandlerConfig,
-                    ResolvedJavaType typeBytecodeInterpreterHandler,
-                    ResolvedJavaType typeBytecodeInterpreterFetchOpcode) {
-    }
+public final class BytecodeHandlerCallSite {
 
     private final ResolvedJavaMethod enclosingMethod;
     private final int bci;
     private final ResolvedJavaMethod targetMethod;
     private final BytecodeHandlerConfig handlerConfig;
 
-    public TruffleBytecodeHandlerCallsite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod, TruffleBytecodeHandlerTypes truffleTypes) {
+    public BytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod) {
         this.enclosingMethod = enclosingMethod;
         this.bci = bci;
 
-        GraalError.guarantee(AnnotationValueSupport.isAnnotationPresent(truffleTypes.typeBytecodeInterpreterHandler, targetMethod),
+        GraalError.guarantee(BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(targetMethod) != null,
                         "Target method %s is not annotated by @BytecodeInterpreterHandler", targetMethod.format("%H.%n(%p)"));
         this.targetMethod = targetMethod;
 
-        this.handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod, truffleTypes);
-        GraalError.guarantee(this.handlerConfig != null, "Enclosing method %s is not annotated by @BytecodeInterpreterHandlerConfig",
-                        enclosingMethod.format("%H.%n(%p)"));
+        this.handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod);
     }
 
     public List<ResolvedJavaType> getArgumentTypes() {
@@ -109,7 +98,7 @@ public final class TruffleBytecodeHandlerCallsite {
     }
 
     public String getStubName() {
-        return TruffleBytecodeHandlerStubHelper.getStubName(targetMethod);
+        return BytecodeHandlerStubHelper.getStubName(targetMethod);
     }
 
     /**
@@ -157,7 +146,7 @@ public final class TruffleBytecodeHandlerCallsite {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof TruffleBytecodeHandlerCallsite other) {
+        if (obj instanceof BytecodeHandlerCallSite other) {
             return enclosingMethod.equals(other.enclosingMethod) && bci == other.bci && targetMethod.equals(other.targetMethod) &&
                             handlerConfig.equals(other.handlerConfig);
         }

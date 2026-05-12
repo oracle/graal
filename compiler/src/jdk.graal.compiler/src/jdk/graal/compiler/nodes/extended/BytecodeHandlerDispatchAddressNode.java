@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle.nodes;
+package jdk.graal.compiler.nodes.extended;
 
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 
@@ -55,15 +55,15 @@ import jdk.vm.ci.meta.JavaKind;
  * Represents a node that computes the dispatch address according to the input {@code opcode}.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_4, size = SIZE_4)
-public final class TruffleBytecodeHandlerDispatchAddressNode extends FixedWithNextNode implements Lowerable {
+public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<TruffleBytecodeHandlerDispatchAddressNode> TYPE = NodeClass.create(TruffleBytecodeHandlerDispatchAddressNode.class);
+    public static final NodeClass<BytecodeHandlerDispatchAddressNode> TYPE = NodeClass.create(BytecodeHandlerDispatchAddressNode.class);
 
     @Input ValueNode opcode;
 
     private final Supplier<Object> bytecodeHandlerTableSupplier;
 
-    public TruffleBytecodeHandlerDispatchAddressNode(ValueNode opcode, Supplier<Object> bytecodeHandlerTableSupplier) {
+    public BytecodeHandlerDispatchAddressNode(ValueNode opcode, Supplier<Object> bytecodeHandlerTableSupplier) {
         super(TYPE, StampFactory.forKind(JavaKind.Long));
         this.opcode = opcode;
         this.bytecodeHandlerTableSupplier = bytecodeHandlerTableSupplier;

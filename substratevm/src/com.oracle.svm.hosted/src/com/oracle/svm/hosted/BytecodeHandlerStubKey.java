@@ -22,11 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.hosted;
 
 import java.util.Objects;
 
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -48,23 +48,23 @@ public final class BytecodeHandlerStubKey {
         this.handlerConfig = Objects.requireNonNull(handlerConfig);
     }
 
-    static BytecodeHandlerStubKey create(ResolvedJavaMethod method, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
+    public static BytecodeHandlerStubKey create(ResolvedJavaMethod method, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
         return new BytecodeHandlerStubKey(method, interpreterHolder, handlerConfig);
     }
 
-    static BytecodeHandlerStubKey createDefaultHandlerKey(ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
+    public static BytecodeHandlerStubKey createDefaultHandlerKey(ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
         return new BytecodeHandlerStubKey(null, interpreterHolder, handlerConfig);
     }
 
-    ResolvedJavaMethod method() {
+    public ResolvedJavaMethod method() {
         return method;
     }
 
-    ResolvedJavaType interpreterHolder() {
+    public ResolvedJavaType interpreterHolder() {
         return interpreterHolder;
     }
 
-    BytecodeHandlerConfig handlerConfig() {
+    public BytecodeHandlerConfig handlerConfig() {
         return handlerConfig;
     }
 

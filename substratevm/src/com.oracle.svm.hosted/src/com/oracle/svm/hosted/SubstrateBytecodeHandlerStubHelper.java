@@ -22,7 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.hosted;
+
+import static com.oracle.svm.hosted.SubstrateBytecodeHandlerStub.unwrap;
 
 import java.util.Arrays;
 
@@ -30,32 +32,29 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.svm.core.meta.MethodPointer;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
-import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
-import jdk.graal.compiler.truffle.host.TruffleKnownHostTypes;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
+import jdk.graal.compiler.phases.util.BytecodeInterpreterAnnotations;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Manages the SubstrateVM bytecode-handler tables for Truffle interpreters.
+ * Manages the SubstrateVM bytecode-handler tables for bytecode interpreters.
  * <p>
  * One handler table is created per interpreter (identified via {@code interpreterHolder} and
  * {@code BytecodeHandlerConfig}). Each table is prefilled with that interpreter's default stub and
  * then patched with opcode-specific stub entries for the bytecode handlers used from that
  * interpreter.
  */
-@Platforms(Platform.HOSTED_ONLY.class) //
-public final class SubstrateTruffleBytecodeHandlerStubHelper {
+@Platforms(Platform.HOSTED_ONLY.class)
+public final class SubstrateBytecodeHandlerStubHelper {
 
     /**
-     * Truffle bytecode handler table. This mapping is used during image building but each handler
-     * array will be persisted in the generated image.
+     * Bytecode handler table. This mapping is used during image building but each handler array
+     * will be persisted in the generated image.
      */
     private final EconomicMap<BytecodeHandlerStubKey, MethodPointer[]> bytecodeHandlers = EconomicMap.create();
 
@@ -74,14 +73,6 @@ public final class SubstrateTruffleBytecodeHandlerStubHelper {
             }
         }
         GraalError.guarantee(firstMethod != null, "No bytecode handler methods were registered");
-
-        TruffleHostEnvironment truffleHostEnvironment = TruffleHostEnvironment.get(firstMethod);
-        if (truffleHostEnvironment == null) {
-            // TruffleHostEnvironment is not initialized
-            return;
-        }
-        TruffleKnownHostTypes truffleTypes = truffleHostEnvironment.types();
-        ResolvedJavaType typeBytecodeInterpreterHandler = ((WrappedJavaType) truffleTypes.BytecodeInterpreterHandler).getWrapped();
 
         for (BytecodeHandlerStubKey key : registeredBytecodeHandlers.getKeys()) {
             BytecodeHandlerStubKey tableKey = BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), key.handlerConfig());
@@ -108,7 +99,9 @@ public final class SubstrateTruffleBytecodeHandlerStubHelper {
                 continue;
             }
 
-            AnnotationValue annotation = AnnotationValueSupport.getDeclaredAnnotationValue(typeBytecodeInterpreterHandler, key.method());
+            ResolvedJavaMethod handler = unwrap(key.method());
+            AnnotationValue annotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(handler);
+            GraalError.guarantee(annotation != null, "missing @BytecodeInterpreterHandler on %s", handler.format("%H.%n(%p)"));
             for (Integer opcode : annotation.getList("value", Integer.class)) {
                 GraalError.guarantee(handlerTable[opcode].getMethod().equals(registeredBytecodeHandlers.get(tableKey)), "Method for opcode %d already set.", opcode);
                 handlerTable[opcode] = new MethodPointer(stubWrapper);

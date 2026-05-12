@@ -22,13 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
 import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.graal.code.PendingExceptionStateHolder;
+import com.oracle.svm.core.graal.code.PendingExceptionStateSupport;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFloatingNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -60,15 +62,16 @@ import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.debug.SlowPathBeginNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
+import jdk.graal.compiler.nodes.extended.PendingExceptionStateValueNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig.ArgumentInfo;
 import jdk.graal.compiler.replacements.GraphKit;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig.ArgumentInfo;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -121,7 +124,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@code threadLocalHolder} read when the throwing predecessor is a generated stub, or with the
  * original input value for ordinary Java invokes.
  */
-final class SubstrateTruffleBytecodeHandlerUnwindPath {
+final class SubstrateBytecodeHandlerUnwindPath {
 
     private static final Field OBJECT_SLOTS_FIELD = ReflectionUtil.lookupField(PendingExceptionStateHolder.class, "objectSlots");
     private static final Field PRIMITIVE_SLOTS_FIELD = ReflectionUtil.lookupField(PendingExceptionStateHolder.class, "primitiveSlots");
@@ -129,7 +132,7 @@ final class SubstrateTruffleBytecodeHandlerUnwindPath {
     private record PendingStateRead(ValueNode value, FixedWithNextNode last) {
     }
 
-    private SubstrateTruffleBytecodeHandlerUnwindPath() {
+    private SubstrateBytecodeHandlerUnwindPath() {
     }
 
     /**
@@ -478,7 +481,7 @@ final class SubstrateTruffleBytecodeHandlerUnwindPath {
     }
 
     private static boolean isBytecodeHandlerStubInvoke(InvokeWithExceptionNode invoke) {
-        return unwrapAll(invoke.callTarget().targetMethod()) instanceof SubstrateTruffleBytecodeHandlerStub;
+        return unwrapAll(invoke.callTarget().targetMethod()) instanceof SubstrateBytecodeHandlerStub;
     }
 
     private static ResolvedJavaMethod unwrapAll(ResolvedJavaMethod method) {
@@ -551,7 +554,7 @@ final class SubstrateTruffleBytecodeHandlerUnwindPath {
     }
 
     private static boolean useSlotDebugSentinel() {
-        return TruffleBaseFeature.Options.TruffleBytecodeHandlerSlotSentinel.getValue();
+        return BytecodeHandlerFeature.Options.BytecodeHandlerSlotSentinel.getValue();
     }
 
     /**

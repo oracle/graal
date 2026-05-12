@@ -27,9 +27,7 @@ package com.oracle.svm.truffle;
 import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.truffle.TruffleBaseFeature.Options.TruffleInterpreterTailCallThreading;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -71,7 +69,6 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.shared.util.ModuleSupport;
 import jdk.internal.misc.TerminatingThreadLocal;
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
@@ -107,17 +104,13 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
-import com.oracle.svm.core.thread.ThreadListenerSupport;
-import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.graal.hosted.runtimecompilation.GraalGraphObjectReplacer;
 import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateGraalCompilerSetup;
 import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateRuntimeProviders;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -161,10 +154,8 @@ import com.oracle.truffle.api.profiles.Profile;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 
-import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -173,10 +164,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvoca
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
 import jdk.internal.misc.Unsafe;
@@ -236,13 +224,6 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         @Option(help = "Check that context pre-initialization does not introduce absolute TruffleFiles into the image heap.")//
         public static final HostedOptionKey<Boolean> TruffleCheckPreinitializedFiles = new HostedOptionKey<>(true);
-
-        @Option(help = "Enable tail call threading on Truffle interpreter bytecode handlers.", stability = EXPERIMENTAL) //
-        public static final HostedOptionKey<Boolean> TruffleInterpreterTailCallThreading = new HostedOptionKey<>(true);
-
-        @Option(help = "Fill and rewrite bytecode-handler pending-state slots with debug sentinels. Defaults to enabled when assertions are enabled.", //
-                        type = OptionType.Debug, stability = EXPERIMENTAL) //
-        public static final HostedOptionKey<Boolean> TruffleBytecodeHandlerSlotSentinel = new HostedOptionKey<>(SubstrateUtil.assertionsEnabled());
     }
 
     public static final class IsEnabled implements BooleanSupplier {
@@ -305,17 +286,6 @@ public final class TruffleBaseFeature implements InternalFeature {
     private boolean includeLanguageResources;
 
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + TruffleBaseFeature.class);
-
-    private final SubstrateTruffleBytecodeHandlerStubHelper stubHelper = new SubstrateTruffleBytecodeHandlerStubHelper();
-
-    /**
-     * Contains mappings of handler/interpreter methods paired with their
-     * {@link BytecodeHandlerConfig} to stub wrappers. Interpreter root methods map to default stubs
-     * while handler methods map to specialized stubs.
-     */
-    private final EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers = EconomicMap.create();
-    private EconomicSet<ResolvedJavaMethod> bytecodeHandlers;
-    private final AtomicInteger maxHandlerAbiArity = new AtomicInteger();
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
@@ -435,10 +405,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCacheSymbol", "initialize", List.of());
 
         profilingEnabled = false;
-        if (!ImageSingletons.contains(PendingExceptionStateSupport.class)) {
-            ImageSingletons.add(PendingExceptionStateSupport.class, new PendingExceptionStateSupport());
-        }
-        ThreadListenerSupport.get().register(PendingExceptionStateSupport.singleton());
     }
 
     private static boolean hasTruffleAPIFeature(AfterRegistrationAccess a) {
@@ -716,19 +682,6 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        plugins.appendNodePlugin(new TruffleBytecodeHandlerInvokePlugin(registeredBytecodeHandlers, stubHelper, TruffleInterpreterTailCallThreading.getValue(),
-                        arity -> maxHandlerAbiArity.updateAndGet(current -> Math.max(current, arity))));
-    }
-
-    public boolean isBytecodeHandler(ResolvedJavaMethod method) {
-        if (bytecodeHandlers == null) {
-            throw new IllegalStateException("Bytecode handlers not yet initialized");
-        }
-        return bytecodeHandlers.contains(method);
-    }
-
-    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (needsAllEncodings) {
             access.registerAsUsed(NeedsAllEncodings.class);
@@ -815,17 +768,6 @@ public final class TruffleBaseFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         markAsUnsafeAccessed = null;
-        this.bytecodeHandlers = EconomicSet.create();
-
-        if (TruffleInterpreterTailCallThreading.getValue()) {
-            AfterAnalysisAccessImpl config = (AfterAnalysisAccessImpl) access;
-            stubHelper.initializeBytecodeHandlers(registeredBytecodeHandlers);
-            for (MethodPointer[] handlers : stubHelper.getAllBytecodeHandlers()) {
-                config.rescanObject(handlers, scanReason);
-            }
-
-            this.bytecodeHandlers.addAll(registeredBytecodeHandlers.getValues());
-        }
     }
 
     public static void preInitializeEngine() {
@@ -874,32 +816,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         access.rescanRoot(layoutInfoMapField, scanReason);
         access.rescanRoot(layoutMapField, scanReason);
         access.rescanRoot(libraryFactoryCacheField, scanReason);
-    }
-
-    @Override
-    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {
-        /*
-         * Please keep this code in sync with the HotSpot configuration in
-         * TruffleCommunityCompilerConfiguration.
-         */
-        if (hosted && suites.getHighTier() instanceof HighTier) {
-            suites.getHighTier().prependPhase(new SubstrateOutlineBytecodeHandlerPhase(registeredBytecodeHandlers));
-        }
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        if (ImageSingletons.contains(VMThreadLocalOffsetProvider.class)) {
-            PendingExceptionStateSupport.singleton().setMaxSlots(maxHandlerAbiArity.get());
-            PendingExceptionStateSupport.singleton().setUseSlotSentinel(Options.TruffleBytecodeHandlerSlotSentinel.getValue());
-            PendingExceptionStateSupport.singleton().initializeThreadLocalOffset();
-        }
-        if (TruffleInterpreterTailCallThreading.getValue()) {
-            // Will be placed at read-only section and disallow overwriting
-            for (MethodPointer[] handlers : stubHelper.getAllBytecodeHandlers()) {
-                access.registerAsImmutable(handlers);
-            }
-        }
     }
 
     @Override
