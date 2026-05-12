@@ -115,11 +115,11 @@ public class StackTraceUtils {
      * Implements the shared semantic of Reflection.getCallerClass and StackWalker.getCallerClass.
      */
     public static Class<?> getCallerClass(Pointer startSP, boolean showLambdaFrames) {
-        return getCallerClass(startSP, showLambdaFrames, 0, true);
+        return getCallerClass(startSP, showLambdaFrames, true);
     }
 
-    public static Class<?> getCallerClass(Pointer startSP, boolean showLambdaFrames, int depth, boolean ignoreFirst) {
-        GetCallerClassVisitor visitor = new GetCallerClassVisitor(showLambdaFrames, depth, ignoreFirst);
+    public static Class<?> getCallerClass(Pointer startSP, boolean showLambdaFrames, boolean ignoreFirst) {
+        GetCallerClassVisitor visitor = new GetCallerClassVisitor(showLambdaFrames, ignoreFirst);
         JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.result;
     }
@@ -310,21 +310,16 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
 
 class GetCallerClassVisitor extends JavaStackFrameVisitor {
     private final boolean showLambdaFrames;
-    private int depth;
     private boolean ignoreFirst;
     Class<?> result;
 
-    GetCallerClassVisitor(boolean showLambdaFrames, int depth, boolean ignoreFirst) {
+    GetCallerClassVisitor(boolean showLambdaFrames, boolean ignoreFirst) {
         this.showLambdaFrames = showLambdaFrames;
         this.ignoreFirst = ignoreFirst;
-        this.depth = depth;
-        assert depth >= 0;
     }
 
     @Override
     public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
-        assert depth >= 0;
-
         if (ignoreFirst) {
             /*
              * Skip the frame that contained the invocation of getCallerFrame() and continue the
@@ -350,11 +345,6 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
              * Always ignore the frame. It is an internal frame of the VM or a frame related to
              * reflection.
              */
-            return true;
-
-        } else if (depth > 0) {
-            /* Skip the number of frames specified by "depth". */
-            depth--;
             return true;
 
         } else {
