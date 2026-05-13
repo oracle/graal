@@ -2029,7 +2029,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 
-JCodings 1.0.63
+JCodings 1.0.64
 
 Copyright (c) 2025 JRuby Team
 

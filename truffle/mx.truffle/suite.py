@@ -98,13 +98,13 @@ suite = {
       "digest": "sha512:22569a011d207fb8f33e7e71162542a5748cc3daa67eec59cbdc2aeb0894c331dfb8b6100ea88529c6cea72672cbddd77ca6134ddf331685d68b3e72b4e0a914",
     },
 
-    "JCODINGS_1.0.63": {
-      "digest" : "sha512:280e989a1af7679da82bb9adb27a8c4e08c8da09f0bb93c380a36bfe7071c62bc9e7248b634d9e04f3ab275ec0672a44f8ab41dca8c10128c4351b6302275e84",
-      "sourceDigest" : "sha512:f6843609284be7dbfdbc7530e34c15e6aea7d3a45c4ee8e6836ee42fafbb9306f7234e20d8abbfc6a13e28d885eb5d743d69bfbbf738932db1fe42e031a835e3",
+    "JCODINGS_1.0.64": {
+      "digest" : "sha512:fea42afe82a43d2e71556a078150939c528907085b0880f60cb8e00e13ac3f688e2a7e5fdaba15acb73e48fd2727d3d4491c93506f37004b01da1cdc301cfe65",
+      "sourceDigest" : "sha512:521d21f985a6ffa208993c0360831fa1be5d8d2363248e8ac1adbae3f5d3397cbdeedb513dcaf1c571c713bf7ac41a4009d47009c04655fb12c941c8709371fe",
       "maven": {
         "groupId": "org.jruby.jcodings",
         "artifactId": "jcodings",
-        "version": "1.0.63",
+        "version": "1.0.64",
       },
       "license": ["MIT"],
     },
@@ -1529,7 +1529,7 @@ suite = {
           "TRUFFLE_API"
       ],
       "shadedDependencies" : [
-        "truffle:JCODINGS_1.0.63",
+        "truffle:JCODINGS_1.0.64",
       ],
       "class" : "ShadedLibraryProject",
       "shade" : {
