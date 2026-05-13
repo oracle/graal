@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -166,6 +166,15 @@ public interface Feature {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface IsInConfigurationAccess extends FeatureAccess {
+    }
+
+    /**
+     * Access methods available for {@link Feature#onRegistration}.
+     *
+     * @since 25.1.0
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface OnRegistrationAccess extends FeatureAccess {
     }
 
     /**
@@ -558,12 +567,29 @@ public interface Feature {
 
     /**
      * Returns the list of features that this feature depends on. As long as the dependency chain is
-     * non-cyclic, all required features are processed before this feature.
+     * non-cyclic, all required features are processed before this feature for all lifecycle hooks
+     * after {@link #onRegistration(OnRegistrationAccess)}. The {@code onRegistration} hook is the
+     * exception: it is called as soon as a feature is registered, before its required features are
+     * processed.
      *
      * @since 19.0
      */
     default List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.emptyList();
+    }
+
+    /**
+     * Handler for initialization that must happen as soon as this feature is registered, before
+     * its required features are processed. Use this hook only for state that must be visible
+     * during feature registration. Prefer publishing dedicated support objects through
+     * {@link ImageSingletons}; publishing the feature instance itself should be reserved for
+     * compatibility with existing feature-singleton queries.
+     *
+     * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 25.1.0
+     */
+    default void onRegistration(OnRegistrationAccess access) {
     }
 
     /**

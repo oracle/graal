@@ -33,6 +33,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.OnRegistrationAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.APIOption;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
@@ -102,13 +103,13 @@ public class FeatureHandler {
         }
     }
 
-    public boolean containsFeature(Class<?> c) {
-        return registeredFeatures.contains(c);
+    public boolean containsFeature(Class<?> featureClass) {
+        return registeredFeatures.contains(featureClass);
     }
 
-    @SuppressWarnings("unchecked")
     public void registerFeatures(ImageClassLoader loader, MetaAccessProvider originalMetaAccess, DebugContext debug) {
         IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, originalMetaAccess, debug);
+        OnRegistrationAccessImpl onRegistrationAccess = new OnRegistrationAccessImpl(this, loader, originalMetaAccess, debug);
 
         AutomaticallyRegisteredFeatureLoader automaticFeatureLoader = new AutomaticallyRegisteredFeatureLoader(loader);
         LinkedHashSet<Class<?>> automaticFeatures = automaticFeatureLoader.loadRegisteredClasses();
@@ -135,7 +136,7 @@ public class FeatureHandler {
 
         Function<Class<?>, Class<?>> specificClassProvider = specificAutomaticFeatures::get;
         for (Class<?> featureClass : automaticFeatures) {
-            registerFeature(featureClass, specificClassProvider, access);
+            registerFeature(featureClass, specificClassProvider, access, onRegistrationAccess);
         }
 
         List<ClassLoader> featureClassLoaders = loader.classLoaderSupport.getClassLoaders();
@@ -152,7 +153,7 @@ public class FeatureHandler {
             if (featureClass == null) {
                 throw UserError.abort("User-enabled Feature %s class not found. Ensure that the name is correct and that the class is on the class- or module-path.", featureName);
             }
-            registerFeature(featureClass, specificClassProvider, access);
+            registerFeature(featureClass, specificClassProvider, access, onRegistrationAccess);
         }
         if (NativeImageOptions.PrintFeatures.getValue()) {
             ReportUtils.report("feature information", SubstrateOptions.reportsPath(), "feature_info", "csv", out -> {
@@ -167,8 +168,7 @@ public class FeatureHandler {
      *
      * @param access
      */
-    @SuppressWarnings("unchecked")
-    private void registerFeature(Class<?> baseFeatureClass, Function<Class<?>, Class<?>> specificClassProvider, IsInConfigurationAccessImpl access) {
+    private void registerFeature(Class<?> baseFeatureClass, Function<Class<?>, Class<?>> specificClassProvider, IsInConfigurationAccessImpl access, OnRegistrationAccessImpl onRegistrationAccess) {
         if (!Feature.class.isAssignableFrom(baseFeatureClass)) {
             throw UserError.abort("Class does not implement %s: %s", Feature.class.getName(), baseFeatureClass.getName());
         }
@@ -199,13 +199,11 @@ public class FeatureHandler {
         } catch (Throwable t) {
             throw handleFeatureError(feature, t);
         }
-
-        /*
-         * All features are automatically added to the VMConfiguration, to allow convenient
-         * configuration checks.
-         */
-        ImageSingletons.add((Class<Feature>) baseFeatureClass, feature);
-
+        try {
+            feature.onRegistration(onRegistrationAccess);
+        } catch (Throwable t) {
+            throw handleFeatureError(feature, t);
+        }
         /*
          * First add dependent features so that initializers are executed in order of dependencies.
          */
@@ -216,7 +214,7 @@ public class FeatureHandler {
             throw handleFeatureError(feature, t);
         }
         for (Class<? extends Feature> requiredFeatureClass : requiredFeatures) {
-            registerFeature(requiredFeatureClass, specificClassProvider, access);
+            registerFeature(requiredFeatureClass, specificClassProvider, access, onRegistrationAccess);
         }
 
         featureInstances.add(feature);
