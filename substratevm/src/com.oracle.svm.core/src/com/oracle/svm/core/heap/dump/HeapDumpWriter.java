@@ -1296,6 +1296,14 @@ public class HeapDumpWriter {
             }
         }
 
+        @Override
+        public void visitDerivedReference(Pointer derivedReferenceSlot, int innerOffset, boolean compressed, Object holderObject) {
+            /*
+             * The base reference for the derived reference is emitted separately. HPROF has no
+             * representation for interior Java frame roots.
+             */
+        }
+
         private void visitFrame(FrameInfoQueryResult frame) {
             if (!markGCRoots) {
                 /*

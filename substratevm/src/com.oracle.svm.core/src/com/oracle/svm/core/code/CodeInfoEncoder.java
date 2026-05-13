@@ -54,9 +54,8 @@ import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
-import com.oracle.svm.core.heap.InterruptibleDerivedReferenceVisitor;
+import com.oracle.svm.core.heap.DerivedReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -959,10 +958,9 @@ class MethodTableFirstIDTracker {
     }
 }
 
-class CollectingObjectReferenceVisitor implements InterruptibleDerivedReferenceVisitor {
+class CollectingObjectReferenceVisitor implements DerivedReferenceVisitor {
     private final Pointer base;
     protected final SubstrateReferenceMap result = new SubstrateReferenceMap();
-    private final TreeMap<Integer, Boolean> compressedByOffset = new TreeMap<>();
 
     CollectingObjectReferenceVisitor(Pointer base) {
         this.base = base;
@@ -978,18 +976,16 @@ class CollectingObjectReferenceVisitor implements InterruptibleDerivedReferenceV
         }
     }
 
-    private void visitObjectReference(Pointer objRef, boolean compressed) {
-        int offset = NumUtil.safeToInt(objRef.subtract(base).rawValue());
+    private void visitObjectReference(Pointer referenceSlot, boolean compressed) {
+        int offset = NumUtil.safeToInt(referenceSlot.subtract(base).rawValue());
         result.markReferenceAtOffset(offset, compressed);
-        compressedByOffset.put(offset, compressed);
     }
 
     @Override
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Verification visitor records derived references in hosted data structures.")
     @Uninterruptible(reason = "Verifier visitor is called through the decoder bridge and uses hosted collections.", mayBeInlined = true, calleeMustBe = false)
-    public void visitDerivedReferenceInterruptibly(Pointer baseObjRef, Pointer derivedObjRef, Object holderObject) {
-        int baseOffset = NumUtil.safeToInt(baseObjRef.subtract(base).rawValue());
-        int derivedOffset = NumUtil.safeToInt(derivedObjRef.subtract(base).rawValue());
-        result.markReferenceAtOffset(derivedOffset, baseOffset, compressedByOffset.get(baseOffset));
+    public void visitDerivedReferenceInterruptibly(Pointer baseReferenceSlot, Pointer derivedReferenceSlot, boolean compressed, Object holderObject) {
+        int baseOffset = NumUtil.safeToInt(baseReferenceSlot.subtract(base).rawValue());
+        int derivedOffset = NumUtil.safeToInt(derivedReferenceSlot.subtract(base).rawValue());
+        result.markReferenceAtOffset(derivedOffset, baseOffset, compressed);
     }
 }

@@ -25,6 +25,8 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.config.ObjectLayout;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
@@ -41,7 +43,6 @@ import org.graalvm.word.impl.Word;
 
 @DuplicatedInNativeCode
 public class CodeReferenceMapDecoder {
-
     /**
      * Walk the reference map encoding from a Pointer, applying a visitor to each Object reference.
      *
@@ -56,20 +57,21 @@ public class CodeReferenceMapDecoder {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor,
                     Object holderObject) {
-        walkOffsetsFromPointer(baseAddress, referenceMapEncoding, referenceMapIndex, visitor, null, holderObject);
+        walkOffsetsFromPointerUninterruptibly(baseAddress, referenceMapEncoding, referenceMapIndex, visitor, holderObject);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @AlwaysInline("de-virtualize calls to InterruptibleDerivedReferenceVisitor")
     @Uninterruptible(reason = "Called from hosted verification code through decoder bridge methods that explicitly allow interruptible implementations.", mayBeInlined = true, calleeMustBe = false)
-    public static void walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, InterruptibleDerivedReferenceVisitor visitor,
+    public static void walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, DerivedReferenceVisitor visitor,
                     Object holderObject) {
-        walkOffsetsFromPointer(baseAddress, referenceMapEncoding, referenceMapIndex, visitor, visitor, holderObject);
+        walkOffsetsFromPointerInterruptibly(baseAddress, referenceMapEncoding, referenceMapIndex, visitor, holderObject);
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor,
-                    InterruptibleDerivedReferenceVisitor interruptibleDerivedReferenceVisitor, Object holderObject) {
+    private static void walkOffsetsFromPointerUninterruptibly(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor,
+                    Object holderObject) {
         assert referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP;
         assert referenceMapEncoding.isNonNull();
         int uncompressedSize = FrameAccess.uncompressedReferenceSize();
@@ -135,7 +137,14 @@ public class CodeReferenceMapDecoder {
             count = (count < 0) ? -count : count;
 
             if (derived) {
-                callVisitObjectReferencesInline(visitor, objRef, compressed, refSize, holderObject, 1);
+                /*
+                 * To correctly relocate a derived pointer, keep the value pointed to by the base
+                 * reference before either the base or derived reference is relocated.
+                 */
+                Pointer baseReferenceSlot = objRef;
+                Pointer basePointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(baseReferenceSlot, compressed);
+                assert basePointer.isNonNull() : "Base object of derived reference must not be null.";
+                callVisitObjectReferencesInline(visitor, baseReferenceSlot, compressed, refSize, holderObject, 1);
 
                 /* count in this case is the number of derived references for this base pointer */
                 for (long d = 0; d < count; d++) {
@@ -154,17 +163,125 @@ public class CodeReferenceMapDecoder {
                     }
                     refOffset = decodeSign(refOffset);
 
-                    Pointer derivedRef;
+                    Pointer derivedReferenceSlot;
                     if (refOffset >= 0) {
-                        derivedRef = objRef.add(Word.unsigned(refOffset).multiply(refSize));
+                        derivedReferenceSlot = baseReferenceSlot.add(Word.unsigned(refOffset).multiply(refSize));
                     } else {
-                        derivedRef = objRef.subtract(Word.unsigned(-refOffset).multiply(refSize));
+                        derivedReferenceSlot = baseReferenceSlot.subtract(Word.unsigned(-refOffset).multiply(refSize));
                     }
-                    if (interruptibleDerivedReferenceVisitor != null) {
-                        callVisitDerivedReferenceInterruptiblyInline(interruptibleDerivedReferenceVisitor, objRef, derivedRef, holderObject);
+                    Pointer derivedPointer = ReferenceAccess.singleton().readDerivedReferenceAt(derivedReferenceSlot, compressed);
+                    long innerOffsetRaw = derivedPointer.subtract(basePointer).rawValue();
+                    assert innerOffsetRaw >= 0 : "Derived reference points before its base object.";
+                    assert innerOffsetRaw <= Integer.MAX_VALUE : "Derived reference offset is too large.";
+                    int innerOffset = (int) innerOffsetRaw;
+                    callVisitDerivedReferenceInline(visitor, derivedReferenceSlot, innerOffset, compressed, holderObject);
+                }
+                objRef = objRef.add(refSize);
+            } else {
+                assert (int) count == count;
+                callVisitObjectReferencesInline(visitor, objRef, compressed, refSize, holderObject, (int) count);
+                objRef = objRef.add(Word.unsigned(count).multiply(refSize));
+            }
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @AlwaysInline("de-virtualize calls to InterruptibleDerivedReferenceVisitor")
+    @Uninterruptible(reason = "Called from hosted verification code through decoder bridge methods that explicitly allow interruptible implementations.", mayBeInlined = true, calleeMustBe = false)
+    private static void walkOffsetsFromPointerInterruptibly(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, DerivedReferenceVisitor visitor,
+                    Object holderObject) {
+        assert referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP;
+        assert referenceMapEncoding.isNonNull();
+        int uncompressedSize = FrameAccess.uncompressedReferenceSize();
+        int compressedSize = ObjectLayout.singleton().getReferenceSize();
+
+        Pointer objRef = (Pointer) baseAddress;
+        long idx = referenceMapIndex;
+        boolean firstRun = true;
+        while (true) {
+            /*
+             * The following code is copied from TypeReader.getUV() and .getSV() because we cannot
+             * allocate a TypeReader here which, in addition to returning the read variable-sized
+             * values, can keep track of the index in the byte array. Even with an instance of
+             * UninterruptibleReusableTypeReader, we would need to worry about this method being
+             * reentrant.
+             */
+
+            // Size of gap in bytes (negative means the next pointer has derived pointers)
+            long gap = NonmovableByteArrayReader.getU1(referenceMapEncoding, idx++);
+            if (gap >= UnsafeArrayTypeWriter.NUM_LOW_CODES) {
+                long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                for (int i = 2;; i++) {
+                    long b = NonmovableByteArrayReader.getU1(referenceMapEncoding, idx++);
+                    gap += b << shift;
+                    if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
+                        break;
+                    }
+                    shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                }
+            }
+            gap = decodeSign(gap);
+
+            // Number of pointers (sign distinguishes between compression and uncompression)
+            long count = NonmovableByteArrayReader.getU1(referenceMapEncoding, idx++);
+            if (count >= UnsafeArrayTypeWriter.NUM_LOW_CODES) {
+                long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                for (int i = 2;; i++) {
+                    long b = NonmovableByteArrayReader.getU1(referenceMapEncoding, idx++);
+                    count += b << shift;
+                    if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
+                        break;
+                    }
+                    shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                }
+            }
+            count = decodeSign(count);
+
+            if (gap == 0 && count == 0) {
+                break; // reached end of table
+            }
+
+            boolean derived = false;
+            if (!firstRun && gap < 0) {
+                /* Derived pointer run */
+                gap = -(gap + 1);
+                derived = true;
+            }
+            firstRun = false;
+
+            objRef = objRef.add(Word.unsigned(gap));
+            boolean compressed = (count < 0);
+            int refSize = compressed ? compressedSize : uncompressedSize;
+            count = (count < 0) ? -count : count;
+
+            if (derived) {
+                Pointer baseReferenceSlot = objRef;
+                callVisitObjectReferencesInline(visitor, baseReferenceSlot, compressed, refSize, holderObject, 1);
+
+                /* count in this case is the number of derived references for this base pointer */
+                for (long d = 0; d < count; d++) {
+                    /* Offset in words from the base reference to the derived reference */
+                    long refOffset = NonmovableByteArrayReader.getU1(referenceMapEncoding, idx++);
+                    if (refOffset >= UnsafeArrayTypeWriter.NUM_LOW_CODES) {
+                        long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                        for (int i = 2;; i++) {
+                            long b = NonmovableByteArrayReader.getU1(referenceMapEncoding, idx++);
+                            refOffset += b << shift;
+                            if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
+                                break;
+                            }
+                            shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
+                        }
+                    }
+                    refOffset = decodeSign(refOffset);
+
+                    Pointer derivedReferenceSlot;
+                    if (refOffset >= 0) {
+                        derivedReferenceSlot = baseReferenceSlot.add(Word.unsigned(refOffset).multiply(refSize));
                     } else {
-                        callVisitDerivedReferenceInline(visitor, objRef, derivedRef, holderObject);
+                        derivedReferenceSlot = baseReferenceSlot.subtract(Word.unsigned(-refOffset).multiply(refSize));
                     }
+                    callVisitDerivedReferenceInterruptiblyInline(visitor, baseReferenceSlot, derivedReferenceSlot, compressed, holderObject);
                 }
                 objRef = objRef.add(refSize);
             } else {
@@ -188,14 +305,15 @@ public class CodeReferenceMapDecoder {
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    @Uninterruptible(reason = "Bridge between uninterruptible code and uninterruptible derived-reference visitors.", mayBeInlined = true)
-    private static void callVisitDerivedReferenceInline(ObjectReferenceVisitor visitor, Pointer baseObjRef, Pointer derivedObjRef, Object holderObject) {
-        visitor.visitDerivedReference(baseObjRef, derivedObjRef, holderObject);
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible derived-reference visitors.", mayBeInlined = true, calleeMustBe = false)
+    private static void callVisitDerivedReferenceInline(ObjectReferenceVisitor visitor, Pointer derivedReferenceSlot, int innerOffset, boolean compressed, Object holderObject) {
+        visitor.visitDerivedReference(derivedReferenceSlot, innerOffset, compressed, holderObject);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @AlwaysInline("de-virtualize calls to InterruptibleDerivedReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible code and potentially interruptible verifier visitors.", mayBeInlined = true, calleeMustBe = false)
-    private static void callVisitDerivedReferenceInterruptiblyInline(InterruptibleDerivedReferenceVisitor visitor, Pointer baseObjRef, Pointer derivedObjRef, Object holderObject) {
-        visitor.visitDerivedReferenceInterruptibly(baseObjRef, derivedObjRef, holderObject);
+    private static void callVisitDerivedReferenceInterruptiblyInline(DerivedReferenceVisitor visitor, Pointer baseReferenceSlot, Pointer derivedReferenceSlot, boolean compressed, Object holderObject) {
+        visitor.visitDerivedReferenceInterruptibly(baseReferenceSlot, derivedReferenceSlot, compressed, holderObject);
     }
 }

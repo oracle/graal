@@ -34,6 +34,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -56,8 +57,22 @@ public class ReferenceAccessImpl implements ReferenceAccess {
     @AlwaysInline("Performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Word readObjectAsUntrackedPointer(Pointer p, boolean compressed) {
-        Object obj = readObjectAt(p, compressed);
-        return Word.objectToUntrackedWord(obj);
+        return (Word) readDerivedReferenceAt(p, compressed);
+    }
+
+    @Override
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer readDerivedReferenceAt(Pointer referenceSlot, boolean compressed) {
+        if (compressed) {
+            long compressedValue = referenceSlot.readInt(0) & 0xFFFFFFFFL;
+            if (compressedValue == 0) {
+                return Word.nullPointer();
+            }
+            return KnownIntrinsics.heapBase().add(Word.unsigned(compressedValue).shiftLeft(getCompressionShiftUninterruptibly()));
+        } else {
+            return referenceSlot.readWord(0);
+        }
     }
 
     @Override
@@ -88,9 +103,34 @@ public class ReferenceAccessImpl implements ReferenceAccess {
     @Override
     @AlwaysInline("Performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void writeDerivedReferenceAt(Pointer referenceSlot, Pointer value, boolean compressed) {
+        assert value.isNonNull() : "Derived reference must not be null.";
+        if (compressed) {
+            long uncompressedValue = value.subtract(KnownIntrinsics.heapBase()).rawValue();
+            int shift = getCompressionShiftUninterruptibly();
+            long alignmentMask = (1L << shift) - 1L;
+            assert (uncompressedValue & alignmentMask) == 0 : "Derived reference is not representable as a compressed reference.";
+
+            long compressedValue = uncompressedValue >>> shift;
+            assert (compressedValue & 0xFFFFFFFF_00000000L) == 0 : "Compressed derived reference is out of range.";
+            referenceSlot.writeInt(0, (int) compressedValue);
+        } else {
+            referenceSlot.writeWord(0, value);
+        }
+    }
+
+    @Override
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeObjectBarrieredAt(Object object, UnsignedWord offsetInObject, Object value, boolean compressed) {
         assert compressed : "Heap object must contain only compressed references";
         BarrieredAccess.writeObject(object, offsetInObject, value);
+    }
+
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = "Reads immutable compression metadata from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private int getCompressionShiftUninterruptibly() {
+        return getCompressEncoding().getShift();
     }
 
     @Override

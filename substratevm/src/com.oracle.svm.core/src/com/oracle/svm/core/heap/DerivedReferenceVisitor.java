@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.shared.Uninterruptible;
@@ -32,8 +34,9 @@ import com.oracle.svm.shared.Uninterruptible;
  * Visitor extension for hosted verification paths that need to record derived references in regular
  * hosted data structures.
  */
-public interface InterruptibleDerivedReferenceVisitor extends ObjectReferenceVisitor {
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface DerivedReferenceVisitor extends ObjectReferenceVisitor {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
     @Uninterruptible(reason = "Called through a decoder bridge that explicitly allows interruptible implementations.", mayBeInlined = true, calleeMustBe = false)
-    void visitDerivedReferenceInterruptibly(Pointer baseObjRef, Pointer derivedObjRef, Object holderObject);
+    void visitDerivedReferenceInterruptibly(Pointer baseReferenceSlot, Pointer derivedReferenceSlot, boolean compressed, Object holderObject);
 }

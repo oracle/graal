@@ -29,15 +29,15 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.lang.ref.Reference;
 
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.metaspace.Metaspace;
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * Updates each reference after marking and before compaction to point to the referenced object's
@@ -48,31 +48,50 @@ public final class ObjectRefFixupVisitor implements UninterruptibleObjectReferen
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
-        Pointer pos = firstObjRef;
+        Pointer referenceSlot = firstObjRef;
         Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
-        while (pos.belowThan(end)) {
-            visitObjectReference(pos, compressed, holderObject);
-            pos = pos.add(referenceSize);
+        while (referenceSlot.belowThan(end)) {
+            visitObjectReference(referenceSlot, 0, compressed, holderObject, false);
+            referenceSlot = referenceSlot.add(referenceSize);
         }
+    }
+
+    @Override
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void visitDerivedReference(Pointer derivedReferenceSlot, int innerOffset, boolean compressed, Object holderObject) {
+        visitObjectReference(derivedReferenceSlot, innerOffset, compressed, holderObject, true);
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
-        Pointer p = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-        if (p.isNull() || HeapImpl.getHeapImpl().isInImageHeap(p) || Metaspace.singleton().isInAddressSpace(p)) {
+    private static void visitObjectReference(Pointer referenceSlot, int innerOffset, boolean compressed, Object holderObject, boolean derivedReference) {
+        assert innerOffset >= 0;
+        Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(referenceSlot, compressed);
+        Pointer basePointer = referentPointer.subtract(innerOffset);
+        assert !derivedReference || basePointer.isNonNull() : "Base object of derived reference must not be null.";
+        if (basePointer.isNull()) {
+            return;
+        }
+        if (HeapImpl.getHeapImpl().isInImageHeap(basePointer) || Metaspace.singleton().isInAddressSpace(basePointer)) {
             return;
         }
 
-        Object original = p.toObjectNonNull();
+        Object original = basePointer.toObjectNonNull();
         if (ObjectHeaderImpl.isAlignedObject(original)) {
-            Pointer newLocation = ObjectMoveInfo.getNewObjectAddress(p);
-            assert newLocation.isNonNull() //
+            Pointer newBasePointer = ObjectMoveInfo.getNewObjectAddress(basePointer);
+            assert newBasePointer.isNonNull() //
                             || holderObject == null // references from CodeInfo, invalidated or weak
                             || holderObject instanceof Reference<?>; // cleared referent
 
-            Object obj = newLocation.toObject();
-            ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
+            if (derivedReference) {
+                assert newBasePointer.isNonNull() : "Base object of derived reference must not be cleared.";
+                Pointer newDerivedPointer = newBasePointer.add(innerOffset);
+                ReferenceAccess.singleton().writeDerivedReferenceAt(referenceSlot, newDerivedPointer, compressed);
+            } else {
+                Object newObject = newBasePointer.isNull() ? null : newBasePointer.toObject();
+                ReferenceAccess.singleton().writeObjectAt(referenceSlot, newObject, compressed);
+            }
         }
         // Note that image heap cards have already been cleaned and re-marked during the scan
     }
