@@ -2310,7 +2310,17 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
             // Check again whether the cached thread info is still the same as expected
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, info == context.getCachedThread())) {
-
+                if (info.getEnteredCount() == 1) {
+                    /*
+                     * An executor worker can keep the Java Thread alive while clearing
+                     * its ThreadLocal values between top-level tasks. In that case the
+                     * context still knows this thread, but Truffle's safepoint state may
+                     * no longer be present in the thread locals. Only top-level enters
+                     * need this check; nested enters reuse the state established by the
+                     * outer enter.
+                     */
+                    PolyglotThreadLocalActions.ensureEnterThreadInitialized();
+                }
                 /*
                  * We are deliberately not polling a safepoint here. In case a safepoint is
                  * submitted cached thread info will be null and we will enter slow path, where the

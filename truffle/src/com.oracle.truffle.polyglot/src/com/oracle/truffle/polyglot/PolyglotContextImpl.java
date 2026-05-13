@@ -1032,6 +1032,16 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                             }
                             if (needsInitialization) {
                                 this.threadLocalActions.notifyEnterCreatedThread();
+                            } else if (threadInfo.getEnteredCount() == 1) {
+                                /*
+                                 * An executor worker can keep the Java Thread alive while clearing
+                                 * its ThreadLocal values between top-level tasks. In that case the
+                                 * context still knows this thread, but Truffle's safepoint state may
+                                 * no longer be present in the thread locals. Only top-level enters
+                                 * need this check; nested enters reuse the state established by the
+                                 * outer enter.
+                                 */
+                                PolyglotThreadLocalActions.ensureEnterThreadInitialized();
                             }
                             if (closingThread != Thread.currentThread()) {
                                 try {
