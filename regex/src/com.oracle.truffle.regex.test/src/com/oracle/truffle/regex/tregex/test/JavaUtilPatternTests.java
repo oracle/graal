@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,6 +77,13 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Override
     Encodings.Encoding getTRegexEncoding() {
         return Encodings.UTF_16;
+    }
+
+    @Test
+    public void characterClassNestingLimit() {
+        int depth = 10_000;
+        String pattern = "[".repeat(depth) + "a" + "]".repeat(depth);
+        expectUnsupported(pattern, "");
     }
 
     @Test
