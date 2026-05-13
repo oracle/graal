@@ -1564,9 +1564,21 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         }
 
         @Override
+        public Value emitMathTanh(Value input) {
+            LLVMValueRef tanh = builder.buildTanh(getVal(input));
+            return new LLVMVariable(tanh);
+        }
+
+        @Override
         public Value emitMathExp(Value input) {
             LLVMValueRef exp = builder.buildExp(getVal(input));
             return new LLVMVariable(exp);
+        }
+
+        @Override
+        public Value emitMathCbrt(Value input) {
+            LLVMValueRef cbrt = builder.buildCbrt(getVal(input));
+            return new LLVMVariable(cbrt);
         }
 
         @Override
@@ -1585,6 +1597,28 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         public Value emitMathFloor(Value input) {
             LLVMValueRef floor = builder.buildFloor(getVal(input));
             return new LLVMVariable(floor);
+        }
+
+        @Override
+        public Value emitRound(Value value, ArithmeticLIRGeneratorTool.RoundingMode mode) {
+            LLVMValueRef result;
+            switch (mode) {
+                case NEAREST:
+                    result = builder.buildRoundEven(getVal(value));
+                    break;
+                case UP:
+                    result = builder.buildCeil(getVal(value));
+                    break;
+                case DOWN:
+                    result = builder.buildFloor(getVal(value));
+                    break;
+                case TRUNCATE:
+                    result = builder.buildFPTrunc(getVal(value));
+                    break;
+                default:
+                    throw shouldNotReachHereUnexpectedValue(mode); // ExcludeFromJacocoGeneratedReport
+            }
+            return new LLVMVariable(result);
         }
 
         @Override

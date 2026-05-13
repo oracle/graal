@@ -201,6 +201,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         AlwaysInline("alwaysinline"),
         GCLeafFunction("gc-leaf-function"),
         Naked("naked"),
+        NoBuiltin("nobuiltin"),
         NoInline("noinline"),
         NoRealignStack("no-realign-stack"),
         NoRedZone("noredzone"),
@@ -1081,11 +1082,11 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public LLVMValueRef buildLog(LLVMValueRef a) {
-        return buildIntrinsicOp("log", a);
+        return buildLibMUnaryOp("log", "logf", a);
     }
 
     public LLVMValueRef buildLog10(LLVMValueRef a) {
-        return buildIntrinsicOp("log10", a);
+        return buildLibMUnaryOp("log10", "log10f", a);
     }
 
     public LLVMValueRef buildSqrt(LLVMValueRef a) {
@@ -1093,19 +1094,27 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public LLVMValueRef buildCos(LLVMValueRef a) {
-        return buildIntrinsicOp("cos", a);
+        return buildLibMUnaryOp("cos", "cosf", a);
     }
 
     public LLVMValueRef buildSin(LLVMValueRef a) {
-        return buildIntrinsicOp("sin", a);
+        return buildLibMUnaryOp("sin", "sinf", a);
     }
 
     public LLVMValueRef buildExp(LLVMValueRef a) {
-        return buildIntrinsicOp("exp", a);
+        return buildLibMUnaryOp("exp", "expf", a);
+    }
+
+    public LLVMValueRef buildTanh(LLVMValueRef a) {
+        return buildLibMUnaryOp("tanh", "tanhf", a);
+    }
+
+    public LLVMValueRef buildCbrt(LLVMValueRef a) {
+        return buildLibMUnaryOp("cbrt", "cbrtf", a);
     }
 
     public LLVMValueRef buildPow(LLVMValueRef a, LLVMValueRef b) {
-        return buildIntrinsicOp("pow", a, b);
+        return buildLibMBinaryOp("pow", "powf", a, b);
     }
 
     public LLVMValueRef buildCeil(LLVMValueRef a) {
@@ -1114,6 +1123,14 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public LLVMValueRef buildFloor(LLVMValueRef a) {
         return buildIntrinsicOp("floor", a);
+    }
+
+    public LLVMValueRef buildRoundEven(LLVMValueRef a) {
+        return buildIntrinsicOp("roundeven", a);
+    }
+
+    public LLVMValueRef buildFPTrunc(LLVMValueRef a) {
+        return buildLibMUnaryOp("trunc", "truncf", a);
     }
 
     public LLVMValueRef buildMin(LLVMValueRef a, LLVMValueRef b) {
@@ -1188,6 +1205,39 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     private LLVMValueRef buildIntrinsicOp(String name, LLVMValueRef... args) {
         return buildIntrinsicOp(name, LLVM.LLVMTypeOf(args[0]), args);
+    }
+
+    private LLVMValueRef buildLibMUnaryOp(String doubleName, String floatName, LLVMValueRef a) {
+        LLVMTypeRef type = LLVM.LLVMTypeOf(a);
+        String functionName;
+        if (isDoubleType(type)) {
+            functionName = doubleName;
+        } else if (isFloatType(type)) {
+            functionName = floatName;
+        } else {
+            throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
+        }
+        LLVMValueRef function = getFunction(functionName, functionType(type, type));
+        LLVMValueRef call = buildCall(function, a);
+        setCallSiteAttribute(call, Attribute.NoBuiltin);
+        return call;
+    }
+
+    private LLVMValueRef buildLibMBinaryOp(String doubleName, String floatName, LLVMValueRef a, LLVMValueRef b) {
+        LLVMTypeRef type = LLVM.LLVMTypeOf(a);
+        assert compatibleTypes(type, LLVM.LLVMTypeOf(b)) : dumpValues("invalid libm operation arguments", a, b);
+        String functionName;
+        if (isDoubleType(type)) {
+            functionName = doubleName;
+        } else if (isFloatType(type)) {
+            functionName = floatName;
+        } else {
+            throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
+        }
+        LLVMValueRef function = getFunction(functionName, functionType(type, type, type));
+        LLVMValueRef call = buildCall(function, a, b);
+        setCallSiteAttribute(call, Attribute.NoBuiltin);
+        return call;
     }
 
     /* Bitwise */

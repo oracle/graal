@@ -36,6 +36,24 @@ import com.oracle.svm.core.log.Log;
 
 class GCCExceptionTable {
 
+    static final class HandlerInfo {
+        private final long offset;
+        private final int action;
+
+        HandlerInfo(long offset, int action) {
+            this.offset = offset;
+            this.action = action;
+        }
+
+        long offset() {
+            return offset;
+        }
+
+        boolean isCleanup() {
+            return action == 0;
+        }
+    }
+
     enum Encoding {
         ULEB128((byte) 0x1),
         UDATA2((byte) 0x2),
@@ -65,7 +83,7 @@ class GCCExceptionTable {
         }
     }
 
-    static Long getHandlerOffset(Pointer buffer, long pcOffset) {
+    static HandlerInfo getHandlerInfo(Pointer buffer, long pcOffset) {
         Log log = Log.noopLog();
 
         CIntPointer offset = UnsafeStackValue.get(Integer.BYTES);
@@ -101,13 +119,14 @@ class GCCExceptionTable {
             long handlerOffset = get(buffer, siteEncoding, offset);
             log.string("start: ").unsigned(startOffset).string(", size: ").unsigned(size).string(", handlerOffset: ").unsigned(handlerOffset).newline();
 
-            if (startOffset <= pcOffset && startOffset + size >= pcOffset) {
-                return handlerOffset;
-            }
             int action = Byte.toUnsignedInt(buffer.readByte(offset.read()));
             offset.write(offset.read() + Byte.BYTES);
             log.string("action: ").unsigned(action).newline();
             assert action == 0 || action == 1;
+
+            if (startOffset <= pcOffset && pcOffset < startOffset + size) {
+                return new HandlerInfo(handlerOffset, action);
+            }
 
             assert offset.read() <= siteTableEnd;
         }
