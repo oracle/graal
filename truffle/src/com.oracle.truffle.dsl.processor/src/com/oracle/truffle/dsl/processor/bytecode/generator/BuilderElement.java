@@ -2555,12 +2555,20 @@ final class BuilderElement extends AbstractElement {
 
         b.statement("state.maxLocals = Math.max(state.maxLocals, ", operationStack.read(operation, operationFields.frameOffset), " + ",
                         operationStack.read(operation, operationFields.numLocals), ")");
+        String localTableIndices = operationStack.read(operation, operationFields.locals);
+        if (model.enableInstructionRewriting || operation.kind == OperationKind.BLOCK) {
+            b.declaration(arrayOf(type(int.class)), "localTableIndices", localTableIndices);
+            localTableIndices = "localTableIndices";
+        }
         b.startFor().string("int index = 0; index < ", operationStack.read(operation, operationFields.numLocals), "; index++").end().startBlock();
 
-        b.statement("state.locals[", operationStack.read(operation, operationFields.locals), "[index] + LOCALS_OFFSET_END_BCI] = state.bci");
+        b.statement("state.locals[", localTableIndices, "[index] + LOCALS_OFFSET_END_BCI] = state.bci");
+        if (model.enableInstructionRewriting) {
+            b.statement("state.minLocalsTableFixupIndex = Math.min(state.minLocalsTableFixupIndex, ", localTableIndices, "[index])");
+        }
         if (operation.kind == OperationKind.BLOCK) {
             buildEmitInstruction(b, null, model.clearLocalInstruction,
-                            BytecodeRootNodeElement.safeCastShort("state.locals[" + operationStack.read(operation, operationFields.locals) + "[index] + LOCALS_OFFSET_FRAME_INDEX]"));
+                            BytecodeRootNodeElement.safeCastShort("state.locals[" + localTableIndices + "[index] + LOCALS_OFFSET_FRAME_INDEX]"));
         }
         b.end(); // for
         b.end(); // block
@@ -4802,12 +4810,20 @@ final class BuilderElement extends AbstractElement {
                 b.startCase().tree(parent.createOperationConstant(model.blockOperation)).end();
                 b.startBlock();
                 b.declaration(type(int.class), "blockEndBci", "state.bci");
+                String blockLocalTableIndices = operationStack.read(model.blockOperation, operationFields.locals);
+                if (model.enableInstructionRewriting || operationKind == OperationKind.BRANCH) {
+                    b.declaration(arrayOf(type(int.class)), "blockLocalTableIndices", blockLocalTableIndices);
+                    blockLocalTableIndices = "blockLocalTableIndices";
+                }
                 b.startFor().string("int j = 0; j < ", operationStack.read(model.blockOperation, operationFields.numLocals), "; j++").end().startBlock();
-                b.statement("state.locals[", operationStack.read(model.blockOperation, operationFields.locals), "[j] + LOCALS_OFFSET_END_BCI] = blockEndBci");
+                b.statement("state.locals[", blockLocalTableIndices, "[j] + LOCALS_OFFSET_END_BCI] = blockEndBci");
+                if (model.enableInstructionRewriting) {
+                    b.statement("state.minLocalsTableFixupIndex = Math.min(state.minLocalsTableFixupIndex, ", blockLocalTableIndices, "[j])");
+                }
                 if (operationKind == OperationKind.BRANCH) {
                     buildEmitInstruction(b, null, model.clearLocalInstruction,
                                     BytecodeRootNodeElement.safeCastShort(
-                                                    "state.locals[" + operationStack.read(model.blockOperation, operationFields.locals) + "[j] + LOCALS_OFFSET_FRAME_INDEX]"));
+                                                    "state.locals[" + blockLocalTableIndices + "[j] + LOCALS_OFFSET_FRAME_INDEX]"));
                 }
                 b.statement("needsRewind = true");
                 b.end(); // for
@@ -4884,8 +4900,9 @@ final class BuilderElement extends AbstractElement {
             if (model.enableBlockScoping) {
                 b.startCase().tree(parent.createOperationConstant(model.blockOperation)).end();
                 b.startCaseBlock();
+                b.declaration(arrayOf(type(int.class)), "blockLocalTableIndices", operationStack.read(model.blockOperation, operationFields.locals));
                 b.startFor().string("int j = 0; j < ", operationStack.read(model.blockOperation, operationFields.numLocals), "; j++").end().startBlock();
-                b.declaration(type(int.class), "prevTableIndex", operationStack.read(model.blockOperation, operationFields.locals) + "[j]");
+                b.declaration(type(int.class), "prevTableIndex", "blockLocalTableIndices[j]");
 
                 /*
                  * We need to emit multiple local ranges if instructions were emitted after
@@ -4898,6 +4915,9 @@ final class BuilderElement extends AbstractElement {
                     b.startIf().string("endBci == state.bci").end().startBlock();
                     b.lineComment("No need to split. Reuse the existing entry.");
                     b.statement("state.locals[prevTableIndex + LOCALS_OFFSET_END_BCI] = ", UNINIT);
+                    if (model.enableInstructionRewriting) {
+                        b.statement("state.minLocalsTableFixupIndex = Math.min(state.minLocalsTableFixupIndex, prevTableIndex)");
+                    }
                     b.statement("continue");
                     b.end();
                 }
@@ -4907,7 +4927,7 @@ final class BuilderElement extends AbstractElement {
                 b.declaration(type(int.class), "frameIndex", "state.locals[prevTableIndex + LOCALS_OFFSET_FRAME_INDEX]");
                 b.declaration(type(int.class), "nameIndex", "state.locals[prevTableIndex + LOCALS_OFFSET_NAME]");
                 b.declaration(type(int.class), "infoIndex", "state.locals[prevTableIndex + LOCALS_OFFSET_INFO]");
-                b.statement(operationStack.read(model.blockOperation, operationFields.locals), "[j] = state.doEmitLocal(localIndex, frameIndex, nameIndex, infoIndex)");
+                b.statement("blockLocalTableIndices[j] = state.doEmitLocal(localIndex, frameIndex, nameIndex, infoIndex)");
                 b.end(); // for
                 b.end(); // case block
             }
@@ -4948,6 +4968,8 @@ final class BuilderElement extends AbstractElement {
         final Map<InstructionRewriteRuleModel, CodeExecutableElement> remapBciMethods = new LinkedHashMap<>();
         private CodeVariableElement instructionRewriteState;
         private CodeVariableElement leaderBci;
+        private CodeVariableElement minLocalsTableFixupIndex;
+        private CodeVariableElement minHandlerTableFixupIndex;
         private CodeExecutableElement requestLeaderBci;
         private CodeExecutableElement recordRewrittenBciDelta;
         private CodeExecutableElement replayFromLeaderBciMethod;
@@ -5012,6 +5034,34 @@ final class BuilderElement extends AbstractElement {
                                 "Each pair with {@code rewrittenBci <= searchBci} adds {@code delta} to the cumulative stable-BCI offset."));
                 this.add(rewrittenBciDeltas);
                 this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "rewrittenBciDeltasIndex"));
+                /*
+                 * On rewrite, we need to walk the handler/locals table to remap bci's that can
+                 * change due to the rewrite. We maintain a minimum fix-up index for each table to
+                 * reduce the number of entries to process. This index tracks the earliest entry
+                 * that could possibly contain a remappable bci.
+                 *
+                 * We maintain each fix-up index in two ways:
+                 *
+                 * 1) In requestLeaderBci(), initialize to the current table size. Rewrites cannot
+                 * occur before the current bci, and emitted table entries don't contain remappable
+                 * bci's greater than the current bci, so no existing entry needs fixing.
+                 *
+                 * 2) When writing a remappable bci into an existing table entry, we may update an
+                 * entry before the current fix-up index, so we set the fix-up index to min(fix-up
+                 * index, table index).
+                 */
+                this.minHandlerTableFixupIndex = new CodeVariableElement(Set.of(PRIVATE), type(int.class), "minHandlerTableFixupIndex");
+                BytecodeRootNodeElement.addJavadoc(this.minHandlerTableFixupIndex, List.of(
+                                "Lower bound on the handler table entries that may need bci remapping on rewrite.",
+                                "Entries before this index are stable for the current leader bci and can be skipped."));
+                this.add(this.minHandlerTableFixupIndex);
+                if (model.enableBlockScoping) {
+                    this.minLocalsTableFixupIndex = new CodeVariableElement(Set.of(PRIVATE), type(int.class), "minLocalsTableFixupIndex");
+                    BytecodeRootNodeElement.addJavadoc(this.minLocalsTableFixupIndex, List.of(
+                                    "Lower bound on the locals table entries that may need bci remapping on rewrite.",
+                                    "Entries before this index are stable for the current leader bci and can be skipped."));
+                    this.add(this.minLocalsTableFixupIndex);
+                }
                 // add rewriter helpers in lateInit to co-locate them with the rewrite methods
                 this.requestLeaderBci = createRequestLeaderBci();
                 this.recordRewrittenBciDelta = createRecordRewrittenBciDelta();
@@ -5573,6 +5623,9 @@ final class BuilderElement extends AbstractElement {
             if (model.enableBlockScoping) {
                 b.statement("assert frameIndex - USER_LOCALS_START_INDEX >= 0");
                 b.statement("this.locals[tableIndex + LOCALS_OFFSET_START_BCI] = this.bci");
+                if (model.enableInstructionRewriting) {
+                    b.statement("this.minLocalsTableFixupIndex = Math.min(this.minLocalsTableFixupIndex, tableIndex)");
+                }
                 b.lineComment("will be patched later at the end of the block");
                 b.statement("this.locals[tableIndex + LOCALS_OFFSET_END_BCI] = -1");
                 b.statement("this.locals[tableIndex + LOCALS_OFFSET_LOCAL_INDEX] = localIndex");
@@ -5670,6 +5723,9 @@ final class BuilderElement extends AbstractElement {
             b.declaration(type(int.class), "previousHandlerBci", "this.handlerTable[previousEntry + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
             b.startIf().string("previousEndBci == startBci && previousKind == handlerKind && previousHandlerBci == handlerBci").end().startBlock();
             b.statement("this.handlerTable[previousEntry + EXCEPTION_HANDLER_OFFSET_END_BCI] = endBci");
+            if (model.enableInstructionRewriting) {
+                b.statement("this.minHandlerTableFixupIndex = Math.min(this.minHandlerTableFixupIndex, previousEntry)");
+            }
             b.startReturn().string(UNINIT).end();
             b.end(); // if same handler and contiguous
             b.end(); // if table non-empty
@@ -5684,6 +5740,9 @@ final class BuilderElement extends AbstractElement {
             b.statement("this.handlerTable[result + EXCEPTION_HANDLER_OFFSET_KIND] = handlerKind");
             b.statement("this.handlerTable[result + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
             b.statement("this.handlerTable[result + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] = handlerSp");
+            if (model.enableInstructionRewriting) {
+                b.statement("this.minHandlerTableFixupIndex = Math.min(this.minHandlerTableFixupIndex, result)");
+            }
             b.statement("this.handlerTableSize += EXCEPTION_HANDLER_LENGTH");
 
             b.statement("return result");
@@ -6109,6 +6168,10 @@ final class BuilderElement extends AbstractElement {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startAssign(instructionRewriteState).staticReference(instructionRewriterElement.startState).end();
+            b.startAssign(minHandlerTableFixupIndex).string("handlerTableSize").end();
+            if (model.enableBlockScoping) {
+                b.startAssign(minLocalsTableFixupIndex).string("localsTableIndex").end();
+            }
             b.startReturn().variable(leaderBci).string(" = bci").end();
 
             return ex;
@@ -6213,7 +6276,7 @@ final class BuilderElement extends AbstractElement {
                             "Fix up local table ranges that overlap or follow the rewritten range."));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.startFor().string("int tableIndex = 0; tableIndex < localsTableIndex; tableIndex += LOCALS_LENGTH").end().startBlock();
+            b.startFor().string("int tableIndex = minLocalsTableFixupIndex; tableIndex < localsTableIndex; tableIndex += LOCALS_LENGTH").end().startBlock();
             b.declaration(type(int.class), "localStartBci", "locals[tableIndex + LOCALS_OFFSET_START_BCI]");
             b.startIf().string("startBci < localStartBci").end().startBlock();
             b.statement("locals[tableIndex + LOCALS_OFFSET_START_BCI] = remapBci.applyAsInt(startBci, localStartBci)");
@@ -6235,7 +6298,7 @@ final class BuilderElement extends AbstractElement {
                             "Fix up emitted exception handler ranges that overlap or follow the rewritten range."));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.startFor().string("int tableIndex = 0; tableIndex < handlerTableSize; tableIndex += EXCEPTION_HANDLER_LENGTH").end().startBlock();
+            b.startFor().string("int tableIndex = minHandlerTableFixupIndex; tableIndex < handlerTableSize; tableIndex += EXCEPTION_HANDLER_LENGTH").end().startBlock();
             b.declaration(type(int.class), "entryStartBci", "handlerTable[tableIndex + EXCEPTION_HANDLER_OFFSET_START_BCI]");
             b.startIf().string("startBci < entryStartBci").end().startBlock();
             b.statement("handlerTable[tableIndex + EXCEPTION_HANDLER_OFFSET_START_BCI] = remapBci.applyAsInt(startBci, entryStartBci)");
