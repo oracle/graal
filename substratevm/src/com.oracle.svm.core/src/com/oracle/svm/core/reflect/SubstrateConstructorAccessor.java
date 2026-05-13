@@ -33,12 +33,10 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
-import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 import jdk.internal.reflect.ConstructorAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@InternalVMMethod
 public final class SubstrateConstructorAccessor extends SubstrateAccessor implements ConstructorAccessor {
 
     private final Class<?> declaringClass;
@@ -69,6 +67,21 @@ public final class SubstrateConstructorAccessor extends SubstrateAccessor implem
         return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(null, args, getCodePointer(factoryMethodTarget));
     }
 
+    /**
+     * This variant of {@link #newInstance(Object[])} is considered @Hidden by
+     * {@link com.oracle.svm.core.jdk.StackTraceUtils#shouldShowFrame(Class, String, boolean, boolean)}.
+     * This is important when this is called as part of the method handle implementation where this
+     * frame is not expected to appear.
+     *
+     * When @Hidden becomes available per-method (GR-76134) we should use that annotation instead.
+     */
+    public Object methodHandleNewInstance(Object[] args) {
+        if (initializeBeforeInvoke != null) {
+            EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));
+        }
+        return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(null, args, getCodePointer(factoryMethodTarget));
+    }
+
     public static void checkReceiver(Class<?> declaringClass, Object obj) {
         if (obj == null) {
             throw new NullPointerException();
@@ -78,11 +91,11 @@ public final class SubstrateConstructorAccessor extends SubstrateAccessor implem
     }
 
     @Override
-    public Object invokeSpecial(Object obj, Object[] args) {
+    public Object methodHandleInvokeSpecial(Object obj, Object[] args) {
         if (initializeBeforeInvoke != null) {
             EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));
         }
         checkReceiver(declaringClass, obj);
-        return super.invokeSpecial(obj, args);
+        return super.methodHandleInvokeSpecial(obj, args);
     }
 }

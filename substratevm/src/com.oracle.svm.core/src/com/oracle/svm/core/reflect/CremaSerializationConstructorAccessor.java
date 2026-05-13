@@ -27,7 +27,6 @@ package com.oracle.svm.core.reflect;
 import java.lang.reflect.Constructor;
 
 import com.oracle.svm.core.hub.crema.CremaSupport;
-import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -35,18 +34,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Constructor accessor for deserializing runtime-loaded Crema classes when the first
  * non-serializable superclass has a constructor that Crema can execute.
  * <p>
- * The normal serialization constructor accessor table is built before runtime-loaded classes
- * exist, so it cannot contain entries for these Crema classes. This accessor allocates the
- * deserialization target class directly, then invokes the selected superclass constructor through
- * Crema. The {@link Object#Object()} root case has no instance state to initialize, but it is still
- * invoked to match the JDK serialization constructor path.
+ * The normal serialization constructor accessor table is built before runtime-loaded classes exist,
+ * so it cannot contain entries for these Crema classes. This accessor allocates the deserialization
+ * target class directly, then invokes the selected superclass constructor through Crema. The
+ * {@link Object#Object()} root case has no instance state to initialize, but it is still invoked to
+ * match the JDK serialization constructor path.
  */
-@InternalVMMethod
 public final class CremaSerializationConstructorAccessor extends AbstractCremaConstructorAccessor {
     private final Class<?> serializationTargetClass;
 
     public CremaSerializationConstructorAccessor(Class<?> serializationTargetClass, Constructor<?> constructorToCall) {
-        /* Resolve the constructor once so each deserialization does not repeat the reflection-to-JVMCI lookup. */
+        /*
+         * Resolve the constructor once so each deserialization does not repeat the
+         * reflection-to-JVMCI lookup.
+         */
         this(serializationTargetClass, constructorToCall.getDeclaringClass(), constructorToCall.getParameterTypes(), CremaSupport.singleton().toJVMCI(constructorToCall));
     }
 

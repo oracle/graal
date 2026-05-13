@@ -1027,7 +1027,7 @@ public abstract class AbstractPolyglotImpl {
             return switch (element.getClassName()) {
                 case "sun.reflect.NativeMethodAccessorImpl", "sun.reflect.DelegatingMethodAccessorImpl",
                                 "jdk.internal.reflect.NativeMethodAccessorImpl", "jdk.internal.reflect.DelegatingMethodAccessorImpl",
-                                "java.lang.reflect.Method" ->
+                                "java.lang.reflect.Method", "com.oracle.svm.core.reflect.SubstrateMethodAccessor" ->
                     element.getMethodName().startsWith("invoke");
                 default -> false;
             };

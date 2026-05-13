@@ -38,6 +38,10 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.reflect.CremaMethodAccessor;
+import com.oracle.svm.core.reflect.SubstrateAccessor;
+import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -47,6 +51,7 @@ import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -153,12 +158,19 @@ public class StackTraceUtils {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean shouldShowFrame(Class<?> clazz, String methodName, boolean showLambdaFrames, boolean showReflectFrames) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         if (isVMInternalFrameClass(clazz)) {
             return false;
         }
 
-        if (!showLambdaFrames && DynamicHub.fromClass(clazz).isLambdaFormHidden()) {
-            return false;
+        if (!showLambdaFrames) {
+            // GR-76134 This check should in theory be performed on methods
+            if (DynamicHub.fromClass(clazz).isLambdaFormHidden()) {
+                return false;
+            }
+            if (SubstrateAccessor.class.isAssignableFrom(clazz) && UninterruptibleUtils.String.startsWith(methodName, "methodHandle")) {
+                return false;
+            }
         }
 
         if (!showReflectFrames) {
@@ -171,6 +183,13 @@ public class StackTraceUtils {
                 return false;
             } else if ((clazz == java.lang.reflect.Constructor.class || clazz == java.lang.Class.class) && UninterruptibleUtils.String.equals("newInstance", methodName)) {
                 /* Ignore a constructor invocation frame (see the comment above). */
+                return false;
+            } else if (clazz == SubstrateMethodAccessor.class || (RuntimeClassLoading.isSupported() && clazz == CremaMethodAccessor.class)) {
+                /*
+                 * Ignore SVM's method accessor implementations like HotSpot ignores
+                 * `MethodAccessorImpl`. Note that this does not ignore ConstructorAccessors, this
+                 * is in line with HotSpot's behaviour.
+                 */
                 return false;
             }
         }
@@ -206,14 +225,26 @@ public class StackTraceUtils {
             return false;
         }
 
-        if (!showLambdaFrames && AnnotationUtil.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
-            return false;
+        if (!showLambdaFrames) {
+            if (AnnotationUtil.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
+                return false;
+            }
+            if (metaAccess.lookupJavaType(SubstrateAccessor.class).isAssignableFrom(clazz) && method.getName().startsWith("methodHandle")) {
+                return false;
+            }
         }
 
-        if (!showReflectFrames && ((clazz.equals(metaAccess.lookupJavaType(java.lang.reflect.Method.class)) && "invoke".equals(method.getName())) ||
-                        (clazz.equals(metaAccess.lookupJavaType(java.lang.reflect.Constructor.class)) && "newInstance".equals(method.getName())) ||
-                        (clazz.equals(metaAccess.lookupJavaType(java.lang.Class.class)) && "newInstance".equals(method.getName())))) {
-            return false;
+        if (!showReflectFrames) {
+            if (clazz.equals(metaAccess.lookupJavaType(java.lang.reflect.Method.class)) && "invoke".equals(method.getName())) {
+                return false;
+            }
+            if ((clazz.equals(metaAccess.lookupJavaType(java.lang.reflect.Constructor.class)) || clazz.equals(metaAccess.lookupJavaType(Class.class))) //
+                            && "newInstance".equals(method.getName())) {
+                return false;
+            }
+            if (clazz.equals(metaAccess.lookupJavaType(SubstrateMethodAccessor.class)) || (RuntimeClassLoading.isSupported() && clazz.equals(metaAccess.lookupJavaType(CremaMethodAccessor.class)))) {
+                return false;
+            }
         }
 
         return true;

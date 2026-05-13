@@ -29,13 +29,11 @@ import java.lang.reflect.InvocationTargetException;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.espresso.shared.meta.MethodAccess;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
-import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.reflect.MethodAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@InternalVMMethod
 public final class CremaMethodAccessor extends AbstractCremaAccessor implements MethodAccessor {
 
     public CremaMethodAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes) {

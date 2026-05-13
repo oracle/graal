@@ -24,11 +24,8 @@
  */
 package com.oracle.svm.core.reflect;
 
-import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@InternalVMMethod
 public final class CremaConstructorAccessor extends AbstractCremaConstructorAccessor {
 
     public CremaConstructorAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes) {
