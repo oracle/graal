@@ -79,6 +79,11 @@ import jdk.vm.ci.meta.JavaKind;
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = CrossLayerFieldUpdaterFeature.LayeredCallbacks.class)
 public class CrossLayerFieldUpdaterFeature implements InternalFeature {
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(CrossLayerFieldUpdaterFeature.class, this);
+    }
+
     private static final int INVALID = -1;
 
     /**

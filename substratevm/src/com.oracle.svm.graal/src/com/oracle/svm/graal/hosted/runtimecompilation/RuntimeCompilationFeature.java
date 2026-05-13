@@ -398,6 +398,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     }
 
     @Override
+    public void onRegistration(Feature.OnRegistrationAccess access) {
+        ImageSingletons.add(RuntimeCompilationFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
         ImageSingletons.add(SVMParsingSupport.class, new RuntimeCompilationParsingSupport());
         ImageSingletons.add(HostVM.MethodVariantsAnalysisPolicy.class, new RuntimeCompilationAnalysisPolicy());

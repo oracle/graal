@@ -109,6 +109,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class CGlobalDataFeature implements InternalFeature {
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(CGlobalDataFeature.class, this);
+    }
 
     private final Method getCGlobalDataInfoMethod = ReflectionUtil.lookupMethod(CGlobalDataNonConstantRegistry.class, "getCGlobalDataInfo", CGlobalDataImpl.class);
     private final Field layerNumField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "layerNum");

@@ -106,6 +106,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class LayeredDispatchTableFeature implements InternalFeature {
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(LayeredDispatchTableFeature.class, this);
+    }
+
     private final boolean buildingSharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
     private final boolean buildingInitialLayer = buildingSharedLayer && ImageLayerBuildingSupport.buildingInitialLayer();
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();

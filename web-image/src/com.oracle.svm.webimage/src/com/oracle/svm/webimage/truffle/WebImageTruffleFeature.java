@@ -91,6 +91,11 @@ public class WebImageTruffleFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(WebImageTruffleFeature.class, this);
+    }
+
+    @Override
     public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         WebImageTruffleGraphBuilderPlugins.register(plugins.getInvocationPlugins());
     }

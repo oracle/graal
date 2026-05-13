@@ -141,6 +141,11 @@ public class PLTGOTFeature implements InternalFeature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(PLTGOTFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         VMError.guarantee(Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS.class),
                         "PLT and GOT is currently only supported on Linux, Darwin and Windows.");

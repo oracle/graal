@@ -54,6 +54,11 @@ final class GroovyIndyInterfaceFeature implements Feature {
             return false; // nothing to substitute
         }
     }
+
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(GroovyIndyInterfaceFeature.class, this);
+    }
 }
 
 @TargetClass(className = "org.codehaus.groovy.vmplugin.v7.IndyInterface", onlyWith = com.oracle.svm.polyglot.groovy.GroovyIndyInterfaceFeature.IsEnabled.class)

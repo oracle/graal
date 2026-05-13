@@ -144,6 +144,11 @@ public final class LibGraalFeature implements Feature {
     private OptionCollector optionCollector;
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(LibGraalFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         // Check that NativeImageSupport.inBuildtimeCode() and ImageInfo.inImageBuildtimeCode()
         // agree on the system property key and value they rely on.

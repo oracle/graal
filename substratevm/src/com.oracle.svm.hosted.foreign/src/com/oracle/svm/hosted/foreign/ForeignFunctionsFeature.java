@@ -489,6 +489,11 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(ForeignFunctionsFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         abiUtils = AbiUtils.create();
         accessSupport = new RuntimeForeignAccessSupportImpl();

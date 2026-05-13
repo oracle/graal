@@ -32,8 +32,12 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.runner.Description;
 import org.junit.runner.Request;
 
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ModuleSupport;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class JUnitFeature implements Feature {
 
     @Override
@@ -63,6 +67,11 @@ public final class JUnitFeature implements Feature {
 
     private static boolean includesClass(Description dn, Class<?> clazz) {
         return clazz.equals(dn.getTestClass()) || dn.getChildren().stream().anyMatch(child -> includesClass(child, clazz));
+    }
+
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(JUnitFeature.class, this);
     }
 
     @Override

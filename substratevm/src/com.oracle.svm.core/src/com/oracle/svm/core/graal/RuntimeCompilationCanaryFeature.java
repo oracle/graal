@@ -44,4 +44,8 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class RuntimeCompilationCanaryFeature implements InternalFeature {
+    @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(RuntimeCompilationCanaryFeature.class, this);
+    }
 }

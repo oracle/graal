@@ -206,6 +206,11 @@ public class JNIAccessFeature implements Feature {
     }
 
     @Override
+    public void onRegistration(OnRegistrationAccess access) {
+        ImageSingletons.add(JNIAccessFeature.class, this);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess arg) {
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
 
