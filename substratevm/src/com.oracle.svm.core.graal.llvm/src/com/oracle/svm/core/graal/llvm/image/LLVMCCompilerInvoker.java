@@ -24,17 +24,10 @@
  */
 package com.oracle.svm.core.graal.llvm.image;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 import java.util.Scanner;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.image.LLVMToolchain;
@@ -76,52 +69,6 @@ public class LLVMCCompilerInvoker extends CCompilerInvoker {
     @Override
     protected String getDefaultCompiler() {
         return "clang";
-    }
-
-    @Override
-    public List<String> createCompilerCommand(List<String> options, Path target, Path... input) {
-        List<String> command = new ArrayList<>(super.createCompilerCommand(options, target, input));
-        if (OS.getCurrent() == OS.DARWIN) {
-            getDarwinSDKPath().ifPresent(sdkPath -> {
-                command.add(1, "-isysroot");
-                command.add(2, sdkPath.toString());
-            });
-        }
-        return command;
-    }
-
-    private static Optional<Path> getDarwinSDKPath() {
-        String sdkRoot = System.getenv("SDKROOT");
-        if (sdkRoot != null && !sdkRoot.isBlank()) {
-            Path sdkRootPath = Path.of(sdkRoot);
-            if (Files.exists(sdkRootPath)) {
-                return Optional.of(sdkRootPath);
-            }
-        }
-
-        Process process = null;
-        try {
-            process = new ProcessBuilder("xcrun", "--sdk", "macosx", "--show-sdk-path").redirectErrorStream(true).start();
-            String output;
-            try (InputStream inputStream = process.getInputStream()) {
-                output = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8).trim();
-            }
-            if (process.waitFor() == 0 && !output.isEmpty()) {
-                Path sdkPath = Path.of(output);
-                if (Files.exists(sdkPath)) {
-                    return Optional.of(sdkPath);
-                }
-            }
-        } catch (IOException | InterruptedException e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
-        } finally {
-            if (process != null) {
-                process.destroy();
-            }
-        }
-        return Optional.empty();
     }
 
     @Override

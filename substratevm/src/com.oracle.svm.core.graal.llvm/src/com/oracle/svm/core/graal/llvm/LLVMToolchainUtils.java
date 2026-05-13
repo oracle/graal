@@ -132,9 +132,6 @@ public class LLVMToolchainUtils {
         try {
             if (LLVMOptions.CustomLD.hasBeenSet()) {
                 LLVMToolchain.runCommand(basePath, cmd);
-            } else if (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) {
-                cmd.add(0, "ld");
-                LLVMToolchain.runCommand(basePath, cmd);
             } else {
                 LLVMToolchain.runLLVMCommand(getLld(), basePath, cmd);
             }

@@ -215,31 +215,13 @@ public class LLVMObjectFileReader {
         private LLVMTextSectionInfo(LLVMSectionInfo<Long, SymbolOffset> sectionInfo) {
             this.codeSize = sectionInfo.sectionInfo;
             for (SymbolOffset symbolOffset : sectionInfo.symbolInfo) {
-                if (isCodeSymbol(symbolOffset)) {
+                int offset = symbolOffset.offset;
+                if (offset >= 0 && offset < codeSize && LLVMTargetSpecific.get().isSymbolValid(symbolOffset.symbol)) {
                     offsetToSymbol.put(symbolOffset.offset, symbolOffset.symbol);
                     symbolToOffset.put(symbolOffset.symbol, symbolOffset.offset);
                 }
             }
             this.sortedMethodOffsets = computeSortedMethodOffsets();
-        }
-
-        private boolean isCodeSymbol(SymbolOffset symbolOffset) {
-            String symbol = symbolOffset.symbol;
-            int offset = symbolOffset.offset;
-            return offset >= 0 && offset < codeSize && isPlatformCodeSymbol(symbol) && !isTextSectionMarker(symbol) &&
-                            LLVMTargetSpecific.get().isSymbolValid(symbol);
-        }
-
-        private static boolean isPlatformCodeSymbol(String symbol) {
-            if (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) {
-                return symbol.startsWith(SYMBOL_PREFIX);
-            }
-            return true;
-        }
-
-        private static boolean isTextSectionMarker(String symbol) {
-            return symbol.equals("__svm_code_section") || symbol.equals(SYMBOL_PREFIX + "__svm_code_section") ||
-                            symbol.equals("__svm_text_end") || symbol.equals(SYMBOL_PREFIX + "__svm_text_end");
         }
 
         public long getCodeSize() {
