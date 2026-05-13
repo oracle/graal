@@ -25,7 +25,6 @@
 
 package com.oracle.svm.core.jdk;
 
-import static com.oracle.svm.core.jdk.StackTraceUtils.shouldShowFrame;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.StackWalker.Option;
@@ -117,7 +116,7 @@ final class Target_java_lang_StackWalker {
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), new JavaStackFrameVisitor() {
             @Override
             public boolean visitFrame(FrameSourceInfo frameInfo, Pointer sp) {
-                if (shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames)) {
+                if (!StackWalkerUtil.skipFrame(frameInfo, !showHiddenFrames, !showReflectFrames, false)) {
                     action.accept(new StackFrameImpl(frameInfo));
                 }
                 return true;
@@ -221,7 +220,7 @@ final class Target_java_lang_StackWalker {
                     return false;
                 }
 
-                if (vFrame != null && shouldShowFrame(vFrame, showHiddenFrames, showReflectFrames)) {
+                if (vFrame != null && !StackWalkerUtil.skipFrame(vFrame, !showHiddenFrames, !showReflectFrames, false)) {
                     action.accept(new StackFrameImpl(vFrame));
                     return true;
                 }
@@ -598,6 +597,44 @@ final class Target_java_lang_StackFrameInfo {
 final class Target_java_lang_StackStreamFactory {
 }
 
+final class StackWalkerUtil {
+    /// Implements the frame skipping semantics required for [StackWalker] which are different from
+    /// the ones used in other stack walking mechanisms (e.g., different from
+    /// [jdk.internal.reflect.Reflection#getCallerClass()]).
+    ///
+    /// In particular what is considered a "reflection" frame is different.
+    /// * [StackWalker] considers all methods from [Method], [Constructor], [MethodAccessor] and its
+    /// subclasses, [ConstructorAccessor] and its subclasses;
+    /// * while [jdk.internal.reflect.Reflection#getCallerClass()] only considers
+    /// [Method#invoke(Object, Object...)] and methods from the JDK's internal [MethodAccessor]
+    /// implementations.
+    static boolean skipFrame(FrameSourceInfo frameSourceInfo, boolean skipHiddenFrames, boolean skipReflectFrames, boolean skipMethodHandleFrames) {
+        // The reflection check is done differently here
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, !skipHiddenFrames, true)) {
+            return true;
+        }
+        Class<?> clazz = frameSourceInfo.getSourceClass();
+        if (skipReflectFrames && isReflectionFrame(clazz)) {
+            return true;
+        }
+        if (skipMethodHandleFrames && isMethodHandleFrame(clazz)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isMethodHandleFrame(Class<?> c) {
+        return c.getPackageName().equals("java.lang.invoke");
+    }
+
+    private static boolean isReflectionFrame(Class<?> c) {
+        return c == Method.class ||
+                        c == Constructor.class ||
+                        MethodAccessor.class.isAssignableFrom(c) ||
+                        ConstructorAccessor.class.isAssignableFrom(c);
+    }
+}
+
 /// This visitor finds the caller class as required for [StackWalker#getCallerClass()]. Note
 /// that this is different from the semantics of [jdk.internal.reflect.Reflection#getCallerClass()].
 ///
@@ -612,10 +649,10 @@ final class Target_java_lang_StackStreamFactory {
 /// * [jdk.internal.vm.annotation.Hidden] frames (currently approximated in this implementation)
 /// * Any frame from the `java.lang.invoke` package
 /// * Any frame from the following reflection classes:
-///   * [Method]
-///   * [Constructor]
-///   * [MethodAccessor] or its subtypes
-///   * [ConstructorAccessor] or its subtypes
+/// * [Method]
+/// * [Constructor]
+/// * [MethodAccessor] or its subtypes
+/// * [ConstructorAccessor] or its subtypes
 ///
 /// See `java.lang.StackStreamFactory.CallerClassFinder`.
 @BasedOnJDKClass(className = "java.lang.StackStreamFactory", innerClass = "CallerClassFinder")
@@ -645,22 +682,6 @@ class StackWalkerGetCallerClassVisitor extends JavaStackFrameVisitor {
     }
 
     private static boolean skipFrame(FrameSourceInfo frameSourceInfo) {
-        // The reflection check is done differently here
-        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, false, true)) {
-            return true;
-        }
-        Class<?> clazz = frameSourceInfo.getSourceClass();
-        return isReflectionFrame(clazz) || isMethodHandleFrame(clazz);
-    }
-
-    private static boolean isMethodHandleFrame(Class<?> c) {
-        return c.getPackageName().equals("java.lang.invoke");
-    }
-
-    private static boolean isReflectionFrame(Class<?> c) {
-        return c == Method.class ||
-                        c == Constructor.class ||
-                        MethodAccessor.class.isAssignableFrom(c) ||
-                        ConstructorAccessor.class.isAssignableFrom(c);
+        return StackWalkerUtil.skipFrame(frameSourceInfo, true, true, true);
     }
 }
