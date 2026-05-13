@@ -96,18 +96,11 @@ The `floyd` function is defined as separate and can be later exported.
 GraalWasm is also available as a standalone distribution.
 
 1. Download the distribution for your operating system:
-   - Native standalone
-      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-linux-aarch64.tar.gz)
-      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-macos-amd64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-windows-amd64.zip)
-   - JVM standalone
-      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-25.0.0-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-25.0.0-linux-aarch64.tar.gz)
-      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-25.0.0-macos-amd64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-25.0.0-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-25.0.0-windows-amd64.zip)
+   - [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-linux-amd64.tar.gz)
+   - [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-linux-aarch64.tar.gz)
+   - [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-macos-amd64.tar.gz)
+   - [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-macos-aarch64.tar.gz)
+   - [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-25.0.0-windows-amd64.zip)
 
 2. Unzip the archive:
 
@@ -119,12 +112,6 @@ GraalWasm is also available as a standalone distribution.
    Extract:
     ```shell
     tar -xzf <archive>.tar.gz
-    ```
-
-3. The standalone runtime comes with a JVM in addition to its native launcher.
-   Check the version to see if it is active:
-    ```bash
-    ./path/to/bin/wasm --version
     ```
 
 Now you have the launcher which can run WebAssembly programs directly.

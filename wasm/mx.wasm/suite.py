@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
 #
 
 suite = {
-  "mxversion": "7.65.0",
+  "mxversion": "7.81.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "25.1.0",
@@ -591,6 +591,7 @@ suite = {
 
     "GRAALWASM_JVM_STANDALONE_RELEASE_ARCHIVE": {
         "class": "DeliverableStandaloneArchive",
+        "deploy": False,
         "platformDependent": True,
         "standalone_dist": "GRAALWASM_JVM_STANDALONE",
         "language_id": "wasm",
