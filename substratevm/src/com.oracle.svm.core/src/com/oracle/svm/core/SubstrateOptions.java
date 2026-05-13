@@ -81,6 +81,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -951,7 +952,6 @@ public class SubstrateOptions {
                  * The LLVM backend doesn't support speculative execution attack mitigation
                  */
                 SpectrePHTBarriers.update(values, None);
-                validateLLVMForeignAPISupport(values);
             }
         }
     };
@@ -1311,6 +1311,16 @@ public class SubstrateOptions {
                 }
             }
         }
+
+        /** Use {@link SubstrateOptions#isForeignAPIEnabled} instead. */
+        @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
+        public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(null, ConcealedOptions::validateForeignAPISupport);
+
+        private static void validateForeignAPISupport(HostedOptionKey<Boolean> optionKey) {
+            if (Boolean.TRUE.equals(optionKey.getValue()) && useLLVMBackend()) {
+                throw UserError.invalidOptionValue(optionKey, true, "Support for the Foreign Function and Memory API is not available with the LLVM backend.");
+            }
+        }
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -1502,38 +1512,14 @@ public class SubstrateOptions {
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IgnorePreserveForClasses = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-    private static final String LLVM_FOREIGN_API_UNSUPPORTED = "Support for the Foreign Function and Memory API is not available with the LLVM backend";
-
-    @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
-    public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(true) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            validateLLVMForeignAPISupport(values);
-        }
-
-        @Override
-        public Boolean getValue(OptionValues values) {
-            if ("llvm".equals(CompilerBackend.getValue(values))) {
-                if (hasBeenSet(values) && super.getValue(values)) {
-                    throw UserError.invalidOptionValue(this, true, LLVM_FOREIGN_API_UNSUPPORTED);
-                }
-                return false;
-            }
-            return super.getValue(values);
-        }
-    };
-
-    private static void validateLLVMForeignAPISupport(EconomicMap<OptionKey<?>, Object> values) {
-        String compilerBackend = (String) values.get(CompilerBackend, CompilerBackend.getDefaultValue());
-        boolean foreignAPISupportEnabled = (Boolean) values.get(ForeignAPISupport, ForeignAPISupport.getDefaultValue());
-        if ("llvm".equals(compilerBackend) && values.containsKey(ForeignAPISupport) && foreignAPISupportEnabled) {
-            throw UserError.invalidOptionValue(ForeignAPISupport, true, LLVM_FOREIGN_API_UNSUPPORTED);
-        }
-    }
-
     @Fold
     public static boolean isForeignAPIEnabled() {
-        return SubstrateOptions.ForeignAPISupport.getValue();
+        Boolean value = ConcealedOptions.ForeignAPISupport.getValue();
+        if (value != null) {
+            return value;
+        }
+        /* Enabled by default but disabled for the LLVM backend. */
+        return !useLLVMBackend();
     }
 
     @Option(help = "Support for intrinsics from the Java Vector API", type = Expert) //
