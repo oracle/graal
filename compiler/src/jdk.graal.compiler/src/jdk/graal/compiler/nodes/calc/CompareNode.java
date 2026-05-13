@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -391,47 +391,54 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         }
     }
 
-    public boolean implies(LogicNode otherLogicNode, boolean thisNegated) {
+    @Override
+    public TriState implies(boolean thisNegated, LogicNode other) {
+        LogicNode otherLogic = other;
         boolean otherNegated = false;
-        LogicNode otherLogic = otherLogicNode;
         while (otherLogic instanceof LogicNegationNode) {
             otherLogic = ((LogicNegationNode) otherLogic).getValue();
             otherNegated = !otherNegated;
         }
-        if (otherLogic instanceof CompareNode) {
-            CompareNode otherCompare = (CompareNode) otherLogic;
-            return implies(otherCompare, otherNegated, thisNegated);
-        } else {
-            return false;
+        if (this == otherLogic) {
+            return TriState.get(thisNegated == otherNegated);
         }
+        TriState result = TriState.UNKNOWN;
+        if (otherLogic instanceof CompareNode) {
+            result = impliesCompare((CompareNode) otherLogic, thisNegated);
+        }
+        if (result.isUnknown()) {
+            result = super.implies(thisNegated, otherLogic);
+        }
+        return result.isUnknown() || !otherNegated ? result : TriState.get(!result.toBoolean());
     }
 
-    public boolean implies(CompareNode otherCompare, boolean otherNegated, boolean thisNegated) {
+    private TriState impliesCompare(CompareNode otherCompare, boolean thisNegated) {
         CanonicalCondition otherCondition = otherCompare.condition();
         ValueNode otherX = otherCompare.getX();
         ValueNode otherY = otherCompare.getY();
-        if (condition() == otherCondition && sameValue(getX(), otherX) && sameValue(getY(), otherY) && thisNegated == otherNegated) {
-            return true;
+        if (condition() == otherCondition && unorderedIsTrue == otherCompare.unorderedIsTrue() &&
+                        sameValue(getX(), otherX) && sameValue(getY(), otherY)) {
+            return TriState.get(!thisNegated);
         }
         if ((sameValue(getX(), otherX) && sameValue(getY(), otherY)) || (sameValue(getX(), otherY) && sameValue(getY(), otherX))) {
             if (condition() == CanonicalCondition.EQ && (otherCondition == CanonicalCondition.LT || otherCondition == CanonicalCondition.BT)) {
-                if (!thisNegated && otherNegated) {
+                if (!thisNegated) {
                     // a == b => !(a < b)
-                    return true;
+                    return TriState.FALSE;
                 }
             }
             if (otherCondition == CanonicalCondition.EQ && (condition() == CanonicalCondition.LT || condition() == CanonicalCondition.BT)) {
-                if (thisNegated && !otherNegated) {
+                if (!thisNegated) {
                     // a < b => a != b
-                    return true;
+                    return TriState.FALSE;
                 }
             }
         }
         if (condition() == otherCondition && sameValue(getX(), otherY) && sameValue(getY(), otherX)) {
             if ((condition() == CanonicalCondition.LT || condition() == CanonicalCondition.BT) && getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
-                if (!thisNegated && otherNegated) {
+                if (!thisNegated) {
                     // a < b => !(b < a)
-                    return true;
+                    return TriState.FALSE;
                 }
             }
         }
@@ -441,22 +448,22 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             long otherYLong = otherY.asJavaConstant().asLong();
             if (condition() == CanonicalCondition.EQ && !thisNegated) {
                 if (otherCondition == CanonicalCondition.EQ) {
-                    if (thisYLong != otherYLong && otherNegated) {
+                    if (thisYLong != otherYLong) {
                         // a == c1 & c1 != c2 => a != c2
-                        return true;
+                        return TriState.FALSE;
                     }
                 } else if (otherCondition == CanonicalCondition.LT) {
-                    if (!otherNegated && thisYLong < otherYLong) {
+                    if (thisYLong < otherYLong) {
                         // a == c1 & c1 < c2 => a < c2
-                        return true;
-                    } else if (otherNegated && otherYLong < thisYLong) {
+                        return TriState.TRUE;
+                    } else if (otherYLong < thisYLong) {
                         // a == c1 & c2 < c1 => !(a < c2)
-                        return true;
+                        return TriState.FALSE;
                     }
                 }
             }
         }
-        return false;
+        return TriState.UNKNOWN;
     }
 
     private static boolean sameValue(ValueNode v1, ValueNode v2) {
