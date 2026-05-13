@@ -55,6 +55,7 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
@@ -63,6 +64,8 @@ import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
 
 public final class JavaRegexLexer extends RegexLexer {
+
+    private int charClassNesting;
 
     // 0x0009, CHARACTER TABULATION, <TAB>
     // 0x0020, SPACE, <SP>
@@ -604,6 +607,18 @@ public final class JavaRegexLexer extends RegexLexer {
     }
 
     private CodePointSet parseCharClassInternal(boolean consume) throws RegexSyntaxException {
+        charClassNesting++;
+        try {
+            if (charClassNesting > TRegexOptions.TRegexParserTreeMaxNestingLevel) {
+                throw new UnsupportedRegexException("Character class maximum nesting level exceeded");
+            }
+            return parseCharClassInternalBody(consume);
+        } finally {
+            charClassNesting--;
+        }
+    }
+
+    private CodePointSet parseCharClassInternalBody(boolean consume) throws RegexSyntaxException {
         boolean invert = false;
         // negation can only occur after a bracket, we cannot have negation after '&&' for example
         if (curChar() == '^' && pattern.charAt(position - 1) == '[') {

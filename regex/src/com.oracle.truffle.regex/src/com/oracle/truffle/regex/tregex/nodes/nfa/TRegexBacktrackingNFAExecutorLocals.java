@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,11 @@ package com.oracle.truffle.regex.tregex.nodes.nfa;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.IntRingBuffer;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -177,7 +180,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
                         zeroWidthTermEnclosedCGLow,
                         zeroWidthQuantifierCGOffsets,
                         allocateStackFrameBuffer ? new int[stackFrameSize] : null,
-                        new Stack(new int[stackFrameSize * 4]),
+                        new Stack(new int[MathUtil.ceilPowerOf2(stackFrameSize * 4)]),
                         0,
                         stackFrameSize,
                         BitSets.createBitSetArray(maxNTransitions),
@@ -355,6 +358,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     private void ensureSize(int minSize) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, minSize > TRegexOptions.TRegexMaxBacktrackingStackSize)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throwBacktrackingStackLimitExceeded();
+        }
         if (stack().length < minSize) {
             int newLength = stack().length << 1;
             while (newLength < minSize) {
@@ -362,6 +369,11 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
             }
             stack.stack = Arrays.copyOf(stack(), newLength);
         }
+    }
+
+    @TruffleBoundary
+    private static void throwBacktrackingStackLimitExceeded() {
+        throw new UnsupportedRegexException("backtracking stack limit exceeded");
     }
 
     public void pushResult(PureNFATransition t, int index) {

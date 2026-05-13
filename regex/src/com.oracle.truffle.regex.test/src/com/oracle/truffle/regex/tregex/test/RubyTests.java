@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -657,6 +657,24 @@ public class RubyTests extends RegexTestBase {
         expectUnsupported(".*a{1,200000}.*", "", OPT_FORCE_LINEAR_EXECUTION);
         test(".*b(?!a_)", "", "_aabaaa_", 0, true, 0, 4);
         expectUnsupported(".*b(?!a_)", "", OPT_FORCE_LINEAR_EXECUTION);
+    }
+
+    @Test
+    public void nestingLimit() {
+        int depth = 10_000;
+        String nestedGroups = "(".repeat(depth) + "a" + ")".repeat(depth);
+        expectUnsupported(nestedGroups, "");
+        String nestedCharClasses = "[".repeat(depth) + "a" + "]".repeat(depth);
+        expectUnsupported(nestedCharClasses, "");
+    }
+
+    @Test
+    public void subexpressionCallExpansionLimit() {
+        StringBuilder pattern = new StringBuilder("(a)");
+        for (int i = 1; i <= 30; i++) {
+            pattern.append("(\\g<").append(i).append(">\\g<").append(i).append(">)");
+        }
+        expectUnsupported(pattern.toString(), "", Map.of("regexDummyLang.MaxParserTreeSize", "10000"));
     }
 
     @Test
