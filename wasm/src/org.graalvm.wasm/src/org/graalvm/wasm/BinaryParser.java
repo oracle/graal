@@ -103,6 +103,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.vector.Vector128;
+import org.graalvm.wasm.vector.Vector128Ops;
 import org.graalvm.wasm.vector.Vector128Shape;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
@@ -145,6 +146,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private final WasmModule module;
     private final WasmLanguage language;
+    private final WasmContext wasmContext;
     private final WasmContextOptions contextOptions;
     private final int[] multiResult;
     private final long[] longMultiResult;
@@ -166,14 +168,19 @@ public class BinaryParser extends BinaryStreamParser {
 
     @TruffleBoundary
     public BinaryParser(WasmModule module, WasmContext context, byte[] data) {
-        this(module, context.language(), data);
+        this(module, context.language(), context, data);
     }
 
     @TruffleBoundary
     public BinaryParser(WasmModule module, WasmLanguage language, byte[] data) {
+        this(module, language, null, data);
+    }
+
+    private BinaryParser(WasmModule module, WasmLanguage language, WasmContext context, byte[] data) {
         super(data);
         this.module = module;
         this.language = language;
+        this.wasmContext = context;
         this.contextOptions = language.contextOptions();
         this.multiResult = new int[2];
         this.longMultiResult = new long[2];
@@ -2875,6 +2882,9 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void checkSIMDSupport() {
         checkContextOption(simd, "Vector instructions are not enabled (opcode: 0x%02x)", Instructions.VECTOR);
+        if (wasmContext != null && Vector128Ops.usesFallbackImplementation()) {
+            wasmContext.warnAboutMissingVectorApi();
+        }
     }
 
     private void checkRelaxedSIMDSupport(int vectorOpcode) {

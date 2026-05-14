@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,10 @@ public interface Vector128Ops<V128> {
             }
         }
         return Vector128OpsFallback.create();
+    }
+
+    static boolean usesFallbackImplementation() {
+        return SINGLETON_IMPLEMENTATION instanceof Vector128OpsFallback;
     }
 
     V128 unary(V128 x, int vectorOpcode);
