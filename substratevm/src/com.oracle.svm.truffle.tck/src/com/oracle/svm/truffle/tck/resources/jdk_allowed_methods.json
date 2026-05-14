@@ -350,5 +350,81 @@
         "justification": "Internal JDK Cleaner which does System.exit if it fails during JVM boot."
       }
     ]
+  },
+  {
+    "name": "java.lang.module.ModuleDescriptor$Version",
+    "methods": [
+      {
+        "name": "compareTokens",
+        "parameterTypes" : [
+          "java.util.List",
+          "java.util.List"
+        ],
+        "justification": "Calls Object.toString() on (String|Integer) union type."
+      }
+    ]
+  },
+  {
+    "name": "java.util.Random",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes" : [
+          "long"
+        ],
+        "justification": "Calls Random.setSeed() but on this instance."
+      }
+    ]
+  },
+  {
+    "name": "java.util.jar.JarVerifier",
+    "methods": [
+      {
+        "name": "processEntry",
+        "parameterTypes" : [
+          "sun.security.util.ManifestEntryVerifier"
+        ],
+        "justification": "Internal JDK class for signed JAR file verification reachable by JARInputStream.read()"
+      }
+    ]
+  },
+  {
+    "name": "sun.security.pkcs.PKCS9Attribute",
+    "methods": [
+      {
+        "name": "toString",
+        "parameterTypes" : [
+        ],
+        "justification": "Internal JDK class PKCS #9 authenticated/signed JAR file verification"
+      }
+    ]
+  },
+  {
+    "name": "sun.security.x509.IPAddressName",
+    "methods": [
+      {
+        "name": "toString",
+        "parameterTypes" : [
+        ],
+        "justification": "Internal JDK class representing IP address in ASN.1. Converts address to host name."
+      }
+    ]
+  },
+  {
+    "name": "java.nio.file.FileTreeIterator",
+    "methods": [
+      {
+        "name": "hasNext",
+        "parameterTypes" : [
+        ],
+        "justification": "FileTreeIterator.hasNext performs a privileged call, but Iterator.hasNext is megamorphic from the perspective of points-to analysis. Instead of forbidding all hasNext invocations, we prohibit instantiation of FileTreeIterator itself."
+      },
+      {
+        "name": "next",
+        "parameterTypes" : [
+        ],
+        "justification": "FileTreeIterator.next performs a privileged call, but Iterator.next is megamorphic from the perspective of points-to analysis. Instead of forbidding all next invocations, we prohibit instantiation of FileTreeIterator itself."
+      }
+    ]
   }
 ]
