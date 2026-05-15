@@ -549,7 +549,16 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         byte[] result = getInterpretedCode().clone();
         InterpreterConstantPool constantPool = getConstantPool();
         for (int bci = 0; bci < BytecodeStream.endBCI(result); bci = BytecodeStream.nextBCI(result, bci)) {
-            if (BytecodeStream.opcode(result, bci) != Bytecodes.INVOKEDYNAMIC) {
+            int opcode = BytecodeStream.opcode(result, bci);
+            if (Bytecodes.isQuickenedFieldAccess(opcode)) {
+                /*
+                 * Quickened field bytecodes are only meaningful to the interpreter; JVMCI clients
+                 * must keep seeing the original class-file opcode and operands.
+                 */
+                BytecodeStream.patchOpcodeOpaque(result, bci, Bytecodes.unquickenedFieldAccess(opcode));
+                continue;
+            }
+            if (opcode != Bytecodes.INVOKEDYNAMIC) {
                 continue;
             }
             int fullCpi = BytecodeStream.readCPI4(result, bci);
@@ -589,6 +598,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
             int currentBC = BytecodeStream.currentBC(code, bci);
             VMError.guarantee(Bytecodes.BREAKPOINT != currentBC);
+            VMError.guarantee(!Bytecodes.isQuickenedFieldAccess(currentBC));
         }
     }
 
