@@ -4917,11 +4917,11 @@ final class BuilderElement extends AbstractElement {
 
         final Map<InstructionEncoding, CodeExecutableElement> doEmitInstructionMethods = new TreeMap<>();
         final Map<InstructionEncoding, CodeExecutableElement> doRewriteStepMethods = new TreeMap<>();
-        final Map<ApplyRewriteRuleKey, CodeExecutableElement> applyRewriteRuleMethods = new TreeMap<>();
-        final Map<Boolean, CodeExecutableElement> replayFromLeaderBciMethods = new TreeMap<>();
+        final Map<InstructionRewriteRuleModel, CodeExecutableElement> applyRewriteRuleMethods = new TreeMap<>();
         private CodeVariableElement instructionRewriteState;
         private CodeVariableElement leaderBci;
         private CodeExecutableElement requestLeaderBci;
+        private CodeExecutableElement replayFromLeaderBciMethod;
         private CodeExecutableElement fixLocalsBeforeRewriteMethod;
         private CodeExecutableElement fixSourcesBeforeDeleteMethod;
 
@@ -4975,10 +4975,7 @@ final class BuilderElement extends AbstractElement {
                 this.leaderBci = this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "leaderBci"));
                 // add rewriter helpers in lateInit to co-locate them with the rewrite methods
                 this.requestLeaderBci = createRequestLeaderBci();
-                this.replayFromLeaderBciMethods.put(false, createReplayFromLeaderBci(false));
-                if (model.enableInstructionTracing) {
-                    this.replayFromLeaderBciMethods.put(true, createReplayFromLeaderBci(true));
-                }
+                this.replayFromLeaderBciMethod = createReplayFromLeaderBci();
                 if (model.enableBlockScoping) {
                     this.fixLocalsBeforeRewriteMethod = createFixLocalsBeforeRewrite();
                 }
@@ -5100,7 +5097,7 @@ final class BuilderElement extends AbstractElement {
             if (model.enableInstructionRewriting) {
                 this.addAll(doRewriteStepMethods.values());
                 this.addAll(applyRewriteRuleMethods.values());
-                this.addAll(replayFromLeaderBciMethods.values());
+                this.add(replayFromLeaderBciMethod);
                 this.add(requestLeaderBci);
                 this.addOptional(fixLocalsBeforeRewriteMethod);
                 this.addOptional(fixSourcesBeforeDeleteMethod);
@@ -5822,65 +5819,37 @@ final class BuilderElement extends AbstractElement {
             return ex;
         }
 
-        private record ApplyRewriteRuleKey(InstructionRewriteRuleModel rewriteRule, boolean tracing) implements Comparable<ApplyRewriteRuleKey> {
-            public int compareTo(ApplyRewriteRuleKey other) {
-                int diff = rewriteRule.compareTo(other.rewriteRule());
-                if (diff != 0) {
-                    return diff;
-                }
-                return Boolean.compare(tracing, other.tracing());
-            }
-        }
-
         private CodeExecutableElement ensureApplyRewriteRuleCreated(InstructionRewriteRuleModel rewriteRule, DFAModel.DFAState acceptingState) {
             if (!model.enableInstructionRewriting) {
                 throw new AssertionError();
             }
-            if (model.enableInstructionTracing) {
-                /*
-                 * Create an applyRewriteRuleTracing variant the base method can delegate to when
-                 * tracing is enabled.
-                 */
-                applyRewriteRuleMethods.computeIfAbsent(new ApplyRewriteRuleKey(rewriteRule, true), (e) -> createApplyRewriteRule(rewriteRule, true, acceptingState));
-            }
-            return applyRewriteRuleMethods.computeIfAbsent(new ApplyRewriteRuleKey(rewriteRule, false), (e) -> createApplyRewriteRule(rewriteRule, false, acceptingState));
+            return applyRewriteRuleMethods.computeIfAbsent(rewriteRule, (e) -> createApplyRewriteRule(rewriteRule, acceptingState));
         }
 
-        private CodeExecutableElement createApplyRewriteRule(InstructionRewriteRuleModel rewriteRule, boolean tracing, DFAModel.DFAState acceptingState) {
-            StringBuilder methodName = new StringBuilder("applyRewriteRule");
-            if (tracing) {
-                methodName.append("Tracing");
-            }
-            methodName.append(instructionRewriterElement.stateConstants.get(acceptingState).getSimpleName().toString().toUpperCase());
+        private CodeExecutableElement createApplyRewriteRule(InstructionRewriteRuleModel rewriteRule, DFAModel.DFAState acceptingState) {
+            String methodName = "applyRewriteRule" + instructionRewriterElement.stateConstants.get(acceptingState).getSimpleName().toString().toUpperCase();
 
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), methodName.toString());
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), methodName);
             ex.addParameter(new CodeVariableElement(type(int.class), "oldInstructionBci"));
             CodeTreeBuilder doc = ex.createDocBuilder();
-            doc.startJavadoc().string("Applies the following rewrite rule");
-            if (tracing) {
-                doc.string(" (when tracing)");
-            }
-            doc.string(":").newLine();
+            doc.startJavadoc().string("Applies the following rewrite rule:").newLine();
             doc.string(rewriteRule.toString()).newLine();
             doc.end();
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            if (!tracing && model.enableInstructionTracing) {
-                // If tracing is enabled, call a separate tracing-specific rewrite method.
-                b.startIf().string(parent.configEncoder.checkInstructionTracingEnabled("this.instrumentations")).end().startBlock();
-                CodeExecutableElement applyRewriteRuleTracing = applyRewriteRuleMethods.get(new ApplyRewriteRuleKey(rewriteRule, true));
-                b.startReturn().startCall(null, applyRewriteRuleTracing).string("oldInstructionBci").end(2);
-                b.end();
-            }
+            b.startIf().string("this.instrumentations != 0").end().startBlock();
+            b.lineComment("Rewriting is disabled when instrumentations are used.");
+            b.startAssign(instructionRewriteState);
+            b.staticReference(instructionRewriterElement.stateConstants.get(acceptingState));
+            b.end();
+            b.startReturn().string("oldInstructionBci").end();
+            b.end();
 
             // Step 1: Assert that the instruction stream matches the LHS.
-            b.declaration(type(int.class), "startBci", "bci - " + getRewritePatternLength(rewriteRule, tracing));
+            b.declaration(type(int.class), "startBci", "bci - " + getRewritePatternLength(rewriteRule));
             for (int i = 0; i < rewriteRule.lhs.length; i++) {
-                int offset = getInstructionOffsetInPattern(rewriteRule, i, tracing);
-                if (tracing) {
-                    emitAssertInstruction(b, model.traceInstruction, "startBci", offset - model.traceInstruction.getInstructionLength());
-                }
+                int offset = getInstructionOffsetInPattern(rewriteRule, i);
                 emitAssertInstruction(b, rewriteRule.lhs[i].instruction(), "startBci", offset);
             }
 
@@ -5894,7 +5863,7 @@ final class BuilderElement extends AbstractElement {
                 CodeVariableElement immediateLocal = new CodeVariableElement(immediateToLoad.immediate().kind().toType(context), localName);
 
                 b.startDeclaration(immediateLocal.getType(), immediateLocal.getName());
-                b.tree(BytecodeRootNodeElement.readImmediateWithOffset("bc", "startBci", immediateToLoad.immediate(), getImmediateOffsetInPattern(rewriteRule, immediateReference, tracing)));
+                b.tree(BytecodeRootNodeElement.readImmediateWithOffset("bc", "startBci", immediateToLoad.immediate(), getImmediateOffsetInPattern(rewriteRule, immediateReference)));
                 b.end();
 
                 immediateLocals.put(localName, immediateLocal);
@@ -5916,7 +5885,7 @@ final class BuilderElement extends AbstractElement {
                             b.variable(immediateLocals.get(resolvedImmediate.name()));
                             b.string(" != ");
                             b.tree(BytecodeRootNodeElement.readImmediateWithOffset("bc", "startBci", resolvedImmediate.immediate(),
-                                            getImmediateOffsetInPattern(rewriteRule, new ImmediateReference(i, j), tracing)));
+                                            getImmediateOffsetInPattern(rewriteRule, new ImmediateReference(i, j))));
                         }
                     }
                 }
@@ -5965,7 +5934,7 @@ final class BuilderElement extends AbstractElement {
 
             // Step 5: Emit RHS.
             // First, reset to leader bci and replay instruction DFA to startBci.
-            b.startStatement().startCall(null, replayFromLeaderBciMethods.get(tracing)).string("startBci").end(2);
+            b.startStatement().startCall(null, replayFromLeaderBciMethod).string("startBci").end(2);
 
             // Then, emit each instruction on the RHS.
             for (int i = 0; i < rewriteRule.rhs.length; i++) {
@@ -6010,12 +5979,8 @@ final class BuilderElement extends AbstractElement {
             return ex;
         }
 
-        private CodeExecutableElement createReplayFromLeaderBci(boolean tracing) {
-            String methodName = "replayFromLeaderBci";
-            if (tracing) {
-                methodName += "Tracing";
-            }
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), methodName);
+        private CodeExecutableElement createReplayFromLeaderBci() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "replayFromLeaderBci");
             ex.addParameter(new CodeVariableElement(type(int.class), "toBci"));
             BytecodeRootNodeElement.addJavadoc(ex, List.of(
                             "Replays the instruction rewriter on the bytecode range between the leader bci and toBci.",
@@ -6047,10 +6012,6 @@ final class BuilderElement extends AbstractElement {
             });
 
             b.startWhile().string("bci < toBci").end().startBlock();
-            if (tracing) {
-                emitAssertInstruction(b, model.traceInstruction, "bci", 0);
-                b.statement("bci += " + model.traceInstruction.getInstructionLength());
-            }
             b.declaration(type(short.class), "instruction", BytecodeRootNodeElement.readInstruction("bc", "bci"));
             b.startSwitch().string("instruction").end().startBlock();
 
@@ -6107,30 +6068,20 @@ final class BuilderElement extends AbstractElement {
             b.end();
         }
 
-        private int getRewritePatternLength(InstructionRewriteRuleModel rewriteRule, boolean tracing) {
+        private int getRewritePatternLength(InstructionRewriteRuleModel rewriteRule) {
             ResolvedInstructionPatternModel lastInstruction = rewriteRule.lhs[rewriteRule.lhs.length - 1];
-            int length = lastInstruction.offset() + lastInstruction.instruction().getInstructionLength();
-            if (tracing) {
-                length += model.traceInstruction.getInstructionLength() * rewriteRule.lhs.length;
-            }
-            return length;
-
+            return lastInstruction.offset() + lastInstruction.instruction().getInstructionLength();
         }
 
-        private int getInstructionOffsetInPattern(InstructionRewriteRuleModel rewriteRule, int instructionIndex, boolean tracing) {
+        private int getInstructionOffsetInPattern(InstructionRewriteRuleModel rewriteRule, int instructionIndex) {
             ResolvedInstructionPatternModel instruction = rewriteRule.lhs[instructionIndex];
-            int offset = instruction.offset();
-            if (tracing) {
-                // There are n trace instructions preceding the n-th instruction.
-                offset += model.traceInstruction.getInstructionLength() * (instructionIndex + 1);
-            }
-            return offset;
+            return instruction.offset();
         }
 
-        private int getImmediateOffsetInPattern(InstructionRewriteRuleModel rewriteRule, ImmediateReference immediateReference, boolean tracing) {
+        private int getImmediateOffsetInPattern(InstructionRewriteRuleModel rewriteRule, ImmediateReference immediateReference) {
             ResolvedInstructionPatternModel containingInstruction = rewriteRule.lhs[immediateReference.instructionIndex()];
             ResolvedImmediate immediate = containingInstruction.immediates()[immediateReference.immediateIndex()];
-            return getInstructionOffsetInPattern(rewriteRule, immediateReference.instructionIndex(), tracing) + immediate.offset();
+            return getInstructionOffsetInPattern(rewriteRule, immediateReference.instructionIndex()) + immediate.offset();
         }
 
         private Map<String, ImmediateReference> getImmediatesToLoad(InstructionRewriteRuleModel rewriteRule) {
