@@ -268,6 +268,7 @@ local devkits = graal_common.devkits;
     only_native_dists:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
 
     build(os, arch, reduced, mx_args=[], build_args=[]):: [
+      self.mx_cmd_base(os, arch, reduced) + mx_args + ['graalvm-show'],
       $.fetch_tags,
       self.mx_cmd_base(os, arch, reduced) + mx_args + ['build'] + build_args,
     ],
@@ -465,11 +466,11 @@ local devkits = graal_common.devkits;
 
   record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json', '--', '--jvm', 'server'],
   upload_file_sizes:: ['bench-uploader.py', 'sizes.json'],
-  fetch_tags:: ['git', 'fetch', '--quiet', '--tags'],
+  fetch_tags:: ['git', '-C', vm.graal_repo_root, 'fetch', '--quiet', '--tags'],
 
   build_base_graalvm_image: [
-    $.fetch_tags,
     $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
+    $.fetch_tags,
     $.mx_vm_common + vm.vm_profiles + ['build', '--targets=GRAALVM'],
     ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
   ],
@@ -521,8 +522,8 @@ local devkits = graal_common.devkits;
     tags:: 'standalone',
 
     run: $.patch_env(self.os, self.arch, java_version) + [
-      $.fetch_tags,
       $.mx_vm_complete + ['graalvm-show'],
+      $.fetch_tags,
       $.mx_vm_complete + ['build', '--dependencies', self.build_deps],
     ]
     + $.deploy_standalones(self.os, self.tags)
