@@ -140,14 +140,14 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @SuppressWarnings({"try", "resource"})
-    private void layoutMethods(DebugContext debug, List<Pair<HostedMethod, CompilationResult>> compilations) {
+    private void layoutMethods(DebugContext debug, List<Pair<HostedMethod, CompilationResult>> methodCompilations) {
         try (Indent _ = debug.logAndIndent("layout methods")) {
             // Assign initial location to all methods.
             HostedDirectCallTrampolineSupport trampolineSupport = HostedDirectCallTrampolineSupport.singleton();
             Map<HostedMethod, Integer> curOffsetMap = trampolineSupport.mayNeedTrampolines() ? new HashMap<>() : null;
 
             int curPos = 0;
-            for (Pair<HostedMethod, CompilationResult> entry : compilations) {
+            for (Pair<HostedMethod, CompilationResult> entry : methodCompilations) {
                 HostedMethod method = entry.getLeft();
                 CompilationResult compilation = entry.getRight();
                 curPos = align(curPos, SharedCompilationResult.getCodeAlignment(compilation));
@@ -166,7 +166,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 addDirectCallTrampolines(curOffsetMap);
 
                 // record final code address offsets and trampoline metadata
-                for (Pair<HostedMethod, CompilationResult> pair : compilations) {
+                for (Pair<HostedMethod, CompilationResult> pair : methodCompilations) {
                     HostedMethod method = pair.getLeft();
                     int methodStartOffset = curOffsetMap.get(method);
                     method.setCodeAddressOffset(methodStartOffset);
@@ -192,7 +192,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 }
             }
 
-            Pair<HostedMethod, CompilationResult> lastCompilation = compilations.getLast();
+            Pair<HostedMethod, CompilationResult> lastCompilation = methodCompilations.getLast();
             HostedMethod lastMethod = lastCompilation.getLeft();
 
             // the total code size is aligned up to SubstrateOptions.buildTimeCodeAlignment()
@@ -325,7 +325,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         patchMethods(debug, relocs, getOrderedCompilations());
     }
 
-    protected void patchMethods(DebugContext debug, RelocatableBuffer relocs, List<Pair<HostedMethod, CompilationResult>> compilations) {
+    protected void patchMethods(DebugContext debug, RelocatableBuffer relocs, List<Pair<HostedMethod, CompilationResult>> methodCompilations) {
         /*
          * Patch instructions which reference code or data by address.
          *
@@ -351,7 +351,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
          * case, the caller will pass a null rodataDisplacecmentFromText, and we behave accordingly
          * by generating extra relocation records.
          */
-        for (Pair<HostedMethod, CompilationResult> entry : compilations) {
+        for (Pair<HostedMethod, CompilationResult> entry : methodCompilations) {
             DeadlockWatchdog.singleton().recordActivity();
             HostedMethod method = entry.getLeft();
             CompilationResult compilation = entry.getRight();
@@ -455,7 +455,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         writeCode(buffer, getOrderedCompilations());
     }
 
-    protected void writeCode(RelocatableBuffer buffer, List<Pair<HostedMethod, CompilationResult>> compilations) {
+    protected void writeCode(RelocatableBuffer buffer, List<Pair<HostedMethod, CompilationResult>> methodCompilations) {
         ByteBuffer bufferBytes = buffer.getByteBuffer();
         int startPos = bufferBytes.position();
         /*
@@ -463,7 +463,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
          * size is not fixed at the time they are computed). This is just startPos, i.e. we start
          * emitting the code wherever the buffer is positioned when we're called.
          */
-        for (Pair<HostedMethod, CompilationResult> compilationPair : compilations) {
+        for (Pair<HostedMethod, CompilationResult> compilationPair : methodCompilations) {
             HostedMethod method = compilationPair.getLeft();
             CompilationResult compilation = compilationPair.getRight();
 
