@@ -14,6 +14,13 @@
     "name":"org.graalvm.shadowed.com.ibm.icu.impl.LocaleDisplayNamesImpl",
     "methods":[
       {
+        "name": "getInstance",
+        "parameterTypes": [
+          "org.graalvm.shadowed.com.ibm.icu.util.ULocale",
+          "org.graalvm.shadowed.com.ibm.icu.text.LocaleDisplayNames$DialectHandling"
+        ]
+      },
+      {
         "name":"getInstance",
         "parameterTypes":[
           "org.graalvm.shadowed.com.ibm.icu.util.ULocale",
