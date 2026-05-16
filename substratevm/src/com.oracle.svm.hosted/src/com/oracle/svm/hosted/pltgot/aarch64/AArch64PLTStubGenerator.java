@@ -132,7 +132,7 @@ public class AArch64PLTStubGenerator implements PLTStubGenerator {
                 /* Start of PLT stub for this GOT entry. */
                 stubStartOffsets.put(method, pltStubStart);
 
-                int gotEntryOffset = GOTAccess.getGotEntryOffsetFromHeapRegister(gotEntryNo);
+                int gotEntryOffset = GOTAccess.getGOTEntryOffsetFromHeapRegister(gotEntryNo);
                 Register heapReg = ReservedRegisters.singleton().getHeapBaseRegister();
                 AArch64Address addr = masm.makeAddress(64, heapReg, gotEntryOffset, gotEntryPassingRegister);
 

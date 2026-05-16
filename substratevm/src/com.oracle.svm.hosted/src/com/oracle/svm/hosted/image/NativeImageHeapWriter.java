@@ -212,7 +212,7 @@ public final class NativeImageHeapWriter {
     private int getMethodCodeAddressOffset(HostedMethod target) {
         if (pltgotConfig != null) {
             GOTEntryAllocator gotAllocator = pltgotConfig.getGOTEntryAllocator();
-            if (gotAllocator.queryGotEntry(target) != GOTEntryAllocator.GOT_NO_ENTRY) {
+            if (gotAllocator.queryGOTEntry(target) != GOTEntryAllocator.GOT_NO_ENTRY) {
                 return pltgotConfig.getPLTSupport().getMethodPLTStubCodeAddressOffset(target);
             }
         }

@@ -57,5 +57,5 @@ public abstract class PLTGOTConfiguration {
 
     public abstract boolean shouldCallViaPLTGOT(SharedMethod caller, SharedMethod callee);
 
-    public abstract int getMethodGotEntry(SharedMethod method);
+    public abstract int getMethodGOTEntry(SharedMethod method);
 }

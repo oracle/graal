@@ -180,9 +180,8 @@ public class PLTGOTFeature implements InternalFeature {
         MethodAddressResolutionSupport methodAddressResolutionSupport = configuration.getMethodAddressResolutionSupport();
 
         GOTEntryAllocator gotEntryAllocator = configuration.getGOTEntryAllocator();
-        gotEntryAllocator.reserveAndLayout(access.getCompilations().keySet(), methodAddressResolutionSupport);
+        SharedMethod[] got = gotEntryAllocator.reserveAndLayout(access.getCompilations().keySet(), methodAddressResolutionSupport);
 
-        SharedMethod[] got = gotEntryAllocator.getGOT();
         ImageSingletons.add(MethodPointerRelocationProvider.class, new PLTGOTPointerRelocationProvider(configuration.getPLTSupport(), Set.of(got)::contains));
 
         /*
@@ -215,8 +214,10 @@ public class PLTGOTFeature implements InternalFeature {
 
     private void createGOTSection(SharedMethod[] got, ObjectFile objectFile, PLTSupport pltSupport) {
         int wordSize = SubstrateTarget.getWordSize();
-        int gotSectionSize = got.length * wordSize;
-        gotBuffer = new RelocatableBuffer(gotSectionSize, objectFile.getByteOrder());
+        HostedPLTGOTConfiguration.GOTSectionExtent gotSectionExtent = HostedPLTGOTConfiguration.GOTSectionExtent.forEntries(got.length, wordSize,
+                        objectFile.getFormat());
+        int gotEndOffset = Math.toIntExact(gotSectionExtent.endOffset());
+        gotBuffer = new RelocatableBuffer(gotSectionExtent.bufferSize(), objectFile.getByteOrder());
         gotBufferImpl = new BasicProgbitsSectionImpl(gotBuffer.getBackingArray());
         String name = HostedPLTGOTConfiguration.SVM_GOT_SECTION.getFormatDependentName(objectFile.getFormat());
         ObjectFile.Section gotSection = objectFile.newProgbitsSection(name, objectFile.getPageSize(), true, false, gotBufferImpl);
@@ -224,7 +225,7 @@ public class PLTGOTFeature implements InternalFeature {
         ObjectFile.RelocationKind relocationKind = ObjectFile.RelocationKind.getDirect(wordSize);
         for (int gotEntryNo = 0; gotEntryNo < got.length; ++gotEntryNo) {
             var method = got[gotEntryNo];
-            int methodGOTEntryOffsetInSection = gotSectionSize + GOTAccess.getGotEntryOffsetFromHeapRegister(gotEntryNo);
+            int methodGOTEntryOffsetInSection = gotEndOffset + GOTAccess.getGOTEntryOffsetFromHeapRegister(gotEntryNo);
             if (methodsForDirectGOTRelocation.contains(method)) {
                 gotBuffer.addRelocationWithoutAddend(methodGOTEntryOffsetInSection, relocationKind, new MethodPointer(method, false));
             } else {
@@ -238,14 +239,14 @@ public class PLTGOTFeature implements InternalFeature {
         objectFile.createDefinedSymbol(gotSection.getName(), gotSection, 0, 0, false, false);
         objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_BEGIN_SYMBOL_NAME, gotSection, 0, wordSize, false,
                         SubstrateOptions.InternalSymbolsAreGlobal.getValue());
-        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_END_SYMBOL_NAME, gotSection, gotSectionSize, wordSize, false,
+        objectFile.createDefinedSymbol(GOTHeapSupport.IMAGE_GOT_END_SYMBOL_NAME, gotSection, gotSectionExtent.endOffset(), wordSize, false,
                         SubstrateOptions.InternalSymbolsAreGlobal.getValue());
 
         if (PLTGOTOptions.PrintGOT.getValue()) {
             ReportUtils.report("GOT Section contents", SubstrateOptions.reportsPath(), "got", "txt", writer -> {
                 writer.println("GOT Entry No | GOT Entry Offset From Image Heap Register | Method Name");
                 for (int i = 0; i < got.length; ++i) {
-                    writer.printf("%5X %5X %s%n", i, -GOTAccess.getGotEntryOffsetFromHeapRegister(i), got[i].toString());
+                    writer.printf("%5X %5X %s%n", i, -GOTAccess.getGOTEntryOffsetFromHeapRegister(i), got[i].toString());
                 }
             });
         }
@@ -266,7 +267,7 @@ public class PLTGOTFeature implements InternalFeature {
     private static void verifyGOTEntryValues(Set<? extends SharedMethod> methods) {
         GOTEntryAllocator gotEntryAllocator = HostedPLTGOTConfiguration.singleton().getGOTEntryAllocator();
         List<String> methodsWithoutGOTEntry = methods.stream()
-                        .filter(method -> gotEntryAllocator.queryGotEntry(method) == GOTEntryAllocator.GOT_NO_ENTRY)
+                        .filter(method -> gotEntryAllocator.queryGOTEntry(method) == GOTEntryAllocator.GOT_NO_ENTRY)
                         .map(method -> method.format("%H.%n(%p)"))
                         .toList();
         assert methodsWithoutGOTEntry.isEmpty() : String.format("Trying to mark methods for build-time resolution that are not called via GOT table: %s", methodsWithoutGOTEntry);

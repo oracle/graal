@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.pltgot.GOTHeapSupport;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
@@ -41,31 +42,33 @@ public class GOTEntryAllocator {
 
     private final AtomicInteger currentFreeEntry = new AtomicInteger(0);
 
-    public int getMethodGotEntry(SharedMethod method) {
+    public int getMethodGOTEntry(SharedMethod method) {
         return gotMap.computeIfAbsent(method, _ -> currentFreeEntry.getAndIncrement());
     }
 
-    public void reserveMethodGotEntry(SharedMethod method) {
-        getMethodGotEntry(method);
+    public void reserveMethodGOTEntry(SharedMethod method) {
+        getMethodGOTEntry(method);
     }
 
-    public int queryGotEntry(SharedMethod method) {
+    public int queryGOTEntry(SharedMethod method) {
         assert hasGOTLayout();
         return gotMap.getOrDefault(method, GOT_NO_ENTRY);
     }
 
-    public void reserveAndLayout(Set<HostedMethod> methods, MethodAddressResolutionSupport resolver) {
+    public SharedMethod[] reserveAndLayout(Set<HostedMethod> methods, MethodAddressResolutionSupport resolver) {
         assert !hasGOTLayout();
 
         methods.stream()
                         .filter(resolver::shouldCallViaPLTGOT)
-                        .forEach(this::reserveMethodGotEntry);
+                        .forEach(this::reserveMethodGOTEntry);
 
         VMError.guarantee(got == null, "Can layout the GOT only once.");
         got = new SharedMethod[gotMap.keySet().size()];
         for (Map.Entry<SharedMethod, Integer> entry : gotMap.entrySet()) {
             got[entry.getValue()] = entry.getKey();
         }
+        GOTHeapSupport.get().setNumberOfGOTEntries(got.length);
+        return getGOT();
     }
 
     public boolean hasGOTLayout() {

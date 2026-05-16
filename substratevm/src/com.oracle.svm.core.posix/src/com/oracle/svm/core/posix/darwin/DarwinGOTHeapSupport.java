@@ -60,13 +60,13 @@ public class DarwinGOTHeapSupport extends GOTHeapSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected int initialize(WordPointer gotStartAddress) {
         int flags = MAP_ANON() | MAP_PRIVATE();
-        Pointer gotMemory = mmap(Word.nullPointer(), getPageAlignedGotSize(), PROT_READ() | PROT_WRITE(), flags, -1, 0);
+        Pointer gotMemory = mmap(Word.nullPointer(), getPageAlignedGOTSize(), PROT_READ() | PROT_WRITE(), flags, -1, 0);
         if (gotMemory.isNull() || gotMemory.equal(MAP_FAILED())) {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_CREATE_FAILED;
         }
 
-        Pointer gotStartInMemory = gotMemory.add(getGotOffsetFromStartOfMapping());
-        LibC.memcpy(gotStartInMemory, IMAGE_GOT_BEGIN.get(), getGotSectionSize());
+        Pointer gotStartInMemory = gotMemory.add(getGOTOffsetFromStartOfMapping());
+        LibC.memcpy(gotStartInMemory, IMAGE_GOT_BEGIN.get(), getGOTSectionSize());
 
         gotStartAddress.write(gotMemory);
         DARWIN_GOT_START_ADDRESS.get().write(gotMemory);
@@ -76,11 +76,11 @@ public class DarwinGOTHeapSupport extends GOTHeapSupport {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int mapGot(Pointer start) {
+    public int mapGOT(Pointer start) {
         WordPointer taskSelf = DarwinVirtualMemory.mach_task_self();
 
         /* Unmap part of the heap address space that is designated for the GOT */
-        int ret = DarwinVirtualMemory.vm_deallocate(DarwinVirtualMemory.mach_task_self(), start, getPageAlignedGotSize());
+        int ret = DarwinVirtualMemory.vm_deallocate(DarwinVirtualMemory.mach_task_self(), start, getPageAlignedGOTSize());
         if (ret != 0) {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_MMAP_FAILED;
         }
@@ -97,7 +97,7 @@ public class DarwinGOTHeapSupport extends GOTHeapSupport {
          * Map reserved address space for GOT to "global" GOT allocation, so that all isolates are
          * backed by the same table.
          */
-        ret = DarwinVirtualMemory.vm_remap(taskSelf, gotStart, getPageAlignedGotSize(), Word.nullPointer(), intFalse,
+        ret = DarwinVirtualMemory.vm_remap(taskSelf, gotStart, getPageAlignedGOTSize(), Word.nullPointer(), intFalse,
                         taskSelf, DARWIN_GOT_START_ADDRESS.get().read(), intFalse, currentProt, maxProt, DarwinVirtualMemory.VM_INHERIT_SHARE());
         if (ret != 0) {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_WRONG_MMAP;
@@ -109,7 +109,7 @@ public class DarwinGOTHeapSupport extends GOTHeapSupport {
          * cur_prot=RW. Ensure that the new-mapping remains read-only, regardless of races.
          */
         if (currentProt.read() != PROT_READ()) {
-            ret = VirtualMemoryProvider.get().protect(start, getPageAlignedGotSize(), Access.READ);
+            ret = VirtualMemoryProvider.get().protect(start, getPageAlignedGOTSize(), Access.READ);
             if (ret != 0) {
                 return ret;
             }

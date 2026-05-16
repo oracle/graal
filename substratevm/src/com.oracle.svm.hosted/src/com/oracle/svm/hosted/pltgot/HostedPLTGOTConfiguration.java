@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.pltgot;
 
 import java.lang.reflect.Method;
 
+import com.oracle.objectfile.ObjectFile;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -140,7 +141,23 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
     }
 
     @Override
-    public int getMethodGotEntry(SharedMethod method) {
-        return gotEntryAllocator.getMethodGotEntry(method);
+    public int getMethodGOTEntry(SharedMethod method) {
+        return gotEntryAllocator.getMethodGOTEntry(method);
+    }
+
+    record GOTSectionExtent(long endOffset, long bufferSize) {
+        static GOTSectionExtent forEntries(long entryCount, int wordSize, ObjectFile.Format format) {
+            long endOffset = Math.multiplyExact(entryCount, wordSize);
+            long bufferSize = endOffset;
+            if (format == ObjectFile.Format.MACH_O && endOffset == 0) {
+                assert HostedPLTGOTConfiguration.singleton().gotEntryAllocator.getGOT().length == 0 : "GOT table should be empty when padding GOT section size on Mach-O";
+                /*
+                 * Mach-O rejects symbols defined in zero-sized sections. Keep the backing buffer
+                 * non-empty without moving the section end symbol.
+                 */
+                bufferSize = wordSize;
+            }
+            return new GOTSectionExtent(endOffset, bufferSize);
+        }
     }
 }

@@ -68,7 +68,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
         if (interpreterMethod == null) {
             return false;
         }
-        if (interpreterMethod.getGotOffset() == GOT_NO_ENTRY) {
+        if (interpreterMethod.getGOTOffset() == GOT_NO_ENTRY) {
             return false;
         }
         if (interpreterMethod.getEnterStubOffset() == EST_NO_ENTRY) {
@@ -84,7 +84,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
         Pointer estBase = InterpreterStubTable.getBaseForEnterStubTable();
         UnsignedWord estEntry = estBase.add(estOffset).readWord(0);
 
-        WordBase previousEntry = GOTAccess.readFromGotEntry(interpreterMethod.getGotOffset());
+        WordBase previousEntry = GOTAccess.readFromGOTEntry(interpreterMethod.getGOTOffset());
         rememberCompiledEntry.put(interpreterMethod, previousEntry.rawValue());
         writeGOTHelper(interpreterMethod, estEntry);
 
@@ -93,7 +93,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
 
     private static void writeGOTHelper(InterpreterResolvedJavaMethod interpreterMethod, UnsignedWord estEntry) {
         GOTHeapSupport.get().makeGOTWritable();
-        GOTAccess.writeToGotEntry(interpreterMethod.getGotOffset(), estEntry);
+        GOTAccess.writeToGOTEntry(interpreterMethod.getGOTOffset(), estEntry);
         GOTHeapSupport.get().makeGOTReadOnly();
     }
 

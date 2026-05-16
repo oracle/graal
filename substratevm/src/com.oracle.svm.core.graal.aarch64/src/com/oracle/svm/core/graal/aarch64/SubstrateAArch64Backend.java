@@ -539,11 +539,11 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
     }
 
     protected class SubstrateAArch64LIRGenerator extends AArch64LIRGenerator implements SubstrateLIRGenerator {
-        private final PLTGOTConfiguration pltGotConfiguration;
+        private final PLTGOTConfiguration pltGOTConfiguration;
 
         public SubstrateAArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
             super(lirKindTool, arithmeticLIRGen, null, moveFactory, providers, lirGenRes);
-            this.pltGotConfiguration = PLTGOTConfiguration.isEnabled() ? PLTGOTConfiguration.singleton() : null;
+            this.pltGOTConfiguration = PLTGOTConfiguration.isEnabled() ? PLTGOTConfiguration.singleton() : null;
         }
 
         @Override
@@ -659,10 +659,10 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         }
 
         private Variable getGOTEntryAddress(SharedMethod callee) {
-            assert pltGotConfiguration != null : "Foreign call through the GOT table is only possible if the PLT/GOT is enabled.";
+            assert pltGOTConfiguration != null : "Foreign call through the GOT table is only possible if the PLT/GOT is enabled.";
             LIRKind wordKind = getLIRKindTool().getWordKind();
             var heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue(wordKind);
-            var heapBaseOffset = GOTAccess.getGotEntryOffsetFromHeapRegister(pltGotConfiguration.getMethodGotEntry(callee));
+            var heapBaseOffset = GOTAccess.getGOTEntryOffsetFromHeapRegister(pltGOTConfiguration.getMethodGOTEntry(callee));
             int wordBits = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             Value gotEntryAddress = AArch64AddressValue.makeAddress(wordKind, wordBits, heapBase, heapBaseOffset);
             return getArithmetic().emitLoad(wordKind, gotEntryAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
@@ -673,7 +673,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         }
 
         private boolean shouldEmitPLTGOTCall(SharedMethod callee) {
-            return pltGotConfiguration != null && pltGotConfiguration.shouldCallViaPLTGOT(getResult().getMethod(), callee);
+            return pltGOTConfiguration != null && pltGOTConfiguration.shouldCallViaPLTGOT(getResult().getMethod(), callee);
         }
 
         /**

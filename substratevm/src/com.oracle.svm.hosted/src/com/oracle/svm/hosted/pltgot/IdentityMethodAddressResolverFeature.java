@@ -86,10 +86,10 @@ public class IdentityMethodAddressResolverFeature implements InternalFeature {
             ObjectFile imageObjectFile = abstractImage.getObjectFile();
             GOTEntryAllocator gotEntryAllocator = HostedPLTGOTConfiguration.singleton().getGOTEntryAllocator();
             SharedMethod[] got = gotEntryAllocator.getGOT();
-            long methodCount = got.length;
             int wordSize = SubstrateTarget.getWordSize();
-            long gotSectionSize = methodCount * wordSize;
-            offsetsSectionBuffer = new RelocatableBuffer(gotSectionSize, imageObjectFile.getByteOrder());
+            HostedPLTGOTConfiguration.GOTSectionExtent methodTableExtent = HostedPLTGOTConfiguration.GOTSectionExtent.forEntries(got.length, wordSize,
+                            imageObjectFile.getFormat());
+            offsetsSectionBuffer = new RelocatableBuffer(methodTableExtent.bufferSize(), imageObjectFile.getByteOrder());
             offsetsSectionBufferImpl = new BasicProgbitsSectionImpl(offsetsSectionBuffer.getBackingArray());
             String name = SVM_METHODTABLE.getFormatDependentName(imageObjectFile.getFormat());
             ObjectFile.Section offsetsSection = imageObjectFile.newProgbitsSection(name, imageObjectFile.getPageSize(), true, false, offsetsSectionBufferImpl);
@@ -101,7 +101,8 @@ public class IdentityMethodAddressResolverFeature implements InternalFeature {
 
             imageObjectFile.createDefinedSymbol(offsetsSection.getName(), offsetsSection, 0, 0, false, false);
             imageObjectFile.createDefinedSymbol("__svm_methodtable_begin", offsetsSection, 0, wordSize, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
-            imageObjectFile.createDefinedSymbol("__svm_methodtable_end", offsetsSection, gotSectionSize, wordSize, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+            imageObjectFile.createDefinedSymbol("__svm_methodtable_end", offsetsSection, methodTableExtent.endOffset(), wordSize, false,
+                            SubstrateOptions.InternalSymbolsAreGlobal.getValue());
         }
 
         @Override

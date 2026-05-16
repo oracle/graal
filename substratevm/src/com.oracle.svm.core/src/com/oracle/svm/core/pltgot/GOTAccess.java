@@ -33,22 +33,22 @@ import com.oracle.svm.shared.Uninterruptible;
 
 public class GOTAccess {
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static int getGotEntryOffsetFromHeapRegister(int gotEntry) {
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static int getGOTEntryOffsetFromHeapRegister(int gotEntry) {
         return -(gotEntry + 1) * SubstrateTarget.getWordSize();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void writeToGotEntry(int gotEntry, UnsignedWord address) {
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void writeToGOTEntry(int gotEntry, UnsignedWord address) {
         Pointer gotStartAddress = GOTHeapSupport.GOT_START_ADDRESS.get().read();
-        Pointer gotEndAddress = gotStartAddress.add(GOTHeapSupport.getPageAlignedGotSize());
-        gotEndAddress.writeWord(getGotEntryOffsetFromHeapRegister(gotEntry), address);
+        Pointer gotEndAddress = gotStartAddress.add(GOTHeapSupport.getPageAlignedGOTSize());
+        gotEndAddress.writeWord(getGOTEntryOffsetFromHeapRegister(gotEntry), address);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Word readFromGotEntry(int gotEntry) {
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Word readFromGOTEntry(int gotEntry) {
         Pointer gotStartAddress = GOTHeapSupport.GOT_START_ADDRESS.get().read();
-        Pointer gotEndAddress = gotStartAddress.add(GOTHeapSupport.getPageAlignedGotSize());
-        return gotEndAddress.readWord(getGotEntryOffsetFromHeapRegister(gotEntry));
+        Pointer gotEndAddress = gotStartAddress.add(GOTHeapSupport.getPageAlignedGOTSize());
+        return gotEndAddress.readWord(getGOTEntryOffsetFromHeapRegister(gotEntry));
     }
 }

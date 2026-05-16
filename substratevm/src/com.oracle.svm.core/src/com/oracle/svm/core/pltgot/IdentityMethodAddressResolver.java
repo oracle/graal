@@ -38,7 +38,7 @@ public class IdentityMethodAddressResolver implements MethodAddressResolver {
 
     @Override
     @Uninterruptible(reason = "Called from the PLT stub where stack walks are not safe.")
-    public long resolveMethodWithGotEntry(long gotEntry) {
+    public long resolveMethodWithGOTEntry(long gotEntry) {
         /* Fetch the absolute address of the method that corresponds to the target GOT entry. */
         UnsignedWord methodTableOffset = Word.unsigned(gotEntry).multiply(SubstrateTarget.getWordSize());
         UnsignedWord address = methodTable.get().readWord(methodTableOffset);
@@ -46,7 +46,7 @@ public class IdentityMethodAddressResolver implements MethodAddressResolver {
          * Write the resolved address to the GOT entry so that it can be directly used for future
          * calls instead of going through this resolver.
          */
-        GOTAccess.writeToGotEntry((int) gotEntry, address);
+        GOTAccess.writeToGOTEntry((int) gotEntry, address);
 
         return address.rawValue();
     }

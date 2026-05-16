@@ -134,7 +134,7 @@ public class AMD64PLTStubGenerator implements PLTStubGenerator {
             int pltStubStart = asm.position();
             stubStartOffsets.put(method, pltStubStart);
 
-            int gotEntryOffset = GOTAccess.getGotEntryOffsetFromHeapRegister(gotEntryNo);
+            int gotEntryOffset = GOTAccess.getGOTEntryOffsetFromHeapRegister(gotEntryNo);
             asm.maybeEmitIndirectTargetMarker();
             asm.movq(register, new AMD64Address(ReservedRegisters.singleton().getHeapBaseRegister(), gotEntryOffset));
             asm.jmp(register);
