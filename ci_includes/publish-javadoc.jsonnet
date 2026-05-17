@@ -6,6 +6,7 @@
   local javadoc_publisher = {
     name: 'graal-publish-javadoc-' + self.jdk_name,
     run+: [
+      ["bash", "-c", "git rev-parse --abbrev-ref HEAD | grep -Eq '^(master|release/)' || { echo 'This job only runs on master or release/* branches'; exit 1; }"],
       ["cd", "./sdk"],
       ["mx", "build"],
       ["mx", "javadoc"],
@@ -59,6 +60,7 @@
   },
 
   local all_builds = [
+    # Should be `ondemand` in release breanches
     common.daily + linux_amd64 + common.labsjdkLatest + javadoc_publisher,
   ],
   // adds a "defined_in" field to all builds mentioning the location of this current file
