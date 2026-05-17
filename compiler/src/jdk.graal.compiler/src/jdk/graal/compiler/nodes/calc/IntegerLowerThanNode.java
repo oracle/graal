@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -630,7 +630,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
              * addition not the comparison.
              */
             if (mirrored) {
-                if (aStamp.contains(0)) {
+                if (aStamp.contains(0) || (aStamp.canBeNegative() && aStamp.canBePositive())) {
                     // a may be zero
                     return aStamp.unrestricted();
                 }
