@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -279,6 +279,11 @@ public final class RegexOptions {
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Backtracker JIT compilation bailout threshold.") //
     public static final OptionKey<Integer> MaxBackTrackerJITSize = new OptionKey<>(TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize);
 
+    public static final String MAX_PARSER_TREE_SIZE_NAME = "MaxParserTreeSize";
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Parser tree bailout threshold.") //
+    public static final OptionKey<Integer> MaxParserTreeSize = new OptionKey<>(TRegexOptions.TRegexParserTreeMaxSize);
+
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Single character class quantifier unroll limit.") //
     public static final OptionKey<Integer> QuantifierUnrollLimitSingleCC = new OptionKey<>(TRegexOptions.TRegexQuantifierUnrollLimitSingleCC);
 
@@ -296,6 +301,7 @@ public final class RegexOptions {
                     (short) TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize,
                     getDefaultFlavor(),
                     Encoding.UTF_16_RAW, null, null, JAVA_JDK_VERSION_DEFAULT,
+                    TRegexOptions.TRegexParserTreeMaxSize,
                     (short) TRegexOptions.TRegexQuantifierUnrollLimitSingleCC,
                     (short) TRegexOptions.TRegexQuantifierUnrollLimitGroup);
 
@@ -307,6 +313,7 @@ public final class RegexOptions {
     private final MatchingMode matchingMode;
     private final String pythonLocale;
     private final short javaJDKVersion;
+    private final int maxParserTreeSize;
     public final short quantifierUnrollLimitSingleCC;
     public final short quantifierUnrollLimitGroup;
 
@@ -319,6 +326,7 @@ public final class RegexOptions {
                     MatchingMode matchingMode,
                     String pythonLocale,
                     short javaJDKVersion,
+                    int maxParserTreeSize,
                     short quantifierUnrollLimitSingleCC,
                     short quantifierUnrollLimitGroup) {
         this.options = options;
@@ -329,6 +337,7 @@ public final class RegexOptions {
         this.matchingMode = matchingMode;
         this.pythonLocale = pythonLocale;
         this.javaJDKVersion = javaJDKVersion;
+        this.maxParserTreeSize = maxParserTreeSize;
         this.quantifierUnrollLimitSingleCC = quantifierUnrollLimitSingleCC;
         this.quantifierUnrollLimitGroup = quantifierUnrollLimitGroup;
     }
@@ -479,14 +488,21 @@ public final class RegexOptions {
         return javaJDKVersion;
     }
 
+    /**
+     * Parser tree bailout threshold.
+     */
+    public int getMaxParserTreeSize() {
+        return maxParserTreeSize;
+    }
+
     public RegexOptions withBooleanMatch() {
-        return new RegexOptions(options | BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion, quantifierUnrollLimitSingleCC,
-                        quantifierUnrollLimitGroup);
+        return new RegexOptions(options | BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion, maxParserTreeSize,
+                        quantifierUnrollLimitSingleCC, quantifierUnrollLimitGroup);
     }
 
     public RegexOptions withoutBooleanMatch() {
-        return new RegexOptions(options & ~BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion, quantifierUnrollLimitSingleCC,
-                        quantifierUnrollLimitGroup);
+        return new RegexOptions(options & ~BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion, maxParserTreeSize,
+                        quantifierUnrollLimitSingleCC, quantifierUnrollLimitGroup);
     }
 
     @Override
@@ -500,6 +516,7 @@ public final class RegexOptions {
         hash = prime * hash + Objects.hashCode(matchingMode);
         hash = prime * hash + Objects.hashCode(pythonLocale);
         hash = prime * hash + Objects.hashCode(javaJDKVersion);
+        hash = prime * hash + Objects.hashCode(maxParserTreeSize);
         hash = prime * hash + Objects.hashCode(quantifierUnrollLimitSingleCC);
         hash = prime * hash + Objects.hashCode(quantifierUnrollLimitGroup);
         return hash;
@@ -521,6 +538,7 @@ public final class RegexOptions {
                         this.matchingMode == other.matchingMode &&
                         this.pythonLocale.equals(other.pythonLocale) &&
                         this.javaJDKVersion == other.javaJDKVersion &&
+                        this.maxParserTreeSize == other.maxParserTreeSize &&
                         this.quantifierUnrollLimitSingleCC == other.quantifierUnrollLimitSingleCC &&
                         this.quantifierUnrollLimitGroup == other.quantifierUnrollLimitGroup;
 
@@ -534,6 +552,9 @@ public final class RegexOptions {
         }
         if (maxBackTrackerCompileSize != TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize) {
             sb.append(MAX_BACK_TRACKER_SIZE_NAME + "=").append(maxBackTrackerCompileSize).append(',');
+        }
+        if (maxParserTreeSize != TRegexOptions.TRegexParserTreeMaxSize) {
+            sb.append(MAX_PARSER_TREE_SIZE_NAME + "=").append(maxParserTreeSize).append(',');
         }
         if (isU180EWhitespace()) {
             sb.append(U180E_WHITESPACE_NAME + "=true,");
@@ -603,6 +624,7 @@ public final class RegexOptions {
         private MatchingMode matchingMode;
         private String pythonLocale;
         private short javaJDKVersion = JAVA_JDK_VERSION_DEFAULT;
+        private int maxParserTreeSize = TRegexOptions.TRegexParserTreeMaxSize;
         private short quantifierUnrollThresholdSingleCC;
         private short quantifierUnrollThresholdGroup;
 
@@ -638,6 +660,7 @@ public final class RegexOptions {
                 javaJDKVersion = parseShortSrcOption("JavaJDKVersion", JavaJDKVersion, JAVA_JDK_VERSION_MIN);
                 maxDFASize = parseShortSrcOption("MaxDFASize", MaxDFASize, 0);
                 maxBackTrackerCompileSize = parseShortSrcOption("MaxBackTrackerJITSize", MaxBackTrackerJITSize, 0);
+                maxParserTreeSize = parseIntSrcOption(MAX_PARSER_TREE_SIZE_NAME, MaxParserTreeSize, 1);
                 quantifierUnrollThresholdSingleCC = parseShortSrcOption("QuantifierUnrollLimitSingleCC", QuantifierUnrollLimitSingleCC, 1);
                 quantifierUnrollThresholdGroup = parseShortSrcOption("QuantifierUnrollLimitGroup", QuantifierUnrollLimitGroup, 1);
                 return 0;
@@ -761,6 +784,14 @@ public final class RegexOptions {
                 throw optionsSyntaxErrorUnexpectedValueMsg("value of " + optionName + " must be less or equal to " + Short.MAX_VALUE);
             }
             return (short) value;
+        }
+
+        private int parseIntSrcOption(String optionName, OptionKey<Integer> key, int min) {
+            int value = optionValues.get(key);
+            if (value < min) {
+                throw optionsSyntaxErrorUnexpectedValueMsg("value of " + optionName + " must be greater or equal to " + min);
+            }
+            return value;
         }
 
         private char lookAheadInKey(int offset) {
@@ -960,8 +991,8 @@ public final class RegexOptions {
         }
 
         public RegexOptions build() {
-            return new RegexOptions(flags, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion, quantifierUnrollThresholdSingleCC,
-                            quantifierUnrollThresholdGroup);
+            return new RegexOptions(flags, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion, maxParserTreeSize,
+                            quantifierUnrollThresholdSingleCC, quantifierUnrollThresholdGroup);
         }
     }
 }
