@@ -52,6 +52,7 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 @GenerateWrapper
 public abstract class RegexBodyNode extends ExecutableNode implements InstrumentableNode {
@@ -94,7 +95,7 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     public SourceSection getSourceSection() {
         if (sourceSection == null) {
             String patternSrc = source.toStringEscaped();
-            String name = patternSrc.length() > 30 ? patternSrc.substring(0, 30) + "..." : patternSrc;
+            String name = DebugUtil.pruneToSize(patternSrc, 30);
             Source src = Source.newBuilder(RegexLanguage.ID, patternSrc, name).internal(true).mimeType("application/js-regex").build();
             sourceSection = src.createSection(0, patternSrc.length());
         }
