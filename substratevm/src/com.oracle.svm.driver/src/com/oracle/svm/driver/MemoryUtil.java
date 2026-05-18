@@ -122,7 +122,7 @@ class MemoryUtil {
         if (isDedicatedMemoryUsage) {
             reasonableMaxMemorySize = dedicatedMemorySize;
         } else {
-            reasonableMaxMemorySize = getAvailableMemorySize();
+            reasonableMaxMemorySize = Math.min(getAvailableMemorySize(), totalMemorySize);
             if (reasonableMaxMemorySize >= MIN_AVAILABLE_MEMORY_THRESHOLD_GB * GiB_TO_BYTES) {
                 memoryUsageReason = "using available memory";
             } else { // fall back to dedicated mode
