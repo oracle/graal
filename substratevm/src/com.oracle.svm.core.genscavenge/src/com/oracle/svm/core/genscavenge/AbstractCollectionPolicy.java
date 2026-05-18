@@ -289,7 +289,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/shared/genArguments.cpp#L195-L310")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L104-L116")
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/hotspot/share/gc/parallel/psYoungGen.cpp#L146-L168")
-    private void computeSizeParameters(RawSizeParameters newParamsOnStack) {
+    protected void computeSizeParameters(RawSizeParameters newParamsOnStack) {
         UnsignedWord minYoungSpaces = getMinYoungSpacesSize();
         UnsignedWord minAllSpaces = minYoungSpaces.add(minSpaceSize()); // old
         UnsignedWord heapSizeLimit = UnsignedUtils.max(alignDown(getHeapSizeLimit()), minAllSpaces);
