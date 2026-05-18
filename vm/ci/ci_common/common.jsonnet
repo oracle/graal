@@ -466,7 +466,7 @@ local devkits = graal_common.devkits;
 
   record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json', '--', '--jvm', 'server'],
   upload_file_sizes:: ['bench-uploader.py', 'sizes.json'],
-  fetch_tags:: ['git', '-C', vm.graal_repo_root, 'fetch', '--quiet', '--tags'],
+  fetch_tags:: ['git', '-C', vm.graal_repo_root, 'fetch', '--quiet', '--no-tags', 'origin', '+refs/tags/*:refs/tags/*'],
 
   build_base_graalvm_image: [
     $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],

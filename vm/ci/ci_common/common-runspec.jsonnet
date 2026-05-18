@@ -154,7 +154,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ['--suite', suite, 'deploy-artifacts', '--uploader', (if os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader'), '--tags', std.join(',', tags)],
   local build_base_graalvm_image(with_profiles=true) = task_spec({ run +: [
     self.mx_vm_common + (if with_profiles then vm.vm_profiles else []) + ['graalvm-show'],
-    ['git', '-C', vm.graal_repo_root, 'fetch', '--quiet', '--tags'],
+    ['git', '-C', vm.graal_repo_root, 'fetch', '--quiet', '--no-tags', 'origin', '+refs/tags/*:refs/tags/*'],
     self.mx_vm_common + (if with_profiles then vm.vm_profiles else []) + ['build', '--targets=GRAALVM'],
     ['set-export', 'GRAALVM_HOME', self.mx_vm_common + (if with_profiles then vm.vm_profiles else []) + ['--quiet', '--no-warning', 'graalvm-home']],
   ]}),
