@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,8 @@ import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 /** Implementation of and access to {@link Target_jdk_internal_vm_Continuation} internals. */
@@ -59,7 +59,15 @@ public final class ContinuationInternals {
     static void enterSpecial0(Target_jdk_internal_vm_Continuation c, boolean isContinue) {
         // Note that Java-to-Java calls use only caller-saved registers, so we don't need to save
         // any register values which aren't spilled already and restore them when yielding
-        enterSpecial1(c, isContinue);
+        Throwable throwable = enterSpecial1(c, isContinue);
+        if (throwable != null) {
+            throwUnchecked(throwable);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void throwUnchecked(Throwable t) throws T {
+        throw (T) t;
     }
 
     /**
@@ -73,12 +81,9 @@ public final class ContinuationInternals {
      * the continuation, which would lead to undefined behavior. Instead, {@link #enterSpecial2}
      * must have its own frame that is part of the continuation stack and, like yielding, must
      * return directly to {@link #enterSpecial0}.
-     *
-     * @return {@link Object} because we return to the caller via {@link KnownIntrinsics#farReturn},
-     *         which passes an object result.
      */
     @NeverInline("Accesses caller stack pointer and return address.")
-    private static Object enterSpecial1(Target_jdk_internal_vm_Continuation c, boolean isContinue) {
+    private static Throwable enterSpecial1(Target_jdk_internal_vm_Continuation c, boolean isContinue) {
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
 
@@ -113,10 +118,11 @@ public final class ContinuationInternals {
 
     @NeverInline("Needs a separate frame which is part of the continuation stack that we can eventually return to.")
     private static void enterSpecial2(Target_jdk_internal_vm_Continuation c) {
+        Throwable throwable = null;
         try {
             c.enter0();
         } catch (Throwable t) {
-            throw VMError.shouldNotReachHere(t);
+            throwable = t;
         }
 
         Pointer returnSP = c.sp;
@@ -127,7 +133,7 @@ public final class ContinuationInternals {
         c.baseSP = Word.nullPointer();
         assert c.isEmpty();
 
-        KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
+        KnownIntrinsics.farReturn(throwable, returnSP, returnIP, false);
         throw VMError.shouldNotReachHereAtRuntime();
     }
 
