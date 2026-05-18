@@ -607,7 +607,9 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                 boxComponentOutputs(graph, context, component, expanded, vectorArch);
                 /* Expand, starting from sinks and recursing upwards through inputs. */
                 for (VectorAPISinkNode sink : component.sinks) {
-                    expandRecursivelyUpwards(graph, context, expanded, component.simdStamps, sink, vectorArch);
+                    if (sink.isAlive()) {
+                        expandRecursivelyUpwards(graph, context, expanded, component.simdStamps, sink, vectorArch);
+                    }
                 }
                 /*
                  * Normally, expanding upwards from sinks should take care of all nodes in the
@@ -616,7 +618,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                  * handled as well.
                  */
                 for (ValueNode node : component.simdStamps.getKeys()) {
-                    if (!expanded.containsKey(node)) {
+                    if (node.isAlive() && !expanded.containsKey(node)) {
                         expandRecursivelyUpwards(graph, context, expanded, component.simdStamps, node, vectorArch);
                     }
                 }
@@ -667,6 +669,9 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
     private static void boxComponentOutputs(StructuredGraph graph, CoreProviders providers, ConnectedComponent component, NodeMap<ValueNode> expanded, VectorArchitecture vectorArch) {
         GraalError.guarantee(component.canExpand, "should only place box nodes once we know the component can expand");
         for (ValueNode valueToBox : component.boxes) {
+            if (!valueToBox.isAlive()) {
+                continue;
+            }
             expandRecursivelyUpwards(graph, providers, expanded, component.simdStamps, valueToBox, vectorArch);
             ValueNode expandedDef = expanded.get(valueToBox);
             GraalError.guarantee(expandedDef != null, "must be expanded %s", valueToBox);
@@ -1009,6 +1014,8 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
      * usages outside the component (scalar usages, states) are replaced here.
      */
     private static void replaceComponentNodes(StructuredGraph graph, HighTierContext context, ConnectedComponent component, NodeMap<ValueNode> expanded, VectorArchitecture vectorArch) {
+        replaceComponentFrameStateUsages(graph, context, component, expanded, vectorArch);
+
         for (ValueNode node : component.simdStamps.getKeys()) {
             if (!node.isAlive()) {
                 // As we kill CFGs while replacing each element of the component, it may be the case
@@ -1022,38 +1029,6 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             /* Replace things like reductions, which produce a primitive value. */
             if (node instanceof VectorAPISinkNode && replacement.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp) {
                 node.replaceAtUsages(replacement);
-            }
-
-            /*
-             * Fix up frame state usages. These may need to materialize a SIMD value as a Vector API
-             * object, so we need to build a corresponding virtual object.
-             */
-            if (node.usages().filter(u -> u instanceof FrameState || u instanceof VirtualObjectState).isNotEmpty()) {
-                ResolvedJavaType type = StampTool.typeOrNull(node);
-                GraalError.guarantee(type != null, "could not resolve type for %s (%s)", node, node.stamp(NodeView.DEFAULT));
-                VectorAPIType vectorType = VectorAPIType.ofType(type, context);
-                GraalError.guarantee(type != null, "could not find Vector API type for %s (%s)", node, node.stamp(NodeView.DEFAULT));
-                VirtualInstanceNode virtualInstance = graph.add(new VirtualInstanceNode(type, true));
-                ValueNode replacementValue = replacement;
-                if (vectorType.isMask) {
-                    replacementValue = graph.addOrUniqueWithInputs(VectorAPIBoxingUtils.logicAsBooleans(replacementValue, vectorArch));
-                }
-                VirtualObjectState virtualState = graph.unique(new VirtualObjectState(virtualInstance, List.of(replacementValue)));
-                EconomicSet<FrameState> statesToAdd = EconomicSet.create();
-                for (FrameState state : node.usages().filter(FrameState.class)) {
-                    statesToAdd.add(state);
-                }
-                for (VirtualObjectState holder : node.usages().filter(VirtualObjectState.class)) {
-                    // We also need to add the virtual state to all frames where an object holding
-                    // this virtual object appears
-                    for (FrameState state : holder.usages().filter(FrameState.class)) {
-                        statesToAdd.add(state);
-                    }
-                }
-                for (FrameState state : statesToAdd) {
-                    state.addVirtualObjectMapping(virtualState);
-                }
-                node.replaceAtUsages(virtualInstance, usage -> usage != virtualState && (usage instanceof FrameState || usage instanceof VirtualObjectState));
             }
 
             /*
@@ -1086,6 +1061,53 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             }
         }
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "after adding duplicates for %s", component);
+    }
+
+    /**
+     * Fix up frame state usages before the component's fixed nodes are destructively replaced.
+     * Replacing fixed nodes can kill CFGs, including replacement phis needed to materialize values
+     * in still-unprocessed frame states.
+     */
+    private static void replaceComponentFrameStateUsages(StructuredGraph graph, HighTierContext context, ConnectedComponent component, NodeMap<ValueNode> expanded,
+                    VectorArchitecture vectorArch) {
+        for (ValueNode node : component.simdStamps.getKeys()) {
+            if (!node.isAlive()) {
+                continue;
+            }
+            if (node.usages().filter(u -> u instanceof FrameState || u instanceof VirtualObjectState).isNotEmpty()) {
+                ValueNode replacement = expanded.get(node);
+                GraalError.guarantee(replacement != null, "node was not expanded: %s", node);
+                if (node instanceof VectorAPISinkNode && replacement.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp) {
+                    node.replaceAtUsages(replacement, usage -> usage instanceof FrameState || usage instanceof VirtualObjectState);
+                    continue;
+                }
+                ResolvedJavaType type = StampTool.typeOrNull(node);
+                GraalError.guarantee(type != null, "could not resolve type for %s (%s)", node, node.stamp(NodeView.DEFAULT));
+                VectorAPIType vectorType = VectorAPIType.ofType(type, context);
+                GraalError.guarantee(vectorType != null, "could not find Vector API type for %s (%s)", node, node.stamp(NodeView.DEFAULT));
+                VirtualInstanceNode virtualInstance = graph.add(new VirtualInstanceNode(type, true));
+                ValueNode replacementValue = replacement;
+                if (vectorType.isMask) {
+                    replacementValue = graph.addOrUniqueWithInputs(VectorAPIBoxingUtils.logicAsBooleans(replacementValue, vectorArch));
+                }
+                VirtualObjectState virtualState = graph.unique(new VirtualObjectState(virtualInstance, List.of(replacementValue)));
+                EconomicSet<FrameState> statesToAdd = EconomicSet.create();
+                for (FrameState state : node.usages().filter(FrameState.class)) {
+                    statesToAdd.add(state);
+                }
+                for (VirtualObjectState holder : node.usages().filter(VirtualObjectState.class)) {
+                    // We also need to add the virtual state to all frames where an object holding
+                    // this virtual object appears
+                    for (FrameState state : holder.usages().filter(FrameState.class)) {
+                        statesToAdd.add(state);
+                    }
+                }
+                for (FrameState state : statesToAdd) {
+                    state.addVirtualObjectMapping(virtualState);
+                }
+                node.replaceAtUsages(virtualInstance, usage -> usage != virtualState && (usage instanceof FrameState || usage instanceof VirtualObjectState));
+            }
+        }
     }
 
     /*
