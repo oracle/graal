@@ -37,6 +37,7 @@ import jdk.jfr.consumer.RecordingStream;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
@@ -76,6 +77,7 @@ public class JFRCompilationEventsTest {
     public void testJFRTraceCompilationParity() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeOptimizingRuntime();
         TruffleTestAssumptions.assumeWeakEncapsulation();
+        assumeJfrClassesAvailable();
         DeoptInvalidateFailureLanguage.resetState();
         Runnable test = () -> {
             StringBuilder jfrOutputBuilder = new StringBuilder();
@@ -342,7 +344,17 @@ public class JFRCompilationEventsTest {
         return UTC_PATTERN.matcher(noTime).replaceFirst("|UTC <ignored>|Src");
     }
 
-    private static String formatSource(RecordedEvent recordedEvent) {
+    private static void assumeJfrClassesAvailable() {
+        try {
+            Class.forName("jdk.jfr.consumer.RecordedEvent", false, ClassLoader.getPlatformClassLoader());
+            Class.forName("jdk.jfr.consumer.RecordingStream", false, ClassLoader.getPlatformClassLoader());
+        } catch (ClassNotFoundException | LinkageError e) {
+            Assume.assumeTrue("JFR classes are not available: " + e, false);
+        }
+    }
+
+    private static String formatSource(Object event) {
+        RecordedEvent recordedEvent = (RecordedEvent) event;
         String source = recordedEvent.getString("source");
         if ("n/a".equals(source)) {
             return "n/a";
