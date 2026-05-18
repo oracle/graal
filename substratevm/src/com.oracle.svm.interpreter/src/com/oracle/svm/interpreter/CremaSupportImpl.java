@@ -891,7 +891,7 @@ public class CremaSupportImpl implements CremaSupport {
 
     private static boolean hasClassInitializer(ParserKlass parsed) {
         for (ParserMethod method : parsed.getMethods()) {
-            if (method.getName() == ParserSymbols.ParserNames._clinit_) {
+            if (method.isClassInitializer()) {
                 return true;
             }
         }
@@ -1068,7 +1068,7 @@ public class CremaSupportImpl implements CremaSupport {
 
         @Override
         public boolean isClassInitializer() {
-            return m.getName() == ParserSymbols.ParserNames._clinit_;
+            return m.isClassInitializer();
         }
 
         @Override

@@ -654,7 +654,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final boolean isClassInitializer() {
-        return ParserSymbols.ParserNames._clinit_ == getSymbolicName() && isStatic();
+        return ParserMethod.isClassInitializer(getModifiers(), getSymbolicName(), getSymbolicSignature());
     }
 
     @Override

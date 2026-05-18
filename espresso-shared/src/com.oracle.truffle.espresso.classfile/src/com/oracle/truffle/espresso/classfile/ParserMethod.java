@@ -25,6 +25,7 @@
 package com.oracle.truffle.espresso.classfile;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -75,6 +76,14 @@ public final class ParserMethod implements AttributedElement {
         this.name = name;
         this.signature = signature;
         this.attributes = attributes;
+    }
+
+    public boolean isClassInitializer() {
+        return isClassInitializer(flags, name, signature);
+    }
+
+    public static boolean isClassInitializer(int flags, Symbol<Name> nameSymbol, Symbol<Signature> signatureSymbol) {
+        return ((flags & ACC_STATIC) != 0) && nameSymbol == ParserSymbols.ParserNames._clinit_ && signatureSymbol == ParserSymbols.ParserSignatures._void;
     }
 
     /**

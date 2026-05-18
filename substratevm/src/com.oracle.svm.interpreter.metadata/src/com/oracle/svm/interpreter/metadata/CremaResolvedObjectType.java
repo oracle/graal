@@ -53,6 +53,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaType;
@@ -141,11 +142,20 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1666-L1673")
     public ResolvedJavaMethod getClassInitializer() {
-        for (InterpreterResolvedJavaMethod method : getDeclaredMethods(false)) {
-            if (method.isClassInitializer()) {
-                return method;
-            }
+        /*
+         * Note: According to JVMS25 2.9.2:
+         *
+         * In a class file whose version number is 50.0 or below, a method named <clinit> that is
+         * void is considered the class or interface initialization method regardless of the
+         * setting of its ACC_STATIC flag or whether it takes arguments.
+         *
+         * However, HotSpot only calls static initializers that are static and `()V`.
+         */
+        InterpreterResolvedJavaMethod clinit = lookupDeclaredMethod(ParserSymbols.ParserNames._clinit_, ParserSymbols.ParserSignatures._void);
+        if (clinit != null && clinit.isClassInitializer()) {
+            return clinit;
         }
         return null;
     }
