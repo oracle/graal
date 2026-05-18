@@ -30,6 +30,7 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -37,6 +38,7 @@ import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
+import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(VMLockSupport.class)
 final class DarwinVMLockSupport extends PthreadVMLockSupport {
@@ -50,7 +52,7 @@ final class DarwinVMLockSupport extends PthreadVMLockSupport {
 
 final class DarwinVMSemaphore extends VMSemaphore {
 
-    private DarwinSemaphore.semaphore_t semaphore;
+    private int semaphore;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DarwinVMSemaphore(String name) {
@@ -60,10 +62,12 @@ final class DarwinVMSemaphore extends VMSemaphore {
     @Override
     @Uninterruptible(reason = "Too early for safepoints.")
     public int initialize() {
-        DarwinSemaphore.semaphore_tPointer semaphorePointer = StackValue.get(DarwinSemaphore.semaphore_tPointer.class);
-        int result = DarwinSemaphore.NoTransition.semaphore_create(DarwinVirtualMemory.mach_task_self(), semaphorePointer,
-                        DarwinSemaphore.SYNC_POLICY_FIFO(), 0);
-        semaphore = semaphorePointer.read();
+        DarwinSemaphore.semaphore_t semaphorePointer = StackValue.get(DarwinSemaphore.semaphore_t.class);
+        int result = DarwinSemaphore.NoTransition.semaphore_create(DarwinVirtualMemory.mach_task_self(), semaphorePointer, DarwinSemaphore.SYNC_POLICY_FIFO(), 0);
+        if (result == 0) {
+            VMError.guarantee(SizeOf.get(DarwinSemaphore.semaphore_t.class) == Integer.BYTES, "Unexpected size of semaphore_t");
+            semaphore = semaphorePointer.read();
+        }
         return result;
     }
 
