@@ -27,8 +27,6 @@ package jdk.graal.compiler.replacements;
 import static jdk.graal.compiler.core.common.GraalOptions.EmitStringSubstitutions;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
-import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
-import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMin;
 import static jdk.graal.compiler.nodes.java.ArrayLengthNode.readArrayLength;
 import static jdk.graal.compiler.phases.common.LockEliminationPhase.removeMonitorAccess;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
@@ -88,6 +86,7 @@ import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.calc.RightShiftNode;
@@ -465,15 +464,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
      * <p>
      * The bounds check is still represented by {@code boundsCheck}. When
      * {@code SpectrePHTIndexMasking} is enabled, the index calculation goes through
-     * {@link #proxyIndex(AccessIndexedNode, ValueNode, ValueNode, LoweringTool)} so mis-speculated
-     * out-of-bounds indices are redirected to an in-bounds element before the address is
-     * materialized.
+     * {@link #protectIndexForSpeculativeExecution(AccessIndexedNode, ValueNode, ValueNode, LoweringTool)}
+     * so mis-speculated out-of-bounds indices are redirected to an in-bounds element before the
+     * address is materialized.
      */
     protected ValueNode createArrayAddressIndex(AccessIndexedNode indexed, ValueNode array, GuardingNode boundsCheck, LoweringTool tool) {
         StructuredGraph graph = indexed.graph();
         ValueNode addressIndex = indexed.index();
         if (SpectrePHTIndexMasking.getValue(graph.getOptions())) {
-            addressIndex = graph.addOrUniqueWithInputs(proxyIndex(indexed, addressIndex, array, tool));
+            addressIndex = graph.addOrUniqueWithInputs(protectIndexForSpeculativeExecution(indexed, addressIndex, array, tool));
         }
         return createPositiveIndex(graph, addressIndex, boundsCheck);
     }
@@ -1412,11 +1411,46 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
 
     protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor, LoweringTool tool, FixedWithNextNode insertAfter);
 
-    protected ValueNode proxyIndex(AccessIndexedNode n, ValueNode index, ValueNode array, LoweringTool tool) {
+    /**
+     * Clamps {@code index} without branches so a speculatively executed indexed array access cannot
+     * use an out-of-bounds address while its bounds check is still unresolved. For non-empty arrays,
+     * the returned index is in {@code [0, arrayLength - 1]}. Empty arrays have no in-bounds element,
+     * so they clamp to {@code 0}.
+     */
+    protected ValueNode protectIndexForSpeculativeExecution(AccessIndexedNode n, ValueNode index, ValueNode array, LoweringTool tool) {
         StructuredGraph graph = index.graph();
         ValueNode arrayLength = readOrCreateArrayLength(n, array, tool, graph);
         ValueNode lengthMinusOne = SubNode.create(arrayLength, ConstantNode.forInt(1), NodeView.DEFAULT);
-        return branchlessMax(branchlessMin(index, lengthMinusOne, NodeView.DEFAULT), ConstantNode.forInt(0), NodeView.DEFAULT);
+        /*
+         * Clamp the index without branches while the bounds check may still be unresolved by
+         * speculative execution. Both operands to the final min are non-negative, so their
+         * subtraction cannot signed-overflow. For non-empty arrays this produces an index in the
+         * range [0, arrayLength - 1]. Empty arrays have no in-bounds element, so they clamp to 0.
+         */
+        ValueNode nonNegativeIndex = branchlessMaxZero(index, NodeView.DEFAULT);
+        ValueNode nonNegativeLengthMinusOne = branchlessMaxZero(lengthMinusOne, NodeView.DEFAULT);
+        return branchlessMinNonNegative(nonNegativeIndex, nonNegativeLengthMinusOne, NodeView.DEFAULT);
+    }
+
+    /**
+     * Returns the branchless max of {@code value} and zero using a sign mask, avoiding a
+     * subtraction-based min/max identity.
+     */
+    private static ValueNode branchlessMaxZero(ValueNode value, NodeView view) {
+        int bits = ((IntegerStamp) value.stamp(view)).getBits();
+        return AndNode.create(value, NotNode.create(RightShiftNode.create(value, bits - 1, view)), view);
+    }
+
+    /**
+     * Returns the branchless min of two non-negative integer values. The non-negative precondition
+     * ensures the internal subtraction cannot signed-overflow.
+     */
+    private static ValueNode branchlessMinNonNegative(ValueNode v1, ValueNode v2, NodeView view) {
+        int bits = ((IntegerStamp) v1.stamp(view)).getBits();
+        assert ((IntegerStamp) v2.stamp(view)).getBits() == bits : bits + " and v2 " + v2;
+        ValueNode delta = SubNode.create(v1, v2, view);
+        ValueNode mask = RightShiftNode.create(delta, bits - 1, view);
+        return AddNode.create(v2, AndNode.create(delta, mask, view), view);
     }
 
     protected GuardingNode getBoundsCheck(AccessIndexedNode n, ValueNode array, LoweringTool tool) {
