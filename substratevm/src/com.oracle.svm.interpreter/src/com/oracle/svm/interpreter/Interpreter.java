@@ -276,6 +276,7 @@ import java.util.Objects;
 
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
 import com.oracle.svm.espresso.classfile.ConstantPool;
@@ -1575,6 +1576,7 @@ public final class Interpreter {
                     boolean preferStayInInterpreter) {
         int invokeTop = top;
 
+        InterpreterResolvedJavaType symbolicHolder = null;
         InterpreterResolvedJavaMethod seedMethod;
         CallKind callKind;
 
@@ -1633,7 +1635,7 @@ public final class Interpreter {
         } else {
             char cpi = BytecodeStream.readCPI2(code, curBCI);
             InterpreterResolvedJavaMethod symbolicResolution = Interpreter.resolveMethod(method, opcode, cpi);
-            InterpreterResolvedJavaType symbolicHolder = Interpreter.resolveSymbolicHolder(method, opcode, cpi);
+            symbolicHolder = Interpreter.resolveSymbolicHolder(method, opcode, cpi);
             if (symbolicHolder == null) {
                 if (InterpreterTraceSupport.getValue()) {
                     traceInterpreter().string("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ").string(
@@ -1682,6 +1684,15 @@ public final class Interpreter {
             final Object receiver = calleeArgs[0];
             profileType(methodProfile, curBCI, receiver);
             nullCheck(receiver);
+            if (opcode == INVOKEINTERFACE) {
+                ResolvedJavaType receiverType = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
+                if (symbolicHolder != null && !symbolicHolder.isAssignableFrom(receiverType)) {
+                    throw SemanticJavaException.raise(new IncompatibleClassChangeError(
+                                    MetadataUtil.fmt("Class %s does not implement the requested interface %s",
+                                                    receiverType.toJavaName(),
+                                                    symbolicHolder.toJavaName())));
+                }
+            }
         }
 
         Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, callKind, forceStayInInterpreter, preferStayInInterpreter, false);
