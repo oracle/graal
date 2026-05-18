@@ -210,7 +210,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         runConditionalInAnalysisTask(condition, (cnd) -> {
             registerClass(cnd, clazz, unsafeInstantiated, true);
             if (FutureDefaultsOptions.completeReflectionTypes()) {
-                registerClassMetadata(cnd, clazz);
+                /*
+                 * Type registrations use unconditional query metadata: JSON parsing follows the
+                 * same rule for "type" entries by switching bulk class-query registrations to an
+                 * always-true query condition. Reusing a runtime-checked condition here makes
+                 * complete reflection types trip the queried-only bulk-query guard.
+                 */
+                registerClassMetadata(ConfigurationCondition.alwaysTrue(), clazz);
             }
         });
     }
