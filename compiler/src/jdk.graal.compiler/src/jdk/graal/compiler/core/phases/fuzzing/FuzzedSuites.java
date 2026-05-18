@@ -58,6 +58,7 @@ public final class FuzzedSuites extends Suites {
     public static FuzzedSuites createFuzzedSuites(Suites originalSuites, GraphState graphState, MandatoryStages mandatoryStages, long seed) {
         MinimalFuzzedCompilationPlan minimalFuzzedCompilationPlan = MinimalFuzzedCompilationPlan.createMinimalFuzzedCompilationPlan(originalSuites, graphState, mandatoryStages, seed);
         FullFuzzedCompilationPlan fullFuzzedCompilationPlan = FullFuzzedCompilationPlan.createFullFuzzedCompilationPlan(minimalFuzzedCompilationPlan, graphState);
+        fullFuzzedCompilationPlan.verifyCompilationPlan(graphState);
         return new FuzzedSuites(fullFuzzedCompilationPlan);
     }
 
