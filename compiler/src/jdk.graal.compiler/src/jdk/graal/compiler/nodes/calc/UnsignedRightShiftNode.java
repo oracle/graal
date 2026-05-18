@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(shortName = ">>>")
@@ -93,25 +94,32 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
                 return forX;
             }
 
+            Constant constant = stamp.asConstant();
+            if (constant != null) {
+                return ConstantNode.forPrimitive(stamp, constant);
+            }
+
             Stamp xStampGeneric = forX.stamp(view);
             if (xStampGeneric instanceof IntegerStamp) {
                 IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
-                long xMask = CodeUtil.mask(xStamp.getBits());
-                long xLowerBound = xStamp.lowerBound() & xMask;
-                long xUpperBound = xStamp.upperBound() & xMask;
+                if (xStamp.getBits() >= Integer.SIZE) {
+                    long xMask = CodeUtil.mask(xStamp.getBits());
+                    long xLowerBound = xStamp.lowerBound() & xMask;
+                    long xUpperBound = xStamp.upperBound() & xMask;
 
-                if (xLowerBound >>> amount == xUpperBound >>> amount) {
-                    // The result of the shift is constant.
-                    return ConstantNode.forIntegerBits(PrimitiveStamp.getBits(stamp), xLowerBound >>> amount);
+                    if (xLowerBound >>> amount == xUpperBound >>> amount) {
+                        // The result of the shift is constant.
+                        return ConstantNode.forIntegerBits(PrimitiveStamp.getBits(stamp), xLowerBound >>> amount);
+                    }
                 }
 
-                if (amount == xStamp.getBits() - 1 && xStamp.lowerBound() == -1 && xStamp.upperBound() == 0) {
+                if (xStamp.getBits() >= Integer.SIZE && amount == xStamp.getBits() - 1 && xStamp.lowerBound() == -1 && xStamp.upperBound() == 0) {
                     // Shift is equivalent to a negation, i.e., turns -1 into 1 and keeps 0 at 0.
                     return NegateNode.create(forX, view);
                 }
             }
 
-            if (forX instanceof ShiftNode) {
+            if (PrimitiveStamp.getBits(stamp) >= Integer.SIZE && forX instanceof ShiftNode) {
                 ShiftNode<?> other = (ShiftNode<?>) forX;
                 if (other.getY().isConstant()) {
                     int otherAmount = other.getY().asJavaConstant().asInt() & mask;
