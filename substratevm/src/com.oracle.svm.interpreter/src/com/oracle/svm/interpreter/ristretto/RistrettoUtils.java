@@ -107,6 +107,7 @@ import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
+import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -369,7 +370,7 @@ public class RistrettoUtils {
                             }
                             assert graph != null;
                             PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite();
-                            suites = adaptSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph));
+                            suites = adaptSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph), options);
                             if (TestingBackdoor.shouldRememberGraph()) {
                                 // override the suites with graph capturing phases
                                 suites = suites.copy();
@@ -464,8 +465,11 @@ public class RistrettoUtils {
         }
     }
 
-    private static Suites adaptSuitesForRistretto(Suites suites) {
+    private static Suites adaptSuitesForRistretto(Suites suites, OptionValues options) {
         Suites effectiveSuites = suites.copy();
+        if (ImageSingletons.contains(RistrettoSuitesAdapter.class)) {
+            ImageSingletons.lookup(RistrettoSuitesAdapter.class).adaptSuites(effectiveSuites, options);
+        }
         if (!RistrettoOptions.useDeoptimization()) {
             effectiveSuites = effectiveSuites.copy();
             effectiveSuites.getLowTier().appendPhase(new RistrettoNoDeoptPhase());
@@ -489,6 +493,12 @@ public class RistrettoUtils {
         RistrettoGraphBuilderPlugins.setRuntimeGraphBuilderPlugins(runtimeParseGraphBuilderPlugins);
         SnippetReflectionProvider srp = RuntimeCompilationSupport.getRuntimeConfig().getProviders().getSnippetReflection();
         StandardGraphBuilderPlugins.registerInvocationPlugins(srp, runtimeParseGraphBuilderPlugins.getInvocationPlugins(), true, true, false, false);
+        if (ImageSingletons.contains(TargetGraphBuilderPlugins.class)) {
+            ImageSingletons.lookup(TargetGraphBuilderPlugins.class).registerPlugins(runtimeParseGraphBuilderPlugins, RuntimeOptionValues.singleton().get());
+        }
+        if (ImageSingletons.contains(RistrettoSuitesAdapter.class)) {
+            ImageSingletons.lookup(RistrettoSuitesAdapter.class).adaptGraphBuilderPlugins(runtimeParseGraphBuilderPlugins.getInvocationPlugins());
+        }
         runtimeParseGraphBuilderPlugins.getInvocationPlugins().closeRegistration();
 
         GraphBuilderConfiguration gpc = GraphBuilderConfiguration.getDefault(runtimeParseGraphBuilderPlugins);
@@ -551,6 +561,7 @@ public class RistrettoUtils {
          * test various properties.
          */
         public static final ThreadLocal<StructuredGraph> LastCompiledGraph = new ThreadLocal<>();
+        public static final ThreadLocal<StructuredGraph> LastCompiledGraphBeforeHighTier = new ThreadLocal<>();
         public static final ThreadLocal<StructuredGraph> LastCompiledGraphAfterHighTierLowering = new ThreadLocal<>();
         public static final ThreadLocal<StructuredGraph> LastCompiledGraphAfterMidTierLowering = new ThreadLocal<>();
         public static final ThreadLocal<StructuredGraph> LastCompiledGraphAfterLowTierLowering = new ThreadLocal<>();
@@ -562,6 +573,17 @@ public class RistrettoUtils {
 
         static void installLastGraphThieves(Suites suites, StructuredGraph rootGraph) {
             TestingBackdoor.LastCompiledGraph.set(rootGraph);
+            suites.getHighTier().prependPhase(new Phase() {
+                @Override
+                public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+                    return ALWAYS_APPLICABLE;
+                }
+
+                @Override
+                protected void run(StructuredGraph graph) {
+                    TestingBackdoor.LastCompiledGraphBeforeHighTier.set((StructuredGraph) graph.copy(graph.getDebug()));
+                }
+            });
             suites.getHighTier().insertAfterPhase(HighTierLoweringPhase.class, new Phase() {
                 @Override
                 public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
