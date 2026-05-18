@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.test;
 import java.util.HashSet;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.test.GraalTest;
 import org.junit.Test;
@@ -70,6 +71,27 @@ public class IntegerStampFoldTest extends GraalTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void testNarrowShiftStampSoundness() {
+        testShiftContains(IntegerStamp.OPS.getShr(), 8, -86, 109, -1, -86);
+        testShiftContains(IntegerStamp.OPS.getShr(), 16, -1, 7, 31, -1);
+        testShiftContains(IntegerStamp.OPS.getShr(), 8, -57, -57, Integer.MAX_VALUE, -57);
+
+        testShiftContains(IntegerStamp.OPS.getUShr(), 8, -1, -1, 4, -1);
+        testShiftContains(IntegerStamp.OPS.getUShr(), 16, -32326, -18233, 1, -18233);
+        testShiftContains(IntegerStamp.OPS.getUShr(), 16, -25591, 64, 5, -25591);
+    }
+
+    private static void testShiftContains(ShiftOp<?> op, int bits, long lowerBound, long upperBound, long shiftAmount, long value) {
+        IntegerStamp stamp = IntegerStamp.create(bits, lowerBound, upperBound);
+        assertTrue(stamp.contains(value), "%s should contain concrete value %s", stamp, value);
+
+        IntegerStamp shift = IntegerStamp.create(32, shiftAmount, shiftAmount);
+        IntegerStamp foldedStamp = (IntegerStamp) op.foldStamp(stamp, shift);
+        JavaConstant foldedConstant = (JavaConstant) op.foldConstant(JavaConstant.forPrimitiveInt(bits, value), JavaConstant.forInt((int) shiftAmount));
+        assertTrue(foldedStamp.contains(foldedConstant.asLong()), "%s %s %s = %s, should be contained in %s", value, op, shiftAmount, foldedConstant, foldedStamp);
     }
 
     private static void testStamp(IntegerStamp stamp) {
