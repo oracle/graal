@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -300,7 +300,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         PartialEscapeClosure.updateStatesForMaterialized(this, virtual, obj.getMaterializedValue());
         if (representation instanceof AllocatedObjectNode) {
             objects.add((AllocatedObjectNode) representation);
-            locks.add(LockState.asList(obj.getLocks()));
+            locks.add(materializedLocks(obj.getLocks()));
             ensureVirtual.add(obj.getEnsureVirtualized());
             int pos = values.size();
             while (values.size() < pos + entries.length) {
@@ -344,6 +344,19 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
 
     protected void objectMaterialized(VirtualObjectNode virtual, AllocatedObjectNode representation, List<ValueNode> values) {
         VirtualUtil.trace(options, debug, "materialized %s as %s with values %s", virtual, representation, values);
+    }
+
+    /**
+     * Converts an object state's lock stack into the lock list for a new
+     * {@link CommitAllocationNode}, excluding monitor ids that were eliminated after the state was
+     * recorded.
+     */
+    private static List<MonitorIdNode> materializedLocks(LockState state) {
+        List<MonitorIdNode> result = LockState.asList(state);
+        if (!result.isEmpty()) {
+            result.removeIf(MonitorIdNode::isEliminated);
+        }
+        return result;
     }
 
     public void addObject(int virtual, ObjectState state) {
