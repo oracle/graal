@@ -141,6 +141,7 @@ import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import jdk.graal.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import jdk.graal.compiler.nodes.java.ValueCompareAndSwapNode;
+import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.SideEffectFreeWriteNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
@@ -1074,8 +1075,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         }
     }
 
-    private static boolean isNestedLock(MonitorIdNode lock, CommitAllocationNode commit) {
-        for (MonitorIdNode otherLock : commit.getLocks()) {
+    /**
+     * Determines whether {@code lock} is a nested lock on the same materialized object as an
+     * earlier lock in the ordered {@code locks} list.
+     */
+    private static boolean isNestedLock(MonitorIdNode lock, CommitAllocationNode commit, List<MonitorIdNode> locks) {
+        for (MonitorIdNode otherLock : locks) {
             if (otherLock.getLockDepth() < lock.getLockDepth() && commit.getObjectIndex(lock) == commit.getObjectIndex(otherLock)) {
                 return true;
             }
@@ -1115,15 +1120,20 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         FrameState stateBefore = GraphUtil.findLastFrameState(insertionPoint);
 
         List<MonitorIdNode> locks = commit.getLocks();
-        if (locks.size() > 1) {
+        if (!locks.isEmpty()) {
             // Ensure that the lock operations are performed in lock depth order
             ArrayList<MonitorIdNode> newList = new ArrayList<>(locks);
-            newList.sort((a, b) -> Integer.compare(a.getLockDepth(), b.getLockDepth()));
+            // Lock elimination can run after the CommitAllocationNode is created. Do not emit
+            // monitor enters for locks that have already been eliminated.
+            newList.removeIf(MonitorIdNode::isEliminated);
+            if (newList.size() > 1) {
+                newList.sort((a, b) -> Integer.compare(a.getLockDepth(), b.getLockDepth()));
+            }
             // Eliminate nested locks
-            newList.removeIf(lock -> isNestedLock(lock, commit));
+            newList.removeIf(lock -> isNestedLock(lock, commit, newList));
 
             for (MonitorIdNode lock : locks) {
-                if (!newList.contains(lock)) {
+                if (!lock.isEliminated() && !newList.contains(lock)) {
                     // lock is nested and eliminated
                     for (Node usage : lock.usages().snapshot()) {
                         if (usage.isAlive() && usage instanceof AccessMonitorNode access) {
@@ -1154,22 +1164,31 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
             enters.add(enter);
         }
 
-        for (Node usage : commit.usages().snapshot()) {
-            if (usage instanceof AllocatedObjectNode) {
-                AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
-                int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
-                addObject.replaceAtUsagesAndDelete(allocations[index]);
-            } else {
-                assert enters != null;
+        for (AllocatedObjectNode addObject : commit.usages().filter(AllocatedObjectNode.class).snapshot()) {
+            int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
+            addObject.replaceAtUsagesAndDelete(allocations[index]);
+        }
+        if (commit.hasUsagesOfType(InputType.Memory)) {
+            if (enters != null) {
                 commit.replaceAtUsages(enters.get(enters.size() - 1), InputType.Memory);
+            } else {
+                /*
+                 * This anchor is created lazily only when the CommitAllocationNode still has a
+                 * memory usage. The commit remains a memory kill even when all locks were
+                 * eliminated, so preserve a fixed memory input for that usage.
+                 */
+                MemoryAnchorNode memoryAnchor = graph.add(new MemoryAnchorNode());
+                memoryAnchor.setNodeSourcePosition(commit.getNodeSourcePosition());
+                graph.addBeforeFixed(commit, memoryAnchor);
+                commit.replaceAtUsages(memoryAnchor, InputType.Memory);
             }
         }
+        GraalError.guarantee(commit.hasNoUsages(), "Unexpected non-memory usage of %s", commit);
         if (enters != null) {
             for (MonitorEnterNode enter : enters) {
                 enter.lower(tool);
             }
         }
-        assert commit.hasNoUsages();
 
         /*
          * Insert the required ALLOCATION_INIT barrier after all objects are initialized. This models
