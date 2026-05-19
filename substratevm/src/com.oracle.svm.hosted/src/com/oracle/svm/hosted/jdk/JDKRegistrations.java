@@ -31,14 +31,15 @@ import java.util.Optional;
 
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
@@ -58,6 +59,11 @@ class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
          * and even more after JDK 17.
          */
         initializeAtRunTime(a, "java.io.Console");
+
+        /* Starting with JDK 25.0.3, Password caches Console state in this holder class. */
+        optionalType(a, "sun.security.util.Password$ConsoleHolder")
+                        .ifPresent(clazz -> JVMCIRuntimeClassInitializationSupport.singleton().initializeAtRunTime(clazz,
+                                        "ConsoleHolder has a static field of type Console, which is initialized at run time"));
 
         /*
          * Holds system and user library paths derived from the `java.library.path` and
