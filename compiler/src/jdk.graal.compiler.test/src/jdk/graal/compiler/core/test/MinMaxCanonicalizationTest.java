@@ -25,15 +25,155 @@
 
 package jdk.graal.compiler.core.test;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+
+import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.MaxNode;
+import jdk.graal.compiler.nodes.calc.MinNode;
+import jdk.graal.compiler.nodes.calc.UnsignedMaxNode;
+import jdk.graal.compiler.nodes.calc.UnsignedMinNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class MinMaxCanonicalizationTest extends GraalCompilerTest {
 
     record ByteHolder(byte b) {
 
+    }
+
+    public static int intParametersSnippet(int a, int b) {
+        return a + b;
+    }
+
+    public static float floatParametersSnippet(float a, float b) {
+        return a + b;
+    }
+
+    public static float floatMinSelfSnippet(float x) {
+        return Math.min(x, x);
+    }
+
+    public static float floatMaxSelfSnippet(float x) {
+        return Math.max(x, x);
+    }
+
+    public static double doubleMinSelfSnippet(double x) {
+        return Math.min(x, x);
+    }
+
+    public static double doubleMaxSelfSnippet(double x) {
+        return Math.max(x, x);
+    }
+
+    @FunctionalInterface
+    private interface MinMaxFactory {
+        ValueNode create(ValueNode x, ValueNode y);
+    }
+
+    @Test
+    public void testSameInputIntegerMinMaxCreateCanonicalizesToInput() {
+        StructuredGraph graph = parseEager("intParametersSnippet", StructuredGraph.AllowAssumptions.YES);
+        ParameterNode x = graph.getParameter(0);
+        assertNotNull(x);
+
+        assertSame(x, MinNode.create(x, x, NodeView.DEFAULT));
+        assertSame(x, MaxNode.create(x, x, NodeView.DEFAULT));
+        assertSame(x, UnsignedMinNode.create(x, x, NodeView.DEFAULT));
+        assertSame(x, UnsignedMaxNode.create(x, x, NodeView.DEFAULT));
+    }
+
+    @Test
+    public void testSameInputIntegerMinMaxCanonicalizesAfterInputCollapse() {
+        assertSameInputIntegerMinMaxCanonicalizesAfterInputCollapse((x, y) -> MinNode.create(x, y, NodeView.DEFAULT));
+        assertSameInputIntegerMinMaxCanonicalizesAfterInputCollapse((x, y) -> MaxNode.create(x, y, NodeView.DEFAULT));
+        assertSameInputIntegerMinMaxCanonicalizesAfterInputCollapse((x, y) -> UnsignedMinNode.create(x, y, NodeView.DEFAULT));
+        assertSameInputIntegerMinMaxCanonicalizesAfterInputCollapse((x, y) -> UnsignedMaxNode.create(x, y, NodeView.DEFAULT));
+    }
+
+    @Test
+    public void testSameInputFloatingMinMaxCreateCanonicalizesToInput() {
+        StructuredGraph graph = parseEager("floatParametersSnippet", StructuredGraph.AllowAssumptions.YES);
+        ParameterNode x = graph.getParameter(0);
+        assertNotNull(x);
+
+        assertSame(x, MinNode.create(x, x, NodeView.DEFAULT));
+        assertSame(x, MaxNode.create(x, x, NodeView.DEFAULT));
+    }
+
+    @Test
+    public void testFloatSameInputMinMaxSemanticBoundaries() {
+        // Raw-bit inputs exercise NaN payload and signed-zero preservation.
+        int[] rawValues = {
+                        0x00000000, // +0.0f
+                        0x80000000, // -0.0f
+                        0x7fc12345, // NaN payload
+                        0xffc12345, // NaN payload with sign bit set
+        };
+        for (int raw : rawValues) {
+            float value = Float.intBitsToFloat(raw);
+            test("floatMinSelfSnippet", value);
+            test("floatMaxSelfSnippet", value);
+        }
+    }
+
+    @Test
+    public void testDoubleSameInputMinMaxSemanticBoundaries() {
+        // Raw-bit inputs exercise NaN payload and signed-zero preservation.
+        long[] rawValues = {
+                        0x0000000000000000L, // +0.0d
+                        0x8000000000000000L, // -0.0d
+                        0x7ff8000000001234L, // NaN payload
+                        0xfff8000000001234L, // NaN payload with sign bit set
+        };
+        for (long raw : rawValues) {
+            double value = Double.longBitsToDouble(raw);
+            test("doubleMinSelfSnippet", value);
+            test("doubleMaxSelfSnippet", value);
+        }
+    }
+
+    private void assertSameInputIntegerMinMaxCanonicalizesAfterInputCollapse(MinMaxFactory factory) {
+        StructuredGraph graph = parseEager("intParametersSnippet", StructuredGraph.AllowAssumptions.YES);
+        ParameterNode x = graph.getParameter(0);
+        assertNotNull(x);
+
+        ValueNode addZero = graph.addOrUniqueWithInputs(new AddNode(x, ConstantNode.forInt(0, graph)));
+        ValueNode minMax = graph.addOrUniqueWithInputs(factory.create(x, addZero));
+        ReturnNode returnNode = graph.getNodes(ReturnNode.TYPE).first();
+        assertNotNull(returnNode);
+        returnNode.result().replaceAtUsages(minMax, n -> n instanceof ReturnNode);
+
+        createCanonicalizerPhase().apply(graph, getProviders());
+
+        assertSame(x, returnNode.result());
+    }
+
+    @Override
+    protected void assertDeepEquals(String message, Object expected, Object actual, double delta) {
+        if (expected instanceof Float && actual instanceof Float) {
+            int expectedBits = Float.floatToRawIntBits((Float) expected);
+            int actualBits = Float.floatToRawIntBits((Float) actual);
+            if (actualBits != expectedBits) {
+                Assert.fail((message == null ? "" : message) + "raw float bits not equal " + actualBits + " != " + expectedBits);
+            }
+        } else if (expected instanceof Double && actual instanceof Double) {
+            long expectedBits = Double.doubleToRawLongBits((Double) expected);
+            long actualBits = Double.doubleToRawLongBits((Double) actual);
+            if (actualBits != expectedBits) {
+                Assert.fail((message == null ? "" : message) + "raw double bits not equal " + actualBits + " != " + expectedBits);
+            }
+        } else {
+            super.assertDeepEquals(message, expected, actual, delta);
+        }
     }
 
     public static boolean byteMinSnippet(ByteHolder holder) {

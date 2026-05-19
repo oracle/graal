@@ -54,6 +54,9 @@ public class UnsignedMaxNode extends MinMaxNode<UMax> {
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
+        if (x == y) {
+            return x;
+        }
         BinaryOp<UMax> op = ArithmeticOpTable.forStamp(x.stamp(view)).getUMax();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
