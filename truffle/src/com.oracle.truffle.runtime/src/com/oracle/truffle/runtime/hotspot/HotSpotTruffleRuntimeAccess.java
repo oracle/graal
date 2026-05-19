@@ -78,8 +78,8 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         if (TruffleVersions.isVersionCheckEnabled()) {
             /*
              * Check the JDK version before checking compilerModule or jvmci to improve usability.
-             * Otherwise, on an unsupported JDK we would first suggest putting the compiler module
-             * on the --upgrade-module-path, even though that would fail anyway.
+             * Otherwise, on an unsupported JDK we would first suggest to enable JVMCI,
+             * even though that would fail anyway.
              *
              * JVMCIVersionCheck#getMinVersion reads JVMCI_MIN_VERSIONS keyed by
              * java.specification.version. Outside the supported JDK feature range
@@ -93,7 +93,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             if (jdkFeatureVersion < TruffleVersions.MIN_JDK_VERSION || jdkFeatureVersion >= TruffleVersions.MAX_JDK_VERSION) {
                 return new DefaultTruffleRuntime(formatVersionWarningMessage(
                                 """
-                                                Your Java runtime '%s' is incompatible with polyglot version '%s'.
+                                                Your Java runtime '%s' is incompatible with optimized Truffle runtime version '%s'.
                                                 The Java runtime version must be greater or equal to JDK '%d' and smaller than JDK '%d'.
                                                 In order to use the optimizing runtime:
                                                 - Update your Java runtime to resolve this. See https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support for optimizing runtime compatibility.
@@ -193,7 +193,12 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 if (compilerModule == null) {
                     // jargraal compiler module not found -> fallback to default runtime
                     return new DefaultTruffleRuntime(
-                                    "Libgraal compilation is not available on this JVM. Alternatively, the org.graalvm.compiler:compiler module can be put on the --upgrade-module-path.");
+                                    """
+                                                    Optimized Truffle runtime is not available on this JVM.
+                                                    In order to use the optimizing runtime:
+                                                    - Update your Java runtime to resolve this. See https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support for optimizing runtime compatibility.
+                                                    - Switch to polyglot isolates to run the guest language as a native image. See https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates for instructions.
+                                                    """);
                 }
                 String pkg = getTruffleGraalHotSpotPackage(compilerModule);
                 ModulesSupport.addExports(compilerModule, pkg, runtimeModule);

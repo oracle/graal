@@ -91,6 +91,18 @@ final class PolyglotIsolateHostSupport {
     private static final Map<Set<String>, LibraryConfig> libraryCache = new ConcurrentHashMap<>();
     private static volatile Lazy lazy;
 
+    static boolean hasIsolateLibraryForLanguages(Set<String> languageIds) {
+        if (languageIds.isEmpty()) {
+            return false;
+        }
+        for (PolyglotIsolateResource resource : computeAvailablePolyglotIsolateResources()) {
+            if (resource.includedLanguages.containsAll(languageIds)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static Engine buildIsolatedEngine(AbstractPolyglotImpl polyglot, Engine localEngine, String[] isolateLanguages, String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out,
                     OutputStream err, InputStream in, Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                     boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, boolean registerInActiveEngines, boolean externalProcess, long stackHeadroom,

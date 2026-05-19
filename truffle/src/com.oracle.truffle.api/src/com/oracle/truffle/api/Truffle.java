@@ -115,12 +115,12 @@ public final class Truffle {
         }
 
         if (Boolean.getBoolean("truffle.UseFallbackRuntime")) {
-            return new DefaultTruffleRuntime("The fallback runtime was explicitly selected using the -Dtruffle.UseFallbackRuntime option.");
+            return new DefaultTruffleRuntime("The fallback runtime was explicitly selected using the -Dtruffle.UseFallbackRuntime option.", true);
         }
         String runtimeClassName = System.getProperty("truffle.TruffleRuntime");
         if (runtimeClassName != null && !runtimeClassName.isEmpty()) {
             if (runtimeClassName.equals(DefaultTruffleRuntime.class.getName())) {
-                return new DefaultTruffleRuntime("The fallback runtime was explicitly selected using the -Dtruffle.TruffleRuntime option.");
+                return new DefaultTruffleRuntime("The fallback runtime was explicitly selected using the -Dtruffle.TruffleRuntime option.", true);
             }
             try {
                 ClassLoader cl = Thread.currentThread().getContextClassLoader();

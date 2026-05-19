@@ -1590,9 +1590,13 @@ public abstract class Accessor {
             super(IMPL_CLASS_NAME);
         }
 
+        public abstract boolean isSupported();
+
         public abstract boolean isIsolateGuest();
 
         public abstract boolean isIsolateHost();
+
+        public abstract boolean hasIsolateLibraryForLanguages(Set<String> languageIds);
 
         public abstract Engine buildIsolatedEngine(AbstractPolyglotImpl polyglot, Engine localEngine, String[] isolateLanguages, String[] permittedLanguages, SandboxPolicy sandboxPolicy,
                         OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,

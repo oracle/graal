@@ -59,6 +59,7 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.Set;
 
 final class PolyglotIsolateAccessor extends Accessor {
 
@@ -85,6 +86,11 @@ final class PolyglotIsolateAccessor extends Accessor {
         }
 
         @Override
+        public boolean isSupported() {
+            return isIsolateSupported();
+        }
+
+        @Override
         public boolean isIsolateHost() {
             if (!isIsolateSupported()) {
                 return false;
@@ -98,6 +104,14 @@ final class PolyglotIsolateAccessor extends Accessor {
                 return false;
             }
             return PolyglotIsolateGuestSupport.isGuest();
+        }
+
+        @Override
+        public boolean hasIsolateLibraryForLanguages(Set<String> languageIds) {
+            if (!isIsolateSupported()) {
+                return false;
+            }
+            return PolyglotIsolateHostSupport.hasIsolateLibraryForLanguages(languageIds);
         }
 
         @Override

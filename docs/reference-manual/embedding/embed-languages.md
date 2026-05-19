@@ -738,8 +738,9 @@ Supported platform classifiers are:
 
 For a complete Maven POM file that adds the polyglot isolate Native Image dependency for the current platform, refer to the [Polyglot Embedding Demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub.
 
-To enable isolate usage with the Polyglot API, pass the `--engine.SpawnIsolate=true` option when constructing an `Engine` or `Context`.
-The `engine.SpawnIsolate` option is available on Oracle GraalVM and on GraalVM Community Edition starting with version 25.1.
+To enable isolate usage with the Polyglot API, create an `Engine` or `Context` builder with an explicit permitted languages list and call `spawnIsolate(true)`.
+The equivalent `engine.SpawnIsolate` option can also be set directly, for example with `Builder.option("engine.SpawnIsolate", "true")` or `--engine.SpawnIsolate=true`.
+The `spawnIsolate(true)` builder method is available on Oracle GraalVM and on GraalVM Community Edition starting with version 25.1.
 
 ```java
 import org.graalvm.polyglot.*;
@@ -748,7 +749,7 @@ public class PolyglotIsolate {
 	public static void main(String[] args) {
 		try (Context context = Context.newBuilder("js")
 			  .allowHostAccess(HostAccess.SCOPED)
-			  .option("engine.SpawnIsolate", "true").build()) {
+			  .spawnIsolate(true).build()) {
 
 			Value function = context.eval("js", "x => x+1");
 			assert function.canExecute();
@@ -765,7 +766,7 @@ This allows the isolate to run in a fully separate OS process, providing an addi
 ```java
 Context context = Context.newBuilder("js")
 			  .allowHostAccess(HostAccess.SCOPED)
-			  .option("engine.SpawnIsolate", "true")
+			  .spawnIsolate(true)
 			  .option("engine.IsolateMode", "external")
 			  .build()
 ```
@@ -790,7 +791,7 @@ Multiple contexts can be spawned in the same isolated engine by [sharing engines
 public class PolyglotIsolateMultipleContexts {
     public static void main(String[] args) {
         try (Engine engine = Engine.newBuilder("js")
-                .option("engine.SpawnIsolate", "true").build()) {
+                .spawnIsolate(true).build()) {
             Source source = Source.create("js", "21 + 21");
             try (Context context = Context.newBuilder()
                 .engine(engine)
@@ -822,7 +823,7 @@ public class PolyglotIsolateMaxHeap {
     try {
       Context context = Context.newBuilder("js")
         .allowHostAccess(HostAccess.SCOPED)
-        .option("engine.SpawnIsolate", "true")
+        .spawnIsolate(true)
         .option("engine.IsolateOption.MaxHeapSize", "64m").build()
       context.eval("js", "var a = [];while (true) {a.push('foobar');}");
     } catch (PolyglotException ex) {

@@ -538,6 +538,22 @@ public final class Engine implements AutoCloseable {
         return getImpl().copyResources(targetFolder, components);
     }
 
+    /**
+     * Returns whether the current runtime supports optimizing guest language execution.
+     * <p>
+     * When this method returns {@code false}, guest code runs on the fallback runtime unless a
+     * polyglot isolate is used. Embedders can use this method to decide whether to enable isolate
+     * execution, for example with
+     * {@code Context.newBuilder().spawnIsolate(!Engine.supportsCompilation())}.
+     *
+     * @return {@code true} if guest language execution can be optimized at run time;
+     *         {@code false} if only the fallback runtime is available
+     * @since 25.1
+     */
+    public static boolean supportsCompilation() {
+        return getImpl().supportsCompilation();
+    }
+
     static AbstractPolyglotImpl getImpl() {
         try {
             return ImplHolder.IMPL;
@@ -625,6 +641,7 @@ public final class Engine implements AutoCloseable {
         private Object customLogHandler;
         private String[] permittedLanguages;
         private SandboxPolicy sandboxPolicy;
+        private Boolean spawnIsolate;
 
         Builder(String[] permittedLanguages) {
             sandboxPolicy = SandboxPolicy.TRUSTED;
@@ -910,6 +927,30 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Specifies whether this engine should run guest languages in a polyglot isolate.
+         * <p>
+         * A polyglot isolate executes guest languages with an isolated heap. This can be useful for
+         * sandboxing and for running guest languages as native images when the current runtime does
+         * not support optimizing guest language execution. If enabled, all languages permitted by
+         * this engine are run in the isolate. If {@code value} is {@code true}, this builder must
+         * have been created with an explicit permitted languages list, for example using
+         * {@code Engine.newBuilder("js")}.
+         * <p>
+         * This setting is equivalent to setting the {@code engine.SpawnIsolate} engine option to
+         * {@code true} or {@code false}. If both are set to conflicting values, {@link #build()}
+         * fails with {@link IllegalArgumentException}.
+         *
+         * @param value {@code true} to spawn a polyglot isolate
+         * @see Context.Builder#spawnIsolate(boolean)
+         * @see Engine#supportsCompilation()
+         * @since 25.1
+         */
+        public Builder spawnIsolate(boolean value) {
+            spawnIsolate = value;
+            return this;
+        }
+
+        /**
          * Creates a new engine instance from the configuration provided in the builder. The same
          * engine builder can be used to create multiple engine instances.
          *
@@ -933,7 +974,7 @@ public final class Engine implements AutoCloseable {
             Map<String, String> systemPropertiesOptions = readOptionsFromSystemProperties();
             boolean useAllowExperimentalOptions = allowExperimentalOptions || readAllowExperimentalOptionsFromSystemProperties();
             Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, options, systemPropertiesOptions, useSystemProperties, useAllowExperimentalOptions,
-                            boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null, exceptionHandler);
+                            boundEngine, spawnIsolate, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null, exceptionHandler);
             return engine;
         }
 
@@ -1018,7 +1059,7 @@ public final class Engine implements AutoCloseable {
             Objects.requireNonNull(fix);
             String spawnIsolateHelp;
             if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
-                spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Builder.option(\"engine.SpawnIsolate\",\"true\").";
+                spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Builder.spawnIsolate(true).";
             } else {
                 spawnIsolateHelp = "";
             }
@@ -1897,7 +1938,7 @@ public final class Engine implements AutoCloseable {
         @Override
         public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
                         Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
-                        boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
+                        boolean allowExperimentalOptions, boolean boundEngine, Boolean useIsolatedEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
                         boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
             throw noPolyglotImplementationFound();
         }
@@ -2041,6 +2082,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public String getTruffleVersion() {
             return getPolyglotVersion().toString();
+        }
+
+        @Override
+        public boolean supportsCompilation() {
+            return false;
         }
     }
 

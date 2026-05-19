@@ -203,10 +203,11 @@ meth public org.graalvm.polyglot.Context$Builder processHandler(org.graalvm.poly
 meth public org.graalvm.polyglot.Context$Builder resourceLimits(org.graalvm.polyglot.ResourceLimits)
 meth public org.graalvm.polyglot.Context$Builder sandbox(org.graalvm.polyglot.SandboxPolicy)
 meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
+meth public org.graalvm.polyglot.Context$Builder spawnIsolate(boolean)
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 meth public org.graalvm.polyglot.Context$Builder useSystemExit(boolean)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,exceptionHandler,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sandboxPolicy,sharedEngine,useSystemExit,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,exceptionHandler,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sandboxPolicy,sharedEngine,spawnIsolate,useSystemExit,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -224,6 +225,7 @@ meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Instrument> getI
 meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Language> getLanguages()
 meth public java.util.Set<org.graalvm.polyglot.Source> getCachedSources()
 meth public org.graalvm.options.OptionDescriptors getOptions()
+meth public static boolean supportsCompilation()
 meth public static java.nio.file.Path findHome()
 meth public static org.graalvm.polyglot.Engine create()
 meth public static org.graalvm.polyglot.Engine$Builder newBuilder()
@@ -252,9 +254,10 @@ meth public org.graalvm.polyglot.Engine$Builder options(java.util.Map<java.lang.
 meth public org.graalvm.polyglot.Engine$Builder out(java.io.OutputStream)
 meth public org.graalvm.polyglot.Engine$Builder sandbox(org.graalvm.polyglot.SandboxPolicy)
 meth public org.graalvm.polyglot.Engine$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
+meth public org.graalvm.polyglot.Engine$Builder spawnIsolate(boolean)
 meth public org.graalvm.polyglot.Engine$Builder useSystemProperties(boolean)
 supr java.lang.Object
-hfds allowExperimentalOptionSystemPropertyValue,allowExperimentalOptions,boundEngine,customLogHandler,err,exceptionHandler,in,messageTransport,options,out,permittedLanguages,sandboxPolicy,useSystemProperties
+hfds allowExperimentalOptionSystemPropertyValue,allowExperimentalOptions,boundEngine,customLogHandler,err,exceptionHandler,in,messageTransport,options,out,permittedLanguages,sandboxPolicy,spawnIsolate,useSystemProperties
 
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT
