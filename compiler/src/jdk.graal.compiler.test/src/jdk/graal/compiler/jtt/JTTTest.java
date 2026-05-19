@@ -232,7 +232,7 @@ public class JTTTest extends GraalCompilerTest {
                         GraphState.MandatoryStages.getFromName(runtime.getCompilerConfigurationName()),
                         randomSeed);
         if (Boolean.getBoolean(MINIMAL_PLAN_SYSTEM_PROPERTY)) {
-            testFuzzedCompilationPlan(minimalFuzzedCompilationPlan, options, method, expect, shouldNotDeopt, receiver, args);
+            testFuzzedCompilationPlan(minimalFuzzedCompilationPlan, graph.getGraphState(), options, method, expect, shouldNotDeopt, receiver, args);
             return;
         }
         Integer phaseInsertionProbabilityHighTier = Integer.getInteger(HIGH_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY, Integer.getInteger(PHASE_SKIP_ODDS_SYSTEM_PROPERTY));
@@ -241,7 +241,7 @@ public class JTTTest extends GraalCompilerTest {
             // a phase (see {@link FuzzedPhasePlan#createFullFuzzedPhasePlan(MinimalFuzzedPhasePlan,
             // GraphState)})
             FullFuzzedCompilationPlan fullFuzzedCompilationPlan = FullFuzzedCompilationPlan.createFullFuzzedCompilationPlan(minimalFuzzedCompilationPlan, graph.getGraphState());
-            testFuzzedCompilationPlan(fullFuzzedCompilationPlan, options, method, expect, shouldNotDeopt, receiver, args);
+            testFuzzedCompilationPlan(fullFuzzedCompilationPlan, graph.getGraphState(), options, method, expect, shouldNotDeopt, receiver, args);
             return;
         }
         int phaseInsertionProbabilityMidTier = Integer.getInteger(MID_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY, phaseInsertionProbabilityHighTier);
@@ -250,7 +250,7 @@ public class JTTTest extends GraalCompilerTest {
                         phaseInsertionProbabilityHighTier,
                         phaseInsertionProbabilityMidTier,
                         phaseInsertionProbabilityLowTier);
-        testFuzzedCompilationPlan(fullFuzzedCompilationPlan, options, method, expect, shouldNotDeopt, receiver, args);
+        testFuzzedCompilationPlan(fullFuzzedCompilationPlan, graph.getGraphState(), options, method, expect, shouldNotDeopt, receiver, args);
     }
 
     /**
@@ -260,9 +260,10 @@ public class JTTTest extends GraalCompilerTest {
      * plan throws or the result is unexpected, the problem is handled by calling
      * {@link #handleFailingFuzzedCompilationPlan}.
      */
-    private void testFuzzedCompilationPlan(MinimalFuzzedCompilationPlan plan, OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt,
-                    Object receiver, Object... args) {
+    private void testFuzzedCompilationPlan(MinimalFuzzedCompilationPlan plan, GraphState graphState, OptionValues options, ResolvedJavaMethod method, Result expect,
+                    Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         OptionValues fuzzingOptions = FuzzedSuites.fuzzingOptions(options);
+        plan.verifyCompilationPlan(graphState);
         fuzzedSuites = plan.getSuites();
         Result actual = null;
         try {

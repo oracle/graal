@@ -272,7 +272,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
     protected boolean insertPhaseAtIndex(BasePhase<? super C> phase, int index, GraphState graphState) {
         PhaseSuite<C> newFuzzedPhaseSuite = getPhaseSuite().copy();
         newFuzzedPhaseSuite.insertAtIndex(index, phase);
-        Optional<NotApplicable> suiteNotApplicable = PhaseSuiteContractVerifier.verifiedNotApplicableTo(newFuzzedPhaseSuite, graphState.copy());
+        Optional<NotApplicable> suiteNotApplicable = newFuzzedPhaseSuite.notApplicableTo(graphState.copy());
         if (suiteNotApplicable.isEmpty()) {
             getIgnoredPhases().remove(phase);
             setPhaseSuite(newFuzzedPhaseSuite);
