@@ -86,7 +86,7 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
 
     @Child private RunRegexSearchNode runnerNode;
 
-    private TRegexExecNode(RegexAST ast, boolean backtrackingMode, RunRegexSearchNode runnerNode) {
+    private TRegexExecNode(RegexAST ast, NFA nfa, boolean backtrackingMode, RunRegexSearchNode runnerNode) {
         super(ast.getLanguage(), ast.getSource(), ast.getFlags().isEitherUnicode());
         this.numberOfCaptureGroups = ast.getNumberOfCaptureGroups();
         this.backtrackingMode = backtrackingMode;
@@ -94,7 +94,7 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
         this.optimizeLock = new ReentrantLock();
         this.runnerNode = insert(runnerNode);
         if (!backtrackingMode && runnerNode instanceof NFARegexSearchNode nfaNode && ast.getOptions().isGenerateDFAImmediately()) {
-            switchToLazyDFA(ast.getSource(), nfaNode);
+            switchToLazyDFA(ast.getLanguage(), ast.getSource(), nfaNode, nfa);
         }
     }
 
@@ -104,7 +104,7 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
         if (!isBacktracking && ast.getOptions().isRegressionTestMode()) {
             runnerNode = RegressionTestModeSearchNode.create(ast, nfa, runnerNodeArg);
         }
-        return new TRegexExecNode(ast, isBacktracking, runnerNode);
+        return new TRegexExecNode(ast, nfa, isBacktracking, runnerNode);
     }
 
     @Override
@@ -116,7 +116,7 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
             if (curRunnerNode instanceof NFARegexSearchNode nfaNode) {
                 if (profile.shouldGenerateDFA(maxIndex - fromIndex) && optimizeLock.tryLock()) {
                     try {
-                        switchToLazyDFA(getSource(), nfaNode);
+                        switchToLazyDFA(getRegexLanguage(), getSource(), nfaNode, null);
                         profile.resetCalls();
                     } finally {
                         optimizeLock.unlock();
@@ -126,7 +126,7 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
                 assert ((LazyCaptureGroupRegexSearchNode) curRunnerNode).forwardEntryNode != null;
                 if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching() && optimizeLock.tryLock()) {
                     try {
-                        switchToEagerDFA(profile);
+                        switchToEagerDFA(getRegexLanguage(), getSource(), profile);
                     } finally {
                         optimizeLock.unlock();
                     }
@@ -202,15 +202,15 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
         return regexProfile;
     }
 
-    private void switchToLazyDFA(RegexSource source, NFARegexSearchNode nfaNode) {
+    private void switchToLazyDFA(RegexLanguage language, RegexSource source, NFARegexSearchNode nfaNode, NFA nfa) {
         CompilerAsserts.neverPartOfCompilation();
         if (!lazyDFABailedOut) {
-            LazyCaptureGroupRegexSearchNode lazyDFANode = compileLazyDFA(((TRegexNFAExecutorNode) nfaNode.getExecutor().unwrap()).getNFA(), getRegexProfile(), true);
+            LazyCaptureGroupRegexSearchNode lazyDFANode = compileLazyDFA(language, source, nfa, getRegexProfile(), true);
             if (lazyDFANode == null) {
                 lazyDFABailedOut = true;
                 ((TRegexNFAExecutorNode) nfaNode.getExecutor().unwrap()).notifyDfaGeneratorBailedOut();
             } else if (source.getOptions().isAlwaysEager() && canSwitchToEagerDFA(source, lazyDFANode)) {
-                switchToEagerDFA(null);
+                switchToEagerDFA(language, source, null);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 runnerNode = insert(lazyDFANode);
@@ -218,11 +218,11 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
         }
     }
 
-    private static LazyCaptureGroupRegexSearchNode compileLazyDFA(NFA nfa, RegexProfile profile, boolean allowSimpleCG) {
+    private static LazyCaptureGroupRegexSearchNode compileLazyDFA(RegexLanguage language, RegexSource source, NFA nfa, RegexProfile profile, boolean allowSimpleCG) {
         try {
-            return TRegexCompiler.compileLazyDFAExecutor(nfa.getAst().getLanguage(), new NFA(nfa), profile, allowSimpleCG);
+            return TRegexCompiler.compileLazyDFAExecutor(language, source, nfa, profile, allowSimpleCG);
         } catch (UnsupportedRegexException e) {
-            Loggers.LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + nfa.getAst().getSource());
+            Loggers.LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
             return null;
         }
     }
@@ -231,14 +231,14 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
         return !source.getOptions().isBooleanMatch() && curRunnerNode instanceof LazyCaptureGroupRegexSearchNode && ((LazyCaptureGroupRegexSearchNode) curRunnerNode).captureGroupEntryNode != null;
     }
 
-    private void switchToEagerDFA(RegexProfile profile) {
+    private void switchToEagerDFA(RegexLanguage language, RegexSource source, RegexProfile profile) {
         CompilerAsserts.neverPartOfCompilation();
         if (!eagerDFABailedOut) {
-            EagerCaptureGroupRegexSearchNode eagerDFANode = compileEagerDFA(getRegexLanguage(), getSource());
+            EagerCaptureGroupRegexSearchNode eagerDFANode = compileEagerDFA(language, source);
             if (eagerDFANode == null) {
                 eagerDFABailedOut = true;
             } else {
-                Loggers.LOG_SWITCH_TO_EAGER.fine(() -> "regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
+                Loggers.LOG_SWITCH_TO_EAGER.fine(() -> "regex " + source + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 runnerNode = insert(eagerDFANode);
             }
@@ -505,22 +505,22 @@ public final class TRegexExecNode extends RegexExecNode implements RegexProfile.
             LazyCaptureGroupRegexSearchNode noSimpleCGLazyDFANode = null;
             EagerCaptureGroupRegexSearchNode eagerDFANode = null;
 
-            if (runnerNode instanceof NFARegexSearchNode) {
-                nfaNode = (NFARegexSearchNode) runnerNode;
-                assert (!(nfaNode.getExecutor().unwrap() instanceof TRegexBacktrackingNFAExecutorNode));
+            if (runnerNode instanceof NFARegexSearchNode currentNFANode) {
+                assert currentNFANode.getExecutor().unwrap() instanceof TRegexNFAExecutorNode;
+                nfaNode = currentNFANode;
             }
             backtrackingNode = new NFARegexSearchNode(createEntryNode(language, TRegexCompiler.compileBacktrackingExecutor(language, nfa)));
             if (runnerNode instanceof LazyCaptureGroupRegexSearchNode) {
                 lazyDFANode = (LazyCaptureGroupRegexSearchNode) runnerNode;
             } else {
-                lazyDFANode = compileLazyDFA(nfa, new RegexProfile(), true);
+                lazyDFANode = compileLazyDFA(language, ast.getSource(), nfa, new RegexProfile(), true);
             }
             if (lazyDFANode != null) {
                 if (canSwitchToEagerDFA(ast.getSource(), lazyDFANode)) {
                     eagerDFANode = compileEagerDFA(ast.getLanguage(), ast.getSource());
                 }
                 if (lazyDFANode.isSimpleCG()) {
-                    noSimpleCGLazyDFANode = compileLazyDFA(nfa, new RegexProfile(), false);
+                    noSimpleCGLazyDFANode = compileLazyDFA(language, ast.getSource(), nfa, new RegexProfile(), false);
                 }
             }
             RunRegexSearchNode runner = lazyDFANode == null ? nfaNode : lazyDFANode;

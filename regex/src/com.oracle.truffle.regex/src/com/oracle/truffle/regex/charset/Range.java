@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,5 +72,23 @@ public final class Range {
             return DebugUtil.charToString(lo);
         }
         return DebugUtil.charToString(lo) + "-" + DebugUtil.charToString(hi);
+    }
+
+    @TruffleBoundary
+    public static String rangesToString(int[] ranges) {
+        return rangesToString(ranges, 0, ranges.length / 2);
+    }
+
+    @TruffleBoundary
+    public static String rangesToString(int[] ranges, int rangesOffset, int rangeCount) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < rangeCount; i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            int range = rangesOffset + (i << 1);
+            sb.append(toString(ranges[range], ranges[range + 1]));
+        }
+        return sb.toString();
     }
 }

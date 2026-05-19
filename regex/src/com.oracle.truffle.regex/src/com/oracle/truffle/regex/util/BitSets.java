@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,6 +89,15 @@ public final class BitSets {
         return true;
     }
 
+    public static boolean isFull(int[] bs) {
+        for (int word : bs) {
+            if (word != ~0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static int size(long[] bs) {
         int ret = 0;
         for (long w : bs) {
@@ -99,6 +108,15 @@ public final class BitSets {
 
     public static boolean get(long[] bs, int index) {
         return wordIndex(index) < bs.length && (bs[wordIndex(index)] & toBit(index)) != 0;
+    }
+
+    public static boolean get(int[] bs, int index) {
+        return get(bs, 0, index);
+    }
+
+    public static boolean get(int[] bs, int wordOffset, int index) {
+        int wordIndex = wordOffset + (index >>> 5);
+        return wordIndex < bs.length && (bs[wordIndex] & (1 << (index & 31))) != 0;
     }
 
     public static void set(long[] bs, int index) {
@@ -127,6 +145,20 @@ public final class BitSets {
         for (int i = wordIndexLo + 1; i < wordIndexHi; i++) {
             bs[i] = ~0L;
         }
+        bs[wordIndexHi] |= rangeHi;
+    }
+
+    public static void setRange(int[] bs, int lo, int hi) {
+        int wordIndexLo = lo >>> 5;
+        int wordIndexHi = hi >>> 5;
+        int rangeLo = ~0 << (lo & 31);
+        int rangeHi = ~0 >>> (31 - (hi & 31));
+        if (wordIndexLo == wordIndexHi) {
+            bs[wordIndexLo] |= rangeLo & rangeHi;
+            return;
+        }
+        bs[wordIndexLo] |= rangeLo;
+        Arrays.fill(bs, wordIndexLo + 1, wordIndexHi, ~0);
         bs[wordIndexHi] |= rangeHi;
     }
 

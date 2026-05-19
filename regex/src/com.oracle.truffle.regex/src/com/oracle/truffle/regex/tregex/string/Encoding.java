@@ -42,7 +42,6 @@ package com.oracle.truffle.regex.tregex.string;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -240,7 +239,7 @@ public enum Encoding {
     public void createMatcher(Builder matchersBuilder, int i, CodePointSet cps, CompilationBuffer compilationBuffer) {
         assert cps.getMax() <= getMaxValue();
         switch (this) {
-            case LATIN_1, ASCII, BYTES -> matchersBuilder.getBuffer(0).set(i, CharMatchers.createMatcher(cps, compilationBuffer));
+            case LATIN_1, ASCII, BYTES -> matchersBuilder.getBuffer(0).set(i, matchersBuilder.getMatcherBuilder().getOrCreateMatcher(cps, compilationBuffer));
             default -> matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, switch (this) {
                 case UTF_8 -> SPLIT_RANGES_UTF_8;
                 case UTF_16, UTF_16BE -> SPLIT_RANGES_UTF_16;
