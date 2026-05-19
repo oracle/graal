@@ -181,9 +181,9 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord endOffset) {
+    public static void initialize(Header<?> chunk, Pointer initialTop, UnsignedWord endOffset) {
         HeapChunk.setEndOffset(chunk, endOffset);
-        HeapChunk.setTopPointer(chunk, objectsStart);
+        HeapChunk.setTopPointer(chunk, initialTop);
         HeapChunk.setSpace(chunk, null);
         HeapChunk.setNext(chunk, Word.nullPointer());
         HeapChunk.setPrevious(chunk, Word.nullPointer());
@@ -223,6 +223,11 @@ public final class HeapChunk {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getEndOffset(Header<?> that) {
+        return that.getEndOffset();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getSize(Header<?> that) {
         return that.getEndOffset();
     }
 

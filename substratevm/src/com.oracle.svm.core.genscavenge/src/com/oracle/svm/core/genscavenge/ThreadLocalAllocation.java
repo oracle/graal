@@ -299,7 +299,7 @@ public final class ThreadLocalAllocation {
 
                 boolean needsZeroing = !HeapChunkProvider.areUnalignedChunksZeroed();
                 UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
-                tlabSize = UnalignedHeapChunk.getChunkSizeForObject(size);
+                tlabSize = HeapChunk.getSize(newTlabChunk);
                 return allocateLargeArrayLikeObjectInNewTlab(hub, length, size, newTlabChunk, needsZeroing, podReferenceMap);
             }
 
@@ -378,10 +378,9 @@ public final class ThreadLocalAllocation {
         tlab.setUnalignedChunk(newTlabChunk);
 
         allocatedUnalignedBytes.set(allocatedUnalignedBytes.get().add(size));
-        HeapImpl.getAccounting().increaseEdenUsedBytes(size);
+        HeapImpl.getAccounting().increaseEdenUsedBytes(HeapChunk.getSize(newTlabChunk));
 
-        Pointer memory = UnalignedHeapChunk.allocateMemory(newTlabChunk, size);
-        assert memory.isNonNull();
+        Pointer memory = UnalignedHeapChunk.getObjectStart(newTlabChunk);
 
         if (!needsZeroing && SubstrateGCOptions.VerifyHeap.getValue()) {
             guaranteeZeroed(memory, size);

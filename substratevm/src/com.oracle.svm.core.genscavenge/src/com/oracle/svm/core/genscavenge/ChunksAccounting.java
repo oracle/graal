@@ -101,7 +101,7 @@ final class ChunksAccounting {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void noteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk) {
-        noteUnaligned(UnalignedHeapChunk.getCommittedObjectMemory(chunk));
+        noteUnaligned(HeapChunk.getSize(chunk));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -115,7 +115,7 @@ final class ChunksAccounting {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void unnoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk) {
-        unnoteUnaligned(UnalignedHeapChunk.getCommittedObjectMemory(chunk));
+        unnoteUnaligned(HeapChunk.getSize(chunk));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -106,7 +106,7 @@ public final class AlignedHeapChunk {
 
     public static void reset(AlignedHeader chunk) {
         long alignedChunkSize = SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue();
-        assert HeapChunk.getEndOffset(chunk).rawValue() == alignedChunkSize;
+        assert HeapChunk.getSize(chunk).rawValue() == alignedChunkSize;
         initialize(chunk, Word.unsigned(alignedChunkSize));
     }
 
