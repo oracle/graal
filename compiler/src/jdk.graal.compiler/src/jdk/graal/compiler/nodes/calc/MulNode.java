@@ -167,11 +167,10 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                 } else {
                     // e.g., 0b1111_1100
                     int shiftToRoundUpToPowerOf2 = CodeUtil.log2(highestBitValue) + 1;
-                    long subValue = (1 << shiftToRoundUpToPowerOf2) - i;
+                    long subValue = (1L << shiftToRoundUpToPowerOf2) - i;
                     if (CodeUtil.isPowerOf2(subValue) && shiftToRoundUpToPowerOf2 < ((IntegerStamp) stamp).getBits()) {
-                        assert CodeUtil.log2(subValue) >= 1 : subValue;
                         ValueNode left = new LeftShiftNode(forX, ConstantNode.forInt(shiftToRoundUpToPowerOf2));
-                        ValueNode right = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(subValue)));
+                        ValueNode right = subValue == 1 ? forX : new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(subValue)));
                         return SubNode.create(left, right, view);
                     }
                 }
