@@ -46,6 +46,7 @@ import com.oracle.svm.test.NativeImageBuildArgs;
                 "--features=com.oracle.svm.test.xml.RuntimeClassLoadingXmlApiReachabilityTest$TestFeature"
 })
 public class RuntimeClassLoadingXmlApiReachabilityTest {
+    private static final String XML_CATALOG_HOLDER_CLASS = "jdk.xml.internal.JdkXmlConfig$CatalogHolder";
     private static final String[] XML_IMPLEMENTATION_CLASSES = {
                     "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl",
                     "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl",
@@ -56,27 +57,34 @@ public class RuntimeClassLoadingXmlApiReachabilityTest {
                     "com.sun.org.apache.xerces.internal.dom.DOMXSImplementationSourceImpl",
                     "com.sun.org.apache.xerces.internal.jaxp.datatype.DatatypeFactoryImpl",
                     "com.sun.org.apache.xerces.internal.impl.dv.xs.SchemaDVFactoryImpl",
-                    "com.sun.org.apache.xerces.internal.impl.dv.xs.ExtendedSchemaDVFactoryImpl",
-                    "jdk.xml.internal.JdkXmlConfig$CatalogHolder"
+                    "com.sun.org.apache.xerces.internal.impl.dv.xs.ExtendedSchemaDVFactoryImpl"
     };
 
     public static class TestFeature implements Feature {
         @Override
-        public void afterAnalysis(AfterAnalysisAccess access) {
+        public void beforeAnalysis(BeforeAnalysisAccess access) {
+            Class<?> catalogHolder = access.findClassByName(XML_CATALOG_HOLDER_CLASS);
+            if (catalogHolder == null) {
+                throw new AssertionError(XML_CATALOG_HOLDER_CLASS + " is not available to the image build");
+            }
+            access.registerReachabilityHandler(_ -> {
+                throw new AssertionError(XML_CATALOG_HOLDER_CLASS + " was made reachable by XML API reachability");
+            }, catalogHolder);
+
             for (String className : XML_IMPLEMENTATION_CLASSES) {
-                Class<?> clazz = access.findClassByName(className);
-                if (clazz == null) {
+                Class<?> implementationClass = access.findClassByName(className);
+                if (implementationClass == null) {
                     throw new AssertionError(className + " is not available to the image build");
                 }
-                if (access.isReachable(clazz)) {
+                access.registerReachabilityHandler(_ -> {
                     throw new AssertionError(className + " was made reachable by XML API reachability");
-                }
+                }, implementationClass);
             }
         }
     }
 
     @Test
-    public void testXmlFactoryApiReachabilityDoesNotRegisterImplementationMetadata() throws Exception {
+    public void testXmlFactoryApiReachabilityDoesNotRegisterImplementationMetadataOrInitializeCatalog() throws Exception {
         if (System.nanoTime() == Long.MIN_VALUE) {
             SAXParserFactory.newInstance();
             DocumentBuilderFactory.newInstance();

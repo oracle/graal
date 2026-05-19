@@ -2164,6 +2164,12 @@ mx_sdk_vm.register_graalvm_component(libsvmjdwp)
 # needed based on partial-class errors such as "Trying to dispatch to compiled code for AOT method
 # ..." or "Cannot load undefined field: ...". This list must not be used for optimization.
 lib_jvm_preserved_packages = [
+    'com.sun.org.apache.xalan.internal.xsltc.compiler',
+    'com.sun.org.apache.xalan.internal.xsltc.dom',
+    'com.sun.org.apache.xalan.internal.xsltc.runtime',
+    'com.sun.org.apache.xerces.internal.impl.xs',
+    'com.sun.org.apache.xerces.internal.util',
+    'com.sun.org.apache.xerces.internal.xni.parser',
     'java.io',
     'java.lang',
     'java.lang.annotation',
@@ -2206,11 +2212,17 @@ lib_jvm_preserved_packages = [
     'javax.net',
     'javax.crypto.spec',
     'javax.security.auth.x500',
+    'javax.xml.parsers',
+    'javax.xml.transform',
+    'javax.xml.transform.stream',
+    'javax.xml.validation',
     'jdk.internal.access',
     'jdk.internal.classfile.impl',
     'jdk.internal.constant',
     'jdk.internal.logger',
     'jdk.internal.misc',
+    'jdk.xml.internal',
+    'org.xml.sax.helpers',
     'sun.invoke.util',
     'sun.security.util',
 ]

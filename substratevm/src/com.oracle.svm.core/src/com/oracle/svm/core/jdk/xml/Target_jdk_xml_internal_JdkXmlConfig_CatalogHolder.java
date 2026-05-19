@@ -31,18 +31,19 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
 
 /**
- * Substitution to initialize {@link #JDKCATALOG} at build time.
+ * Substitution to preserve {@link #JDKCATALOG} when it is initialized at build time.
  *
  * JDK-8306055 introduced a built-in Catalog to JDK XML module in JDK 22. Without special treatment,
  * the initialization code would pull intermediate types (e.g. {@code CatalogReader}) into the image
- * heap. To avoid this, we initialize the catalog at build time.
+ * heap. To avoid this, the catalog can be initialized at build time.
  *
  * Ideally, we would initialize all of {@code jdk.xml} at run time, but that is too intrusive at the
  * current point in time (GR-50683).
  */
-@TargetClass(className = "jdk.xml.internal.JdkXmlConfig$CatalogHolder")
+@TargetClass(className = "jdk.xml.internal.JdkXmlConfig$CatalogHolder", onlyWith = NoRuntimeClassLoading.class)
 public final class Target_jdk_xml_internal_JdkXmlConfig_CatalogHolder {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JdkCatalogSupplier.class, isFinal = true) //
