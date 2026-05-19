@@ -24,10 +24,13 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
@@ -36,11 +39,12 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.FloatEqualsNode;
+import jdk.graal.compiler.nodes.calc.FloatLessThanNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
 import jdk.vm.ci.meta.JavaKind;
-import org.junit.Test;
 
 public class CompareCanonicalizerTest extends GraalCompilerTest {
 
@@ -100,6 +104,28 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
         } else {
             return 1;
         }
+    }
+
+    @Test
+    public void testCompareImplications() {
+        StructuredGraph graph = parseEager("floatCompare", AllowAssumptions.NO);
+        ValueNode a = graph.getParameter(0);
+        ValueNode b = graph.getParameter(1);
+        LogicNode lessThan = graph.addOrUniqueWithInputs(FloatLessThanNode.create(a, b, false, NodeView.DEFAULT));
+        LogicNode unorderedLessThan = graph.addOrUniqueWithInputs(FloatLessThanNode.create(a, b, true, NodeView.DEFAULT));
+        LogicNode equals = graph.addOrUniqueWithInputs(FloatEqualsNode.create(a, b, NodeView.DEFAULT));
+
+        assertTrue(equals.implies(false, lessThan).isFalse());
+        assertTrue(equals.implies(false, LogicNegationNode.create(lessThan)).isTrue());
+        assertTrue(lessThan.implies(false, equals).isFalse());
+        assertTrue(lessThan.implies(false, LogicNegationNode.create(equals)).isTrue());
+        assertTrue(lessThan.implies(true, equals).isUnknown());
+        assertTrue(unorderedLessThan.implies(false, lessThan).isUnknown());
+        assertTrue(lessThan.implies(true, unorderedLessThan).isUnknown());
+    }
+
+    public static boolean floatCompare(float a, float b) {
+        return a < b;
     }
 
     @Test
