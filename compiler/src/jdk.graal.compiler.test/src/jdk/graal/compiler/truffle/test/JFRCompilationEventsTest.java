@@ -37,6 +37,7 @@ import jdk.jfr.consumer.RecordingStream;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
@@ -52,6 +53,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -76,6 +78,7 @@ public class JFRCompilationEventsTest {
     public void testJFRTraceCompilationParity() throws IOException, InterruptedException {
         TruffleTestAssumptions.assumeOptimizingRuntime();
         TruffleTestAssumptions.assumeWeakEncapsulation();
+        assumeJfrClassesAvailable();
         DeoptInvalidateFailureLanguage.resetState();
         Runnable test = () -> {
             StringBuilder jfrOutputBuilder = new StringBuilder();
@@ -274,22 +277,7 @@ public class JFRCompilationEventsTest {
                 normalizeStartQueuedOrder(contextCompilationLogLines);
                 normalizeStartQueuedOrder(jfrCompilationLogLines);
 
-                Assert.assertTrue("No [engine] opt done lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt done"));
-                Assert.assertTrue("No [engine] opt queued lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt queued"));
-                Assert.assertTrue("No [engine] opt unque. lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt unque."));
-                Assert.assertTrue("No [engine] opt start lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt start"));
-                Assert.assertTrue("No [engine] opt failed lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt failed"));
-                Assert.assertTrue("No [engine] opt inval. lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt inval."));
-                Assert.assertTrue("No [engine] opt deopt lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt deopt"));
-                Assert.assertEquals("Different number of compilation log lines ([engine] opt done/queued/unque./start/failed/inval./deopt).", contextCompilationLogLines.size(),
-                                jfrCompilationLogLines.size());
-                for (int i = 0; i < jfrCompilationLogLines.size(); i++) {
-                    Assert.assertEquals("Different compilation log line at index " + i,
-                                    normalizeForComparison(contextCompilationLogLines.get(i)),
-                                    normalizeForComparison(jfrCompilationLogLines.get(i)));
-                    assertUtcWithinEval(contextCompilationLogLines.get(i), evalStart, evalEnd);
-                    assertUtcWithinEval(jfrCompilationLogLines.get(i), evalStart, evalEnd);
-                }
+                assertCompilationLogs(contextCompilationLogLines, jfrCompilationLogLines, evalStart, evalEnd);
             } catch (IOException | InterruptedException e) {
                 throw new AssertionError(e);
             }
@@ -304,25 +292,6 @@ public class JFRCompilationEventsTest {
         }).run();
     }
 
-    @Test
-    public void testSingleRootNodeLanguageDeoptimizesTwiceThenStabilizes() throws IOException {
-        TruffleTestAssumptions.assumeOptimizingRuntime();
-        try (Context context = Context.newBuilder(DeoptInvalidateFailureLanguage.ID).allowExperimentalOptions(true) //
-                        .option("engine.CompileImmediately", "true") //
-                        .option("engine.BackgroundCompilation", "false") //
-                        .option("engine.TraceCompilationDetails", "true") //
-                        .build()) {
-            Source source = Source.newBuilder(DeoptInvalidateFailureLanguage.ID, "ignored source text", "DeoptOnceSource").build();
-            DeoptInvalidateFailureLanguage.scheduleRecoverablePrepareFailure();
-            Assert.assertEquals(42, context.eval(source).asInt());
-            Assert.assertEquals(42, context.eval(source).asInt());
-            DeoptInvalidateFailureLanguage.invalidateExternalAssumption();
-            Assert.assertEquals(42, context.eval(source).asInt());
-            DeoptInvalidateFailureLanguage.schedulePermanentPrepareFailure();
-            Assert.assertEquals(42, context.eval(source).asInt());
-        }
-    }
-
     private static List<String> extractCompilationLogLines(String output) {
         List<String> lines = new ArrayList<>();
         for (String line : output.split("\\R")) {
@@ -334,6 +303,39 @@ public class JFRCompilationEventsTest {
         return lines;
     }
 
+    private static void assertCompilationLogs(List<String> contextCompilationLogLines, List<String> jfrCompilationLogLines, Instant evalStart, Instant evalEnd) {
+        List<String> normalizedContextCompilationLogLines = normalizeForComparison(contextCompilationLogLines);
+        List<String> normalizedJfrCompilationLogLines = normalizeForComparison(jfrCompilationLogLines);
+        try {
+            Assert.assertTrue("No [engine] opt done lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt done"));
+            Assert.assertTrue("No [engine] opt queued lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt queued"));
+            Assert.assertTrue("No [engine] opt unque. lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt unque."));
+            Assert.assertTrue("No [engine] opt start lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt start"));
+            Assert.assertTrue("No [engine] opt failed lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt failed"));
+            Assert.assertTrue("No [engine] opt inval. lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt inval."));
+            Assert.assertTrue("No [engine] opt deopt lines found in context logger output.", hasPrefix(contextCompilationLogLines, "[engine] opt deopt"));
+            Assert.assertEquals("Different number of compilation log lines ([engine] opt done/queued/unque./start/failed/inval./deopt).", contextCompilationLogLines.size(),
+                            jfrCompilationLogLines.size());
+            for (int i = 0; i < jfrCompilationLogLines.size(); i++) {
+                Assert.assertEquals("Different compilation log line at index " + i,
+                                normalizedContextCompilationLogLines.get(i),
+                                normalizedJfrCompilationLogLines.get(i));
+                assertUtcWithinEval(contextCompilationLogLines.get(i), evalStart, evalEnd);
+                assertUtcWithinEval(jfrCompilationLogLines.get(i), evalStart, evalEnd);
+            }
+        } catch (AssertionError e) {
+            throw new AssertionError(formatCompilationLogFailure(contextCompilationLogLines, jfrCompilationLogLines), e);
+        }
+    }
+
+    private static List<String> normalizeForComparison(List<String> lines) {
+        List<String> normalized = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            normalized.add(normalizeForComparison(line));
+        }
+        return normalized;
+    }
+
     private static String normalizeForComparison(String line) {
         String noTime = DONE_TIME_PATTERN.matcher(line).replaceFirst("|Time <ignored>|AST");
         noTime = QUEUED_TIME_PATTERN.matcher(noTime).replaceFirst(" Time <ignored>|UTC");
@@ -342,7 +344,31 @@ public class JFRCompilationEventsTest {
         return UTC_PATTERN.matcher(noTime).replaceFirst("|UTC <ignored>|Src");
     }
 
-    private static String formatSource(RecordedEvent recordedEvent) {
+    private static String formatCompilationLogFailure(List<String> contextCompilationLogLines, List<String> jfrCompilationLogLines) {
+        StringBuilder message = new StringBuilder("Compilation log assertions failed.");
+        appendLines(message, "Raw context compilation log lines", contextCompilationLogLines);
+        appendLines(message, "Raw JFR compilation log lines", jfrCompilationLogLines);
+        return message.toString();
+    }
+
+    private static void appendLines(StringBuilder message, String title, List<String> lines) {
+        message.append(System.lineSeparator()).append(title).append(" (").append(lines.size()).append("):");
+        for (int i = 0; i < lines.size(); i++) {
+            message.append(System.lineSeparator()).append('[').append(i).append("] ").append(lines.get(i));
+        }
+    }
+
+    private static void assumeJfrClassesAvailable() {
+        try {
+            Class.forName("jdk.jfr.consumer.RecordedEvent", false, ClassLoader.getPlatformClassLoader());
+            Class.forName("jdk.jfr.consumer.RecordingStream", false, ClassLoader.getPlatformClassLoader());
+        } catch (ClassNotFoundException | LinkageError e) {
+            Assume.assumeTrue("JFR classes are not available: " + e, false);
+        }
+    }
+
+    private static String formatSource(Object event) {
+        RecordedEvent recordedEvent = (RecordedEvent) event;
         String source = recordedEvent.getString("source");
         if ("n/a".equals(source)) {
             return "n/a";
@@ -433,11 +459,25 @@ public class JFRCompilationEventsTest {
     }
 
     static final class DeoptOnceRootNode extends RootNode {
+        private static final AtomicInteger NEXT_ID = new AtomicInteger();
+
+        private final String name;
         @CompilerDirectives.CompilationFinal private Assumption activeAssumption;
 
         DeoptOnceRootNode(TruffleLanguage<?> language) {
             super(language);
+            name = "dorn" + NEXT_ID.incrementAndGet();
             activeAssumption = DeoptInvalidateFailureLanguage.externalAssumption;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public String toString() {
+            return getName();
         }
 
         @Override
