@@ -80,6 +80,11 @@ public class PointstoOptions {
     @Option(help = "The maximum number of objects recorded for each type of a type state before disabling heap sensitivity for that type. The analysis must be heap sensitive. It has a minimum value of 1.")//
     public static final OptionKey<Integer> MaxObjectSetSize = new OptionKey<>(100);
 
+    @Option(help = "The maximum total number of objects recorded in a type state before disabling heap sensitivity for all its types. " +
+                    "The resulting type state can still contain more objects if all its objects are already context-insensitive summaries of distinct types. " +
+                    "The analysis must be heap sensitive. It has a minimum value of 1.")//
+    public static final OptionKey<Integer> MaxTypeStateObjects = new OptionKey<>(15_000);
+
     @Option(help = "The maximum number of constant objects recorded for each type before merging the constants into one unique constant object per type. " +
                     "If the value is 0 there is no limit.")//
     public static final OptionKey<Integer> MaxConstantObjectsPerType = new OptionKey<>(0);

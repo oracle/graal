@@ -69,6 +69,7 @@ public abstract class AnalysisPolicy {
     protected final int maxHeapContextDepth;
     protected final boolean limitObjectArrayLength;
     protected final int maxObjectSetSize;
+    protected final int maxTypeStateObjects;
     protected final boolean hybridStaticContext;
     protected final boolean useConservativeUnsafeAccess;
     private final int parsingContextMaxDepth;
@@ -87,6 +88,7 @@ public abstract class AnalysisPolicy {
         maxHeapContextDepth = PointstoOptions.MaxHeapContextDepth.getValue(options);
         limitObjectArrayLength = PointstoOptions.LimitObjectArrayLength.getValue(options);
         maxObjectSetSize = PointstoOptions.MaxObjectSetSize.getValue(options);
+        maxTypeStateObjects = PointstoOptions.MaxTypeStateObjects.getValue(options);
         hybridStaticContext = PointstoOptions.HybridStaticContext.getValue(options);
         useConservativeUnsafeAccess = PointstoOptions.UseConservativeUnsafeAccess.getValue(options);
         trackAccessChain = PointstoOptions.TrackAccessChain.getValue(options);
@@ -126,6 +128,10 @@ public abstract class AnalysisPolicy {
 
     public int maxObjectSetSize() {
         return maxObjectSetSize;
+    }
+
+    public int maxTypeStateObjects() {
+        return maxTypeStateObjects;
     }
 
     public boolean useHybridStaticContext() {
