@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.core.graal.code;
 
 /**
  * Per-thread storage used to transport bytecode-handler argument values from a throwing threaded

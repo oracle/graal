@@ -136,6 +136,7 @@ import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationCandidat
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethod;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethodSupport;
+import com.oracle.svm.hosted.BytecodeHandlerFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -161,6 +162,7 @@ import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.truffle.api.SubstrateTruffleUniverseFactory;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -189,6 +191,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.InsertGuardFencesPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.BytecodeInterpreterAnnotations;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
@@ -272,7 +275,18 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(RuntimeCompilationFeature.class, TruffleBaseFeature.class);
+        return List.of(RuntimeCompilationFeature.class, TruffleBaseFeature.class, BytecodeHandlerFeature.class);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void registerTruffleBytecodeInterpreterAnnotations(MetaAccessProvider metaAccess) {
+        ResolvedJavaType bytecodeInterpreterHandler = metaAccess.lookupJavaType(HostCompilerDirectives.BytecodeInterpreterHandler.class);
+        ResolvedJavaType bytecodeInterpreterHandlerConfig = metaAccess.lookupJavaType(HostCompilerDirectives.BytecodeInterpreterHandlerConfig.class);
+        ResolvedJavaType bytecodeInterpreterFetchOpcode = metaAccess.lookupJavaType(HostCompilerDirectives.BytecodeInterpreterFetchOpcode.class);
+
+        BytecodeInterpreterAnnotations.registerAnnotationTypes(OriginalClassProvider.getOriginalType(bytecodeInterpreterHandler), OriginalClassProvider.getOriginalType(
+                        bytecodeInterpreterHandlerConfig),
+                        OriginalClassProvider.getOriginalType(bytecodeInterpreterFetchOpcode));
     }
 
     /*
@@ -379,6 +393,7 @@ public class TruffleFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
+        registerTruffleBytecodeInterpreterAnnotations(config.getMetaAccess());
         /*
          * Both methods are needed in HostInliningPhase to not be optimized / strengthened. By
          * specifying them as opaque we make sure that the original dominator tree is preserved. If

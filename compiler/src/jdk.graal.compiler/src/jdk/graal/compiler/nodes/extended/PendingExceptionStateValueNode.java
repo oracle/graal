@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package jdk.graal.compiler.nodes.extended;
 
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
@@ -32,22 +32,21 @@ import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Value proxy inserted while parsing exception dispatch for threaded bytecode-handler calls whose
  * result is stored back to a local. It gives the exception path a distinct {@code copyFromReturn}
  * value early enough for normal exception-handler merge creation to build the right phis. The SVM
- * outline phase later replaces the proxy with either a {@link PendingExceptionStateHolder} read, if
- * the throwing predecessor is a generated stub, or the original input value for ordinary Java
+ * outline phase later replaces the proxy with either a {@code PendingExceptionStateHolder} read,
+ * if the throwing predecessor is a generated stub, or the original input value for ordinary Java
  * invokes.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0, allowedUsageTypes = {InputType.Anchor})
 public final class PendingExceptionStateValueNode extends FixedValueAnchorNode {
     public static final NodeClass<PendingExceptionStateValueNode> TYPE = NodeClass.create(PendingExceptionStateValueNode.class);
 
-    enum Source {
+    public enum Source {
         /** The parser saw a direct handler stub call, so the callee publishes pending state. */
         STUB,
         /**
@@ -69,19 +68,19 @@ public final class PendingExceptionStateValueNode extends FixedValueAnchorNode {
         setStamp(value.stamp(NodeView.DEFAULT).unrestricted());
     }
 
-    int slotIndex() {
+    public int slotIndex() {
         return slotIndex;
     }
 
-    JavaKind kind() {
+    public JavaKind kind() {
         return kind;
     }
 
-    Source source() {
+    public Source source() {
         return source;
     }
 
-    ValueNode value() {
+    public ValueNode value() {
         return object();
     }
 

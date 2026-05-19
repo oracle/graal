@@ -22,10 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.hosted;
 
-import static com.oracle.svm.truffle.SubstrateTruffleBytecodeHandlerStub.asTruffleBytecodeHandlerTypes;
-import static com.oracle.svm.truffle.SubstrateTruffleBytecodeHandlerStub.unwrap;
+import static com.oracle.svm.hosted.SubstrateBytecodeHandlerStub.unwrap;
 
 import java.util.function.Function;
 
@@ -47,12 +46,10 @@ import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.phases.OutlineBytecodeHandlerPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.TruffleBytecodeHandlerTypes;
-import jdk.graal.compiler.truffle.host.OutlineBytecodeHandlerPhase;
-import jdk.graal.compiler.truffle.host.TruffleKnownHostTypes;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
+import jdk.graal.compiler.phases.util.BytecodeHandlerCallSite;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -60,10 +57,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A Substrate-specific implementation of the {@link OutlineBytecodeHandlerPhase}. This phase is
- * responsible for replacing Truffle interpreter bytecode handler invocations to corresponding stub
+ * responsible for replacing bytecode handler invocations with corresponding stub
  * calls.
  *
- * @see TruffleBytecodeHandlerInvokePlugin
+ * @see BytecodeHandlerInvokePlugin
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeHandlerPhase {
@@ -71,22 +68,13 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
     /**
      * A map of registered bytecode handlers, keyed by the original method and partitioned by
      * {@link BytecodeHandlerConfig}. Each entry resolves to the corresponding stub wrapper method.
-     * This map is collected in {@link TruffleBytecodeHandlerInvokePlugin} and the contents are
+     * This map is collected in {@link BytecodeHandlerInvokePlugin} and the contents are
      * analysis-time {@link com.oracle.graal.pointsto.meta.AnalysisMethod} instances.
      */
     private final EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers;
 
     public SubstrateOutlineBytecodeHandlerPhase(EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers) {
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
-    }
-
-    /**
-     * {@link TruffleKnownHostTypes} holds the analysis types and should be converted to their
-     * wrapped types.
-     */
-    @Override
-    protected TruffleBytecodeHandlerTypes getTruffleBytecodeHandlerTypes(TruffleKnownHostTypes truffleKnownHostTypes) {
-        return asTruffleBytecodeHandlerTypes(truffleKnownHostTypes);
     }
 
     private ResolvedJavaMethod lookupStubWrapper(ResolvedJavaMethod targetMethod, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
@@ -97,8 +85,8 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
     }
 
     @Override
-    protected TruffleBytecodeHandlerCallsite getTruffleBytecodeHandlerCallsite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod, TruffleBytecodeHandlerTypes truffleTypes) {
-        return new TruffleBytecodeHandlerCallsite(unwrap(enclosingMethod), bci, unwrap(targetMethod), truffleTypes);
+    protected BytecodeHandlerCallSite getBytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod) {
+        return new BytecodeHandlerCallSite(unwrap(enclosingMethod), bci, unwrap(targetMethod));
     }
 
     @Override
@@ -114,7 +102,7 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
     }
 
     @Override
-    protected FixedNode replaceInvoke(HighTierContext context, TruffleBytecodeHandlerCallsite callsite, Invoke invoke, ValueNode[] arguments) {
+    protected FixedNode replaceInvoke(HighTierContext context, BytecodeHandlerCallSite callsite, Invoke invoke, ValueNode[] arguments) {
         StructuredGraph graph = invoke.asNode().graph();
         CallTargetNode oldCallTargetNode = invoke.callTarget();
         ResolvedJavaMethod targetMethod = oldCallTargetNode.targetMethod();
@@ -126,7 +114,7 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
                         StampFactory.forDeclaredType(graph.getAssumptions(), targetMethod.getSignature().getReturnType(targetMethod.getDeclaringClass()), false)));
         invoke.asNode().replaceAllInputs(oldCallTargetNode, newCallTargetNode);
         if (invoke instanceof InvokeWithExceptionNode invokeWithExceptionNode) {
-            SubstrateTruffleBytecodeHandlerUnwindPath.readOnCaller(context.getMetaAccess(), callsite.getHandlerConfig(), invokeWithExceptionNode, arguments);
+            SubstrateBytecodeHandlerUnwindPath.readOnCaller(context.getMetaAccess(), callsite.getHandlerConfig(), invokeWithExceptionNode, arguments);
         }
         return (FixedNode) invoke;
     }
@@ -138,6 +126,6 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
 
     @Override
     protected void afterProcessGraph(HighTierContext context, StructuredGraph graph) {
-        SubstrateTruffleBytecodeHandlerUnwindPath.processPendingExceptionStateValues(context.getMetaAccess(), graph);
+        SubstrateBytecodeHandlerUnwindPath.processPendingExceptionStateValues(context.getMetaAccess(), graph);
     }
 }

@@ -22,12 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle.host;
+package jdk.graal.compiler.phases;
 
 import java.util.Optional;
 import java.util.function.Function;
 
-import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -38,18 +37,17 @@ import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.TruffleBytecodeHandlerTypes;
+import jdk.graal.compiler.phases.util.BytecodeHandlerCallSite;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
+import jdk.graal.compiler.phases.util.BytecodeInterpreterAnnotations;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * This phase is responsible for identifying and processing Truffle bytecode handler invocations
+ * This phase is responsible for identifying and processing bytecode handler invocations
  * within a given graph. It provides a framework for outlining these handlers into separate stubs,
  * which can be called from the enclosing method.
  */
@@ -60,15 +58,8 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
         return NotApplicable.unlessRunBefore(this, GraphState.StageFlag.LOOP_OVERFLOWS_CHECKED, graphState);
     }
 
-    protected TruffleBytecodeHandlerTypes getTruffleBytecodeHandlerTypes(TruffleKnownHostTypes truffleKnownHostTypes) {
-        return new TruffleBytecodeHandlerTypes(truffleKnownHostTypes.BytecodeInterpreterSwitch,
-                        truffleKnownHostTypes.BytecodeInterpreterHandlerConfig,
-                        truffleKnownHostTypes.BytecodeInterpreterHandler,
-                        truffleKnownHostTypes.BytecodeInterpreterFetchOpcode);
-    }
-
-    protected TruffleBytecodeHandlerCallsite getTruffleBytecodeHandlerCallsite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod, TruffleBytecodeHandlerTypes truffleTypes) {
-        return new TruffleBytecodeHandlerCallsite(enclosingMethod, bci, targetMethod, truffleTypes);
+    protected BytecodeHandlerCallSite getBytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod) {
+        return new BytecodeHandlerCallSite(enclosingMethod, bci, targetMethod);
     }
 
     protected Function<ResolvedJavaField, ResolvedJavaField> getFieldMap(@SuppressWarnings("unused") MetaAccessProvider metaAccess) {
@@ -82,7 +73,7 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
     /**
      * Replaces an invoke node with a call to the outlined handler stub.
      */
-    protected abstract FixedNode replaceInvoke(HighTierContext context, TruffleBytecodeHandlerCallsite callsite, Invoke invoke, ValueNode[] arguments);
+    protected abstract FixedNode replaceInvoke(HighTierContext context, BytecodeHandlerCallSite callsite, Invoke invoke, ValueNode[] arguments);
 
     @Override
     protected final void run(StructuredGraph graph, HighTierContext context) {
@@ -93,14 +84,8 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
         if (enclosingMethod == null) {
             return;
         }
-        TruffleHostEnvironment env = TruffleHostEnvironment.get(enclosingMethod);
-        if (env == null) {
-            return;
-        }
-
-        TruffleBytecodeHandlerTypes truffleTypes = getTruffleBytecodeHandlerTypes(env.types());
         // Outlining only takes place in methods that declare bytecode-handler metadata.
-        if (!AnnotationValueSupport.isAnnotationPresent(truffleTypes.typeBytecodeInterpreterHandlerConfig(), enclosingMethod)) {
+        if (!BytecodeInterpreterAnnotations.hasBytecodeInterpreterHandlerConfig(enclosingMethod)) {
             return;
         }
 
@@ -112,10 +97,10 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
             if (node instanceof Invoke invoke) {
                 ResolvedJavaMethod targetMethod = invoke.callTarget().targetMethod();
                 GraalError.guarantee(targetMethod != null, "Missing target method for handler invoke %s in %s", invoke, graph);
-                if (!AnnotationValueSupport.isAnnotationPresent(truffleTypes.typeBytecodeInterpreterHandler(), targetMethod)) {
+                if (BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(targetMethod) == null) {
                     continue;
                 }
-                BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod, truffleTypes);
+                BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod);
 
                 // targetMethod is annotated with @BytecodeInterpreterHandler, replace the
                 // invoke with stub call. Use the invoke's frame-state owner so split inlinees
@@ -128,8 +113,8 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
                 GraalError.guarantee(invokeState != null, "Missing frame state for handler invoke %s in %s", invoke, graph);
                 ResolvedJavaMethod invokeEnclosingMethod = invokeState.getMethod();
                 GraalError.guarantee(invokeEnclosingMethod != null, "Missing context method for handler invoke %s in %s", invoke, graph);
-                guaranteeConsistentHandlerConfig(handlerConfig, enclosingMethod, invokeEnclosingMethod, targetMethod, truffleTypes);
-                TruffleBytecodeHandlerCallsite callsite = getTruffleBytecodeHandlerCallsite(invokeEnclosingMethod, invoke.bci(), targetMethod, truffleTypes);
+                guaranteeConsistentHandlerConfig(handlerConfig, enclosingMethod, invokeEnclosingMethod, targetMethod);
+                BytecodeHandlerCallSite callsite = getBytecodeHandlerCallSite(invokeEnclosingMethod, invoke.bci(), targetMethod);
                 ValueNode[] oldArguments = invoke.callTarget().arguments().toArray(ValueNode.EMPTY_ARRAY);
                 ValueNode[] newArguments = callsite.createCallerArguments(oldArguments, invoke.asFixedNode(), getFieldMap(context.getMetaAccess()));
                 FixedNode next = invoke instanceof InvokeNode invokeNode ? invokeNode.next() : ((InvokeWithExceptionNode) invoke).next().next();
@@ -148,13 +133,11 @@ public abstract class OutlineBytecodeHandlerPhase extends BasePhase<HighTierCont
      * updating caller state as if it belonged to another layout.
      */
     private static void guaranteeConsistentHandlerConfig(BytecodeHandlerConfig enclosingConfig, ResolvedJavaMethod enclosingMethod, ResolvedJavaMethod invokeEnclosingMethod,
-                    ResolvedJavaMethod targetMethod, TruffleBytecodeHandlerTypes truffleTypes) {
+                    ResolvedJavaMethod targetMethod) {
         if (enclosingMethod.equals(invokeEnclosingMethod)) {
             return;
         }
-        BytecodeHandlerConfig invokeConfig = BytecodeHandlerConfig.getHandlerConfig(invokeEnclosingMethod, targetMethod, truffleTypes);
-        GraalError.guarantee(invokeConfig != null, "Missing BytecodeInterpreterHandlerConfig for handler %s in switch method %s",
-                        targetMethod.format("%H.%n(%p)"), invokeEnclosingMethod.format("%H.%n(%p)"));
+        BytecodeHandlerConfig invokeConfig = BytecodeHandlerConfig.getHandlerConfig(invokeEnclosingMethod, targetMethod);
         GraalError.guarantee(enclosingConfig.equals(invokeConfig), "Inconsistent BytecodeInterpreterHandlerConfig for handler %s between switch methods %s and %s",
                         targetMethod.format("%H.%n(%p)"), enclosingMethod.format("%H.%n(%p)"), invokeEnclosingMethod.format("%H.%n(%p)"));
     }

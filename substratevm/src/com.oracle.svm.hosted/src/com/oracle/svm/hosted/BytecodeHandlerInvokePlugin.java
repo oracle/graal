@@ -22,13 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.hosted;
 
-import static com.oracle.svm.truffle.SubstrateTruffleBytecodeHandlerStub.asTruffleBytecodeHandlerTypes;
-import static com.oracle.svm.truffle.SubstrateTruffleBytecodeHandlerStub.unwrap;
+import static com.oracle.svm.hosted.SubstrateBytecodeHandlerStub.unwrap;
 
 import java.lang.ref.WeakReference;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -43,7 +41,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.common.meta.MethodVariant;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
-import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.bytecode.Bytecodes;
@@ -51,15 +48,15 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.extended.PendingExceptionStateValueNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig.ArgumentInfo;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.TruffleBytecodeHandlerTypes;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerStubHelper;
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig.ArgumentInfo;
+import jdk.graal.compiler.phases.util.BytecodeHandlerStubHelper;
+import jdk.graal.compiler.phases.util.BytecodeInterpreterAnnotations;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -67,7 +64,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * A {@link NodePlugin} implementation that collects invocations of Truffle bytecode handlers and
+ * A {@link NodePlugin} implementation that collects invocations of bytecode handlers and
  * generates stubs for them.
  * <p>
  * This plugin is responsible for detecting invocations of methods annotated with
@@ -76,7 +73,7 @@ import jdk.vm.ci.meta.Signature;
  * universe, and records parser-time information needed to repair {@code copyFromReturn} locals on
  * generated-stub exception edges.
  */
-public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
+public final class BytecodeHandlerInvokePlugin implements NodePlugin {
 
     private final EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers;
     /*
@@ -86,26 +83,22 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
      * is emitted.
      */
     private final Map<StructuredGraph, EconomicMap<BytecodeHandlerInvokeKey, BytecodeHandlerInvoke>> registeredHandlerInvokes = new WeakHashMap<>();
-    private final SubstrateTruffleBytecodeHandlerStubHelper stubHolder;
+    private final SubstrateBytecodeHandlerStubHelper stubHolder;
     private final boolean threadingEnabled;
     private final IntConsumer handlerArityConsumer;
 
     private final EconomicMap<ResolvedJavaMethod, ResolvedJavaMethod> nextOpcodeCache = EconomicMap.create();
 
-    public TruffleBytecodeHandlerInvokePlugin(EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers,
-                    SubstrateTruffleBytecodeHandlerStubHelper stubHolder, boolean threadingEnabled, IntConsumer handlerArityConsumer) {
+    public BytecodeHandlerInvokePlugin(EconomicMap<BytecodeHandlerStubKey, ResolvedJavaMethod> registeredBytecodeHandlers,
+                    SubstrateBytecodeHandlerStubHelper stubHolder, boolean threadingEnabled, IntConsumer handlerArityConsumer) {
         this.registeredBytecodeHandlers = registeredBytecodeHandlers;
         this.stubHolder = stubHolder;
         this.threadingEnabled = threadingEnabled;
         this.handlerArityConsumer = handlerArityConsumer;
     }
 
-    private static ResolvedJavaMethod nextOpcodeMethod(ResolvedJavaType typeBytecodeInterpreterFetchOpcode, ResolvedJavaType holder) {
-        List<ResolvedJavaMethod> nextOpcodeAnnotated = Arrays.stream(holder.getDeclaredMethods(false))
-                        .filter(m -> AnnotationValueSupport.isAnnotationPresent(typeBytecodeInterpreterFetchOpcode, m))
-                        .toList();
-        GraalError.guarantee(nextOpcodeAnnotated.size() == 1, "Expected exactly one method annotated with BytecodeInterpreterFetchOpcode, found %d", nextOpcodeAnnotated.size());
-        ResolvedJavaMethod nextOpcode = nextOpcodeAnnotated.getFirst();
+    private static ResolvedJavaMethod nextOpcodeMethod(ResolvedJavaType holder) {
+        ResolvedJavaMethod nextOpcode = BytecodeInterpreterAnnotations.getUniqueFetchOpcodeMethod(holder);
         GraalError.guarantee(nextOpcode.getSignature().getReturnType(nextOpcode.getDeclaringClass()).getJavaKind() != JavaKind.Void,
                         "Method annotated with BytecodeInterpreterFetchOpcode must not return void: %s", nextOpcode);
         return nextOpcode;
@@ -116,27 +109,20 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
         ResolvedJavaMethod enclosingMethod = b.getMethod();
         boolean originalMethod = !(enclosingMethod instanceof MethodVariant sm) || sm.isOriginalMethod();
 
-        TruffleHostEnvironment truffleHostEnvironment = TruffleHostEnvironment.get(enclosingMethod);
-        if (truffleHostEnvironment == null) {
-            // TruffleHostEnvironment is not initialized yet
-            return false;
-        }
-        TruffleBytecodeHandlerTypes truffleTypes = asTruffleBytecodeHandlerTypes(truffleHostEnvironment.types());
-
-        if (originalMethod && tryRegisterSwitchExtensionInvoke(b, enclosingMethod, truffleTypes, target, oldArguments)) {
+        if (originalMethod && tryRegisterSwitchExtensionInvoke(b, enclosingMethod, target, oldArguments)) {
             return false;
         }
 
-        // Test if calling an @BytecodeInterpreterHandler annotated method
-        AnnotationValue handlerAnnotationValue = AnnotationValueSupport.getDeclaredAnnotationValue(truffleTypes.typeBytecodeInterpreterHandler(), target);
+        if (!BytecodeInterpreterAnnotations.hasBytecodeInterpreterHandlerConfig(enclosingMethod)) {
+            return false;
+        }
+
+        AnnotationValue handlerAnnotationValue = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(target);
         if (handlerAnnotationValue == null) {
             return false;
         }
 
-        BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, target, truffleTypes);
-        if (handlerConfig == null) {
-            return false;
-        }
+        BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, target);
 
         boolean threading = threadingEnabled && handlerAnnotationValue.getBoolean("threading");
         boolean safepoint = handlerAnnotationValue.getBoolean("safepoint");
@@ -154,19 +140,19 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
             return false;
         }
         ResolvedJavaType interpreterHolder = unwrap(enclosingMethod.getDeclaringClass());
-        String stubName = TruffleBytecodeHandlerStubHelper.getStubName(target);
+        String stubName = BytecodeHandlerStubHelper.getStubName(target);
 
         ResolvedJavaMethod nextOpcode = null;
         if (threading) {
             if (!nextOpcodeCache.containsKey(enclosingMethod)) {
-                ResolvedJavaMethod temp = nextOpcodeMethod(truffleTypes.typeBytecodeInterpreterFetchOpcode(), target.getDeclaringClass());
+                ResolvedJavaMethod temp = nextOpcodeMethod(target.getDeclaringClass());
                 synchronized (nextOpcodeCache) {
                     nextOpcodeCache.putIfAbsent(enclosingMethod, temp);
                 }
             }
             nextOpcode = nextOpcodeCache.get(enclosingMethod);
         }
-        SubstrateTruffleBytecodeHandlerStub stub = new SubstrateTruffleBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
+        SubstrateBytecodeHandlerStub stub = new SubstrateBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
                         stubName, interpreterHolder, handlerConfig, threading, nextOpcode, safepoint, false, target);
 
         AnalysisUniverse universe = ((AnalysisMetaAccess) b.getMetaAccess()).getUniverse();
@@ -180,7 +166,7 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
             if (threading) {
                 BytecodeHandlerStubKey defaultHandlerKey = BytecodeHandlerStubKey.createDefaultHandlerKey(interpreterHolder, handlerConfig);
                 if (!registeredBytecodeHandlers.containsKey(defaultHandlerKey)) {
-                    SubstrateTruffleBytecodeHandlerStub defaultHandlerStub = new SubstrateTruffleBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
+                    SubstrateBytecodeHandlerStub defaultHandlerStub = new SubstrateBytecodeHandlerStub(stubHolder, unwrap(target.getDeclaringClass()),
                                     "__stub_defaultHandler", interpreterHolder, handlerConfig, false, null, false, true, null);
                     AnalysisMethod defaultStubWrapper = universe.lookup(defaultHandlerStub);
                     universe.getBigbang().addRootMethod(defaultStubWrapper, true, "Default bytecode handler stub");
@@ -200,13 +186,12 @@ public final class TruffleBytecodeHandlerInvokePlugin implements NodePlugin {
         return false;
     }
 
-    private boolean tryRegisterSwitchExtensionInvoke(GraphBuilderContext b, ResolvedJavaMethod enclosingMethod, TruffleBytecodeHandlerTypes truffleTypes, ResolvedJavaMethod target,
-                    ValueNode[] arguments) {
+    private boolean tryRegisterSwitchExtensionInvoke(GraphBuilderContext b, ResolvedJavaMethod enclosingMethod, ResolvedJavaMethod target, ValueNode[] arguments) {
         if (!threadingEnabled) {
             return false;
         }
-        AnnotationValue handlerConfigAnnotation = AnnotationValueSupport.getDeclaredAnnotationValue(truffleTypes.typeBytecodeInterpreterHandlerConfig(), target);
-        AnnotationValue enclosingHandlerConfigAnnotation = AnnotationValueSupport.getDeclaredAnnotationValue(truffleTypes.typeBytecodeInterpreterHandlerConfig(), enclosingMethod);
+        AnnotationValue handlerConfigAnnotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandlerConfig(target);
+        AnnotationValue enclosingHandlerConfigAnnotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandlerConfig(enclosingMethod);
         if (handlerConfigAnnotation == null ||
                         !handlerConfigAnnotation.equals(enclosingHandlerConfigAnnotation)) {
             return false;

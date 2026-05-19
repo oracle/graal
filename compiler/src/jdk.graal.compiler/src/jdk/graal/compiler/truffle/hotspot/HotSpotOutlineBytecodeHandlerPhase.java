@@ -47,10 +47,10 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import jdk.graal.compiler.phases.OutlineBytecodeHandlerPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite;
+import jdk.graal.compiler.phases.util.BytecodeHandlerCallSite;
 import jdk.graal.compiler.truffle.host.HostInliningPhase;
-import jdk.graal.compiler.truffle.host.OutlineBytecodeHandlerPhase;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -94,7 +94,7 @@ public class HotSpotOutlineBytecodeHandlerPhase extends OutlineBytecodeHandlerPh
      * Replaces an invoke node with a foreign call to the outlined handler stub.
      */
     @Override
-    protected FixedNode replaceInvoke(HighTierContext context, TruffleBytecodeHandlerCallsite callsite, Invoke invoke, ValueNode[] arguments) {
+    protected FixedNode replaceInvoke(HighTierContext context, BytecodeHandlerCallSite callsite, Invoke invoke, ValueNode[] arguments) {
         StructuredGraph graph = invoke.asNode().graph();
         HotSpotHostForeignCallsProvider foreignCalls = (HotSpotHostForeignCallsProvider) context.getForeignCalls();
         ForeignCallSignature foreignCallSignature = new ForeignCallSignature(callsite.getStubName(), toJavaClass(callsite.getReturnType()), toJavaClasses(callsite.getArgumentTypes()));

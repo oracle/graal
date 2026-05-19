@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.deopt.Deoptimizer.StubType.NoDeoptStub;
 import static com.oracle.svm.core.graal.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind.IMMUTABLE;
@@ -55,17 +55,15 @@ import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandler;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives.BytecodeInterpreterHandler;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig;
-import jdk.graal.compiler.truffle.BytecodeHandlerConfig.ArgumentInfo;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerCallsite.TruffleBytecodeHandlerTypes;
-import jdk.graal.compiler.truffle.TruffleBytecodeHandlerStubHelper;
-import jdk.graal.compiler.truffle.host.TruffleKnownHostTypes;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
+import jdk.graal.compiler.phases.util.BytecodeHandlerConfig.ArgumentInfo;
+import jdk.graal.compiler.phases.util.BytecodeHandlerStubHelper;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -76,7 +74,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Substrate implementation of generated stubs for Truffle bytecode handlers.
+ * Substrate implementation of generated stubs for bytecode handlers.
  *
  * To minimize the overhead in the prologue and epilogue of the generated code, we inject the
  * {@link SkipStackOverflowCheck} annotation to eliminate the stack overflow check, and the
@@ -89,9 +87,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * based on the assumption that further constant folding within a bytecode handler is unlikely to
  * happen.
  */
-public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod implements CustomCallingConventionMethod {
+public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implements CustomCallingConventionMethod {
 
-    private final SubstrateTruffleBytecodeHandlerStubHelper stubHolder;
+    private final SubstrateBytecodeHandlerStubHelper stubHolder;
     private final boolean threading;
     private final boolean needSafepoint;
     /** True for the default fallback stub that returns to the interpreter dispatch loop. */
@@ -104,7 +102,7 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
     /** Bytecode handler method the stub was created for; null for the default fallback stub. */
     private final ResolvedJavaMethod targetMethod;
 
-    public SubstrateTruffleBytecodeHandlerStub(SubstrateTruffleBytecodeHandlerStubHelper stubHolder, ResolvedJavaType declaringClass, String stubName,
+    public SubstrateBytecodeHandlerStub(SubstrateBytecodeHandlerStubHelper stubHolder, ResolvedJavaType declaringClass, String stubName,
                     ResolvedJavaType interpreterHolder, BytecodeHandlerConfig config, boolean threading, ResolvedJavaMethod nextOpcodeMethod, boolean needSafepoint, boolean isDefault,
                     ResolvedJavaMethod targetMethod) {
         super(stubName, true, declaringClass, ResolvedSignature.fromList(config.getArgumentTypes(),
@@ -125,10 +123,10 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         if (isDefault) {
             Register fallbackReturnRegister = config.hasCopyFromReturnArgument() ? null : getReturnRegister(getRegisterConfig());
-            return TruffleBytecodeHandlerStubHelper.createEmptyStub(kit, config, fallbackReturnRegister);
+            return BytecodeHandlerStubHelper.createEmptyStub(kit, config, fallbackReturnRegister);
         }
-        return TruffleBytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod, () -> stubHolder.getBytecodeHandlers(interpreterHolder, config), config, targetMethod,
-                        SubstrateTruffleBytecodeHandlerUnwindPath::writeOnCallee);
+        return BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod, () -> stubHolder.getBytecodeHandlers(interpreterHolder, config), config, targetMethod,
+                        SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
     }
 
     /**
@@ -301,7 +299,7 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
 
         SubstrateCallingConventionArgumentKind[] parameterKinds = new SubstrateCallingConventionArgumentKind[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
-            // TruffleBytecodeHandlerCallsite either preserves the value or returns the updated
+            // BytecodeHandlerCallSite either preserves the value or returns the updated
             // value in the same argument location
             parameterKinds[i] = config.isArgumentImmutable(i) ? IMMUTABLE : VALUE_REFERENCE;
         }
@@ -370,10 +368,4 @@ public final class SubstrateTruffleBytecodeHandlerStub extends NonBytecodeMethod
         return method;
     }
 
-    static TruffleBytecodeHandlerTypes asTruffleBytecodeHandlerTypes(TruffleKnownHostTypes truffleKnownHostTypes) {
-        return new TruffleBytecodeHandlerTypes(unwrap(truffleKnownHostTypes.BytecodeInterpreterSwitch),
-                        unwrap(truffleKnownHostTypes.BytecodeInterpreterHandlerConfig),
-                        unwrap(truffleKnownHostTypes.BytecodeInterpreterHandler),
-                        unwrap(truffleKnownHostTypes.BytecodeInterpreterFetchOpcode));
-    }
 }
