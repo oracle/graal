@@ -105,7 +105,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public void addPredicated(PointsToAnalysis bb, TypeFlow<?> predicatedFlow) {
-        if (isAssignable && isSaturated()) {
+        if (isAssignable && isSaturated() && bb.isClosed(filterType)) {
             filterType.getTypeFlow(bb, includeNull).addPredicated(bb, predicatedFlow);
             return;
         }
