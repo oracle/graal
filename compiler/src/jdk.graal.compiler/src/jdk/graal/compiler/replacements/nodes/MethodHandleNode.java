@@ -296,8 +296,8 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
     }
 
     /**
-     * Inserts a node to cast the argument at index to the given type if the given type is more
-     * concrete than the argument type.
+     * Inserts a node to cast the argument at index to the given type if the argument is not already
+     * known to satisfy the given type.
      *
      * @param index of the argument to be cast
      * @param type the type the argument should be cast to
@@ -314,7 +314,13 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
              */
             if (targetType != null && !targetType.getType().isPrimitive() && !argument.getStackKind().isPrimitive()) {
                 ResolvedJavaType argumentType = StampTool.typeOrNull(argument.stamp(NodeView.DEFAULT));
-                if (argumentType == null || (argumentType.isAssignableFrom(targetType.getType()) && !argumentType.equals(targetType.getType()))) {
+                /*
+                 * Guard when the stamp is not already known to be assignable to the target. The
+                 * changed case is an unrelated concrete stamp, e.g. String -> Integer, which
+                 * previously skipped the guard because String.isAssignableFrom(Integer) is false.
+                 * Known-safe cases, e.g. Integer -> Number, still skip the guard.
+                 */
+                if (argumentType == null || !targetType.getType().isAssignableFrom(argumentType)) {
                     LogicNode inst = InstanceOfNode.createAllowNull(targetType, argument, null, null);
                     assert !inst.isAlive();
                     if (!inst.isTautology()) {
