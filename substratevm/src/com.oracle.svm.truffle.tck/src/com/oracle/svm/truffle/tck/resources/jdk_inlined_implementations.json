@@ -1,0 +1,69 @@
+[
+  {
+    "name" : "java.lang.module.ModuleFinder$2",
+    "methods" : [
+      { "name" : "find",
+        "parameterTypes" : [
+          "java.lang.String"
+        ]
+      },
+      { "name" : "findAll",
+        "parameterTypes" : []
+      }
+    ]
+  },
+  {
+    "name" : "jdk.internal.module.DefaultRoots",
+    "methods" : [
+      { "name" : "compute",
+        "parameterTypes" : [
+          "java.lang.module.ModuleFinder",
+          "java.lang.module.ModuleFinder"
+        ]
+      }
+    ]
+  },
+  {
+    "name" : "jdk.internal.module.ModulePath",
+    "methods" : [
+      { "name" : "explodedPackages",
+        "parameterTypes" : [
+          "java.nio.file.Path"
+        ]
+      },
+      { "name" : "findAll",
+        "parameterTypes" : []
+      },
+      { "name" : "readExplodedModule",
+        "parameterTypes" : [
+          "java.nio.file.Path"
+        ]
+      }
+    ]
+  },
+  {
+    "name" : "jdk.internal.module.ModuleReferences",
+    "methods" : [
+      { "name" : "newJModModule",
+        "parameterTypes" : [
+          "jdk.internal.module.ModuleInfo$Attributes",
+          "java.nio.file.Path"
+        ]
+      },
+      { "name" : "newJarModule",
+        "parameterTypes" : [
+          "jdk.internal.module.ModuleInfo$Attributes",
+          "jdk.internal.module.ModulePatcher",
+          "java.nio.file.Path"
+        ]
+      },
+      { "name" : "newExplodedModule",
+        "parameterTypes" : [
+          "jdk.internal.module.ModuleInfo$Attributes",
+          "jdk.internal.module.ModulePatcher",
+          "java.nio.file.Path"
+        ]
+      }
+    ]
+  }
+]

@@ -658,13 +658,30 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
             options += mx_sdk_vm_impl.svm_experimental_options([f"-H:TruffleTCKPermissionsExcludeFiles={','.join(excludes)}"])
         native_image(options)
         if isfile(report_file) and getsize(report_file) > 0:
-            message = f"Failed: Language {language_id} performs following privileged calls:\n\n"
+            message = f"""Failed: Language {language_id} performs privileged calls.
+How to resolve this failure:
+1. If your change modified {language_id} code, it most likely made a privileged operation reachable from the language.
+   Truffle languages must not call privileged JDK APIs directly. Use the corresponding Truffle API instead, for example
+   TruffleFile for file-system access. If the call is intentionally reachable only under a non-default option or another
+   restricted condition, consider adding the enclosing language method to an exclude file under
+   `mx.{language_id}/truffle.tck.permissions` in the language suite.
+2. If your change added or updated a third-party library, the library may either perform a privileged operation directly
+   or make one reachable through a polymorphic call site that the native-image points-to analysis cannot distinguish by
+   context. Inspect the reported call path and decide whether the enclosing library or language method is safe to exclude
+   in `mx.{language_id}/truffle.tck.permissions`.
+3. If your change updated the JDK or Graal, a privileged operation may have become reachable through JDK or platform code,
+   often via a megamorphic interface such as a functional interface. First verify whether the call can really be reached
+   from the Truffle language. If it cannot, consider adding the JDK method to `jdk_allowed_methods.json`. If the privileged
+   operation is performed by a JDK lambda, method reference, or anonymous class that implements a megamorphic interface,
+   and that implementation object is confined to the method that creates it, consider adding the enclosing JDK method to
+   `jdk_inlined_implementations.json` so the permission checker treats the implementation only in that enclosing context.
+
+Reported call paths:
+"""
+
             with open(report_file, encoding='utf-8') as f:
                 for line in f.readlines():
                     message = message + line
-            message = message + ("\nNote: If the method is not used directly by the language, but is part of the call path "
-                                 "because it is used internally by the JDK and introduced by a polymorphic call, consider "
-                                 "adding it to `jdk_allowed_methods.json`.")
             if fail_on_error:
                 mx.abort(message)
             else:
@@ -706,7 +723,7 @@ def gate_truffle_native_tck_smoke_test(tasks):
                                           ['-H:TruffleTCKCollectMode=All'])
                 privileged_calls = result[0]
                 reports_folder = result[1]
-                if 'Failed: Language TCKSmokeTestLanguage performs following privileged calls' not in privileged_calls:
+                if 'Failed: Language TCKSmokeTestLanguage performs privileged calls.' not in privileged_calls:
                     _copy_call_tree(reports_folder)
                     mx.abort("Expected failure, log:\n" + privileged_calls)
 
