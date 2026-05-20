@@ -60,7 +60,6 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
              * the same reflection metadata and resources that ordinary Native Image builds use.
              */
             registerImplementationClassReachabilityHandlers(access);
-            registerJdkCatalogInitializationOnReachability(access);
         } else {
             registerApiReachabilityHandlers(access);
             initializeJdkCatalog();
@@ -118,11 +117,6 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
         }
     }
 
-    private static void registerJdkCatalogInitializationOnReachability(BeforeAnalysisAccess access) {
-        optionalType(access, "jdk.xml.internal.JdkXmlConfig$CatalogHolder")
-                        .ifPresent(catalogHolder -> access.registerReachabilityHandler(_ -> initializeJdkCatalog(), catalogHolder));
-    }
-
     /**
      * Initialize the {@code CatalogHolder#catalog} field. We do this eagerly (instead of e.g. in a
      * {@link FieldValueTransformer}) to work around a race condition in
@@ -136,5 +130,4 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
             ReflectionUtil.readStaticField(xmlSecurityManager, "JDKCATALOG");
         }
     }
-
 }

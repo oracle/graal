@@ -69,7 +69,7 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> implements Glob
 
     @Override
     public void addPredicated(PointsToAnalysis bb, TypeFlow<?> predicatedFlow) {
-        if (isSaturated()) {
+        if (isSaturated() && bb.isClosed(declaredType)) {
             declaredType.getTypeFlow(bb, true).addPredicated(bb, predicatedFlow);
             return;
         }

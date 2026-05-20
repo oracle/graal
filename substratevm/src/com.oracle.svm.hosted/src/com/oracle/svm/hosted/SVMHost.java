@@ -86,6 +86,7 @@ import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -330,7 +331,11 @@ public class SVMHost extends HostVM {
      */
     @Override
     public boolean isCoreType(ResolvedJavaType type) {
-        return loader.getCoreModules().contains(GuestAccess.get().getModule(OriginalClassProvider.getOriginalType(type)));
+        ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(type);
+        if (!loader.getCoreModules().contains(GuestAccess.get().getModule(originalType))) {
+            return false;
+        }
+        return !AnnotationUtil.isAnnotationPresent(originalType, FactoryMethodMarker.class);
     }
 
     @Override

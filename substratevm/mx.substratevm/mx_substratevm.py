@@ -2215,6 +2215,11 @@ lib_jvm_preserved_packages = [
     'sun.security.util',
 ]
 
+lib_jvm_preserved_modules = [
+    'java.xml',
+    'java.xml.crypto',
+]
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM java',
@@ -2232,7 +2237,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             use_modules='image',
             destination='<lib:jvm>',
             jar_distributions=['substratevm:SVM_LIBJVM'],
-            build_args=svm_experimental_options(['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]),
+            build_args=svm_experimental_options(['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages] +
+                                                ['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules]),
             headers=False,
             home_finder=False,
         ),
