@@ -199,6 +199,13 @@ public final class IsolateThreadCache {
         return state == State.INITIALIZED && threadKey != isolateKey;
     }
 
+    public static final class TestingBackdoor {
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static void set(IsolateThread thread) {
+            IsolateThreadCache.set(thread);
+        }
+    }
+
     private static final class State {
         private static final UnsignedWord UNINITIALIZED = Word.unsigned(0);
         private static final UnsignedWord INITIALIZED = Word.unsigned(1);

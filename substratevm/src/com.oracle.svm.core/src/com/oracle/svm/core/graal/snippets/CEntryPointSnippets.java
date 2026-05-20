@@ -834,6 +834,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         writeCurrentVMThread(thread);
+        if (runtimeAssertionsEnabled() || SubstrateOptions.CheckIsolateThreadAtEntry.getValue()) {
+            verifyIsolateThread(thread, true);
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 
