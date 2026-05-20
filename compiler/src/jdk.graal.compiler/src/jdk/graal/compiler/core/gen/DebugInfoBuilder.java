@@ -29,7 +29,9 @@ import java.util.Arrays;
 import java.util.Queue;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.Assertions;
@@ -53,6 +55,7 @@ import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -83,12 +86,38 @@ public class DebugInfoBuilder {
     protected final EconomicMap<VirtualObjectNode, VirtualObject> virtualObjects = EconomicMap.create(Equivalence.IDENTITY);
     protected final EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = EconomicMap.create(Equivalence.IDENTITY);
 
+    /**
+     * Cache of {@link BytecodeFrame} templates keyed by {@link FrameState} identity during a single
+     * LIR generation. LIR phases mutate {@link BytecodeFrame#values} arrays in place (e.g. during
+     * register allocation), so cached entries are kept as immutable templates and callers must use
+     * {@link #copyFrame(BytecodeFrame)} before publishing them into an {@link LIRFrameState}.
+     * Entries are restricted to frame-state chains accepted by
+     * {@link #canCacheFrameStateChain(FrameState)}.
+     */
+    private final EconomicMap<FrameState, BytecodeFrame> bytecodeFrameCache = EconomicMap.create(Equivalence.IDENTITY);
+
+    /**
+     * Cache of complete frame-state templates keyed by {@link FrameState} identity during a single
+     * LIR generation. Unlike {@link #bytecodeFrameCache}, entries include the {@link VirtualObject}
+     * array needed by the resulting {@link LIRFrameState}. LIR phases mutate both
+     * {@link BytecodeFrame#values} arrays and virtual-object value arrays in place, so cache hits
+     * must deep-copy the template before publishing it. When a deep frame-state chain creates
+     * virtual objects, templates are recorded for every cacheable suffix so a later state such as
+     * {@code A' -> B -> C} can reuse the existing {@code B -> C} template from an earlier
+     * {@code A -> B -> C} build.
+     */
+    private final EconomicMap<FrameState, LIRFrameStateTemplate> lirFrameStateCache = EconomicMap.create(Equivalence.IDENTITY);
+
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 
     public LIRFrameState build(NodeWithState node, FrameState topState, LabelRef exceptionEdge, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
         assert virtualObjects.size() == 0 : virtualObjects;
         assert objectStates.size() == 0 : objectStates;
         assert pendingVirtualObjects.size() == 0 : pendingVirtualObjects;
+
+        verifyFrameState(node, topState);
+
+        boolean shouldCacheFrameState = shouldCacheFrameStateChain(topState) && canCacheLIRFrameState(topState);
 
         boolean validForDeoptimization = true;
         // collect all VirtualObjectField instances:
@@ -108,7 +137,6 @@ public class DebugInfoBuilder {
             current = current.outerFrameState();
         } while (current != null);
 
-        verifyFrameState(node, topState);
         BytecodeFrame frame = computeFrameForState(node, topState);
 
         VirtualObject[] virtualObjectsArray = null;
@@ -180,21 +208,227 @@ public class DebugInfoBuilder {
                 assert checkValues(vobjValue.getType(), values, slotKinds);
                 vobjValue.setValues(values, slotKinds);
             }
-
-            virtualObjectsArray = new VirtualObject[virtualObjects.size()];
-            int index = 0;
-            for (VirtualObject value : virtualObjects.getValues()) {
-                virtualObjectsArray[index++] = value;
-            }
-            virtualObjects.clear();
         }
+
+        if (virtualObjects.size() != 0) {
+            virtualObjectsArray = createVirtualObjectsArray();
+        }
+
+        if (shouldCacheFrameState && virtualObjectsArray != null) {
+            cacheFrameStateTemplates(topState, frame, virtualObjectsArray);
+        }
+
+        virtualObjects.clear();
         objectStates.clear();
 
+        return createLIRFrameState(frame, virtualObjectsArray, exceptionEdge, deoptReasonAndAction, deoptSpeculation, validForDeoptimization);
+    }
+
+    private static LIRFrameState createLIRFrameState(BytecodeFrame frame, VirtualObject[] virtualObjectsArray, LabelRef exceptionEdge, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation,
+                    boolean validForDeoptimization) {
         if (deoptReasonAndAction == null && deoptSpeculation == null) {
             return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge, validForDeoptimization);
         } else {
             return new ImplicitLIRFrameState(frame, virtualObjectsArray, exceptionEdge, deoptReasonAndAction, deoptSpeculation, validForDeoptimization);
         }
+    }
+
+    /**
+     * Immutable template for a {@link BytecodeFrame} chain and the reachable {@link VirtualObject}
+     * graph. Template virtual-object ids are local to the template. Hits that splice the template
+     * into a partially built frame state remap those ids to fresh ids in the target builder.
+     * Separately from the copied virtual-object graph, the template records all virtual-object state
+     * dependencies that can affect the cached values, including materialized-object states that do
+     * not produce a {@link VirtualObject} in the final debug info.
+     */
+    private static final class LIRFrameStateTemplate {
+        private final BytecodeFrame frame;
+        private final VirtualObject[] virtualObjects;
+        private final VirtualObjectNode[] virtualObjectNodes;
+        private final VirtualObjectNode[] dependencyVirtualObjectNodes;
+        private final EscapeObjectState[] dependencyObjectStates;
+
+        private LIRFrameStateTemplate(BytecodeFrame frame, VirtualObject[] virtualObjects, VirtualObjectNode[] virtualObjectNodes, VirtualObjectNode[] dependencyVirtualObjectNodes,
+                        EscapeObjectState[] dependencyObjectStates) {
+            this.frame = frame;
+            this.virtualObjects = virtualObjects;
+            this.virtualObjectNodes = virtualObjectNodes;
+            this.dependencyVirtualObjectNodes = dependencyVirtualObjectNodes;
+            this.dependencyObjectStates = dependencyObjectStates;
+        }
+
+        static LIRFrameStateTemplate create(FrameState state, BytecodeFrame frame, VirtualObject[] allVirtualObjects, EconomicMap<VirtualObjectNode, VirtualObject> virtualObjectMap,
+                        EconomicMap<VirtualObjectNode, EscapeObjectState> objectStateMap) {
+            EconomicSet<VirtualObject> reachableVirtualObjects = EconomicSet.create(Equivalence.IDENTITY);
+            collectVirtualObjects(frame, reachableVirtualObjects);
+            VirtualObject[] reachable = filterReachableVirtualObjects(allVirtualObjects, reachableVirtualObjects);
+            VirtualObjectNode[] virtualObjectNodes = new VirtualObjectNode[reachable.length];
+            for (int i = 0; i < reachable.length; i++) {
+                virtualObjectNodes[i] = findVirtualObjectNode(reachable[i], virtualObjectMap);
+            }
+
+            VirtualObjectNode[] dependencyVirtualObjectNodes = collectVirtualObjectStateDependencies(state, objectStateMap);
+            EscapeObjectState[] dependencyObjectStates = new EscapeObjectState[dependencyVirtualObjectNodes.length];
+            for (int i = 0; i < dependencyVirtualObjectNodes.length; i++) {
+                VirtualObjectNode node = dependencyVirtualObjectNodes[i];
+                dependencyObjectStates[i] = objectStateMap.get(node);
+            }
+
+            EconomicMap<VirtualObject, VirtualObject> copies = EconomicMap.create(Equivalence.IDENTITY);
+            VirtualObject[] copiedVirtualObjects = copyVirtualObjects(reachable, copies, 0);
+            BytecodeFrame copiedFrame = copyFrame(frame, copies);
+            return new LIRFrameStateTemplate(copiedFrame, copiedVirtualObjects, virtualObjectNodes, dependencyVirtualObjectNodes, dependencyObjectStates);
+        }
+
+        /**
+         * Determines whether this suffix template can be copied into {@code builder}. A caller frame
+         * may already have created one of the virtual objects copied by this template, or may have
+         * collected a different {@link EscapeObjectState} for any virtual object that affected the
+         * cached values. Either case requires rebuilding the suffix normally.
+         */
+        boolean canCopyInto(DebugInfoBuilder builder) {
+            for (VirtualObjectNode virtualObjectNode : virtualObjectNodes) {
+                if (builder.virtualObjects.containsKey(virtualObjectNode)) {
+                    return false;
+                }
+            }
+            for (int i = 0; i < dependencyVirtualObjectNodes.length; i++) {
+                VirtualObjectNode node = dependencyVirtualObjectNodes[i];
+                if (builder.objectStates.get(node) != dependencyObjectStates[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Copies this suffix template into {@code builder}, assigning fresh virtual-object ids after
+         * any objects already created by the caller frame. This preserves the invariant that
+         * {@link VirtualObject#getId()} is the object's index in the final virtual-object array.
+         */
+        BytecodeFrame copyInto(DebugInfoBuilder builder) {
+            EconomicMap<VirtualObject, VirtualObject> copies = EconomicMap.create(Equivalence.IDENTITY);
+            for (int i = 0; i < virtualObjects.length; i++) {
+                VirtualObject virtualObject = virtualObjects[i];
+                VirtualObject copy = VirtualObject.get(virtualObject.getType(), builder.virtualObjects.size(), virtualObject.isAutoBox());
+                copies.put(virtualObject, copy);
+                builder.virtualObjects.put(virtualObjectNodes[i], copy);
+            }
+            for (int i = 0; i < virtualObjects.length; i++) {
+                JavaValue[] values = virtualObjects[i].getValues();
+                if (values != null) {
+                    copies.get(virtualObjects[i]).setValues(copyValues(values, copies), virtualObjects[i].getSlotKinds());
+                }
+            }
+            return DebugInfoBuilder.copyFrame(frame, copies);
+        }
+    }
+
+    private VirtualObject[] createVirtualObjectsArray() {
+        VirtualObject[] virtualObjectsArray = new VirtualObject[virtualObjects.size()];
+        int index = 0;
+        for (VirtualObject value : virtualObjects.getValues()) {
+            assert value.getId() == index : Assertions.errorMessage(value, value.getId(), index);
+            virtualObjectsArray[index++] = value;
+        }
+        return virtualObjectsArray;
+    }
+
+    private void cacheFrameStateTemplates(FrameState topState, BytecodeFrame topFrame, VirtualObject[] virtualObjectsArray) {
+        assert canCacheLIRFrameState(topState) : topState;
+        FrameState currentState = topState;
+        BytecodeFrame currentFrame = topFrame;
+        while (currentState != null && currentFrame != null) {
+            if (shouldCacheFrameStateChain(currentState) && !lirFrameStateCache.containsKey(currentState)) {
+                assert canCacheLIRFrameState(currentState) : currentState;
+                lirFrameStateCache.put(currentState, LIRFrameStateTemplate.create(currentState, currentFrame, virtualObjectsArray, virtualObjects, objectStates));
+            }
+            currentState = currentState.outerFrameState();
+            currentFrame = currentFrame.caller();
+        }
+    }
+
+    private static void collectVirtualObjects(BytecodeFrame frame, EconomicSet<VirtualObject> virtualObjects) {
+        for (BytecodeFrame current = frame; current != null; current = current.caller()) {
+            collectVirtualObjects(current.values, virtualObjects);
+        }
+    }
+
+    private static void collectVirtualObjects(JavaValue[] values, EconomicSet<VirtualObject> virtualObjects) {
+        for (JavaValue value : values) {
+            if (value instanceof VirtualObject virtualObject && virtualObjects.add(virtualObject) && virtualObject.getValues() != null) {
+                collectVirtualObjects(virtualObject.getValues(), virtualObjects);
+            } else if (value instanceof StackLockValue lock) {
+                collectVirtualObject(lock.getOwner(), virtualObjects);
+            }
+        }
+    }
+
+    private static void collectVirtualObject(JavaValue value, EconomicSet<VirtualObject> virtualObjects) {
+        if (value instanceof VirtualObject virtualObject && virtualObjects.add(virtualObject) && virtualObject.getValues() != null) {
+            collectVirtualObjects(virtualObject.getValues(), virtualObjects);
+        }
+    }
+
+    private static VirtualObject[] filterReachableVirtualObjects(VirtualObject[] allVirtualObjects, EconomicSet<VirtualObject> reachableVirtualObjects) {
+        if (reachableVirtualObjects.isEmpty()) {
+            return new VirtualObject[0];
+        }
+        VirtualObject[] reachable = new VirtualObject[reachableVirtualObjects.size()];
+        int index = 0;
+        for (VirtualObject virtualObject : allVirtualObjects) {
+            if (reachableVirtualObjects.contains(virtualObject)) {
+                reachable[index++] = virtualObject;
+            }
+        }
+        assert index == reachable.length : Assertions.errorMessage(index, reachable.length);
+        return reachable;
+    }
+
+    private static VirtualObjectNode[] collectVirtualObjectStateDependencies(FrameState state, EconomicMap<VirtualObjectNode, EscapeObjectState> objectStateMap) {
+        EconomicSet<VirtualObjectNode> dependencies = EconomicSet.create(Equivalence.IDENTITY);
+        for (FrameState current = state; current != null; current = current.outerFrameState()) {
+            for (ValueNode value : current.values()) {
+                collectVirtualObjectStateDependency(value, objectStateMap, dependencies);
+            }
+            if (current.virtualObjectMappingCount() > 0) {
+                for (EscapeObjectState objectState : current.virtualObjectMappings()) {
+                    collectVirtualObjectStateDependency(objectState.object(), objectStateMap, dependencies);
+                }
+            }
+        }
+        return dependencies.toArray(new VirtualObjectNode[dependencies.size()]);
+    }
+
+    private static void collectVirtualObjectStateDependency(ValueNode value, EconomicMap<VirtualObjectNode, EscapeObjectState> objectStateMap, EconomicSet<VirtualObjectNode> dependencies) {
+        if (value instanceof VirtualObjectNode virtualObjectNode) {
+            collectVirtualObjectStateDependency(virtualObjectNode, objectStateMap, dependencies);
+        }
+    }
+
+    private static void collectVirtualObjectStateDependency(VirtualObjectNode virtualObjectNode, EconomicMap<VirtualObjectNode, EscapeObjectState> objectStateMap,
+                    EconomicSet<VirtualObjectNode> dependencies) {
+        if (!dependencies.add(virtualObjectNode)) {
+            return;
+        }
+        EscapeObjectState objectState = objectStateMap.get(virtualObjectNode);
+        if (objectState instanceof VirtualObjectState virtualObjectState) {
+            for (ValueNode value : virtualObjectState.values()) {
+                collectVirtualObjectStateDependency(value, objectStateMap, dependencies);
+            }
+        } else if (objectState instanceof MaterializedObjectState materializedObjectState) {
+            collectVirtualObjectStateDependency(materializedObjectState.materializedValue(), objectStateMap, dependencies);
+        }
+    }
+
+    private static VirtualObjectNode findVirtualObjectNode(VirtualObject virtualObject, EconomicMap<VirtualObjectNode, VirtualObject> virtualObjectMap) {
+        MapCursor<VirtualObjectNode, VirtualObject> cursor = virtualObjectMap.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getValue() == virtualObject) {
+                return cursor.getKey();
+            }
+        }
+        throw GraalError.shouldNotReachHere("missing VirtualObjectNode for " + virtualObject);
     }
 
     private boolean checkValues(ResolvedJavaType type, JavaValue[] values, JavaKind[] slotKinds) {
@@ -257,8 +491,25 @@ public class DebugInfoBuilder {
     protected void verifyFrameState(NodeWithState node, FrameState topState) {
     }
 
+    /**
+     * Builds a {@link BytecodeFrame} for {@code state}, first reusing a complete debug-info suffix
+     * template when virtual-object side state can be copied safely, and otherwise falling back to a
+     * plain frame-chain template when the complete
+     * {@link FrameState#outerFrameState() outer-frame chain} is independent of virtual-object and
+     * lock side state.
+     */
     protected BytecodeFrame computeFrameForState(NodeWithState node, FrameState state) {
         try {
+            LIRFrameStateTemplate cachedState = lirFrameStateCache.get(state);
+            if (cachedState != null && cachedState.canCopyInto(this)) {
+                return cachedState.copyInto(this);
+            }
+
+            BytecodeFrame cachedFrame = bytecodeFrameCache.get(state);
+            if (cachedFrame != null) {
+                return copyFrame(cachedFrame);
+            }
+
             assert state.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI : Assertions.errorMessageContext("node", node, "state", state);
             assert state.bci != BytecodeFrame.UNKNOWN_BCI : Assertions.errorMessageContext("node", node, "state", state);
 
@@ -295,11 +546,155 @@ public class DebugInfoBuilder {
                                 "not the same as the frame state method's code", ste);
             }
 
-            return new BytecodeFrame(caller, state.getMethod(), state.bci, state.getStackState().rethrowException, state.getStackState().duringCall, values, slotKinds, numLocals, numStack,
+            BytecodeFrame result = new BytecodeFrame(caller, state.getMethod(), state.bci, state.getStackState().rethrowException, state.getStackState().duringCall, values, slotKinds, numLocals,
+                            numStack,
                             numLocks);
+            if (virtualObjects.size() == 0 && pendingVirtualObjects.size() == 0 && shouldCacheFrameStateChain(state) && canCacheFrameStateChain(state) && !bytecodeFrameCache.containsKey(state)) {
+                bytecodeFrameCache.put(state, copyFrame(result));
+            }
+            return result;
         } catch (GraalError e) {
             throw e.addContext("FrameState: ", state);
         }
+    }
+
+    /**
+     * Determines whether {@code state} and all of its outer frame states can be cached as
+     * side-effect-free {@link BytecodeFrame} templates. Building debug info for a frame state can do
+     * more than fill the frame value arrays: virtual object mappings populate {@link #virtualObjects}
+     * and {@link #pendingVirtualObjects}, direct {@link VirtualObjectNode} values are translated
+     * through those side tables, and locks may allocate backend-specific lock slots while also
+     * referring to eliminated virtual objects. Reusing a cached frame for any of those cases would
+     * either skip required side effects or share per-build debug-info objects. Therefore only plain
+     * local/stack value frame-state chains are cached.
+     */
+    private static boolean canCacheFrameStateChain(FrameState state) {
+        for (FrameState current = state; current != null; current = current.outerFrameState()) {
+            if (!canCacheFrameState(current)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns true when {@code state} itself can be described only by immutable frame metadata and
+     * local/stack values. Caller chains are checked by {@link #canCacheFrameStateChain(FrameState)}.
+     */
+    private static boolean canCacheFrameState(FrameState state) {
+        if (state.locksSize() != 0 || state.virtualObjectMappingCount() != 0) {
+            return false;
+        }
+        for (int i = 0; i < state.localsSize(); i++) {
+            if (state.localAt(i) instanceof VirtualObjectNode) {
+                return false;
+            }
+        }
+        for (int i = 0; i < state.stackSize(); i++) {
+            if (state.stackAt(i) instanceof VirtualObjectNode) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns true when a complete {@link LIRFrameState} can be cached as a template. Virtual
+     * objects are permitted because the template cache deep-copies both the frame chain and the
+     * virtual-object graph on every hit. Locks are still excluded because HotSpot lock states
+     * allocate scoped lock slots as a side effect while debug info is built.
+     */
+    protected static boolean canCacheLIRFrameState(FrameState state) {
+        for (FrameState current = state; current != null; current = current.outerFrameState()) {
+            if (current.locksSize() != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Avoids creating debug-info templates for shallow frame states. Callers also require the build
+     * to have created at least one {@link VirtualObject} before inserting full LIR frame-state
+     * templates, so plain frame-state chains stay on the lighter {@link #bytecodeFrameCache}.
+     */
+    private static boolean shouldCacheFrameStateChain(FrameState state) {
+        return state.outerFrameState() != null;
+    }
+
+    /**
+     * Creates a {@link BytecodeFrame} copy, including caller frames, with cloned
+     * {@link BytecodeFrame#values} and slot-kind arrays. {@link VirtualObject} and
+     * {@link StackLockValue} instances are copied because their contents can be mutated by later LIR
+     * phases. Other {@link JavaValue} instances are reused because later LIR phases replace array
+     * entries instead of mutating those values.
+     */
+    protected static BytecodeFrame copyFrame(BytecodeFrame frame) {
+        return copyFrame(frame, EconomicMap.create(Equivalence.IDENTITY));
+    }
+
+    private static BytecodeFrame copyFrame(BytecodeFrame frame, EconomicMap<VirtualObject, VirtualObject> virtualObjectCopies) {
+        if (frame == null) {
+            return null;
+        }
+        return new BytecodeFrame(copyFrame(frame.caller(), virtualObjectCopies), frame.getMethod(), frame.getBCI(), frame.rethrowException, frame.duringCall, copyValues(frame.values,
+                        virtualObjectCopies), frame.getSlotKinds(), frame.numLocals,
+                        frame.numStack, frame.numLocks);
+    }
+
+    private static VirtualObject[] copyVirtualObjects(VirtualObject[] virtualObjects, EconomicMap<VirtualObject, VirtualObject> virtualObjectCopies, int firstId) {
+        if (virtualObjects == null) {
+            return null;
+        }
+        VirtualObject[] copies = new VirtualObject[virtualObjects.length];
+        for (int i = 0; i < virtualObjects.length; i++) {
+            if (firstId >= 0) {
+                copies[i] = copyVirtualObjectHeader(virtualObjects[i], virtualObjectCopies, firstId + i);
+            } else {
+                copies[i] = copyVirtualObjectHeader(virtualObjects[i], virtualObjectCopies);
+            }
+        }
+        for (int i = 0; i < virtualObjects.length; i++) {
+            JavaValue[] values = virtualObjects[i].getValues();
+            if (values != null) {
+                copies[i].setValues(copyValues(values, virtualObjectCopies), virtualObjects[i].getSlotKinds());
+            }
+        }
+        return copies;
+    }
+
+    private static JavaValue[] copyValues(JavaValue[] values, EconomicMap<VirtualObject, VirtualObject> virtualObjectCopies) {
+        JavaValue[] copy = values.clone();
+        for (int i = 0; i < copy.length; i++) {
+            copy[i] = copyValue(copy[i], virtualObjectCopies);
+        }
+        return copy;
+    }
+
+    private static JavaValue copyValue(JavaValue value, EconomicMap<VirtualObject, VirtualObject> virtualObjectCopies) {
+        if (value instanceof VirtualObject virtualObject) {
+            return copyVirtualObjectHeader(virtualObject, virtualObjectCopies);
+        } else if (value instanceof StackLockValue lock) {
+            return new StackLockValue(copyValue(lock.getOwner(), virtualObjectCopies), lock.getSlot(), lock.isEliminated());
+        }
+        return value;
+    }
+
+    private static VirtualObject copyVirtualObjectHeader(VirtualObject virtualObject, EconomicMap<VirtualObject, VirtualObject> virtualObjectCopies) {
+        VirtualObject copy = virtualObjectCopies.get(virtualObject);
+        if (copy == null) {
+            copy = copyVirtualObjectHeader(virtualObject, virtualObjectCopies, virtualObject.getId());
+        }
+        return copy;
+    }
+
+    private static VirtualObject copyVirtualObjectHeader(VirtualObject virtualObject, EconomicMap<VirtualObject, VirtualObject> virtualObjectCopies, int id) {
+        VirtualObject copy = virtualObjectCopies.get(virtualObject);
+        if (copy == null) {
+            copy = VirtualObject.get(virtualObject.getType(), id, virtualObject.isAutoBox());
+            virtualObjectCopies.put(virtualObject, copy);
+        }
+        return copy;
     }
 
     protected void computeLocals(FrameState state, int numLocals, JavaValue[] values, JavaKind[] slotKinds) {
