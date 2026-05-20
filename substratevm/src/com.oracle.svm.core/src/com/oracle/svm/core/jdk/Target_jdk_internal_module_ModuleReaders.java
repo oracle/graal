@@ -455,3 +455,7 @@ final class ResourceBasedModuleReaderSupport {
         return path != null && path.startsWith(REDACTED_FILE_PATH_PREFIX);
     }
 }
+
+/** Dummy class to have a class with the file's name. */
+class Target_jdk_internal_module_ModuleReaders {
+}
