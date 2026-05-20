@@ -2172,6 +2172,7 @@ lib_jvm_preserved_packages = [
     'java.lang.classfile.constantpool',
     'java.lang.classfile.instruction',
     'java.lang.constant',
+    'java.lang.foreign',
     'java.lang.invoke',
     'java.lang.module',
     'java.lang.ref',

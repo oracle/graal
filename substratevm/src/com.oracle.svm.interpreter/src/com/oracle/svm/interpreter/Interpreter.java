@@ -270,6 +270,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.util.Objects;
 
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
@@ -646,6 +647,16 @@ public final class Interpreter {
                         throw uncheckedThrow(e.getCause());
                     }
                 }
+                case LinkToNative -> {
+                    if (!ForeignSupport.isAvailable()) {
+                        throw VMError.unsupportedFeature("The foreign downcalls feature is not available. Please use -H:+ForeignAPISupport or leave this option default");
+                    }
+                    try {
+                        yield ForeignSupport.singleton().linkToNative(frame.getArguments());
+                    } catch (Throwable e) {
+                        throw uncheckedThrow(e);
+                    }
+                }
                 default -> throw VMError.shouldNotReachHere(Objects.toString(intrinsic));
             };
         }
@@ -723,17 +734,18 @@ public final class Interpreter {
      * <p>
      * The loop keeps the current bytecode index and operand-stack top as local variables while the
      * {@link InterpreterFrame} stores locals, arguments, and stack slots. Each iteration reads the
-     * current opcode, handles debugger events that must be reported at that bytecode index, executes
-     * the bytecode, and then advances the bytecode index and stack top using the bytecode metadata.
+     * current opcode, handles debugger events that must be reported at that bytecode index,
+     * executes the bytecode, and then advances the bytecode index and stack top using the bytecode
+     * metadata.
      *
      * <p>
-     * Exceptions thrown by the guest Java code are wrapped by {@link SemanticJavaException}
-     * so they can be routed to guest exception handlers. If such an exception needs to unwind
-     * the current interpreter frame and be thrown to the caller, the {@link SemanticJavaException}
-     * is unwrapped and {@link #executeBodyFromBCI} throws the unwrapped exception.
-     * Other throwables that reach this loop are treated as interpreter implementation bugs
-     * unless they are VM errors that can be thrown by normal Java execution, such as
-     * {@link OutOfMemoryError} or {@link StackOverflowError}.
+     * Exceptions thrown by the guest Java code are wrapped by {@link SemanticJavaException} so they
+     * can be routed to guest exception handlers. If such an exception needs to unwind the current
+     * interpreter frame and be thrown to the caller, the {@link SemanticJavaException} is unwrapped
+     * and {@link #executeBodyFromBCI} throws the unwrapped exception. Other throwables that reach
+     * this loop are treated as interpreter implementation bugs unless they are VM errors that can
+     * be thrown by normal Java execution, such as {@link OutOfMemoryError} or
+     * {@link StackOverflowError}.
      */
     public static final class Root {
         @NeverInline("needed for stack walking")
