@@ -238,3 +238,25 @@ def register_graalvm_vms():
                 mx_sdk_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
                                                          ['-server', '-XX:+EnableJVMCI', '-Djdk.graal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
                                                          mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)
+
+    register_crema_java_vm()
+
+
+def register_crema_java_vm():
+    components = {component.short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)}
+    if 'svmjava' not in components and 'svmjavad' not in components:
+        return
+
+    if 'cmpee' in components:
+        edition = 'ee'
+    elif 'cmp' in components:
+        edition = 'ce'
+    else:
+        return
+
+    crema_configs = [
+        ('default-' + edition, ['-svm']),
+        ('xint-' + edition, ['-svm', '-XX:-JITEnableCompilation']),
+    ]
+    for config_name, java_args in crema_configs:
+        mx_benchmark.java_vm_registry.add_vm(GraalVm('crema', config_name, java_args, []), _suite, 2)
