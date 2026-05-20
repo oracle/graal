@@ -861,7 +861,6 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         }
 
         b.statement("boolean wasCompiled = CompilerDirectives.inCompiledCode()");
-        b.statement("CompilerDirectives.preserveFrameStateHere()");
 
         b.statement("long state = ", encodeState("bci", "sp"));
 
@@ -872,6 +871,9 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.string("this");
         b.string("frame");
         b.string("state");
+        if (model.hasYieldOperation()) {
+            b.string("continuationRootNode");
+        }
         b.end();
         b.end();
 

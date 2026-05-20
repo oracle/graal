@@ -142,6 +142,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         continueAt.addParameter(new CodeVariableElement(parent.asType(), "$root"));
         continueAt.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
         continueAt.addParameter(new CodeVariableElement(type(long.class), "startState"));
+        if (parent.model.hasYieldOperation()) {
+            continueAt.addParameter(new CodeVariableElement(parent.continuationRootNodeImpl.asType(), "continuationRootNode"));
+        }
 
         var getRoot = add(new CodeExecutableElement(Set.of(FINAL), parent.asType(), "getRoot"));
         CodeTreeBuilder b = getRoot.createBuilder();
