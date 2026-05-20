@@ -88,13 +88,21 @@
     benchmark_cmd:: if self.should_use_hwloc then bench_common.hwloc_cmd(self.plain_benchmark_cmd, self.restrict_threads, self.default_numa_node, self.hyperthreading, self.threads_per_node) else self.plain_benchmark_cmd,
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
+    diagnostic_vm_args:: if std.objectHasAll(self.environment, "JVM") && self.environment["JVM"] == "crema" then [
+      "-Djdk.graal.CompilationFailureAction=Diagnose",
+      // TODO GR-75784: These diagnostic options are not supported by Crema yet.
+      // "-XX:+PrintConcurrentLocks",
+      // "-XX:+CITime",
+    ] else [
+      "-XX:+PrintConcurrentLocks",
+      "-Djdk.graal.CompilationFailureAction=Diagnose",
+      "-XX:+CITime",
+    ],
     extra_vm_args::
       ["--profiler=${MX_PROFILER}",
       "--jvm=${JVM}",
-      "--jvm-config=${JVM_CONFIG}",
-      "-XX:+PrintConcurrentLocks",
-      "-Djdk.graal.CompilationFailureAction=Diagnose",
-      "-XX:+CITime"] +
+      "--jvm-config=${JVM_CONFIG}"] +
+      self.diagnostic_vm_args +
       self.min_heap_size +
       self.max_heap_size,
     should_mx_build:: true,
@@ -154,6 +162,27 @@
       "JVM_CONFIG": config.compiler.libgraal_jvm_config(true),
       "MX_PRIMARY_SUITE_PATH": "../" + config.compiler.vm_suite,
       "MX_ENV_PATH": config.compiler.libgraal_env_file
+    }
+  },
+
+  crema:: {
+    local edition = config.graalvm_edition,
+    local mx_env_path = if edition == "ce" then "ce-next" else "crema-" + edition,
+    platform:: "crema-" + edition,
+    tags+: {opt_post_merge: ["bench-crema"]},
+    environment+: {
+      "JVM": "crema",
+      "JVM_CONFIG": "default-" + edition,
+      "MX_PRIMARY_SUITE_PATH": "../" + config.compiler.vm_suite,
+      "MX_ENV_PATH": mx_env_path
+    }
+  },
+
+  crema_xint:: self.crema + {
+    local edition = config.graalvm_edition,
+    platform:: "crema-xint-" + edition,
+    environment+: {
+      "JVM_CONFIG": "xint-" + edition
     }
   },
 
