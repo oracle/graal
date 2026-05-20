@@ -119,7 +119,7 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
         String value = asString(valueObject, "pattern");
 
         /* Parse fully literal regex as globs */
-        if (value.startsWith("\\Q") && value.endsWith("\\E") && value.indexOf("\\E") == value.lastIndexOf("\\E")) {
+        if (globRegistry != null && value.startsWith("\\Q") && value.endsWith("\\E") && value.indexOf("\\E") == value.lastIndexOf("\\E")) {
             String globValue = value.substring("\\Q".length(), value.length() - "\\E".length());
             if (GlobUtils.validatePattern(globValue).isEmpty()) {
                 globRegistry.accept(resolvedAccessCondition.get(), null, globValue);
