@@ -78,10 +78,10 @@ import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
@@ -609,6 +609,25 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 return getGOTEntryAddress(targetMethod);
             }
 
+            if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
+                DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
+                if (dynamicImageLayerInfo.isMethodCompilationDelayed(targetMethod)) {
+                    AllocatableValue methodAddress = newVariable(getLIRKindTool().getWordKind());
+                    append(new AArch64CGlobalDataDirectLoadAddressOp(dynamicImageLayerInfo.getSymbolForDelayedMethod(targetMethod), methodAddress));
+                    return methodAddress;
+                } else {
+                    /*
+                     * Load the address for the start of the text section and then add in the offset
+                     * for this specific method.
+                     */
+                    var methodLocation = dynamicImageLayerInfo.getPriorLayerMethodLocation(targetMethod);
+                    AllocatableValue basePointerAddress = newVariable(getLIRKindTool().getWordKind());
+                    append(new AArch64CGlobalDataDirectLoadAddressOp(methodLocation.base(), basePointerAddress));
+                    Value codeOffsetInSection = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(methodLocation.offset()));
+                    return getArithmetic().emitAdd(basePointerAddress, codeOffsetInSection, false);
+                }
+            }
+
             LIRKind wordKind = getLIRKindTool().getWordKind();
             Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forLong(targetMethod.getImageCodeOffset()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo()));
@@ -649,7 +668,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         }
 
         private boolean shouldEmitIndirectCall(SharedMethod callee) {
-            return shouldEmitOnlyIndirectCalls() || shouldEmitPLTGOTCall(callee);
+            return shouldEmitOnlyIndirectCalls() || callee.forceIndirectCall() || shouldEmitPLTGOTCall(callee);
         }
 
         private boolean shouldEmitPLTGOTCall(SharedMethod callee) {
@@ -1362,17 +1381,41 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             }
         }
 
-        private static void checkLoadMethodRef(Constant constant) {
+        private static AArch64LIRInstruction createLoadMethodPointerConstant(AllocatableValue dst, SubstrateMethodPointerConstant constant) {
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                MethodRef ref = switch (constant) {
-                    case SubstrateMethodPointerConstant c -> c.pointer();
-                    case SubstrateMethodOffsetConstant c -> c.offset();
-                    default -> throw VMError.shouldNotReachHereUnexpectedInput(constant);
-                };
-                if (ref.getMethod() instanceof SharedMethod method && method.forceIndirectCall()) {
-                    throw VMError.unimplemented("AArch64 does not currently support layered images.");
+                if (constant.pointer().getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
+                    DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
+                    if (dynamicImageLayerInfo.isMethodCompilationDelayed(sharedMethod)) {
+                        return new AArch64CGlobalDataDirectLoadAddressOp(dynamicImageLayerInfo.getSymbolForDelayedMethod(sharedMethod), dst);
+                    } else {
+                        /*
+                         * AArch64LoadMethodRefConstantOp retrieves the address via a PC-relative
+                         * load. This is not possible in extension layers when referring to methods
+                         * defined in prior layers.
+                         */
+                        var methodLocation = dynamicImageLayerInfo.getPriorLayerMethodLocation(sharedMethod);
+                        return new AArch64CGlobalDataDirectLoadAddressOp(methodLocation.base(), dst, methodLocation.offset());
+                    }
                 }
             }
+
+            return new AArch64LoadMethodRefConstantOp(dst, constant);
+        }
+
+        private static AArch64LIRInstruction createLoadMethodOffsetConstant(AllocatableValue dst, SubstrateMethodOffsetConstant constant) {
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                if (constant.offset().getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
+                    DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
+                    if (dynamicImageLayerInfo.isMethodCompilationDelayed(sharedMethod)) {
+                        return new AArch64LoadLayeredMethodOffsetConstantOp(dynamicImageLayerInfo.getSymbolForDelayedMethod(sharedMethod), dst, 0);
+                    } else {
+                        var methodLocation = dynamicImageLayerInfo.getPriorLayerMethodLocation(sharedMethod);
+                        return new AArch64LoadLayeredMethodOffsetConstantOp(methodLocation.base(), dst, methodLocation.offset());
+                    }
+                }
+            }
+
+            return new AArch64LoadMethodRefConstantOp(dst, constant);
         }
 
         @Override
@@ -1382,11 +1425,9 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             } else if (src instanceof CompressibleConstant constant) {
                 return loadObjectConstant(dst, constant);
             } else if (src instanceof SubstrateMethodPointerConstant constant) {
-                checkLoadMethodRef(constant);
-                return new AArch64LoadMethodRefConstantOp(dst, constant);
+                return createLoadMethodPointerConstant(dst, constant);
             } else if (src instanceof SubstrateMethodOffsetConstant constant) {
-                checkLoadMethodRef(constant);
-                return new AArch64LoadMethodRefConstantOp(dst, constant);
+                return createLoadMethodOffsetConstant(dst, constant);
             }
             return super.createLoad(dst, src);
         }
@@ -1398,11 +1439,9 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             } else if (src instanceof CompressibleConstant constant) {
                 return loadObjectConstant(dst, constant);
             } else if (src instanceof SubstrateMethodOffsetConstant constant) {
-                checkLoadMethodRef(constant);
-                return new AArch64LoadMethodRefConstantOp(dst, constant);
+                return createLoadMethodOffsetConstant(dst, constant);
             } else if (src instanceof SubstrateMethodPointerConstant constant) {
-                checkLoadMethodRef(constant);
-                return new AArch64LoadMethodRefConstantOp(dst, constant);
+                return createLoadMethodPointerConstant(dst, constant);
             }
             return super.createStackLoad(dst, src);
         }

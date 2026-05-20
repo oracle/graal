@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,30 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.Register;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.vm.ci.meta.AllocatableValue;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
-public final class AArch64ReservedRegisters extends ReservedRegisters {
+@Platforms(Platform.HOSTED_ONLY.class)
+final class AArch64LoadLayeredMethodOffsetConstantOp extends AArch64CGlobalDataDirectLoadAddressOp {
+    public static final LIRInstructionClass<AArch64LoadLayeredMethodOffsetConstantOp> TYPE = LIRInstructionClass.create(AArch64LoadLayeredMethodOffsetConstantOp.class);
 
-    public static final Register THREAD_REGISTER = AArch64.r28;
-    public static final Register HEAP_BASE_REGISTER = AArch64.r27;
-    public static final Register CODE_BASE_REGISTER_CANDIDATE = AArch64.r26;
+    AArch64LoadLayeredMethodOffsetConstantOp(CGlobalDataInfo dataInfo, AllocatableValue result, int addend) {
+        super(TYPE, dataInfo, result, addend);
+    }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    AArch64ReservedRegisters() {
-        super(AArch64.sp, THREAD_REGISTER, HEAP_BASE_REGISTER, CODE_BASE_REGISTER_CANDIDATE);
+    @Override
+    public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        super.emitCode(crb, masm);
+        masm.sub(64, asRegister(result), asRegister(result), ReservedRegisters.singleton().getCodeBaseRegister());
     }
 }
