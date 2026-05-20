@@ -314,6 +314,7 @@ final class BuilderElement extends AbstractElement {
 
         b.startAssign("this.state").startStaticCall(rootStackElement.asType(), "acquire").end().end();
         b.statement("this.state.instrumentations = instrumentations");
+        b.statement("this.state.tags = tags");
         b.statement("this.state.parseSources = parseSources");
 
         return ctor;
@@ -350,6 +351,7 @@ final class BuilderElement extends AbstractElement {
 
         b.startAssign("this.state").startStaticCall(rootStackElement.asType(), "acquire").end().end();
         b.statement("this.state.instrumentations = instrumentations");
+        b.statement("this.state.tags = tags");
         b.statement("this.state.parseSources = parseSources");
         return ctor;
     }
@@ -1488,7 +1490,7 @@ final class BuilderElement extends AbstractElement {
         }
 
         if (operation.kind == OperationKind.TAG) {
-            b.declaration(parent.tagNode.asType(), "node", "new TagNode(encodedTags & this.tags, " + requestLeaderBci() + ")");
+            b.declaration(parent.tagNode.asType(), "node", "new TagNode(encodedTags & this.tags, state.bci)");
             b.startIf().string("state.tagNodes == null").end().startBlock();
             b.statement("state.tagNodes = new ArrayList<>()");
             b.end();
@@ -1635,6 +1637,7 @@ final class BuilderElement extends AbstractElement {
         b.end(); // }
         b.statement("state.rootOperationSp = state.operationSp");
         b.statement("state.instrumentations = instrumentations");
+        b.statement("state.tags = tags");
         b.statement("state.parseSources = parseSources");
         emitRequestLeaderBci(b, "Reset the rewriter");
 
@@ -2205,7 +2208,7 @@ final class BuilderElement extends AbstractElement {
                 b.end();
 
                 b.statement("tagNode.children = children");
-                b.statement("tagNode.returnBci = ", requestLeaderBci());
+                b.statement("tagNode.returnBci = state.bci");
 
                 b.startIf().string(operationStack.read(operation, operationFields.producedValue)).end().startBlock();
                 String[] args;
@@ -2223,7 +2226,7 @@ final class BuilderElement extends AbstractElement {
                  */
                 b.statement("markReachable(true)");
                 buildEmitInstruction(b, null, model.tagLeaveValueInstruction, args);
-                b.statement(doCreateExceptionHandler(operationStack.read(operation, operationFields.handlerStartBci), requestLeaderBci(), "HANDLER_TAG_EXCEPTIONAL",
+                b.statement(doCreateExceptionHandler(operationStack.read(operation, operationFields.handlerStartBci), "state.bci", "HANDLER_TAG_EXCEPTIONAL",
                                 operationStack.read(operation, operationFields.nodeId),
                                 operationStack.read(operation, operationFields.startStackHeight)));
                 b.end().startElseBlock();
@@ -2241,7 +2244,7 @@ final class BuilderElement extends AbstractElement {
                  */
                 b.statement("markReachable(true)");
                 buildEmitInstruction(b, null, model.tagLeaveVoidInstruction, operationStack.read(operation, operationFields.nodeId));
-                b.statement(doCreateExceptionHandler(operationStack.read(operation, operationFields.handlerStartBci), requestLeaderBci(), "HANDLER_TAG_EXCEPTIONAL",
+                b.statement(doCreateExceptionHandler(operationStack.read(operation, operationFields.handlerStartBci), "state.bci", "HANDLER_TAG_EXCEPTIONAL",
                                 operationStack.read(operation, operationFields.nodeId),
                                 operationStack.read(operation, operationFields.startStackHeight)));
                 b.end().startElseBlock();
@@ -2325,9 +2328,13 @@ final class BuilderElement extends AbstractElement {
 
             emitCallAfterChild(b, operation, "true", "nextBci");
         } else if (model.enableTagInstrumentation && (operation.kind == OperationKind.YIELD || operation.kind == OperationKind.CUSTOM_YIELD)) {
-            // The "childBci" can change depending on whether tag.resume was emitted.
-            // We don't BE yields/tag.resume but the BE machinery needs a valid bci.
-            emitCallAfterChild(b, operation, "true", "tagResumeBci != -1 ? tagResumeBci : " + requestLeaderBci() + " - " + operation.instruction.getInstructionLength());
+            /*
+             * We don't BE yields/tag.resume, but the BE machinery needs a valid bci. Use the
+             * tag.resume bci if it was emitted, otherwise use the yield bci. Note: a leader bci was
+             * already requested at state.bci, so yieldBci is safe from rewrites.
+             */
+            String yieldBci = "state.bci - " + operation.instruction.getInstructionLength();
+            emitCallAfterChild(b, operation, "true", "tagResumeBci != -1 ? tagResumeBci : " + yieldBci);
         } else {
             String nextBci;
             if (operation.instruction != null) {
@@ -4632,7 +4639,7 @@ final class BuilderElement extends AbstractElement {
             OperationModel op = model.findOperation(OperationKind.TAG);
             b.startCase().tree(parent.createOperationConstant(op)).end();
             b.startBlock();
-            b.startAssign("tagResumeBci").string(requestLeaderBci()).end();
+            b.startAssign("tagResumeBci").string("state.bci").end();
             buildEmitInstruction(b, null, model.tagResumeInstruction, operationStack.read(op, operationFields.nodeId));
             b.statement("break");
             b.end(); // case tag
@@ -4681,7 +4688,7 @@ final class BuilderElement extends AbstractElement {
                 b.startIf().string("state.reachable").end().startBlock();
                 if (operationKind == OperationKind.RETURN) {
                     buildEmitInstruction(b, null, model.tagLeaveValueInstruction, buildTagLeaveArguments(model.tagLeaveValueInstruction));
-                    b.startAssign("childBci").string(requestLeaderBci() + " - " + model.tagLeaveValueInstruction.getInstructionLength()).end();
+                    b.startAssign("childBci").string("state.bci - " + model.tagLeaveValueInstruction.getInstructionLength()).end();
                 } else {
                     if (operationKind != OperationKind.BRANCH) {
                         throw new AssertionError("unexpected operation kind used for unwind code generation.");
@@ -4690,7 +4697,7 @@ final class BuilderElement extends AbstractElement {
                 }
                 b.startStatement().tree(doCreateExceptionHandler(
                                 operationStack.read(model.tagOperation, operationFields.handlerStartBci),
-                                requestLeaderBci(),
+                                "state.bci",
                                 "HANDLER_TAG_EXCEPTIONAL",
                                 operationStack.read(model.tagOperation, operationFields.nodeId),
                                 operationStack.read(model.tagOperation, operationFields.startStackHeight)));
@@ -4913,9 +4920,21 @@ final class BuilderElement extends AbstractElement {
         return args;
     }
 
+    record DoEmitInstructionKey(InstructionEncoding encoding, boolean instrumentation) implements Comparable<DoEmitInstructionKey> {
+
+        @Override
+        public int compareTo(DoEmitInstructionKey other) {
+            int compare = Boolean.compare(instrumentation, other.instrumentation);
+            if (compare != 0) {
+                return compare;
+            }
+            return encoding.compareTo(other.encoding);
+        }
+    }
+
     final class RootStackElement extends CodeTypeElement {
 
-        final Map<InstructionEncoding, CodeExecutableElement> doEmitInstructionMethods = new TreeMap<>();
+        final Map<DoEmitInstructionKey, CodeExecutableElement> doEmitInstructionMethods = new TreeMap<>();
         final Map<InstructionEncoding, CodeExecutableElement> doRewriteStepMethods = new TreeMap<>();
         final Map<InstructionRewriteRuleModel, CodeExecutableElement> applyRewriteRuleMethods = new TreeMap<>();
         private CodeVariableElement instructionRewriteState;
@@ -4968,6 +4987,7 @@ final class BuilderElement extends AbstractElement {
             this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "localsTableIndex"));
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), types.BytecodeSupport_ConstantsBuffer, "constants"));
             this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "instrumentations"));
+            this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "tags"));
             this.add(new CodeVariableElement(Set.of(PRIVATE), type(boolean.class), "parseSources"));
 
             if (model.enableInstructionRewriting) {
@@ -5048,6 +5068,7 @@ final class BuilderElement extends AbstractElement {
             b.startStatement().string("this.sourceInfo = new int[16 * ").variable(builderSourceInfoTable.entryLengthVariable).string("]").end();
             b.statement("this.sourceInfoIndex = 0");
             b.statement("this.instrumentations = 0");
+            b.statement("this.tags = 0");
             if (model.enableInstructionRewriting) {
                 b.startStatement().startCall(null, rootStackElement.requestLeaderBci).end(2);
             }
@@ -5138,6 +5159,7 @@ final class BuilderElement extends AbstractElement {
             }
             b.statement("this.sourceInfoIndex = 0");
             b.statement("this.instrumentations = 0");
+            b.statement("this.tags = 0");
             b.statement("this.needsClean = true");
             if (model.enableInstructionRewriting) {
                 b.startStatement().startCall(null, rootStackElement.requestLeaderBci).end(2);
@@ -5641,7 +5663,8 @@ final class BuilderElement extends AbstractElement {
         }
 
         private CodeExecutableElement ensureDoEmitInstructionCreated(InstructionModel instruction) {
-            return doEmitInstructionMethods.computeIfAbsent(instruction.getInstructionEncoding(), (e) -> createDoEmitInstruction(e));
+            DoEmitInstructionKey key = new DoEmitInstructionKey(instruction.getInstructionEncoding(), instruction.isInstrumentation());
+            return doEmitInstructionMethods.computeIfAbsent(key, (e) -> createDoEmitInstruction(e.encoding(), e.instrumentation()));
         }
 
         private CodeExecutableElement createGetCurrentScope() {
@@ -5680,16 +5703,16 @@ final class BuilderElement extends AbstractElement {
         /**
          * Returns a doEmitInstruction method name unique to each instruction encoding.
          */
-        private static String getDoEmitInstructionName(InstructionEncoding encoding) {
-            StringBuilder methodName = new StringBuilder("doEmitInstruction");
+        private static String getDoEmitInstructionName(InstructionEncoding encoding, boolean instrumentation) {
+            StringBuilder methodName = new StringBuilder(instrumentation ? "doEmitInstrumentationInstruction" : "doEmitInstruction");
             for (InstructionImmediateEncoding immediate : encoding.immediates()) {
                 methodName.append(immediate.width().toEncodedName());
             }
             return methodName.toString();
         }
 
-        private CodeExecutableElement createDoEmitInstruction(InstructionEncoding encoding) {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), getDoEmitInstructionName(encoding));
+        private CodeExecutableElement createDoEmitInstruction(InstructionEncoding encoding, boolean instrumentation) {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), getDoEmitInstructionName(encoding, instrumentation));
             ex.addParameter(new CodeVariableElement(type(short.class), "instruction"));
             ex.addParameter(new CodeVariableElement(type(int.class), "stackEffect"));
 
@@ -5740,7 +5763,7 @@ final class BuilderElement extends AbstractElement {
 
             b.statement("this.bci = newBci");
 
-            if (model.enableInstructionRewriting) {
+            if (model.enableInstructionRewriting && !instrumentation) {
                 InstructionRewriterElement.StepMethod step = instructionRewriterElement.getStepMethod(encoding);
                 if (step == null) {
                     b.startStatement();
@@ -5838,8 +5861,8 @@ final class BuilderElement extends AbstractElement {
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startIf().string("this.instrumentations != 0").end().startBlock();
-            b.lineComment("Rewriting is disabled when instrumentations are used.");
+            b.startIf().string("this.instrumentations != 0 || this.tags != 0").end().startBlock();
+            b.lineComment("Rewriting is disabled when instrumentations or tags are used.");
             b.startAssign(instructionRewriteState);
             b.staticReference(instructionRewriterElement.stateConstants.get(acceptingState));
             b.end();
@@ -5947,7 +5970,7 @@ final class BuilderElement extends AbstractElement {
                 }
 
                 // The doEmitInstruction method may not exist yet; just reference it by name.
-                b.startCall(getDoEmitInstructionName(resolvedPattern.instruction().getInstructionEncoding()));
+                b.startCall(getDoEmitInstructionName(resolvedPattern.instruction().getInstructionEncoding(), false));
                 b.tree(parent.createInstructionConstant(resolvedPattern.instruction()));
                 b.string(resolvedPattern.instruction().getStackEffect());
                 for (var resolvedImmediate : resolvedPattern.immediates()) {
