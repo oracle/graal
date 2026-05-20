@@ -151,33 +151,5 @@
                 "name_template": "{name}-community-{version}-{os}-{arch}"
             }
         ]
-    },
-    {
-        "name": "wasm-java-standalone-svm-java25",
-        "core": true,
-        "jdk": "jdk_25",
-        "override_name": "graalwasm",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64",
-                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64",
-                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
-            }
-        ]
     }
 ]
