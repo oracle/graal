@@ -189,7 +189,9 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
     private static String getLabel(RootCallTarget rootCallTarget) {
         RegexExecNode execNode = (RegexExecNode) getRootNode(rootCallTarget).getBodyUnwrapped();
-        if (execNode instanceof LiteralRegexExecNode) {
+        if (execNode == null) {
+            return "uninitialized";
+        } else if (execNode instanceof LiteralRegexExecNode) {
             return "literal";
         } else if (execNode.isBacktracking()) {
             return "backtracker";
