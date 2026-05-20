@@ -30,14 +30,16 @@
     ]
   },
 
-  setup:: {
+  setup:: s.setup_for(config.compiler.compiler_suite),
+
+  setup_for(suite_path):: {
     setup+: [
-      ["cd", "./" + config.compiler.compiler_suite],
+      ["cd", "./" + suite_path],
       ["mx", "hsdis", "||", "true"]
     ]
   },
 
-  base(tags="build,test", cmd_suffix=[], extra_vm_args="", extra_unittest_args="", jvm_config_suffix=null, no_warning_as_error=false):: s.setup + {
+  base(tags="build,test", cmd_suffix=[], extra_vm_args="", extra_unittest_args="", jvm_config_suffix=null, no_warning_as_error=false, suite_path=config.compiler.compiler_suite):: s.setup_for(suite_path) + {
     run+: [
       ["mx", "--strict-compliance",
          "--kill-with-sigquit",
@@ -164,6 +166,12 @@
   benchmarktest:: s.base("build,benchmarktest") + jmh_benchmark_test,
   benchmarktest_zgc:: s.base("build,benchmarktest", extra_vm_args="-XX:+UseZGC") + jmh_benchmark_test,
   benchmarktest_shenandoah:: s.base("build,benchmarktest", extra_vm_args="-XX:+UseShenandoahGC") + jmh_benchmark_test,
+  crema:: s.base("build,crema", suite_path=config.compiler.vm_suite) + {
+    environment+: {
+      MX_ENV_PATH: if config.graalvm_edition == "ce" then "ce-next" else "crema-" + config.graalvm_edition,
+    },
+    packages+: c.deps.svm.packages,
+  },
 
   bootstrap:: s.base("build,bootstrap", no_warning_as_error=true),
   bootstrap_lite:: s.base("build,bootstraplite", no_warning_as_error=true),
@@ -238,6 +246,7 @@
     "compiler-unittest_compiler_zgc-labsjdk-latest-linux-amd64": t("45:00"),
 
     "compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("45:00"),
+    "compiler-crema-labsjdk-latest-linux-amd64": t("30:00"),
   },
 
   # Candidates for gate jobs. In CE, these will be dailies instead of gates.
@@ -535,6 +544,7 @@
       "test_avx1",
       "test_javabase",
       "test_jtt_phaseplan_fuzzing",
+      "crema",
     ]
   ],
 
