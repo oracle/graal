@@ -117,6 +117,12 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
         assert curValue == 0;
     }
 
+    private int operandToNextInstruction() {
+        int result = annotation.nextInstructionPosition - annotation.operandPosition;
+        assert result >= annotation.operandSize : annotation;
+        return result;
+    }
+
     @Override
     public boolean equals(Object obj) {
         return obj == this;
@@ -133,12 +139,12 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
         long siteOffset = compStart + annotation.operandPosition;
         if (ref instanceof DataSectionReference || ref instanceof CGlobalDataDirectReference) {
             /*
-             * Do we have an addend? Yes; it's constStart. BUT x86/x86-64 PC-relative references are
-             * relative to the *next* instruction. So, if the next instruction starts n bytes from
-             * the relocation site, we want to subtract n bytes from our addend.
+             * x86/x86-64 PC-relative references are relative to the next instruction. SVM's
+             * relocation processing subtracts the recorded addend from the target offset, so record
+             * the distance from the relocation site to the next instruction. The relocation site can
+             * be followed by additional instruction bytes, such as an immediate operand.
              */
-            long addend = (annotation.nextInstructionPosition - annotation.operandPosition);
-            assert addend == annotation.operandSize;
+            long addend = operandToNextInstruction();
             relocs.addRelocationWithAddend((int) siteOffset, RelocationKind.getPCRelative(annotation.operandSize), addend, ref);
         } else if (ref instanceof ConstantReference constantReference) {
             VMConstant constant = constantReference.getConstant();
@@ -150,7 +156,7 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
 
                 RelocationKind kindPCRelative = RelocationKind.getPCRelative(annotation.operandSize);
                 // lea instruction using rip relative addressing, account for additional offset
-                long addend = -RelocationKind.getRelocationSize(kindPCRelative);
+                long addend = -operandToNextInstruction();
                 relocs.addRelocationWithAddend((int) siteOffset, kindPCRelative, addend, pointer);
             } else {
                 RelocationKind kindDirect = RelocationKind.getDirect(annotation.operandSize);
