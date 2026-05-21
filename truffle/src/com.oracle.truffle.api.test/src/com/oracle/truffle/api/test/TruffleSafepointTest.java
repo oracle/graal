@@ -1873,11 +1873,14 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     private static void printAllThreads() {
-        for (Thread thread : runningThreads) {
+        Set<Thread> threads = new HashSet<>();
+        Collections.addAll(threads, ThreadUtils.getAllThreads());
+        threads.addAll(runningThreads);
+        for (Thread thread : threads) {
             StackTraceElement[] stackTrace = thread.getStackTrace();
-            Exception ex = new Exception(thread.toString());
+            Exception ex = new Exception(thread + " state=" + thread.getState() + " testThread=" + runningThreads.contains(thread));
             ex.setStackTrace(stackTrace);
-            ex.printStackTrace();
+            ex.printStackTrace(System.out);
         }
     }
 
