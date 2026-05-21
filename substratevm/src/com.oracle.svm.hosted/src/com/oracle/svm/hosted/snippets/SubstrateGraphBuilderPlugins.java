@@ -1091,7 +1091,7 @@ public class SubstrateGraphBuilderPlugins {
         if (clazzOrHub instanceof Class<?> clazz) {
             return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(clazz);
         } else if (clazzOrHub instanceof DynamicHub hub) {
-            return hub.desiredAssertionStatus();
+            return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(hub.getHostedJavaClass());
         }
         return null;
     }
