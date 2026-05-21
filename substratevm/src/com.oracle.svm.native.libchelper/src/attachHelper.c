@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,18 @@
  */
 
 #ifndef _WIN64
+
+#ifdef __linux__
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#endif
+
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__)
+#ifndef BSD
+#define BSD
+#endif
+#endif
 
 #include <errno.h>
 #include <stdbool.h>
@@ -169,7 +181,7 @@ int svm_attach_wait_for_request(int listener) {
     }
 
     // get the credentials of the peer and check the effective uid/guid
-#ifdef LINUX
+#ifdef __linux__
     struct ucred cred_info;
     socklen_t optlen = sizeof(cred_info);
     if (getsockopt(s, SOL_SOCKET, SO_PEERCRED, (void *)&cred_info, &optlen) ==
@@ -183,8 +195,7 @@ int svm_attach_wait_for_request(int listener) {
       close(s);
       continue;
     }
-#endif
-#ifdef BSD
+#elif defined(BSD)
     uid_t puid;
     gid_t pgid;
     if (getpeereid(s, &puid, &pgid) != 0) {
@@ -196,6 +207,8 @@ int svm_attach_wait_for_request(int listener) {
       close(s);
       continue;
     }
+#else
+#error "attach peer-credential check not implemented for this platform"
 #endif
 
     return s;
@@ -207,4 +220,3 @@ void svm_attach_shutdown_socket(int s) {
 }
 
 #endif // !_WIN64
-
