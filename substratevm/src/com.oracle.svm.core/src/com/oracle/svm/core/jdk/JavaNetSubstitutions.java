@@ -31,6 +31,7 @@ import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -112,6 +113,9 @@ final class Target_java_net_URL_WithRuntimeURLProtocols {
 
     @Substitute
     private static URLStreamHandler getURLStreamHandler(String protocol) {
+        if (URLProtocolsSupport.isDisabled(protocol)) {
+            return null;
+        }
         URLStreamHandler result = URLProtocolsSupport.get(protocol);
         return result != null ? result : getURLStreamHandlerOriginal(protocol);
     }
@@ -174,6 +178,7 @@ class JavaNetFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         JavaNetSubstitutions.validateURLProtocolOptions();
+        JavaNetSubstitutions.disableURLProtocols();
         if (JavaNetSubstitutions.runtimeURLProtocolsEnabled()) {
             /*
              * Runtime URL protocols use the JDK java.net.URL implementation instead of the
@@ -181,8 +186,10 @@ class JavaNetFeature implements InternalFeature {
              * the JDK URL factory so embedded resource URIs returned by ModuleReader.find can be
              * converted back to URLs by the original JDK lookup path.
              */
-            boolean registered = JavaNetSubstitutions.addURLStreamHandler(JavaNetSubstitutions.RESOURCE_PROTOCOL);
-            VMError.guarantee(registered, "The URL protocol %s is not available. It should be available as it is supported by default.", JavaNetSubstitutions.RESOURCE_PROTOCOL);
+            if (!URLProtocolsSupport.isDisabled(JavaNetSubstitutions.RESOURCE_PROTOCOL)) {
+                boolean registered = JavaNetSubstitutions.addURLStreamHandler(JavaNetSubstitutions.RESOURCE_PROTOCOL);
+                VMError.guarantee(registered, "The URL protocol %s is not available. It should be available as it is supported by default.", JavaNetSubstitutions.RESOURCE_PROTOCOL);
+            }
             return;
         }
 
@@ -305,7 +312,17 @@ class URLProtocolsSupport {
         return ImageSingletons.lookup(URLProtocolsSupport.class).imageHandlers.get(protocol);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static void disable(String protocol) {
+        ImageSingletons.lookup(URLProtocolsSupport.class).disabledProtocols.add(protocol);
+    }
+
+    static boolean isDisabled(String protocol) {
+        return ImageSingletons.lookup(URLProtocolsSupport.class).disabledProtocols.contains(protocol);
+    }
+
     private final HashMap<String, URLStreamHandler> imageHandlers = new HashMap<>();
+    private final HashSet<String> disabledProtocols = new HashSet<>();
 }
 
 /** Dummy class to have a class with the file's name. */
@@ -339,6 +356,13 @@ public final class JavaNetSubstitutions {
             throw UserError.invalidOptionValue(SubstrateOptions.EnableURLProtocols, RUNTIME_PROTOCOLS,
                             "The value '" + RUNTIME_PROTOCOLS + "' requires runtime class loading. Use " +
                                             SubstrateOptionsParser.commandArgument(RuntimeClassLoading.Options.RuntimeClassLoading, "+") + " or select concrete URL protocols instead.");
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static void disableURLProtocols() {
+        for (String protocol : SubstrateOptions.DisableURLProtocols.getValue().values()) {
+            URLProtocolsSupport.disable(protocol);
         }
     }
 
