@@ -253,6 +253,10 @@ public class Bytecodes {
     public static final int GOTO_W               = 200; // 0xC8
     public static final int JSR_W                = 201; // 0xC9
     public static final int BREAKPOINT           = 202; // 0xCA
+    public static final int QUICK_GETSTATIC      = 203; // 0xCB
+    public static final int QUICK_PUTSTATIC      = 204; // 0xCC
+    public static final int QUICK_GETFIELD       = 205; // 0xCD
+    public static final int QUICK_PUTFIELD       = 206; // 0xCE
 
     public static final int ILLEGAL = 255;
     public static final int END = 256;
@@ -586,6 +590,10 @@ public class Bytecodes {
         def(GOTO_W              , "goto_w"          , "boooo",  0, STOP | BRANCH);
         def(JSR_W               , "jsr_w"           , "boooo",  0, STOP | BRANCH);
         def(BREAKPOINT          , "breakpoint"      , "b"    ,  0, TRAP);
+        def(QUICK_GETSTATIC     , "quick_getstatic" , "bjj"  ,  1, TRAP | FIELD_READ);
+        def(QUICK_PUTSTATIC     , "quick_putstatic" , "bjj"  , -1, TRAP | FIELD_WRITE);
+        def(QUICK_GETFIELD      , "quick_getfield"  , "bjj"  ,  0, TRAP | FIELD_READ);
+        def(QUICK_PUTFIELD      , "quick_putfield"  , "bjj"  , -2, TRAP | FIELD_WRITE);
     }
     // @formatter:on
     // Checkstyle: resume
@@ -701,6 +709,46 @@ public class Bytecodes {
      */
     public static boolean isInvoke(int opcode) {
         return (flagsArray[opcode & 0xff] & INVOKE) != 0;
+    }
+
+    /**
+     * Identifies field bytecodes, including interpreter-private quickened variants.
+     */
+    public static boolean isFieldAccess(int opcode) {
+        return (flagsArray[opcode & 0xff] & (FIELD_READ | FIELD_WRITE)) != 0;
+    }
+
+    /**
+     * Quickened field bytecodes keep the original operands but skip repeated access checks.
+     */
+    public static boolean isQuickenedFieldAccess(int opcode) {
+        return QUICK_GETSTATIC <= opcode && opcode <= QUICK_PUTFIELD;
+    }
+
+    /**
+     * Maps a JVM field bytecode to its interpreter-private quickened variant.
+     */
+    public static int quickenedFieldAccess(int opcode) {
+        return switch (opcode) {
+            case GETSTATIC -> QUICK_GETSTATIC;
+            case PUTSTATIC -> QUICK_PUTSTATIC;
+            case GETFIELD -> QUICK_GETFIELD;
+            case PUTFIELD -> QUICK_PUTFIELD;
+            default -> throw new IllegalArgumentException("Not a quickenable field opcode: " + opcode);
+        };
+    }
+
+    /**
+     * Maps quickened field bytecodes back to JVM bytecodes for external consumers.
+     */
+    public static int unquickenedFieldAccess(int opcode) {
+        return switch (opcode) {
+            case QUICK_GETSTATIC -> GETSTATIC;
+            case QUICK_PUTSTATIC -> PUTSTATIC;
+            case QUICK_GETFIELD -> GETFIELD;
+            case QUICK_PUTFIELD -> PUTFIELD;
+            default -> opcode;
+        };
     }
 
     /**

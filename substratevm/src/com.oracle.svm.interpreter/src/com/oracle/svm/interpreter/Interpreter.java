@@ -256,6 +256,10 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.POP;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.POP2;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTFIELD;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTSTATIC;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_GETFIELD;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_GETSTATIC;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_PUTFIELD;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_PUTSTATIC;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.RET;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.RETURN;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.SALOAD;
@@ -601,8 +605,7 @@ public final class Interpreter {
         }
 
         traceInterpreter(" ".repeat(indent)) //
-                        .string(intrinsic.name())
-                        .string(" target=") //
+                        .string(intrinsic.name()).string(" target=") //
                         .string(target.getDeclaringClass().getName()) //
                         .string("::") //
                         .string(target.getName()) //
@@ -1152,9 +1155,25 @@ public final class Interpreter {
                         // @formatter:off
                         // Bytecodes order is shuffled.
                         case GETSTATIC : // fall through
-                        case GETFIELD  : top += getField(frame, top, resolveField(method, curOpcode, BytecodeStream.readCPI2(code, curBCI)), curOpcode); break;
+                        case GETFIELD  : top += getField(frame, top, resolveField(method, curOpcode, code, curBCI), curOpcode); break;
                         case PUTSTATIC : // fall through
-                        case PUTFIELD  : top += putField(frame, top, resolveField(method, curOpcode, BytecodeStream.readCPI2(code, curBCI)), curOpcode); break;
+                        case PUTFIELD  : top += putField(frame, top, resolveField(method, curOpcode, code, curBCI), curOpcode); break;
+                        case QUICK_GETSTATIC: {
+                            top += getField(frame, top, resolveQuickenedField(method, GETSTATIC, BytecodeStream.readCPI2(code, curBCI)), GETSTATIC);
+                            break;
+                        }
+                        case QUICK_GETFIELD: {
+                            top += getField(frame, top, resolveQuickenedField(method, GETFIELD, BytecodeStream.readCPI2(code, curBCI)), GETFIELD);
+                            break;
+                        }
+                        case QUICK_PUTSTATIC: {
+                            top += putField(frame, top, resolveQuickenedField(method, PUTSTATIC, BytecodeStream.readCPI2(code, curBCI)), PUTSTATIC);
+                            break;
+                        }
+                        case QUICK_PUTFIELD: {
+                            top += putField(frame, top, resolveQuickenedField(method, PUTFIELD, BytecodeStream.readCPI2(code, curBCI)), PUTFIELD);
+                            break;
+                        }
 
                         case INVOKEVIRTUAL   : // fall through
                         case INVOKESPECIAL   : // fall through
@@ -1617,9 +1636,8 @@ public final class Interpreter {
             InterpreterResolvedJavaType symbolicHolder = Interpreter.resolveSymbolicHolder(method, opcode, cpi);
             if (symbolicHolder == null) {
                 if (InterpreterTraceSupport.getValue()) {
-                    traceInterpreter()
-                                    .string("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ")
-                                    .string(method.toString()).newline();
+                    traceInterpreter().string("Failed to resolve symbolic holder during call site resolution for seed ").string(symbolicResolution.toString()).string(" in caller method ").string(
+                                    method.toString()).newline();
                 }
                 // If unresolvable, provide symbolic resolution's holder as best-effort.
                 symbolicHolder = symbolicResolution.getDeclaringClass();
@@ -1647,8 +1665,7 @@ public final class Interpreter {
                 callKind = CallKind.DIRECT;
             }
             if (InterpreterTraceSupport.getValue()) {
-                traceInterpreter().string("Linking for call site of ").string(Bytecodes.nameOf(opcode)).string(" with resolved cp entry ").string(symbolicResolution.toString()).string(":")
-                                .newline();
+                traceInterpreter().string("Linking for call site of ").string(Bytecodes.nameOf(opcode)).string(" with resolved cp entry ").string(symbolicResolution.toString()).string(":").newline();
                 traceInterpreter().string("  ").string(callKind.toString()).string(": ").string(seedMethod.toString()).newline();
             }
 
@@ -1786,8 +1803,9 @@ public final class Interpreter {
         }
     }
 
-    private static InterpreterResolvedJavaField resolveField(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+    private static InterpreterResolvedJavaField resolveField(InterpreterResolvedJavaMethod method, int opcode, byte[] code, int bci) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC : Bytecodes.nameOf(opcode);
+        char cpi = BytecodeStream.readCPI2(code, bci);
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
             throw noSuchFieldError(opcode, null);
         }
@@ -1795,6 +1813,7 @@ public final class Interpreter {
             InterpreterResolvedJavaField field = getConstantPool(method).resolvedFieldAt(method.getDeclaringClass(), cpi);
             // Apply the opcode-specific field rules after symbolic resolution.
             CremaLinkResolver.checkFieldAccessOrThrow(CremaRuntimeAccess.getInstance(), field, opcode, method.getDeclaringClass(), method);
+            quickenFieldAccess(code, bci, opcode);
             return field;
         } catch (UnsupportedResolutionException e) {
             // CP does not support resolution, try to provide a hint of the non-resolvable entry.
@@ -1806,6 +1825,22 @@ public final class Interpreter {
         } catch (Throwable t) {
             throw SemanticJavaException.raise(t);
         }
+    }
+
+    private static InterpreterResolvedJavaField resolveQuickenedField(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+        assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC : Bytecodes.nameOf(opcode);
+        assert cpi != 0 : "Quickened field access requires a resolved constant pool index";
+        try {
+            // The first execution cached the resolved field after applying opcode-specific access checks.
+            return (InterpreterResolvedJavaField) getConstantPool(method).peekCachedEntry(cpi);
+        } catch (Throwable t) {
+            throw VMError.shouldNotReachHere("Quickened field access must use an already resolved field entry", t);
+        }
+    }
+
+    private static void quickenFieldAccess(byte[] code, int bci, int opcode) {
+        // Patch only the opcode: the CPI operand and BCI layout stay identical.
+        BytecodeStream.patchOpcodeOpaque(code, bci, Bytecodes.quickenedFieldAccess(opcode));
     }
 
     // endregion Class/Field/Method resolution
