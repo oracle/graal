@@ -202,6 +202,8 @@ import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerLeftShiftWorkerNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomeryMultiplyNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomerySquareNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerRightShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
@@ -2646,6 +2648,53 @@ public class StandardGraphBuilderPlugins {
                     b.setStateAfter(squareToLen);
                     return true;
                 }
+            }
+        });
+        r.register(new ConditionalInvocationPlugin("implMontgomeryMultiply", int[].class, int[].class, int[].class, int.class, long.class, int[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode bObject, ValueNode n, ValueNode len, ValueNode inv,
+                            ValueNode product) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    /*
+                     * The intrinsified method writes the Montgomery product into the product
+                     * array and returns the same reference. Push the product before setting the
+                     * stateAfter so deoptimization observes the Java-level return value.
+                     */
+                    BigIntegerMontgomeryMultiplyNode montgomeryMultiply = b.append(new BigIntegerMontgomeryMultiplyNode(helper.arrayStart(a, JavaKind.Int),
+                                    helper.arrayStart(bObject, JavaKind.Int),
+                                    helper.arrayStart(n, JavaKind.Int),
+                                    len,
+                                    inv,
+                                    helper.arrayStart(product, JavaKind.Int)));
+                    b.push(JavaKind.Object, product);
+                    b.setStateAfter(montgomeryMultiply);
+                    return true;
+                }
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return BigIntegerMontgomeryMultiplyNode.isSupported(arch);
+            }
+        });
+        r.register(new ConditionalInvocationPlugin("implMontgomerySquare", int[].class, int[].class, int.class, long.class, int[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode n, ValueNode len, ValueNode inv, ValueNode product) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    BigIntegerMontgomerySquareNode montgomerySquare = b.append(new BigIntegerMontgomerySquareNode(helper.arrayStart(a, JavaKind.Int),
+                                    helper.arrayStart(n, JavaKind.Int),
+                                    len,
+                                    inv,
+                                    helper.arrayStart(product, JavaKind.Int)));
+                    b.push(JavaKind.Object, product);
+                    b.setStateAfter(montgomerySquare);
+                    return true;
+                }
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return BigIntegerMontgomerySquareNode.isSupported(arch);
             }
         });
         r.register(new ConditionalInvocationPlugin("shiftLeftImplWorker", int[].class, int[].class, int.class, int.class, int.class) {

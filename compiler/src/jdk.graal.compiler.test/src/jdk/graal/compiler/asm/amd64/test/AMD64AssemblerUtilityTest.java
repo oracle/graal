@@ -39,9 +39,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -57,6 +59,7 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.test.GraalTest;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.runtime.JVMCI;
@@ -80,7 +83,7 @@ public class AMD64AssemblerUtilityTest extends GraalTest {
                     "SHLD", "SHRD", "TEST", "CMPXCHGB", "CMPXCHG", "XADDB", "XADD");
     private static final Set<String> AMD64_MR_OP_WRITE_ONLY = CollectionsUtil.setOf("MOVB", "MOV");
     private static final Set<String> SSE_MR_OP_WRITE_ONLY = CollectionsUtil.setOf(
-                    "MOVD", "MOVQ", "MOVSS", "MOVSD", "MOVDQU", "MOVUPD");
+                    "MOVD", "MOVQ", "MOVSS", "MOVSD", "MOVAPS", "MOVDQU", "MOVUPD", "MOVUPS");
     private static final Set<String> AMD64_M_OP_MEMORY_READS = CollectionsUtil.setOf(
                     "DEC", "DECB", "DIV", "IDIV", "IMUL", "INC", "INCB", "MUL", "NEG", "NEGB", "NOT", "NOTB",
                     "PUSH", "SAR", "SAR1", "SHL", "SHL1", "SHR", "SHR1");
@@ -205,6 +208,29 @@ public class AMD64AssemblerUtilityTest extends GraalTest {
         assertDeepEquals(0x0F, asm.getByte(1));
         assertDeepEquals(0xAE, asm.getByte(2));
         assertDeepEquals(0xE8, asm.getByte(3));
+    }
+
+    /**
+     * Tests that the fused memory-destination compare accounts for bytes emitted by the memory-read
+     * interceptor.
+     */
+    @Test
+    public void testMemoryDestinationCompareAndJccAccountsForInterceptorBytes() {
+        TargetDescription target = JVMCI.getRuntime().getHostJVMCIBackend().getTarget();
+        Assume.assumeTrue("skipping non-AMD64 specific test", target.arch instanceof AMD64);
+
+        OptionValues options = new OptionValues(null, AMD64Assembler.Options.UseBranchesWithin32ByteBoundary, true);
+        FencingAssembler asm = new FencingAssembler(target, options);
+        AMD64Address address = new AMD64Address(AMD64.rax, AMD64.rbx, Stride.S1, 16);
+        for (int i = 0; i < 24; i++) {
+            asm.emitByte(0x90);
+        }
+        Label targetLabel = new Label();
+        asm.cmplAndJcc(address, AMD64.rcx, ConditionFlag.Equal, targetLabel, true);
+        asm.bind(targetLabel);
+        assertDeepEquals(0x0F, asm.getByte(32));
+        assertDeepEquals(0xAE, asm.getByte(33));
+        assertDeepEquals(0xE8, asm.getByte(34));
     }
 
     /**
@@ -394,9 +420,18 @@ public class AMD64AssemblerUtilityTest extends GraalTest {
             super(target);
         }
 
+        private FencingAssembler(TargetDescription target, OptionValues optionValues) {
+            super(target, optionValues, true);
+        }
+
         @Override
         public void interceptMemorySrcOperands(AMD64Address addr) {
             lfenceBeforeLock();
+        }
+
+        @Override
+        public int extraSourceAddressBytes(AMD64Address addr) {
+            return 3;
         }
     }
 }

@@ -52,8 +52,6 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_INVERSE_NTT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.KYBER_NTT_MULT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
@@ -158,6 +156,8 @@ import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerLeftShiftWorkerNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomeryMultiplyNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomerySquareNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerRightShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
@@ -625,12 +625,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.sha3ImplCompressMultiBlock != 0L) {
             registerForeignCall(SHA3_IMPL_COMPRESS_MB, c.sha3ImplCompressMultiBlock, NativeCall);
         }
-        if (c.montgomeryMultiply != 0L) {
-            registerForeignCall(MONTGOMERY_MULTIPLY, c.montgomeryMultiply, NativeCall);
-        }
-        if (c.montgomerySquare != 0L) {
-            registerForeignCall(MONTGOMERY_SQUARE, c.montgomerySquare, NativeCall);
-        }
         if (c.updateBytesAdler32 != 0L) {
             registerForeignCall(UPDATE_BYTES_ADLER32, c.updateBytesAdler32, NativeCall);
         }
@@ -739,6 +733,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerSquareToLenNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerLeftShiftWorkerNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerRightShiftWorkerNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMontgomeryMultiplyNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMontgomerySquareNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, AESNode.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CounterModeAESNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CipherBlockChainingAESNode.STUBS);

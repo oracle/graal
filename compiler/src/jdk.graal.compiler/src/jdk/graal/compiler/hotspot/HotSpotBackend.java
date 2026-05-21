@@ -88,7 +88,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCICompiler;
@@ -124,12 +123,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     void.class, Object.class, Word.class);
 
     private final HotSpotGraalRuntimeProvider runtime;
-
-    public static final HotSpotForeignCallDescriptor MONTGOMERY_MULTIPLY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
-                    "implMontgomeryMultiply", void.class, Word.class, Word.class, Word.class, int.class, long.class, Word.class);
-
-    public static final HotSpotForeignCallDescriptor MONTGOMERY_SQUARE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
-                    "implMontgomerySquare", void.class, Word.class, Word.class, int.class, long.class, Word.class);
 
     public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "md5ImplCompress", int.class, Word.class,
                     Object.class, int.class, int.class);
