@@ -34,7 +34,7 @@ layout: base
               <img src='{{ "/assets/img/icon-set-general/container-icon.svg" | relative_url }}' alt="access icon">
             </div>
             <div class="langbenefits__title">
-              <h4>WebAssembly the JVM</h4>
+              <h4>WebAssembly on the JVM</h4>
             </div>
             <div class="langpage__benefits-text">
               <h5><a href="#getting-started">Load and use Wasm modules</a> and functions directly in Java</h5>
