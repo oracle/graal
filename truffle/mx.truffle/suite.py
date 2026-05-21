@@ -488,6 +488,7 @@ suite = {
       "dependencies" : [
         "TRUFFLE_API",
         "TRUFFLE_TCK_TESTS",
+        "com.oracle.truffle.api.test",
         "mx:JUNIT",
       ],
       "requires" : [
