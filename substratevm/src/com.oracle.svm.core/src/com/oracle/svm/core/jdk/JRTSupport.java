@@ -121,6 +121,13 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnable
 
     @Substitute
     static Target_jdk_internal_jimage_ImageReader_JRTEnabled reader() {
+        /*
+         * ImageReaderFactory's class initializer dereferences java.home. JDK module readers
+         * already treat a null system image reader as "resource not found".
+         */
+        if (System.getProperty("java.home") == null) {
+            return null;
+        }
         Target_jdk_internal_jimage_ImageReader_JRTEnabled localRef = READER;
         if (localRef == null) {
             synchronized (Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled.class) {
