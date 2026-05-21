@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -582,6 +582,14 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         if (getMemoryKind(write).isInteger() && !write.canDeoptimize() && !write.ordersMemoryAccesses() && !read.canDeoptimize()) {
             OperandSize size = getMemorySize(write);
             if (write.getAddress() == read.getAddress()) {
+                /*
+                 * The fused read-modify-write LIR instruction consumes the write address as a
+                 * memory source. Under AMD64 memory masking/fencing, the read address may have
+                 * been replaced by a protected address while write-only address users may
+                 * intentionally remain unmasked. Keep the above comparison as a strict identity
+                 * check so a future structural or semantic comparison cannot silently emit the read
+                 * side with a different write address.
+                 */
                 if (value.isJavaConstant()) {
                     long valueCst = value.asJavaConstant().asLong();
                     if (NumUtil.isInt(valueCst)) {

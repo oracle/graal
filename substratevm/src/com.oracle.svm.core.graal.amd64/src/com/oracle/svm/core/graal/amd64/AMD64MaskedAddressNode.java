@@ -63,7 +63,7 @@ import jdk.vm.ci.meta.Value;
  * substitutes a normal {@link AMD64AddressNode} and makes sure that memory is accessed safely from
  * a speculative execution point of view. Addresses that reference memory to the heap are logically
  * masked to be on the heap and use the form heapBase + offset. Addresses that do not reference
- * memory on the heap are protected with an LFENCE.
+ * memory on the heap, or whose heap/off-heap nature is unknown, are protected with an LFENCE.
  */
 @NodeInfo
 public class AMD64MaskedAddressNode extends AMD64AddressNode implements LIRLowerable {
@@ -77,7 +77,7 @@ public class AMD64MaskedAddressNode extends AMD64AddressNode implements LIRLower
      * should be (2^x - 1) such that (mask & index) will clear the upper bits only.
      */
     private final long mask;
-    private final boolean isOffHeap;
+    private final boolean isOffHeapOrUnknown;
 
     /*
      * The anchor is needed since we don't have derived references in SVM, thus we need to use
@@ -86,12 +86,12 @@ public class AMD64MaskedAddressNode extends AMD64AddressNode implements LIRLower
      */
     @Input(InputType.Anchor) private ValueAnchorNode anchorNode;
 
-    public AMD64MaskedAddressNode(ValueNode base, ValueNode compressedIndex, ValueNode heapBase, long mask, int displacement, Stride stride, boolean isOffHeap, ValueAnchorNode anchorNode) {
+    public AMD64MaskedAddressNode(ValueNode base, ValueNode compressedIndex, ValueNode heapBase, long mask, int displacement, Stride stride, boolean isOffHeapOrUnknown, ValueAnchorNode anchorNode) {
         super(TYPE, base, compressedIndex, stride);
         this.displacement = displacement;
         this.mask = mask;
         this.heapBase = heapBase;
-        this.isOffHeap = isOffHeap;
+        this.isOffHeapOrUnknown = isOffHeapOrUnknown;
         this.anchorNode = anchorNode;
 
         assert (CodeUtil.isPowerOf2(mask + 1) && mask != 0);
@@ -125,9 +125,9 @@ public class AMD64MaskedAddressNode extends AMD64AddressNode implements LIRLower
 
         if (base == null && index == null) {
             gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement));
-        } else if (isOffHeap) {
+        } else if (isOffHeapOrUnknown) {
             tool.append(new AMD64LFenceOp());
-            gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement));
+            gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement, true));
         } else {
             // Creating the space to temporarily store the index before masking.
             AllocatableValue tempIndex = tool.newVariable(LIRKind.unknownReference(AMD64Kind.QWORD));
@@ -143,7 +143,7 @@ public class AMD64MaskedAddressNode extends AMD64AddressNode implements LIRLower
                 r14base = tool.asAllocatable(gen.operand(heapBase));
             }
 
-            gen.setResult(this, new AMD64AddressValue(kind, r14base, maskedIndex, Stride.S1, 0));
+            gen.setResult(this, new AMD64AddressValue(kind, r14base, maskedIndex, Stride.S1, 0, true));
         }
     }
 }
@@ -222,10 +222,5 @@ final class AMD64MaskAddressOp extends AMD64LIRInstruction {
 
         assert AMD64MemoryMaskingAndFencing.isEnabled() : "masked addresses must only be emitted when memory masking and fencing is enabled";
 
-        /*
-         * The next source-memory operand consumes the masked offset produced here, so the backend
-         * must not add an additional fallback fence for that dereference.
-         */
-        ((SubstrateAMD64MacroAssembler) masm).markProtectedMemorySourceAddress();
     }
 }

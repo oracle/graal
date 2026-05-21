@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,13 @@ public final class AMD64AddressValue extends CompositeValue {
     protected final Stride stride;
     protected final int displacement;
     private final Object displacementAnnotation;
+    /**
+     * True if this address has already been protected by masking or an explicit fence, so the
+     * fallback LFENCE can be skipped when the address is used as a memory operand that is read by
+     * the instruction. Used by hardening modes that add fallback LFENCEs for memory-reading
+     * operands.
+     */
+    private final boolean canSkipMemoryReadFence;
 
     private static final EnumSet<LIRInstruction.OperandFlag> flags = EnumSet.of(LIRInstruction.OperandFlag.REG, LIRInstruction.OperandFlag.ILLEGAL);
 
@@ -61,13 +68,22 @@ public final class AMD64AddressValue extends CompositeValue {
         this(kind, base, index, stride, displacement, null);
     }
 
+    public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue index, Stride stride, int displacement, boolean canSkipMemoryReadFence) {
+        this(kind, base, index, stride, displacement, null, canSkipMemoryReadFence);
+    }
+
     public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue index, Stride stride, int displacement, Object displacementAnnotation) {
+        this(kind, base, index, stride, displacement, displacementAnnotation, false);
+    }
+
+    public AMD64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue index, Stride stride, int displacement, Object displacementAnnotation, boolean canSkipMemoryReadFence) {
         super(kind);
         this.base = base;
         this.index = index;
         this.stride = stride;
         this.displacement = displacement;
         this.displacementAnnotation = displacementAnnotation;
+        this.canSkipMemoryReadFence = canSkipMemoryReadFence;
 
         assert stride != null;
     }
@@ -85,7 +101,7 @@ public final class AMD64AddressValue extends CompositeValue {
         AllocatableValue newBase = (AllocatableValue) proc.doValue(inst, base, mode, flags);
         AllocatableValue newIndex = (AllocatableValue) proc.doValue(inst, index, mode, flags);
         if (!base.identityEquals(newBase) || !index.identityEquals(newIndex)) {
-            return new AMD64AddressValue(getValueKind(), newBase, newIndex, stride, displacement, displacementAnnotation);
+            return new AMD64AddressValue(getValueKind(), newBase, newIndex, stride, displacement, displacementAnnotation, canSkipMemoryReadFence);
         }
         return this;
     }
@@ -97,7 +113,11 @@ public final class AMD64AddressValue extends CompositeValue {
     }
 
     public AMD64AddressValue withKind(ValueKind<?> newKind) {
-        return new AMD64AddressValue(newKind, base, index, stride, displacement, displacementAnnotation);
+        return new AMD64AddressValue(newKind, base, index, stride, displacement, displacementAnnotation, canSkipMemoryReadFence);
+    }
+
+    public boolean canSkipMemoryReadFence() {
+        return canSkipMemoryReadFence;
     }
 
     /**
@@ -134,7 +154,7 @@ public final class AMD64AddressValue extends CompositeValue {
     public AMD64Address toAddress(AMD64MacroAssembler masm) {
         Register baseReg = Value.ILLEGAL.equals(base) ? getBaseRegisterForBaselessAddress(masm) : ((RegisterValue) base).getRegister();
         Register indexReg = Value.ILLEGAL.equals(index) ? Register.None : ((RegisterValue) index).getRegister();
-        return new AMD64Address(baseReg, indexReg, stride, displacement, displacementAnnotation);
+        return new AMD64Address(baseReg, indexReg, stride, displacement, displacementAnnotation, -1, canSkipMemoryReadFence);
     }
 
     @Override
@@ -169,13 +189,14 @@ public final class AMD64AddressValue extends CompositeValue {
     public boolean equals(Object obj) {
         if (obj instanceof AMD64AddressValue) {
             AMD64AddressValue addr = (AMD64AddressValue) obj;
-            return getValueKind().equals(addr.getValueKind()) && displacement == addr.displacement && base.equals(addr.base) && stride == addr.stride && index.equals(addr.index);
+            return getValueKind().equals(addr.getValueKind()) && displacement == addr.displacement && base.equals(addr.base) && stride == addr.stride && index.equals(addr.index) &&
+                            canSkipMemoryReadFence == addr.canSkipMemoryReadFence;
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (stride.value << 8) ^ getValueKind().hashCode();
+        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (stride.value << 8) ^ getValueKind().hashCode() ^ (canSkipMemoryReadFence ? 1 : 0);
     }
 }

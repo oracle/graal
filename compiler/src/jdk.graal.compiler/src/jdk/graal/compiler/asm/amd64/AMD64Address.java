@@ -41,6 +41,13 @@ public final class AMD64Address extends AbstractAddress {
     private final Stride stride;
     private final int displacement;
     private final Object displacementAnnotation;
+    /**
+     * True if this address has already been protected by masking or an explicit fence, so the
+     * fallback LFENCE can be skipped when the address is used as a memory operand that is read by
+     * the instruction. Used by hardening modes that add fallback LFENCEs for memory-reading
+     * operands.
+     */
+    private final boolean canSkipMemoryReadFence;
 
     /**
      * The start of the instruction, i.e., the value that is used as the key for looking up
@@ -94,17 +101,26 @@ public final class AMD64Address extends AbstractAddress {
         this(base, index, stride, displacement, null, -1);
     }
 
+    public AMD64Address(Register base, Register index, Stride stride, int displacement, boolean canSkipMemoryReadFence) {
+        this(base, index, stride, displacement, null, -1, canSkipMemoryReadFence);
+    }
+
     public AMD64Address(Register base, Register index, Stride stride, int displacement, Object displacementAnnotation) {
         this(base, index, stride, displacement, displacementAnnotation, -1);
     }
 
     public AMD64Address(Register base, Register index, Stride stride, int displacement, Object displacementAnnotation, int instructionStartPosition) {
+        this(base, index, stride, displacement, displacementAnnotation, instructionStartPosition, false);
+    }
+
+    public AMD64Address(Register base, Register index, Stride stride, int displacement, Object displacementAnnotation, int instructionStartPosition, boolean canSkipMemoryReadFence) {
         this.base = base;
         this.index = index;
         this.stride = stride;
         this.displacement = displacement;
         this.displacementAnnotation = displacementAnnotation;
         this.instructionStartPosition = instructionStartPosition;
+        this.canSkipMemoryReadFence = canSkipMemoryReadFence;
 
         assert stride != null;
     }
@@ -173,6 +189,10 @@ public final class AMD64Address extends AbstractAddress {
 
     public Object getDisplacementAnnotation() {
         return displacementAnnotation;
+    }
+
+    public boolean canSkipMemoryReadFence() {
+        return canSkipMemoryReadFence;
     }
 
     boolean isPlaceholder() {

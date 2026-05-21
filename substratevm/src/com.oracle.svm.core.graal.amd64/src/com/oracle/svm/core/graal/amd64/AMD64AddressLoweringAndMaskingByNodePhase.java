@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
@@ -36,23 +40,21 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.graal.compiler.core.amd64.AMD64AddressNode;
 import jdk.graal.compiler.core.amd64.AMD64CompressAddressLowering;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.nodes.PrefetchAllocateNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
-import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.AddressLoweringByNodePhase;
 import jdk.graal.compiler.replacements.gc.WriteBarrierSnippets;
-import jdk.graal.compiler.replacements.nodes.ZeroMemoryNode;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 
@@ -82,7 +84,13 @@ public class AMD64AddressLoweringAndMaskingByNodePhase extends AddressLoweringBy
             super.run(graph, providers);
             return;
         }
-        lowerAddressWithMaskingAndFencing(graph);
+        lowerAddressWithMaskingAndFencing(graph, getAddressUsagePolicy(providers));
+    }
+
+    private static AMD64MemoryMaskingAddressUsagePolicy getAddressUsagePolicy(CoreProviders providers) {
+        GraalError.guarantee(providers.getLowerer() instanceof AMD64MemoryMaskingAddressUsagePolicy,
+                        "AMD64MemoryMaskingAndFencing requires an AMD64MemoryMaskingAddressUsagePolicy lowering provider, got %s", providers.getLowerer());
+        return (AMD64MemoryMaskingAddressUsagePolicy) providers.getLowerer();
     }
 
     private static long getMask() {
@@ -93,7 +101,7 @@ public class AMD64AddressLoweringAndMaskingByNodePhase extends AddressLoweringBy
         return reservedSpaceSize.rawValue() - 1;
     }
 
-    private void lowerAddressWithMaskingAndFencing(StructuredGraph graph) {
+    private void lowerAddressWithMaskingAndFencing(StructuredGraph graph, AMD64MemoryMaskingAddressUsagePolicy addressUsagePolicy) {
 
         long mask = getMask();
 
@@ -136,12 +144,16 @@ public class AMD64AddressLoweringAndMaskingByNodePhase extends AddressLoweringBy
              */
             for (Node usage : node.usages().snapshot()) {
 
-                if (!(usage instanceof FixedAccessNode fixedAccessNode) || !shouldBeMaskedByUsage(usage)) {
+                if (canUseUnmaskedAddress(addressUsagePolicy, node, usage)) {
                     usage.replaceAllInputs(node, loweredUnmasked);
                     continue;
                 }
 
-                boolean isOffHeapByUsage = isOffHeap || isOffHeapByUsage(usage);
+                GraalError.guarantee(addressUsagePolicy.mightNeedMaskedAddress(node, usage),
+                                "Unexpected address usage that is neither allowed to stay unmasked nor known to require masking: %s", usage);
+                GraalError.guarantee(usage instanceof FixedNode, "Address usage that requires masking must be fixed: %s", usage);
+                FixedNode fixedNode = (FixedNode) usage;
+                boolean isOffHeapOrUnknown = isOffHeap || isOffHeapOrUnknownByUsage(usage);
 
                 ValueAnchorNode anchorNode = graph.addWithoutUnique(new ValueAnchorNode());
 
@@ -152,36 +164,70 @@ public class AMD64AddressLoweringAndMaskingByNodePhase extends AddressLoweringBy
                                                 mask,
                                                 loweredUnmasked.getDisplacement(),
                                                 loweredUnmasked.getScale(),
-                                                isOffHeapByUsage,
+                                                isOffHeapOrUnknown,
                                                 anchorNode));
 
-                graph.addBeforeFixed(fixedAccessNode, anchorNode);
+                graph.addBeforeFixed(fixedNode, anchorNode);
                 usage.replaceAllInputs(node, newLowered);
             }
         }
     }
 
-    private boolean isOffHeap(AMD64AddressNode address) {
-        return floatingReservedRegisterIsNotHeapBase(address.getBase()) || fixedReservedRegisterIsNotHeapBase(address.getBase());
+    private record AddressUsage(Node addressValue, Node usage) {
     }
 
-    private static boolean isOffHeapByUsage(Node node) {
+    private static boolean canUseUnmaskedAddress(AMD64MemoryMaskingAddressUsagePolicy addressUsagePolicy, Node addressValue, Node usage) {
+        Deque<AddressUsage> worklist = new ArrayDeque<>();
+        EconomicSet<Node> processedNodes = EconomicSet.create();
+
+        worklist.add(new AddressUsage(addressValue, usage));
+
+        while (!worklist.isEmpty()) {
+            CompilationAlarm.checkProgress(addressValue.graph());
+
+            AddressUsage current = worklist.removeLast();
+            if (!addressUsagePolicy.canUseUnmaskedAddress(current.addressValue(), current.usage())) {
+                return false;
+            }
+
+            if (!addressUsagePolicy.isUnmaskedAddressPassThrough(current.usage())) {
+                continue;
+            }
+
+            if (!processedNodes.add(current.usage())) {
+                continue;
+            }
+
+            for (Node passThroughUsage : current.usage().usages()) {
+                worklist.add(new AddressUsage(current.usage(), passThroughUsage));
+            }
+        }
+        return true;
+    }
+
+    private boolean isOffHeap(AMD64AddressNode address) {
+        return reservedRegisterIsNotHeapBase(address.getBase()) || reservedRegisterIsNotHeapBase(address.getIndex());
+    }
+
+    private static boolean isOffHeapOrUnknownByUsage(Node node) {
 
         if (node instanceof CInterfaceReadNode) {
             return true;
         }
 
-        if (node instanceof FixedAccessNode fixedAccessNode) {
-            /**
-             * Unsafe accesses are marked ANY_LOCATION for heap accesses and OFF_HEAP_LOCATION for
-             * off heap accesses. When in doubt, a conditional node is used and the choice happens
-             * at runtime.
-             * {@link jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.UnsafeAccessPlugin#createUnsafeAccess}
-             */
-            if (fixedAccessNode.getLocationIdentity().equals(NamedLocationIdentity.OFF_HEAP_LOCATION) ||
-                            fixedAccessNode.getLocationIdentity().equals(WriteBarrierSnippets.GC_CARD_LOCATION)) {
-                return true;
-            }
+        if (!(node instanceof FixedAccessNode fixedAccessNode)) {
+            return true;
+        }
+
+        /**
+         * Unsafe accesses are marked ANY_LOCATION for heap accesses and OFF_HEAP_LOCATION for off
+         * heap accesses. When in doubt, a conditional node is used and the choice happens at
+         * runtime.
+         * {@link jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.UnsafeAccessPlugin#createUnsafeAccess}
+         */
+        if (fixedAccessNode.getLocationIdentity().equals(NamedLocationIdentity.OFF_HEAP_LOCATION) ||
+                        fixedAccessNode.getLocationIdentity().equals(WriteBarrierSnippets.GC_CARD_LOCATION)) {
+            return true;
         }
 
         return false;
@@ -212,39 +258,13 @@ public class AMD64AddressLoweringAndMaskingByNodePhase extends AddressLoweringBy
         return true;
     }
 
-    private static boolean shouldBeMaskedByUsage(Node usage) {
-        /*
-         * The list of nodes that are allowed to use a non-masked node might not be complete but
-         * must be precise. All the nodes that are not fixed cannot be used by the phase to anchor
-         * the lowered address, however, at this stage of the compilation pipeline, all the accesses
-         * have been transformed into fix nodes. The remaining nodes cannot be used as a leaking
-         * gadget in a spectre attack, thus is safe not to mask their addresses to not hinder
-         * performances (more than necessary).
-         */
-        if (usage instanceof WriteNode) {
-            return false;
+    private boolean reservedRegisterIsNotHeapBase(ValueNode value) {
+        if (value instanceof ReadReservedRegisterFloatingNode floatingNode) {
+            return !floatingNode.getRegister().equals(heapBaseRegister);
         }
-
-        if (usage instanceof PrefetchAllocateNode) {
-            return false;
+        if (value instanceof ReadReservedRegisterFixedNode fixedNode) {
+            return !fixedNode.getRegister().equals(heapBaseRegister);
         }
-
-        if (usage instanceof ZeroMemoryNode) {
-            return false;
-        }
-
-        if (!(usage instanceof FixedNode)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private boolean floatingReservedRegisterIsNotHeapBase(ValueNode value) {
-        return (value instanceof ReadReservedRegisterFloatingNode floatingNode && !floatingNode.getRegister().equals(heapBaseRegister));
-    }
-
-    private boolean fixedReservedRegisterIsNotHeapBase(ValueNode value) {
-        return (value instanceof ReadReservedRegisterFixedNode fixedNode && !fixedNode.getRegister().equals(heapBaseRegister));
+        return false;
     }
 }

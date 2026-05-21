@@ -39,7 +39,7 @@ import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvider implements AMD64LoweringProviderMixin {
+public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvider implements AMD64LoweringProviderMixin, AMD64MemoryMaskingAddressUsagePolicy {
 
     public SubstrateAMD64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
