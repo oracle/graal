@@ -43,6 +43,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -113,6 +114,12 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
     private final EconomicSet<ResolvedJavaType> neverAccessesSharedArenaTypes = EconomicSet.create();
     private final EconomicSet<ResolvedJavaMethod> neverAccessesSharedArenaMethods = EconomicSet.create();
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final Function<NativeEntryPointInfo, CFunctionPointer> ensureDowncallStubCreated;
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final Function<MethodType, CFunctionPointer> ensureDowncallStubInvokerCreated;
+
     /**
      * A thread-safe stack of currently performed link requests (i.e. creating a downcall handle or
      * an upcall stub). This stack is used to generate a helpful error message if the link request
@@ -128,9 +135,13 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
     private BiConsumer<Long, DirectMethodHandleDesc> usingSpecializedUpcallListener;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public ForeignFunctionsRuntime(AbiUtils abiUtils) {
+    public ForeignFunctionsRuntime(AbiUtils abiUtils,
+                    Function<NativeEntryPointInfo, CFunctionPointer> ensureDowncallStubCreated,
+                    Function<MethodType, CFunctionPointer> ensureDowncallStubInvokerCreated) {
         this.abiUtils = abiUtils;
         this.trampolineTemplate = new TrampolineTemplate(new byte[abiUtils.trampolineSize()]);
+        this.ensureDowncallStubCreated = ensureDowncallStubCreated;
+        this.ensureDowncallStubInvokerCreated = ensureDowncallStubInvokerCreated;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -236,12 +247,22 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         return holder.functionPointer;
     }
 
-    CFunctionPointer getDowncallStubInvokerPointer(MethodType methodType) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    CFunctionPointer ensureDowncallStubCreated(NativeEntryPointInfo nep) {
+        return ensureDowncallStubCreated.apply(nep);
+    }
+
+    public CFunctionPointer getDowncallStubInvokerPointer(MethodType methodType) {
         FunctionPointerHolder holder = downcallStubInvokers.get(methodType);
         if (holder == null) {
             throw reportMissingDowncall(methodType);
         }
         return holder.functionPointer;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    CFunctionPointer ensureDowncallStubInvokerCreated(MethodType methodType) {
+        return ensureDowncallStubInvokerCreated.apply(methodType);
     }
 
     CFunctionPointer getUpcallStubPointer(JavaEntryPointInfo jep) {

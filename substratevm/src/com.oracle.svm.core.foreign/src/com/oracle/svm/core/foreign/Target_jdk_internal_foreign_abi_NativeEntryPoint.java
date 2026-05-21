@@ -116,6 +116,8 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
     }
 
     static final class DowncallAddressTransformer implements FieldValueTransformer {
+        private final ForeignFunctionsRuntime foreignFunctionsRuntime = ForeignFunctionsRuntime.singleton();
+
         @Override
         public Object transform(Object receiver, Object originalValue) {
             assert receiver.getClass() == NativeEntryPoint.class;
@@ -123,7 +125,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
                 JavaConstant nativeEntryPoint = GuestAccess.get().getSnippetReflection().forObject(receiver);
                 NativeEntryPointInfo nativeEntryPointInfo = NativeEntryPointHelper.extractNativeEntryPointInfo(nativeEntryPoint);
                 VMError.guarantee(nativeEntryPointInfo != null, "Cannot extract info for NativeEntryPoint because it is not in NEP_CACHE");
-                return ForeignFunctionsRuntime.singleton().getDowncallStubPointer(nativeEntryPointInfo);
+                return foreignFunctionsRuntime.ensureDowncallStubCreated(nativeEntryPointInfo);
             } catch (MissingForeignRegistrationError e) {
                 throw rethrowMissingForeignRegistrationError(e);
             }
@@ -140,11 +142,13 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
     }
 
     static final class DowncallInvokerAddressTransformer implements FieldValueTransformer {
+        private final ForeignFunctionsRuntime foreignFunctionsRuntime = ForeignFunctionsRuntime.singleton();
+
         @Override
         public Object transform(Object receiver, Object originalValue) {
             assert receiver.getClass() == NativeEntryPoint.class;
             try {
-                return ForeignFunctionsRuntime.singleton().getDowncallStubInvokerPointer(((NativeEntryPoint) receiver).type());
+                return foreignFunctionsRuntime.ensureDowncallStubInvokerCreated(((NativeEntryPoint) receiver).type());
             } catch (MissingForeignRegistrationError e) {
                 throw DowncallAddressTransformer.rethrowMissingForeignRegistrationError(e);
             }
