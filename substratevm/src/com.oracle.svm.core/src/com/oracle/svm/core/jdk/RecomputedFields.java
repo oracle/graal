@@ -93,6 +93,7 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
             field = tclass.getDeclaredField(fieldName);
 
             modifiers = field.getModifiers();
+            jdk.internal.reflect.Reflection.ensureMemberAccess(caller, tclass, null, modifiers);
             fieldClass = field.getType();
         } catch (Exception ex) {
             throw new RuntimeException(ex);
@@ -107,8 +108,7 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
         if (!Modifier.isVolatile(modifiers))
             throw new IllegalArgumentException("Must be volatile type");
 
-        // access checks are disabled
-        this.cclass = tclass;
+        this.cclass = AtomicFieldUpdaterAccessCheck.getAccessCheckClass(tclass, caller, modifiers);
         this.tclass = tclass;
         this.vclass = vclass;
         this.offset = Unsafe.getUnsafe().objectFieldOffset(field);
@@ -135,6 +135,7 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
         try {
             field = tclass.getDeclaredField(fieldName);
             modifiers = field.getModifiers();
+            jdk.internal.reflect.Reflection.ensureMemberAccess(caller, tclass, null, modifiers);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
@@ -145,8 +146,7 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
         if (!Modifier.isVolatile(modifiers))
             throw new IllegalArgumentException("Must be volatile type");
 
-        // access checks are disabled
-        this.cclass = tclass;
+        this.cclass = AtomicFieldUpdaterAccessCheck.getAccessCheckClass(tclass, caller, modifiers);
         this.tclass = tclass;
         this.offset = Unsafe.getUnsafe().objectFieldOffset(field);
     }
@@ -172,6 +172,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
         try {
             field = tclass.getDeclaredField(fieldName);
             modifiers = field.getModifiers();
+            jdk.internal.reflect.Reflection.ensureMemberAccess(caller, tclass, null, modifiers);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
@@ -182,12 +183,26 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
         if (!Modifier.isVolatile(modifiers))
             throw new IllegalArgumentException("Must be volatile type");
 
-        // access checks are disabled
-        this.cclass = tclass;
+        this.cclass = AtomicFieldUpdaterAccessCheck.getAccessCheckClass(tclass, caller, modifiers);
         this.tclass = tclass;
         this.offset = Unsafe.getUnsafe().objectFieldOffset(field);
     }
 
+}
+
+final class AtomicFieldUpdaterAccessCheck {
+    /*
+     * Keep the JDK access-check class selection for field updaters whose offsets are recomputed in
+     * the image. This code is part of the native image runtime, not hosted state construction, so it
+     * intentionally uses java.lang.Class rather than JVMCI metadata.
+     */
+    static Class<?> getAccessCheckClass(Class<?> tclass, Class<?> caller, int modifiers) {
+        return Modifier.isProtected(modifiers) && tclass.isAssignableFrom(caller) && !isSamePackage(tclass, caller) ? caller : tclass;
+    }
+
+    private static boolean isSamePackage(Class<?> firstClass, Class<?> secondClass) {
+        return firstClass.getClassLoader() == secondClass.getClassLoader() && firstClass.getPackageName().equals(secondClass.getPackageName());
+    }
 }
 
 @AutomaticallyRegisteredFeature
