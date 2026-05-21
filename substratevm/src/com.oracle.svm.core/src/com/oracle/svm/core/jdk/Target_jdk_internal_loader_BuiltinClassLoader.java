@@ -137,13 +137,6 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     }
 
     @Substitute
-    @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
-    private URL findResource(ModuleReference mref, String name) {
-        Module module = ModuleLayer.boot().findModule(mref.descriptor().name()).orElse(null);
-        return ResourcesHelper.nameToResourceURL(module, name);
-    }
-
-    @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L483-L492")
     private URL findResourceOnClassPath(String name) {

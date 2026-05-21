@@ -32,7 +32,6 @@ import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReference;
 import java.lang.reflect.Field;
 import java.net.URI;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -309,7 +308,7 @@ final class ResourceBasedModuleReaderSupport {
         if (resourceEntry.isEmpty()) {
             return Optional.empty();
         }
-        URL resourceURL = Resources.createURL(module, name);
+        java.net.URL resourceURL = Resources.createURL(module, name);
         return resourceURL == null ? Optional.empty() : Optional.of(URI.create(resourceURL.toString()));
     }
 
