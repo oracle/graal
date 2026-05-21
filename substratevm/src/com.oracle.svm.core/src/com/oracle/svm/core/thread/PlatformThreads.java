@@ -69,14 +69,9 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
@@ -95,10 +90,15 @@ import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -389,6 +389,12 @@ public abstract class PlatformThreads {
         if (currentThread.get() == null) {
             Thread thread = fromTarget(new Target_java_lang_Thread(name, group, asDaemon));
             assignCurrent(thread);
+            /*
+             * This must be done after setting the current thread since `getSystemClassLoader` might
+             * trigger class initialization (e.g., when `jdk.internal.loader.ClassLoaders` is
+             * run-time initialized).
+             */
+            toTarget(thread).contextClassLoader = ClassLoader.getSystemClassLoader();
             ThreadListenerSupport.get().beforeThreadRun();
             return true;
         }
