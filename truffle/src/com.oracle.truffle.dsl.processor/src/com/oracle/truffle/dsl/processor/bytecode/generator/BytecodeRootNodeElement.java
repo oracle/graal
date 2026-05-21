@@ -142,7 +142,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
     // !Important: Keep these in sync with InstructionBytecodeSizeTest!
     // Estimated number of Java bytecodes per instruction.
-    private static final int ESTIMATED_CUSTOM_INSTRUCTION_SIZE = 24;
+    private static final int ESTIMATED_CUSTOM_INSTRUCTION_SIZE = 27;
     private static final int ESTIMATED_EXTRACTED_INSTRUCTION_SIZE = 20;
     // Estimated number of bytecodes needed if they are just part of the switch table.
     private static final int GROUP_DISPATCH_SIZE = 40;
@@ -797,11 +797,11 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     TypeMirror getBytecodeIndexType() {
-        return model.enableTailCallHandlers ? type(long.class) : type(int.class);
+        return type(long.class);
     }
 
     TypeMirror getStackPointerType() {
-        return model.enableTailCallHandlers ? type(long.class) : type(int.class);
+        return type(long.class);
     }
 
     void emitWriteBytecodeIndexToFrame(CodeTreeBuilder b, String frame, String value) {
