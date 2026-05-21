@@ -1115,7 +1115,7 @@ class ABIs {
 
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.windows.Windowsx64Linker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.x64.windows.CallArranger.class)
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
     static final class Win64 extends X86_64 {
 
         @Platforms(Platform.HOSTED_ONLY.class) //

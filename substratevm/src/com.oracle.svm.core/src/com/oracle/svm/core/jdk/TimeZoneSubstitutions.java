@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.OS;
@@ -44,21 +45,20 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.HostedOptionKey;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-import org.graalvm.word.impl.Word;
 
 /**
  * The following classes aim to provide full support for time zones for native-image. This
@@ -100,8 +100,10 @@ final class Target_java_util_TimeZone {
             if (ImageSingletons.contains(TimeZoneSupport.class)) {
                 byte[] content = ImageSingletons.lookup(TimeZoneSupport.class).getTzMappingsContent();
                 contentLen = content.length;
-                refContent = PrimitiveArrayView.createForReading(content);
-                tzMappingsPtr = refContent.addressOfArrayElement(0);
+                if (contentLen != 0) {
+                    refContent = PrimitiveArrayView.createForReading(content);
+                    tzMappingsPtr = refContent.addressOfArrayElement(0);
+                }
             }
             CCharPointer tzId = LibCHelper.SVM_FindJavaTZmd(tzMappingsPtr, contentLen);
             String result = CTypeConversion.toJavaString(tzId);
@@ -119,7 +121,7 @@ final class Target_java_util_TimeZone {
 /**
  * Holds time zone mapping data.
  */
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = ApplicationLayerOnly.class)
 final class TimeZoneSupport {
     final byte[] tzMappingsContent;
 
@@ -185,6 +187,11 @@ final class TimeZoneFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
 
         if (OS.getCurrent() != OS.WINDOWS) {
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                // GR-75591: The ImageSingletons.contains plugin records this application-layer
+                // singleton even when the platform-specific payload is unused.
+                ImageSingletons.add(TimeZoneSupport.class, new TimeZoneSupport(new byte[0]));
+            }
             return;
         }
 

@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.snapshot.capnproto;
 
 import java.io.IOException;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 
@@ -45,9 +44,8 @@ public final class CapnProtoSharedLayerSnapshotFormat implements SharedLayerSnap
     @Override
     public SharedLayerSnapshotData.Loader load(Path path) throws IOException {
         try (FileChannel ch = FileChannel.open(path)) {
-            MappedByteBuffer bb = ch.map(FileChannel.MapMode.READ_ONLY, ch.position(), ch.size());
             ReaderOptions opt = new ReaderOptions(Long.MAX_VALUE, ReaderOptions.DEFAULT_READER_OPTIONS.nestingLimit);
-            return CapnProtoSharedLayerSnapshotData.loader(Serialize.read(bb, opt).getRoot(SharedLayerSnapshot.factory));
+            return CapnProtoSharedLayerSnapshotData.loader(Serialize.read(ch, opt).getRoot(SharedLayerSnapshot.factory));
         }
     }
 

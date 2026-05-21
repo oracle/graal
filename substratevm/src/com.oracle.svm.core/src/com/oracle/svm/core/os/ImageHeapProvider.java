@@ -33,9 +33,10 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -75,6 +76,15 @@ public interface ImageHeapProvider {
     @Fold
     static ImageHeapProvider get() {
         return ImageSingletons.lookup(ImageHeapProvider.class);
+    }
+
+    /**
+     * Called early during isolate creation, before isolate arguments are parsed. Providers can
+     * override this when image heap state must be prepared before argument parsing reads it.
+     */
+    @Uninterruptible(reason = "Called during early isolate initialization.")
+    default void prepareBeforeParsingIsolateArguments() {
+        throw VMError.shouldNotReachHere("ImageHeapProvider does not support preparation before isolate argument parsing.");
     }
 
     /**

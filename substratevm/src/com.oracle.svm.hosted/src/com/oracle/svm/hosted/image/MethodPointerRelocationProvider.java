@@ -50,6 +50,13 @@ public class MethodPointerRelocationProvider {
 
     public void markMethodPointerRelocation(ObjectFile.ProgbitsSectionImpl section, int offset, ObjectFile.RelocationKind relocationKind, HostedMethod target,
                     long addend, MethodPointer methodPointer, boolean isInjectedNotCompiled) {
+        if (imageLayer && section.getElement().getOwner().getFormat() == ObjectFile.Format.PECOFF && target.isCompiledInPriorLayer()) {
+            /*
+             * PE/COFF image layers do not export ordinary prior-layer method symbols. Avoid
+             * emitting relocations to those symbols.
+             */
+            return;
+        }
         String symbolName;
         if (imageLayer) {
             symbolName = LayeredDispatchTableFeature.singleton().getSymbolName(methodPointer, target, isInjectedNotCompiled);

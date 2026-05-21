@@ -576,6 +576,24 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("/INCREMENTAL:NO");
             cmd.add("/NODEFAULTLIB:LIBCMT");
 
+            if (imageKind == AbstractImage.NativeImageKind.IMAGE_LAYER) {
+                /*
+                 * Image layer DLLs have forward references to symbols defined in the application
+                 * layer (e.g. CGlobalData forSymbol references, delayed method symbols). On
+                 * ELF/Mach-O, these are undefined symbols resolved by the dynamic linker at load
+                 * time. On PE/COFF, we must allow the link to succeed with unresolved externals.
+                 * The application layer exports the required symbols and WindowsImageHeapProvider
+                 * patches the recorded forward-reference slots at isolate startup.
+                 */
+                cmd.add("/FORCE:UNRESOLVED");
+
+                /*
+                 * Explicitly export the code section start symbol so that the extension layer can
+                 * resolve cross-layer method calls via the import library.
+                 */
+                cmd.add("/EXPORT:" + NativeImage.getTextSectionStartSymbol());
+            }
+
             /* Use page size alignment to support memory mapping of the image heap. */
             cmd.add("/FILEALIGN:4096");
 
@@ -606,6 +624,16 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
             for (String library : nativeLibs.getLibraries()) {
                 cmd.add(library + ".lib");
+            }
+
+            if (imageKind.isExecutable && ImageLayerBuildingSupport.buildingApplicationLayer()) {
+                /*
+                 * Application layer executables can be small enough that the link does not pull in
+                 * any MSVC-built object with a /DEFAULTLIB:msvcrt directive. The GraalVM-generated
+                 * object file does not contain such directives, so add the CRT import library
+                 * explicitly for mainCRTStartup.
+                 */
+                cmd.add("msvcrt.lib");
             }
 
             // Add required Windows Libraries

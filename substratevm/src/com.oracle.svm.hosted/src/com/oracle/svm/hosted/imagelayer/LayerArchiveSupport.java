@@ -110,6 +110,10 @@ public class LayerArchiveSupport {
         return layerDir;
     }
 
+    public Path getLayerFileDirectory() {
+        return layerFile.getParent();
+    }
+
     public String getSharedLibraryBaseName() {
         return layerProperties.layerName().substring(SHARED_LIB_NAME_PREFIX.length());
     }

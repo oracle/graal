@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -90,6 +91,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -330,6 +332,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         UnmanagedMemoryUtil.fill((Pointer) arguments, SizeOf.unsigned(IsolateArguments.class), (byte) 0);
         CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getParsedArgsSize());
         arguments.setParsedArgs(parsedArgs);
+
+        if (Platform.includedIn(Platform.WINDOWS.class) && ImageLayerBuildingSupport.buildingImageLayer()) {
+            ImageHeapProvider.get().prepareBeforeParsingIsolateArguments();
+        }
 
         IsolateArgumentParser.singleton().parse(parameters, arguments);
 

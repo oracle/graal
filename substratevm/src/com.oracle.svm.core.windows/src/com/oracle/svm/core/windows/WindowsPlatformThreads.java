@@ -49,8 +49,8 @@ import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
@@ -58,7 +58,7 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.core.common.NumUtil;
 
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class WindowsPlatformThreads extends PlatformThreads {
     @Platforms(HOSTED_ONLY.class)
     WindowsPlatformThreads() {
@@ -287,7 +287,7 @@ class WindowsParker extends Parker {
 }
 
 @AutomaticallyRegisteredImageSingleton(ParkerFactory.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class WindowsParkerFactory implements ParkerFactory {
     @Override
     public Parker acquire() {

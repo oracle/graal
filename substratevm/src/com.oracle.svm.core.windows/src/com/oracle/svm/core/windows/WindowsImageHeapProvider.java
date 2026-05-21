@@ -27,12 +27,15 @@ package com.oracle.svm.core.windows;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_END;
+import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.FIXUP_TABLE;
+import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.NEXT_SECTION;
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -40,36 +43,213 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.os.AbstractCopyingImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
+import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.shared.Uninterruptible;
+
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.PauseNode;
 
 /**
  * An image heap provider for Windows that creates image heaps that are copy-on-write clones of the
  * loaded image heap.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
+
+    private static final class ForwardSymbolPatchingState {
+        static final Word UNINITIALIZED = Word.zero();
+        static final Word IN_PROGRESS = Word.unsigned(1);
+        static final Word SUCCESSFUL = Word.unsigned(2);
+    }
+
+    private static final CGlobalData<Word> FORWARD_SYMBOL_PATCHING_STATE = CGlobalDataFactory.createWord(ForwardSymbolPatchingState.UNINITIALIZED);
+
+    @Override
+    @Uninterruptible(reason = "Called during early isolate initialization.")
+    public void prepareBeforeParsingIsolateArguments() {
+        /*
+         * On PE/COFF layered builds, forward symbol references in CGlobal data cannot be resolved
+         * at link time. Patch them now, before argument parsing reads any CGlobal values.
+         */
+        patchForwardSymbolReferences();
+    }
+
+    private static final CGlobalData<CCharPointer> MSG_GET_MODULE_FAILED = CGlobalDataFactory.createCString("GetModuleHandleA(NULL) failed");
+    private static final CGlobalData<CCharPointer> MSG_GET_PROC_FAILED = CGlobalDataFactory.createCString("GetProcAddress failed for layer symbol");
+    private static final CGlobalData<CCharPointer> MSG_GET_PROC_FAILED_PREFIX = CGlobalDataFactory.createCString("GetProcAddress failed for layer symbol: ");
+    private static final CGlobalData<CCharPointer> MSG_VIRTUAL_PROTECT_FAILED = CGlobalDataFactory.createCString("VirtualProtect failed for PE/COFF layer fixup");
+    private static final CGlobalData<CCharPointer> MSG_NEWLINE = CGlobalDataFactory.createCString("\n");
+
+    @Uninterruptible(reason = "Called during isolate initialization.")
+    private static void patchForwardSymbolReferences() {
+        Word stateAddr = FORWARD_SYMBOL_PATCHING_STATE.get();
+        boolean firstIsolate = stateAddr.logicCompareAndSwapWord(0, ForwardSymbolPatchingState.UNINITIALIZED, ForwardSymbolPatchingState.IN_PROGRESS,
+                        NamedLocationIdentity.OFF_HEAP_LOCATION);
+
+        if (!firstIsolate) {
+            Word state = stateAddr.readWordVolatile(0, NamedLocationIdentity.OFF_HEAP_LOCATION);
+            while (state.equal(ForwardSymbolPatchingState.IN_PROGRESS)) {
+                PauseNode.pause();
+                state = stateAddr.readWordVolatile(0, NamedLocationIdentity.OFF_HEAP_LOCATION);
+            }
+            return;
+        }
+
+        patchNextSectionPointers();
+        patchForwardReferenceSlots();
+        stateAddr.writeWordVolatile(0, ForwardSymbolPatchingState.SUCCESSFUL);
+    }
+
+    /**
+     * Patch the NEXT_SECTION linked list that could not be populated at link time on PE/COFF. Uses
+     * {@code GetProcAddress} to find the next layer's section symbol in the main executable module.
+     */
+    @Uninterruptible(reason = "Called during isolate initialization.")
+    private static void patchNextSectionPointers() {
+        CGlobalData<CCharPointer> nextSymbolName = ImageLayerSection.getNextLayerSectionSymbolName();
+        if (nextSymbolName == null) {
+            return;
+        }
+        CGlobalData<Pointer> initialLayerSection = ImageLayerSection.getInitialLayerSection();
+        if (initialLayerSection == null) {
+            return;
+        }
+        Pointer section = initialLayerSection.get();
+        if (section.isNull()) {
+            return;
+        }
+        HMODULE exeModule = LibLoaderAPI.GetModuleHandleA(Word.nullPointer());
+        if (exeModule.isNull()) {
+            CEntryPointActions.failFatally(0xBAD1, MSG_GET_MODULE_FAILED.get());
+        }
+        PointerBase nextSection = LibLoaderAPI.GetProcAddress(exeModule, nextSymbolName.get());
+        if (nextSection.isNull()) {
+            CEntryPointActions.failFatally(0xBAD2, MSG_GET_PROC_FAILED.get());
+        }
+        section.writeWord(ImageLayerSection.getEntryOffset(NEXT_SECTION), nextSection);
+    }
+
+    /**
+     * Resolve forward-reference slots using each layer's runtime fixup table. Each table is in the
+     * .svm_fix section and maps slot addresses to symbol names. For each entry, we look up the
+     * symbol in the application layer's module via GetProcAddress and write the resolved address to
+     * the slot.
+     *
+     * <pre>
+     * Fixup table layout:
+     *   int32: numEntries
+     *   int32: stringDataOffset (from table start)
+     *   int64[numEntries]: absolute addresses of slots (resolved by PE loader)
+     *   int32[numEntries]: string offsets (relative to stringDataOffset)
+     *   char[]: null-terminated symbol name strings
+     * </pre>
+     */
+    @Uninterruptible(reason = "Called during isolate initialization.")
+    private static void patchForwardReferenceSlots() {
+        HMODULE exeModule = LibLoaderAPI.GetModuleHandleA(Word.nullPointer());
+        if (exeModule.isNull()) {
+            CEntryPointActions.failFatally(0xBAD1, MSG_GET_MODULE_FAILED.get());
+        }
+
+        CGlobalData<Pointer> initialLayerSection = ImageLayerSection.getInitialLayerSection();
+        if (initialLayerSection == null) {
+            return;
+        }
+        Pointer currentSection = initialLayerSection.get();
+        while (currentSection.isNonNull()) {
+            Pointer fixupTable = currentSection.readWord(ImageLayerSection.getEntryOffset(FIXUP_TABLE));
+            if (fixupTable.isNonNull()) {
+                patchForwardReferenceTable(fixupTable, exeModule);
+            }
+            currentSection = currentSection.readWord(ImageLayerSection.getEntryOffset(NEXT_SECTION));
+        }
+    }
+
+    @Uninterruptible(reason = "Called during isolate initialization.")
+    private static void patchForwardReferenceTable(Pointer fixupTable, HMODULE exeModule) {
+        int numEntries = fixupTable.readInt(0);
+        if (numEntries == 0) {
+            return;
+        }
+
+        int stringDataOffset = fixupTable.readInt(4);
+        Pointer slotPtrs = fixupTable.add(8);
+        Pointer nameOffsets = slotPtrs.add(Word.unsigned(numEntries).multiply(8));
+        Pointer stringData = fixupTable.add(stringDataOffset);
+
+        for (int i = 0; i < numEntries; i++) {
+            Pointer slotAddr = slotPtrs.readWord(i * 8);
+            int nameOff = nameOffsets.readInt(i * 4);
+            CCharPointer symbolName = (CCharPointer) stringData.add(nameOff);
+
+            PointerBase resolved = LibLoaderAPI.GetProcAddress(exeModule, symbolName);
+            if (resolved.isNonNull()) {
+                patchForwardReferenceSlot(slotAddr, resolved);
+            } else {
+                failGetProcAddress(0xBAD3, symbolName);
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Called during isolate initialization.")
+    private static void patchForwardReferenceSlot(Pointer slotAddr, PointerBase resolved) {
+        /*
+         * Forward-reference fixups can point into read-only image sections. Make the page writable
+         * before patching so Windows does not terminate with an access violation before we can
+         * initialize the copied layered image heap.
+         */
+        CIntPointer oldProtect = StackValue.get(CIntPointer.class);
+        if (MemoryAPI.VirtualProtect(slotAddr, Word.unsigned(Long.BYTES), MemoryAPI.PAGE_EXECUTE_READWRITE(), oldProtect) == 0) {
+            CEntryPointActions.failFatally(WinBase.GetLastError(), MSG_VIRTUAL_PROTECT_FAILED.get());
+        }
+        slotAddr.writeWord(0, resolved);
+        MemoryAPI.VirtualProtect(slotAddr, Word.unsigned(Long.BYTES), oldProtect.read(), oldProtect);
+    }
+
+    @Uninterruptible(reason = "Called during isolate initialization.")
+    private static void failGetProcAddress(int code, CCharPointer symbolName) {
+        HANDLE stderr = FileAPI.NoTransition.GetStdHandle(FileAPI.STD_ERROR_HANDLE());
+        WindowsUtils.writeUninterruptibly(stderr, MSG_GET_PROC_FAILED_PREFIX.get(), WindowsLibC.strlen(MSG_GET_PROC_FAILED_PREFIX.get()));
+        WindowsUtils.writeUninterruptibly(stderr, symbolName, WindowsLibC.strlen(symbolName));
+        WindowsUtils.writeUninterruptibly(stderr, MSG_NEWLINE.get(), WindowsLibC.strlen(MSG_NEWLINE.get()));
+        CEntryPointActions.failFatally(code, MSG_GET_PROC_FAILED.get());
+    }
+
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     protected int commitAndCopyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /*
+             * In layered builds, patchLayeredImageHeap() has already modified the loaded image
+             * heaps in memory (e.g. cross-layer code pointer patches, heap reference patches, field
+             * updates). We must copy from the loaded memory to preserve these patches. The
+             * file-mapping optimization would map fresh from the on-disk image, losing the patches
+             * applied to the writable heap sections.
+             */
+            return super.commitAndCopyMemory(loadedImageHeap, imageHeapSize, newImageHeap);
+        }
+
         HANDLE imageHeapFileMapping = getImageHeapFileMapping();
         if (imageHeapFileMapping.isNull()) {
             /* Fall back to copying from memory. */
