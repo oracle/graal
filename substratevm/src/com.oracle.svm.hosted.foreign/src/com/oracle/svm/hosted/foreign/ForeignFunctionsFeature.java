@@ -72,6 +72,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.OS;
@@ -225,7 +226,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
             return null;
         }
 
-        MethodPointer downcallStubPointer = ensureDowncallStubCreated(resolve);
+        MethodPointer downcallStubPointer = accessSupport.ensureDowncallStubCreated(resolve);
         assert downcallStubPointer != null;
         return downcallStubPointer.getMethod();
     }
@@ -235,22 +236,6 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
             return ihc.getHostedObject(); // may be null
         }
         return c;
-    }
-
-    MethodPointer ensureDowncallStubCreated(NativeEntryPointInfo resolve) {
-        if (!foreignFunctionsRuntime.downcallStubExists(resolve)) {
-            DowncallStub stub = accessSupport.createStub(DowncallStubFactory.INSTANCE, resolve);
-            /*
-             * If the downcall stub was just created (i.e. 'stub != null'), we also need to ensure
-             * that a compatible downcall stub invoker exists. Downcall stub invokers exist per
-             * MethodType and may be used to invoke several downcall stubs. Hence, the invoker may
-             * already exist.
-             */
-            if (stub != null && !foreignFunctionsRuntime.downcallStubInvokerExists(stub.getMethodType())) {
-                accessSupport.createStub(DowncallStubInvokerFactory.INSTANCE, resolve.methodType());
-            }
-        }
-        return (MethodPointer) foreignFunctionsRuntime.getDowncallStubPointer(resolve);
     }
 
     /**
@@ -292,6 +277,43 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
         void duringSetup(AnalysisMetaAccess metaAccess, AnalysisUniverse analysisUniverse) {
             this.analysisMetaAccess = metaAccess;
             setUniverse(analysisUniverse);
+        }
+
+        public MethodPointer ensureDowncallStubCreated(NativeEntryPointInfo resolve) {
+            if (mayRegisterDowncallStub()) {
+                if (!foreignFunctionsRuntime.downcallStubExists(resolve)) {
+                    createStub(DowncallStubFactory.INSTANCE, resolve);
+                }
+                /*
+                 * Downcall stub invokers exist per MethodType and may be used to invoke several
+                 * downcall stubs. Ensure the invoker independently from the downcall stub
+                 * registration above: the downcall stub may already exist even though the compatible
+                 * invoker has not been created yet.
+                 */
+                ensureDowncallStubInvokerRegistered(resolve.methodType());
+            }
+            return (MethodPointer) foreignFunctionsRuntime.getDowncallStubPointer(resolve);
+        }
+
+        public CFunctionPointer ensureDowncallStubInvokerCreated(MethodType methodType) {
+            if (mayRegisterDowncallStub()) {
+                ensureDowncallStubInvokerRegistered(methodType);
+            }
+            return foreignFunctionsRuntime.getDowncallStubInvokerPointer(methodType);
+        }
+
+        private boolean mayRegisterDowncallStub() {
+            /*
+             * BuildPhaseProvider.isAnalysisFinished() closes the small window between
+             * markAnalysisFinished() and this feature's afterAnalysis() calling seal().
+             */
+            return !isSealed() && !BuildPhaseProvider.isAnalysisFinished();
+        }
+
+        private void ensureDowncallStubInvokerRegistered(MethodType methodType) {
+            if (!foreignFunctionsRuntime.downcallStubInvokerExists(methodType)) {
+                createStub(DowncallStubInvokerFactory.INSTANCE, methodType);
+            }
         }
 
         @Override
@@ -472,8 +494,9 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         abiUtils = AbiUtils.create();
-        foreignFunctionsRuntime = new ForeignFunctionsRuntime(abiUtils);
         accessSupport = new RuntimeForeignAccessSupportImpl();
+        foreignFunctionsRuntime = new ForeignFunctionsRuntime(abiUtils, accessSupport::ensureDowncallStubCreated,
+                        accessSupport::ensureDowncallStubInvokerCreated);
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
         ImageSingletons.add(AbiUtils.class, abiUtils);
         ImageSingletons.add(ForeignSupport.class, foreignFunctionsRuntime);
