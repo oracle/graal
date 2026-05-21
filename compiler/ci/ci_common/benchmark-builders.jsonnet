@@ -95,22 +95,8 @@
   for suite in metrics_suites
   ]),
 
-  local awfy_crema = bench.awfy + {
-    crema_vm_args:: self.extra_vm_args + [
-      // Required for Havlak in interpreter mode to avoid a stack overflow.
-      "-Xss16m",
-    ],
-    crema_run_args:: if utils.contains(self.environment["JVM_CONFIG"], "xint") then
-      ["--", "-i", "5"]
-    else
-      [],
-    run: [
-      self.benchmark_cmd + [self.suite + ":*", "--"] + self.crema_vm_args + self.crema_run_args
-    ],
-  },
-
   local crema_builds = [
-    c.daily + c.opt_post_merge + hw.x52 + jdk + awfy_crema + crema_config
+    c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + crema_config
   for jdk in cc.product_jdks
   for crema_config in [cc.crema, cc.crema_xint]
   ],

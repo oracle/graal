@@ -1,5 +1,6 @@
 {
   local c = (import '../../../ci/ci_common/common.jsonnet'),
+  local utils = (import '../../../ci/ci_common/common-utils.libsonnet'),
   local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
   local config = (import '../../../ci/repo-configuration.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
@@ -24,9 +25,13 @@
   // suite definitions
   // *****************
   awfy: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
+    local is_xint = std.objectHasAll(self.environment, "JVM_CONFIG") && utils.contains(self.environment["JVM_CONFIG"], "xint"),
+    // Required for Havlak in interpreter mode to avoid a stack overflow.
+    local awfy_vm_args = self.extra_vm_args + (if is_xint then ["-Xss16m"] else []),
+    local awfy_run_args = if is_xint then ["--", "-i", "5"] else [],
     suite:: "awfy",
     run+: [
-      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":*", "--"] + awfy_vm_args + awfy_run_args
     ],
     timelimit: "1:00:00",
     forks_batches:: null,

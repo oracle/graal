@@ -15,6 +15,11 @@
   for suite in bench.groups.all_suites
   ]),
 
+  local hotspot_interpreter_builds = [
+    c.weekly + hw.x52 + jdk + cc.hotspot_interpreter + bench.awfy
+  for jdk in cc.product_jdks
+  ],
+
   local hotspot_profiling_builds = std.flattenArrays([
     [
     c.on_demand + hw.x52  + jdk + cc.c2 + suite + cc.enable_profiling    + { job_prefix:: "bench-compiler-profiling" },
@@ -65,7 +70,7 @@
   for jdk in cc.product_jdks
   for suite in bench.groups.main_suites
   ]),
-  local all_builds = hotspot_builds + hotspot_profiling_builds +
+  local all_builds = hotspot_builds + hotspot_interpreter_builds + hotspot_profiling_builds +
     weekly_forks_amd64_builds + weekly_forks_aarch64_builds + economy_builds + no_tiered_builds + gc_variants_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
 
