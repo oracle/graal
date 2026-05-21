@@ -27,8 +27,8 @@ package com.oracle.objectfile.pecoff;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_SYMBOL;
 
@@ -72,7 +72,7 @@ final class PECoffSymtabStruct {
         directives.append("   ");
     }
 
-    PECoffSymbolStruct addSymbolEntry(String name, byte type, byte storageclass, byte secHdrIndex, long offset) {
+    PECoffSymbolStruct addSymbolEntry(String name, byte type, byte storageclass, byte secHdrIndex, long offset, boolean exported) {
         // Get the current symbol index and append symbol name to string table.
         int index;
         PECoffSymbolStruct sym;
@@ -95,8 +95,10 @@ final class PECoffSymtabStruct {
 
             sym = new PECoffSymbolStruct(index, type, storageclass, secHdrIndex, offset);
             symbols.add(sym);
-            // Only add exports for external class symbols that are defined
-            if (storageclass == IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL && secHdrIndex != -1) {
+            /*
+             * Only add exports for external class symbols that are requested.
+             */
+            if (exported && storageclass == IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL && secHdrIndex != -1) {
                 addDirective(name, type);
             }
         }

@@ -425,7 +425,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
     }
 
     @Override
-    public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode) {
+    public Symbol newDefinedEntry(String name, Section referencedSection, long referencedOffset, long size, boolean isGlobal, boolean isCode, boolean isExported) {
         return addEntry(new Entry(name, referencedOffset, size, isGlobal ? SymBinding.GLOBAL : SymBinding.LOCAL, isCode ? SymType.FUNC : SymType.OBJECT, (ELFSection) referencedSection));
     }
 

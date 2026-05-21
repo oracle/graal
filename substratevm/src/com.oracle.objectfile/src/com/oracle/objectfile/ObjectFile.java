@@ -45,6 +45,8 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
@@ -52,7 +54,6 @@ import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import org.graalvm.collections.EconomicSet;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -218,21 +219,17 @@ public abstract class ObjectFile {
         };
     }
 
-    private static ObjectFile getNativeObjectFile(int pageSize, boolean runtimeDebugInfoGeneration) {
+    public static ObjectFile getNativeObjectFile(int pageSize) {
         return switch (ObjectFile.getNativeFormat()) {
-            case ELF -> new ELFObjectFile(pageSize, runtimeDebugInfoGeneration);
+            case ELF -> new ELFObjectFile(pageSize, true);
             case MACH_O -> new MachOObjectFile(pageSize);
             case PECOFF -> new PECoffObjectFile(pageSize);
             case LLVM -> throw new AssertionError("Unsupported NativeObjectFile for format " + ObjectFile.getNativeFormat());
         };
     }
 
-    public static ObjectFile getNativeObjectFile(int pageSize) {
-        return getNativeObjectFile(pageSize, true);
-    }
-
     public static ObjectFile createRuntimeDebugInfo(int pageSize) {
-        return getNativeObjectFile(pageSize, true);
+        return getNativeObjectFile(pageSize);
     }
 
     /*
@@ -1811,7 +1808,7 @@ public abstract class ObjectFile {
         boolean isGlobal();
     }
 
-    public abstract Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal);
+    public abstract Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal, boolean isExported);
 
     public abstract Symbol createUndefinedSymbol(String name, boolean isCode);
 

@@ -253,11 +253,13 @@ public final class ImageLayerSectionFeature implements InternalFeature {
         }
 
         // this symbol must be global when it will be read by the prior section
-        objectFile.createDefinedSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber()), layeredImageSection, 0, 0, false, ImageLayerBuildingSupport.buildingExtensionLayer());
+        boolean layerNameIsGlobal = ImageLayerBuildingSupport.buildingExtensionLayer();
+        boolean layerNameIsExported = ImageLayerBuildingSupport.buildingApplicationLayer();
+        objectFile.createDefinedSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber()), layeredImageSection, 0, 0, false, layerNameIsGlobal, layerNameIsExported);
 
         if (numSingletonSlots != 0) {
             assert ImageLayerBuildingSupport.buildingApplicationLayer() : "Currently only application layer is supported";
-            objectFile.createDefinedSymbol(LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL, layeredImageSection, FIRST_SINGLETON_OFFSET, 0, false, true);
+            objectFile.createDefinedSymbol(LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL, layeredImageSection, FIRST_SINGLETON_OFFSET, 0, false, true, true);
         }
     }
 

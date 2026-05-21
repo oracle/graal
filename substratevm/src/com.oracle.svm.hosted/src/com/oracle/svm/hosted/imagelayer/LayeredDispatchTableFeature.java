@@ -638,7 +638,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
             CompilationResult result = codeCache.compilationResultFor(method);
 
             final int size = result == null ? 0 : result.getTargetCodeSize();
-            objectFile.createDefinedSymbol(symbol, textSection, method.getCodeAddressOffset(), size, true, true);
+            objectFile.createDefinedSymbol(symbol, textSection, method.getCodeAddressOffset(), size, true, true, true);
         }
 
         /*
@@ -651,7 +651,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
                     CompilationResult result = codeCache.compilationResultFor(invalidMethod);
 
                     final int size = result == null ? 0 : result.getTargetCodeSize();
-                    objectFile.createDefinedSymbol(symbol, textSection, invalidMethod.getCodeAddressOffset(), size, true, true);
+                    objectFile.createDefinedSymbol(symbol, textSection, invalidMethod.getCodeAddressOffset(), size, true, true, true);
                 }
             });
         }

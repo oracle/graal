@@ -88,13 +88,14 @@ public class PLTSupport {
         assert pltTextOffset + pltCode.length <= buffer.limit();
         buffer.put(pltTextOffset, pltCode, 0, pltCode.length);
 
-        objectFile.createDefinedSymbol(SVM_PLT_SYMBOL_NAME, textSection, pltTextOffset, 0, true, false);
+        objectFile.createDefinedSymbol(SVM_PLT_SYMBOL_NAME, textSection, pltTextOffset, 0, true, false, false);
 
         int wordSize = SubstrateTarget.getWordSize();
         generatedPLT.forEachStubStartOffset((method, offset) -> {
             int position = pltTextOffset + offset;
+            boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
             objectFile.createDefinedSymbol(pltSymbolNameForMethod(method), textSection, position, wordSize, true,
-                            SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+                            internalSymbolsAreGlobal, internalSymbolsAreGlobal);
         });
 
         pltBuffer.forEachRelocation((info, offset) -> textBuffer.addRelocationWithAddend(pltTextOffset + offset, info.getRelocationKind(), info.getAddend(), info.getTargetObject()));

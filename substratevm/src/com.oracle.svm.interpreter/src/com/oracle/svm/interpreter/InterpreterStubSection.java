@@ -157,11 +157,11 @@ public abstract class InterpreterStubSection {
         stubsBuffer.getByteBuffer().put(stubsBlob, 0, stubsBlob.length);
 
         boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
-        objectFile.createDefinedSymbol("interp_enter_trampoline", stubsSection, 0, 0, true, internalSymbolsAreGlobal);
+        objectFile.createDefinedSymbol("interp_enter_trampoline", stubsSection, 0, 0, true, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
 
         for (InterpreterResolvedJavaMethod method : enterTrampolineOffsets.keySet()) {
             int offset = enterTrampolineOffsets.get(method);
-            objectFile.createDefinedSymbol(nameForInterpMethod(method), stubsSection, offset, target.wordSize, true, internalSymbolsAreGlobal);
+            objectFile.createDefinedSymbol(nameForInterpMethod(method), stubsSection, offset, target.wordSize, true, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
         }
     }
 
@@ -193,13 +193,13 @@ public abstract class InterpreterStubSection {
         stubsBuffer.getByteBuffer().put(stubsBlob, 0, stubsBlob.length);
 
         boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
-        objectFile.createDefinedSymbol("crema_enter_trampoline", stubsSection, 0, 0, true, internalSymbolsAreGlobal);
+        objectFile.createDefinedSymbol("crema_enter_trampoline", stubsSection, 0, 0, true, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
 
         assert vTableStubBaseOffset != -1;
         for (int vTableIndex = 0; vTableIndex < MAX_VTABLE_STUBS; vTableIndex++) {
             int codeOffset = vTableStubBaseOffset + vTableIndex * getVTableStubSize();
             String symbolName = nameForVTableIndex(vTableIndex);
-            objectFile.createDefinedSymbol(symbolName, stubsSection, codeOffset, target.wordSize, true, internalSymbolsAreGlobal);
+            objectFile.createDefinedSymbol(symbolName, stubsSection, codeOffset, target.wordSize, true, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
         }
     }
 

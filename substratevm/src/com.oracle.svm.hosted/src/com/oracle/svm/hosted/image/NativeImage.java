@@ -415,7 +415,8 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     private void defineDataSymbol(String name, Element section, long position) {
-        objectFile.createDefinedSymbol(name, section, position, wordSize, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+        boolean global = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
+        objectFile.createDefinedSymbol(name, section, position, wordSize, false, global, global);
     }
 
     public static void markCGlobalDataSymbolReferenceRelocation(ObjectFile objectFile, long position, String symbolName) {
@@ -477,18 +478,19 @@ public abstract class NativeImage extends AbstractImage {
 
             // Define symbols for the sections.
             if (codeCache.definesTextSectionBoundarySymbols()) {
-                objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false);
+                objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false, false);
                 if (ImageLayerBuildingSupport.buildingSharedLayer() || SubstrateOptions.DeleteLocalSymbols.getValue()) {
                     /* add a dummy function symbol at the start of the code section */
-                    objectFile.createDefinedSymbol(getTextSectionStartSymbol(), textSection, 0, 0, true, true);
+                    objectFile.createDefinedSymbol(getTextSectionStartSymbol(), textSection, 0, 0, true, true, true);
                 }
-                objectFile.createDefinedSymbol(getTextSectionEndSymbol(), textSection, textSectionSize, 0, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+                boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
+                objectFile.createDefinedSymbol(getTextSectionEndSymbol(), textSection, textSectionSize, 0, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
             } else {
                 objectFile.createUndefinedSymbol(getTextSectionStartSymbol(), true);
                 objectFile.createUndefinedSymbol(getTextSectionEndSymbol(), false);
             }
-            objectFile.createDefinedSymbol(roDataSection.getName(), roDataSection, 0, 0, false, false);
-            objectFile.createDefinedSymbol(rwDataSection.getName(), rwDataSection, 0, 0, false, false);
+            objectFile.createDefinedSymbol(roDataSection.getName(), roDataSection, 0, 0, false, false, false);
+            objectFile.createDefinedSymbol(rwDataSection.getName(), rwDataSection, 0, 0, false, false, false);
 
             NativeImageHeapWriter writer = new NativeImageHeapWriter(heap, heapLayout);
             // Write the section contents and record relocations.
@@ -498,8 +500,10 @@ public abstract class NativeImage extends AbstractImage {
             codeCache.writeConstants(writer, roDataBuffer);
             // - Non-heap global data goes at the beginning of the read-write data section.
             cGlobals.writeData(rwDataBuffer,
-                            (offset, symbolName, isGlobalSymbol) -> objectFile.createDefinedSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, wordSize, false,
-                                            isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
+                            (offset, symbolName, isGlobalSymbol) -> {
+                                boolean global = isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue();
+                                objectFile.createDefinedSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, wordSize, false, global, global);
+                            },
                             (offset, symbolName, _) -> markCGlobalDataSymbolReferenceRelocation(objectFile, offset, symbolName));
 
             // - Write the heap to its own section.
@@ -513,7 +517,7 @@ public abstract class NativeImage extends AbstractImage {
             ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBackingArray());
             // Note: On isolate startup the read only part of the heap will be set up as such.
             heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), pageSize, true, false, heapSectionImpl);
-            objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
+            objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false, false);
 
             long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
             if (!ImageLayerBuildingSupport.buildingImageLayer() && SpawnIsolates.getValue()) {
@@ -918,7 +922,7 @@ public abstract class NativeImage extends AbstractImage {
             return getContent();
         }
 
-        protected abstract void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result);
+        protected abstract void defineMethodSymbol(String name, boolean global, boolean exported, Element section, HostedMethod method, CompilationResult result);
 
         protected void writeTextSection(DebugContext debug, final Section textSection, final List<HostedMethod> entryPoints) {
             try (Indent _ = debug.logAndIndent("TextImpl.writeTextSection")) {
@@ -966,8 +970,10 @@ public abstract class NativeImage extends AbstractImage {
                     HostedMethod current = pair.getLeft();
                     final String symName = localSymbolNameForMethod(current);
                     final String signatureString = current.getUniqueShortName();
-                    boolean global = buildingSharedLayer || (buildingApplicationLayer && hostedDynamicLayerInfo.forceGlobalMethodSymbol(symName));
-                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, global, pair.getRight());
+                    boolean globalForApplicationLayer = buildingApplicationLayer && hostedDynamicLayerInfo.forceGlobalMethodSymbol(symName);
+                    boolean global = buildingSharedLayer || globalForApplicationLayer;
+                    boolean exported = globalForApplicationLayer;
+                    defineMethodSymbol(textSection, current, methodsBySignature, signatureString, symName, global, exported, pair.getRight());
                     watchdog.recordActivity();
                 }
                 // 2. fq without return type -- only for entry points!
@@ -983,13 +989,13 @@ public abstract class NativeImage extends AbstractImage {
                     if (entryPointIndex != -1) {
                         final String mangledSignature = mangleName(ent.getKey());
                         assert mangledSignature.equals(globalSymbolNameForMethod(method));
-                        defineMethodSymbol(mangledSignature, true, textSection, method, null);
+                        defineMethodSymbol(mangledSignature, true, true, textSection, method, null);
 
                         // 3. Also create @CEntryPoint linkage names in this case
                         if (cEntryData != null) {
                             assert !cEntryData.getSymbolName().isEmpty();
                             // no need for mangling: name must already be a valid external name
-                            defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.compilationResultFor(method));
+                            defineMethodSymbol(cEntryData.getSymbolName(), true, true, textSection, method, codeCache.compilationResultFor(method));
                         }
                     }
                     watchdog.recordActivity();
@@ -1017,7 +1023,7 @@ public abstract class NativeImage extends AbstractImage {
         }
 
         private void defineMethodSymbol(Section textSection, HostedMethod current, Map<String, HostedMethod> methodsBySignature,
-                        String signatureString, String symName, boolean global, CompilationResult compilationResult) {
+                        String signatureString, String symName, boolean global, boolean exported, CompilationResult compilationResult) {
             final HostedMethod existing = methodsBySignature.get(signatureString);
             if (existing != null) {
                 /*
@@ -1034,7 +1040,7 @@ public abstract class NativeImage extends AbstractImage {
             } else {
                 methodsBySignature.put(signatureString, current);
             }
-            defineMethodSymbol(symName, global, textSection, current, compilationResult);
+            defineMethodSymbol(symName, global, exported, textSection, current, compilationResult);
         }
 
         protected NativeTextSectionImpl(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {

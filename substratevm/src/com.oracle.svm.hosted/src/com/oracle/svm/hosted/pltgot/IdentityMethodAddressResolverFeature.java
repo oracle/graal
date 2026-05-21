@@ -99,10 +99,10 @@ public class IdentityMethodAddressResolverFeature implements InternalFeature {
                 offsetsSectionBuffer.addRelocationWithoutAddend(gotEntryNo * wordSize, relocationKind, new MethodPointer(got[gotEntryNo], false));
             }
 
-            imageObjectFile.createDefinedSymbol(offsetsSection.getName(), offsetsSection, 0, 0, false, false);
-            imageObjectFile.createDefinedSymbol("__svm_methodtable_begin", offsetsSection, 0, wordSize, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
-            imageObjectFile.createDefinedSymbol("__svm_methodtable_end", offsetsSection, methodTableExtent.endOffset(), wordSize, false,
-                            SubstrateOptions.InternalSymbolsAreGlobal.getValue());
+            imageObjectFile.createDefinedSymbol(offsetsSection.getName(), offsetsSection, 0, 0, false, false, false);
+            boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
+            imageObjectFile.createDefinedSymbol("__svm_methodtable_begin", offsetsSection, 0, wordSize, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
+            imageObjectFile.createDefinedSymbol("__svm_methodtable_end", offsetsSection, methodTableExtent.endOffset(), wordSize, false, internalSymbolsAreGlobal, internalSymbolsAreGlobal);
         }
 
         @Override
