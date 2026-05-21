@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -359,7 +359,6 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     @Test
-    @Ignore("GR-64260")
     public void testSynchronous() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
@@ -638,7 +637,6 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     }
 
     @Test
-    @Ignore("GR-64260")
     public void testStackTrace() {
         Assume.assumeFalse("JaCoCo break expected graph structure", TestUtils.isJaCoCoAttached());
         forEachConfig((threads, events) -> {
