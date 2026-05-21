@@ -2217,9 +2217,16 @@ lib_jvm_preserved_packages = [
 ]
 
 lib_jvm_preserved_modules = [
+    'java.base',
+    'java.prefs',
     'java.xml',
     'java.xml.crypto',
 ]
+
+lib_jvm_preserve_args = (
+    ['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
+    ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]
+)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -2238,8 +2245,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             use_modules='image',
             destination='<lib:jvm>',
             jar_distributions=['substratevm:SVM_LIBJVM'],
-            build_args=svm_experimental_options(['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages] +
-                                                ['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules]),
+            build_args=svm_experimental_options(lib_jvm_preserve_args),
             headers=False,
             home_finder=False,
         ),
