@@ -23,6 +23,10 @@ Run commands from this directory.
 If a failure looks inconsistent with the checked-out sources, run `mx clean` and then `mx build` before deeper debugging.
 Do not run `mx` commands concurrently; parallel runs can produce misleading failures.
 
+## Tests and Validation
+
+- Before treating a test run as validation, check whether the affected test is platform-restricted, for example by annotations, runtime assumptions, or architecture-specific options. A run that skips the affected test because the local machine does not match the required platform does not count as validation.
+
 ## Change Hygiene
 
 - If you touch documented behavior, update `docs/`.
