@@ -124,6 +124,11 @@ final class Target_java_util_ResourceBundle {
     static native Control getDefaultControl(Module targetModule, String baseName);
 }
 
+/**
+ * Missing-registration reporting applies only to image-build-time bundle lookups. Runtime-loaded
+ * classes can legally reach bundles that were not visible to static analysis, so those lookups must
+ * use the regular JDK fallback path instead of reporting a Native Image missing registration error.
+ */
 final class ResourceBundleMissingRegistrationSupport {
     private ResourceBundleMissingRegistrationSupport() {
     }

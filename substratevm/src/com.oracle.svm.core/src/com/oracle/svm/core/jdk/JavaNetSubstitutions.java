@@ -33,7 +33,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -54,10 +54,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
-import com.oracle.svm.core.hub.RuntimeClassLoading.WithRuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -79,7 +78,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.net.NetProperties;
 
-@TargetClass(value = java.net.URL.class, onlyWith = NoRuntimeClassLoading.class)
+@TargetClass(value = java.net.URL.class, onlyWith = JavaNetSubstitutions.BuildTimeURLProtocols.class)
 final class Target_java_net_URL {
 
     @Delete private static Hashtable<?, ?> handlers;
@@ -103,8 +102,8 @@ final class Target_java_net_URL {
     }
 }
 
-@TargetClass(value = java.net.URL.class, onlyWith = WithRuntimeClassLoading.class)
-final class Target_java_net_URL_WithRuntimeClassLoading {
+@TargetClass(value = java.net.URL.class, onlyWith = JavaNetSubstitutions.RuntimeURLProtocols.class)
+final class Target_java_net_URL_WithRuntimeURLProtocols {
 
     @Alias
     @KeepOriginal
@@ -174,11 +173,12 @@ class JavaNetFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (RuntimeClassLoading.isSupported()) {
+        JavaNetSubstitutions.validateURLProtocolOptions();
+        if (JavaNetSubstitutions.runtimeURLProtocolsEnabled()) {
             /*
-             * Runtime class loading uses the JDK java.net.URL implementation instead of the
-             * Target_java_net_URL substitution. Keep the native-image resource protocol available
-             * to the JDK URL factory so embedded resource URIs returned by ModuleReader.find can be
+             * Runtime URL protocols use the JDK java.net.URL implementation instead of the
+             * Target_java_net_URL substitution. Keep the native-image resource protocol available to
+             * the JDK URL factory so embedded resource URIs returned by ModuleReader.find can be
              * converted back to URLs by the original JDK lookup path.
              */
             boolean registered = JavaNetSubstitutions.addURLStreamHandler(JavaNetSubstitutions.RESOURCE_PROTOCOL);
@@ -202,7 +202,7 @@ class JavaNetFeature implements InternalFeature {
             }
         }
         for (String protocol : enabledURLProtocols) {
-            if (!JavaNetSubstitutions.ALL_PROTOCOLS.equals(protocol)) {
+            if (!JavaNetSubstitutions.isSpecialURLProtocolOption(protocol)) {
                 enableURLProtocol(disabledURLProtocols, protocol);
             }
         }
@@ -210,30 +210,28 @@ class JavaNetFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (RuntimeClassLoading.isSupported()) {
-            registerRuntimeClassLoadingURLProtocolHandlers(access, (protocol, handlerType) -> registerURLProtocolHandlerForRuntimeClassLoading(access, protocol, handlerType), true);
+        if (JavaNetSubstitutions.runtimeURLProtocolsEnabled()) {
+            registerRuntimeClassLoadingURLProtocolHandlers(access, true);
         }
     }
 
-    private static void registerRuntimeClassLoadingURLProtocolHandlers(FeatureAccess access, BiConsumer<String, ResolvedJavaType> handlerConsumer, boolean reportFailures) {
+    private static void registerRuntimeClassLoadingURLProtocolHandlers(BeforeAnalysisAccess access, boolean reportFailures) {
         EconomicSet<String> disabledURLProtocols = EconomicSet.create(SubstrateOptions.DisableURLProtocols.getValue().values());
 
         List<String> enabledURLProtocols = SubstrateOptions.EnableURLProtocols.getValue().values();
-        if (enabledURLProtocols.contains(JavaNetSubstitutions.ALL_PROTOCOLS)) {
+        if (enabledURLProtocols.contains(JavaNetSubstitutions.ALL_PROTOCOLS) || enabledURLProtocols.contains(JavaNetSubstitutions.RUNTIME_PROTOCOLS)) {
             for (String protocol : JavaNetSubstitutions.knownJDKProtocols) {
-                registerRuntimeClassLoadingURLProtocolHandler(access, disabledURLProtocols, protocol, handlerConsumer, reportFailures);
+                registerRuntimeClassLoadingURLProtocolHandler(access, disabledURLProtocols, protocol, reportFailures);
             }
         }
         for (String protocol : enabledURLProtocols) {
-            if (!JavaNetSubstitutions.ALL_PROTOCOLS.equals(protocol)) {
-                registerRuntimeClassLoadingURLProtocolHandler(access, disabledURLProtocols, protocol, handlerConsumer, reportFailures);
+            if (!JavaNetSubstitutions.isSpecialURLProtocolOption(protocol)) {
+                registerRuntimeClassLoadingURLProtocolHandler(access, disabledURLProtocols, protocol, reportFailures);
             }
         }
     }
 
-    private static void registerRuntimeClassLoadingURLProtocolHandler(FeatureAccess access, EconomicSet<String> disabledURLProtocols, String protocol,
-                    BiConsumer<String, ResolvedJavaType> handlerConsumer,
-                    boolean reportFailures) {
+    private static void registerRuntimeClassLoadingURLProtocolHandler(BeforeAnalysisAccess access, EconomicSet<String> disabledURLProtocols, String protocol, boolean reportFailures) {
         if (disabledURLProtocols.contains(protocol)) {
             return;
         }
@@ -249,7 +247,7 @@ class JavaNetFeature implements InternalFeature {
         ResolvedJavaType handlerType = internalAccess.findTypeByName(JavaNetSubstitutions.jdkURLProtocolHandlerClassName(protocol));
         ResolvedJavaType urlStreamHandlerType = internalAccess.getMetaAccess().lookupJavaType(URLStreamHandler.class);
         if (handlerType != null && urlStreamHandlerType.isAssignableFrom(handlerType)) {
-            handlerConsumer.accept(protocol, handlerType);
+            registerURLProtocolHandlerForRuntimeClassLoading(access, protocol, handlerType);
         } else if (reportFailures) {
             if (JavaNetSubstitutions.onDemandProtocols.contains(protocol)) {
                 VMError.guarantee(false, "The URL protocol %s is not available. It should be available as it is a supported on-demand protocol.", protocol);
@@ -318,6 +316,7 @@ public final class JavaNetSubstitutions {
     public static final String HTTP_PROTOCOL = "http";
     public static final String HTTPS_PROTOCOL = "https";
     static final String ALL_PROTOCOLS = "all";
+    static final String RUNTIME_PROTOCOLS = "runtime";
 
     static final List<String> defaultProtocols = Arrays.asList(FILE_PROTOCOL, RESOURCE_PROTOCOL);
     static final List<String> onDemandProtocols = Arrays.asList(HTTP_PROTOCOL, HTTPS_PROTOCOL);
@@ -326,6 +325,22 @@ public final class JavaNetSubstitutions {
     static final String enableProtocolsOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableURLProtocols, "");
     private static final String JDK_URL_PROTOCOL_HANDLER_PACKAGE = "sun.net.www.protocol.";
     private static final String JDK_URL_PROTOCOL_HANDLER_CLASS_NAME_SUFFIX = ".Handler";
+
+    static boolean runtimeURLProtocolsEnabled() {
+        return RuntimeClassLoading.isSupported() && SubstrateOptions.EnableURLProtocols.getValue().values().contains(RUNTIME_PROTOCOLS);
+    }
+
+    static boolean isSpecialURLProtocolOption(String protocol) {
+        return ALL_PROTOCOLS.equals(protocol) || RUNTIME_PROTOCOLS.equals(protocol);
+    }
+
+    static void validateURLProtocolOptions() {
+        if (!RuntimeClassLoading.isSupported() && SubstrateOptions.EnableURLProtocols.getValue().values().contains(RUNTIME_PROTOCOLS)) {
+            throw UserError.invalidOptionValue(SubstrateOptions.EnableURLProtocols, RUNTIME_PROTOCOLS,
+                            "The value '" + RUNTIME_PROTOCOLS + "' requires runtime class loading. Use " +
+                                            SubstrateOptionsParser.commandArgument(RuntimeClassLoading.Options.RuntimeClassLoading, "+") + " or select concrete URL protocols instead.");
+        }
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean addURLStreamHandler(String protocol) {
@@ -386,5 +401,21 @@ public final class JavaNetSubstitutions {
     static String supportedProtocols() {
         return "Supported URL protocols enabled by default: " + String.join(",", JavaNetSubstitutions.defaultProtocols) +
                         ". Supported URL protocols available on demand: " + String.join(",", JavaNetSubstitutions.onDemandProtocols) + ".";
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class BuildTimeURLProtocols implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return !runtimeURLProtocolsEnabled();
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class RuntimeURLProtocols implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return runtimeURLProtocolsEnabled();
+        }
     }
 }

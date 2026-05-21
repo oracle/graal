@@ -172,6 +172,13 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("sun.util", JDK_CLASS_REASON);
         if (FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
             if (RuntimeClassLoading.isSupported()) {
+                /*
+                 * Without runtime class loading, PropertyResourceBundle is covered by the existing
+                 * java.util build-time initialization policy and by statically registered bundle
+                 * metadata. Runtime class loading can execute the JDK PropertyResourceBundle path
+                 * for classes loaded after image build, so only those images need its cache state in
+                 * the runtime process.
+                 */
                 rci.initializeAtRunTime("java.util.PropertyResourceBundle", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
             }
             rci.initializeAtRunTime("sun.util.locale.provider.LocaleProviderAdapter", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);

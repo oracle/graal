@@ -81,7 +81,12 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
     /** field value type */
     @Alias private Class<?> vclass;
 
-    // simplified version of the original constructor
+    /*
+     * The field-updater substitutions predate this change and are kept because SVM recomputes
+     * updater offsets for image-heap instances. Runtime-created updaters still run these
+     * constructors, so keep their access checks aligned with the JDK while preserving the existing
+     * Substrate offset handling.
+     */
     @SuppressWarnings("unused")
     @Substitute
     Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_AtomicReferenceFieldUpdaterImpl(
@@ -125,7 +130,7 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
     /** class holding the field */
     @Alias private Class<?> tclass;
 
-    // simplified version of the original constructor
+    /* See AtomicReferenceFieldUpdater substitution above. */
     @SuppressWarnings("unused")
     @Substitute
     Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicIntegerFieldUpdaterImpl(final Class<?> tclass,
@@ -162,7 +167,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
     /** class holding the field */
     @Alias private Class<?> tclass;
 
-    // simplified version of the original constructor
+    /* See AtomicReferenceFieldUpdater substitution above. */
     @SuppressWarnings("unused")
     @Substitute
     Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater(final Class<?> tclass,

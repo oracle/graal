@@ -2223,11 +2223,8 @@ lib_jvm_preserved_modules = [
     'java.xml.crypto',
 ]
 
-lib_jvm_preserve_args = (
-    ['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
-    ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]
-)
-
+# Keep libjvm -H:Preserve selectors with the image builder metadata instead of
+# native-image.properties so they use the same origin path as explicit builder arguments.
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM java',
@@ -2245,7 +2242,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             use_modules='image',
             destination='<lib:jvm>',
             jar_distributions=['substratevm:SVM_LIBJVM'],
-            build_args=svm_experimental_options(lib_jvm_preserve_args),
+            build_args=svm_experimental_options(['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
+                                                ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages]),
             headers=False,
             home_finder=False,
         ),

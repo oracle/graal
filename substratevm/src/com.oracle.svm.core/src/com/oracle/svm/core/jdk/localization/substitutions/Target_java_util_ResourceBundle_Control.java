@@ -44,9 +44,9 @@ import jdk.internal.util.ReferencedKeyMap;
 import sun.util.locale.BaseLocale;
 import sun.util.resources.Bundles;
 
-@TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control", onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_java_util_ResourceBundle_Control {
+@TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control")
+@SuppressWarnings("unused")
+final class Target_java_util_ResourceBundle_Control_Cache {
 
     /*
      * This cache only memoizes candidate locale lists derived by Control.createCandidateList().
@@ -55,6 +55,11 @@ final class Target_java_util_ResourceBundle_Control {
      */
     @Alias @TargetElement(name = "CANDIDATES_CACHE") @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
     private static ReferencedKeyMap<BaseLocale, List<Locale>> candidatesCache = ReferencedKeyMap.create(true, ConcurrentHashMap::new);
+}
+
+@TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control", onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class)
+@SuppressWarnings({"unused", "static-method"})
+final class Target_java_util_ResourceBundle_Control {
 
     /**
      * Bundles are baked into the image, therefore their source can't really be modified at runtime.
