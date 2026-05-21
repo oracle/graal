@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -348,13 +349,38 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
         if (!negated) {
             return xStamp.join(yStamp);
         }
-        return null;
+        return getSucceedingStampForNegatedEquality(xStamp, yStamp);
     }
 
     @Override
     public Stamp getSucceedingStampForY(boolean negated, Stamp xStamp, Stamp yStamp) {
         if (!negated) {
             return xStamp.join(yStamp);
+        }
+        return getSucceedingStampForNegatedEquality(yStamp, xStamp);
+    }
+
+    /**
+     * Refines {@code [c..hi] != c} to {@code [c + 1..hi]}, {@code [lo..c] != c} to
+     * {@code [lo..c - 1]}, and {@code x != 0} to a non-zero {@link IntegerStamp}.
+     */
+    private static Stamp getSucceedingStampForNegatedEquality(Stamp valueStamp, Stamp excludedStamp) {
+        if (valueStamp instanceof IntegerStamp value && excludedStamp instanceof IntegerStamp excluded && excluded.lowerBound() == excluded.upperBound()) {
+            long excludedValue = excluded.lowerBound();
+            int bits = value.getBits();
+            if (value.lowerBound() == excludedValue) {
+                if (excludedValue == CodeUtil.maxValue(bits)) {
+                    return value.empty();
+                }
+                return value.join(IntegerStamp.create(bits, excludedValue + 1, value.upperBound()));
+            } else if (value.upperBound() == excludedValue) {
+                if (excludedValue == CodeUtil.minValue(bits)) {
+                    return value.empty();
+                }
+                return value.join(IntegerStamp.create(bits, value.lowerBound(), excludedValue - 1));
+            } else if (excludedValue == 0 && value.contains(0)) {
+                return IntegerStamp.create(bits, value.lowerBound(), value.upperBound(), value.mustBeSet(), value.mayBeSet(), false);
+            }
         }
         return null;
     }
