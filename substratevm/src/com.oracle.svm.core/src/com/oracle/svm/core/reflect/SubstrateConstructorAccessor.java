@@ -41,6 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @InternalVMMethod
 public final class SubstrateConstructorAccessor extends SubstrateAccessor implements ConstructorAccessor {
 
+    private final Class<?> declaringClass;
     private final MethodRef factoryMethodTarget;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -49,6 +50,8 @@ public final class SubstrateConstructorAccessor extends SubstrateAccessor implem
     public SubstrateConstructorAccessor(Executable member, MethodRef expandSignature, MethodRef directTarget, ResolvedJavaMethod targetMethod, MethodRef factoryMethodTarget,
                     ResolvedJavaMethod factoryMethod, DynamicHub initializeBeforeInvoke) {
         super(member, expandSignature, directTarget, targetMethod, initializeBeforeInvoke);
+        Class<?> constructorDeclaringClass = member.getDeclaringClass();
+        this.declaringClass = constructorDeclaringClass;
         this.factoryMethodTarget = factoryMethodTarget;
         this.factoryMethod = factoryMethod;
     }
@@ -66,11 +69,20 @@ public final class SubstrateConstructorAccessor extends SubstrateAccessor implem
         return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(null, args, getCodePointer(factoryMethodTarget));
     }
 
+    public static void checkReceiver(Class<?> declaringClass, Object obj) {
+        if (obj == null) {
+            throw new NullPointerException();
+        } else if (!declaringClass.isInstance(obj)) {
+            throw new IllegalArgumentException("Receiver type " + obj.getClass().getName() + " is not an instance of the constructor's declaring class " + declaringClass.getName());
+        }
+    }
+
     @Override
     public Object invokeSpecial(Object obj, Object[] args) {
         if (initializeBeforeInvoke != null) {
             EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));
         }
+        checkReceiver(declaringClass, obj);
         return super.invokeSpecial(obj, args);
     }
 }
