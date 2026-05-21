@@ -21,6 +21,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   maven_deploy_repository: 'lafo-maven',
   edition:: 'ce',
   vm_dir:: 'vm',
+  graal_repo_root: '..',
   svm_suite:: '/substratevm',
   libgraal_env: 'libgraal',
   custom_vm: {},
