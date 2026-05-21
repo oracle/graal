@@ -1,4 +1,4 @@
-source "https://rubygems.org"
+source ENV.fetch("RUBYGEMS_MIRROR", "https://rubygems.org")
 
 gem "jekyll"
 
