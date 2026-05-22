@@ -162,7 +162,11 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
 
         if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary("extnet")) {
             DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-            access.getNativeLibraries().addStaticJniLibrary("extnet");
+            /*
+             * extnet contains native methods for platform socket options, but the Windows library
+             * does not define JNI_OnLoad_extnet.
+             */
+            access.getNativeLibraries().addStaticNonJniLibrary("extnet", "jvm");
         }
 
         String implClassName;
