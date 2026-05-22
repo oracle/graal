@@ -205,12 +205,12 @@ class JavaNetFeature implements InternalFeature {
         List<String> enabledURLProtocols = SubstrateOptions.EnableURLProtocols.getValue().values();
         if (enabledURLProtocols.contains(JavaNetSubstitutions.ALL_PROTOCOLS)) {
             for (String protocol : JavaNetSubstitutions.knownJDKProtocols) {
-                enableURLProtocol(disabledURLProtocols, protocol);
+                enableURLProtocolIfNotExplicitlyDisabled(disabledURLProtocols, protocol);
             }
         }
         for (String protocol : enabledURLProtocols) {
             if (!JavaNetSubstitutions.isSpecialURLProtocolOption(protocol)) {
-                enableURLProtocol(disabledURLProtocols, protocol);
+                enableURLProtocolIfNotExplicitlyDisabled(disabledURLProtocols, protocol);
             }
         }
     }
@@ -240,6 +240,9 @@ class JavaNetFeature implements InternalFeature {
 
     private static void registerRuntimeClassLoadingURLProtocolHandler(BeforeAnalysisAccess access, EconomicSet<String> disabledURLProtocols, String protocol, boolean reportFailures) {
         if (disabledURLProtocols.contains(protocol)) {
+            if (reportFailures) {
+                LogUtils.warning("The URL protocol " + protocol + " was both enabled and disabled. The disable option takes precedence.");
+            }
             return;
         }
 
@@ -279,8 +282,9 @@ class JavaNetFeature implements InternalFeature {
         }
     }
 
-    private static void enableURLProtocol(EconomicSet<String> disabledURLProtocols, String protocol) {
+    private static void enableURLProtocolIfNotExplicitlyDisabled(EconomicSet<String> disabledURLProtocols, String protocol) {
         if (disabledURLProtocols.contains(protocol)) {
+            LogUtils.warning("The URL protocol " + protocol + " was both enabled and disabled. The disable option takes precedence.");
             return;
         }
 

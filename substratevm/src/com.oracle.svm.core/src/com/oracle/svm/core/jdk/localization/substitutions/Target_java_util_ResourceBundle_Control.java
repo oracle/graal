@@ -57,6 +57,11 @@ final class Target_java_util_ResourceBundle_Control_Cache {
     private static ReferencedKeyMap<BaseLocale, List<Locale>> candidatesCache = ReferencedKeyMap.create(true, ConcurrentHashMap::new);
 }
 
+/**
+ * In the no-runtime-class-loading mode, resource bundles are limited to the classes and resources
+ * already included in the image. Runtime class loading keeps the JDK implementation so classes
+ * loaded after image build can use the standard runtime lookup path.
+ */
 @TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control", onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_java_util_ResourceBundle_Control {
