@@ -371,6 +371,10 @@ public class TruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("inCompilationRoot") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                if (canDelayIntrinsification) {
+                    // Delay until PE graph decoding where we have an inlining context.
+                    return false;
+                }
                 GraphBuilderContext.ExternalInliningContext inliningContext = b.getExternalInliningContext();
                 if (inliningContext != null) {
                     b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(inliningContext.getInlinedDepth() == 0));
