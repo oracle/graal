@@ -63,7 +63,6 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
@@ -162,29 +161,6 @@ final class PolyglotThreadLocalActions {
             statistics.add(collector);
             submit(new Thread[]{Thread.currentThread()}, PolyglotEngineImpl.ENGINE_ID, collector, false);
         }
-    }
-
-    /**
-     * Ensures that the current Java thread has Truffle's safepoint ThreadLocal after a top-level
-     * re-enter of an existing {@link PolyglotThreadInfo}.
-     * <p>
-     * Newly seen threads initialize this state in {@link #notifyEnterCreatedThread()}. Re-entered
-     * executor workers may still have their {@link PolyglotThreadInfo} in the context even if the
-     * executor cleared their ordinary {@link ThreadLocal}s while they were idle. In that case,
-     * {@link TruffleSafepoint#getCurrent()} would fail although the context enter succeeded.
-     * <p>
-     * This method is a no-op when the safepoint state is present; otherwise it installs it for the
-     * current thread.
-     */
-    static void ensureEnterThreadInitialized() {
-        if (TL_HANDSHAKE.getCurrent() == null) {
-            ensureEnterThreadInitializedBoundary();
-        }
-    }
-
-    @TruffleBoundary
-    private static void ensureEnterThreadInitializedBoundary() {
-        TL_HANDSHAKE.ensureThreadInitialized();
     }
 
     void notifyContextClosed() {
