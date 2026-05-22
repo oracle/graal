@@ -171,7 +171,7 @@ public final class OptimizedRuntimeOptions {
                     stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED) //
     public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(-1);
 
-    @Option(help = "Set the requested stack size of Truffle compiler threads. The default value 640KB requests a smaller compiler-thread stack. The requested size is rounded up to implementation-specific minima and page sizes as needed.", //
+    @Option(help = "Set the requested stack size of Truffle compiler threads. By default compiler threads use 640KB stack space. The requested size is rounded up to implementation-specific minima and page sizes as needed.", //
                     usageSyntax = "[0, inf)B|KB|MB|GB", category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED) //
     public static final OptionKey<Long> CompilerThreadStackSize = new OptionKey<>(640L * 1024L, createSizeInBytesType("engine.CompilerThreadStackSize", 0L));
 

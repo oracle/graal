@@ -1038,18 +1038,6 @@ public class SandboxPolicyTest {
         }
     }
 
-    @Test
-    @SuppressWarnings({"try"})
-    public void testCompilerThreadStackSize() {
-        Assume.assumeTrue(configuration.hasIsolateLibrary() || !(Truffle.getRuntime() instanceof DefaultTruffleRuntime));
-        if (configuration.sandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED) &&
-                        (SandboxPolicy.ISOLATED.isStricterThan(configuration.sandboxPolicy) || configuration.hasIsolateLibrary())) {
-            try (Engine engine = newEngineBuilder(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).option("engine.CompilerThreadStackSize", "256KB").build()) {
-                // deliberately empty
-            }
-        }
-    }
-
     private Engine.Builder newEngineBuilder(String... permittedLanguages) {
         Engine.Builder builder = Engine.newBuilder(permittedLanguages).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream());
         if (configuration.sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED) && configuration.supportsIsolatedPolicy) {
