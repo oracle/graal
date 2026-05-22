@@ -35,7 +35,7 @@ public interface InterpreterAccessStubData {
     String REASON_RAW_POINTER = "raw pointer to object";
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setSpAndStoreStackSizeInDeoptSlot(Pointer data, int stackSize, Pointer stackBuffer);
+    void setSp(Pointer data, int stackSize, Pointer stackBuffer, boolean saveStackSizeInDeoptSlot);
 
     @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
     long getGpArgumentAt(int cArgType, Pointer data, int pos);
@@ -43,6 +43,16 @@ public interface InterpreterAccessStubData {
     @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
     default void setGpArgumentAtOutgoing(int cArgType, Pointer data, int pos, long val) {
         setGpArgumentAt(cArgType, data, pos, val, false);
+    }
+
+    @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+    default void setGpArgumentAtOutgoingJNI(int cArgType, Pointer data, int pos, long val) {
+        setGpArgumentAtJNI(cArgType, data, pos, val, false);
+    }
+
+    @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+    default void setGpArgumentAtJNI(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+        setGpArgumentAt(cArgType, data, pos, val, incoming);
     }
 
     @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
@@ -58,6 +68,11 @@ public interface InterpreterAccessStubData {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setFpArgumentAt(int cArgType, Pointer data, int pos, long val);
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    default void setFpArgumentAtJNI(int cArgType, Pointer data, int pos, long val) {
+        setFpArgumentAt(cArgType, data, pos, val);
+    }
 
     @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
     long getGpReturn(Pointer data);

@@ -24,13 +24,22 @@
  */
 package com.oracle.svm.hosted.jni;
 
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jni.JNILibraryInitializer;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
@@ -40,6 +49,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 public class JNILibraryLoadFeature implements Feature {
 
     private final JNILibraryInitializer jniLibraryInitializer = new JNILibraryInitializer();
+    private final Set<String> staticBuiltinSymbols = new LinkedHashSet<>();
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -49,10 +59,71 @@ public class JNILibraryLoadFeature implements Feature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        List<String> staticLibNames = nativeLibraries.getJniStaticLibraries();
-        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(staticLibNames);
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(nativeLibraries.getJniStaticLibraries());
+        if (needsStaticBuiltinSymbolTable()) {
+            collectStaticBuiltinSymbols(nativeLibraries, nativeLibraries.getJniStaticLibrariesAndDependencies());
+        }
         if (isChanged) {
             access.requireAnalysisIteration();
         }
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        if (!needsStaticBuiltinSymbolTable() || staticBuiltinSymbols.isEmpty()) {
+            return;
+        }
+
+        ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+            Path sourceFile = writeStaticBuiltinSymbolTable(linkerInvocation.getTempDirectory());
+            linkerInvocation.addInputFile(sourceFile);
+            return linkerInvocation;
+        });
+    }
+
+    private static boolean needsStaticBuiltinSymbolTable() {
+        return SubstrateOptions.StaticExecutable.getValue() && Platform.includedIn(Platform.LINUX.class) && ClassRegistries.respectClassLoader();
+    }
+
+    private void collectStaticBuiltinSymbols(NativeLibraries nativeLibraries, Collection<String> staticLibNames) {
+        for (String libName : staticLibNames) {
+            staticBuiltinSymbols.addAll(nativeLibraries.getStaticLibrarySymbols(libName));
+        }
+    }
+
+    private Path writeStaticBuiltinSymbolTable(Path tempDirectory) {
+        CSourceCodeWriter writer = new CSourceCodeWriter(tempDirectory);
+        writer.includeFiles(List.of("<stddef.h>", "<string.h>"));
+        writer.appendln();
+
+        for (String symbolName : staticBuiltinSymbols) {
+            writer.appendln("extern void " + symbolName + "(void);");
+        }
+
+        writer.appendln();
+        writer.appendln("typedef struct {");
+        writer.appendln("    const char *name;");
+        writer.appendln("    void *address;");
+        // TODO GR-75585: turn this into a hash table
+        writer.appendln("} svm_builtin_symbol_t;");
+        writer.appendln();
+
+        writer.appendln("static const svm_builtin_symbol_t svm_builtin_symbols[] = {");
+        for (String symbolName : staticBuiltinSymbols) {
+            writer.appendln("    { \"" + symbolName + "\", (void *) " + symbolName + " },");
+        }
+        writer.appendln("};");
+        writer.appendln();
+
+        writer.appendln("void *__svm_find_builtin_symbol(const char *name) {");
+        writer.appendln("    for (size_t i = 0; i < sizeof(svm_builtin_symbols) / sizeof(svm_builtin_symbols[0]); i++) {");
+        writer.appendln("        if (strcmp(name, svm_builtin_symbols[i].name) == 0) {");
+        writer.appendln("            return svm_builtin_symbols[i].address;");
+        writer.appendln("        }");
+        writer.appendln("    }");
+        writer.appendln("    return NULL;");
+        writer.appendln("}");
+
+        return writer.writeFile("svm_builtin_symbols.c");
     }
 }

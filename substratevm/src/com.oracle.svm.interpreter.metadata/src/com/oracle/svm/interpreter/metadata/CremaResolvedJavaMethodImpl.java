@@ -25,9 +25,13 @@
 package com.oracle.svm.interpreter.metadata;
 
 import java.lang.invoke.VarHandle;
+import java.lang.reflect.Modifier;
 
+import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.registry.SVMSymbols;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.reflect.CremaConstructorAccessor;
 import com.oracle.svm.core.reflect.CremaMethodAccessor;
 import com.oracle.svm.espresso.classfile.ExceptionHandler;
@@ -49,6 +53,8 @@ public final class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMe
     private final ExceptionHandler[] rawExceptionHandlers;
     // GR-70288: Only keep a subset of the parsed attributes.
     private final Attribute[] attributes;
+    private PreparedSignature jniPreparedSignature;
+    private JNINativeLinkage jniNativeLinkage;
 
     private CremaResolvedJavaMethodImpl(InterpreterResolvedObjectType declaringClass, ParserMethod parserMethod, int vtableIndex) {
         super(declaringClass, parserMethod, vtableIndex);
@@ -59,10 +65,24 @@ public final class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMe
             this.rawExceptionHandlers = null;
         }
         this.attributes = parserMethod.getAttributes();
+        if (Modifier.isNative(getFlags())) {
+            this.jniPreparedSignature = InterpreterSupport.singleton().prepareJNISignature(getSignature(), !Modifier.isStatic(getFlags()), declaringClass);
+            this.jniNativeLinkage = new JNINativeLinkage(getDeclaringClass().getJavaClass(), getDeclaringClass().getName(), getName(), getSignature().toMethodDescriptor());
+        }
     }
 
     public static InterpreterResolvedJavaMethod create(InterpreterResolvedObjectType declaringClass, ParserMethod m, int vtableIndex) {
         return new CremaResolvedJavaMethodImpl(declaringClass, m, vtableIndex);
+    }
+
+    @Override
+    public PreparedSignature getJNIPreparedSignature() {
+        return jniPreparedSignature;
+    }
+
+    @Override
+    public JNINativeLinkage getJNINativeLinkage() {
+        return jniNativeLinkage;
     }
 
     @Override

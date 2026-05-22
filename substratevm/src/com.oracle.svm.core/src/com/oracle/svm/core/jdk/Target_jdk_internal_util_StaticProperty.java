@@ -26,12 +26,12 @@ package com.oracle.svm.core.jdk;
 
 import java.util.Objects;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 /**
  * This class provides JDK-internal access to values that are also available via system properties.
@@ -252,7 +252,7 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    private static String javaLibraryPath() {
+    public static String javaLibraryPath() {
         return SystemPropertiesSupport.singleton().getInitialProperty("java.library.path", "");
     }
 

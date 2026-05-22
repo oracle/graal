@@ -61,6 +61,10 @@ public abstract class InterpreterSupport {
     private CFunctionPointer leaveStubPointer;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private int leaveStubLength;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
+    private CFunctionPointer leaveJNIStubPointer;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
+    private int leaveJNIStubLength;
 
     @Fold
     public static boolean isEnabled() {
@@ -114,11 +118,20 @@ public abstract class InterpreterSupport {
 
     public abstract PreparedSignature prepareSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass);
 
+    public abstract PreparedSignature prepareJNISignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass);
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setLeaveStubPointer(CFunctionPointer leaveStubPointer, int length) {
         assert singleton().leaveStubPointer == null : "multiple leave stub methods registered";
         singleton().leaveStubPointer = leaveStubPointer;
         singleton().leaveStubLength = length;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void setLeaveJNIStubPointer(CFunctionPointer leaveJNIStubPointer, int length) {
+        assert singleton().leaveJNIStubPointer == null : "multiple JNI leave stub methods registered";
+        singleton().leaveJNIStubPointer = leaveJNIStubPointer;
+        singleton().leaveJNIStubLength = length;
     }
 
     /**
@@ -135,6 +148,13 @@ public abstract class InterpreterSupport {
     public static boolean isInInterpreterLeaveStub(CodePointer ip) {
         Pointer start = (Pointer) singleton().leaveStubPointer;
         Pointer end = start.add(singleton().leaveStubLength);
+        return start.belowOrEqual((UnsignedWord) ip) && end.aboveOrEqual((UnsignedWord) ip);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isInInterpreterJNILeaveStub(CodePointer ip) {
+        Pointer start = (Pointer) singleton().leaveJNIStubPointer;
+        Pointer end = start.add(singleton().leaveJNIStubLength);
         return start.belowOrEqual((UnsignedWord) ip) && end.aboveOrEqual((UnsignedWord) ip);
     }
 

@@ -93,6 +93,9 @@ public class AMD64InterpreterStubs {
                         SubstrateOptions.PreserveFramePointer.getValue());
     }
 
+    private static final int JAVA_GP_REGISTERS_SIZE = getRegisterConfig().getJavaGeneralParameterRegs().size();
+    private static final int NATIVE_GP_REGISTERS_SIZE = getRegisterConfig().getNativeGeneralParameterRegs().size();
+
     public static class InterpreterEnterStubContext extends SubstrateAMD64Backend.SubstrateAMD64FrameContext {
         private final boolean emitDirectFastPath;
         private final boolean emitVTableFastPath;
@@ -273,6 +276,7 @@ public class AMD64InterpreterStubs {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
 
             List<Register> gps = getRegisterConfig().getJavaGeneralParameterRegs();
+            List<Register> fps = getRegisterConfig().getFloatingPointParameterRegs();
 
             /*
              * Ristretto currently makes this frame context reachable during analysis. Explicitly
@@ -298,29 +302,12 @@ public class AMD64InterpreterStubs {
 
             VMError.guarantee(gps.size() == 6);
 
-            masm.movq(createAddress(offsetAbiGp0()), gps.get(0));
-            masm.movq(createAddress(offsetAbiGp1()), gps.get(1));
-            masm.movq(createAddress(offsetAbiGp2()), gps.get(2));
-            masm.movq(createAddress(offsetAbiGp3()), gps.get(3));
-            masm.movq(createAddress(offsetAbiGp4()), gps.get(4));
-            masm.movq(createAddress(offsetAbiGp5()), gps.get(5));
+            for (int i = 0; i < gps.size(); i++) {
+                masm.movq(createAddress(offsetAbiGp(i)), gps.get(i));
+            }
 
-            List<Register> fps = getRegisterConfig().getFloatingPointParameterRegs();
-
-            masm.movq(createAddress(offsetAbiFpArg0()), fps.get(0));
-            masm.movq(createAddress(offsetAbiFpArg1()), fps.get(1));
-            masm.movq(createAddress(offsetAbiFpArg2()), fps.get(2));
-            masm.movq(createAddress(offsetAbiFpArg3()), fps.get(3));
-
-            if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
-                VMError.guarantee(fps.size() == 8);
-                masm.movq(createAddress(offsetAbiFpArg4()), fps.get(4));
-                masm.movq(createAddress(offsetAbiFpArg5()), fps.get(5));
-                masm.movq(createAddress(offsetAbiFpArg6()), fps.get(6));
-                masm.movq(createAddress(offsetAbiFpArg7()), fps.get(7));
-            } else {
-                assert Platform.includedIn(InternalPlatform.WINDOWS_BASE.class);
-                VMError.guarantee(fps.size() == 4);
+            for (int i = 0; i < fps.size(); i++) {
+                masm.movq(createAddress(offsetAbiFpArg(i)), fps.get(i));
             }
 
             /* sp points to InterpreterData struct, move it as 2nd arg */
@@ -405,25 +392,14 @@ public class AMD64InterpreterStubs {
             masm.jccb(AMD64Assembler.ConditionFlag.NotZero, spCopyBegin);
 
             /* Set fp argument registers */
-            masm.movq(fps.get(0), new AMD64Address(rax, offsetAbiFpArg0()));
-            masm.movq(fps.get(1), new AMD64Address(rax, offsetAbiFpArg1()));
-            masm.movq(fps.get(2), new AMD64Address(rax, offsetAbiFpArg2()));
-            masm.movq(fps.get(3), new AMD64Address(rax, offsetAbiFpArg3()));
-
-            if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
-                masm.movq(fps.get(4), new AMD64Address(rax, offsetAbiFpArg4()));
-                masm.movq(fps.get(5), new AMD64Address(rax, offsetAbiFpArg5()));
-                masm.movq(fps.get(6), new AMD64Address(rax, offsetAbiFpArg6()));
-                masm.movq(fps.get(7), new AMD64Address(rax, offsetAbiFpArg7()));
+            for (int i = 0; i < fps.size(); i++) {
+                masm.movq(fps.get(i), new AMD64Address(rax, offsetAbiFpArg(i)));
             }
 
             /* Set gp argument registers */
-            masm.movq(gps.get(0), new AMD64Address(rax, offsetAbiGp0()));
-            masm.movq(gps.get(1), new AMD64Address(rax, offsetAbiGp1()));
-            masm.movq(gps.get(2), new AMD64Address(rax, offsetAbiGp2()));
-            masm.movq(gps.get(3), new AMD64Address(rax, offsetAbiGp3()));
-            masm.movq(gps.get(4), new AMD64Address(rax, offsetAbiGp4()));
-            masm.movq(gps.get(5), new AMD64Address(rax, offsetAbiGp5()));
+            for (int i = 0; i < gps.size(); i++) {
+                masm.movq(gps.get(i), new AMD64Address(rax, offsetAbiGp(i)));
+            }
 
             /* Call into target method */
             masm.call(callTarget);
@@ -438,6 +414,109 @@ public class AMD64InterpreterStubs {
 
             /* Restore stack pointer */
             masm.addq(rsp, AMD64.r12);
+
+            Label gpResult = new Label();
+            /* The leave stub returns a long, so check whether the actual call returned in xmm0. */
+            masm.movq(AMD64.r10, new AMD64Address(rsp, 0));
+            masm.testq(AMD64.r10, AMD64.r10);
+            masm.jccb(AMD64Assembler.ConditionFlag.Zero, gpResult);
+            /* Return the raw float/double bits in rax. */
+            masm.movdq(rax, xmm0);
+            masm.bind(gpResult);
+
+            super.leave(crb);
+        }
+    }
+
+    public static class InterpreterLeaveJNIStubContext extends SubstrateAMD64Backend.SubstrateAMD64FrameContext {
+
+        public InterpreterLeaveJNIStubContext(SharedMethod method, CallingConvention callingConvention) {
+            super(method, callingConvention);
+        }
+
+        @Override
+        public void enter(CompilationResultBuilder crb) {
+            super.enter(crb);
+            AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            List<Register> gps = getRegisterConfig().getJavaGeneralParameterRegs();
+
+            /* sp points to one reserved stack slot for this stub */
+
+            /* arg0 is untouched by this extra prolog */
+
+            /* arg3: true if the result of the function is in a floating-point register */
+            masm.movq(new AMD64Address(rsp, 0), gps.get(3));
+
+            /*
+             * arg2: Variable stack size. Compared to Java calls we have no deopt stack slot
+             * available to store the stack size, so we save it in a callee-saved register.
+             */
+            masm.movq(AMD64.rbx, gps.get(2));
+
+            masm.subq(rsp, gps.get(2) /* variable stack size */);
+        }
+
+        @Override
+        public void leave(CompilationResultBuilder crb) {
+            AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            List<Register> jgps = getRegisterConfig().getJavaGeneralParameterRegs();
+            List<Register> ngps = getRegisterConfig().getNativeGeneralParameterRegs();
+            List<Register> fps = getRegisterConfig().getFloatingPointParameterRegs();
+
+            /* Save call target */
+            Register callTarget = AMD64.r10;
+            masm.movq(callTarget, rax);
+
+            /* Get pointer to InterpreterData struct */
+            masm.movq(rax, jgps.get(1));
+
+            Register stackSize = AMD64.r11;
+            masm.movq(stackSize, jgps.get(2));
+
+            Label regsHandling = new Label();
+            /* if stackSize == 0 */
+            masm.testq(stackSize, stackSize);
+            masm.jccb(AMD64Assembler.ConditionFlag.Zero, regsHandling);
+
+            /* Copy prepared outgoing args to the stack where the ABI expects it */
+            Register calleeSpArgs = AMD64.r12;
+            Register interpDataSp = AMD64.r9;
+            masm.movq(interpDataSp, new AMD64Address(rax, offsetAbiSpReg()));
+            masm.movq(calleeSpArgs, rsp);
+
+            int wordSize = 8;
+            Label spCopyBegin = new Label();
+            masm.bind(spCopyBegin);
+            /* 5th arg is not used, use it as a temp register */
+            masm.movq(jgps.get(4), new AMD64Address(interpDataSp, 0));
+            masm.movq(new AMD64Address(calleeSpArgs, 0), jgps.get(4));
+            masm.addq(interpDataSp, wordSize);
+            masm.addq(calleeSpArgs, wordSize);
+            masm.subl(stackSize, wordSize);
+
+            masm.testq(stackSize, stackSize);
+            masm.jccb(AMD64Assembler.ConditionFlag.NotZero, spCopyBegin);
+
+            masm.bind(regsHandling);
+
+            /* Set fp argument registers */
+            for (int i = 0; i < fps.size(); i++) {
+                masm.movq(fps.get(i), new AMD64Address(rax, offsetAbiFpArg(i)));
+            }
+
+            /* Set gp argument registers */
+            for (int i = 0; i < ngps.size(); i++) {
+                masm.movq(ngps.get(i), new AMD64Address(rax, offsetAbiGp(i)));
+            }
+
+            /* Call into target method */
+            masm.call(callTarget);
+
+            Register resultCopy = AMD64.r10;
+            masm.movq(resultCopy, rax);
+
+            /* Restore stack pointer */
+            masm.addq(rsp, AMD64.rbx);
 
             Label gpResult = new Label();
             /* The leave stub returns a long, so check whether the actual call returned in xmm0. */
@@ -592,29 +671,10 @@ public class AMD64InterpreterStubs {
         return OffsetOf.get(InterpreterDataAMD64.class, "AbiGp0");
     }
 
-    @Fold
-    public static int offsetAbiGp1() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiGp1");
-    }
-
-    @Fold
-    public static int offsetAbiGp2() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiGp2");
-    }
-
-    @Fold
-    public static int offsetAbiGp3() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiGp3");
-    }
-
-    @Fold
-    public static int offsetAbiGp4() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiGp4");
-    }
-
-    @Fold
-    public static int offsetAbiGp5() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiGp5");
+    public static int offsetAbiGp(int index) {
+        int offset = offsetAbiGp0() + 8 * index;
+        assert !SubstrateUtil.HOSTED || OffsetOf.get(InterpreterDataAMD64.class, "AbiGp" + index) == offset;
+        return offset;
     }
 
     @Fold
@@ -622,39 +682,10 @@ public class AMD64InterpreterStubs {
         return OffsetOf.get(InterpreterDataAMD64.class, "AbiFpArg0");
     }
 
-    @Fold
-    public static int offsetAbiFpArg1() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiFpArg1");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg2() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiFpArg2");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg3() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiFpArg3");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg4() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiFpArg4");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg5() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiFpArg5");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg6() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiFpArg6");
-    }
-
-    @Fold
-    public static int offsetAbiFpArg7() {
-        return OffsetOf.get(InterpreterDataAMD64.class, "AbiFpArg7");
+    public static int offsetAbiFpArg(int index) {
+        int offset = offsetAbiFpArg0() + 8 * index;
+        assert !SubstrateUtil.HOSTED || OffsetOf.get(InterpreterDataAMD64.class, "AbiFpArg" + index) == offset;
+        return offset;
     }
 
     @Fold
@@ -679,23 +710,30 @@ public class AMD64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public void setSpAndStoreStackSizeInDeoptSlot(Pointer data, int stackSize, Pointer stackBuffer) {
+        public void setSp(Pointer data, int stackSize, Pointer stackBuffer, boolean saveStackSizeInDeoptSlot) {
             VMError.guarantee(stackBuffer.isNonNull());
 
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
             p.setAbiSpReg(stackBuffer.rawValue());
             p.setStackSize(stackSize);
 
-            /*
-             * We re-use the deopt slot to leave the stack size at a known place for the stack
-             * walker. See
-             *
-             * com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig#getCallingConvention
-             *
-             * comment above `currentStackOffset` declaration.
-             */
-            assert stackSize % 0x10 == 0;
-            stackBuffer.writeLong(0, DeoptimizationSlotPacking.encodeVariableFrameSizeIntoDeoptSlot(stackSize));
+            if (saveStackSizeInDeoptSlot) {
+                /*
+                 * We re-use the deopt slot to leave the stack size at a known place for the stack
+                 * walker. See
+                 *
+                 * com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig#getCallingConvention
+                 *
+                 * comment above `currentStackOffset` declaration.
+                 */
+                assert stackSize % 0x10 == 0;
+                stackBuffer.writeLong(0, DeoptimizationSlotPacking.encodeVariableFrameSizeIntoDeoptSlot(stackSize));
+            } else {
+                /*
+                 * Native calls have no deopt slot, the leave stub preserves the stack size in
+                 * callee-saved rbx.
+                 */
+            }
         }
 
         @Override
@@ -721,8 +759,19 @@ public class AMD64InterpreterStubs {
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
         public void setGpArgumentAt(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+            setGpArgumentAt0(cArgType, data, pos, val, incoming, JAVA_GP_REGISTERS_SIZE);
+        }
+
+        @Override
+        @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+        public void setGpArgumentAtJNI(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+            setGpArgumentAt0(cArgType, data, pos, val, incoming, NATIVE_GP_REGISTERS_SIZE);
+        }
+
+        @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+        private static void setGpArgumentAt0(int cArgType, Pointer data, int pos, long val, boolean incoming, int gpRegisterSize) {
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
-            if (pos >= 0 && pos <= 5) {
+            if (pos >= 0 && pos < gpRegisterSize) {
                 VMError.guarantee(PreparedSignature.isRegister(cArgType));
                 switch (pos) {
                     case 0 -> p.setAbiGp0(val);

@@ -465,6 +465,10 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         return javaGeneralParameterRegs;
     }
 
+    public List<Register> getNativeGeneralParameterRegs() {
+        return nativeGeneralParameterRegs;
+    }
+
     public List<Register> getFloatingPointParameterRegs() {
         return xmmParameterRegs;
     }

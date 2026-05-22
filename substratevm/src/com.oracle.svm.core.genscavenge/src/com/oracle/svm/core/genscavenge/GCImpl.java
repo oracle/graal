@@ -885,7 +885,7 @@ public final class GCImpl implements GC {
                 Pointer sp = frame.getSP();
                 CodeInfo codeInfo = CodeInfoAccess.unsafeConvert(frame.getIPCodeInfo());
 
-                if (JavaFrames.isInterpreterLeaveStub(frame)) {
+                if (JavaFrames.isInterpreterLeaveStub(frame) || JavaFrames.isInterpreterJNILeaveStub(frame)) {
                     /* nothing to scan */
                 } else {
                     NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);

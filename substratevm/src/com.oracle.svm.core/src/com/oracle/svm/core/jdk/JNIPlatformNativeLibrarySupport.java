@@ -42,7 +42,7 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
     @SuppressWarnings("restricted")
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     protected void loadJavaLibrary() {
-        System.loadLibrary("java");
+        NativeLibrarySupport.singleton().loadLibraryRelative("java");
 
         Target_java_io_FileDescriptor_JNI.initIDs();
         Target_java_io_FileInputStream_JNI.initIDs();

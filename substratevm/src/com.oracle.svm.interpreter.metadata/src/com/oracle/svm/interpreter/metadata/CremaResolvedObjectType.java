@@ -32,6 +32,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
@@ -48,6 +49,7 @@ import com.oracle.svm.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.Descriptor;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
+import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -108,6 +110,23 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
             }
         }
         return result.toArray(new CremaResolvedJavaMethod[0]);
+    }
+
+    @Override
+    public CremaResolvedJavaMethod lookupDeclaredMethod(String name, String descriptor) {
+        Symbol<Name> symbolicName = SymbolsSupport.getNames().lookup(name);
+        if (symbolicName == null) {
+            return null;
+        }
+        Symbol<Signature> symbolicDescriptor = SymbolsSupport.getSignatures().lookupValidSignature(descriptor);
+        if (symbolicDescriptor == null) {
+            return null;
+        }
+        InterpreterResolvedJavaMethod method = lookupDeclaredMethod(symbolicName, symbolicDescriptor);
+        if (method instanceof CremaResolvedJavaMethod cremaMethod) {
+            return cremaMethod;
+        }
+        return null;
     }
 
     @Override

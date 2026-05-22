@@ -35,13 +35,14 @@ import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport.NativeLibrary;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
@@ -51,7 +52,7 @@ public final class NativeLibrarySupport extends NativeLibraries {
     public interface LibraryInitializer {
         boolean isBuiltinLibrary(String name);
 
-        void initialize(NativeLibrary lib);
+        int initialize(NativeLibrary lib);
     }
 
     public static NativeLibrarySupport singleton() {
@@ -88,6 +89,18 @@ public final class NativeLibrarySupport extends NativeLibraries {
     @Override
     protected boolean addLibrary(String canonical, boolean builtin) {
         return addLibrary(builtin, canonical, true);
+    }
+
+    /**
+     * The map {@code LibraryInitializer#onLoadCGlobalDataMap} uses identity equivalence, so we can't just pass on the name argument.
+     */
+    int loadBuiltinLibrary(String name) {
+        for (NativeLibrary known : knownLibraries) {
+            if (name.equals(known.getCanonicalIdentifier())) {
+                return libraryInitializer.initialize(known);
+            }
+        }
+        throw VMError.shouldNotReachHere(String.format("Built-in library %s was not found.", name));
     }
 
     private boolean addLibrary(boolean asBuiltin, String canonical, boolean initialize) {

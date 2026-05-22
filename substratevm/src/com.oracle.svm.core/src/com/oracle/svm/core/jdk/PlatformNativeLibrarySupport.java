@@ -35,8 +35,8 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -75,6 +75,7 @@ public abstract class PlatformNativeLibrarySupport {
                     "jdk_internal_platform",
                     "jdk_internal_util",
                     "jdk_internal_vm",
+                    "jdk_internal_loader",
                     "jdk_net",
                     "sun_invoke",
                     "sun_launcher",

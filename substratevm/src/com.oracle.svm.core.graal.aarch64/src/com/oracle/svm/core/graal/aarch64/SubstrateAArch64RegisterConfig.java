@@ -444,4 +444,8 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     public List<Register> getJavaGeneralParameterRegs() {
         return generalParameterRegs;
     }
+
+    public List<Register> getFloatingPointParameterRegs() {
+        return fpParameterRegs;
+    }
 }

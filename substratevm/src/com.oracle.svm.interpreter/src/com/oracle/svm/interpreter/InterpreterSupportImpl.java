@@ -51,8 +51,11 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -93,6 +96,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     private final int intrinsicMethodSlot;
     private final int intrinsicFrameSlot;
     private final ConcurrentHashMap<PreparedSignature, PreparedSignature> preparedSignatures;
+    private final ConcurrentHashMap<PreparedSignature, PreparedSignature> preparedJNISignatures;
 
     InterpreterSupportImpl(int bciSlot, int startBCISlot, int interpretedMethodSlot, int interpretedFrameSlot, int intrinsicMethodSlot, int intrinsicFrameSlot) {
         this.bciSlot = bciSlot;
@@ -102,6 +106,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         this.intrinsicMethodSlot = intrinsicMethodSlot;
         this.intrinsicFrameSlot = intrinsicFrameSlot;
         this.preparedSignatures = new ConcurrentHashMap<>();
+        this.preparedJNISignatures = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -137,6 +142,52 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
 
     public PreparedSignature preparedSignature(JavaKind returnKind, int[] argumentTypes, int stackSize) {
         return preparedSignatures.computeIfAbsent(new PreparedSignature(returnKind, argumentTypes, stackSize), Function.identity());
+    }
+
+    @Override
+    public PreparedSignature prepareJNISignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass) {
+        InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
+
+        ResolvedJavaType envType = DynamicHub.fromClass(JNIEnvironment.class).getInterpreterType();
+        ResolvedJavaType handleType = DynamicHub.fromClass(JNIObjectHandle.class).getInterpreterType();
+        VMError.guarantee(envType != null && handleType != null);
+
+        int parameterCount = signature.getParameterCount(false);
+        JavaType[] parameterTypes = new JavaType[parameterCount + 2];
+        int[] argumentTypes = new int[parameterTypes.length];
+        parameterTypes[0] = envType;
+        parameterTypes[1] = handleType;
+        for (int i = 0; i < parameterCount; i++) {
+            JavaType parameterType = signature.getParameterType(i, accessingClass);
+            parameterTypes[i + 2] = parameterType.getJavaKind() == JavaKind.Object ? handleType : parameterType;
+        }
+
+        JavaType returnType = signature.getReturnType(accessingClass);
+        if (returnType.getJavaKind() == JavaKind.Object) {
+            returnType = handleType;
+        }
+
+        CallingConvention callingConvention = stubSection.registerConfig.getCallingConvention(SubstrateCallingConventionKind.Native.toType(true), returnType, parameterTypes,
+                        stubSection.valueKindFactory);
+        for (int i = 0; i < argumentTypes.length; i++) {
+            /*
+             * We need to keep using signature.getParameterKind here and not use parameterTypes
+             * since leaveInterpreterJNI relies on that to decide what to wrap into a handle.
+             */
+            AllocatableValue allocatableValue = callingConvention.getArgument(i);
+            JavaKind argKind = i < 2 ? stubSection.target.wordJavaKind : signature.getParameterKind(i - 2);
+            int value = 0;
+            if (allocatableValue instanceof StackSlot stackSlot) {
+                value = stackSlot.getOffset(0);
+            }
+            boolean isRegister = !(allocatableValue instanceof StackSlot);
+            argumentTypes[i] = PreparedSignature.encodeArgumentType(argKind, value, isRegister);
+        }
+        return preparedJNISignature(signature.getReturnKind(), argumentTypes, callingConvention.getStackSize());
+    }
+
+    public PreparedSignature preparedJNISignature(JavaKind returnKind, int[] argumentTypes, int stackSize) {
+        return preparedJNISignatures.computeIfAbsent(new PreparedSignature(returnKind, argumentTypes, stackSize), Function.identity());
     }
 
     @Override

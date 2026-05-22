@@ -1572,6 +1572,10 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 assert InterpreterSupport.isEnabled();
                 yield new AArch64InterpreterStubs.InterpreterLeaveStubContext(method);
             }
+            case InterpreterLeaveJNIStub -> {
+                assert InterpreterSupport.isEnabled();
+                yield new AArch64InterpreterStubs.InterpreterLeaveJNIStubContext(method);
+            }
             case InterpreterDeoptEntryPointStub -> {
                 assert InterpreterSupport.isEnabled();
                 assert SubstrateOptions.useRistretto();
@@ -1783,7 +1787,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         if (stubType == Deoptimizer.StubType.InterpreterEnterStub) {
             assert InterpreterSupport.isEnabled();
             frameMap.reserveOutgoing(AArch64InterpreterStubs.additionalFrameSizeEnterStub());
-        } else if (stubType == Deoptimizer.StubType.InterpreterLeaveStub) {
+        } else if (stubType == Deoptimizer.StubType.InterpreterLeaveStub || stubType == Deoptimizer.StubType.InterpreterLeaveJNIStub) {
             assert InterpreterSupport.isEnabled();
             frameMap.reserveOutgoing(AArch64InterpreterStubs.additionalFrameSizeLeaveStub());
         }

@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
+import com.oracle.svm.core.jni.JNIMethodSupport;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.shared.util.VMError;
@@ -143,7 +143,7 @@ public class WebImageJSJNINativeCallWrapperMethod extends CustomSubstitutionMeth
     }
 
     public static InvokeWithExceptionNode nativeCallAddress(WebImageHostedGraphKit kit, ValueNode linkageObject) {
-        ResolvedJavaMethod method = kit.findMethod(JNIGeneratedMethodSupport.class, "nativeCallAddress", true);
+        ResolvedJavaMethod method = kit.findMethod(JNIMethodSupport.class, "nativeCallAddress", true);
         int invokeBci = kit.bci();
         return kit.createInvokeWithExceptionAndUnwind(method, CallTargetNode.InvokeKind.Static, kit.getFrameState(), invokeBci, linkageObject);
     }

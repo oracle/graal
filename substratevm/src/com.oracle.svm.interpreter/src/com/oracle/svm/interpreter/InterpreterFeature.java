@@ -104,6 +104,7 @@ import jdk.vm.ci.meta.Signature;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class InterpreterFeature implements InternalFeature {
     private AnalysisMethod leaveStub;
+    private AnalysisMethod leaveJNIStub;
 
     static boolean assertionsEnabled() {
         boolean enabled = false;
@@ -275,6 +276,10 @@ public class InterpreterFeature implements InternalFeature {
         leaveStub = metaAccess.lookupJavaMethod(leaveMethod);
         accessImpl.registerAsRoot(leaveStub, true, "low level entry point");
 
+        Method leaveJNIMethod = ReflectionUtil.lookupMethod(InterpreterStubSection.class, "leaveInterpreterJNIStub", CFunctionPointer.class, Pointer.class, long.class, boolean.class);
+        leaveJNIStub = metaAccess.lookupJavaMethod(leaveJNIMethod);
+        accessImpl.registerAsRoot(leaveJNIStub, true, "low level JNI entry point");
+
         InterpreterOptions.registerInterpreterTraceOptionValidation();
     }
 
@@ -313,6 +318,11 @@ public class InterpreterFeature implements InternalFeature {
         int leaveStubLength = accessImpl.getCompilations().get(hLeaveStub).result.getTargetCodeSize();
 
         InterpreterSupport.setLeaveStubPointer(new MethodPointer(hLeaveStub), leaveStubLength);
+
+        HostedMethod hLeaveJNIStub = accessImpl.getUniverse().lookup(leaveJNIStub);
+        int leaveJNIStubLength = accessImpl.getCompilations().get(hLeaveJNIStub).result.getTargetCodeSize();
+
+        InterpreterSupport.setLeaveJNIStubPointer(new MethodPointer(hLeaveJNIStub), leaveJNIStubLength);
     }
 
     private static ResolvedJavaMethod getExecuteBodyFromBCIMethod(MetaAccessProvider metaAccess) {

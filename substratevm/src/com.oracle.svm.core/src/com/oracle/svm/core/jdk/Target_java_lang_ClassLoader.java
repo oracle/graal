@@ -163,6 +163,7 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute
+    @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
     @SuppressWarnings("unused")
     static NativeLibrary loadLibrary(Class<?> fromClass, String name) {
         NativeLibrarySupport.singleton().loadLibraryRelative(name);
@@ -171,12 +172,16 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute
+    @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
     @SuppressWarnings("unused")
     static NativeLibrary loadLibrary(Class<?> fromClass, File file) {
         NativeLibrarySupport.singleton().loadLibraryAbsolute(file);
         // We don't use the JDK's NativeLibraries or NativeLibrary implementations
         return null;
     }
+
+    @Alias
+    public static native long findNative(ClassLoader loader, Class<?> clazz, String entryName, String javaName);
 
     @Alias
     public native String nameAndId();

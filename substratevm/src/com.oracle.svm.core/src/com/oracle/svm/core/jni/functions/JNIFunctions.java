@@ -74,6 +74,8 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jni.JNIObjectFieldAccess;
 import com.oracle.svm.core.jni.JNIObjectHandles;
@@ -131,6 +133,7 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Implementations of the functions defined by the Java Native Interface.
@@ -395,6 +398,25 @@ public final class JNIFunctions {
 
             CFunctionPointer fnPtr = entry.fnPtr();
 
+            /*
+             * Runtime-loaded Crema classes are not represented in the JNI reflection dictionary, so
+             * RegisterNatives must also update their interpreter-side JNI linkages directly.
+             */
+            if (RuntimeClassLoading.isSupported()) {
+                DynamicHub hub = DynamicHub.fromClass(clazz);
+                if (hub.isRuntimeLoaded()) {
+                    assert JNIReflectionDictionary.getLinkage(declaringClass, name, signature) == null : "Runtime loaded classes should have no global linkage";
+                    ResolvedJavaType interpreterType = hub.getInterpreterType();
+                    assert interpreterType instanceof CremaResolvedJavaType : "expected Crema type";
+                    CremaResolvedJavaType type = (CremaResolvedJavaType) interpreterType;
+                    CremaResolvedJavaMethod cremaMethod = type.lookupDeclaredMethod(name.toString(), signature.toString());
+                    if (cremaMethod == null || !cremaMethod.isNative()) {
+                        throw new NoSuchMethodError("Method signature at index " + i + " does not match with a native method.");
+                    }
+                    cremaMethod.getJNINativeLinkage().setEntryPoint(fnPtr);
+                }
+            }
+
             JNINativeLinkage linkage = JNIReflectionDictionary.getLinkage(declaringClass, name, signature);
             if (linkage != null) {
                 linkage.setEntryPoint(fnPtr);
@@ -421,6 +443,21 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int UnregisterNatives(JNIEnvironment env, JNIObjectHandle hclazz) {
         Class<?> clazz = JNIObjectHandles.getObject(hclazz);
+        if (RuntimeClassLoading.isSupported()) {
+            DynamicHub hub = DynamicHub.fromClass(clazz);
+            if (hub.isRuntimeLoaded()) {
+                ResolvedJavaType interpreterType = hub.getInterpreterType();
+                assert interpreterType instanceof CremaResolvedJavaType : "expected Crema type";
+                CremaResolvedJavaType type = (CremaResolvedJavaType) interpreterType;
+                for (CremaResolvedJavaMethod cremaMethod : type.getDeclaredCremaMethods()) {
+                    if (cremaMethod.isNative()) {
+                        cremaMethod.getJNINativeLinkage().unsetEntryPoint();
+                    }
+                }
+                return JNIErrors.JNI_OK();
+            }
+        }
+
         String internalName = MetaUtil.toInternalName(clazz.getName());
         JNIReflectionDictionary.unsetEntryPoints(internalName);
         return JNIErrors.JNI_OK();

@@ -124,6 +124,9 @@ final class Target_java_lang_Object {
 final class Target_jdk_internal_loader_ClassLoaderHelper {
     @Alias
     static native File mapAlternativeName(File lib);
+
+    @Alias
+    static native String[] parsePath(String ldPath);
 }
 
 @TargetClass(java.lang.Enum.class)

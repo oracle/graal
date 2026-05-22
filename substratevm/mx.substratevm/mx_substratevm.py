@@ -2859,8 +2859,137 @@ JNIEXPORT void JNICALL {0}() {{
     def __str__(self):
         return f'JvmFuncsFallbacksBuildTask {self.subject}'
 
+
+class StaticLibrarySymbolsBuilder(mx.ArchivableProject):
+    def __init__(self):
+        mx.ArchivableProject.__init__(self, suite, 'svm-static-library-symbols', [], None, None)
+
+    def archive_prefix(self):
+        return ''
+
+    def output_dir(self):
+        return self.get_output_root()
+
+    def _static_lib_root(self):
+        return join(mx_sdk_vm.base_jdk().home, 'lib', 'static')
+
+    def _static_libs(self):
+        static_lib_root = self._static_lib_root()
+        if not exists(static_lib_root):
+            return []
+        return sorted(glob(join(static_lib_root, '**', mx.add_lib_prefix('*') + mx.add_static_lib_suffix('')), recursive=True))
+
+    def _manifest_path(self, static_lib):
+        relative_path = os.path.relpath(static_lib, self._static_lib_root())
+        return join(self.get_output_root(), 'static', relative_path + '.symbols')
+
+    def _static_lib_root_file(self):
+        return join(self.get_output_root(), 'static_lib_root')
+
+    def getResults(self):
+        return [self._manifest_path(static_lib) for static_lib in self._static_libs()]
+
+    def getBuildTask(self, args):
+        return StaticLibrarySymbolsBuildTask(self, args)
+
+
+class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
+    symbol_prefixes = ('JNI_OnLoad_', 'JNI_OnUnload_', 'Java_')
+
+    def __init__(self, subject, args):
+        mx.ArchivableBuildTask.__init__(self, subject, args, 1)
+
+    def __str__(self):
+        return 'Building static library symbol manifests'
+
+    def newestOutput(self):
+        results = self.subject.getResults()
+        if not results:
+            return mx.TimeStampFile(join(self.subject.get_output_root(), 'empty'))
+        return mx.TimeStampFile.newest(results)
+
+    def needsBuild(self, newestInput):
+        static_libs = self.subject._static_libs()
+        if not static_libs:
+            return False, None
+        static_lib_root_file = self.subject._static_lib_root_file()
+        static_lib_root = self.subject._static_lib_root()
+        if not exists(static_lib_root_file):
+            return True, static_lib_root_file + ' does not exist'
+        with open(static_lib_root_file, encoding='utf-8') as root_file:
+            if root_file.read() != static_lib_root:
+                return True, 'static library root changed'
+        for static_lib in static_libs:
+            manifest = self.subject._manifest_path(static_lib)
+            if not exists(manifest):
+                return True, manifest + ' does not exist'
+            if mx.TimeStampFile(static_lib).isNewerThan(mx.TimeStampFile(manifest)):
+                return True, static_lib + ' is newer than ' + manifest
+        return False, None
+
+    def build(self):
+        output_root = self.subject.get_output_root()
+        mx_util.ensure_dir_exists(output_root)
+        with open(self.subject._static_lib_root_file(), mode='w', encoding='utf-8') as root_file:
+            root_file.write(self.subject._static_lib_root())
+        for static_lib in self.subject._static_libs():
+            self._write_manifest(static_lib, self.subject._manifest_path(static_lib))
+
+    def clean(self, forBuild=False):
+        output_root = self.subject.get_output_root()
+        if exists(output_root):
+            mx.rmtree(output_root)
+
+    def _write_manifest(self, static_lib, manifest):
+        symbols = self._collect_symbols(static_lib)
+        content = ''.join(symbol + '\n' for symbol in sorted(symbols))
+        old_content = None
+        if exists(manifest):
+            with open(manifest, encoding='utf-8') as old_manifest:
+                old_content = old_manifest.read()
+        if old_content == content:
+            mx.TimeStampFile(manifest).touch()
+            return
+        mx_util.ensure_dir_exists(dirname(manifest))
+        with open(manifest, mode='w', encoding='utf-8') as new_manifest:
+            new_manifest.write(content)
+        mx.log('Updated ' + manifest)
+
+    def _collect_symbols(self, static_lib):
+        symbols = set()
+
+        def collect_symbol(line):
+            if not line or line.isspace():
+                return
+            tokens = line.split()
+            if len(tokens) < 6 or tokens[1] not in ('g', 'w') or tokens[2] != 'F' or tokens[3] == '*UND*':
+                mx.logvv('Skipping line: ' + line.rstrip())
+                return
+            symbol = tokens[-1]
+            if any(symbol.startswith(prefix) for prefix in self.symbol_prefixes):
+                mx.logv('Pick static library symbol: ' + symbol)
+                symbols.add(symbol)
+
+        seen_gnu_property_type_5_warnings = False
+
+        def suppress_gnu_property_type_5_warnings(line):
+            nonlocal seen_gnu_property_type_5_warnings
+            if 'unsupported GNU_PROPERTY_TYPE (5)' not in line:
+                mx.log_error(line.rstrip())
+            elif not seen_gnu_property_type_5_warnings:
+                mx.log_error(line.rstrip())
+                mx.log_error('(suppressing all further warnings about "unsupported GNU_PROPERTY_TYPE (5)")')
+                seen_gnu_property_type_5_warnings = True
+
+        mx.logv('Collect static library symbols from: ' + static_lib)
+        mx.run(['objdump', '--wide', '--syms', static_lib], out=collect_symbol, err=suppress_gnu_property_type_5_warnings)
+        return symbols
+
+
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     register_project(SubstrateCompilerFlagsBuilder())
+    if mx.is_linux():
+        register_project(StaticLibrarySymbolsBuilder())
 
     base_jdk_home = mx_sdk_vm.base_jdk().home
     lib_static = join(base_jdk_home, 'lib', 'static')
@@ -2868,6 +2997,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         layout = {
             './': ['file:' + lib_static],
         }
+        if mx.is_linux():
+            layout['./'].append('dependency:svm-static-library-symbols/*')
     else:
         lib_prefix = mx.add_lib_prefix('')
         lib_suffix = mx.add_static_lib_suffix('')
