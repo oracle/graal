@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -160,13 +159,15 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
             return; /* Already registered. */
         }
 
-        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary("extnet")) {
+        if (isWindows()) {
             DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
             /*
              * extnet contains native methods for platform socket options, but the Windows library
              * does not define JNI_OnLoad_extnet.
              */
-            access.getNativeLibraries().addStaticNonJniLibrary("extnet", "jvm");
+            if (access.getNativeLibraries().hasStaticLibrary("extnet")) {
+                access.getNativeLibraries().addStaticNonJniLibrary("extnet", "jvm");
+            }
         }
 
         String implClassName;
