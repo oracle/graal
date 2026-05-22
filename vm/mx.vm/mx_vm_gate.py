@@ -27,6 +27,7 @@ import json
 import shutil
 
 import mx
+import mx_benchmark
 import mx_subst
 import mx_unittest
 import mx_sdk
@@ -81,6 +82,7 @@ class VmGateTasks:
     truffle_maven_deploy_local = 'truffle_maven_deploy_local'
     truffle_maven_isolate_internal = 'truffle_maven_isolate_internal'
     truffle_maven_isolate_external = 'truffle_maven_isolate_external'
+    crema = 'crema'
 
 def _get_CountUppercase_vmargs():
     cp = mx.project("jdk.graal.compiler.test").classpath_repr()
@@ -509,6 +511,23 @@ def gate_body(args, tasks):
             # 1. the build must be a GraalVM
             # 2. the build must be JVMCI-enabled since the 'GraalVM compiler' component is registered
             mx_sdk_vm_impl.check_versions(mx_sdk_vm_impl.graalvm_output(), expect_graalvm=True, check_jvmci=True)
+
+    with Task('AWFY_Crema:Sieve', tasks, tags=[VmGateTasks.crema], report='compiler') as t:
+        if t:
+            crema_vm_configs = {vm.config_name() for vm in mx_benchmark.java_vm_registry.get_vms() if vm.name() == 'crema'}
+            crema_jvm_config = None
+            if 'default-ee' in crema_vm_configs:
+                crema_jvm_config = 'default-ee'
+            elif 'default-ce' in crema_vm_configs:
+                crema_jvm_config = 'default-ce'
+            else:
+                mx.abort('No crema Java VM configuration is registered')
+            mx_benchmark.gate_mx_benchmark([
+                'awfy:Sieve', '--tracker=none',
+                '--', '--jvm', 'crema', '--jvm-config', crema_jvm_config,
+                '-Djdk.graal.CompilationFailureAction=Diagnose', '-Xmx1G',
+                '--', '-i', '10',
+            ])
 
     libgraal_suite_name = 'substratevm'
     if mx.suite(libgraal_suite_name, fatalIfMissing=False) is not None:
