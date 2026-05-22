@@ -888,6 +888,7 @@ class NativeImageVM(StageAwareGraalVm):
         self.use_upx = False
         self.use_open_type_world = False
         self.copyingoldgen_oldpolicy = False # for later removal: GR-73132
+        self.product_profile = False
         self.graalvm_edition = None
         self.config: NativeImageBenchmarkConfig | None = None
         self.stages: StagesContext | None = None
@@ -955,6 +956,8 @@ class NativeImageVM(StageAwareGraalVm):
             config += ["quickbuild"]
         if self.gc == "G1":
             config += ["g1gc"]
+        if self.product_profile is True:
+            config += ["product"]
         if self.is_llvm is True:
             config += ["llvm"]
         is_pgo_set = False
@@ -1030,7 +1033,7 @@ class NativeImageVM(StageAwareGraalVm):
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<static>mostly-static-|static-)?(?P<otw>otw-)?(?P<copyingoldgen_oldpolicy>copyingoldgen-oldpolicy-)?(?P<crema>crema-)?' \
                r'(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?(?P<graalos>graalos-)?(?P<graalhost_graalos>graalhost-graalos-)?(?P<layered>layered-)?' \
                r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
-               r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-layouting-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
+               r'(?P<product>product-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-layouting-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-call-count-|profile-inference-call-count-conservative-|profile-inference-call-count-aggressive-|profile-inference-pgo-|profile-inference-debug-)?' \
                r'(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
@@ -1116,6 +1119,11 @@ class NativeImageVM(StageAwareGraalVm):
             else:
                 mx.abort(f"Unknown GC: {gc}")
 
+        if matching.group("product") is not None:
+            # Language benchmarks interpret this as their released-product launcher configuration.
+            mx.logv(f"'product' mode is enabled for {config_name}")
+            self.product_profile = True
+
         if matching.group("llvm") is not None:
             mx.logv(f"'llvm' mode is enabled for {config_name}")
             self.is_llvm = True
@@ -1144,6 +1152,9 @@ class NativeImageVM(StageAwareGraalVm):
                 self.pgo_perf_invoke_profile_collection_strategy = PerfInvokeProfileCollectionStrategy.MULTIPLE_CALLEES
             else:
                 mx.abort(f"Unknown pgo mode: {pgo_mode}")
+
+        if self.product_profile and self.pgo_instrumentation:
+            mx.abort("'product' and benchmark-collected PGO modes cannot be combined.")
 
         if matching.group("jdk_profiles") is not None:
             config = matching.group("jdk_profiles")[:-1]
@@ -1402,7 +1413,10 @@ class NativeImageVM(StageAwareGraalVm):
         return dims
 
     def _get_pgo_dimension(self) -> str:
-        if self.pgo_instrumentation:
+        if self.product_profile and self.graalvm_edition == "ee":
+            # Product EE configs report as PGO because language build code supplies the product profile.
+            return "pgo"
+        elif self.pgo_instrumentation:
             if self.pgo_sampler_only:
                 return "sampler-only"
             else:
@@ -2313,6 +2327,12 @@ def register_graalvm_vms():
             config_names = []
             for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'crema', 'future-defaults-all', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity + (['g1gc', 'pgo', 'g1gc-pgo'] if config_suffix != '-ce' else []):
                 config_names.append(f'{main_config}{config_suffix}')
+
+            # Product profile configs are used to benchmark language launchers similar to how they are released.
+            if config_suffix == '-ce':
+                config_names.append('product-ce')
+            elif config_suffix == '-ee':
+                config_names += ['product-ee', 'g1gc-product-ee']
 
             for optimization_level in optimization_levels:
                 config_names.append(f'{optimization_level}{config_suffix}')
