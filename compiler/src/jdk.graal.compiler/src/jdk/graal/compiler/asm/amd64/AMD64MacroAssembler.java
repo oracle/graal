@@ -610,6 +610,30 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     /**
      * See {@link #applyMIOpAndJcc}.
      */
+    private int applyMROpAndJcc(AMD64MROp op, OperandSize size, AMD64Address dst, Register src, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        GraalError.guarantee(!rip.equals(dst.getBase()), "RIP-relative memory operand cannot be fused");
+        /*
+         * The extra bytes introduced by MemoryReadInterceptor are also included in the fused pair
+         * size, which may lead to imprecision. However, this does not affect the correctness of the
+         * Intel JCC erratum, as it ensures that both the instrumented logic and the fused pair
+         * remain within the 32-byte boundary. If the total size exceeds 32 bytes, the assertion in
+         * alignFusedPair will detect it.
+         */
+        final int bytesToEmit = getPrefixInBytes(size, src, op.srcIsByte, dst) + OPCODE_IN_BYTES + addressInBytes(dst) +
+                        (op.isMemRead() ? extraSourceAddressBytes(dst) : 0);
+        alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
+        final int beforeFusedPair = position();
+        op.emit(this, size, dst, src);
+        final int beforeJcc = position();
+        assert beforeFusedPair + bytesToEmit == beforeJcc : Assertions.errorMessage(beforeFusedPair, bytesToEmit, beforeJcc);
+        jcc(cc, branchTarget, isShortJmp);
+        assert ensureWithinBoundary(beforeFusedPair);
+        return beforeJcc;
+    }
+
+    /**
+     * See {@link #applyMIOpAndJcc}.
+     */
     public int applyMOpAndJcc(AMD64MOp op, OperandSize size, Register dst, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         final int bytesToEmit = getPrefixInBytes(size, dst, op.srcIsByte) + OPCODE_IN_BYTES + MODRM_IN_BYTES;
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
@@ -714,6 +738,11 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public final int cmplAndJcc(Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         GraalError.guarantee(canBeFusedWithAddSubCmp(cc), "cmp cannot be fused with JCC on %s", cc);
         return applyRMOpAndJcc(AMD64BinaryArithmetic.CMP.getRMOpcode(OperandSize.DWORD), OperandSize.DWORD, src1, src2, cc, branchTarget, isShortJmp, null);
+    }
+
+    public final int cmplAndJcc(AMD64Address dst, Register src, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        GraalError.guarantee(canBeFusedWithAddSubCmp(cc), "cmp cannot be fused with JCC on %s", cc);
+        return applyMROpAndJcc(AMD64BinaryArithmetic.CMP.getMROpcode(OperandSize.DWORD), OperandSize.DWORD, dst, src, cc, branchTarget, isShortJmp);
     }
 
     public final int cmpqAndJcc(Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {

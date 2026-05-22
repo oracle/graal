@@ -52,6 +52,8 @@ import jdk.graal.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import jdk.graal.compiler.replacements.nodes.BigIntegerLeftShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomeryMultiplyNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomerySquareNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerRightShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
@@ -118,6 +120,8 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(BigIntegerMultiplyToLenNode.STUB, BASELINE, BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64),
                         new StubDescriptor(BigIntegerRightShiftWorkerNode.STUB, BigIntegerRightShiftWorkerNode.minFeaturesAMD64(), BigIntegerRightShiftWorkerNode.minFeaturesAMD64()),
                         new StubDescriptor(BigIntegerSquareToLenNode.STUB, BASELINE, BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64),
+                        new StubDescriptor(BigIntegerMontgomeryMultiplyNode.STUB, BASELINE, BASELINE),
+                        new StubDescriptor(BigIntegerMontgomerySquareNode.STUB, BASELINE, BASELINE),
                         new StubDescriptor(SHA1Node.STUB, SHA1Node.minFeaturesAMD64(), SHA1Node.minFeaturesAMD64()),
                         new StubDescriptor(SHA256Node.STUB, SHA256Node.minFeaturesAMD64(), SHA256Node.minFeaturesAMD64()),
                         new StubDescriptor(SHA3Node.STUB, SHA3Node.minFeaturesAMD64(), SHA3Node.minFeaturesAMD64()),

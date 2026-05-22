@@ -66,6 +66,8 @@ import jdk.graal.compiler.lir.aarch64.AArch64Base64DecodeOp;
 import jdk.graal.compiler.lir.aarch64.AArch64Base64EncodeOp;
 import jdk.graal.compiler.lir.aarch64.AArch64BigIntegerMulAddOp;
 import jdk.graal.compiler.lir.aarch64.AArch64BigIntegerLeftShiftOp;
+import jdk.graal.compiler.lir.aarch64.AArch64BigIntegerMontgomeryMultiplyOp;
+import jdk.graal.compiler.lir.aarch64.AArch64BigIntegerMontgomerySquareOp;
 import jdk.graal.compiler.lir.aarch64.AArch64BigIntegerMultiplyToLenOp;
 import jdk.graal.compiler.lir.aarch64.AArch64BigIntegerRightShiftOp;
 import jdk.graal.compiler.lir.aarch64.AArch64BigIntegerSquareToLenOp;
@@ -839,6 +841,42 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitBigIntegerSquareToLen(Value x, Value len, Value z, Value zlen) {
         append(new AArch64BigIntegerSquareToLenOp(asAllocatable(x), asAllocatable(len), asAllocatable(z), asAllocatable(zlen)));
+    }
+
+    @Override
+    public void emitBigIntegerMontgomeryMultiply(Value a, Value b, Value n, Value len, Value inv, Value product) {
+        RegisterValue rA = AArch64.r0.asValue(a.getValueKind());
+        RegisterValue rB = AArch64.r1.asValue(b.getValueKind());
+        RegisterValue rN = AArch64.r2.asValue(n.getValueKind());
+        RegisterValue rLen = AArch64.r3.asValue(len.getValueKind());
+        RegisterValue rInv = AArch64.r4.asValue(inv.getValueKind());
+        RegisterValue rProduct = AArch64.r5.asValue(product.getValueKind());
+
+        emitMove(rA, a);
+        emitMove(rB, b);
+        emitMove(rN, n);
+        emitMove(rLen, len);
+        emitMove(rInv, inv);
+        emitMove(rProduct, product);
+
+        append(new AArch64BigIntegerMontgomeryMultiplyOp(rA, rB, rN, rLen, rInv, rProduct));
+    }
+
+    @Override
+    public void emitBigIntegerMontgomerySquare(Value a, Value n, Value len, Value inv, Value product) {
+        RegisterValue rA = AArch64.r0.asValue(a.getValueKind());
+        RegisterValue rN = AArch64.r1.asValue(n.getValueKind());
+        RegisterValue rLen = AArch64.r2.asValue(len.getValueKind());
+        RegisterValue rInv = AArch64.r3.asValue(inv.getValueKind());
+        RegisterValue rProduct = AArch64.r4.asValue(product.getValueKind());
+
+        emitMove(rA, a);
+        emitMove(rN, n);
+        emitMove(rLen, len);
+        emitMove(rInv, inv);
+        emitMove(rProduct, product);
+
+        append(new AArch64BigIntegerMontgomerySquareOp(rA, rN, rLen, rInv, rProduct));
     }
 
     @Override

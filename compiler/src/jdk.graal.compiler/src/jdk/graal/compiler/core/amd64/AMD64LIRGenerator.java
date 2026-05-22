@@ -96,6 +96,8 @@ import jdk.graal.compiler.lir.amd64.AMD64Base64DecodeOp;
 import jdk.graal.compiler.lir.amd64.AMD64Base64EncodeOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerMulAddOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerLeftShiftOp;
+import jdk.graal.compiler.lir.amd64.AMD64BigIntegerMontgomeryMultiplyOp;
+import jdk.graal.compiler.lir.amd64.AMD64BigIntegerMontgomerySquareOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerMultiplyToLenOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerRightShiftOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerSquareToLenOp;
@@ -1166,6 +1168,42 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rZlen, zlen);
 
         append(new AMD64BigIntegerSquareToLenOp(this, rX, rLen, rZ, rZlen));
+    }
+
+    @Override
+    public void emitBigIntegerMontgomeryMultiply(Value a, Value b, Value n, Value len, Value inv, Value product) {
+        RegisterValue rA = AMD64.rdi.asValue(a.getValueKind());
+        RegisterValue rB = AMD64.rsi.asValue(b.getValueKind());
+        RegisterValue rN = AMD64.rdx.asValue(n.getValueKind());
+        RegisterValue rLen = AMD64.rcx.asValue(len.getValueKind());
+        RegisterValue rInv = AMD64.r8.asValue(inv.getValueKind());
+        RegisterValue rProduct = AMD64.r9.asValue(product.getValueKind());
+
+        emitMove(rA, a);
+        emitMove(rB, b);
+        emitMove(rN, n);
+        emitMove(rLen, len);
+        emitMove(rInv, inv);
+        emitMove(rProduct, product);
+
+        append(new AMD64BigIntegerMontgomeryMultiplyOp(rA, rB, rN, rLen, rInv, rProduct));
+    }
+
+    @Override
+    public void emitBigIntegerMontgomerySquare(Value a, Value n, Value len, Value inv, Value product) {
+        RegisterValue rA = AMD64.rdi.asValue(a.getValueKind());
+        RegisterValue rN = AMD64.rsi.asValue(n.getValueKind());
+        RegisterValue rLen = AMD64.rdx.asValue(len.getValueKind());
+        RegisterValue rInv = AMD64.rcx.asValue(inv.getValueKind());
+        RegisterValue rProduct = AMD64.r8.asValue(product.getValueKind());
+
+        emitMove(rA, a);
+        emitMove(rN, n);
+        emitMove(rLen, len);
+        emitMove(rInv, inv);
+        emitMove(rProduct, product);
+
+        append(new AMD64BigIntegerMontgomerySquareOp(rA, rN, rLen, rInv, rProduct));
     }
 
     @Override

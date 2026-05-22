@@ -680,6 +680,16 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
+    default void emitBigIntegerMontgomeryMultiply(Value a, Value b, Value n, Value len, Value inv, Value product) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitBigIntegerMontgomerySquare(Value a, Value n, Value len, Value inv, Value product) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
     default void emitBigIntegerLeftShiftWorker(Value newArr, Value oldArr, Value newIdx, Value shiftCount, Value numIter) {
         throw GraalError.unimplemented("No specialized implementation available");
     }

@@ -51,6 +51,8 @@ import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerLeftShiftWorkerNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomeryMultiplyNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomerySquareNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerRightShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
@@ -60,6 +62,7 @@ import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
@@ -72,6 +75,7 @@ public final class Stubs {
 
     @Platforms(Platform.AMD64.class)
     public static class AMD64Features {
+        public static final EnumSet<AMD64.CPUFeature> BASELINE_CPU_FEATURES_AMD64 = EnumSet.of(SSE2);
         public static final EnumSet<AMD64.CPUFeature> RUNTIME_CHECKED_CPU_FEATURES_AMD64 = EnumSet.of(
                         SSE2,
                         SSE3,
@@ -116,6 +120,9 @@ public final class Stubs {
             if (BigIntegerSquareToLenNode.class.equals(klass)) {
                 return BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64;
             }
+            if (BigIntegerMontgomeryMultiplyNode.class.equals(klass) || BigIntegerMontgomerySquareNode.class.equals(klass)) {
+                return BASELINE_CPU_FEATURES_AMD64;
+            }
             if (BigIntegerLeftShiftWorkerNode.class.equals(klass)) {
                 return BigIntegerLeftShiftWorkerNode.minFeaturesAMD64();
             }
@@ -133,6 +140,9 @@ public final class Stubs {
             }
             if (SHA512Node.class.equals(klass)) {
                 return SHA512Node.minFeaturesAMD64();
+            }
+            if (MD5Node.class.equals(klass)) {
+                return BASELINE_CPU_FEATURES_AMD64;
             }
             if (CRC32UpdateBytesNode.class.equals(klass)) {
                 return CRC32UpdateBytesNode.maxFeaturesAMD64();

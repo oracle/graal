@@ -74,7 +74,6 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
-import java.math.BigInteger;
 
 import org.graalvm.word.LocationIdentity;
 
@@ -283,7 +282,6 @@ public class HotSpotGraphBuilderPlugins {
                 registerReflectionPlugins(invocationPlugins, config);
                 registerAESPlugins(invocationPlugins, config);
                 registerAdler32Plugins(invocationPlugins, config);
-                registerBigIntegerPlugins(invocationPlugins, config);
                 registerSHAPlugins(invocationPlugins, config);
                 registerMLPlugins(invocationPlugins, config);
                 registerUnsafePlugins(invocationPlugins, config);
@@ -1135,48 +1133,6 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean isApplicable(Architecture arch) {
                 return config.updateBytesAdler32 != 0L;
-            }
-        });
-    }
-
-    private static void registerBigIntegerPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
-        Registration r = new Registration(plugins, BigInteger.class);
-        r.register(new ConditionalInvocationPlugin("implMontgomeryMultiply", int[].class, int[].class, int[].class, int.class, long.class, int[].class) {
-
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode bObject, ValueNode n, ValueNode len, ValueNode inv,
-                            ValueNode product) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    // The stub doesn't return the right value for the intrinsic so push it here
-                    // and the proper after FrameState will be put on ForeignCallNode by add.
-                    b.addPush(JavaKind.Object, product);
-                    b.add(new ForeignCallNode(HotSpotBackend.MONTGOMERY_MULTIPLY, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(bObject, JavaKind.Int),
-                                    helper.arrayStart(n, JavaKind.Int), len, inv, helper.arrayStart(product, JavaKind.Int)));
-                }
-                return true;
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.montgomeryMultiply != 0L;
-            }
-        });
-        r.register(new ConditionalInvocationPlugin("implMontgomerySquare", int[].class, int[].class, int.class, long.class, int[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode n, ValueNode len, ValueNode inv, ValueNode product) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    // The stub doesn't return the right value for the intrinsic so push it here
-                    // and the proper after FrameState will be put on ForeignCallNode by add.
-                    b.addPush(JavaKind.Object, product);
-                    b.add(new ForeignCallNode(HotSpotBackend.MONTGOMERY_SQUARE, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(n, JavaKind.Int), len, inv,
-                                    helper.arrayStart(product, JavaKind.Int)));
-                }
-                return true;
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.montgomerySquare != 0L;
             }
         });
     }

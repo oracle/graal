@@ -991,6 +991,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         public static final SSEOp MOVDDUP   = new SSEOp("MOVDDUP",         P_0F, 0x12, PreferredNDS.NONE,  OpAssertion.DoubleAssertion, CPUFeature.SSE3);
         public static final SSEOp MOVDQA    = new SSEOp("MOVDQA",          P_0F, 0x6F, PreferredNDS.NONE,  OpAssertion.PackedDoubleAssertion);
         public static final SSEOp MOVDQU    = new SSEOp("MOVDQU",          P_0F, 0x6F, PreferredNDS.NONE,  OpAssertion.SingleAssertion);
+        public static final SSEOp MOVUPS    = new SSEOp("MOVUPS",          P_0F, 0x10, PreferredNDS.NONE,  OpAssertion.PackedFloatAssertion);
 
         public static final SSEOp UNPCKHPD  = new SSEOp("UNPCKHPD",        P_0F, 0x15, PreferredNDS.DST,   OpAssertion.PackedDoubleAssertion);
         public static final SSEOp UNPCKLPD  = new SSEOp("UNPCKLPD",        P_0F, 0x14, PreferredNDS.DST,   OpAssertion.PackedDoubleAssertion);
@@ -1100,6 +1101,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         public static final SSERMIOp PSHUFLW       = new SSERMIOp("PSHUFLW",       true, P_0F,         0x70, PreferredNDS.NONE,  OpAssertion.DoubleAssertion, CPUFeature.SSE2);
         // PEXTRW with a GPR destination, one byte shorter encoding than SSEMRIOp.PEXTRW.
         public static final SSERMIOp PEXTRW_GPR    = new SSERMIOp("PEXTRW_GPR",    true, P_0F,   false, 0xC5, PreferredNDS.NONE,  OpAssertion.PackedDoubleFloatToIntAssertion, CPUFeature.SSE2);
+        public static final SSERMIOp SHUFPD        = new SSERMIOp("SHUFPD",        true, P_0F,         0xC6, PreferredNDS.DST,   OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
         // @formatter:on
 
         private final PreferredNDS preferredNDS;
@@ -1150,8 +1152,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         public static final SSEMROp MOVSS  = new SSEMROp("MOVSS",               P_0F, 0x11, PreferredNDS.SRC,  OpAssertion.SingleAssertion);
         public static final SSEMROp MOVSD  = new SSEMROp("MOVSD",               P_0F, 0x11, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
 
+        public static final SSEMROp MOVAPS = new SSEMROp("MOVAPS",              P_0F, 0x29, PreferredNDS.NONE, OpAssertion.PackedFloatAssertion);
         public static final SSEMROp MOVDQU = new SSEMROp("MOVDQU",              P_0F, 0x7F, PreferredNDS.NONE, OpAssertion.SingleAssertion);
         public static final SSEMROp MOVUPD = new SSEMROp("MOVUPD", 0x66, P_0F, 0x11, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion);
+        public static final SSEMROp MOVUPS = new SSEMROp("MOVUPS",              P_0F, 0x11, PreferredNDS.NONE, OpAssertion.PackedFloatAssertion);
         // @formatter:on
 
         private final PreferredNDS preferredNDS;
@@ -5373,6 +5377,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         simdMoveOp(SSEOp.MOVAPS, OperandSize.PS, VexMoveOp.VMOVAPS, AVXSize.XMM, dst, src);
     }
 
+    public final void movaps(AMD64Address dst, Register src) {
+        simdMoveOp(SSEMROp.MOVAPS, OperandSize.PS, VexMoveOp.VMOVAPS, AVXSize.XMM, dst, src);
+    }
+
     public final void movb(Register dst, AMD64Address src) {
         AMD64RMOp.MOVB.emit(this, OperandSize.BYTE, dst, src);
     }
@@ -5419,6 +5427,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         } else {
             throw new InternalError("should not reach here");
         }
+    }
+
+    public final void movdqa(Register dst, AMD64Address src) {
+        simdMoveOp(SSEOp.MOVDQA, OperandSize.PD, VexMoveOp.VMOVDQA64, AVXSize.XMM, dst, src);
     }
 
     public final void movdqa(Register dst, Register src) {
@@ -5526,6 +5538,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
     public final void movswq(Register dst, AMD64Address src) {
         AMD64RMOp.MOVSX.emit(this, OperandSize.QWORD, dst, src);
+    }
+
+    public final void movups(AMD64Address dst, Register src) {
+        simdMoveOp(SSEMROp.MOVUPS, OperandSize.PS, VexMoveOp.VMOVUPS, AVXSize.XMM, dst, src);
     }
 
     public final void movw(AMD64Address dst, int imm16) {
@@ -6153,7 +6169,11 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
     public final void shrl(Register dst, int imm8) {
         GraalError.guarantee(isShiftCount(imm8 >> 1), "illegal shift count");
-        AMD64MIOp.SHR.emit(this, OperandSize.DWORD, dst, imm8);
+        if (imm8 == 1) {
+            AMD64MOp.SHR1.emit(this, OperandSize.DWORD, dst);
+        } else {
+            AMD64MIOp.SHR.emit(this, OperandSize.DWORD, dst, imm8);
+        }
     }
 
     public final void shrq(Register dst, int imm8) {
@@ -6168,6 +6188,11 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     public final void shrq(Register dst) {
         // Unsigned divide dst by 2, CL times.
         AMD64MOp.SHR.emit(this, OperandSize.QWORD, dst);
+    }
+
+    public final void shufpd(Register dst, Register src, int imm8) {
+        GraalError.guarantee(isUByte(imm8), "invalid value");
+        simdOp(SSERMIOp.SHUFPD, OperandSize.PD, VexRVMIOp.VSHUFPD, AVXSize.XMM, dst, src, imm8);
     }
 
     public final void sqrtsd(Register dst, Register src) {
