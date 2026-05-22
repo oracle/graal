@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1274,7 +1274,7 @@ public final class TruffleContext implements AutoCloseable {
 
         /**
          * Specifies a {@link Runnable} that will be executed when some operation on the new context
-         * attenmpted while the context is already {@link TruffleContext#close()} closed}. However,
+         * attempted while the context is already {@link TruffleContext#close() closed}. However,
          * the runnable will only be executed if the outer context is not closed.
          *
          * The purpose of the runnable is to allow throwing a custom guest exception before the

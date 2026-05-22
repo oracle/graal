@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -181,10 +181,16 @@ final class OtherContextGuestObject implements TruffleObject {
     @TruffleBoundary
     static <T extends Throwable> RuntimeException migrateException(PolyglotContextImpl receiverContext, Throwable e, PolyglotContextImpl valueContext) throws T {
         if (e instanceof OtherContextException) {
+            // Same logic as in migrateValue()
             OtherContextException other = (OtherContextException) e;
             if (other.receiverContext == receiverContext && other.delegateContext == valueContext) {
+                // reuse wrapper it is already wrapped
                 throw other;
+            } else if (other.receiverContext == valueContext && other.delegateContext == receiverContext) {
+                // unpack foreign value it belongs to that context
+                throw (T) other.delegate;
             } else {
+                // Preserve original context of the delegate when forwarding through third context
                 throw new OtherContextException(receiverContext, other.delegate, other.delegateContext);
             }
         } else if (InteropLibrary.getUncached().isException(e)) {
@@ -338,13 +344,13 @@ final class OtherContextGuestObject implements TruffleObject {
         }
 
         @TruffleBoundary
-        OtherContextException(PolyglotContextImpl thisContext, Exception delegate, PolyglotContextImpl delegateContext) {
+        OtherContextException(PolyglotContextImpl receiverContext, Exception delegate, PolyglotContextImpl delegateContext) {
             super(delegate.getMessage());
             assert !(delegate instanceof OtherContextException) : "recursive host foreign value found";
-            assert thisContext != null && delegateContext != null : "Must have associated contexts.";
-            assert thisContext != delegateContext : "no need for foreign value if contexts match";
+            assert receiverContext != null && delegateContext != null : "Must have associated contexts.";
+            assert receiverContext != delegateContext : "no need for foreign value if contexts match";
             this.delegate = delegate;
-            this.receiverContext = thisContext;
+            this.receiverContext = receiverContext;
             this.delegateContext = delegateContext;
         }
 
