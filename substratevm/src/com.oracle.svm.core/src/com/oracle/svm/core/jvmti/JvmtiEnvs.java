@@ -107,7 +107,7 @@ public final class JvmtiEnvs {
     public void leaveEnvIteration() {
         mutex.lock();
         try {
-            int remainingThreads = threadsIteratingEnvs--;
+            int remainingThreads = --threadsIteratingEnvs;
             assert remainingThreads >= 0;
             if (remainingThreads == 0 && hasDisposedEnvs) {
                 cleanup();
@@ -124,13 +124,14 @@ public final class JvmtiEnvs {
         JvmtiEnv cur = headEnv;
         JvmtiEnv prev = Word.nullPointer();
         while (cur.isNonNull()) {
+            JvmtiEnv next = cur.getNext();
             if (JvmtiEnvUtil.isDead(cur)) {
                 remove(cur, prev);
                 JvmtiEnvUtil.free(cur);
+            } else {
+                prev = cur;
             }
-
-            prev = cur;
-            cur = cur.getNext();
+            cur = next;
         }
 
         hasDisposedEnvs = false;
