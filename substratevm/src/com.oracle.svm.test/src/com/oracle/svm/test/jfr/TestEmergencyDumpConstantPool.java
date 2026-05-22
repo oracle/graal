@@ -38,6 +38,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.test.jfr.events.ClassEvent;
 
@@ -49,12 +50,12 @@ import jdk.jfr.consumer.RecordedEvent;
  * Verifies that the previous-epoch type and symbol constant pools required by in-flight class
  * events are serialized correctly during an emergency dump.
  */
-public class TestEmergencyDumpConstantPool extends JfrEmergencyDumpTest {
+public class TestEmergencyDumpConstantPool extends JfrRecordingTest {
     private static final String CLASS_EVENT_NAME = "com.jfr.Class";
 
     @Test
     public void test() throws Throwable {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             /* Prevent that the code below is reachable on platforms that don't support JFR. */
             return;
         }

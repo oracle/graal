@@ -38,8 +38,8 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.posix.jfr.PosixJfrEmergencyDumpSupport;
 import com.oracle.svm.shared.util.ClassUtil;
@@ -49,16 +49,16 @@ import jdk.jfr.Configuration;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
-public class TestEmergencyDumpRepositoryFallback extends JfrEmergencyDumpTest {
+public class TestEmergencyDumpRepositoryFallback extends AbstractJfrTest {
     private static final String STRING_EVENT_NAME = "com.jfr.String";
     private static final String OUT_OF_MEMORY_REASON = "Out of Memory";
 
     @Test
     public void testRepositoryEmergencyChunkIsMergedIntoEmergencyDump() throws Throwable {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
-        if (!JfrEmergencyDumpSupport.isPresent() || !(JfrEmergencyDumpSupport.singleton() instanceof PosixJfrEmergencyDumpSupport support)) {
+        if (!(JfrEmergencyDumpSupport.singleton() instanceof PosixJfrEmergencyDumpSupport support)) {
             return;
         }
 

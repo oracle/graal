@@ -83,6 +83,8 @@ Otherwise, this option expects a comma-separated list of tag combinations, each 
 
 This section outlines the JFR features that are available in Native Image.
 
+On Windows, Native Image supports local JFR recordings written to `.jfr` files. JFR emergency dumps on out-of-memory, remote JMX access to `FlightRecorderMXBean`, and JFR control through `jcmd` are not currently available on Windows.
+
 ### Method Profiling and Stack Traces
 
 Method profiling in JFR supports two types of sampling: safepoint and asynchronous sampling.

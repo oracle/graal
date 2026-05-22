@@ -288,11 +288,6 @@ def _test_libgraal_oome_dumping(extra_vm_arguments):
         'custom.hprof': join(scratch_dir, 'custom.hprof'),
         'subdir': join(scratch_dir, 'subdir', 'libgraal_pid*.hprof'),
     }
-    if mx.is_windows():
-        # GR-39501
-        mx.log('-Djdk.graal.internal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
-        return
-
     for n, v in inputs.items():
         vmargs = ['-Djdk.graal.CrashAt=*',
                   '-Djdk.graal.internal.Xmx128M',

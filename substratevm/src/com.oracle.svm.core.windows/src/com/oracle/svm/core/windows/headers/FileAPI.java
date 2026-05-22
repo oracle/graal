@@ -29,12 +29,10 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
@@ -89,20 +87,8 @@ public class FileAPI {
     @CConstant
     public static native int FILE_CURRENT();
 
-    /**
-     * 64-bit integer needed by various APIs.
-     */
-    @CStruct
-    public interface LARGE_INTEGER extends PointerBase {
-        @CField("QuadPart")
-        long getQuadPart();
-
-        @CField("QuadPart")
-        void setQuadPart(long value);
-    }
-
     @CFunction
-    public static native int WriteFile(HANDLE hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite,
+    public static native int WriteFile(HANDLE hFile, CCharPointer lpBuffer, int nNumberOfBytesToWrite,
                     CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
 
     @CFunction
@@ -125,16 +111,16 @@ public class FileAPI {
 
     public static class NoTransition {
         @CFunction(transition = NO_TRANSITION)
-        public static native int ReadFile(HANDLE hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToRead, CIntPointer lpNumberOfBytesRead, PointerBase lpOverlapped);
+        public static native int ReadFile(HANDLE hFile, CCharPointer lpBuffer, int nNumberOfBytesToRead, CIntPointer lpNumberOfBytesRead, PointerBase lpOverlapped);
 
         @CFunction(transition = NO_TRANSITION)
-        public static native int GetFileSizeEx(HANDLE hFile, LARGE_INTEGER lpFileSize);
+        public static native int GetFileSizeEx(HANDLE hFile, CLongPointer lpFileSize);
 
         @CFunction(transition = NO_TRANSITION)
-        public static native int SetFilePointerEx(HANDLE hFile, long liDistanceToMove, LARGE_INTEGER lpNewFilePointer, int dwMoveMethod);
+        public static native int SetFilePointerEx(HANDLE hFile, long liDistanceToMove, CLongPointer lpNewFilePointer, int dwMoveMethod);
 
         @CFunction(transition = NO_TRANSITION)
-        public static native int WriteFile(HANDLE hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite, CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
+        public static native int WriteFile(HANDLE hFile, CCharPointer lpBuffer, int nNumberOfBytesToWrite, CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
 
         @CFunction(transition = NO_TRANSITION)
         public static native int FlushFileBuffers(HANDLE hFile);

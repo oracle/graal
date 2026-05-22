@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2026, 2026, IBM Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +23,8 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+package com.oracle.svm.core.posix.jfr;
 
 import org.graalvm.nativeimage.Platform;
-import static org.junit.Assume.assumeTrue;
-import org.junit.BeforeClass;
-
-public abstract class JfrEmergencyDumpTest extends JfrRecordingTest {
-    @BeforeClass
-    public static void checkNotWindows() {
-        assumeTrue("skipping emergency dump tests on Windows", !Platform.includedIn(Platform.WINDOWS.class));
-    }
-}
+import org.graalvm.nativeimage.Platforms;

@@ -79,7 +79,7 @@ class DumpLinuxOSInfo extends SubstrateDiagnostics.DiagnosticThunk {
 
     private static void printFirstLine(Log log, CCharPointer filename) {
         RawFileOperationSupport fs = RawFileOperationSupport.nativeByteOrder();
-        RawFileOperationSupport.RawFileDescriptor fd = fs.open(filename, RawFileOperationSupport.FileAccessMode.READ);
+        RawFileOperationSupport.RawFileDescriptor fd = fs.open((RawFileOperationSupport.RawFilePath) filename, RawFileOperationSupport.FileAccessMode.READ);
         if (!fs.isValid(fd)) {
             log.string("unknown");
             return;

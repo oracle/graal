@@ -68,9 +68,8 @@ public final class VMInspectionOptions {
 
     private static final Set<String> MONITORING_ALL_VALUES = Set.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
                     MONITORING_THREADDUMP_NAME, MONITORING_NMT_NAME, MONITORING_JCMD_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME);
-    private static final EconomicSet<String> NOT_SUPPORTED_ON_WINDOWS = EconomicSet
-                    .create(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
-                                    MONITORING_JCMD_NAME));
+    private static final EconomicSet<String> NOT_SUPPORTED_ON_WINDOWS = EconomicSet.create(
+                    List.of(MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME, MONITORING_JCMD_NAME));
 
     private static final String MONITORING_ALLOWED_VALUES_TEXT = "" +
                     "'" + MONITORING_HEAPDUMP_NAME + "'" +
@@ -147,13 +146,13 @@ public final class VMInspectionOptions {
 
     @Fold
     public static String getHeapDumpNotSupportedMessage() {
-        return "Unable to dump heap. Heap dumping is only supported on Linux and MacOS for native binaries built with '" +
+        return "Unable to dump heap. Heap dumping is only supported for native binaries built with '" +
                         SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_HEAPDUMP_NAME) + "'.";
     }
 
     @Fold
     public static String getJfrNotSupportedMessage() {
-        return "JFR is only supported on Linux and MacOS for native binaries built with '" +
+        return "JFR is only supported for native binaries built with '" +
                         SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_JFR_NAME) + "'.";
     }
 
@@ -170,7 +169,7 @@ public final class VMInspectionOptions {
 
     @Fold
     public static boolean hasHeapDumpSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME) && !Platform.includedIn(WINDOWS_BASE.class);
+        return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME);
     }
 
     /**
@@ -210,7 +209,12 @@ public final class VMInspectionOptions {
      */
     @Fold
     public static boolean hasJfrSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_JFR_NAME);
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JFR_NAME) && hasJfrPlatformSupport();
+    }
+
+    @Fold
+    public static boolean hasJfrPlatformSupport() {
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class) || Platform.includedIn(Platform.WINDOWS.class);
     }
 
     @Fold

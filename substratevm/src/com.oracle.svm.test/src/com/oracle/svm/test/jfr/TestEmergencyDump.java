@@ -26,12 +26,8 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.test.jfr.events.StringEvent;
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,23 +35,29 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.test.jfr.events.StringEvent;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
 
 /**
  * This test commits events across multiple chunk files and ensure that the events all appear in the
  * emergency dump. This would indicate that the chunk files from the disk repository we merged
  * correctly along with in-flight data.
  */
-public class TestEmergencyDump extends JfrEmergencyDumpTest {
+public class TestEmergencyDump extends JfrRecordingTest {
     private static final String STRING_EVENT_NAME = "com.jfr.String";
     private static final String OUT_OF_MEMORY_REASON = "Out of Memory";
 
     @Test
     public void test() throws Throwable {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             /* Prevent that the code below is reachable on platforms that don't support JFR. */
             return;
         }

@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -47,9 +48,8 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.windows.headers.FileAPI;
-import com.oracle.svm.core.windows.headers.FileAPI.LARGE_INTEGER;
-import com.oracle.svm.core.windows.headers.StringAPISet;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
@@ -59,6 +59,10 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
+/**
+ * Raw file operations for Windows. File paths are stored as null-terminated UTF-16 strings so that
+ * uninterruptible callers can open files without allocating or converting path data.
+ */
 public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -67,17 +71,17 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
     }
 
     @Override
-    public CCharPointer allocateCPath(String path) {
-        byte[] data = path.getBytes();
-        CCharPointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(data.length + 1));
+    public RawFileOperationSupport.RawFilePath allocatePath(String path) {
+        int length = path.length();
+        Pointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(length + 1).multiply(Word.unsigned(Character.BYTES)));
         if (filename.isNull()) {
             return Word.nullPointer();
         }
-        for (int i = 0; i < data.length; i++) {
-            filename.write(i, data[i]);
+        for (int i = 0; i < length; i++) {
+            filename.writeChar(i * Character.BYTES, path.charAt(i));
         }
-        filename.write(data.length, (byte) 0);
-        return filename;
+        filename.writeChar(length * Character.BYTES, (char) 0);
+        return (RawFileOperationSupport.RawFilePath) filename;
     }
 
     @Override
@@ -89,11 +93,8 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public RawFileDescriptor create(CCharPointer cPath, FileCreationMode creationMode, FileAccessMode accessMode) {
-        WCharPointer widePath = convertUtf8ToWide(cPath);
-        RawFileDescriptor result = createWide(widePath, creationMode, accessMode);
-        UntrackedNullableNativeMemory.free(widePath);
-        return result;
+    public RawFileDescriptor create(RawFileOperationSupport.RawFilePath path, FileCreationMode creationMode, FileAccessMode accessMode) {
+        return createWide((WCharPointer) path, creationMode, accessMode);
     }
 
     @Override
@@ -110,15 +111,15 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public RawFileDescriptor open(CCharPointer cPath, FileAccessMode accessMode) {
-        WCharPointer widePath = convertUtf8ToWide(cPath);
-        RawFileDescriptor result = openWide(widePath, accessMode);
-        UntrackedNullableNativeMemory.free(widePath);
-        return result;
+    public RawFileDescriptor open(RawFileOperationSupport.RawFilePath path, FileAccessMode accessMode) {
+        return openWide((WCharPointer) path, accessMode);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static RawFileDescriptor openWide(WCharPointer widePath, FileAccessMode accessMode) {
+        if (widePath.isNull()) {
+            return Word.nullPointer();
+        }
         int access = parseAccess(accessMode);
         HANDLE h = FileAPI.CreateFileW(
                         widePath,
@@ -131,27 +132,10 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static WCharPointer convertUtf8ToWide(CCharPointer pathUtf8) {
-        int nchars = StringAPISet.MultiByteToWideChar(StringAPISet.CP_UTF8(), 0, pathUtf8, -1, Word.nullPointer(), 0);
-        if (nchars <= 0) {
-            return Word.nullPointer();
-        }
-
-        UnsignedWord bytes = Word.unsigned(nchars).multiply(Word.unsigned(Character.BYTES));
-        WCharPointer wide = UntrackedNullableNativeMemory.malloc(bytes);
-        if (wide.isNull()) {
-            return Word.nullPointer();
-        }
-
-        if (StringAPISet.MultiByteToWideChar(StringAPISet.CP_UTF8(), 0, pathUtf8, -1, wide, nchars) == 0) {
-            UntrackedNullableNativeMemory.free(wide);
-            return Word.nullPointer();
-        }
-        return wide;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static RawFileDescriptor createWide(WCharPointer widePath, FileCreationMode creationMode, FileAccessMode accessMode) {
+        if (widePath.isNull()) {
+            return Word.nullPointer();
+        }
         int disposition = creationMode == FileCreationMode.CREATE ? FileAPI.CREATE_NEW() : FileAPI.CREATE_ALWAYS();
         int access = parseAccess(accessMode);
         HANDLE h = FileAPI.CreateFileW(
@@ -179,7 +163,7 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static RawFileDescriptor fromHandle(HANDLE h) {
-        if (h.isNull() || h.equal(WinBase.INVALID_HANDLE_VALUE())) {
+        if (h.equal(WinBase.INVALID_HANDLE_VALUE())) {
             return Word.nullPointer();
         }
         return (RawFileDescriptor) Word.pointer(h.rawValue());
@@ -194,9 +178,6 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isValid(RawFileDescriptor fd) {
-        if (fd.rawValue() == 0) {
-            return false;
-        }
         HANDLE h = asHandle(fd);
         return !h.isNull() && !h.equal(WinBase.INVALID_HANDLE_VALUE());
     }
@@ -218,13 +199,12 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
             return -1;
         }
         HANDLE h = asHandle(fd);
-        // We support 64 bit, so we only really care about QuadPart
-        LARGE_INTEGER size = UnsafeStackValue.get(LARGE_INTEGER.class);
-        size.setQuadPart(0);
+        CLongPointer size = UnsafeStackValue.get(CLongPointer.class);
+        size.write(0);
         if (FileAPI.NoTransition.GetFileSizeEx(h, size) == 0) {
             return -1;
         }
-        return size.getQuadPart();
+        return size.read();
     }
 
     @Override
@@ -234,12 +214,12 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
             return -1;
         }
         HANDLE h = asHandle(fd);
-        LARGE_INTEGER newPos = UnsafeStackValue.get(LARGE_INTEGER.class);
-        newPos.setQuadPart(0);
+        CLongPointer newPos = UnsafeStackValue.get(CLongPointer.class);
+        newPos.write(0);
         if (FileAPI.NoTransition.SetFilePointerEx(h, 0, newPos, FileAPI.FILE_CURRENT()) == 0) {
             return -1;
         }
-        return newPos.getQuadPart();
+        return newPos.read();
     }
 
     @Override
@@ -249,12 +229,12 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
             return false;
         }
         HANDLE h = asHandle(fd);
-        LARGE_INTEGER newPos = UnsafeStackValue.get(LARGE_INTEGER.class);
-        newPos.setQuadPart(0);
+        CLongPointer newPos = UnsafeStackValue.get(CLongPointer.class);
+        newPos.write(0);
         if (FileAPI.NoTransition.SetFilePointerEx(h, position, newPos, FileAPI.FILE_BEGIN()) == 0) {
             return false;
         }
-        return newPos.getQuadPart() == position;
+        return newPos.read() == position;
     }
 
     @Override

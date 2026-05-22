@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
@@ -205,7 +204,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         idx = writeToPathBuffer(EMERGENCY_CHUNK_BYTES, idx);
         idx = writeToPathBuffer(CHUNKFILE_EXTENSION_BYTES, idx);
         getPathBuffer().write(idx++, (byte) 0);
-        return getFileSupport().create(getPathBuffer(), FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE);
+        return getFileSupport().create((RawFileOperationSupport.RawFilePath) getPathBuffer(), FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE);
     }
 
     @Override
@@ -258,7 +257,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         if (path.isNull()) {
             return Word.nullPointer();
         }
-        return getFileSupport().create(path, FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
+        return getFileSupport().create((RawFileOperationSupport.RawFilePath) path, FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
     }
 
     private CCharPointer createEmergencyDumpPath() {
@@ -611,7 +610,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
 class PosixJfrEmergencyDumpFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasJfrSupport() && !Platform.includedIn(InternalPlatform.WINDOWS_BASE.class);
+        return VMInspectionOptions.hasJfrSupport();
     }
 
     @Override

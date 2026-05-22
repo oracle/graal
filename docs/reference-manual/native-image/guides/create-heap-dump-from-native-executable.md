@@ -14,10 +14,10 @@ Just like any other Java heap dump, it can be opened with the [VisualVM](../../.
 To enable heap dump support, a native executable must be built with the `--enable-monitoring=heapdump` option. 
 A heap dump can then be created in the following ways:
 
-1. Create a heap dump with VisualVM.
+1. Create a heap dump from a running process with VisualVM (Linux/macOS only).
 2. The command-line option `-XX:+HeapDumpOnOutOfMemoryError` can be used to create a heap dump when the native executable runs out of Java heap memory.
 3. Dump the initial heap of a native executable using the `-XX:+DumpHeapAndExit` command-line option.
-4. Create a heap dump by sending a `SIGUSR1` signal to the application at runtime.
+4. Create a heap dump by sending a `SIGUSR1` signal to the application at runtime (Linux/macOS only).
 5. Create a heap dump programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspectionOptions.java) API.
 
 All approaches are described below.
@@ -25,11 +25,12 @@ All approaches are described below.
 > Note: By default, a heap dump is created in the current working directory. The `-XX:HeapDumpPath` option can be used to specify an alternative filename or directory. For example:  
 > `./helloworld -XX:HeapDumpPath=$HOME/helloworld.hprof`
 
-> Creating a heap dump on the Microsoft Windows platform is not supported.
+> The `SIGUSR1` heap dump trigger is not available on Microsoft Windows.
 
 ## Create a Heap Dump with VisualVM
 
 A convenient way to create a heap dump is to use [VisualVM](../../../tools/visualvm.md).
+VisualVM can open heap dump files created on Windows, but it cannot currently request heap dumps from running Native Image processes on Windows.
 For this, you need to add `jvmstat` to the `--enable-monitoring` option (for example, `--enable-monitoring=heapdump,jvmstat`).
 This will allow VisualVM to pick up and list running Native Image processes.
 You can then request a heap dump in the same way you can request one when your application runs on the JVM (for example, right-click on the process, then select **Heap Dump**).

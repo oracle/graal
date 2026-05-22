@@ -30,7 +30,6 @@ import java.nio.ByteOrder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -60,7 +60,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     }
 
     @Override
-    public CCharPointer allocateCPath(String path) {
+    public RawFileOperationSupport.RawFilePath allocatePath(String path) {
         byte[] data = path.getBytes();
         CCharPointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(data.length + 1));
         if (filename.isNull()) {
@@ -71,7 +71,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
             filename.write(i, data[i]);
         }
         filename.write(data.length, (byte) 0);
-        return filename;
+        return (RawFileOperationSupport.RawFilePath) filename;
     }
 
     @Override
@@ -83,9 +83,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public RawFileDescriptor create(CCharPointer cPath, FileCreationMode creationMode, FileAccessMode accessMode) {
+    public RawFileDescriptor create(RawFileOperationSupport.RawFilePath path, FileCreationMode creationMode, FileAccessMode accessMode) {
         int flags = parseMode(creationMode) | parseMode(accessMode);
-        return open0(cPath, flags);
+        return open0((CCharPointer) path, flags);
     }
 
     @Override
@@ -102,9 +102,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public RawFileDescriptor open(CCharPointer cPath, FileAccessMode mode) {
+    public RawFileDescriptor open(RawFileOperationSupport.RawFilePath path, FileAccessMode mode) {
         int flags = parseMode(mode);
-        return open0(cPath, flags);
+        return open0((CCharPointer) path, flags);
     }
 
     private static RawFileDescriptor open0(String path, int flags) {
@@ -130,6 +130,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean close(RawFileDescriptor fd) {
+        if (!isValid(fd)) {
+            return false;
+        }
         int posixFd = getPosixFileDescriptor(fd);
         int result = Unistd.NoTransitions.close(posixFd);
         return result == 0;
@@ -138,6 +141,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public long size(RawFileDescriptor fd) {
+        if (!isValid(fd)) {
+            return -1;
+        }
         int posixFd = getPosixFileDescriptor(fd);
         return PosixStat.getSize(posixFd);
     }
@@ -145,6 +151,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public long position(RawFileDescriptor fd) {
+        if (!isValid(fd)) {
+            return -1;
+        }
         int posixFd = getPosixFileDescriptor(fd);
         return Unistd.NoTransitions.lseek(posixFd, Word.signed(0), Unistd.SEEK_CUR()).rawValue();
     }
@@ -152,6 +161,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean seek(RawFileDescriptor fd, long position) {
+        if (!isValid(fd)) {
+            return false;
+        }
         int posixFd = getPosixFileDescriptor(fd);
         SignedWord newPos = Unistd.NoTransitions.lseek(posixFd, Word.signed(position), Unistd.SEEK_SET());
         return position == newPos.rawValue();
@@ -160,6 +172,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean write(RawFileDescriptor fd, Pointer data, UnsignedWord size) {
+        if (!isValid(fd)) {
+            return false;
+        }
         int posixFd = getPosixFileDescriptor(fd);
         return PosixUtils.writeUninterruptibly(posixFd, data, size);
     }
@@ -167,6 +182,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public long read(RawFileDescriptor fd, Pointer buffer, UnsignedWord bufferSize) {
+        if (!isValid(fd)) {
+            return -1;
+        }
         int posixFd = getPosixFileDescriptor(fd);
         return PosixUtils.readUninterruptibly(posixFd, buffer, bufferSize);
     }
@@ -210,7 +228,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
 class PosixRawFileOperationFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.firstImageBuild() && !Platform.includedIn(WINDOWS_BASE.class);
+        return ImageLayerBuildingSupport.firstImageBuild();
     }
 
     @Override
