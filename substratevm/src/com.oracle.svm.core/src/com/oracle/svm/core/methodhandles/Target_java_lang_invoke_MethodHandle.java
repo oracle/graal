@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.methodhandles;
 
+import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.MethodHandle;
@@ -84,6 +85,12 @@ final class Target_java_lang_invoke_MethodHandle {
     @Alias
     native Target_java_lang_invoke_LambdaForm internalForm();
 
+    @Alias
+    native boolean isInvokeSpecial();
+
+    @Alias
+    native Class<?> internalCallerClass();
+
     /* All MethodHandle.invoke* methods funnel through here. */
     @Substitute(polymorphicSignature = true)
     Object invokeBasic(Object... args) throws Throwable {
@@ -108,7 +115,8 @@ final class Target_java_lang_invoke_MethodHandle {
                 var delegating = SubstrateUtil.cast(this, Target_java_lang_invoke_DelegatingMethodHandle.class);
                 return delegating.getTarget().invokeBasic(args);
             }
-            ret = Util_java_lang_invoke_MethodHandle.invokeInternal(memberName, type, args);
+            Class<?> callerClass = delegates ? internalCallerClass() : null;
+            ret = Util_java_lang_invoke_MethodHandle.invokeInternal(memberName, type, callerClass, args);
         } else {
             /* Interpretation mode */
             Target_java_lang_invoke_LambdaForm form = internalForm();
@@ -191,10 +199,10 @@ final class Util_java_lang_invoke_MethodHandle {
         assert args.length > 0;
         Target_java_lang_invoke_MemberName memberName = (Target_java_lang_invoke_MemberName) args[args.length - 1];
         MethodType methodType = memberName.getInvocationType();
-        return MethodHandleUtils.cast(invokeInternal(memberName, methodType, Arrays.copyOf(args, args.length - 1)), methodType.returnType());
+        return MethodHandleUtils.cast(invokeInternal(memberName, methodType, null, Arrays.copyOf(args, args.length - 1)), methodType.returnType());
     }
 
-    static Object invokeInternal(Target_java_lang_invoke_MemberName memberName, MethodType methodType, Object... args) throws Throwable {
+    static Object invokeInternal(Target_java_lang_invoke_MemberName memberName, MethodType methodType, Class<?> callerClass, Object... args) throws Throwable {
         /*
          * This is never reached in the "crema" case since invokeBasic & linkTo* are instead
          * redirected to CremaSupport.
@@ -248,11 +256,11 @@ final class Util_java_lang_invoke_MethodHandle {
                 Object receiver = args[0];
                 Object[] invokeArgs = Arrays.copyOfRange(args, 1, args.length);
                 SubstrateMethodAccessor method = asMethod(memberName, false);
-                return method.methodHandleInvoke(receiver, invokeArgs);
+                return method.methodHandleInvoke(receiver, invokeArgs, callerClass);
             } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeStatic) {
                 convertArgs(args, methodType);
                 SubstrateMethodAccessor method = asMethod(memberName, true);
-                return method.methodHandleInvoke(null, args);
+                return method.methodHandleInvoke(null, args, callerClass);
             } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeSpecial) {
                 convertArgs(args, methodType);
                 Object receiver = args[0];
@@ -380,4 +388,11 @@ final class Target_java_lang_invoke_MethodHandleImpl {
 
 @TargetClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "ArrayAccessor")
 final class Target_java_lang_invoke_MethodHandleImpl_ArrayAccessor {
+}
+
+@TargetClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "WrappedMember")
+final class Target_java_lang_invoke_MethodHandleImpl_WrappedMember {
+    @Alias
+    @TargetElement(name = CONSTRUCTOR_NAME)
+    native void constructor(MethodHandle target, MethodType type, Target_java_lang_invoke_MemberName member, boolean isInvokeSpecial, Class<?> callerClass);
 }

@@ -69,6 +69,9 @@ public final class Target_java_lang_invoke_MemberName {
     public native boolean isStatic();
 
     @Alias
+    public native boolean isPrivate();
+
+    @Alias
     public native boolean isMethod();
 
     @Alias
