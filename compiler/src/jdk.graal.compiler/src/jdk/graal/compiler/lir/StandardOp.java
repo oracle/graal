@@ -65,6 +65,12 @@ public class StandardOp {
         boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit);
     }
 
+    /**
+     * LIR operation that emits a call and records call debug information.
+     */
+    public interface CallOp {
+    }
+
     public interface LabelHoldingOp {
         Label getLabel();
     }

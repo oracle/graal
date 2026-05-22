@@ -414,6 +414,7 @@ public class CodeInfoEncoder {
             if (debugInfo != null) {
                 final int offset = getEntryOffset(infopoint);
                 if (offset >= 0) {
+                    VMError.guarantee(offset < compilationSize, "Code info entry offset is outside the method code range");
                     boolean added = infopointOffsets.add(offset);
                     if (!added) {
                         throw VMError.shouldNotReachHere("Encoding two infopoints at same offset. Conflicting infopoint: " + infopoint);

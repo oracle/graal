@@ -37,6 +37,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.StandardOp.LabelHoldingOp;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapRegistersAfterInstruction;
@@ -49,7 +50,7 @@ import jdk.vm.ci.meta.Value;
 
 public class AArch64Call {
 
-    public abstract static class CallOp extends AArch64LIRInstruction {
+    public abstract static class CallOp extends AArch64LIRInstruction implements StandardOp.CallOp {
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
         @Temp({REG, STACK}) protected Value[] temps;
@@ -233,7 +234,7 @@ public class AArch64Call {
         int after = masm.position();
         Call call = crb.recordDirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
-        masm.postCallNop(call);
+        crb.postCallNop(call, info);
         return before;
     }
 
@@ -246,7 +247,7 @@ public class AArch64Call {
         int after = masm.position();
         Call call = crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
-        masm.postCallNop(call);
+        crb.postCallNop(call, info);
         return before;
     }
 
@@ -261,7 +262,7 @@ public class AArch64Call {
             }
             int after = masm.position();
             Call call = crb.recordDirectCall(before, after, callTarget, null);
-            masm.postCallNop(call);
+            crb.postCallNop(call);
         }
     }
 }
