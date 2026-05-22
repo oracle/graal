@@ -73,11 +73,24 @@ public class Dlfcn {
     @CFunction
     public static native int dlclose(PointerBase handle);
 
-    @CFunction(transition = Transition.NO_TRANSITION)
+    @CFunction
     public static native <T extends PointerBase> T dlsym(PointerBase handle, CCharPointer name);
 
     @CFunction
     public static native CCharPointer dlerror();
+
+    @CContext(PosixDirectives.class)
+    @CLibrary("dl")
+    public static class NoTransitions {
+        /**
+         * Only use this variant from code that must remain fully uninterruptible, such as early
+         * startup code before Java thread state is available. All ordinary runtime symbol lookups
+         * must use {@link Dlfcn#dlsym(PointerBase, CCharPointer)} because dlsym can block on the
+         * dynamic loader lock.
+         */
+        @CFunction(value = "dlsym", transition = Transition.NO_TRANSITION)
+        public static native <T extends PointerBase> T dlsym(PointerBase handle, CCharPointer name);
+    }
 
     @CStruct
     public interface Dl_info extends PointerBase {
