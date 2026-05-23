@@ -30,14 +30,11 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -52,9 +49,6 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         systemLoadMethod = method(access, "java.lang.System", "load", String.class);
-        if (isDarwin()) {
-            registerDarwinBuiltinPkgNatives();
-        }
         if (isLinux() || isDarwin()) {
             JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(this::registerHeadlessJavaDesktopSupport);
             if (JNIRegistrationSupport.singleton().isPreviousLayerRegisteredLibrary("awt")) {
@@ -97,7 +91,7 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
                                 "JNU_ThrowIOException",
                                 "getEncodingFromLangID",
                                 "getJavaIDFromLangID");
-            } else {
+            } else if (isLinux()) {
                 jniRegistrationSupport.addJvmShimExports(
                                 "jio_fprintf");
                 jniRegistrationSupport.addJavaShimExports(
@@ -106,6 +100,20 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
                 /* Since `awt` loads either `awt_headless` or `awt_xawt`, we register them both. */
                 jniRegistrationSupport.registerLibrary("awt_headless");
                 jniRegistrationSupport.registerLibrary("awt_xawt");
+            } else if (isDarwin()) {
+                jniRegistrationSupport.addJavaShimExports(
+                                "JNU_ThrowIOException");
+                /*
+                 * Darwin AWT uses dynamically loaded JDK libraries as on Linux and Windows, but
+                 * its dependency chain is platform-specific.
+                 */
+                jniRegistrationSupport.registerLibrary("awt_lwawt");
+                jniRegistrationSupport.registerLibrary("osxapp");
+                jniRegistrationSupport.registerLibrary("javajpeg");
+                jniRegistrationSupport.registerLibrary("lcms");
+                jniRegistrationSupport.registerLibrary("mlib_image");
+                jniRegistrationSupport.registerLibrary("fontmanager");
+                jniRegistrationSupport.registerLibrary("freetype");
             }
         }
         if (jniRegistrationSupport.isAnyLayerRegisteredLibrary("javaaccessbridge")) {
@@ -123,21 +131,6 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
-        if (isDarwin() && JNIRegistrationSupport.singleton().isAnyLayerRegisteredLibrary("awt")) {
-            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
-                linkerInvocation.addNativeLinkerOption("-Wl,-framework,AppKit");
-                linkerInvocation.addNativeLinkerOption("-Wl,-framework,Accelerate");
-                linkerInvocation.addNativeLinkerOption("-Wl,-framework,ApplicationServices");
-                linkerInvocation.addNativeLinkerOption("-Wl,-framework,CoreText");
-                linkerInvocation.addNativeLinkerOption("-Wl,-framework,JavaRuntimeSupport");
-                linkerInvocation.addNativeLinkerOption("-Wl,-framework,QuartzCore");
-                linkerInvocation.addNativeLinkerOption("-Wl,-framework,Metal");
-                linkerInvocation.addNativeLinkerOption("-Wl,-framework,OpenGL");
-                linkerInvocation.addNativeLinkerOption("-Wl,-framework,Security");
-                linkerInvocation.addNativeLinkerOption("-lc++");
-                return linkerInvocation;
-            });
-        }
         if (isWindows() && JNIRegistrationSupport.singleton().isAnyLayerRegisteredLibrary("awt")) {
             ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
                 /*
@@ -151,40 +144,11 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
         }
     }
 
-    private static void registerDarwinBuiltinPkgNatives() {
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("java_awt_image");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("java_awt_Font");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("java_awt_Toolkit");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_awt_image");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_awt_CGraphicsDevice");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_awt_CGraphicsEnvironment");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_awt_PlatformGraphicsInfo");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_java2d");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_font");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_lwawt_macosx_LWCToolkit");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_imageio_plugins_jpeg");
-    }
-
     private void registerHeadlessJavaDesktopSupport(String libname) {
         if (!"awt".equals(libname) || headlessJavaDesktopSupportRegistered) {
             return;
         }
         headlessJavaDesktopSupportRegistered = true;
         JVMCIRuntimeJNIAccess.register(systemLoadMethod);
-        if (isDarwin()) {
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("awt");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("awt_lwawt");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("osxapp");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("javajpeg");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("lcms");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("mlib_image");
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
-        }
-        if (!isDarwin()) {
-            return;
-        }
-        NativeLibraries.singleton().addStaticJniLibrary("awt", "awt_lwawt", "javajpeg", "lcms", "mlib_image");
-        NativeLibraries.singleton().addStaticJniLibrary("awt_lwawt", "osxapp");
-        NativeLibraries.singleton().addStaticJniLibrary("fontmanager", "freetype");
     }
 }

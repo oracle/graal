@@ -28,6 +28,7 @@ import static com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -202,6 +203,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         return isCurrentLayerRegisteredLibrary(libname) || isPreviousLayerRegisteredLibrary(libname);
     }
 
+    boolean isRegisteredLibrary(String libname) {
+        return isAnyLayerRegisteredLibrary(libname);
+    }
+
     /** Adds exports that `jvm` shim should re-export. */
     void addJvmShimExports(String... exports) {
         addShimExports("jvm", exports);
@@ -231,7 +236,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
-        if (SubstrateOptions.StaticExecutable.getValue() || isDarwin()) {
+        if (SubstrateOptions.StaticExecutable.getValue()) {
             return; /* Not supported. */
         }
 
@@ -241,13 +246,26 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
 
         ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+            if (isDarwin()) {
+                linkerInvocation.addRPath("@loader_path");
+            }
             /* Make sure the native image contains all symbols necessary for shim libraries. */
-            getShimExports().map(isWindows() ? "/export:"::concat : "-Wl,-u,"::concat)
+            getShimExports().map(this::preserveShimExport)
                             .forEach(linkerInvocation::addNativeLinkerOption);
             return linkerInvocation;
         });
 
         imageName = ((BeforeImageWriteAccessImpl) access).getImageName();
+    }
+
+    private String preserveShimExport(String symbol) {
+        if (isWindows()) {
+            return "/export:" + symbol;
+        } else if (isDarwin()) {
+            return "-Wl,-u,_" + symbol;
+        } else {
+            return "-Wl,-u," + symbol;
+        }
     }
 
     private Stream<String> getShimExports() {
@@ -260,7 +278,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        if (SubstrateOptions.StaticExecutable.getValue() || isDarwin()) {
+        if (SubstrateOptions.StaticExecutable.getValue()) {
             return; /* Not supported. */
         }
 
@@ -362,6 +380,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
             for (String export : shimExports.get(shimName)) {
                 linkerCommand.add("/export:" + export);
             }
+        } else if (isDarwin()) {
+            Path shimSource = writeDarwinShimSource(shimName);
+            linkerCommand = ImageSingletons.lookup(CCompilerInvoker.class)
+                            .createCompilerCommand(List.of("-shared", "-Wl,-install_name,@rpath/" + shimLibrary.getFileName()), shimLibrary, shimSource);
         } else {
             /*
              * To satisfy the dynamic loader and enable re-export it is enough to have a library
@@ -390,6 +412,76 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         } catch (IOException e) {
             VMError.shouldNotReachHere(e);
         }
+    }
+
+    private Path writeDarwinShimSource(String shimName) {
+        Path shimSource = accessImpl.getTempDirectory().resolve(shimName + "_shim.c");
+        StringBuilder source = new StringBuilder();
+        source.append("#include <dlfcn.h>\n");
+        source.append("#include <stdio.h>\n");
+        source.append("#include <stdlib.h>\n\n");
+        source.append("static void *image_handle;\n");
+        for (String export : shimExports.get(shimName)) {
+            source.append("static void *").append(targetPointerName(export)).append(";\n");
+        }
+        source.append("\n");
+        source.append("static void *resolve_symbol(const char *name) {\n");
+        source.append("    void *main_handle = dlopen(NULL, RTLD_LAZY);\n");
+        source.append("    dlerror();\n");
+        source.append("    void *result = main_handle == NULL ? NULL : dlsym(main_handle, name);\n");
+        source.append("    if (dlerror() != NULL) {\n");
+        source.append("        result = NULL;\n");
+        source.append("    }\n");
+        source.append("    if (result == NULL) {\n");
+        source.append("        if (image_handle == NULL) {\n");
+        source.append("            image_handle = dlopen(\"@loader_path/").append(accessImpl.getImagePath().getFileName()).append("\", RTLD_LAZY);\n");
+        source.append("        }\n");
+        source.append("        dlerror();\n");
+        source.append("        result = image_handle == NULL ? NULL : dlsym(image_handle, name);\n");
+        source.append("        if (dlerror() != NULL) {\n");
+        source.append("            result = NULL;\n");
+        source.append("        }\n");
+        source.append("    }\n");
+        source.append("    if (result == NULL) {\n");
+        source.append("        fprintf(stderr, \"Could not resolve Native Image shim symbol %s\\n\", name);\n");
+        source.append("        abort();\n");
+        source.append("    }\n");
+        source.append("    return result;\n");
+        source.append("}\n\n");
+        source.append("__attribute__((constructor)) static void initialize_shim(void) {\n");
+        for (String export : shimExports.get(shimName)) {
+            source.append("    ").append(targetPointerName(export)).append(" = resolve_symbol(\"").append(export).append("\");\n");
+        }
+        source.append("}\n\n");
+        for (String export : shimExports.get(shimName)) {
+            String targetPointer = targetPointerName(export);
+            source.append("__attribute__((naked)) void ").append(export).append("(void) {\n");
+            source.append("#if defined(__aarch64__)\n");
+            source.append("    __asm__(\"adrp x16, _").append(targetPointer).append("@PAGE\\n\"\n");
+            source.append("            \"ldr x16, [x16, _").append(targetPointer).append("@PAGEOFF]\\n\"\n");
+            source.append("            \"br x16\");\n");
+            source.append("#elif defined(__x86_64__)\n");
+            source.append("    __asm__(\"jmpq *_").append(targetPointer).append("(%rip)\");\n");
+            source.append("#else\n");
+            source.append("#error Unsupported Darwin architecture\n");
+            source.append("#endif\n");
+            source.append("}\n\n");
+        }
+        try {
+            Files.writeString(shimSource, source, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            VMError.shouldNotReachHere(e);
+        }
+        return shimSource;
+    }
+
+    private static String targetPointerName(String symbol) {
+        StringBuilder result = new StringBuilder("target_");
+        for (int i = 0; i < symbol.length(); i++) {
+            char c = symbol.charAt(i);
+            result.append(Character.isLetterOrDigit(c) || c == '_' ? c : '_');
+        }
+        return result.toString();
     }
 
     /** Returns the import library of the native image. */

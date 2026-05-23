@@ -26,7 +26,7 @@ package com.oracle.svm.core.jni.access;
 
 import static com.oracle.svm.core.jni.access.JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE;
 
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
@@ -93,10 +93,10 @@ public final class JNINativeLinkage {
         return (PlatformNativeLibrarySupport.singleton().isBuiltinPkgNative(this.getShortName()));
     }
 
-    public CGlobalDataInfo getOrCreateBuiltInAddress(Supplier<CGlobalDataInfo> createSymbol) {
+    public CGlobalDataInfo getOrCreateBuiltInAddress(Function<String, CGlobalDataInfo> createSymbol) {
         assert isBuiltInFunction();
         if (builtInAddress == null) {
-            builtInAddress = createSymbol.get();
+            builtInAddress = createSymbol.apply(getShortName());
         }
         return builtInAddress;
     }
@@ -176,16 +176,12 @@ public final class JNINativeLinkage {
         return null;
     }
 
-    public String getShortName() {
+    private String getShortName() {
         StringBuilder sb = new StringBuilder("Java_");
         mangleName(getDeclaringClassName(), 1, getDeclaringClassName().length() - 1, sb);
         sb.append('_');
         mangleName(getName(), 0, name.length(), sb);
         return sb.toString();
-    }
-
-    public String getLongName() {
-        return getShortName() + "__" + getSignature();
     }
 
     private String getSignature() {

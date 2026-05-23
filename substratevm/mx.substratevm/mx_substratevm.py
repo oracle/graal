@@ -258,7 +258,7 @@ def _is_post_merge_or_weekly_job():
 
 def _should_run_java_desktop_integration():
     tags = tuple(Task.tags or ())
-    return _is_post_merge_or_weekly_job() or any(tag == GraalTags.headless_java_desktop_integration for tag in tags)
+    return Task.tags is None or _is_post_merge_or_weekly_job() or any(tag == GraalTags.java_desktop_integration for tag in tags)
 
 class Tags(set):
     def __getattr__(self, name):
@@ -273,7 +273,7 @@ GraalTags = Tags([
     'standalone_pointsto_unittests',
     'native_unittests',
     'all_native_unittests',
-    'headless_java_desktop_integration',
+    'java_desktop_integration',
     'build',
     'benchmarktest',
     "nativeimagehelp",
@@ -551,7 +551,7 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS):
                 native_unittests_task(args.extra_image_builder_arguments, include_custom_test_groups=True)
 
-    with Task('java.desktop integration tests', tasks, tags=[GraalTags.headless_java_desktop_integration]) as t:
+    with Task('java.desktop integration tests', tasks, tags=[GraalTags.java_desktop_integration]) as t:
         if t and _should_run_java_desktop_integration():
             if mx.is_windows():
                 mx.warn('Headless java.desktop integration test does not run on Windows')

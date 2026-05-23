@@ -499,7 +499,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                  */
                 try {
                     Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                    Files.write(exportedSymbolsPath, getImageSymbols(true));
+                    Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols().map("_"::concat)).collect(Collectors.toSet());
+                    Files.write(exportedSymbolsPath, globalSymbols);
                     additionalPreOptions.add("-Wl,-exported_symbols_list");
                     additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
                 } catch (IOException e) {
