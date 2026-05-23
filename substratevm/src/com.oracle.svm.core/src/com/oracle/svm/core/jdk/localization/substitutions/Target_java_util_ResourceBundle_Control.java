@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
 import jdk.internal.util.ReferencedKeyMap;
@@ -44,8 +45,8 @@ import sun.util.locale.BaseLocale;
 import sun.util.resources.Bundles;
 
 @TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control")
-@SuppressWarnings({"unused", "static-method"})
-final class Target_java_util_ResourceBundle_Control {
+@SuppressWarnings("unused")
+final class Target_java_util_ResourceBundle_Control_Cache {
 
     /*
      * This cache only memoizes candidate locale lists derived by Control.createCandidateList().
@@ -54,6 +55,16 @@ final class Target_java_util_ResourceBundle_Control {
      */
     @Alias @TargetElement(name = "CANDIDATES_CACHE") @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
     private static ReferencedKeyMap<BaseLocale, List<Locale>> candidatesCache = ReferencedKeyMap.create(true, ConcurrentHashMap::new);
+}
+
+/**
+ * In the no-runtime-class-loading mode, resource bundles are limited to the classes and resources
+ * already included in the image. Runtime class loading keeps the JDK implementation so classes
+ * loaded after image build can use the standard runtime lookup path.
+ */
+@TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control", onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class)
+@SuppressWarnings({"unused", "static-method"})
+final class Target_java_util_ResourceBundle_Control {
 
     /**
      * Bundles are baked into the image, therefore their source can't really be modified at runtime.

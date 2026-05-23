@@ -30,14 +30,14 @@ import java.net.SocketAddress;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
@@ -155,6 +155,21 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
     }
 
     private static void registerPlatformSocketOptionsCreate(DuringAnalysisAccess a) {
+        if (isRunOnce(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate)) {
+            return; /* Already registered. */
+        }
+
+        if (isWindows()) {
+            DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+            /*
+             * extnet contains native methods for platform socket options, but the Windows library
+             * does not define JNI_OnLoad_extnet.
+             */
+            if (access.getNativeLibraries().hasStaticLibrary("extnet")) {
+                access.getNativeLibraries().addStaticNonJniLibrary("extnet", "jvm");
+            }
+        }
+
         String implClassName;
         if (isLinux()) {
             implClassName = "jdk.net.LinuxSocketOptions";

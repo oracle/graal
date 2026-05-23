@@ -37,6 +37,7 @@ import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
@@ -143,7 +144,10 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("sun.nio", JDK_CLASS_REASON);
         if (OS.WINDOWS.isCurrent()) {
             rci.initializeAtRunTime("sun.nio.ch.PipeImpl", "Contains SecureRandom reference, therefore can't be included in the image heap");
+        } else {
+            rci.initializeAtRunTime("sun.nio.ch.UnixAsynchronousSocketChannelImpl", "Runtime-loaded asynchronous sockets need runtime native-dispatcher state");
         }
+        rci.initializeAtRunTime("sun.nio.ch.AsynchronousChannelGroupImpl", "Default asynchronous channel group state is runtime process specific");
 
         rci.initializeAtRunTime("sun.net.PortConfig", "Calls PortConfig.getLower0() and PortConfig.getUpper0()");
 
@@ -167,6 +171,16 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("sun.text", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.util", JDK_CLASS_REASON);
         if (FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
+            if (RuntimeClassLoading.isSupported()) {
+                /*
+                 * Without runtime class loading, PropertyResourceBundle is covered by the existing
+                 * java.util build-time initialization policy and by statically registered bundle
+                 * metadata. Runtime class loading can execute the JDK PropertyResourceBundle path
+                 * for classes loaded after image build, so only those images need its cache state in
+                 * the runtime process.
+                 */
+                rci.initializeAtRunTime("java.util.PropertyResourceBundle", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
+            }
             rci.initializeAtRunTime("sun.util.locale.provider.LocaleProviderAdapter", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
             rci.initializeAtRunTime("sun.util.locale.provider.LocaleServiceProviderPool", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
             rci.initializeAtRunTime("sun.util.locale.provider.LocaleServiceProviderPool$AllAvailableLocales", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);

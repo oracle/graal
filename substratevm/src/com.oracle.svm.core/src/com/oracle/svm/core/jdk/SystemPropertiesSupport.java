@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import static jdk.graal.compiler.options.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,6 +45,7 @@ import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.VM;
@@ -386,23 +386,42 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         if (objectFileStr == null) {
             throw VMError.shouldNotReachHere("Unable to get path to " + jvmLibName() + " image.");
         }
-        var pathToSharedLib = Path.of(objectFileStr);
-        if (!pathToSharedLib.endsWith(jvmLibName())) {
+        if (!pathEndsWithName(objectFileStr, jvmLibName())) {
             throw VMError.shouldNotReachHere("Invalid name for a " + jvmLibName() + " image: " + objectFileStr);
         }
-        // At this point we know that this is a libjvm shared library image
-        try {
-            return pathToSharedLib // <java.home>/{lib|bin}/svm/<jvmLibName()>
-                            .getParent() // <java.home>/{lib|bin}/svm
-                            .getParent() // <java.home>/{lib|bin}
-                            .getParent().toString();
-        } catch (NullPointerException e) {
+        /*
+         * Avoid java.io.File / java.nio.file.Path here. Initializing those classes needs system
+         * properties that can recursively query java.home. The path comes from the loaded libjvm
+         * object file on the current platform, so the platform separator is enough.
+         */
+        String svmDirectory = parentPath(objectFileStr); // <java.home>/{lib|bin}/svm
+        String libDirectory = parentPath(svmDirectory); // <java.home>/{lib|bin}
+        String javaHome = parentPath(libDirectory); // <java.home>
+        if (javaHome == null) {
             throw VMError.shouldNotReachHere("Unable to determine java.home for " + objectFileStr);
         }
+        return javaHome;
     }
 
     protected String jvmLibName() {
         throw VMError.shouldNotReachHere("System property java.home is not supported in this configuration");
+    }
+
+    private static boolean pathEndsWithName(String path, String name) {
+        int nameStart = path.lastIndexOf(pathSeparator()) + 1;
+        return path.regionMatches(nameStart, name, 0, name.length()) && nameStart + name.length() == path.length();
+    }
+
+    private static String parentPath(String path) {
+        if (path == null) {
+            return null;
+        }
+        int separatorIndex = path.lastIndexOf(pathSeparator());
+        return separatorIndex < 0 ? null : path.substring(0, separatorIndex);
+    }
+
+    private static char pathSeparator() {
+        return OS.getCurrent() == OS.WINDOWS ? '\\' : '/';
     }
 
     protected abstract String javaIoTmpdirValue();

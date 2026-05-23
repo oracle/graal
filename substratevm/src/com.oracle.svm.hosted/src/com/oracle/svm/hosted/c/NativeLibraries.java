@@ -546,6 +546,10 @@ public final class NativeLibraries {
         return getAllStaticLibs().keySet();
     }
 
+    public boolean hasStaticLibrary(String library) {
+        return getStaticLibraryPath(getAllStaticLibs(), library) != null;
+    }
+
     private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
         String libSuffix = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ? ".lib" : ".a";

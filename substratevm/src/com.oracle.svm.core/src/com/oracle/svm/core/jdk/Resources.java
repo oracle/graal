@@ -65,6 +65,7 @@ import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
 import com.oracle.svm.core.jdk.resources.ResourceExceptionEntry;
@@ -605,6 +606,9 @@ public final class Resources {
         try {
             String refPart = index != 0 ? '#' + Integer.toString(index) : "";
             String moduleName = moduleName(module);
+            if (RuntimeClassLoading.isSupported()) {
+                return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart, JavaNetSubstitutions.createResourcesURLStreamHandler());
+            }
             return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart);
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);

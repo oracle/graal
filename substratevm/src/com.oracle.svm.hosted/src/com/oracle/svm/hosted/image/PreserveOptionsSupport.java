@@ -41,7 +41,6 @@ import java.security.Provider;
 import java.security.Security;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
@@ -173,11 +172,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         IncludeAllLocales.update(hostedValues, true);
         AllowJRTFileSystem.update(hostedValues, true);
 
-        /* Should be removed with GR-61365 */
-        var missingJDKProtocols = List.of("http", "https", "ftp", "jar", "mailto", "jrt", "jmod");
-        for (String missingProtocol : missingJDKProtocols) {
-            EnableURLProtocols.update(hostedValues, missingProtocol);
-        }
+        EnableURLProtocols.update(hostedValues, "all");
         AdditionalSecurityProviders.update(hostedValues, getSecurityProvidersCSV());
     }
 
