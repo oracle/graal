@@ -105,14 +105,15 @@ public class WindowsUtils {
         CCharPointer curBuf = bytes;
         UnsignedWord curLen = length;
         while (curLen.notEqual(0)) {
+            int writeSize = bytesToTransfer(curLen);
             CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
-            int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, Word.nullPointer());
+            int ret = FileAPI.WriteFile(handle, curBuf, writeSize, bytesWritten, Word.nullPointer());
             if (ret == 0) {
                 return false;
             }
 
             int writtenCount = bytesWritten.read();
-            if (curLen.notEqual(writtenCount)) {
+            if (writtenCount <= 0 || writtenCount > writeSize) {
                 return false;
             }
 
@@ -131,14 +132,15 @@ public class WindowsUtils {
         CCharPointer curBuf = bytes;
         UnsignedWord curLen = length;
         while (curLen.notEqual(0)) {
+            int writeSize = bytesToTransfer(curLen);
             CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
-            int ret = FileAPI.NoTransition.WriteFile(handle, curBuf, curLen, bytesWritten, Word.nullPointer());
+            int ret = FileAPI.NoTransition.WriteFile(handle, curBuf, writeSize, bytesWritten, Word.nullPointer());
             if (ret == 0) {
                 return false;
             }
 
             int writtenCount = bytesWritten.read();
-            if (curLen.notEqual(writtenCount)) {
+            if (writtenCount <= 0 || writtenCount > writeSize) {
                 return false;
             }
 
@@ -146,6 +148,24 @@ public class WindowsUtils {
             curLen = curLen.subtract(writtenCount);
         }
         return true;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long readUninterruptibly(HANDLE handle, CCharPointer buffer, UnsignedWord length) {
+        if (handle == INVALID_HANDLE_VALUE()) {
+            return -1;
+        }
+
+        CIntPointer bytesRead = UnsafeStackValue.get(CIntPointer.class);
+        if (FileAPI.NoTransition.ReadFile(handle, buffer, bytesToTransfer(length), bytesRead, Word.nullPointer()) == 0) {
+            return -1;
+        }
+        return bytesRead.read();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int bytesToTransfer(UnsignedWord length) {
+        return length.aboveThan(Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) length.rawValue();
     }
 
     static boolean flush(HANDLE handle) {

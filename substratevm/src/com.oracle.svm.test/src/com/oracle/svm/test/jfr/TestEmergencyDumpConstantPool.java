@@ -38,6 +38,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.test.jfr.events.ClassEvent;
 
@@ -54,7 +55,7 @@ public class TestEmergencyDumpConstantPool extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             /* Prevent that the code below is reachable on platforms that don't support JFR. */
             return;
         }

@@ -29,13 +29,12 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.io.File;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 
 /**
@@ -72,13 +71,12 @@ public interface RawFileOperationSupport {
     }
 
     /**
-     * Tries to allocate a platform-dependent C string for the given path. Note that the returned
-     * value needs to be freed manually once it is no longer needed (see
-     * {@link UntrackedNullableNativeMemory#free}).
+     * Tries to allocate a platform-dependent raw string for the given path. The returned value needs
+     * to be freed manually once it is no longer needed.
      *
      * @return If the allocation is successful, a non-null value is returned.
      */
-    CCharPointer allocateCPath(String path);
+    RawFilePath allocatePath(String path);
 
     /**
      * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode
@@ -106,7 +104,7 @@ public interface RawFileOperationSupport {
      *         a value where {@link #isValid} will return false.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    RawFileDescriptor create(CCharPointer path, FileCreationMode creationMode, FileAccessMode accessMode);
+    RawFileDescriptor create(RawFilePath path, FileCreationMode creationMode, FileAccessMode accessMode);
 
     /** Returns the path to the platform-specific temporary directory. */
     String getTempDirectory();
@@ -134,7 +132,7 @@ public interface RawFileOperationSupport {
      *         a value where {@link #isValid} will return false.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    RawFileDescriptor open(CCharPointer path, FileAccessMode accessMode);
+    RawFileDescriptor open(RawFilePath path, FileAccessMode accessMode);
 
     /**
      * Checks if a file descriptor is valid or if it represents an error value.
@@ -275,11 +273,18 @@ public interface RawFileOperationSupport {
     long read(RawFileDescriptor fd, Pointer buffer, UnsignedWord bufferSize);
 
     /**
-     * OS-specific signed value that represents a file descriptor. It is OS-specific which values
-     * represent valid file descriptors and which values represent error values, see
+     * OS-specific word-sized value that represents a file descriptor or handle. It is OS-specific
+     * which values represent valid descriptors and which values represent error values, see
      * {@link RawFileOperationSupport#isValid}.
      */
     interface RawFileDescriptor extends WordBase {
+    }
+
+    /**
+     * OS-specific pointer value that represents a raw path string. The concrete string encoding is
+     * platform-specific.
+     */
+    interface RawFilePath extends PointerBase {
     }
 
     enum FileCreationMode {

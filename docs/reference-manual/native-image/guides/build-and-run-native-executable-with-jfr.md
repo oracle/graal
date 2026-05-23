@@ -12,8 +12,6 @@ GraalVM Native Image supports JFR events and users can use the [`jdk.jfr.Event` 
 
 To collect JFR events when running a native executable, enable JFR support and JFR event recording as described in this guide.
 
-> Note: JFR event recording is not yet available with Native Image on Windows.
-
 ## Enable JFR Support and Record Events at Runtime
 
 To build a native executable with JFR events support, add the `--enable-monitoring=jfr` option when invoking the `native-image` tool, and then start JFR recording at runtime.
@@ -69,6 +67,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ./jfrdemo -XX:StartFlightRecording=filename=recording.jfr
     ```
     This command runs the application as a native executable.
+    On Windows, run `jfrdemo.exe` with the same `-XX:StartFlightRecording` option.
     The `-XX:StartFlightRecording` option enables the built-in Flight Recorder and starts recording to a specified binary file, _recording.jfr_.
     Additionally, you can configure the log output for JFR by passing the `-XX:FlightRecorderLogging` runtime option.
 

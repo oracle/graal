@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows.headers;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.type.CCharPointer;
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+package com.oracle.svm.core.posix.jfr;
 
-import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
-
-// Checkstyle: stop
-
-/**
- * Definitions for Windows stringapiset.h
- */
-@CContext(WindowsDirectives.class)
-public class StringAPISet {
-
-    /** The system-wide Windows ANSI code page. */
-    @CConstant
-    public static native int CP_ACP();
-
-    /** UTF-8 code page. */
-    @CConstant
-    public static native int CP_UTF8();
-
-    /** Maps a character string to a UTF-16 (wide character) string. */
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int MultiByteToWideChar(int CodePage, int dwFlags, CCharPointer lpMultiByteStr, int cbMultiByte, WCharPointer lpWideCharStr, int cchWideChar);
-}
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;

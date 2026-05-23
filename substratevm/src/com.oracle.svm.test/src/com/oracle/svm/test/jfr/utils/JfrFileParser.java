@@ -112,12 +112,13 @@ public class JfrFileParser {
     }
 
     public void verify() throws IOException {
-        RecordingInput input = new RecordingInput(path.toFile());
-        FileHeaderInfo header = parseFileHeader(input);
-        parseMetadata(input, header.metadataPosition);
+        try (RecordingInput input = new RecordingInput(path.toFile())) {
+            FileHeaderInfo header = parseFileHeader(input);
+            parseMetadata(input, header.metadataPosition);
 
-        Collection<Long> constantPoolOffsets = getConstantPoolOffsets(input, header.checkpointPosition);
-        verifyConstantPools(input, constantPoolOffsets);
+            Collection<Long> constantPoolOffsets = getConstantPoolOffsets(input, header.checkpointPosition);
+            verifyConstantPools(input, constantPoolOffsets);
+        }
     }
 
     private static void parseMetadata(RecordingInput input, long metadataPosition) throws IOException {

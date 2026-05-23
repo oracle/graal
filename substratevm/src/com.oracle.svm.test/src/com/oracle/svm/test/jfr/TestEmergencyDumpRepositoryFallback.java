@@ -38,8 +38,8 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.posix.jfr.PosixJfrEmergencyDumpSupport;
 import com.oracle.svm.shared.util.ClassUtil;
@@ -55,7 +55,7 @@ public class TestEmergencyDumpRepositoryFallback extends AbstractJfrTest {
 
     @Test
     public void testRepositoryEmergencyChunkIsMergedIntoEmergencyDump() throws Throwable {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
         if (!(JfrEmergencyDumpSupport.singleton() instanceof PosixJfrEmergencyDumpSupport support)) {

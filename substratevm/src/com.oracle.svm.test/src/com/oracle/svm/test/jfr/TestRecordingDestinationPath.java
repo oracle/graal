@@ -26,33 +26,37 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.Test;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
-import com.oracle.svm.core.posix.jfr.PosixJfrEmergencyDumpSupport;
+import com.oracle.svm.test.jfr.events.ClassEvent;
 
-public class TestEmergencyDumpSupportLifecycle extends AbstractJfrTest {
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
+
+public class TestRecordingDestinationPath extends JfrRecordingTest {
     @Test
-    public void testRepeatedInitializeReusesPathBuffer() {
-        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
-            return;
+    public void testNonAsciiDestinationPath() throws Throwable {
+        String[] events = new String[]{"com.jfr.Class"};
+        Path path = Files.createTempFile("TestRecordingDestinationPath_Gr\u00fc\u00dfe_\u4f60\u597d_", ".jfr");
+        try {
+            Recording recording = startRecording(events, getDefaultConfiguration(), null, path);
+
+            ClassEvent event = new ClassEvent();
+            event.clazz = TestRecordingDestinationPath.class;
+            event.commit();
+
+            stopRecording(recording, TestRecordingDestinationPath::validateEvents);
+        } finally {
+            Files.deleteIfExists(path);
         }
-        if (!(JfrEmergencyDumpSupport.singleton() instanceof PosixJfrEmergencyDumpSupport support)) {
-            return;
-        }
+    }
 
-        support.teardown();
-        support.initialize();
-        long firstAddress = PosixJfrEmergencyDumpSupport.TestingBackdoor.getPathBufferAddress(support);
-        assertTrue(firstAddress != 0L);
-
-        support.initialize();
-        long secondAddress = PosixJfrEmergencyDumpSupport.TestingBackdoor.getPathBufferAddress(support);
-        assertEquals(firstAddress, secondAddress);
-
-        support.teardown();
+    private static void validateEvents(List<RecordedEvent> events) {
+        assertEquals(1, events.size());
     }
 }

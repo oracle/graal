@@ -204,7 +204,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         idx = writeToPathBuffer(EMERGENCY_CHUNK_BYTES, idx);
         idx = writeToPathBuffer(CHUNKFILE_EXTENSION_BYTES, idx);
         getPathBuffer().write(idx++, (byte) 0);
-        return getFileSupport().create(getPathBuffer(), FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE);
+        return getFileSupport().create((RawFileOperationSupport.RawFilePath) getPathBuffer(), FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE);
     }
 
     @Override
@@ -257,7 +257,7 @@ public class PosixJfrEmergencyDumpSupport implements com.oracle.svm.core.jfr.Jfr
         if (path.isNull()) {
             return Word.nullPointer();
         }
-        return getFileSupport().create(path, FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
+        return getFileSupport().create((RawFileOperationSupport.RawFilePath) path, FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
     }
 
     private CCharPointer createEmergencyDumpPath() {
