@@ -37,7 +37,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.collections.GrowableWordArray;
-import com.oracle.svm.core.collections.GrowableWordArrayAccess;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
@@ -70,8 +69,6 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
     private static final char FILE_SEPARATOR = '\\';
     private static final char ALT_FILE_SEPARATOR = '/';
     private static final char WILDCARD = '*';
-    private static final char[] DUMP_FILE_PREFIX_CHARS = DUMP_FILE_PREFIX.toCharArray();
-    private static final char[] CHUNKFILE_EXTENSION_CHARS = CHUNKFILE_EXTENSION.toCharArray();
 
     private char[] pidChars;
     private char[] cwdChars;
@@ -87,15 +84,17 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
     }
 
     @Override
-    public void initialize() {
-        savePid();
+    protected void allocatePathBufferIfNeeded() {
         if (!pathBufferInitialized) {
             pathBuffer = NativeMemory.calloc(Word.unsigned(JVM_MAXPATHLEN + 1).multiply(Character.BYTES), NmtCategory.JFR);
             pathBufferInitialized = true;
         }
+    }
+
+    @Override
+    protected void initializeRepositoryState() {
         repositoryDirectoryGuardHandle = Word.nullPointer();
         repositoryFindHandle = Word.nullPointer();
-        saveCwd();
     }
 
     @Override
@@ -147,39 +146,6 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
     }
 
     @Override
-    protected RawFileDescriptor createEmergencyChunkPath() {
-        if (isRepositoryLocationTooLong()) {
-            return Word.nullPointer();
-        }
-        clearPathBuffer();
-        int idx = 0;
-        idx = appendCharsToPathBuffer(repositoryLocationChars, idx);
-        idx = appendFileSeparatorToPathBufferIfNeeded(idx);
-        idx = appendDateTimeToPathBuffer(idx);
-        return createEmergencyChunkPath((RawFilePath) pathBuffer, idx);
-    }
-
-    @Override
-    protected RawFilePath createEmergencyDumpPath() {
-        int idx = 0;
-        clearPathBuffer();
-
-        if (isDumpPathTooLong()) {
-            return Word.nullPointer();
-        }
-        if (dumpPathChars != null) {
-            idx = appendCharsToPathBuffer(dumpPathChars, idx);
-            idx = appendFileSeparatorToPathBufferIfNeeded(idx);
-        }
-
-        idx = appendCharsToPathBuffer(DUMP_FILE_PREFIX_CHARS, idx);
-        idx = appendCharsToPathBuffer(pidChars, idx);
-        idx = appendCharsToPathBuffer(CHUNKFILE_EXTENSION_CHARS, idx);
-        writePathBufferNull(idx);
-        return (RawFilePath) pathBuffer;
-    }
-
-    @Override
     protected void iterateRepository(GrowableWordArray gwa) {
         if (!isValidHandle(repositoryDirectoryGuardHandle)) {
             return;
@@ -200,25 +166,24 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
         int count = 0;
         boolean done = false;
         while (!done) {
-            if (filter(findData)) {
-                WCharPointer fnCopy = copyFilename(findData.getFileName());
-                if (addChunkFilename(gwa, (Word) (Pointer) fnCopy)) {
+            if (isRegularFileAttributes(findData.getFileAttributes())) {
+                WCharPointer fn = findData.getFileName();
+                int filenameLength = stringLength(fn);
+                if (addUsableChunkFilename(gwa, (Word) (Pointer) fn, filenameLength)) {
                     count++;
                 }
             }
             done = FileAPI.FindNextFileW(repositoryFindHandle, findData) == 0;
         }
 
-        if (count > 0) {
-            GrowableWordArrayAccess.qsort(gwa, 0, count - 1, chunkFilenameComparator());
-        }
+        sortChunkFilenames(gwa, count);
     }
 
     private WCharPointer createRepositorySearchPath() {
         clearPathBuffer();
         int idx = 0;
         idx = appendCharsToPathBuffer(repositoryLocationChars, idx);
-        idx = appendFileSeparatorToPathBufferIfNeeded(idx);
+        idx = appendPathSeparatorToPathBuffer(idx);
         writePathBufferChar(idx++, WILDCARD);
         writePathBufferNull(idx);
         return pathBuffer;
@@ -254,20 +219,10 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
         clearPathBuffer();
         int idx = 0;
         idx = appendCharsToPathBuffer(repositoryLocationChars, idx);
-        idx = appendFileSeparatorToPathBufferIfNeeded(idx);
+        idx = appendPathSeparatorToPathBuffer(idx);
         idx = appendCharsToPathBuffer(fn, idx);
         writePathBufferNull(idx);
         return pathBuffer;
-    }
-
-    private boolean filter(WIN32_FIND_DATAW findData) {
-        if (!isRegularFileAttributes(findData.getFileAttributes())) {
-            return false;
-        }
-
-        WCharPointer fn = findData.getFileName();
-        int filenameLength = stringLength(fn);
-        return isUsableChunkFile((Word) (Pointer) fn, filenameLength);
     }
 
     @Override
@@ -315,14 +270,36 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
         return (attributes & FileAPI.FILE_ATTRIBUTE_DIRECTORY()) != 0 && (attributes & FileAPI.FILE_ATTRIBUTE_REPARSE_POINT()) == 0;
     }
 
-    private int appendDateTimeToPathBuffer(int idx) {
+    @Override
+    protected int appendCurrentDateTimeToPathBuffer(int idx) {
         SYSTEMTIME localTime = StackValue.get(SYSTEMTIME.class);
         SysinfoAPI.GetLocalTime(localTime);
         return writeDateTimeToPathBuffer(idx, localTime.wYear(), localTime.wMonth(), localTime.wDay(), localTime.wHour(), localTime.wMinute(), localTime.wSecond());
     }
 
-    private void clearPathBuffer() {
+    @Override
+    protected RawFilePath pathBuffer() {
+        return (RawFilePath) pathBuffer;
+    }
+
+    @Override
+    protected void clearPathBuffer() {
         WindowsLibC.memset(pathBuffer, Word.signed(0), Word.unsigned(JVM_MAXPATHLEN + 1).multiply(Character.BYTES));
+    }
+
+    @Override
+    protected int appendDumpPathToPathBuffer(int idx) {
+        return appendCharsToPathBuffer(dumpPathChars, idx);
+    }
+
+    @Override
+    protected int appendRepositoryLocationToPathBuffer(int idx) {
+        return appendCharsToPathBuffer(repositoryLocationChars, idx);
+    }
+
+    @Override
+    protected int appendPidToPathBuffer(int idx) {
+        return appendCharsToPathBuffer(pidChars, idx);
     }
 
     private int appendCharsToPathBuffer(char[] chars, int start) {
@@ -343,7 +320,8 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
         return idx;
     }
 
-    private int appendFileSeparatorToPathBufferIfNeeded(int idx) {
+    @Override
+    protected int appendPathSeparatorToPathBuffer(int idx) {
         int result = idx;
         if (idx == 0 || needsFileSeparator(idx)) {
             writePathBufferChar(result, FILE_SEPARATOR);
@@ -381,20 +359,9 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
         return (int) WindowsLibC.wcslen(pointer).rawValue();
     }
 
-    private static int indexOf(WCharPointer pointer, int needle) {
-        int idx = 0;
-        char ch;
-        while ((ch = charAt(pointer, idx)) != 0) {
-            if (ch == needle) {
-                return idx;
-            }
-            idx++;
-        }
-        return idx;
-    }
-
-    private static WCharPointer copyFilename(WCharPointer fn) {
-        int filenameLength = stringLength(fn);
+    @Override
+    protected Word copyChunkFilename(Word filename, int filenameLength) {
+        WCharPointer fn = (WCharPointer) ((Pointer) filename);
         WCharPointer copy = NullableNativeMemory.malloc(Word.unsigned(filenameLength + 1).multiply(Character.BYTES), NmtCategory.JFR);
         if (copy.isNull()) {
             return Word.nullPointer();
@@ -404,17 +371,12 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
             copyPtr.writeChar(i * Character.BYTES, charAt(fn, i));
         }
         copyPtr.writeChar(filenameLength * Character.BYTES, (char) 0);
-        return copy;
+        return (Word) (Pointer) copy;
     }
 
     @Override
     protected int filenameCharAt(Word filename, int index) {
         return charAt((WCharPointer) ((Pointer) filename), index);
-    }
-
-    @Override
-    protected int filenameIndexOf(Word filename, int needle) {
-        return indexOf((WCharPointer) ((Pointer) filename), needle);
     }
 
     @Override
@@ -443,11 +405,10 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
     }
 
     @Override
-    public void teardown() {
-        closeEmergencyDumpFile();
-        closeRepository();
+    protected void freePathBufferIfInitialized() {
         if (pathBufferInitialized) {
             NativeMemory.free(pathBuffer);
+            pathBuffer = Word.nullPointer();
             pathBufferInitialized = false;
         }
     }

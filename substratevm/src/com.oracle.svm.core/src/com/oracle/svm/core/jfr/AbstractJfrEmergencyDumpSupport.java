@@ -47,6 +47,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
     protected static final int ISO_8601_LEN = 19;
     protected static final int DOT = '.';
     protected static final int CHUNKFILE_EXTENSION_LEN = 4;
+    protected static final int DUMP_FILE_PREFIX_LEN = 12;
     protected static final int EMERGENCY_CHUNK_CREATE_ATTEMPTS = 100;
     protected static final String DUMP_FILE_PREFIX = "svm_oom_pid_";
     protected static final String CHUNKFILE_EXTENSION = ".jfr";
@@ -61,6 +62,14 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
     private int emergencyChunkPathCallCount;
     private String openFileWarning;
     private String openDirectoryWarning;
+
+    @Override
+    public final void initialize() {
+        savePid();
+        allocatePathBufferIfNeeded();
+        initializeRepositoryState();
+        saveCwd();
+    }
 
     protected final void savePid() {
         if (pidText == null) {
@@ -134,6 +143,21 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         return createEmergencyChunkPath();
     }
 
+    protected final RawFileDescriptor createEmergencyChunkPath() {
+        if (isRepositoryLocationTooLong()) {
+            return Word.nullPointer();
+        }
+        clearPathBuffer();
+        int idx = 0;
+        idx = appendRepositoryLocationToPathBuffer(idx);
+        idx = appendPathSeparatorToPathBuffer(idx);
+        idx = appendCurrentDateTimeToPathBuffer(idx);
+        if (idx < 0) {
+            return Word.nullPointer();
+        }
+        return createEmergencyChunkPath(pathBuffer(), idx);
+    }
+
     protected final RawFileDescriptor createEmergencyChunkPath(RawFilePath path, int baseNameEndIndex) {
         emergencyChunkPathCallCount++;
         if (path.isNull()) {
@@ -157,7 +181,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
 
     protected final boolean isDumpPathTooLong() {
         int dumpPathLength = dumpPathLength();
-        return dumpPathLength >= 0 && dumpPathLength + 1L + DUMP_FILE_PREFIX.length() + pidLength() + CHUNKFILE_EXTENSION_LEN >= JVM_MAXPATHLEN;
+        return dumpPathLength >= 0 && dumpPathLength + 1L + DUMP_FILE_PREFIX_LEN + pidLength() + CHUNKFILE_EXTENSION_LEN >= JVM_MAXPATHLEN;
     }
 
     protected final boolean isRepositoryLocationTooLong() {
@@ -226,6 +250,25 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         return true;
     }
 
+    protected final RawFilePath createEmergencyDumpPath() {
+        int idx = 0;
+        clearPathBuffer();
+
+        if (isDumpPathTooLong()) {
+            return Word.nullPointer();
+        }
+        if (dumpPathLength() >= 0) {
+            idx = appendDumpPathToPathBuffer(idx);
+            idx = appendPathSeparatorToPathBuffer(idx);
+        }
+
+        idx = writeDumpFilePrefix(idx);
+        idx = appendPidToPathBuffer(idx);
+        idx = writeChunkFileExtension(idx);
+        writePathBufferChar(idx, 0);
+        return pathBuffer();
+    }
+
     protected final int compareChunkFilenames(Word a, Word b) {
         int cmp = compareFilenameCharacters(a, b, ISO_8601_LEN);
         if (cmp == 0) {
@@ -240,6 +283,18 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
             cmp = compareFilenameCharacters(a, b, aLen);
         }
         return cmp;
+    }
+
+    private int filenameIndexOf(Word filename, int needle) {
+        int idx = 0;
+        int ch;
+        while ((ch = filenameCharAt(filename, idx)) != 0) {
+            if (ch == needle) {
+                return idx;
+            }
+            idx++;
+        }
+        return idx;
     }
 
     protected final GrowableWordArrayAccess.Comparator chunkFilenameComparator() {
@@ -288,6 +343,39 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         return pos;
     }
 
+    private static int dumpFilePrefixCharAt(int index) {
+        return switch (index) {
+            case 0 -> 's';
+            case 1 -> 'v';
+            case 2 -> 'm';
+            case 3 -> '_';
+            case 4 -> 'o';
+            case 5 -> 'o';
+            case 6 -> 'm';
+            case 7 -> '_';
+            case 8 -> 'p';
+            case 9 -> 'i';
+            case 10 -> 'd';
+            case 11 -> '_';
+            default -> 0;
+        };
+    }
+
+    private int writeDumpFilePrefix(int idx) {
+        int pos = idx;
+        for (int i = 0; i < DUMP_FILE_PREFIX_LEN; i++) {
+            writePathBufferChar(pos++, dumpFilePrefixCharAt(i));
+        }
+        return pos;
+    }
+
+    protected final boolean addUsableChunkFilename(GrowableWordArray chunkFilenames, Word filename, int filenameLength) {
+        if (!isUsableChunkFile(filename, filenameLength)) {
+            return false;
+        }
+        return addChunkFilename(chunkFilenames, copyChunkFilename(filename, filenameLength));
+    }
+
     protected final boolean addChunkFilename(GrowableWordArray chunkFilenames, Word filenameCopy) {
         if (filenameCopy.rawValue() == 0) {
             SubstrateJVM.getLogging().logJfrSystemError("Unable to copy chunk filename during jfr emergency dump");
@@ -314,6 +402,12 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         long chunkFileSize = getFileSupport().size(chunkFd);
         getFileSupport().close(chunkFd);
         return chunkFileSize >= CHUNK_FILE_HEADER_SIZE;
+    }
+
+    protected final void sortChunkFilenames(GrowableWordArray chunkFilenames, int count) {
+        if (count > 0) {
+            GrowableWordArrayAccess.qsort(chunkFilenames, 0, count - 1, chunkFilenameComparator);
+        }
     }
 
     private int writeFourDigits(int idx, int value) {
@@ -460,6 +554,13 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         emergencyChunkPathCallCount = 0;
     }
 
+    @Override
+    public final void teardown() {
+        closeEmergencyDumpFile();
+        closeRepository();
+        freePathBufferIfInitialized();
+    }
+
     public static class TestingBackdoor {
         public static long getPathBufferAddress(AbstractJfrEmergencyDumpSupport support) {
             return support.getPathBufferAddress();
@@ -495,6 +596,12 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
 
     protected abstract void setRepositoryLocationText(String repositoryLocation);
 
+    protected abstract void allocatePathBufferIfNeeded();
+
+    protected abstract void initializeRepositoryState();
+
+    protected abstract void freePathBufferIfInitialized();
+
     protected abstract long getPathBufferAddress();
 
     protected abstract int pidLength();
@@ -503,9 +610,19 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
 
     protected abstract int repositoryLocationLength();
 
-    protected abstract RawFilePath createEmergencyDumpPath();
+    protected abstract RawFilePath pathBuffer();
 
-    protected abstract RawFileDescriptor createEmergencyChunkPath();
+    protected abstract void clearPathBuffer();
+
+    protected abstract int appendDumpPathToPathBuffer(int idx);
+
+    protected abstract int appendRepositoryLocationToPathBuffer(int idx);
+
+    protected abstract int appendPidToPathBuffer(int idx);
+
+    protected abstract int appendPathSeparatorToPathBuffer(int idx);
+
+    protected abstract int appendCurrentDateTimeToPathBuffer(int idx);
 
     protected abstract boolean openRepository();
 
@@ -515,9 +632,9 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
 
     protected abstract int filenameCharAt(Word filename, int index);
 
-    protected abstract int filenameIndexOf(Word filename, int needle);
-
     protected abstract void writePathBufferChar(int index, int ch);
+
+    protected abstract Word copyChunkFilename(Word filename, int filenameLength);
 
     protected abstract void freeChunkFilename(Word filename);
 
