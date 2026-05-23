@@ -32,8 +32,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -302,34 +304,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         DebugContext debug = accessImpl.getDebugContext();
         try (Scope _ = debug.scope("copy");
                         Indent _ = debug.logAndIndent("from: %s", jdkLibDir)) {
-            for (String libname : new TreeSet<>(jniRegistrationSupportSingleton.currentLayerRegisteredLibraries)) {
-                if (jniRegistrationSupportSingleton.prevLayerRegisteredLibraries.contains(libname)) {
-                    /* Skip libraries copied in the base layer. */
-                    debug.log(DebugContext.INFO_LEVEL, "%s: SKIPPED", libname);
-                    continue;
-                }
-
+            for (String libname : getJDKLibrariesToCopy(jdkLibDir)) {
                 String library = System.mapLibraryName(libname);
-
-                if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
-                    /* Skip statically linked JDK libraries. */
-                    debug.log(DebugContext.INFO_LEVEL, "%s: SKIPPED", library);
-                    continue;
-                }
-
-                if (libname.equals("sunmscapi") && !isSunMSCAPIProviderReachable) {
-                    /*
-                     * Ignore `sunmscapi` library if `SunMSCAPI` provider is not reachable (it's
-                     * always registered as a workaround in `Target_java_security_Provider`).
-                     */
-                    debug.log(DebugContext.INFO_LEVEL, "%s: IGNORED", library);
-                    continue;
-                }
-
                 try {
-                    Path libraryPath = accessImpl.getImagePath().resolveSibling(library);
-                    Files.copy(jdkLibDir.resolve(library), libraryPath, REPLACE_EXISTING);
-                    BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY, libraryPath);
+                    copyJDKLibrary(jdkLibDir, library);
                     debug.log("%s: OK", library);
                 } catch (NoSuchFileException e) {
                     /* Ignore libraries that are not present in the JDK. */
@@ -339,6 +317,91 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                 }
             }
         }
+    }
+
+    private SortedSet<String> getJDKLibrariesToCopy(Path jdkLibDir) {
+        SortedSet<String> result = new TreeSet<>();
+        Deque<String> worklist = new ArrayDeque<>(new TreeSet<>(jniRegistrationSupportSingleton.currentLayerRegisteredLibraries));
+        while (!worklist.isEmpty()) {
+            String libname = worklist.removeFirst();
+            if (!shouldCopyJDKLibrary(libname) || !result.add(libname)) {
+                continue;
+            }
+            if (isDarwin()) {
+                worklist.addAll(getDarwinJDKLibraryDependencies(jdkLibDir, libname));
+            }
+        }
+        return result;
+    }
+
+    private boolean shouldCopyJDKLibrary(String libname) {
+        if (jniRegistrationSupportSingleton.prevLayerRegisteredLibraries.contains(libname)) {
+            return false;
+        }
+        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
+            return false;
+        }
+        if (shimExports.containsKey(libname)) {
+            return false;
+        }
+        return !libname.equals("sunmscapi") || isSunMSCAPIProviderReachable;
+    }
+
+    private void copyJDKLibrary(Path jdkLibDir, String library) throws IOException {
+        Path libraryPath = accessImpl.getImagePath().resolveSibling(library);
+        Files.copy(jdkLibDir.resolve(library), libraryPath, REPLACE_EXISTING);
+        BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY, libraryPath);
+    }
+
+    private static List<String> getDarwinJDKLibraryDependencies(Path jdkLibDir, String libname) {
+        Path libraryPath = jdkLibDir.resolve(System.mapLibraryName(libname));
+        if (!Files.exists(libraryPath)) {
+            return List.of();
+        }
+
+        List<String> dependencies = new ArrayList<>();
+        List<String> command = List.of("otool", "-L", libraryPath.toString());
+        try {
+            Process process = FileUtils.prepareCommand(command, null).redirectErrorStream(true).start();
+            List<String> output = FileUtils.readAllLines(process.getInputStream());
+            int status = process.waitFor();
+            if (status != 0) {
+                throw VMError.shouldNotReachHere("Could not inspect JDK library dependencies: " + String.join(System.lineSeparator(), output));
+            }
+            for (String line : output) {
+                String dependency = line.trim().split("\\s+", 2)[0];
+                String dependencyLibName = asJDKLibraryName(jdkLibDir, dependency);
+                if (dependencyLibName != null) {
+                    dependencies.add(dependencyLibName);
+                }
+            }
+        } catch (InterruptedException e) {
+            throw new InterruptImageBuilding();
+        } catch (IOException e) {
+            VMError.shouldNotReachHere(e);
+        }
+        return dependencies;
+    }
+
+    private static String asJDKLibraryName(Path jdkLibDir, String dependency) {
+        if (dependency.startsWith("@rpath/") || dependency.startsWith("@loader_path/")) {
+            return asJDKLibraryName(jdkLibDir.resolve(Path.of(dependency).getFileName()));
+        }
+
+        Path dependencyPath = Path.of(dependency);
+        if (dependencyPath.isAbsolute() && dependencyPath.startsWith(jdkLibDir)) {
+            return asJDKLibraryName(dependencyPath);
+        }
+
+        return null;
+    }
+
+    private static String asJDKLibraryName(Path libraryPath) {
+        String fileName = libraryPath.getFileName().toString();
+        if (fileName.startsWith("lib") && fileName.endsWith(".dylib")) {
+            return fileName.substring("lib".length(), fileName.length() - ".dylib".length());
+        }
+        return null;
     }
 
     /** Makes shim libraries that are necessary to satisfy dependencies of JDK libraries. */
