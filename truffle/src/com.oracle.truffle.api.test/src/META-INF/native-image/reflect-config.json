@@ -207,6 +207,10 @@
     "allPublicMethods": true
   },
   {
+    "name": "com.oracle.truffle.api.test.polyglot.TruffleFileTest$EmptyPathTestFs",
+    "allDeclaredMethods": true, "allPublicMethods": true
+  },
+  {
     "name": "jdk.internal.module.Modules",
     "methods": [
       { "name": "addOpens", "parameterTypes": ["java.lang.Module", "java.lang.String", "java.lang.Module"] }
