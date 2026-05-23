@@ -38,7 +38,6 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.test.jfr.events.ClassEvent;
 
@@ -50,12 +49,12 @@ import jdk.jfr.consumer.RecordedEvent;
  * Verifies that the previous-epoch type and symbol constant pools required by in-flight class
  * events are serialized correctly during an emergency dump.
  */
-public class TestEmergencyDumpConstantPool extends JfrRecordingTest {
+public class TestEmergencyDumpConstantPool extends JfrEmergencyDumpTest {
     private static final String CLASS_EVENT_NAME = "com.jfr.Class";
 
     @Test
     public void test() throws Throwable {
-        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
+        if (!HasJfrSupport.get()) {
             /* Prevent that the code below is reachable on platforms that don't support JFR. */
             return;
         }
@@ -67,16 +66,16 @@ public class TestEmergencyDumpConstantPool extends JfrRecordingTest {
         Class<?> utf8NamedClass = Utf8Cläss漢Test.class;
         // Checkstyle: resume
 
-        Recording recording = startRecording(events);
-        emitClassEvent(String.class);
-        emitClassEvent(EmergencyDumpHelper.class);
-        emitClassEvent(utf8NamedClass);
-
-        SubstrateJVM.get().dumpOnOutOfMemoryError();
-        recording.stop();
-        recording.close();
-
+        Recording recording = null;
         try {
+            recording = startRecording(events);
+            emitClassEvent(String.class);
+            emitClassEvent(EmergencyDumpHelper.class);
+            emitClassEvent(utf8NamedClass);
+
+            SubstrateJVM.get().dumpOnOutOfMemoryError();
+            recording.stop();
+
             assertTrue("emergency dump file does not exist.", Files.exists(dumpFile));
 
             List<RecordedEvent> dumpedEvents = getEvents(dumpFile, events, true);
@@ -94,8 +93,14 @@ public class TestEmergencyDumpConstantPool extends JfrRecordingTest {
             }
             assertEquals(0, expectedClasses.size());
         } finally {
-            Files.deleteIfExists(dumpFile);
-            assertNoResidualTestedEvents(events);
+            try {
+                if (recording != null) {
+                    recording.close();
+                }
+            } finally {
+                Files.deleteIfExists(dumpFile);
+                assertNoResidualTestedEvents(events);
+            }
         }
     }
 

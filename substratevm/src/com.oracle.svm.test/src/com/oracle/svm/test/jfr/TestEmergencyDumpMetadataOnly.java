@@ -35,20 +35,19 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
-public class TestEmergencyDumpMetadataOnly extends JfrRecordingTest {
+public class TestEmergencyDumpMetadataOnly extends JfrEmergencyDumpTest {
     private static final String OUT_OF_MEMORY_REASON = "Out of Memory";
 
     @Test
     public void test() throws Throwable {
-        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
+        if (!HasJfrSupport.get()) {
             /* Prevent that the code below is reachable on platforms that don't support JFR. */
             return;
         }
@@ -57,12 +56,12 @@ public class TestEmergencyDumpMetadataOnly extends JfrRecordingTest {
         Path dumpFile = getEmergencyDumpFile();
         Files.deleteIfExists(dumpFile);
 
-        Recording recording = startRecording(events);
-        SubstrateJVM.get().dumpOnOutOfMemoryError();
-        recording.stop();
-        recording.close();
-
+        Recording recording = null;
         try {
+            recording = startRecording(events);
+            SubstrateJVM.get().dumpOnOutOfMemoryError();
+            recording.stop();
+
             assertTrue("emergency dump file does not exist.", Files.exists(dumpFile));
 
             List<RecordedEvent> dumpedEvents = getEvents(dumpFile, events, true);
@@ -73,8 +72,14 @@ public class TestEmergencyDumpMetadataOnly extends JfrRecordingTest {
             assertEquals(OUT_OF_MEMORY_REASON, dumpReason.getString("reason"));
             assertEquals(-1, dumpReason.getInt("recordingId"));
         } finally {
-            Files.deleteIfExists(dumpFile);
-            assertNoResidualTestedEvents(events);
+            try {
+                if (recording != null) {
+                    recording.close();
+                }
+            } finally {
+                Files.deleteIfExists(dumpFile);
+                assertNoResidualTestedEvents(events);
+            }
         }
     }
 

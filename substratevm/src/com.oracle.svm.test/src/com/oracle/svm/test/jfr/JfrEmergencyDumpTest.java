@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, IBM Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,40 +26,34 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import org.junit.Test;
-
-import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 
-public class TestEmergencyDumpSupportLifecycle extends JfrEmergencyDumpTest {
-    @Test
-    public void testRepeatedInitializeReusesPathBuffer() {
-        if (!HasJfrSupport.get()) {
-            return;
+public abstract class JfrEmergencyDumpTest extends JfrRecordingTest {
+    protected static JfrEmergencyDumpSupport getEmergencyDumpSupport() {
+        if (!JfrEmergencyDumpSupport.isPresent()) {
+            return null;
         }
-        JfrEmergencyDumpSupport support = getEmergencyDumpSupport();
-        if (support == null) {
-            return;
+        return JfrEmergencyDumpSupport.singleton();
+    }
+
+    protected static long getPathBufferAddress(JfrEmergencyDumpSupport support) {
+        if (support instanceof AbstractJfrEmergencyDumpSupport emergencyDumpSupport) {
+            return AbstractJfrEmergencyDumpSupport.TestingBackdoor.getPathBufferAddress(emergencyDumpSupport);
         }
+        return 0L;
+    }
 
-        boolean wasInitialized = getPathBufferAddress(support) != 0L;
-        support.teardown();
-        try {
-            support.initialize();
-            long firstAddress = getPathBufferAddress(support);
-            assertTrue(firstAddress != 0L);
+    protected static int getEmergencyChunkPathCallCount(JfrEmergencyDumpSupport support) {
+        if (support instanceof AbstractJfrEmergencyDumpSupport emergencyDumpSupport) {
+            return AbstractJfrEmergencyDumpSupport.TestingBackdoor.getEmergencyChunkPathCallCount(emergencyDumpSupport);
+        }
+        return 0;
+    }
 
-            support.initialize();
-            long secondAddress = getPathBufferAddress(support);
-            assertEquals(firstAddress, secondAddress);
-        } finally {
-            support.teardown();
-            if (wasInitialized) {
-                support.initialize();
-            }
+    protected static void resetEmergencyChunkPathCallCount(JfrEmergencyDumpSupport support) {
+        if (support instanceof AbstractJfrEmergencyDumpSupport emergencyDumpSupport) {
+            AbstractJfrEmergencyDumpSupport.TestingBackdoor.resetEmergencyChunkPathCallCount(emergencyDumpSupport);
         }
     }
 }

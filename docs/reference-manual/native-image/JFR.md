@@ -83,7 +83,7 @@ Otherwise, this option expects a comma-separated list of tag combinations, each 
 
 This section outlines the JFR features that are available in Native Image.
 
-On Windows, Native Image supports local JFR recordings written to `.jfr` files. JFR emergency dumps on out-of-memory, remote JMX access to `FlightRecorderMXBean`, and JFR control through `jcmd` are not currently available on Windows.
+On Windows, Native Image supports local JFR recordings written to `.jfr` files and JFR emergency dumps on out-of-memory. Remote JMX access to `FlightRecorderMXBean` and JFR control through `jcmd` are not currently available on Windows.
 
 ### Method Profiling and Stack Traces
 

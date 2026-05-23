@@ -29,6 +29,9 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
+import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
@@ -82,6 +85,18 @@ public class FileAPI {
     public static native int FILE_ATTRIBUTE_NORMAL();
 
     @CConstant
+    public static native int FILE_ATTRIBUTE_DIRECTORY();
+
+    @CConstant
+    public static native int FILE_ATTRIBUTE_REPARSE_POINT();
+
+    @CConstant
+    public static native int FILE_FLAG_OPEN_REPARSE_POINT();
+
+    @CConstant
+    public static native int FILE_FLAG_BACKUP_SEMANTICS();
+
+    @CConstant
     public static native int FILE_BEGIN();
 
     @CConstant
@@ -108,6 +123,30 @@ public class FileAPI {
 
     @CFunction(transition = NO_TRANSITION)
     public static native int GetTempPathW(int nBufferLength, WCharPointer lpBuffer);
+
+    @CFunction(transition = NO_TRANSITION)
+    public static native int GetFileAttributesW(WCharPointer lpFileName);
+
+    @CFunction(transition = NO_TRANSITION)
+    public static native HANDLE FindFirstFileW(WCharPointer lpFileName, WIN32_FIND_DATAW lpFindFileData);
+
+    @CFunction(transition = NO_TRANSITION)
+    public static native int FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW lpFindFileData);
+
+    @CFunction(transition = NO_TRANSITION)
+    public static native int FindClose(HANDLE hFindFile);
+
+    @CConstant
+    public static native int INVALID_FILE_ATTRIBUTES();
+
+    @CStruct("WIN32_FIND_DATAW")
+    public interface WIN32_FIND_DATAW extends PointerBase {
+        @CField("dwFileAttributes")
+        int getFileAttributes();
+
+        @CFieldAddress("cFileName")
+        WCharPointer getFileName();
+    }
 
     public static class NoTransition {
         @CFunction(transition = NO_TRANSITION)

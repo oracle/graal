@@ -38,10 +38,9 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.posix.jfr.PosixJfrEmergencyDumpSupport;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.test.jfr.events.StringEvent;
 
@@ -49,40 +48,49 @@ import jdk.jfr.Configuration;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
-public class TestEmergencyDumpRepositoryFallback extends AbstractJfrTest {
+public class TestEmergencyDumpRepositoryFallback extends JfrEmergencyDumpTest {
     private static final String STRING_EVENT_NAME = "com.jfr.String";
     private static final String OUT_OF_MEMORY_REASON = "Out of Memory";
+    private static final String NON_ASCII_PATH_PART = "Gr\u00fc\u00dfe_\u4f60\u597d";
 
     @Test
     public void testRepositoryEmergencyChunkIsMergedIntoEmergencyDump() throws Throwable {
-        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
+        if (!HasJfrSupport.get()) {
             return;
         }
-        if (!(JfrEmergencyDumpSupport.singleton() instanceof PosixJfrEmergencyDumpSupport support)) {
+        JfrEmergencyDumpSupport support = getEmergencyDumpSupport();
+        if (support == null) {
             return;
         }
 
-        Path repositoryDir = Files.createTempDirectory(ClassUtil.getUnqualifiedName(getClass()) + "-repository-");
-        Path dumpDir = Files.createTempDirectory(ClassUtil.getUnqualifiedName(getClass()) + "-dump-");
+        String tempDirectoryPrefix = ClassUtil.getUnqualifiedName(getClass()) + "-" + NON_ASCII_PATH_PART;
+        Path repositoryDir = Files.createTempDirectory(tempDirectoryPrefix + "-repository-");
+        Path dumpDir = Files.createTempDirectory(tempDirectoryPrefix + "-dump-");
         String[] events = new String[]{STRING_EVENT_NAME, JfrEvent.DumpReason.getName()};
         try {
-            PosixJfrEmergencyDumpSupport.TestingBackdoor.resetEmergencyChunkPathCallCount(support);
+            resetEmergencyChunkPathCallCount(support);
             SubstrateJVM.get().setRepositoryLocation(repositoryDir.toString());
             SubstrateJVM.get().setDumpPath(dumpDir.toString());
 
-            Recording recording = createInMemoryRecording(events);
-            /*
-             * JFR may already have an active repository chunk open for the recording. Close it so
-             * dumpOnOutOfMemoryError() has to create the emergency repository chunk itself.
-             */
-            SubstrateJVM.get().setOutput(null);
-            emitStringEvent("repository-fallback");
-            SubstrateJVM.get().dumpOnOutOfMemoryError();
-            recording.stop();
-            recording.close();
+            Recording recording = null;
+            try {
+                recording = createInMemoryRecording(events);
+                /*
+                 * JFR may already have an active repository chunk open for the recording. Close it so
+                 * dumpOnOutOfMemoryError() has to create the emergency repository chunk itself.
+                 */
+                SubstrateJVM.get().setOutput(null);
+                emitStringEvent("repository-fallback");
+                SubstrateJVM.get().dumpOnOutOfMemoryError();
+                recording.stop();
+            } finally {
+                if (recording != null) {
+                    recording.close();
+                }
+            }
 
             assertTrue("expected repository fallback emergency chunk path to be used",
-                            PosixJfrEmergencyDumpSupport.TestingBackdoor.getEmergencyChunkPathCallCount(support) > 0);
+                            getEmergencyChunkPathCallCount(support) > 0);
 
             Path dumpFile = dumpDir.resolve("svm_oom_pid_" + ProcessHandle.current().pid() + ".jfr");
             assertTrue("emergency dump file does not exist.", Files.exists(dumpFile));
