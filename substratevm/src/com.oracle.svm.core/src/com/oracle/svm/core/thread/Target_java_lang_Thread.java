@@ -145,7 +145,6 @@ public final class Target_java_lang_Thread {
         tid = Target_java_lang_Thread_ThreadIdentifiers.next();
         interruptLock = new Object();
         name = (withName != null) ? withName : ("System-" + JavaThreads.nextThreadNum());
-        contextClassLoader = ClassLoader.getSystemClassLoader();
     }
 
     @Substitute
