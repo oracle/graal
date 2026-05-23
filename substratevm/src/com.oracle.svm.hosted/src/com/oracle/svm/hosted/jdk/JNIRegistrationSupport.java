@@ -58,6 +58,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -113,6 +114,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     private JNIRegistrationSupportSingleton jniRegistrationSupportSingleton = null;
     private boolean isSunMSCAPIProviderReachable = false;
     private final List<Consumer<String>> libraryRegistrationHandlers = new CopyOnWriteArrayList<>();
+    private List<String> darwinOtoolCommand;
 
     public static JNIRegistrationSupport singleton() {
         return ImageSingletons.lookup(JNIRegistrationSupport.class);
@@ -322,16 +324,43 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     private SortedSet<String> getJDKLibrariesToCopy(Path jdkLibDir) {
         SortedSet<String> result = new TreeSet<>();
         Deque<String> worklist = new ArrayDeque<>(new TreeSet<>(jniRegistrationSupportSingleton.currentLayerRegisteredLibraries));
+        List<String> otoolCommand = isDarwin() ? getDarwinOtoolCommand() : List.of();
         while (!worklist.isEmpty()) {
             String libname = worklist.removeFirst();
             if (!shouldCopyJDKLibrary(libname) || !result.add(libname)) {
                 continue;
             }
             if (isDarwin()) {
-                worklist.addAll(getDarwinJDKLibraryDependencies(jdkLibDir, libname));
+                worklist.addAll(getDarwinJDKLibraryDependencies(jdkLibDir, libname, otoolCommand));
             }
         }
         return result;
+    }
+
+    private List<String> getDarwinOtoolCommand() {
+        if (darwinOtoolCommand == null) {
+            darwinOtoolCommand = findDarwinOtoolCommand();
+        }
+        return darwinOtoolCommand;
+    }
+
+    private static List<String> findDarwinOtoolCommand() {
+        Path xcrun = Path.of("/usr/bin/xcrun");
+        if (Files.isExecutable(xcrun)) {
+            try {
+                Process process = FileUtils.prepareCommand(List.of(xcrun.toString(), "--find", "otool"), null).redirectErrorStream(true).start();
+                List<String> output = FileUtils.readAllLines(process.getInputStream());
+                int status = process.waitFor();
+                if (status == 0 && !output.isEmpty() && !output.getFirst().isBlank()) {
+                    return List.of(output.getFirst().trim());
+                }
+            } catch (InterruptedException e) {
+                throw new InterruptImageBuilding();
+            } catch (IOException e) {
+                /* Fall back to PATH lookup below and report an actionable error if that also fails. */
+            }
+        }
+        return List.of("otool");
     }
 
     private boolean shouldCopyJDKLibrary(String libname) {
@@ -353,20 +382,23 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY, libraryPath);
     }
 
-    private static List<String> getDarwinJDKLibraryDependencies(Path jdkLibDir, String libname) {
+    private static List<String> getDarwinJDKLibraryDependencies(Path jdkLibDir, String libname, List<String> otoolCommand) {
         Path libraryPath = jdkLibDir.resolve(System.mapLibraryName(libname));
         if (!Files.exists(libraryPath)) {
             return List.of();
         }
 
         List<String> dependencies = new ArrayList<>();
-        List<String> command = List.of("otool", "-L", libraryPath.toString());
+        List<String> command = new ArrayList<>(otoolCommand);
+        command.add("-L");
+        command.add(libraryPath.toString());
         try {
             Process process = FileUtils.prepareCommand(command, null).redirectErrorStream(true).start();
             List<String> output = FileUtils.readAllLines(process.getInputStream());
             int status = process.waitFor();
             if (status != 0) {
-                throw VMError.shouldNotReachHere("Could not inspect JDK library dependencies: " + String.join(System.lineSeparator(), output));
+                throw UserError.abort("Could not inspect Darwin JDK library dependencies with '%s' (exit status %d):%n%s",
+                                String.join(" ", command), status, String.join(System.lineSeparator(), output));
             }
             for (String line : output) {
                 String dependency = line.trim().split("\\s+", 2)[0];
@@ -378,7 +410,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         } catch (InterruptedException e) {
             throw new InterruptImageBuilding();
         } catch (IOException e) {
-            VMError.shouldNotReachHere(e);
+            throw UserError.abort(e, "Could not inspect Darwin JDK library dependencies with '%s'. Install Xcode Command Line Tools or make 'otool' available on PATH.",
+                            String.join(" ", command));
         }
         return dependencies;
     }
