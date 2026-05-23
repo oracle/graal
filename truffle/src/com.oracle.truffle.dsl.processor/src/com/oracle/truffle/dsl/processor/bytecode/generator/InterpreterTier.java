@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,15 +41,9 @@
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
 enum InterpreterTier {
-    UNINITIALIZED("Uninitialized"),
-    UNCACHED("Uncached"),
-    CACHED("Cached");
-
-    final String friendlyName;
-
-    InterpreterTier(String friendlyName) {
-        this.friendlyName = friendlyName;
-    }
+    UNINITIALIZED,
+    UNCACHED,
+    CACHED;
 
     boolean isUncached() {
         return switch (this) {
@@ -75,7 +69,4 @@ enum InterpreterTier {
         };
     }
 
-    public String bytecodeClassName() {
-        return friendlyName + "BytecodeNode";
-    }
 }

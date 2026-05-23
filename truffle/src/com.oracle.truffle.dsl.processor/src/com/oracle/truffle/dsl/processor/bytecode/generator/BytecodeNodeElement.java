@@ -96,10 +96,10 @@ final class BytecodeNodeElement extends AbstractElement {
     final CodeExecutableElement resolveThrowable;
     final CodeExecutableElement doTagExceptional;
 
-    BytecodeNodeElement(BytecodeRootNodeElement parent, InterpreterTier tier) {
-        super(parent, Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, tier.bytecodeClassName());
+    BytecodeNodeElement(BytecodeRootNodeElement parent, InterpreterTier tier, String className, HandlerLayout handlerLayout) {
+        super(parent, Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, className);
         this.tier = tier;
-        this.handlerLayout = parent.model.enableTailCallHandlers ? HandlerLayout.TAIL_CALL : HandlerLayout.DEFAULT;
+        this.handlerLayout = handlerLayout;
         this.resolveThrowable = tier.isUninitialized() ? null : this.add(createResolveThrowable());
         this.doTagExceptional = (tier.isUninitialized() || !parent.model.enableTagInstrumentation) ? null : this.add(createDoTagExceptional());
         this.setSuperClass(parent.abstractBytecodeNode.asType());
@@ -108,10 +108,12 @@ final class BytecodeNodeElement extends AbstractElement {
         emitContinueAt();
 
         if (tier.isUncached()) {
-            this.add(createUncachedConstructor());
+            CodeExecutableElement constructor = this.add(createUncachedConstructor());
+            this.add(createCreate(constructor));
             this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "uncachedExecuteCount_"));
         } else if (tier.isCached()) {
-            this.add(createCachedConstructor());
+            CodeExecutableElement constructor = this.add(createCachedConstructor());
+            this.add(createCreate(constructor));
             this.add(parent.compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(types.Node), "cachedNodes_")));
             this.add(parent.compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(type(boolean.class)), "exceptionProfiles_")));
             if (parent.model.epilogExceptional != null) {
@@ -137,7 +139,8 @@ final class BytecodeNodeElement extends AbstractElement {
             this.addAll(createMetadataMembers());
             this.addAll(createStoreAndRestoreParentFrameMethods());
         } else if (tier.isUninitialized()) {
-            this.add(GeneratorUtils.createConstructorUsingFields(Set.of(), this));
+            CodeExecutableElement constructor = this.add(GeneratorUtils.createConstructorUsingFields(Set.of(), this));
+            this.add(createCreate(constructor));
         } else {
             throw new AssertionError("invalid tier");
         }
@@ -148,7 +151,8 @@ final class BytecodeNodeElement extends AbstractElement {
         if (!tier.isUninitialized()) {
             // uninitialized does not need a copy constructor as the default constructor is
             // already copying.
-            this.add(createCopyConstructor());
+            CodeExecutableElement constructor = this.add(createCopyConstructor());
+            this.add(createCreate(constructor));
             this.add(createResolveHandler());
 
             if (parent.model.epilogExceptional != null) {
@@ -179,6 +183,9 @@ final class BytecodeNodeElement extends AbstractElement {
             if (parent.model.hasYieldOperation() && tier.isCached()) {
                 this.add(createCheckStableTagsAssumption());
                 this.add(createReconcileContinuationLocals());
+                if (handlerLayout.isTailCall()) {
+                    this.add(createReconcileContinuationLocalsTailCall());
+                }
             }
         } else {
             // generated in AbstractBytecodeNode
@@ -830,6 +837,24 @@ final class BytecodeNodeElement extends AbstractElement {
         return ex;
     }
 
+    private CodeExecutableElement createReconcileContinuationLocalsTailCall() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(void.class), "reconcileContinuationLocals");
+        ex.addParameter(new CodeVariableElement(parent.abstractBytecodeNode.asType(), "bytecodeNode"));
+        ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+        ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "parentFrame"));
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startIf().string("bytecodeNode instanceof ").type(this.asType()).string(" cachedBytecodeNode").end().startBlock();
+        b.startIf().string("!cachedBytecodeNode.checkStableTagsAssumption()").end().startBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.end();
+        b.startStatement().startCall("cachedBytecodeNode", "reconcileContinuationLocals");
+        b.string("bci");
+        b.string("parentFrame");
+        b.end(2);
+        b.end();
+        return ex;
+    }
+
     private CodeExecutableElement createSpecializeSlotTag() {
         if (!parent.model.usesBoxingElimination() || !tier.isCached()) {
             throw new AssertionError("Not supported.");
@@ -979,7 +1004,7 @@ final class BytecodeNodeElement extends AbstractElement {
         }
 
         b.startDeclaration(this.asType(), "cloned");
-        b.startNew(tier.friendlyName + "BytecodeNode");
+        b.cast(this.asType()).startStaticCall(this.asType(), "create");
         for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
             b.startGroup();
             if (var.getSimpleName().contentEquals("tagRoot")) {
@@ -1027,27 +1052,93 @@ final class BytecodeNodeElement extends AbstractElement {
         CodeTreeBuilder b = ex.createBuilder();
         switch (tier) {
             case UNCACHED:
-            case UNINITIALIZED:
                 if (parent.model.isBytecodeUpdatable()) {
-                    b.startDeclaration(parent.abstractBytecodeNode.asType(), "cachedNode");
-                } else {
-                    b.startReturn();
-                }
-                b.startNew(InterpreterTier.CACHED.friendlyName + "BytecodeNode");
-                for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
-                    b.string("this.", var.getSimpleName().toString());
-                }
-                if (parent.model.usesBoxingElimination()) {
-                    b.string("createCachedTags(numLocals)");
-                }
-                b.end();
-
-                if (parent.model.isBytecodeUpdatable()) {
-                    b.end();
+                    b.declaration(parent.abstractBytecodeNode.asType(), "cachedNode");
+                    b.startAssign("cachedNode").startCall(handlerLayout.isTailCall() ? "CachedBytecodeNodeTailCall" : "CachedBytecodeNode", "create");
+                    for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
+                        b.string("this.", var.getSimpleName().toString());
+                    }
+                    if (parent.model.usesBoxingElimination()) {
+                        b.string("createCachedTags(numLocals)");
+                    }
+                    b.end().end();
                     b.startAssign("cachedNode.oldBytecodesBox").string("this.allocateOldBytecodesBox()").end();
                     b.startReturn().string("cachedNode").end();
                 } else {
+                    b.startReturn().startCall(handlerLayout.isTailCall() ? "CachedBytecodeNodeTailCall" : "CachedBytecodeNode", "create");
+                    for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
+                        b.string("this.", var.getSimpleName().toString());
+                    }
+                    if (parent.model.usesBoxingElimination()) {
+                        b.string("createCachedTags(numLocals)");
+                    }
+                    b.end().end();
+                }
+                break;
+            case UNINITIALIZED:
+                if (parent.model.isBytecodeUpdatable()) {
+                    b.declaration(parent.abstractBytecodeNode.asType(), "cachedNode");
+                    if (parent.model.enableTailCallHandlers) {
+                        b.startIf().staticReference(types.TruffleOptions, "AOT").end().startBlock();
+                        b.startAssign("cachedNode").startCall("CachedBytecodeNodeTailCall", "create");
+                        for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
+                            b.string("this.", var.getSimpleName().toString());
+                        }
+                        if (parent.model.usesBoxingElimination()) {
+                            b.string("createCachedTags(numLocals)");
+                        }
+                        b.end().end();
+                        b.end().startElseBlock();
+                        b.startAssign("cachedNode").startCall("CachedBytecodeNode", "create");
+                        for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
+                            b.string("this.", var.getSimpleName().toString());
+                        }
+                        if (parent.model.usesBoxingElimination()) {
+                            b.string("createCachedTags(numLocals)");
+                        }
+                        b.end().end();
+                        b.end();
+                    } else {
+                        b.startAssign("cachedNode").startCall("CachedBytecodeNode", "create");
+                        for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
+                            b.string("this.", var.getSimpleName().toString());
+                        }
+                        if (parent.model.usesBoxingElimination()) {
+                            b.string("createCachedTags(numLocals)");
+                        }
+                        b.end().end();
+                    }
+                    b.startAssign("cachedNode.oldBytecodesBox").string("this.allocateOldBytecodesBox()").end();
+                    b.startReturn().string("cachedNode").end();
+                } else if (parent.model.enableTailCallHandlers) {
+                    b.startIf().staticReference(types.TruffleOptions, "AOT").end().startBlock();
+                    b.startReturn().startCall("CachedBytecodeNodeTailCall", "create");
+                    for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
+                        b.string("this.", var.getSimpleName().toString());
+                    }
+                    if (parent.model.usesBoxingElimination()) {
+                        b.string("createCachedTags(numLocals)");
+                    }
+                    b.end().end();
+                    b.end().startElseBlock();
+                    b.startReturn().startCall("CachedBytecodeNode", "create");
+                    for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
+                        b.string("this.", var.getSimpleName().toString());
+                    }
+                    if (parent.model.usesBoxingElimination()) {
+                        b.string("createCachedTags(numLocals)");
+                    }
+                    b.end().end();
                     b.end();
+                } else {
+                    b.startReturn().startCall("CachedBytecodeNode", "create");
+                    for (VariableElement var : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
+                        b.string("this.", var.getSimpleName().toString());
+                    }
+                    if (parent.model.usesBoxingElimination()) {
+                        b.string("createCachedTags(numLocals)");
+                    }
+                    b.end().end();
                 }
                 break;
             case CACHED:
@@ -1142,7 +1233,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.startIf().string("bytecodes_ != null").end().startBlock();
             b.lineComment("Can't reuse profile if bytecodes are changed.");
             b.startReturn();
-            b.startNew(this.asType());
+            b.startStaticCall(this.asType(), "create");
             for (VariableElement e : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
                 if (e.getModifiers().contains(STATIC)) {
                     continue;
@@ -1163,7 +1254,7 @@ final class BytecodeNodeElement extends AbstractElement {
              */
             b.lineComment("Can reuse profile if bytecodes are unchanged.");
             b.startReturn();
-            b.startNew(this.asType());
+            b.startStaticCall(this.asType(), "create");
             for (VariableElement e : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
                 if (e.getModifiers().contains(STATIC)) {
                     continue;
@@ -1184,7 +1275,7 @@ final class BytecodeNodeElement extends AbstractElement {
 
         } else {
             b.startReturn();
-            b.startNew(this.asType());
+            b.startStaticCall(this.asType(), "create");
             for (VariableElement e : ElementFilter.fieldsIn(parent.abstractBytecodeNode.getEnclosedElements())) {
                 b.string(e.getSimpleName().toString() + "__");
             }
@@ -1333,6 +1424,19 @@ final class BytecodeNodeElement extends AbstractElement {
         return ex;
     }
 
+    private CodeExecutableElement createCreate(CodeExecutableElement constructor) {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), parent.abstractBytecodeNode.asType(), "create");
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startReturn().startNew(this.asType());
+        for (VariableElement parameter : constructor.getParameters()) {
+            String name = parameter.getSimpleName().toString();
+            ex.addParameter(new CodeVariableElement(parameter.asType(), name));
+            b.string(name);
+        }
+        b.end().end();
+        return ex;
+    }
+
     private CodeExecutableElement createUncachedConstructor() {
         CodeExecutableElement ex = GeneratorUtils.createConstructorUsingFields(Set.of(), this);
         CodeTreeBuilder b = ex.appendBuilder();
@@ -1465,7 +1569,7 @@ final class BytecodeNodeElement extends AbstractElement {
         ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame_"));
         ex.addParameter(new CodeVariableElement(type(long.class), "startState"));
 
-        if (parent.model.enableTailCallHandlers) {
+        if (handlerLayout.isTailCall()) {
             addHandlerConfig(ex);
 
             CodeExecutableElement fetchNext = this.add(createInstructionHandler(type(int.class), "nextOpcode"));
@@ -1834,7 +1938,7 @@ final class BytecodeNodeElement extends AbstractElement {
         continueAtMethod.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_BytecodeInterpreterSwitch));
         continueAtMethod.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_EarlyInline));
 
-        if (model().enableTailCallHandlers) {
+        if (handlerLayout.isTailCall()) {
             addHandlerConfig(continueAtMethod);
         }
 

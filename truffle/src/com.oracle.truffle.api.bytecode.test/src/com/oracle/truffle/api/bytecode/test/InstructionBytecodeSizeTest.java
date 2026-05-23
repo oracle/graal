@@ -74,13 +74,13 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class InstructionBytecodeSizeTest {
 
-    private static final int CACHED_INSTRUCTION_SIZE = 24;
-    private static final int UNCACHED_INSTRUCTION_SIZE = 24;
+    private static final int CACHED_INSTRUCTION_SIZE = 27;
+    private static final int UNCACHED_INSTRUCTION_SIZE = 27;
 
     // !Important: Keep these in sync with BytecodeRootNodeElement!
     // Estimated number of Java bytecodes per instruction.
     // Should be at least max(cached, uncached).
-    public static final int ESTIMATED_INSTRUCTION_SIZE = 24;
+    public static final int ESTIMATED_INSTRUCTION_SIZE = 27;
     // Estimated number of java bytecodes needed for a bytecode loop
     public static final int ESTIMATED_BYTECODE_FOOTPRINT = 1000;
 

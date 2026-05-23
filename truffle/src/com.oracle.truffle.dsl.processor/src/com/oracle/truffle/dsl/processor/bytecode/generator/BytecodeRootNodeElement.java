@@ -142,7 +142,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
     // !Important: Keep these in sync with InstructionBytecodeSizeTest!
     // Estimated number of Java bytecodes per instruction.
-    private static final int ESTIMATED_CUSTOM_INSTRUCTION_SIZE = 24;
+    private static final int ESTIMATED_CUSTOM_INSTRUCTION_SIZE = 27;
     private static final int ESTIMATED_EXTRACTED_INSTRUCTION_SIZE = 20;
     // Estimated number of bytecodes needed if they are just part of the switch table.
     private static final int GROUP_DISPATCH_SIZE = 40;
@@ -201,6 +201,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     OldBytecodesBoxElement oldBytecodesBoxElement;
     AbstractBytecodeNodeElement abstractBytecodeNode;
     BytecodeNodeElement cachedBytecodeNode;
+    BytecodeNodeElement cachedTailCallBytecodeNode;
 
     TagNodeElement tagNode;
     TagRootNodeElement tagRootNode;
@@ -320,18 +321,27 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         instructionsElement.lazyInit();
 
         // Define the interpreter implementations.
-        cachedBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.CACHED));
+        cachedBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.CACHED, "CachedBytecodeNode", BytecodeNodeElement.HandlerLayout.DEFAULT));
         abstractBytecodeNode.getPermittedSubclasses().add(cachedBytecodeNode.asType());
+        if (model.enableTailCallHandlers) {
+            cachedTailCallBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.CACHED, "CachedBytecodeNodeTailCall", BytecodeNodeElement.HandlerLayout.TAIL_CALL));
+            abstractBytecodeNode.getPermittedSubclasses().add(cachedTailCallBytecodeNode.asType());
+        }
 
         this.add(bytecodeTransitionImplElement);
 
         CodeTypeElement initialBytecodeNode;
+        CodeTypeElement tailCallInitialBytecodeNode = null;
         if (model.enableUncachedInterpreter) {
-            CodeTypeElement uncachedBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.UNCACHED));
+            CodeTypeElement uncachedBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.UNCACHED, "UncachedBytecodeNode", BytecodeNodeElement.HandlerLayout.DEFAULT));
             abstractBytecodeNode.getPermittedSubclasses().add(uncachedBytecodeNode.asType());
             initialBytecodeNode = uncachedBytecodeNode;
+            if (model.enableTailCallHandlers) {
+                tailCallInitialBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.UNCACHED, "UncachedBytecodeNodeTailCall", BytecodeNodeElement.HandlerLayout.TAIL_CALL));
+                abstractBytecodeNode.getPermittedSubclasses().add(tailCallInitialBytecodeNode.asType());
+            }
         } else {
-            CodeTypeElement uninitializedBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.UNINITIALIZED));
+            CodeTypeElement uninitializedBytecodeNode = this.add(new BytecodeNodeElement(this, InterpreterTier.UNINITIALIZED, "UninitializedBytecodeNode", BytecodeNodeElement.HandlerLayout.DEFAULT));
             abstractBytecodeNode.getPermittedSubclasses().add(uninitializedBytecodeNode.asType());
             initialBytecodeNode = uninitializedBytecodeNode;
         }
@@ -421,7 +431,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         }
 
         // Define the generated node's constructor.
-        this.add(createConstructor(initialBytecodeNode));
+        this.add(createConstructor(initialBytecodeNode, tailCallInitialBytecodeNode));
 
         // Define the execute method.
         this.add(createExecute());
@@ -570,7 +580,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return validateVariadicStackLimit;
     }
 
-    private CodeExecutableElement createConstructor(CodeTypeElement initialBytecodeNode) {
+    private CodeExecutableElement createConstructor(CodeTypeElement initialBytecodeNode, CodeTypeElement tailCallInitialBytecodeNode) {
         CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, this.getSimpleName().toString());
         ctor.addParameter(new CodeVariableElement(model.languageClass, "language"));
         ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
@@ -603,18 +613,27 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             b.statement("this.numLocals = numLocals");
         }
         b.statement("this.buildIndex = buildIndex");
-        b.startStatement();
-        b.string("this.bytecode = ");
-        b.startCall("insert");
-        b.startNew(initialBytecodeNode.asType());
-
-        for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
-            b.string(var.getSimpleName().toString());
+        if (tailCallInitialBytecodeNode != null) {
+            b.startIf().staticReference(types.TruffleOptions, "AOT").end().startBlock();
+            b.startStatement().string("this.bytecode = ").startCall("insert").startStaticCall(tailCallInitialBytecodeNode.asType(), "create");
+            for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
+                b.string(var.getSimpleName().toString());
+            }
+            b.end().end().end();
+            b.end().startElseBlock();
+            b.startStatement().string("this.bytecode = ").startCall("insert").startStaticCall(initialBytecodeNode.asType(), "create");
+            for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
+                b.string(var.getSimpleName().toString());
+            }
+            b.end().end().end();
+            b.end();
+        } else {
+            b.startStatement().string("this.bytecode = ").startCall("insert").startStaticCall(initialBytecodeNode.asType(), "create");
+            for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
+                b.string(var.getSimpleName().toString());
+            }
+            b.end().end().end();
         }
-
-        b.end(); // new
-        b.end(); // insert
-        b.end(); // statement
 
         return ctor;
     }
@@ -797,11 +816,11 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     }
 
     TypeMirror getBytecodeIndexType() {
-        return model.enableTailCallHandlers ? type(long.class) : type(int.class);
+        return type(long.class);
     }
 
     TypeMirror getStackPointerType() {
-        return model.enableTailCallHandlers ? type(long.class) : type(int.class);
+        return type(long.class);
     }
 
     void emitWriteBytecodeIndexToFrame(CodeTreeBuilder b, String frame, String value) {
@@ -836,7 +855,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         if (model.overridesBytecodeDebugListenerMethod("beforeRootExecute")) {
             b.startStatement();
             b.startCall("beforeRootExecute");
-            emitParseInstruction(b, "bc", "bci", CodeTreeBuilder.singleString(castBytecodeIndexToInt("bc.readValidBytecode(bc.bytecodes, bci)")));
+            emitParseInstruction(b, "bc", "bci", CodeTreeBuilder.singleString("bc.readValidBytecode(bc.bytecodes, bci)"));
             b.end();
             b.end();
         }

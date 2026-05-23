@@ -53,6 +53,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
@@ -104,6 +105,18 @@ final class ContinuationRootNodeImplElement extends AbstractElement {
         this.addOptional(createPrepareForCompilation());
     }
 
+    private static void emitReconcileContinuationLocals(CodeTreeBuilder b, TypeMirror cachedBytecodeNodeType) {
+        b.startIf().string("bytecodeNode instanceof ").type(cachedBytecodeNodeType).string(" cachedBytecodeNode").end().startBlock();
+        b.startIf().string("!cachedBytecodeNode.checkStableTagsAssumption()").end().startBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.end();
+        b.startStatement().startCall("cachedBytecodeNode", "reconcileContinuationLocals");
+        b.string("bytecodeLocation.getBytecodeIndex()");
+        b.string("parentFrame");
+        b.end(2);
+        b.end();
+    }
+
     private CodeExecutableElement createExecute() {
         CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "execute", new String[]{"frame_"});
 
@@ -131,18 +144,19 @@ final class ContinuationRootNodeImplElement extends AbstractElement {
         b.end();
 
         if (parent.model.usesBoxingElimination()) {
-            b.startIf().string("bytecodeNode.getTier() == ").staticReference(types.BytecodeTier, "CACHED").end().startBlock();
-            b.startDeclaration(parent.cachedBytecodeNode.asType(), "cachedBytecodeNode");
-            b.tree(BytecodeRootNodeElement.uncheckedCast(parent.cachedBytecodeNode.asType(), "bytecodeNode"));
-            b.end();
-            b.startIf().string("!cachedBytecodeNode.checkStableTagsAssumption()").end().startBlock();
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.end();
-            b.startStatement().startCall("cachedBytecodeNode", "reconcileContinuationLocals");
-            b.string("bytecodeLocation.getBytecodeIndex()");
-            b.string("parentFrame");
-            b.end(2);
-            b.end();
+            if (parent.cachedTailCallBytecodeNode != null) {
+                b.startIf().staticReference(types.TruffleOptions, "AOT").end().startBlock();
+                b.startStatement().startStaticCall(parent.cachedTailCallBytecodeNode.asType(), "reconcileContinuationLocals");
+                b.string("bytecodeNode");
+                b.string("bytecodeLocation.getBytecodeIndex()");
+                b.string("parentFrame");
+                b.end(2);
+                b.end().startElseBlock();
+                emitReconcileContinuationLocals(b, parent.cachedBytecodeNode.asType());
+                b.end();
+            } else {
+                emitReconcileContinuationLocals(b, parent.cachedBytecodeNode.asType());
+            }
         }
 
         b.declaration(types.FrameWithoutBoxing, "targetFrame", "parentFrame");

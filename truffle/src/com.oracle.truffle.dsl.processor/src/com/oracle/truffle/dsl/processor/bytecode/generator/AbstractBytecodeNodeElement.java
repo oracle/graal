@@ -47,7 +47,6 @@ import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PROTECTED;
 import static javax.lang.model.element.Modifier.PUBLIC;
-import static javax.lang.model.element.Modifier.SEALED;
 import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.Arrays;
@@ -89,7 +88,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     final CodeExecutableElement transition;
 
     AbstractBytecodeNodeElement(BytecodeRootNodeElement parent) {
-        super(parent, Set.of(PRIVATE, STATIC, ABSTRACT, SEALED), ElementKind.CLASS, null, "AbstractBytecodeNode");
+        super(parent, Set.of(PRIVATE, STATIC, ABSTRACT), ElementKind.CLASS, null, "AbstractBytecodeNode");
 
         setSuperClass(types.BytecodeNode);
         add(parent.compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(byte.class)), "bytecodes")));
