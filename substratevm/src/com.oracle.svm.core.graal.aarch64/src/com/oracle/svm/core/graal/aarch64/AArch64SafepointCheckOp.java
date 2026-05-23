@@ -51,12 +51,16 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
         super(TYPE);
     }
 
+    static AArch64Address counterAddress() {
+        return AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED,
+                        ReservedRegisters.singleton().getThreadRegister(),
+                        SafepointCheckCounter.getThreadLocalOffset());
+    }
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         int safepointSize = 32; // safepoint is an integer
-        AArch64Address safepointAddress = AArch64Address.createImmediateAddress(safepointSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED,
-                        ReservedRegisters.singleton().getThreadRegister(),
-                        SafepointCheckCounter.getThreadLocalOffset());
+        AArch64Address safepointAddress = counterAddress();
         try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
             Register scratch = scratchRegister.getRegister();
             masm.ldr(safepointSize, scratch, safepointAddress);

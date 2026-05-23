@@ -91,6 +91,7 @@ import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -1012,9 +1013,17 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         @Override
         public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
             if (node instanceof SafepointCheckNode) {
-                AArch64SafepointCheckOp op = new AArch64SafepointCheckOp();
-                append(op);
-                append(new AArch64ControlFlow.BranchOp(op.getConditionFlag(), trueSuccessor, falseSuccessor, trueSuccessorProbability));
+                if (RecurringCallbackSupport.isEnabled()) {
+                    AArch64SafepointCheckOp op = new AArch64SafepointCheckOp();
+                    append(op);
+                    append(new AArch64ControlFlow.BranchOp(op.getConditionFlag(), trueSuccessor, falseSuccessor, trueSuccessorProbability));
+                } else {
+                    /*
+                     * Without recurring callbacks, safepoint checks only distinguish 0 from
+                     * MAX_VALUE, so the compare and branch can use AArch64's cbz/cbnz form.
+                     */
+                    append(new AArch64SafepointCheckBranchOp(trueSuccessor, falseSuccessor, trueSuccessorProbability));
+                }
             } else {
                 super.emitBranch(node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
             }

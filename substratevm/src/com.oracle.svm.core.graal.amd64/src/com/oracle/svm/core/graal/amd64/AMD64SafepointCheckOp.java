@@ -54,7 +54,7 @@ public class AMD64SafepointCheckOp extends AMD64LIRInstruction {
         int counterOffset = SafepointCheckCounter.getThreadLocalOffset();
         AMD64Address counter = new AMD64Address(ReservedRegisters.singleton().getThreadRegister(), counterOffset);
         if (RecurringCallbackSupport.isEnabled()) {
-            masm.subl(counter, 1);
+            masm.decrementl(counter, 1);
         } else {
             masm.cmpl(counter, 0);
         }
