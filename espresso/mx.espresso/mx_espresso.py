@@ -579,10 +579,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         dist_suffix = ''
     register_distribution(DeliverableStandaloneArchive(_suite,
         standalone_dist='ESPRESSO_NATIVE_STANDALONE',
-        community_archive_name=f"espresso-community-java{java_home_dep.major_version}{suffix}",
-        enterprise_archive_name=f"espresso-java{java_home_dep.major_version}{suffix}",
-        community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY_JAVA{java_home_dep.major_version}{dist_suffix}',
-        enterprise_dist_name=f'GRAALVM_ESPRESSO_JAVA{java_home_dep.major_version}{dist_suffix}'))
+        community_archive_name=f"espresso-community{java_home_dep.major_version}{suffix}",
+        enterprise_archive_name=f"espresso{java_home_dep.major_version}{suffix}",
+        community_dist_name=f'GRAALVM_ESPRESSO_COMMUNITY{java_home_dep.major_version}{dist_suffix}',
+        enterprise_dist_name=f'GRAALVM_ESPRESSO{java_home_dep.major_version}{dist_suffix}'))
 
     mx_espresso_benchmarks.mx_register_dynamic_suite_constituents(register_project, register_distribution)
 
