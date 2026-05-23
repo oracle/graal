@@ -443,6 +443,7 @@ public class CodeInfoEncoder {
 
         /* Make entries for all exception handlers. */
         for (ExceptionHandler handler : compilation.getExceptionHandlers()) {
+            VMError.guarantee(handler.handlerPos != handler.pcOffset, "Exception handler must have a unique PC");
             final IPData entry = makeEntry(handler.pcOffset + compilationOffset);
             assert entry.exceptionOffset == 0 : entry;
             entry.exceptionOffset = handler.handlerPos - handler.pcOffset;

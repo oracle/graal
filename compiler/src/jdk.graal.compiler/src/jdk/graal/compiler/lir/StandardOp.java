@@ -164,6 +164,7 @@ public class StandardOp {
             if (alignment != 0) {
                 crb.asm.align(alignment);
             }
+            crb.maybeEmitDelayedPostCallNopBeforeLabel(label);
             crb.asm.bind(label);
             crb.asm.maybeEmitIndirectTargetMarker(crb, label);
         }

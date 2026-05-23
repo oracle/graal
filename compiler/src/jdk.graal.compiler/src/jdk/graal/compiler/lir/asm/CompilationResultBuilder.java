@@ -167,6 +167,7 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
 
     private final boolean delayPostCallNops;
     private int pendingPostCallNopPc = Integer.MIN_VALUE;
+    private Label pendingPostCallExceptionHandlerLabel;
 
     private final List<LIRInstructionVerifier> lirInstructionVerifiers;
 
@@ -357,29 +358,24 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
     }
 
     public void postCallNop(Call call) {
-        postCallNop(call, false);
+        postCallNop(call, (Label) null);
     }
 
     public void postCallNop(Call call, LIRFrameState info) {
-        /*
-         * Calls with exception handlers need the old eager NOP emission so that the call return PC
-         * remains distinct from the exception dispatch/debug site immediately after the call.
-         */
-        postCallNop(call, info != null && info.exceptionEdge != null);
+        postCallNop(call, info != null && info.exceptionEdge != null ? info.exceptionEdge.label() : null);
     }
 
-    private void postCallNop(Call call, boolean force) {
+    private void postCallNop(Call call, Label exceptionHandlerLabel) {
         if (!delayPostCallNops) {
             asm.postCallNop(call);
-        } else if (force) {
-            asm.postCallNop(call);
-            pendingPostCallNopPc = Integer.MIN_VALUE;
         } else if (call.debugInfo != null) {
             /*
-             * Defer the NOP until we see another debug site at the call return PC. Consecutive
-             * calls do not collide: call metadata is encoded at each call's return PC.
+             * Defer the NOP until we see another debug site or adjacent exception handler at the
+             * call return PC. Consecutive calls do not collide: call metadata is encoded at each
+             * call's return PC.
              */
             pendingPostCallNopPc = call.pcOffset + call.size;
+            pendingPostCallExceptionHandlerLabel = exceptionHandlerLabel;
         }
     }
 
@@ -402,9 +398,17 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
             GraalError.guarantee(pos == asm.position(), "Cannot insert delayed post-call NOP at already emitted position %d", pos);
             asm.ensureUniquePC();
             pendingPostCallNopPc = Integer.MIN_VALUE;
+            pendingPostCallExceptionHandlerLabel = null;
             return asm.position();
         }
         return pos;
+    }
+
+    public void maybeEmitDelayedPostCallNopBeforeLabel(Label label) {
+        if (delayPostCallNops && label == pendingPostCallExceptionHandlerLabel) {
+            maybeEmitDelayedPostCallNop(asm.position());
+            pendingPostCallExceptionHandlerLabel = null;
+        }
     }
 
     public void recordSourceMapping(int pcOffset, int endPcOffset, NodeSourcePosition sourcePosition) {
@@ -724,6 +728,7 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
         currentBlockIndex = 0;
         lastImplicitExceptionOffset = Integer.MIN_VALUE;
         pendingPostCallNopPc = Integer.MIN_VALUE;
+        pendingPostCallExceptionHandlerLabel = null;
         lir.resetLabels();
         needsMHDeoptHandler = false;
         conservativeLabelOffsets = false;
