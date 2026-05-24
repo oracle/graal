@@ -195,7 +195,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
     }
 
-    boolean isCurrentLayerRegisteredLibrary(String libname) {
+    public boolean isCurrentLayerRegisteredLibrary(String libname) {
         return jniRegistrationSupportSingleton.currentLayerRegisteredLibraries.contains(libname);
     }
 
