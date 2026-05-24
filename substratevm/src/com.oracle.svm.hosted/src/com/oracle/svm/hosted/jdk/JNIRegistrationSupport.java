@@ -530,7 +530,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         source.append("    }\n");
         source.append("    if (result == NULL) {\n");
         source.append("        if (image_handle == NULL) {\n");
-        source.append("            image_handle = dlopen(\"@loader_path/").append(accessImpl.getImagePath().getFileName()).append("\", RTLD_LAZY);\n");
+        source.append("            image_handle = dlopen(").append(cStringLiteral("@loader_path/" + accessImpl.getImagePath().getFileName())).append(", RTLD_LAZY);\n");
         source.append("        }\n");
         source.append("        dlerror();\n");
         source.append("        result = image_handle == NULL ? NULL : dlsym(image_handle, name);\n");
@@ -546,7 +546,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         source.append("}\n\n");
         source.append("__attribute__((constructor)) static void initialize_shim(void) {\n");
         for (String export : shimExports.get(shimName)) {
-            source.append("    ").append(targetPointerName(export)).append(" = resolve_symbol(\"").append(export).append("\");\n");
+            source.append("    ").append(targetPointerName(export)).append(" = resolve_symbol(").append(cStringLiteral(export)).append(");\n");
         }
         source.append("}\n\n");
         for (String export : shimExports.get(shimName)) {
@@ -569,6 +569,31 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
             VMError.shouldNotReachHere(e);
         }
         return shimSource;
+    }
+
+    private static String cStringLiteral(String value) {
+        StringBuilder result = new StringBuilder("\"");
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '\\' -> result.append("\\\\");
+                case '"' -> result.append("\\\"");
+                case '\n' -> result.append("\\n");
+                case '\r' -> result.append("\\r");
+                case '\t' -> result.append("\\t");
+                default -> {
+                    if (c < 0x20 || c == 0x7f) {
+                        result.append('\\');
+                        result.append((char) ('0' + ((c >> 6) & 7)));
+                        result.append((char) ('0' + ((c >> 3) & 7)));
+                        result.append((char) ('0' + (c & 7)));
+                    } else {
+                        result.append(c);
+                    }
+                }
+            }
+        }
+        return result.append('"').toString();
     }
 
     private static String targetPointerName(String symbol) {

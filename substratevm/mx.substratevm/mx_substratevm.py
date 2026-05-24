@@ -251,15 +251,6 @@ def locale_US_args():
     return ['-Duser.country=US', '-Duser.language=en']
 
 
-def _is_post_merge_or_weekly_job():
-    build_name = mx.get_env('BUILD_NAME', '').lower()
-    return 'post-merge' in build_name or 'weekly' in build_name
-
-
-def _should_run_java_desktop_integration():
-    tags = tuple(Task.tags or ())
-    return Task.tags is None or _is_post_merge_or_weekly_job() or any(tag == GraalTags.java_desktop_integration for tag in tags)
-
 class Tags(set):
     def __getattr__(self, name):
         if name in self:
@@ -552,7 +543,7 @@ def svm_gate_body(args, tasks):
                 native_unittests_task(args.extra_image_builder_arguments, include_custom_test_groups=True)
 
     with Task('java.desktop integration tests', tasks, tags=[GraalTags.java_desktop_integration]) as t:
-        if t and _should_run_java_desktop_integration():
+        if t:
             if mx.is_windows():
                 mx.warn('Headless java.desktop integration test does not run on Windows')
             else:

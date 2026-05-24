@@ -47,6 +47,7 @@ import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -138,10 +139,12 @@ public class ProgressReporterSupport {
             return false; // AWT not used
         }
         // check if any class located in java.awt or sun.awt is registered for JNI access
-        for (JNIAccessibleClass clazz : JNIReflectionDictionary.currentLayer().getClasses()) {
-            String className = clazz.getClassObject().getName();
-            if (className.startsWith("java.awt") || className.startsWith("sun.awt")) {
-                return false;
+        for (JNIReflectionDictionary dictionary : MultiLayeredImageSingleton.getAllLayers(JNIReflectionDictionary.class)) {
+            for (JNIAccessibleClass clazz : dictionary.getClasses()) {
+                String className = clazz.getClassObject().getName();
+                if (className.startsWith("java.awt") || className.startsWith("sun.awt")) {
+                    return false;
+                }
             }
         }
         return true;
