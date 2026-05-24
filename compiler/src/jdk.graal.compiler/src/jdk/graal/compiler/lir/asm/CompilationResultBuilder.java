@@ -407,6 +407,7 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
     public void maybeEmitDelayedPostCallNopBeforeLabel(Label label) {
         if (delayPostCallNops && label == pendingPostCallExceptionHandlerLabel) {
             maybeEmitDelayedPostCallNop(asm.position());
+            pendingPostCallNopPc = Integer.MIN_VALUE;
             pendingPostCallExceptionHandlerLabel = null;
         }
     }

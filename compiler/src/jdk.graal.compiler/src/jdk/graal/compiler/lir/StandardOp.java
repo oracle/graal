@@ -66,7 +66,8 @@ public class StandardOp {
     }
 
     /**
-     * LIR operation that emits a call and records call debug information.
+     * LIR operation that can record call debug information at its return PC. Such operations must not
+     * force a pending delayed post-call NOP before the call is emitted.
      */
     public interface CallOp {
     }
