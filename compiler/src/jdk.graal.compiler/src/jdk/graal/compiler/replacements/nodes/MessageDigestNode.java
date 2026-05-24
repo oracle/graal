@@ -269,6 +269,15 @@ public abstract class MessageDigestNode extends MemoryKillStubIntrinsicNode {
             return EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.BMI2);
         }
 
+        /*
+         * Substrate VM currently chooses minFeaturesAMD64() as the runtime-compilation variant
+         * because SHA512 is not widely adopted yet. Native targets with BMI2 and SHA512 can still
+         * use this feature set.
+         */
+        public static EnumSet<AMD64.CPUFeature> maxFeaturesAMD64() {
+            return EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.BMI2, AMD64.CPUFeature.SHA512);
+        }
+
         public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
             return EnumSet.of(AArch64.CPUFeature.SHA512);
         }
@@ -276,6 +285,11 @@ public abstract class MessageDigestNode extends MemoryKillStubIntrinsicNode {
         @SuppressWarnings("unlikely-arg-type")
         public static boolean isSupported(Architecture arch) {
             return switch (arch) {
+                /*
+                 * HotSpot supports AVX2 with either BMI2 or SHA512, but SVM currently models the
+                 * runtime-compilation variant with minFeaturesAMD64(). Requiring BMI2 here keeps
+                 * the public support predicate aligned with that generated-stub feature model.
+                 */
                 case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64());
                 case AArch64 aarch64 -> aarch64.getFeatures().containsAll(minFeaturesAARCH64());
                 default -> false;
