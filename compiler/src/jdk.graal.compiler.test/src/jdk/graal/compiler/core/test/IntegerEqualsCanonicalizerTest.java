@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,13 @@ package jdk.graal.compiler.core.test;
 
 import java.util.Optional;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.GraalCompiler;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
@@ -36,17 +41,17 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.FinalCanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import org.junit.Test;
+import jdk.vm.ci.code.CodeUtil;
 
 public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
 
@@ -316,6 +321,58 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
         int result = (a == 0 ? 3 : b) == 3 ? 1 : 0;
         GraalDirectives.controlFlowAnchor();
         return result;
+    }
+
+    @Test
+    public void testNegatedEqualitySucceedingStampForX() {
+        Assert.assertEquals(stamp(1, 10), succeedingStampForX(stamp(0, 10), stamp(0)));
+        Assert.assertEquals(stamp(-10, -1), succeedingStampForX(stamp(-10, 0), stamp(0)));
+        Assert.assertEquals(stamp(Integer.MIN_VALUE + 1, Integer.MIN_VALUE + 10),
+                        succeedingStampForX(stamp(Integer.MIN_VALUE, Integer.MIN_VALUE + 10), stamp(Integer.MIN_VALUE)));
+        Assert.assertEquals(stamp(Integer.MAX_VALUE - 10, Integer.MAX_VALUE - 1),
+                        succeedingStampForX(stamp(Integer.MAX_VALUE - 10, Integer.MAX_VALUE), stamp(Integer.MAX_VALUE)));
+        Assert.assertEquals(stampWithoutZero(-10, 10), succeedingStampForX(stamp(-10, 10), stamp(0)));
+
+        assertEmptyStamp(succeedingStampForX(stamp(Integer.MIN_VALUE), stamp(Integer.MIN_VALUE)));
+        assertEmptyStamp(succeedingStampForX(stamp(Integer.MAX_VALUE), stamp(Integer.MAX_VALUE)));
+        Assert.assertNull(succeedingStampForX(stamp(0, 10), stamp(1)));
+        Assert.assertNull(succeedingStampForX(stamp(0, 10), stamp(0, 1)));
+    }
+
+    @Test
+    public void testNegatedEqualitySucceedingStampForY() {
+        Assert.assertEquals(stamp(1, 10), succeedingStampForY(stamp(0), stamp(0, 10)));
+        Assert.assertEquals(stamp(-10, -1), succeedingStampForY(stamp(0), stamp(-10, 0)));
+        Assert.assertEquals(stampWithoutZero(-10, 10), succeedingStampForY(stamp(0), stamp(-10, 10)));
+    }
+
+    private static IntegerStamp stamp(long value) {
+        return stamp(value, value);
+    }
+
+    private static IntegerStamp stamp(long lowerBound, long upperBound) {
+        return IntegerStamp.create(32, lowerBound, upperBound);
+    }
+
+    private static IntegerStamp stampWithoutZero(long lowerBound, long upperBound) {
+        return IntegerStamp.create(32, lowerBound, upperBound, 0, CodeUtil.mask(32), false);
+    }
+
+    private static IntegerEqualsNode newIntegerEqualsNode() {
+        return new IntegerEqualsNode(ConstantNode.forInt(0), ConstantNode.forInt(1));
+    }
+
+    private static Stamp succeedingStampForX(Stamp xStamp, Stamp yStamp) {
+        return newIntegerEqualsNode().getSucceedingStampForX(true, xStamp, yStamp);
+    }
+
+    private static Stamp succeedingStampForY(Stamp xStamp, Stamp yStamp) {
+        return newIntegerEqualsNode().getSucceedingStampForY(true, xStamp, yStamp);
+    }
+
+    private static void assertEmptyStamp(Stamp stamp) {
+        Assert.assertNotNull(stamp);
+        Assert.assertTrue(stamp.toString(), stamp.isEmpty());
     }
 
     private void test(String snippet, String referenceSnippet) {

@@ -44,9 +44,11 @@ import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ShortCircuitOrNode;
 import jdk.graal.compiler.nodes.UnaryOpLogicNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.UnaryNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
@@ -268,6 +270,55 @@ public class ConditionalEliminationUtil {
         return recursiveFoldStamp(infoElementProvider, node);
     }
 
+    /**
+     * Checks whether {@code candidate} is {@code upper - 1}.
+     */
+    private static boolean isUpperMinusOne(ValueNode candidate, ValueNode upper) {
+        if (candidate instanceof AddNode add && add.getX() == upper) {
+            ValueNode value = add.getY();
+            return value.isJavaConstant() && value.asJavaConstant().asLong() == -1L;
+        }
+        return false;
+    }
+
+    /**
+     * Proves a masked unsigned-below check after proving that the upper value is positive.
+     *
+     * <pre>{@code
+     * if (upper > 0) {
+     *     int lower = index & (upper - 1);
+     *     if (Integer.compareUnsigned(lower, upper) < 0) {
+     *         inBounds();
+     *     }
+     * }
+     * }</pre>
+     *
+     * @param infoElementProvider provider for dominating stamp information
+     * @param node the condition to prove
+     * @param rewireGuardFunction callback used to fold the proved guard
+     * @return {@code true} if {@code node} was proved and rewired
+     */
+    private static boolean tryProveMaskedBelow(InfoElementProvider infoElementProvider, LogicNode node, GuardRewirer rewireGuardFunction) {
+        if (!(node instanceof IntegerBelowNode integerBelowNode)) {
+            return false;
+        }
+        ValueNode upper = integerBelowNode.getY();
+        // Check that lower is index & (upper - 1).
+        ValueNode lower = integerBelowNode.getX();
+        if (!(lower instanceof AndNode and && (isUpperMinusOne(and.getX(), upper) || isUpperMinusOne(and.getY(), upper)))) {
+            return false;
+        }
+        InfoElement infoElement = infoElementProvider.infoElements(upper);
+        while (infoElement != null) {
+            // Check that upper is positive.
+            if (infoElement.getStamp() instanceof IntegerStamp integerStamp && integerStamp.lowerBound() > 0) {
+                return rewireGuards(infoElement.getGuard(), true, infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
+            }
+            infoElement = infoElementProvider.nextElement(infoElement);
+        }
+        return false;
+    }
+
     public static boolean rewireGuards(GuardingNode guard, boolean result, ValueNode proxifiedInput, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
         return rewireGuardFunction.rewire(guard, result, guardedValueStamp, proxifiedInput);
     }
@@ -296,6 +347,9 @@ public class ConditionalEliminationUtil {
             if (result.isKnown()) {
                 return rewireGuards(guardedCondition.getGuard(), result.toBoolean(), null, null, rewireGuardFunction);
             }
+        }
+        if (tryProveMaskedBelow(infoElementProvider, node, rewireGuardFunction)) {
+            return true;
         }
 
         if (node instanceof UnaryOpLogicNode) {
