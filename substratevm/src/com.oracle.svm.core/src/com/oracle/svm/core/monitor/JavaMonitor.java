@@ -34,11 +34,12 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.IsolateThread;
 
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.VMError;
 
@@ -74,13 +75,15 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             JavaMonitorEnterEvent.emit(obj, latestJfrTid, latestJfrVThreadName, startTicks);
         }
 
-        if (SubstrateJVM.isRecordingActive()) {
-            latestJfrTid = SubstrateJVM.getCurrentThreadId();
-            latestJfrVThreadName = SubstrateJVM.getOptionalCurrentThreadName();
-        } else {
-            latestJfrTid = 0;
-            latestJfrVThreadName = null;
+        if (HasJfrSupport.get()) {
+            updateLatestJfrOwner(SubstrateJVM.getCurrentThreadId());
         }
+    }
+
+    protected void updateLatestJfrOwner(long threadId) {
+        latestJfrTid = threadId;
+        Thread currentThread = JavaThreads.getCurrentThreadOrNull();
+        latestJfrVThreadName = currentThread != null && JavaThreads.isVirtual(currentThread) ? currentThread.getName() : null;
     }
 
     public void monitorExit() {
