@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
@@ -154,6 +155,11 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         lazyProperties.add(new LazySystemProperty("java.home", this::javaHomeValue));
         lazyProperties.add(new LazySystemProperty("java.io.tmpdir", this::javaIoTmpdirValue));
         lazyProperties.add(new LazySystemProperty("java.library.path", this::javaLibraryPathValue));
+        /*
+         * Match HotSpot's dll_dir system property: this is the platform-specific directory used by
+         * boot-loader native library lookup.
+         */
+        lazyProperties.add(new LazySystemProperty("sun.boot.library.path", this::sunBootLibraryPathValue));
         lazyProperties.add(new LazySystemProperty("os.version", this::osVersionValue));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE, () -> LocaleSupport.singleton().getLocale().language()));
         lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE_DISPLAY, () -> LocaleSupport.singleton().getLocale().displayLanguage()));
@@ -407,17 +413,44 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         throw VMError.shouldNotReachHere("System property java.home is not supported in this configuration");
     }
 
-    private static boolean pathEndsWithName(String path, String name) {
+    protected static boolean pathEndsWithName(String path, String name) {
+        if (path == null) {
+            return false;
+        }
         int nameStart = path.lastIndexOf(pathSeparator()) + 1;
         return path.regionMatches(nameStart, name, 0, name.length()) && nameStart + name.length() == path.length();
     }
 
-    private static String parentPath(String path) {
+    protected static String parentPath(String path) {
         if (path == null) {
             return null;
         }
         int separatorIndex = path.lastIndexOf(pathSeparator());
         return separatorIndex < 0 ? null : path.substring(0, separatorIndex);
+    }
+
+    protected static String executableDirectory() {
+        return parentPath(ProcessProperties.getExecutableName());
+    }
+
+    protected static String childPath(String parent, String child) {
+        return parent + pathSeparator() + child;
+    }
+
+    protected String findEnclosingJavaHome(String directory, String bootLibraryDirectoryName, String bootLibraryFileName) {
+        String candidate = directory;
+        while (candidate != null) {
+            String bootLibrary = childPath(childPath(candidate, bootLibraryDirectoryName), bootLibraryFileName);
+            if (pathExists(bootLibrary) && (pathExists(childPath(candidate, "release")) || pathExists(childPath(childPath(candidate, "lib"), "modules")))) {
+                return candidate;
+            }
+            candidate = parentPath(candidate);
+        }
+        return null;
+    }
+
+    protected boolean pathExists(@SuppressWarnings("unused") String path) {
+        return false;
     }
 
     private static char pathSeparator() {
@@ -427,6 +460,10 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     protected abstract String javaIoTmpdirValue();
 
     protected abstract String javaLibraryPathValue();
+
+    protected String sunBootLibraryPathValue() {
+        return "";
+    }
 
     private static class LazySystemProperty {
         private final String key;
