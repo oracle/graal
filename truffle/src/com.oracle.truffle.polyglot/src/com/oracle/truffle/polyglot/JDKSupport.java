@@ -154,7 +154,10 @@ final class JDKSupport {
             try {
                 System.load(attachLibPath);
             } catch (UnsatisfiedLinkError failedToLoad) {
-                String errorMessage = String.format("Unable to load the TruffleAttach library %s", attachLibPath);
+                String errorMessage = String.format("Unable to load the TruffleAttach library %s. A common reason is that truffle-api is loaded by multiple class loaders. " +
+                                "The optimizing Truffle runtime can be loaded only once per JVM. Use a common shared class loader for Truffle related JARs, " +
+                                "for example by moving truffle-api and its dependencies to the system class loader (classpath/module-path).",
+                                attachLibPath);
                 performTruffleAttachLoadFailureAction(errorMessage, failedToLoad);
                 return Pair.create(null, errorMessage);
             } catch (IllegalCallerException illegalCaller) {
