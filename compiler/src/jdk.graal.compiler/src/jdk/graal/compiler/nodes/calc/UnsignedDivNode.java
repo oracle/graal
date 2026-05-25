@@ -57,6 +57,9 @@ public class UnsignedDivNode extends IntegerDivRemNode implements LIRLowerable {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (canCanonicalizeUnsignedToNull(tool, forY)) {
+            return null;
+        }
         NodeView view = NodeView.from(tool);
         return canonical(this, forX, forY, getZeroGuard(), stamp(view), view);
     }
