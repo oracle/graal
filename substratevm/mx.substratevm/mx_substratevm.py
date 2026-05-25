@@ -544,8 +544,11 @@ def svm_gate_body(args, tasks):
 
     with Task('java.desktop integration tests', tasks, tags=[GraalTags.java_desktop_integration]) as t:
         if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                java_desktop_integration_task(native_image, args.extra_image_builder_arguments)
+            if '--static' in args.extra_image_builder_arguments:
+                mx.warn('java.desktop integration tests do not run for static images')
+            else:
+                with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                    java_desktop_integration_task(native_image, args.extra_image_builder_arguments)
 
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
         if t:
