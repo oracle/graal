@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.LocalVariable;
@@ -236,6 +237,98 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
                             "return");
         }
         assertEquals(42L, node.getCallTarget().call(123L));
+    }
+
+    /**
+     * Rewriting complicates bci translation. We should generate and use the necessary metadata to remap a bci from the rewritten world to the non-rewritten world.
+     */
+    @Test
+    public void testTranslateRewrittenBytecodeIndex() {
+        BasicInterpreter node = parseNode("translateRewrittenBytecodeIndex", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadNull();
+            b.endStoreLocal();
+
+            b.beginIncrementValue();
+            // rewrite 1: load.constant, pop ->
+            b.emitLoadConstant(21L);
+            b.endIncrementValue();
+
+            b.emitClearLocal(x);
+
+            // rewrite 2: load.argument, pop ->
+            b.beginIncrementValue();
+            b.emitLoadArgument(0);
+            b.endIncrementValue();
+            // rewrite 3: load.null, pop ->
+            b.beginIncrementValue();
+            b.emitLoadNull();
+            b.endIncrementValue();
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        List<Instruction> instructionsToTest;
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "load.null",
+                            "store.local",
+                            "clear.local",
+                            "load.constant",
+                            "return");
+
+            instructionsToTest = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+        } else {
+            assertInstructions(node,
+                            "load.null",
+                            "store.local",
+                            "load.constant",
+                            "pop",
+                            "clear.local",
+                            "load.argument",
+                            "pop",
+                            "load.null",
+                            "pop",
+                            "load.constant",
+                            "return");
+            List<Instruction> filtered = filterTrace(node.getBytecodeNode().getInstructionsAsList());
+            instructionsToTest = List.of(filtered.get(0), filtered.get(1), filtered.get(4), filtered.get(9), filtered.get(10));
+        }
+        assertEquals(42L, node.getCallTarget().call(123));
+        assertEquals("load.null", instructionsToTest.get(0).getName());
+        assertEquals("store.local", instructionsToTest.get(1).getName());
+        assertEquals("clear.local", instructionsToTest.get(2).getName());
+        assertEquals("load.constant", instructionsToTest.get(3).getName());
+        assertEquals("return", instructionsToTest.get(4).getName());
+
+        BytecodeConfig config = run.bytecode().newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build();
+        node.getRootNodes().update(config);
+
+        assertInstructions(node,
+                        "load.null",
+                        "store.local",
+                        "load.constant",
+                        "c.IncrementValue",
+                        "pop",
+                        "clear.local",
+                        "load.argument",
+                        "c.IncrementValue",
+                        "pop",
+                        "load.null",
+                        "c.IncrementValue",
+                        "pop",
+                        "load.constant",
+                        "return");
+        for (Instruction oldInstruction : instructionsToTest) {
+            Instruction newInstruction = oldInstruction.getLocation().update().getInstruction();
+            assertEquals(oldInstruction.getName(), newInstruction.getName());
+        }
     }
 
     @Test

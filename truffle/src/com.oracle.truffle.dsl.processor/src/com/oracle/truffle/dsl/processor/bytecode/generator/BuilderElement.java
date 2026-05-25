@@ -2689,6 +2689,14 @@ final class BuilderElement extends AbstractElement {
         b.startAssign("numNodes_").string("state.numNodes").end();
         b.startAssign("locals_").string("state.locals == null ? " + BytecodeRootNodeElement.EMPTY_INT_ARRAY + " : ").startStaticCall(type(Arrays.class), "copyOf").string("state.locals").string(
                         "state.localsTableIndex").end().end();
+        if (model.enableInstructionRewriting) {
+            b.startAssign("rewrittenBciDeltas_");
+            b.string("state.rewrittenBciDeltasIndex == 0 ? null : ");
+            b.startStaticCall(type(Arrays.class), "copyOf");
+            b.string("state.rewrittenBciDeltas");
+            b.string("state.rewrittenBciDeltasIndex");
+            b.end().end();
+        }
         b.end().startElseBlock();
         b.statement("state.toConstants()");
         b.end();
@@ -4940,6 +4948,7 @@ final class BuilderElement extends AbstractElement {
         private CodeVariableElement instructionRewriteState;
         private CodeVariableElement leaderBci;
         private CodeExecutableElement requestLeaderBci;
+        private CodeExecutableElement recordRewrittenBciDelta;
         private CodeExecutableElement replayFromLeaderBciMethod;
         private CodeExecutableElement fixLocalsBeforeRewriteMethod;
         private CodeExecutableElement fixSourcesBeforeDeleteMethod;
@@ -4993,8 +5002,15 @@ final class BuilderElement extends AbstractElement {
             if (model.enableInstructionRewriting) {
                 this.instructionRewriteState = this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "rewriteState"));
                 this.leaderBci = this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "leaderBci"));
+                CodeVariableElement rewrittenBciDeltas = new CodeVariableElement(Set.of(PRIVATE), type(int[].class), "rewrittenBciDeltas");
+                BytecodeRootNodeElement.addJavadoc(rewrittenBciDeltas, List.of(
+                                "Sorted {@code (rewrittenBci, delta)} pairs used to map rewritten BCI space to stable BCI space.",
+                                "Each pair with {@code rewrittenBci <= searchBci} adds {@code delta} to the cumulative stable-BCI offset."));
+                this.add(rewrittenBciDeltas);
+                this.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "rewrittenBciDeltasIndex"));
                 // add rewriter helpers in lateInit to co-locate them with the rewrite methods
                 this.requestLeaderBci = createRequestLeaderBci();
+                this.recordRewrittenBciDelta = createRecordRewrittenBciDelta();
                 this.replayFromLeaderBciMethod = createReplayFromLeaderBci();
                 if (model.enableBlockScoping) {
                     this.fixLocalsBeforeRewriteMethod = createFixLocalsBeforeRewrite();
@@ -5070,6 +5086,8 @@ final class BuilderElement extends AbstractElement {
             b.statement("this.instrumentations = 0");
             b.statement("this.tags = 0");
             if (model.enableInstructionRewriting) {
+                b.statement("this.rewrittenBciDeltas = null");
+                b.statement("this.rewrittenBciDeltasIndex = 0");
                 b.startStatement().startCall(null, rootStackElement.requestLeaderBci).end(2);
             }
 
@@ -5120,6 +5138,7 @@ final class BuilderElement extends AbstractElement {
                 this.addAll(applyRewriteRuleMethods.values());
                 this.add(replayFromLeaderBciMethod);
                 this.add(requestLeaderBci);
+                this.add(recordRewrittenBciDelta);
                 this.addOptional(fixLocalsBeforeRewriteMethod);
                 this.addOptional(fixSourcesBeforeDeleteMethod);
             }
@@ -5162,6 +5181,7 @@ final class BuilderElement extends AbstractElement {
             b.statement("this.tags = 0");
             b.statement("this.needsClean = true");
             if (model.enableInstructionRewriting) {
+                b.statement("this.rewrittenBciDeltasIndex = 0");
                 b.startStatement().startCall(null, rootStackElement.requestLeaderBci).end(2);
             }
 
@@ -5927,6 +5947,10 @@ final class BuilderElement extends AbstractElement {
             }
             if (rewriteRule.getKind() == Kind.DELETION) {
                 b.startStatement().startCall(null, fixSourcesBeforeDeleteMethod).string("startBci").end(2);
+                b.startStatement().startCall(null, recordRewrittenBciDelta);
+                b.string("startBci");
+                b.string(Integer.toString(getRewritePatternLength(rewriteRule)));
+                b.end(2);
             } else {
                 throw new AssertionError("Unsupported rewrite rule kind: " + rewriteRule.getKind());
             }
@@ -5998,6 +6022,44 @@ final class BuilderElement extends AbstractElement {
 
             b.startAssign(instructionRewriteState).staticReference(instructionRewriterElement.startState).end();
             b.startReturn().variable(leaderBci).string(" = bci").end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createRecordRewrittenBciDelta() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "recordRewrittenBciDelta");
+            ex.addParameter(new CodeVariableElement(type(int.class), "rewrittenBci"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "delta"));
+            BytecodeRootNodeElement.addJavadoc(ex, List.of(
+                            "Records a {@code (rewrittenBci, delta)} pair for the rewritten-to-stable BCI mapping.",
+                            "Entries must be emitted in non-decreasing rewritten-BCI order.",
+                            "During translation, each pair with {@code rewrittenBci <= searchBci} adds {@code delta} to the cumulative stable-BCI offset.",
+                            "Adjacent rewrites can produce the same rewritten BCI; in that case the deltas are coalesced."));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("delta == 0").end().startBlock();
+            b.statement("return");
+            b.end();
+
+            b.startIf().string("rewrittenBciDeltasIndex != 0").end().startBlock();
+            b.declaration(type(int.class), "lastEntry", "rewrittenBciDeltasIndex - 2");
+            b.startIf().string("rewrittenBciDeltas[lastEntry] == rewrittenBci").end().startBlock();
+            b.lineComment("Adjacent deletion rewrites can start at the same rewritten BCI.");
+            b.lineComment("Coalesce them so the table stays sorted and sparse.");
+            b.statement("rewrittenBciDeltas[lastEntry + 1] += delta");
+            b.statement("return");
+            b.end();
+            b.startAssert().string("rewrittenBciDeltas[lastEntry] < rewrittenBci").end();
+            b.end();
+
+            b.startIf().string("rewrittenBciDeltas == null").end().startBlock();
+            b.statement("rewrittenBciDeltas = new int[8]");
+            b.end().startElseIf().string("rewrittenBciDeltas.length < rewrittenBciDeltasIndex + 2").end().startBlock();
+            b.statement("rewrittenBciDeltas = Arrays.copyOf(rewrittenBciDeltas, rewrittenBciDeltas.length * 2)");
+            b.end();
+
+            b.statement("rewrittenBciDeltas[rewrittenBciDeltasIndex++] = rewrittenBci");
+            b.statement("rewrittenBciDeltas[rewrittenBciDeltasIndex++] = delta");
 
             return ex;
         }
