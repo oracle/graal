@@ -250,6 +250,7 @@ def _vm_home(config):
 def locale_US_args():
     return ['-Duser.country=US', '-Duser.language=en']
 
+
 class Tags(set):
     def __getattr__(self, name):
         if name in self:
@@ -263,6 +264,7 @@ GraalTags = Tags([
     'standalone_pointsto_unittests',
     'native_unittests',
     'all_native_unittests',
+    'java_desktop_integration',
     'build',
     'benchmarktest',
     "nativeimagehelp",
@@ -540,6 +542,14 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS):
                 native_unittests_task(args.extra_image_builder_arguments, include_custom_test_groups=True)
 
+    with Task('java.desktop integration tests', tasks, tags=[GraalTags.java_desktop_integration]) as t:
+        if t:
+            if '--static' in args.extra_image_builder_arguments:
+                mx.warn('java.desktop integration tests do not run for static images')
+            else:
+                with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                    java_desktop_integration_task(native_image, args.extra_image_builder_arguments)
+
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -787,6 +797,16 @@ def runtime_classpath_resource_test_task(extra_build_args=None):
         '-Dsvm.test.expectRuntimeClassPathResource=true',
         '-Djava.class.path=' + svm_tests_jar,
     ])
+
+
+def java_desktop_integration_task(native_image, extra_build_args=None):
+    build_args = _compute_native_unittest_args(extra_build_args, include_svm_test_features=False)
+    build_args += svm_experimental_options(['-H:Preserve=module=java.desktop'])
+    _native_unittest(native_image, [
+        '--test-classes-per-run', '1',
+        'com.oracle.svm.integrationtest.HeadlessJavaDesktopTest',
+        'com.oracle.svm.integrationtest.NonHeadlessJavaDesktopTest',
+    ] + build_args)
 
 def conditional_config_task(native_image):
     agent_path = build_native_image_agent(native_image)
@@ -2739,6 +2759,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                         mx.logvv('Skipping line: ' + line.rstrip())
                 return collector
 
+            symbol_dump_command = ''
             if mx.is_windows():
                 symbol_dump_command = 'dumpbin /SYMBOLS'
             elif mx.is_darwin():
@@ -2747,7 +2768,6 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                 symbol_dump_command = 'objdump --wide --syms'
             else:
                 mx.abort('gen_fallbacks not supported on ' + sys.platform)
-                raise AssertionError('unreachable')
 
             seen_gnu_property_type_5_warnings = False
             def suppress_gnu_property_type_5_warnings(line):

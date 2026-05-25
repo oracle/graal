@@ -134,7 +134,7 @@ public class ProgressReporterSupport {
         if (!ImageSingletons.contains(JNIRegistrationSupport.class) || !ImageSingletons.contains(JNIReflectionDictionary.class)) {
             return false;
         }
-        if (!JNIRegistrationSupport.singleton().isRegisteredLibrary("awt")) {
+        if (!JNIRegistrationSupport.singleton().isCurrentLayerRegisteredLibrary("awt")) {
             return false; // AWT not used
         }
         // check if any class located in java.awt or sun.awt is registered for JNI access
