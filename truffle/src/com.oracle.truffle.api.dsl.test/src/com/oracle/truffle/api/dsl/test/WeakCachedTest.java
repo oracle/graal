@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
@@ -62,6 +63,7 @@ import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.ConsistentGuardAndSpecializationNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.TestNullWeakCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakCachedLibraryNodeGen;
+import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakDependentCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakInlineCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSharedCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSimpleNodeGen;
@@ -229,6 +231,40 @@ public class WeakCachedTest extends AbstractPolyglotTest {
             return arg;
         }
 
+    }
+
+    @Test
+    public void testWeakCacheCanDependOnPreviousCache() {
+        WeakDependentCacheNode node = WeakDependentCacheNodeGen.create();
+        CachedValue value = new CachedValue(new String("value"));
+        assertEquals("value", node.execute(value));
+        assertEquals("value", WeakDependentCacheNodeGen.getUncached().execute(value));
+    }
+
+    static final class CachedValue {
+        final String value;
+
+        CachedValue(String value) {
+            this.value = value;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class WeakDependentCacheNode extends Node {
+
+        abstract Object execute(CachedValue arg0);
+
+        @Specialization(guards = "arg == cachedArg", limit = "3")
+        Object s0(CachedValue arg,
+                        @Cached("arg") CachedValue cachedArg,
+                        @Cached(value = "read(cachedArg)", weak = true) String cachedValue) {
+            assertNotNull(cachedValue);
+            return cachedValue;
+        }
+
+        static String read(CachedValue value) {
+            return value.value;
+        }
     }
 
     /*
