@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.VMOperationInfo;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.shared.Uninterruptible;
 import org.graalvm.word.impl.Word;
 
@@ -69,12 +68,16 @@ public abstract class NativeVMOperation extends VMOperation {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected String getQueuingVThreadName(NativeVMOperationData data) {
-        return data.getQueuingVThreadName();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void setQueuingVThreadName(NativeVMOperationData data, String value) {
-        data.setQueuingVThreadName(value);
+        if (VMOperation.isInProgressAtSafepoint() && data.getQueuingThread().isNonNull()) {
+            Thread queuingThread = PlatformThreads.fromVMThread(data.getQueuingThread());
+            if (queuingThread != null) {
+                Thread mountedVThread = PlatformThreads.getMountedVirtualThread(queuingThread);
+                if (mountedVThread != null && JavaThreads.getThreadId(mountedVThread) == data.getQueuingThreadId()) {
+                    return mountedVThread.getName();
+                }
+            }
+        }
+        return null;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -89,14 +92,12 @@ public abstract class NativeVMOperation extends VMOperation {
         data.setFinished(false);
         data.setQueuingThread(CurrentIsolate.getCurrentThread());
         data.setQueuingThreadId(JavaThreads.getCurrentThreadIdOrZero());
-        setQueuingVThreadName(data, SubstrateJVM.getOptionalCurrentThreadName());
     }
 
     @Override
     protected void markAsFinished(NativeVMOperationData data) {
         data.setQueuingThread(Word.nullPointer());
         data.setQueuingThreadId(0);
-        setQueuingVThreadName(data, null);
         data.setFinished(true);
     }
 }
