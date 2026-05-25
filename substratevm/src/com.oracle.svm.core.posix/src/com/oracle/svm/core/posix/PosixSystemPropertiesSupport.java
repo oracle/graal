@@ -56,10 +56,14 @@ public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSuppo
         /*
          * HotSpot uses the VM library directory for shared libraries and the executable directory
          * for statically linked launchers. In libjvmci-style shared-library images, the loaded
-         * image can live outside the JDK, so derive the JDK library directory from the launcher and
-         * fall back to the launcher directory only when no enclosing JDK home is found.
+         * image can live outside the JDK, so prefer java.home if it is available. Otherwise derive
+         * the JDK library directory from the launcher and fall back to the launcher directory only
+         * when no enclosing JDK home is found.
          */
-        String javaHome = findEnclosingJavaHome(executableDirectory, "lib", "libjava" + jvmLibSuffix());
+        String javaHome = getInitialProperty("java.home");
+        if (javaHome == null) {
+            javaHome = findEnclosingJavaHome(executableDirectory, "lib", "libjava" + jvmLibSuffix());
+        }
         if (javaHome != null) {
             return childPath(javaHome, "lib");
         }
