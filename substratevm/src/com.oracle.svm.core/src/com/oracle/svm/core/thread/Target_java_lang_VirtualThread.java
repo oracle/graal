@@ -40,6 +40,7 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.Uninterruptible;
@@ -229,6 +230,37 @@ public final class Target_java_lang_VirtualThread {
 
     @Alias
     native Object carrierThreadAccessLock();
+
+    @Alias
+    private native void setCarrierThread(Target_java_lang_Thread carrier);
+
+    /*
+     * GR-57064: substitution should not be needed (acquireInterruptLockMaybeSwitch should not have
+     * been necessary here), but signal-handler based JFR execution sampling needs vthreads to be
+     * registered before the carrier starts reporting them as the current thread.
+     */
+    @Substitute
+    void mount() {
+        Target_java_lang_Thread carrier = asTarget(Target_java_lang_Thread.currentCarrierThread());
+        setCarrierThread(carrier);
+
+        if (interrupted) {
+            carrier.setInterrupt();
+            // Checkstyle: allow Thread.isInterrupted: as in JDK
+        } else if (carrier.isInterrupted()) {
+            // Checkstyle: disallow Thread.isInterrupted
+            synchronized (asTarget(this).interruptLock) {
+                if (!interrupted) {
+                    carrier.clearInterrupt();
+                }
+            }
+        }
+
+        if (SubstrateJVM.shouldRegisterVirtualThreadsOnMount()) {
+            SubstrateJVM.getThreadRepo().registerThread(asThread(this));
+        }
+        carrier.setCurrentThread(asThread(this));
+    }
 
     @Alias
     native int state();

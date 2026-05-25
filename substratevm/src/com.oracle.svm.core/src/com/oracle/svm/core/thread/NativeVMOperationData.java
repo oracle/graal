@@ -64,6 +64,14 @@ public interface NativeVMOperationData extends PointerBase {
     @RawField
     void setQueuingThreadId(long currentThreadId);
 
+    @PinnedObjectField
+    @RawField
+    String getQueuingVThreadName();
+
+    @PinnedObjectField
+    @RawField
+    void setQueuingVThreadName(String value);
+
     @RawField
     boolean getFinished();
 

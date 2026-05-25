@@ -69,11 +69,12 @@ public abstract class NativeVMOperation extends VMOperation {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected String getQueuingVThreadName(NativeVMOperationData data) {
-        return null;
+        return data.getQueuingVThreadName();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void setQueuingVThreadName(@SuppressWarnings("unused") NativeVMOperationData data, @SuppressWarnings("unused") String value) {
+    protected void setQueuingVThreadName(NativeVMOperationData data, String value) {
+        data.setQueuingVThreadName(value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

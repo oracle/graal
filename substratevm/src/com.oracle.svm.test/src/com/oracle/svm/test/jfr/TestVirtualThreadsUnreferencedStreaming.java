@@ -55,7 +55,7 @@ public class TestVirtualThreadsUnreferencedStreaming extends JfrStreamingTest {
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{"com.jfr.String"};
-        RecordingStream stream = startStream(events, s -> {
+        RecordingStream stream = startMinimalStream(events, s -> {
             /*
              * This test verifies that streamed events do not retain virtual threads that are not
              * referenced by the streamed payload. Disable unrelated default thread lifecycle events

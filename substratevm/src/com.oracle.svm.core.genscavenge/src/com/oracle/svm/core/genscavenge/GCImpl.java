@@ -50,7 +50,6 @@ import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
-import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -1285,30 +1284,10 @@ public final class GCImpl implements GC {
             /* Skip if any other GC happened in the meanwhile. */
             return GCImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
         }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected String getQueuingVThreadName(NativeVMOperationData data) {
-            return ((CollectionVMOperationData) data).getQueuingVThreadName();
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected void setQueuingVThreadName(NativeVMOperationData data, String value) {
-            ((CollectionVMOperationData) data).setQueuingVThreadName(value);
-        }
     }
 
     @RawStructure
     private interface CollectionVMOperationData extends NativeVMOperationData {
-        @PinnedObjectField
-        @RawField
-        String getQueuingVThreadName();
-
-        @PinnedObjectField
-        @RawField
-        void setQueuingVThreadName(String value);
-
         @RawField
         int getCauseId();
 

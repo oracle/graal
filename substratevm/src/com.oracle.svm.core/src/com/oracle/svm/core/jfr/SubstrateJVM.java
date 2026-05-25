@@ -350,6 +350,11 @@ public class SubstrateJVM {
         return null;
     }
 
+    @Fold
+    public static boolean shouldRegisterVirtualThreadsOnMount() {
+        return HasJfrSupport.get() && ImageSingletons.contains(SubstrateSigprofHandler.class);
+    }
+
     /**
      * See {@link JVM#storeMetadataDescriptor}.
      */
