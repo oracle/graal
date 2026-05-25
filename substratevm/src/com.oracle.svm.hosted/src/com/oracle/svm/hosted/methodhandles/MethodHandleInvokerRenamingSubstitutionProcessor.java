@@ -38,6 +38,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -127,6 +128,7 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
 
     private final ConcurrentMap<ResolvedJavaType, MethodHandleInvokerSubstitutionType> typeSubstitutions = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, String> stableNameStructuralKeys = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, AtomicInteger> structuralKeyDuplicateCounts = new ConcurrentHashMap<>();
 
     MethodHandleInvokerRenamingSubstitutionProcessor(BigBang bb) {
         this.bb = bb;
@@ -476,7 +478,19 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         } else {
             baseName = MH_STABLE_NAME_TEMPLATE + baseName;
         }
-        String name = baseName + ";";
+        AtomicInteger duplicateCount = structuralKeyDuplicateCounts.get(structuralKey);
+        if (duplicateCount == null) {
+            AtomicInteger newDuplicateCount = new AtomicInteger();
+            AtomicInteger existingDuplicateCount = structuralKeyDuplicateCounts.putIfAbsent(structuralKey, newDuplicateCount);
+            duplicateCount = existingDuplicateCount != null ? existingDuplicateCount : newDuplicateCount;
+        }
+        int duplicateIndex = duplicateCount.getAndIncrement();
+        /*
+         * The same LambdaForm structure can be generated into multiple hidden classes. Such classes
+         * are structurally indistinguishable for naming purposes, but the hosted universe still needs
+         * distinct type names for the distinct original classes.
+         */
+        String name = duplicateIndex == 0 ? baseName + ";" : baseName + "_" + duplicateIndex + ";";
         String previousKey = stableNameStructuralKeys.putIfAbsent(name, structuralKey);
         VMError.guarantee(previousKey == null || previousKey.equals(structuralKey), "Method handle stable name collision for %s", name);
         return name;
