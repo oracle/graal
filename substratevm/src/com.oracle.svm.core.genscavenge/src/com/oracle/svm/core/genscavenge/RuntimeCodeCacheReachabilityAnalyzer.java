@@ -57,18 +57,29 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
     @Override
     @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
-        Pointer pos = firstObjRef;
+        Pointer referenceSlot = firstObjRef;
         Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
-        while (pos.belowThan(end)) {
-            visitObjectReference(pos, compressed);
-            pos = pos.add(referenceSize);
+        while (referenceSlot.belowThan(end)) {
+            visitObjectReference(referenceSlot, compressed);
+            referenceSlot = referenceSlot.add(referenceSize);
         }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void visitObjectReference(Pointer ptrPtrToObject, boolean compressed) {
-        Pointer ptrToObj = ReferenceAccess.singleton().readObjectAsUntrackedPointer(ptrPtrToObject, compressed);
-        if (ptrToObj.isNonNull() && !isReachable(ptrToObj)) {
+    private static void visitObjectReference(Pointer referenceSlot, boolean compressed) {
+        Pointer referencedObject = ReferenceAccess.singleton().readObjectAsUntrackedPointer(referenceSlot, compressed);
+        if (referencedObject.isNonNull() && !isReachable(referencedObject)) {
+            throw UNREACHABLE_OBJECTS_EXCEPTION;
+        }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.", mayBeInlined = true)
+    public void visitDerivedReference(Pointer referenceSlot, int innerOffset, boolean compressed, Object holderObject) {
+        Pointer derivedPointer = ReferenceAccess.singleton().readDerivedReferenceAt(referenceSlot, compressed);
+        Pointer basePointer = derivedPointer.subtract(innerOffset);
+        assert basePointer.isNonNull() : "Base object of derived reference must not be null.";
+        if (!isReachable(basePointer)) {
             throw UNREACHABLE_OBJECTS_EXCEPTION;
         }
     }

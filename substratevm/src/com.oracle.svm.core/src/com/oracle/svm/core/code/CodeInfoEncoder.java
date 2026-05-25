@@ -54,7 +54,7 @@ import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.DerivedReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -907,7 +907,7 @@ class CodeInfoVerifier {
                     CodeReferenceMapDecoder.walkOffsetsFromPointer(base, CodeInfoAccess.getStackReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor, null);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
-                    assert expected.equals(visitor.result) : infopoint;
+                    assert expected.equals(visitor.result) : "expected " + expected + " but got " + visitor.result + " at " + infopoint;
 
                     if (queryResult.frameInfo != CodeInfoQueryResult.NO_FRAME_INFO) {
                         verifyFrame(compilation, infopoint.debugInfo.frame(), queryResult.frameInfo, new BitSet());
@@ -1161,7 +1161,7 @@ class MethodTableFirstIDTracker {
     }
 }
 
-class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
+class CollectingObjectReferenceVisitor implements DerivedReferenceVisitor {
     private final Pointer base;
     protected final SubstrateReferenceMap result = new SubstrateReferenceMap();
 
@@ -1179,8 +1179,16 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
         }
     }
 
-    private void visitObjectReference(Pointer objRef, boolean compressed) {
-        int offset = NumUtil.safeToInt(objRef.subtract(base).rawValue());
+    private void visitObjectReference(Pointer referenceSlot, boolean compressed) {
+        int offset = NumUtil.safeToInt(referenceSlot.subtract(base).rawValue());
         result.markReferenceAtOffset(offset, compressed);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Verifier visitor is called through the decoder bridge and uses hosted collections.", mayBeInlined = true, calleeMustBe = false)
+    public void visitDerivedReferenceInterruptibly(Pointer baseReferenceSlot, Pointer derivedReferenceSlot, boolean compressed, Object holderObject) {
+        int baseOffset = NumUtil.safeToInt(baseReferenceSlot.subtract(base).rawValue());
+        int derivedOffset = NumUtil.safeToInt(derivedReferenceSlot.subtract(base).rawValue());
+        result.markReferenceAtOffset(derivedOffset, baseOffset, compressed);
     }
 }

@@ -147,8 +147,14 @@ final class StackVerifier {
             }
         }
 
-        private void visitObjectReference(Pointer objRef, boolean compressed) {
-            result &= HeapVerifier.verifyReference(this, objRef, compressed);
+        private void visitObjectReference(Pointer referenceSlot, boolean compressed) {
+            result &= HeapVerifier.verifyReference(this, referenceSlot, compressed);
+        }
+
+        @Override
+        public void visitDerivedReference(Pointer derivedReferenceSlot, int innerOffset, boolean compressed, Object holderObject) {
+            assert holderObject == null;
+            result &= HeapVerifier.verifyReference(this, derivedReferenceSlot, innerOffset, compressed);
         }
     }
 }

@@ -59,6 +59,13 @@ public interface ReferenceAccess {
     Word readObjectAsUntrackedPointer(Pointer p, boolean compressed);
 
     /**
+     * Read the raw pointer value of a derived reference from the reference slot at address
+     * {@code p}. The pointer may point into an object, and must therefore not be materialized as an
+     * {@link Object}.
+     */
+    Pointer readDerivedReferenceAt(Pointer referenceSlot, boolean compressed);
+
+    /**
      * Read the object reference at address {@code p} and return it.
      */
     Object readObjectAt(Pointer p, boolean compressed);
@@ -67,6 +74,13 @@ public interface ReferenceAccess {
      * Write the location of object {@code value} to the object reference at address {@code p}.
      */
     void writeObjectAt(Pointer p, Object value, boolean compressed);
+
+    /**
+     * Write the raw pointer value of a derived reference to the reference slot at address {@code p}.
+     * The pointer must be non-null, may point into an object, and must therefore not be
+     * materialized as an {@link Object}.
+     */
+    void writeDerivedReferenceAt(Pointer referenceSlot, Pointer value, boolean compressed);
 
     /*
      * Using a write barrier, write the object reference at offset {@code offsetInObject} within

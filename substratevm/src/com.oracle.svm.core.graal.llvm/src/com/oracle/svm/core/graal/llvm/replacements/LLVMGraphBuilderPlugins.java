@@ -37,17 +37,22 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.BitCountNode;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import com.oracle.svm.core.graal.llvm.replacements.LLVMIntrinsicNode.LLVMIntrinsicOperation;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     @Override
@@ -78,7 +83,7 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerMathPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Math.class);
+        Registration r = new Registration(plugins, Math.class).setAllowOverwrite(true);
         registerUnaryMath(r, "log", UnaryOperation.LOG);
         registerUnaryMath(r, "log10", UnaryOperation.LOG10);
         registerUnaryMath(r, "exp", UnaryOperation.EXP);
@@ -101,8 +106,7 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.register(new InvocationPlugin(name, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));
-                return true;
+                return UnaryMathIntrinsicGenerationNode.intrinsify(b, value, operation);
             }
         });
     }
@@ -111,8 +115,7 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.register(new InvocationPlugin(name, double.class, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, operation)));
-                return true;
+                return BinaryMathIntrinsicGenerationNode.intrinsify(b, x, y, operation);
             }
         });
     }

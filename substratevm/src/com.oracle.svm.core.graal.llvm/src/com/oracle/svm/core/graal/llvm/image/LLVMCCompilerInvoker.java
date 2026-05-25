@@ -28,14 +28,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Scanner;
 
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
+import com.oracle.svm.hosted.image.LLVMToolchain;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
-import com.oracle.svm.hosted.image.LLVMToolchain;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class LLVMCCompilerInvoker extends CCompilerInvoker {

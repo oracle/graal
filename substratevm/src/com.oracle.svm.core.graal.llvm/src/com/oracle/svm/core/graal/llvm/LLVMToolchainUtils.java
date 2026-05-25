@@ -48,23 +48,11 @@ public class LLVMToolchainUtils {
     public static void llvmOptimize(DebugContext debug, String outputPath, String inputPath, Path basePath, Function<String, String> outputPathFormat) {
         List<String> args = new ArrayList<>();
         List<String> passes = new ArrayList<>();
-        if (LLVMOptions.BitcodeOptimizations.getValue()) {
-            /*
-             * This runs LLVM's bitcode optimizations in addition to the Graal optimizations.
-             * Inlining has to be disabled in this case as the functions are already stored in the
-             * image heap and inlining them would produce bogus runtime information for garbage
-             * collection and exception handling. Starting with LLVM 16, the -disable-inlining flag
-             * doesn't work anymore. But inlining is implicitly disabled by adding no-inline to all
-             * bitcode functions.
-             */
-            passes.add("default<O2>");
-        } else {
-            /*
-             * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
-             * not supported for statepoints.
-             */
-            passes.add("function(mem2reg)");
-        }
+        /*
+         * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are not
+         * supported for statepoints.
+         */
+        passes.add("function(mem2reg)");
         passes.add("rewrite-statepoints-for-gc");
         passes.add("always-inline");
 
@@ -163,6 +151,21 @@ public class LLVMToolchainUtils {
         } catch (LLVMToolchain.RunFailureException e) {
             debug.log("%s", e.getOutput());
             throw new GraalError("Removing stack maps failed for " + inputPath + ": " + e.getStatus() + System.lineSeparator() + "Command: llvm-objcopy " + String.join(" ", args));
+        }
+    }
+
+    public static void llvmAddTextSectionSymbols(DebugContext debug, String inputPath, String startSymbolName, String endSymbolName, long textSectionSize, Path basePath) {
+        String textSectionName = SectionName.TEXT.getFormatDependentName(ObjectFile.getNativeFormat());
+        List<String> args = new ArrayList<>();
+        args.add("--add-symbol=" + startSymbolName + "=" + textSectionName + ":0,global");
+        args.add("--add-symbol=" + endSymbolName + "=" + textSectionName + ":" + textSectionSize + ",global");
+        args.add(inputPath);
+
+        try {
+            LLVMToolchain.runLLVMCommand("llvm-objcopy", basePath, args);
+        } catch (LLVMToolchain.RunFailureException e) {
+            debug.log("%s", e.getOutput());
+            throw new GraalError("Adding text section symbols failed for " + inputPath + ": " + e.getStatus() + System.lineSeparator() + "Command: llvm-objcopy " + String.join(" ", args));
         }
     }
 

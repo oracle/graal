@@ -219,12 +219,28 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
 
     @Override
     public int hashCode() {
-        int result = shift * 31 + (derived == null ? 42 : derived.hashCode());
+        int result = shift * 31 + derivedHashCode();
         if (shiftedOffsets != null) {
             /* We do not use BitSet.hashCode because it has a too high collision rate. */
             for (int idx = shiftedOffsets.nextSetBit(0); idx != -1; idx = shiftedOffsets.nextSetBit(idx + 1)) {
                 result = result * 31 + idx + 42;
             }
+        }
+        return result;
+    }
+
+    private int derivedHashCode() {
+        if (derived == null) {
+            return 42;
+        }
+
+        int result = 0;
+        for (int baseOffset : derived.getKeys()) {
+            int derivedOffsetsHash = 0;
+            for (int derivedOffset : derived.get(baseOffset)) {
+                derivedOffsetsHash += Integer.hashCode(derivedOffset);
+            }
+            result += Integer.hashCode(baseOffset) ^ derivedOffsetsHash;
         }
         return result;
     }
@@ -248,8 +264,15 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
             }
 
             for (int base : derived.getKeys()) {
-                if (!derived.get(base).equals(other.derived.get(base))) {
+                EconomicSet<Integer> derivedOffsets = derived.get(base);
+                EconomicSet<Integer> otherDerivedOffsets = other.derived.get(base);
+                if (otherDerivedOffsets == null || derivedOffsets.size() != otherDerivedOffsets.size()) {
                     return false;
+                }
+                for (int derivedOffset : derivedOffsets) {
+                    if (!otherDerivedOffsets.contains(derivedOffset)) {
+                        return false;
+                    }
                 }
             }
 

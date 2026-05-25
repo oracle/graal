@@ -277,6 +277,10 @@ public class LLVMStackMapInfo {
 
         EconomicSet<Integer> seenOffsets = EconomicSet.create();
         EconomicSet<Integer> seenBases = EconomicSet.create();
+        EconomicSet<Integer> normalOffsets = EconomicSet.create();
+        EconomicSet<Integer> derivedReferenceOffsets = EconomicSet.create();
+        Map<Integer, Integer> baseByDerivedOffset = new HashMap<>();
+        Map<Integer, Boolean> compressedByOffset = new HashMap<>();
         for (int i = STATEPOINT_HEADER_LOCATION_COUNT + deoptCount; i < locations.length; i += 2) {
             assert i + 1 < locations.length;
             Location base = locations[i];
@@ -309,16 +313,32 @@ public class LLVMStackMapInfo {
                 int derivedOffset = derivedOffsets[j];
 
                 seenBases.add(baseOffset);
-                /* Derived pointers have their base already registered on the stackmap */
-                if (!seenOffsets.contains(derivedOffset)) {
-                    seenOffsets.add(derivedOffset);
-                    assert compressedOffsets.contains(derivedOffset) == compressedOffsets.contains(baseOffset);
-                    callback.accept(derivedOffset, baseOffset, compressedOffsets.contains(derivedOffset));
+                seenOffsets.add(derivedOffset);
+                assert compressedOffsets.contains(derivedOffset) == compressedOffsets.contains(baseOffset);
+
+                boolean compressed = compressedOffsets.contains(derivedOffset);
+                if (baseOffset == derivedOffset) {
+                    normalOffsets.add(derivedOffset);
+                } else {
+                    derivedReferenceOffsets.add(derivedOffset);
+                    Integer oldBaseOffset = baseByDerivedOffset.putIfAbsent(derivedOffset, baseOffset);
+                    assert oldBaseOffset == null || oldBaseOffset == baseOffset;
                 }
+                compressedByOffset.put(derivedOffset, compressed);
             }
         }
 
         assert seenOffsets.containsAll(seenBases);
+
+        for (int offset : normalOffsets) {
+            if (!derivedReferenceOffsets.contains(offset)) {
+                callback.accept(offset, offset, compressedByOffset.get(offset));
+            }
+        }
+        for (Map.Entry<Integer, Integer> entry : baseByDerivedOffset.entrySet()) {
+            int derivedOffset = entry.getKey();
+            callback.accept(derivedOffset, entry.getValue(), compressedByOffset.get(derivedOffset));
+        }
     }
 
     private int[] getStackOffsets(long patchpointID, Location location) {

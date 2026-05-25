@@ -364,9 +364,20 @@ public class HeapVerifier {
         return verifyReference(ref, ReferenceInternals.getReferentFieldAddress(ref), ReferenceInternals.getReferentPointer(ref));
     }
 
-    public static boolean verifyReference(Object parentObject, Pointer objRef, boolean compressed) {
-        Pointer ptr = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-        return verifyReference(parentObject, objRef, ptr);
+    public static boolean verifyReference(Object parentObject, Pointer referenceSlot, boolean compressed) {
+        Pointer referencedObject = ReferenceAccess.singleton().readObjectAsUntrackedPointer(referenceSlot, compressed);
+        return verifyReference(parentObject, referenceSlot, referencedObject);
+    }
+
+    public static boolean verifyReference(Object parentObject, Pointer derivedReferenceSlot, int innerOffset, boolean compressed) {
+        Pointer derivedPointer = ReferenceAccess.singleton().readDerivedReferenceAt(derivedReferenceSlot, compressed);
+        Pointer basePointer = derivedPointer.subtract(innerOffset);
+        if (basePointer.isNull()) {
+            Log.log().string("Derived reference at ").zhex(derivedReferenceSlot).string(" has a null base object. ");
+            printParent(parentObject);
+            return false;
+        }
+        return verifyReference(parentObject, derivedReferenceSlot, basePointer);
     }
 
     // This method is executed exactly once for each object reference in the heap and on the stack.

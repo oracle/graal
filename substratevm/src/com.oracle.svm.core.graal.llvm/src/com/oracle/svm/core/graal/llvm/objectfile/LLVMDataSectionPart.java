@@ -57,12 +57,28 @@ public class LLVMDataSectionPart {
         this.relocationsBatch = relocationsBatch;
         this.content = content;
         this.symbols = symbols;
-        computeBitcode();
     }
 
-    private void computeBitcode() {
-        getBaseSymbol();
+    public void declareBaseSymbol() {
+        if (baseGlobal != null) {
+            return;
+        }
 
+        String sectionName = element.getName();
+        String baseSymbol = sectionName + "_base_" + id;
+        if (batchOffset == 0) {
+            LLVMObjectFile.sectionToFirstSymbol.put(sectionName, baseSymbol);
+        }
+
+        baseGlobal = builder.getUniqueGlobal(baseSymbol, builder.arrayType(builder.wordType(), content.length), false);
+        builder.setAlignment(baseGlobal, pageSize);
+        LLVMIRBuilder.setSection(baseGlobal, sectionName);
+
+        symbolsToGlobal.put(baseSymbol, baseGlobal);
+    }
+
+    public void computeBitcode() {
+        declareBaseSymbol();
         if (symbols != null) {
             computeSymbolsToGlobals();
         }
@@ -84,10 +100,8 @@ public class LLVMDataSectionPart {
 
         for (int relocOffset : relocationsBatch) {
             LLVMUserDefinedSection.Entry relocation = relocations.get(relocOffset);
-            String name = relocation.getReferencedSymbol().getName();
-            if (LLVMObjectFile.sectionToFirstSymbol.containsKey(name)) {
-                name = LLVMObjectFile.sectionToFirstSymbol.get(name);
-            }
+            String referencedSymbolName = relocation.getReferencedSymbol().getName();
+            String name = LLVMObjectFile.sectionToFirstSymbol.getOrDefault(referencedSymbolName, referencedSymbolName);
             LLVMValueRef globalEntry = symbolsToGlobal.get(name);
 
             if (globalEntry == null) {
@@ -99,36 +113,20 @@ public class LLVMDataSectionPart {
         }
     }
 
-    private void getBaseSymbol() {
-        String sectionName = element.getName();
-        String baseSymbol = sectionName + "_base_" + id;
-        if (batchOffset == 0) {
-            LLVMObjectFile.sectionToFirstSymbol.put(element.getName(), baseSymbol);
-        }
-
-        baseGlobal = builder.getUniqueGlobal(baseSymbol, builder.arrayType(builder.wordType(), content.length), false);
-        builder.setAlignment(baseGlobal, pageSize);
-        LLVMIRBuilder.setSection(baseGlobal, sectionName);
-
-        symbolsToGlobal.put(baseSymbol, baseGlobal);
-    }
-
     private void computeSymbolsToGlobals() {
         String sectionName = element.getName();
-
-        int startSymbol = 0;
-
         symbols.sort(Comparator.comparingLong(LLVMSymtab.Entry::getDefinedOffset));
 
-        for (int i = startSymbol; i < symbols.size(); ++i) {
+        for (int i = 0; i < symbols.size(); ++i) {
             ObjectFile.Symbol symbol = symbols.get(i);
-            long offset = symbol.getDefinedOffset();
+            long offset = symbol.getDefinedOffset() - batchOffset;
             String name = symbol.getName();
 
             LLVMValueRef aliasOffset = builder.buildAdd(builder.buildPtrToInt(baseGlobal), builder.constantLong(offset));
             LLVMValueRef aliasAddress = builder.buildIntToPtr(aliasOffset, builder.pointerType(builder.wordType()));
             LLVMValueRef alias = builder.addAlias(aliasAddress, name);
             LLVMIRBuilder.setSection(alias, sectionName);
+            symbolsToGlobal.put(name, alias);
         }
     }
 

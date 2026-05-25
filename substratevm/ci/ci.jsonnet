@@ -30,6 +30,9 @@
   local use_musl_dynamic = sg.use_musl_dynamic,
   local add_quickbuild = sg.add_quickbuild,
   local partial = sg.partial,
+  local llvm_backend_aarch64 = task_spec({
+    mxgate_extra_args+: ["--extra-image-builder-arguments=--parallelism=1 -H:+UnlockExperimentalVMOptions -H:LLVMMaxFunctionsPerBatch=1 -H:-UnlockExperimentalVMOptions"],
+  }) + task_spec(evaluate_late("zz_ol8", common.linux_aarch64_ol8)),
 
   local use_oraclejdk_latest = task_spec(run_spec.evaluate_late({
     "use_oraclejdk_latest": common.oraclejdkLatest + galahad.exclude
@@ -147,6 +150,10 @@
       "java-compiler:ecj": {
         "linux:amd64:jdk-latest": tier2 + partial(2) + gdb("14.2") + t("40:00"),
       },
+    }),
+    "llvm-backend": mxgate("build,llvm_backend") + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk-latest": tier3 + t("30:00"),
+      "linux:aarch64:jdk-latest": tier3 + t("1:30:00") + llvm_backend_aarch64,
     }),
     "standalone-pointsto-unittests": mxgate("build,standalone_pointsto_unittests") + standalone_pointsto_deps + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": tier2 + t("20:00"),

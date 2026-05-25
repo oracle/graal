@@ -265,6 +265,7 @@ GraalTags = Tags([
     'all_native_unittests',
     'build',
     'benchmarktest',
+    'llvm_backend',
     "nativeimagehelp",
     'hellomodule',
     'condconfig',
@@ -424,6 +425,127 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     clinittest(extra_image_args)
 
 
+# Keep this narrower than the regular helloworld gate; that gate also builds and runs a native javac
+# image, which is not covered by the restored LLVM backend smoke surface yet.
+def llvm_backend_gate_task(extra_image_args=None):
+    extra_image_args = extra_image_args or []
+    llvm_args = (
+        svm_experimental_options(['--tool:llvm-backend']) +
+        llvm_backend_image_builder_args() +
+        extra_image_args
+    )
+    output_path = join(svmbuild_dir(), 'llvm-backend')
+
+    hello_world_configs = [
+        ('helloworld', []),
+        ('helloworld-single-function-batches', svm_experimental_options(['-H:LLVMMaxFunctionsPerBatch=1'])),
+        ('helloworld-new-thread', svm_experimental_options(['-H:+RunMainInNewThread'])),
+        ('helloworld-shared', ['--shared']),
+        ('helloworld-no-args', ['--variant', 'noArgs']),
+        ('helloworld-instance', ['--variant', 'instance']),
+        ('helloworld-unnamed-class', ['--variant', 'unnamedClass']),
+        ('helloworld-data-section', svm_experimental_options(['-H:+UseLLVMDataSection'])),
+    ]
+    for name, args in hello_world_configs:
+        helloworld(['--output-path', join(output_path, name)] + llvm_args + args)
+
+    llvm_backend_runtime_smoke(output_path, llvm_args, 'llvm-smoke')
+    llvm_backend_runtime_smoke(output_path, llvm_args + svm_experimental_options(['-H:+UseLLVMDataSection']), 'llvm-smoke-data-section')
+    llvm_backend_foreign_api_disabled_smoke(output_path, llvm_args)
+
+
+def llvm_backend_image_builder_args():
+    if not mx.is_linux() or not os.environ.get('LD_LIBRARY_PATH'):
+        return []
+    return [
+        '-ELD_LIBRARY_PATH',
+        '-J-Dcom.oracle.svm.shadowed.org.bytedeco.javacpp.pathsFirst=true',
+        '-J-Dcom.oracle.svm.shadowed.org.bytedeco.javacpp.platform.preload=stdc++@.6',
+    ]
+
+
+def llvm_backend_runtime_smoke(output_path, image_args, image_name):
+    smoke_dir = join(output_path, image_name)
+    mx_util.ensure_dir_exists(smoke_dir)
+    source_file = join(smoke_dir, 'LlvmBackendSmoke.java')
+    with open(source_file, 'w', encoding='utf-8') as fp:
+        fp.write('''
+public final class LlvmBackendSmoke {
+    private static final Object LOCK = new Object();
+    private static long lockedSum;
+
+    public static void main(String[] args) throws Exception {
+        long result = compute(32);
+        Thread[] threads = new Thread[4];
+        long[] results = new long[threads.length];
+        for (int i = 0; i < threads.length; i++) {
+            final int index = i;
+            threads[i] = new Thread(() -> results[index] = compute(16 + index), "llvm-smoke-" + i);
+            threads[i].start();
+        }
+        for (Thread thread : threads) {
+            thread.join();
+        }
+        for (long value : results) {
+            result ^= value;
+        }
+        synchronized (LOCK) {
+            result += lockedSum;
+        }
+        if (result != 60489L) {
+            throw new AssertionError("unexpected result: " + result);
+        }
+        System.out.println("LLVM smoke ok: " + result);
+    }
+
+    private static long compute(int limit) {
+        int[] values = new int[limit];
+        long sum = 0;
+        for (int i = 0; i < values.length; i++) {
+            int value = Math.max(i * 3 - 7, Math.min(i * i, 97));
+            values[i] = value;
+            sum += value;
+        }
+        synchronized (LOCK) {
+            lockedSum += sum;
+        }
+        return sum * 17 + values[values.length - 1];
+    }
+}
+''')
+    mx.run([mx.get_jdk().javac, source_file])
+    image_path = join(smoke_dir, image_name)
+    with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+        native_image(['--native-image-info', '-o', image_path, '-cp', smoke_dir, 'LlvmBackendSmoke'] + image_args)
+    test_run([image_path], 'LLVM smoke ok: 60489' + os.linesep)
+
+
+def llvm_backend_foreign_api_disabled_smoke(output_path, image_args):
+    smoke_dir = join(output_path, 'llvm-foreign-api-disabled')
+    mx_util.ensure_dir_exists(smoke_dir)
+    source_file = join(smoke_dir, 'LlvmForeignApiDisabledSmoke.java')
+    with open(source_file, 'w', encoding='utf-8') as fp:
+        fp.write('''
+public final class LlvmForeignApiDisabledSmoke {
+    public static void main(String[] args) {
+    }
+}
+''')
+    mx.run([mx.get_jdk().javac, source_file])
+    stdout_capture = mx.OutputCapture()
+    stderr_capture = mx.OutputCapture()
+    expected_error = "Support for the Foreign Function and Memory API is not available with the LLVM backend"
+    with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+        exit_code = native_image(['--native-image-info', '-o', join(smoke_dir, 'llvm-foreign-api-disabled'), '-cp', smoke_dir, 'LlvmForeignApiDisabledSmoke'] +
+                                 image_args + svm_experimental_options(['-H:+ForeignAPISupport']),
+                                 nonZeroIsFatal=False, out=stdout_capture, err=stderr_capture)
+    output = stdout_capture.data + stderr_capture.data
+    if exit_code == 0:
+        mx.abort('LLVM backend accepted -H:+ForeignAPISupport, but it should be rejected.')
+    if expected_error not in output:
+        mx.abort('LLVM backend rejected -H:+ForeignAPISupport without the expected diagnostic.')
+
+
 def truffle_args(extra_build_args):
     assert isinstance(extra_build_args, list)
     build_args = [
@@ -481,6 +603,10 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 image_demo_task(args.extra_image_builder_arguments)
                 helloworld(svm_experimental_options(['-H:+RunMainInNewThread']) + args.extra_image_builder_arguments)
+
+    with Task('LLVM backend smoke tests', tasks, tags=[GraalTags.llvm_backend]) as t:
+        if t:
+            llvm_backend_gate_task(args.extra_image_builder_arguments)
 
     with Task('terminus helloworld', tasks, tags=[GraalTags.terminus]) as t:
         if t: _run_terminus_gate(args)

@@ -89,6 +89,14 @@ public class CodeReferenceMapEncoder extends ReferenceMapEncoder {
             }
             int size = (compressed ? compressedSize : uncompressedSize);
             if (derived) {
+                /*
+                 * A derived entry is encoded at its base reference slot. The run itself visits the
+                 * base slot as a normal object reference, and its count is the number of interior
+                 * pointer slots that follow in the payload. Each payload entry is a signed slot
+                 * distance from the base reference slot to one derived-reference slot. The actual
+                 * offset inside the object is not encoded; the decoder computes it from the raw
+                 * derived pointer value before the base slot is relocated.
+                 */
                 encodeDerivedRun(firstRun, gap, offset, offsets.getDerivedOffsets(offset), compressed, size);
                 firstRun = false;
                 run = 0;

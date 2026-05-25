@@ -43,6 +43,7 @@ import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.llvm.LLVMGenerator;
 import com.oracle.svm.core.graal.llvm.LLVMNativeImageCodeCache.StackMapDumper;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -169,7 +170,8 @@ public class LLVMObjectFileReader {
 
         long startPatchpointID = compilation.getInfopoints().stream().filter(ip -> ip.reason == InfopointReason.METHOD_START).findFirst()
                         .orElseThrow(() -> new GraalError("No method start infopoint: " + methodSymbolName)).pcOffset;
-        int totalFrameSize = NumUtil.safeToInt(info.getFunctionStackSize(startPatchpointID) + LLVMTargetSpecific.get().getCallFrameSeparation());
+        long frameSize = info.getFunctionStackSize(startPatchpointID) + LLVMTargetSpecific.get().getCallFrameSeparation();
+        int totalFrameSize = NumUtil.safeToInt(frameSize == 0 ? SubstrateTarget.singleton().stackAlignment : frameSize);
         compilation.setTotalFrameSize(totalFrameSize);
         stackMapDumper.startDumpingFunction(methodSymbolName, id, totalFrameSize);
 
@@ -213,7 +215,8 @@ public class LLVMObjectFileReader {
         private LLVMTextSectionInfo(LLVMSectionInfo<Long, SymbolOffset> sectionInfo) {
             this.codeSize = sectionInfo.sectionInfo;
             for (SymbolOffset symbolOffset : sectionInfo.symbolInfo) {
-                if (LLVMTargetSpecific.get().isSymbolValid(symbolOffset.symbol)) {
+                int offset = symbolOffset.offset;
+                if (offset >= 0 && offset < codeSize && LLVMTargetSpecific.get().isSymbolValid(symbolOffset.symbol)) {
                     offsetToSymbol.put(symbolOffset.offset, symbolOffset.symbol);
                     symbolToOffset.put(symbolOffset.symbol, symbolOffset.offset);
                 }

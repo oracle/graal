@@ -84,6 +84,7 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -113,6 +114,7 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.DataSection;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
@@ -187,6 +189,15 @@ public abstract class NativeImageCodeCache {
     }
 
     public abstract int getCodeCacheSize();
+
+    /**
+     * Some code cache implementations emit their method code into a separate linker input. In that
+     * case, the native image object file still needs a text section while it is being built, but
+     * that section must not define the final code section boundary symbols.
+     */
+    public boolean definesTextSectionBoundarySymbols() {
+        return true;
+    }
 
     public int getCodeAreaSize() {
         assert codeAreaSize >= 0;
@@ -776,7 +787,25 @@ public abstract class NativeImageCodeCache {
 
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getByteBuffer();
-        dataSection.buildDataSection(bb, (position, constant) -> writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant));
+        dataSection.buildDataSection(bb, (position, constant) -> {
+            if (constant instanceof TLABObjectHeaderConstant objectHeaderConstant) {
+                writeTLABObjectHeader(buffer, position, objectHeaderConstant);
+            } else {
+                writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant);
+            }
+        });
+    }
+
+    private void writeTLABObjectHeader(RelocatableBuffer buffer, int position, TLABObjectHeaderConstant constant) {
+        JavaConstant hub = constant.hub();
+        long hubOffsetFromHeapBase = imageHeap.getConstantInfo(hub).getOffset();
+        VMError.guarantee(hubOffsetFromHeapBase != 0, "hub must be non-null: %s", hub);
+        long targetValue = Heap.getHeap().getObjectHeader().encodeAsTLABObjectHeader(hubOffsetFromHeapBase);
+        if (constant.getJavaKind() == JavaKind.Long) {
+            buffer.getByteBuffer().putLong(position, targetValue);
+        } else {
+            buffer.getByteBuffer().putInt(position, NumUtil.safeToUInt(targetValue));
+        }
     }
 
     public abstract NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache);
