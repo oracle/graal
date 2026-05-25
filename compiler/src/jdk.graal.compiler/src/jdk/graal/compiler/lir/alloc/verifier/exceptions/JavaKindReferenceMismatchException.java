@@ -43,7 +43,7 @@ public class JavaKindReferenceMismatchException extends RAVException {
     }
 
     public static String getMessage(AllocatableValue orig, AllocatableValue curr, JavaKind kind) {
-        if (JavaKind.Object.equals(kind)) {
+        if (kind.isObject()) {
             return orig + " -> " + curr + " not an object java kind when marked as a reference";
         } else {
             return orig + " -> " + curr + " is a reference but not marked as a reference";

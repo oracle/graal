@@ -203,12 +203,13 @@ public class BlockVerifierState {
         }
 
         if (state instanceof ValueAllocationState valAllocState) {
-            if (!valAllocState.value.equals(orig)) {
+            if (!valAllocState.getRAValue().equals(orig)) {
+                // The equality here does not check kinds, that is done below
                 throw new ValueNotInRegisterException(op, block, orig, curr, state, this);
             }
 
             if (!kindsEqualFromState(orig, valAllocState)) {
-                throw new KindsMismatchException(op, block, orig, valAllocState.value, false);
+                throw new KindsMismatchException(op, block, orig, valAllocState.getRAValue(), false);
             }
 
             if (orig.isConstant()) {
@@ -409,7 +410,7 @@ public class BlockVerifierState {
 
                 var origLIRKind = orig.getValueKind(LIRKind.class);
                 var currLIRKind = curr.getValueKind(LIRKind.class);
-                if (JavaKind.Object.equals(kind)) {
+                if (kind.isObject()) {
                     if (!origLIRKind.isValue() && !currLIRKind.isValue()) {
                         continue;
                     }
@@ -536,7 +537,7 @@ public class BlockVerifierState {
     }
 
     public void updateWithLocationMove(RAVInstruction.LocationMove move) {
-        if (move instanceof RAVInstruction.StackMove stackMove) {
+        if (move instanceof RAVInstruction.StackMove stackMove && stackMove.backupSlot != null) {
             // Maybe the backup slot should hold what the scratch register holds?
             this.values.put(stackMove.backupSlot, UnknownAllocationState.INSTANCE, move);
         }
@@ -545,6 +546,7 @@ public class BlockVerifierState {
         if (state instanceof ValueAllocationState valueAllocationState) {
             var movedValue = valueAllocationState.getRAValue();
             if (!movedValue.getLIRKind().equals(move.to.getLIRKind())) {
+                // Currently, no assertions are made on kind sizes.
                 state = new ValueAllocationState(valueAllocationState, move.to.getLIRKind());
             }
         }

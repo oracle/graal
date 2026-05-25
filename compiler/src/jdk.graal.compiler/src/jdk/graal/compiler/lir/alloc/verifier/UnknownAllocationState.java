@@ -29,7 +29,7 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 /**
  * Default allocation state for all locations, nothing was yet inserted.
  */
-public class UnknownAllocationState extends AllocationState {
+public final class UnknownAllocationState extends AllocationState {
     /**
      * Single instance used for all occurrences of {@link UnknownAllocationState unknown state}.
      */

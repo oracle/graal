@@ -177,29 +177,30 @@ public class VerifierPrinter {
         String stateStr = switch (state) {
             case ValueAllocationState st -> {
                 if (st.isUndefinedFromBlock()) {
-                    yield "Value unknown from " + st.block;
+                    yield "Value unknown from " + st.getBlock();
                 } else {
-                    yield "Value {" + st.getValue() + "} from " + st.source + " in " + st.block;
+                    yield "Value {" + st.getValue() + "} from " + st.getSource() + " in " + st.getBlock();
                 }
             }
             case ConflictedAllocationState st -> {
                 StringBuilder str = new StringBuilder();
                 str.append("Conflicted {\n");
-                for (var valueAllocState : st.getConflictedStates()) {
+                var conflictedStates = st.getConflictedStates();
+                for (var valueAllocState : conflictedStates) {
                     if (valueAllocState.isUndefinedFromBlock()) {
-                        str.append("Value unknown from ").append(valueAllocState.block);
+                        str.append("Value unknown from ").append(valueAllocState.getBlock());
                         continue;
                     } else {
                         str.append(valueAllocState.getValue());
-                        if (valueAllocState.block != null) {
-                            str.append(" from ").append(valueAllocState.block);
+                        if (valueAllocState.getBlock() != null) {
+                            str.append(" from ").append(valueAllocState.getBlock());
                         }
                     }
 
                     str.append(", ");
                 }
 
-                if (!st.getConflictedStates().isEmpty()) {
+                if (!conflictedStates.isEmpty()) {
                     str.setLength(str.length() - 2);
                 }
 
@@ -217,9 +218,9 @@ public class VerifierPrinter {
             case ValueAllocationState st -> {
                 if (st.isUndefinedFromBlock()) {
                     // Undefined value from a certain block.
-                    yield "Value unknown from " + st.block;
+                    yield "Value unknown from " + st.getBlock();
                 } else {
-                    yield "Value {" + st.getValue() + "} from " + st.source + " in " + st.block;
+                    yield "Value {" + st.getValue() + "} from " + st.getSource() + " in " + st.getBlock();
                 }
             }
             case ConflictedAllocationState st -> {
@@ -227,11 +228,11 @@ public class VerifierPrinter {
                 str.append("Conflicted: \n");
                 for (var valueAllocState : st.getConflictedStates()) {
                     if (valueAllocState.isUndefinedFromBlock()) {
-                        str.append(" - Value unknown from ").append(valueAllocState.block).append('\n');
+                        str.append(" - Value unknown from ").append(valueAllocState.getBlock()).append('\n');
                         continue;
                     }
 
-                    str.append(" - ").append(valueAllocState.getValue()).append(" from ").append(valueAllocState.source).append(" in ").append(valueAllocState.block).append("\n");
+                    str.append(" - ").append(valueAllocState.getValue()).append(" from ").append(valueAllocState.getSource()).append(" in ").append(valueAllocState.getBlock()).append("\n");
                 }
                 yield str.toString();
             }

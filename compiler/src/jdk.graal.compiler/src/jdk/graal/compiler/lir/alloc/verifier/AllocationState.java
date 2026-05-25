@@ -29,7 +29,7 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 /**
  * Interface for state concrete location is in, stored in {@link AllocationStateMap}.
  */
-public abstract class AllocationState implements Cloneable {
+public abstract sealed class AllocationState implements Cloneable permits ConflictedAllocationState, UnknownAllocationState, ValueAllocationState {
     /**
      * Get the default allocation state for every location, instead of null, we have
      * {@link UnknownAllocationState unknown} state.

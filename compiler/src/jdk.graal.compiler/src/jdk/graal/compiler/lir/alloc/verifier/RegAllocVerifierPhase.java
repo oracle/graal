@@ -361,7 +361,16 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                 continue;
             }
 
-            values.orig[i] = RAValue.cast(inputVar, values.orig[i]);
+            /*
+             * When substituting a symbol, kind has to match the previous symbol for the
+             * verification to pass. A move between the definition and usage is expected that
+             * performs the cast, handled in BlockVerifierState.updateWithLocationMove.
+             */
+            if (!RAValue.kindsEqual(inputVar, orig)) {
+                inputVar = RAValue.cast(orig, inputVar);
+            }
+
+            values.orig[i] = inputVar;
 
             if (!outputSpeculative) {
                 // Do not remove from input map if this operation could be removed.

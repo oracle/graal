@@ -36,15 +36,15 @@ import jdk.vm.ci.meta.Value;
  * accompanied by {@link RAVInstruction instruction} and {@link BasicBlock block} where it was
  * created.
  */
-public class ValueAllocationState extends AllocationState {
-    protected final RAValue value;
-    protected final RAVInstruction.Base source;
-    protected final BasicBlock<?> block;
+public final class ValueAllocationState extends AllocationState {
+    private final RAValue value;
+    private final RAVInstruction.Base source;
+    private final BasicBlock<?> block;
 
     /**
      * Kind that this value was cast to, this is done by move instruction.
      */
-    protected LIRKind castKind;
+    private LIRKind castKind;
 
     public ValueAllocationState(RAValue raValue, RAVInstruction.Base source, BasicBlock<?> block) {
         var v = raValue.getValue();

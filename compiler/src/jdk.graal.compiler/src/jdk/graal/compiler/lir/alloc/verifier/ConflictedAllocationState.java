@@ -34,7 +34,7 @@ import java.util.Set;
  * stored at said location, needs to be resolved by either overwriting the location with a new
  * {@link ValueAllocationState instance}.
  */
-public class ConflictedAllocationState extends AllocationState {
+public final class ConflictedAllocationState extends AllocationState {
     protected final Set<ValueAllocationState> conflictedStates;
 
     public ConflictedAllocationState() {

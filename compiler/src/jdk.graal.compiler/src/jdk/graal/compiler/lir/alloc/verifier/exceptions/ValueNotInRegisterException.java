@@ -77,6 +77,6 @@ public class ValueNotInRegisterException extends RAVException {
     }
 
     static String getErrorMessage(RAValue variable, RAValue location, AllocationState state) {
-        return "Value " + variable + " not found in " + location + " the actual state is " + state;
+        return "Value " + variable + " not found in " + location + ", the actual state is " + state;
     }
 }
