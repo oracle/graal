@@ -237,22 +237,18 @@ final class ProcessIsolateThreadSupport {
         }
     }
 
-    private void installParentProcessWatchDog() {
+    private static void installParentProcessWatchDog() {
         Optional<ProcessHandle> parentOpt = ProcessHandle.current().parent();
         if (parentOpt.isPresent()) {
             ProcessHandle parent = parentOpt.get();
             CompletableFuture<ProcessHandle> onExit = parent.onExit();
-            onExit.thenRun(() -> {
-                try {
-                    handleClose();
-                } catch (IOException ioe) {
-                    /*
-                     * Exiting because the parent process has already terminated. At this point,
-                     * exceptions are no longer relevant, we only need to terminate the child
-                     * process, which has been re-parented to init (systemd).
-                     */
-                }
-            });
+            /*
+             * Process isolates are owned by their parent host process. Once the host exits, the
+             * isolate subprocess has been re-parented to init (systemd) and cannot make further
+             * progress through the native bridge. Do not try a graceful close here: worker threads
+             * may be executing guest code and can block indefinitely during cancellation.
+             */
+            onExit.thenRun(() -> Runtime.getRuntime().halt(0));
         }
     }
 
