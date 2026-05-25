@@ -39,7 +39,8 @@ public class HeadlessJavaDesktopTest {
     @Test
     public void headlessJavaDesktopSmokeTest() throws Exception {
         String osName = System.getProperty("os.name", "");
-        Assume.assumeTrue(osName.startsWith("Linux") || osName.startsWith("Mac"));
+        Assume.assumeTrue("Headless java.desktop integration test is enabled only on Linux, macOS, and Windows: " + osName,
+                        osName.startsWith("Linux") || osName.startsWith("Mac") || osName.startsWith("Windows"));
 
         System.setProperty("java.awt.headless", "true");
 

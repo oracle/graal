@@ -544,11 +544,8 @@ def svm_gate_body(args, tasks):
 
     with Task('java.desktop integration tests', tasks, tags=[GraalTags.java_desktop_integration]) as t:
         if t:
-            if mx.is_windows():
-                mx.warn('Headless java.desktop integration test does not run on Windows')
-            else:
-                with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                    java_desktop_integration_task(native_image, args.extra_image_builder_arguments)
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                java_desktop_integration_task(native_image, args.extra_image_builder_arguments)
 
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
         if t:

@@ -183,6 +183,9 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     void addLibraryRegistrationHandler(Consumer<String> handler) {
         libraryRegistrationHandlers.add(handler);
+        for (String libname : jniRegistrationSupportSingleton.currentLayerRegisteredLibraries) {
+            handler.accept(libname);
+        }
     }
 
     private void addLibrary(String libname) {

@@ -40,13 +40,14 @@ public class NonHeadlessJavaDesktopTest {
     @Test
     public void nonHeadlessJavaDesktopSmokeTest() throws Exception {
         String osName = System.getProperty("os.name", "");
-        Assume.assumeTrue(osName.startsWith("Linux"));
+        Assume.assumeTrue("Non-headless java.desktop integration test currently requires Linux display detection: " + osName,
+                        osName.startsWith("Linux"));
 
         String display = System.getenv("DISPLAY");
-        Assume.assumeTrue(display != null && !display.isEmpty());
+        Assume.assumeTrue("Non-headless java.desktop integration test requires DISPLAY to be set", display != null && !display.isEmpty());
 
         System.clearProperty("java.awt.headless");
-        Assume.assumeFalse(GraphicsEnvironment.isHeadless());
+        Assume.assumeFalse("Non-headless java.desktop integration test requires a non-headless graphics environment", GraphicsEnvironment.isHeadless());
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         Dimension screenSize = toolkit.getScreenSize();
         Assert.assertTrue("Invalid screen width: " + screenSize.width, screenSize.width > 0);
