@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -381,7 +382,7 @@ public class JavaMainWrapper {
      */
     @Uninterruptible(reason = "Thread state detached.")
     private static int startAndJoinMainRunner(PlatformThreads platformThreads, Isolate isolate, long stackSize, WordPointer threadExitStatus) {
-        OSThreadHandle osThreadHandle = platformThreads.startThreadUnmanaged(RUN_MAIN_ROUTINE.get(), isolate, stackSize);
+        OSThreadHandle osThreadHandle = platformThreads.startThreadUnmanaged(RUN_MAIN_ROUTINE.getFunctionPointer(), isolate, stackSize);
         if (osThreadHandle.isNull()) {
             CEntryPointActions.failFatally(1, START_THREAD_UNMANAGED_ERROR_MESSAGE.get());
             return 1;
@@ -418,7 +419,7 @@ public class JavaMainWrapper {
         CEntryPointSetup.LeaveDetachThreadEpilogue.leave();
     }
 
-    private static final CGlobalData<CFunctionPointer> RUN_MAIN_ROUTINE = CGlobalDataFactory.forSymbol("__svm_JavaMainWrapper_runMainRoutine");
+    private static final CEntryPointLiteral<CFunctionPointer> RUN_MAIN_ROUTINE = CEntryPointLiteral.create(JavaMainWrapper.class, "runMainRoutine", PointerBase.class);
 
     private static final class RunMainInNewThreadBooleanSupplier implements BooleanSupplier {
         @Override
@@ -430,6 +431,11 @@ public class JavaMainWrapper {
         }
     }
 
+    /*
+     * The unmanaged thread starter needs a code pointer that can survive layered image snapshots.
+     * Using a CEntryPointLiteral lets the layer writer patch the pointer to the layer that emits the
+     * entry point instead of leaving an unresolved C symbol in an earlier shared layer.
+     */
     @SuppressWarnings("unused")
     @Uninterruptible(reason = "Thread state not setup yet.")
     @CEntryPoint(name = "__svm_JavaMainWrapper_runMainRoutine", include = RunMainInNewThreadBooleanSupplier.class)
