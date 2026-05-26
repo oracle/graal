@@ -127,6 +127,7 @@ public class CGlobalDataFeature implements InternalFeature {
     private int totalSize = -1;
 
     private final Set<CodeLocation> seenCodeLocations = ImageLayerBuildingSupport.buildingImageLayer() ? ConcurrentHashMap.newKeySet() : null;
+    private final Set<String> appLayerForwardReferenceSymbols = ConcurrentHashMap.newKeySet();
 
     @SuppressWarnings("this-escape") //
     private final InitialLayerCGlobalTracking initialLayerCGlobalTracking = ImageLayerBuildingSupport.buildingInitialLayer() ? new InitialLayerCGlobalTracking(this) : null;
@@ -298,6 +299,7 @@ public class CGlobalDataFeature implements InternalFeature {
         if (tryCanonicalization && appLayerCGlobalTracking != null) {
             data = appLayerCGlobalTracking.getCanonicalRepresentation(data);
         }
+        registerAppLayerForwardReference(data);
 
         if (isLaidOut()) {
             var info = map.get(data);
@@ -363,6 +365,19 @@ public class CGlobalDataFeature implements InternalFeature {
 
     public Set<String> getGlobalHiddenSymbols() {
         return map.entrySet().stream().filter(entry -> entry.getValue().isGlobalSymbol() && entry.getValue().isHiddenSymbol()).map(entry -> entry.getKey().symbolName).collect(Collectors.toSet());
+    }
+
+    private void registerAppLayerForwardReference(CGlobalDataImpl<?> data) {
+        if (!data.appLayerForwardReference) {
+            return;
+        }
+        VMError.guarantee(ImageLayerBuildingSupport.buildingSharedLayer(), "Application layer forward references can only be registered in shared layers.");
+        VMError.guarantee(data.symbolName != null && data.isSymbolReference(), "Application layer forward references must be symbol references with symbol names: %s", data);
+        appLayerForwardReferenceSymbols.add(data.symbolName);
+    }
+
+    public boolean isAppLayerForwardReference(String symbolName) {
+        return symbolName != null && appLayerForwardReferenceSymbols.contains(symbolName);
     }
 
     private Object replaceObject(Object obj) {

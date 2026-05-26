@@ -148,9 +148,9 @@ public final class ImageLayerSectionFeature implements InternalFeature {
         CGlobalData<WordPointer> cachedImageHeapRelocations;
 
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-            cachedImageFDs = CGlobalDataFactory.forSymbol(CACHED_IMAGE_FDS_NAME);
-            cachedImageHeapOffsets = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_OFFSETS_NAME);
-            cachedImageHeapRelocations = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
+            cachedImageFDs = CGlobalDataFactory.forApplicationLayerSymbol(CACHED_IMAGE_FDS_NAME);
+            cachedImageHeapOffsets = CGlobalDataFactory.forApplicationLayerSymbol(CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.forApplicationLayerSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             cachedImageFDs = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, UNASSIGNED_FD), CACHED_IMAGE_FDS_NAME);
             cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);

@@ -38,7 +38,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
-import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
@@ -50,7 +49,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -67,6 +66,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
@@ -599,7 +599,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory {
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             // within the application layer we directly load the constant
             referenceSize = ObjectLayout.singleton().getReferenceSize();
-            singletonTableStart = CGlobalDataFactory.forSymbol(CROSS_LAYER_SINGLETON_TABLE_SYMBOL);
+            singletonTableStart = CGlobalDataFactory.forApplicationLayerSymbol(CROSS_LAYER_SINGLETON_TABLE_SYMBOL);
         }
 
         var priorMax = priorKeyToSlotInfoMap.values().stream().mapToInt(SlotInfo::slotNum).max();

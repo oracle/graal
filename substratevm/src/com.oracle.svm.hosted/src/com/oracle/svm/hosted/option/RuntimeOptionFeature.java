@@ -82,7 +82,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return ImageLayerBuildingSupport.buildingApplicationLayer() ? List.of(CGlobalDataFeature.class) : List.of();
+        return ImageLayerBuildingSupport.buildingImageLayer() ? List.of(CGlobalDataFeature.class) : List.of();
     }
 
     @Override
@@ -97,8 +97,8 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
                  * layers we create symbolic references which refer to the cglobal which is
                  * installed in the final layer.
                  */
-                defaultValues = CGlobalDataFactory.forSymbol(LAYERED_DEFAULT_VALUES_NAME);
-                defaultStrings = CGlobalDataFactory.forSymbol(LAYERED_DEFAULT_STRINGS_NAME);
+                defaultValues = CGlobalDataFactory.forApplicationLayerSymbol(LAYERED_DEFAULT_VALUES_NAME);
+                defaultStrings = CGlobalDataFactory.forApplicationLayerSymbol(LAYERED_DEFAULT_STRINGS_NAME);
             } else {
                 /*
                  * In a traditional build we can directly create the cglobal with a payload.
