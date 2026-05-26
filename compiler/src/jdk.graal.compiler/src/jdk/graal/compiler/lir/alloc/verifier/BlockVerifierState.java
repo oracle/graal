@@ -41,8 +41,11 @@ import jdk.graal.compiler.lir.alloc.verifier.exceptions.MissingLocationException
 import jdk.graal.compiler.lir.alloc.verifier.exceptions.MissingReferenceException;
 import jdk.graal.compiler.lir.alloc.verifier.exceptions.OperandFlagMismatchException;
 import jdk.graal.compiler.lir.alloc.verifier.exceptions.RAVException;
+import jdk.graal.compiler.lir.alloc.verifier.exceptions.SpilledConstantException;
 import jdk.graal.compiler.lir.alloc.verifier.exceptions.ValueNotInRegisterException;
+import jdk.graal.compiler.lir.alloc.RegisterAllocationPhase;
 import jdk.graal.compiler.lir.dfa.LocationMarker;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -73,20 +76,38 @@ public class BlockVerifierState {
      */
     protected final BasicBlock<?> block;
 
+    /**
+     * Callee save map used to check if callee saved registers are retrieved.
+     */
     protected final CalleeSaveMap calleeSaveMap;
 
+    /**
+     * Register allocator reference to get access to
+     * {@link RegisterAllocationPhase#getNeverSpillConstants()}.
+     */
+    protected RegisterAllocationPhase allocator;
+
+    /**
+     * Options used to configure the verifier.
+     */
+    protected OptionValues options;
+
     public BlockVerifierState(BasicBlock<?> block, RegisterAllocationConfig registerAllocationConfig,
-                    CalleeSaveMap calleeSaveMap) {
+                    CalleeSaveMap calleeSaveMap, RegisterAllocationPhase allocator, OptionValues options) {
         this.values = new AllocationStateMap(block, registerAllocationConfig);
         this.registerAllocationConfig = registerAllocationConfig;
         this.calleeSaveMap = calleeSaveMap;
         this.block = block;
+        this.allocator = allocator;
+        this.options = options;
     }
 
     public BlockVerifierState(BasicBlock<?> block, BlockVerifierState other) {
         this.registerAllocationConfig = other.registerAllocationConfig;
         this.values = new AllocationStateMap(block, other.values);
         this.calleeSaveMap = other.calleeSaveMap;
+        this.allocator = other.allocator;
+        this.options = other.options;
         this.block = block;
     }
 
@@ -377,6 +398,17 @@ public class BlockVerifierState {
             RAValue movedValue = valueAllocationState.getRAValue();
             if (!movedValue.getLIRKind().getPlatformKind().equals(move.to.getLIRKind().getPlatformKind())) {
                 throw new KindsMismatchException(move, block, move.to, movedValue, false);
+            }
+        }
+
+        if (RegAllocVerifierPhase.Options.CheckNeverSpillConstants.getValue(options)) {
+            if (move instanceof RAVInstruction.Spill spill && allocator.getNeverSpillConstants()) {
+                var sourceState = values.get(spill.from);
+                if (sourceState instanceof ValueAllocationState valueAllocationState) {
+                    if (LIRValueUtil.isConstantValue(valueAllocationState.getValue())) {
+                        throw new SpilledConstantException(valueAllocationState, spill, block);
+                    }
+                }
             }
         }
     }

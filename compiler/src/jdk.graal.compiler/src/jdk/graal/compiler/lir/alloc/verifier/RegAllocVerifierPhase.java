@@ -87,6 +87,12 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
 
         @Option(help = "Fail on first verification failure", type = OptionType.Debug)
         public static final OptionKey<Boolean> RAVFailOnFirst = new OptionKey<>(true);
+
+        /**
+         * Check for {@link RegisterAllocationPhase#getNeverSpillConstants() neverSpillConstant} setting
+         */
+        @Option(help = "Verify neverSpillConstants is respected", type = OptionType.Debug)
+        public static final OptionKey<Boolean> CheckNeverSpillConstants = new OptionKey<>(false);
         // @formatter:on
     }
 
@@ -456,7 +462,7 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
     protected void verifyAllocation(LIR lir, Map<LIRInstruction, RAVInstruction.Base> preallocMap, AllocationContext context) {
         var instructions = getVerifierInstructions(lir, preallocMap, context);
         var phiResolver = new FromUsageResolverGlobal(lir, instructions);
-        var verifier = new RegAllocVerifier(lir, instructions, getRegisterAllocationConfig(context));
+        var verifier = new RegAllocVerifier(lir, instructions, getRegisterAllocationConfig(context), allocator);
 
         boolean failOnFirst = Options.RAVFailOnFirst.getValue(lir.getOptions());
 
