@@ -1296,6 +1296,15 @@ public class HeapDumpWriter {
             }
         }
 
+        @Override
+        public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, boolean compressed, Object holderObject) {
+            /*
+             * HPROF has no representation for interior Java frame roots. The default
+             * visitDerivedReferenceBase emits the base object as the Java-frame root, so the
+             * interior derived address is intentionally omitted.
+             */
+        }
+
         private void visitFrame(FrameInfoQueryResult frame) {
             if (!markGCRoots) {
                 /*
@@ -1448,6 +1457,15 @@ public class HeapDumpWriter {
                 markAsJniGlobalGCRoot(obj);
             }
         }
+
+        @Override
+        public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, boolean compressed, Object holderObject) {
+            /*
+             * The default visitDerivedReferenceBase emits the base object as the JNI global root.
+             * The derived slot is only an interior address and cannot be represented as an HPROF
+             * object root.
+             */
+        }
     }
 
     private class ThreadLocalsVisitor implements ObjectReferenceVisitor {
@@ -1478,6 +1496,15 @@ public class HeapDumpWriter {
             if (obj != null) {
                 markThreadLocalAsGCRoot(obj);
             }
+        }
+
+        @Override
+        public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, boolean compressed, Object holderObject) {
+            /*
+             * The default visitDerivedReferenceBase emits the base object as the thread-local root.
+             * The derived slot is only an interior address and cannot be represented as an HPROF
+             * object root.
+             */
         }
 
         private void markThreadLocalAsGCRoot(Object obj) {

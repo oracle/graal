@@ -150,5 +150,11 @@ final class StackVerifier {
         private void visitObjectReference(Pointer objRef, boolean compressed) {
             result &= HeapVerifier.verifyReference(this, objRef, compressed);
         }
+
+        @Override
+        public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, boolean compressed, Object holderObject) {
+            assert holderObject == null;
+            result &= HeapVerifier.verifyDerivedReference(this, baseObjRef, derivedObjRef, compressed);
+        }
     }
 }

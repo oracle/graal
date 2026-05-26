@@ -33,6 +33,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.DerivedReferenceSupport;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.log.Log;
@@ -49,6 +50,7 @@ import com.oracle.svm.shared.Uninterruptible;
  */
 public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectReferenceVisitor {
     private final Counters counters;
+    private final DerivedReferenceUpdater derivedRefUpdater = new DerivedReferenceUpdater();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GreyToBlackObjRefVisitor() {
@@ -125,6 +127,23 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
              */
             RememberedSet.get().dirtyCardIfNecessaryInGC(holderObject, copy, objRef);
         }
+    }
+
+    @Override
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
+    public void visitDerivedReferenceBase(Pointer baseObjRef, boolean compressed, int referenceSize, Object holderObject) {
+        derivedRefUpdater.captureBaseBeforeUpdate(baseObjRef, compressed);
+        visitObjectReference(baseObjRef, compressed, holderObject);
+        derivedRefUpdater.captureBaseAfterUpdate(baseObjRef, compressed);
+    }
+
+    @Override
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
+    public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, boolean compressed, Object holderObject) {
+        Pointer derivedBefore = DerivedReferenceSupport.readReferenceAsPointer(derivedObjRef, compressed);
+        derivedRefUpdater.updateDerivedReference(derivedObjRef, compressed, derivedBefore);
     }
 
     public Counters openCounters() {

@@ -1183,4 +1183,11 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
         int offset = NumUtil.safeToInt(objRef.subtract(base).rawValue());
         result.markReferenceAtOffset(offset, compressed);
     }
+
+    @Override
+    public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, boolean compressed, Object holderObject) {
+        int baseOffset = NumUtil.safeToInt(baseObjRef.subtract(base).rawValue());
+        int derivedOffset = NumUtil.safeToInt(derivedObjRef.subtract(base).rawValue());
+        result.markReferenceAtOffset(derivedOffset, baseOffset, compressed);
+    }
 }

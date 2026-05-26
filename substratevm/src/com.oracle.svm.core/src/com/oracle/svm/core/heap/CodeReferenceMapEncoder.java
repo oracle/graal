@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.oracle.svm.core.config.ObjectLayout;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.core.common.util.TypeWriter;
 
 import com.oracle.svm.core.FrameAccess;
@@ -117,7 +118,7 @@ public class CodeReferenceMapEncoder extends ReferenceMapEncoder {
             return;
         }
 
-        assert firstRun || gap >= 0;
+        GraalError.guarantee(firstRun || gap >= 0, "Non-first reference map run has a negative gap: %s", gap);
         assert compressed ? refsCount > 0 : refsCount >= 0;
         writeBuffer.putSV(derived ? -gap - 1 : gap);
         writeBuffer.putSV(compressed ? -refsCount : refsCount);
