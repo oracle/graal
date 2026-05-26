@@ -1382,7 +1382,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract FileSystem newDefaultFileSystem(String hostTmpDir);
 
-    public abstract FileSystem allowInternalResourceAccess(FileSystem fileSystem);
+    public abstract FileSystem allowInternalResourceAccess(FileSystem fileSystem, boolean readOnlyResources);
 
     public abstract FileSystem newReadOnlyFileSystem(FileSystem fileSystem);
 

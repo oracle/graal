@@ -159,6 +159,8 @@ public class FileSystemsTest {
     private static final String MEMORY_FILE_SYSTEM = "Memory file system";
     private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES = "Memory file system with language homes";
     private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE = "Memory file system with language homes - internal file";
+    private static final String MEMORY_FILE_SYSTEM_WITH_READ_ONLY_LANGUAGE_HOMES = "Memory file system with read-only language homes";
+    private static final String MEMORY_FILE_SYSTEM_WITH_READ_ONLY_LANGUAGE_HOMES_INTERNAL_FILE = "Memory file system with read-only language homes - internal file";
     private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME = "Context pre-initialization file system build time";
     private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME = "Context pre-initialization file system execution time";
     private static final String COMPOSITE_FILE_SYSTEM_DELEGATE = "Composite file system read write delegate";
@@ -187,6 +189,8 @@ public class FileSystemsTest {
                         MEMORY_FILE_SYSTEM,
                         MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES,
                         MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE,
+                        MEMORY_FILE_SYSTEM_WITH_READ_ONLY_LANGUAGE_HOMES,
+                        MEMORY_FILE_SYSTEM_WITH_READ_ONLY_LANGUAGE_HOMES_INTERNAL_FILE,
                         CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME,
                         CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME,
                         COMPOSITE_FILE_SYSTEM_DELEGATE,
@@ -285,7 +289,7 @@ public class FileSystemsTest {
         ctx = Context.newBuilder().allowIO(ioAccess).build();
         cfgs.put(MEMORY_FILE_SYSTEM, new Configuration(MEMORY_FILE_SYSTEM, ctx, memDir, fileSystem, false, true, true, true));
 
-        // Memory with language home
+        // Memory filesystem with language home full access - outside language home
         fileSystem = FileSystem.allowInternalResourceAccess(new MemoryFileSystem());
         memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
         fileSystem.setCurrentWorkingDirectory(memDir);
@@ -294,7 +298,7 @@ public class FileSystemsTest {
         ctx = Context.newBuilder().allowIO(ioAccess).build();
         cfgs.put(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES, new Configuration(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES, ctx, memDir, fileSystem, false, true, true, true));
 
-        // Memory with language home - in language home
+        // Memory filesystem with language home full access - in language home
         privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(), fullIO);
         engine = Engine.create();
         markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
@@ -305,6 +309,27 @@ public class FileSystemsTest {
         setCwd(ctx, privateDir);
         cfgs.put(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE,
                         new Configuration(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE, ctx, privateDir, privateDir, fileSystem, false, true, true, true, true, true, true, engine));
+
+        // Memory filesystem with read-only language home - outside language home
+        fileSystem = FileSystem.allowInternalResourceAccess(new MemoryFileSystem(), true);
+        memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(memDir);
+        createContent(memDir, fileSystem);
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder().allowIO(ioAccess).build();
+        cfgs.put(MEMORY_FILE_SYSTEM_WITH_READ_ONLY_LANGUAGE_HOMES, new Configuration(MEMORY_FILE_SYSTEM_WITH_READ_ONLY_LANGUAGE_HOMES, ctx, memDir, fileSystem, false, true, true, true));
+
+        // Memory filesystem with read-only language home - in language home
+        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(), fullIO);
+        engine = Engine.create();
+        markAsLanguageHome(engine, SetCurrentWorkingDirectoryLanguage.class, privateDir);
+        fileSystem = FileSystem.allowInternalResourceAccess(new MemoryFileSystem(), true);
+        fileSystem.setCurrentWorkingDirectory(privateDir);
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder().engine(engine).allowIO(ioAccess).build();
+        setCwd(ctx, privateDir);
+        cfgs.put(MEMORY_FILE_SYSTEM_WITH_READ_ONLY_LANGUAGE_HOMES_INTERNAL_FILE,
+                        new Configuration(MEMORY_FILE_SYSTEM_WITH_READ_ONLY_LANGUAGE_HOMES_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, false, true, false, true, true, false, true, engine));
 
         // PreInitializeContextFileSystem in image build time
         fileSystem = createPreInitializeContextFileSystem();

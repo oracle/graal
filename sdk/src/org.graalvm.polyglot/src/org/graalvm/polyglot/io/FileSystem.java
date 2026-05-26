@@ -605,7 +605,7 @@ public interface FileSystem {
      *             {@link #getPathSeparator() path separator} as the {@link #newDefaultFileSystem()
      *             default file system}.
      * @since 22.2
-     * @deprecated Use {{@link #allowInternalResourceAccess(FileSystem)}}.
+     * @deprecated Use {@link #allowInternalResourceAccess(FileSystem)}.
      */
     @Deprecated
     static FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
@@ -614,12 +614,17 @@ public interface FileSystem {
 
     /**
      * Decorates the given {@code fileSystem} by an implementation that forwards access to the
-     * internal resources to the default file system. The method is intended to be used by custom
-     * filesystem implementations with non default storage to allow guest languages to access
-     * internal resources. As the returned filesystem uses a default file system to access internal
-     * resources, the {@code fileSystem} has to use the same {@link Path} type,
-     * {@link #getSeparator() separator} and {@link #getPathSeparator() path separator} as the
-     * {@link #newDefaultFileSystem() default filesystem}.
+     * internal resources, including language homes, to the default file system. The method is
+     * intended to be used by custom file system implementations with non-default storage to allow
+     * guest languages to access internal resources. As the returned file system uses a default file
+     * system to access internal resources, the {@code fileSystem} has to use the same
+     * {@link Path} type, {@link #getSeparator() separator} and {@link #getPathSeparator() path
+     * separator} as the {@link #newDefaultFileSystem() default file system}.
+     * <p>
+     * This method is equivalent to {@link #allowInternalResourceAccess(FileSystem, boolean)
+     * allowInternalResourceAccess(fileSystem, false)}. It does not make the forwarded internal
+     * resources read-only; write operations are forwarded to the default file system and are subject
+     * to its permissions.
      *
      * @throws IllegalArgumentException when the {@code fileSystem} does not use the same
      *             {@link Path} type or has a different {@link #getSeparator() separator} or
@@ -629,7 +634,41 @@ public interface FileSystem {
      * @since 24.0
      */
     static FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
-        return IOHelper.ImplHolder.IMPL.allowInternalResourceAccess(fileSystem);
+        return allowInternalResourceAccess(fileSystem, false);
+    }
+
+    /**
+     * Decorates the given {@code fileSystem} by an implementation that forwards access to the
+     * internal resources, including language homes, to the default file system. The method is
+     * intended to be used by custom file system implementations with non-default storage to allow
+     * guest languages to access internal resources. As the returned file system uses a default file
+     * system to access internal resources, the {@code fileSystem} has to use the same
+     * {@link Path} type, {@link #getSeparator() separator} and {@link #getPathSeparator() path
+     * separator} as the {@link #newDefaultFileSystem() default file system}.
+     * <p>
+     * If {@code readOnlyResources} is {@code true}, the forwarded internal resources are exposed
+     * through a read-only view of the default file system. Write operations, such as creating,
+     * deleting or modifying files and directories are rejected for internal resources. Paths
+     * that are not internal resources continue to be handled by {@code fileSystem} and retain
+     * its access permissions.
+     * <p>
+     * If {@code readOnlyResources} is {@code false}, access to internal resources preserves the
+     * behavior of {@link #allowInternalResourceAccess(FileSystem)}: operations are forwarded to the
+     * default file system without an additional read-only restriction and are subject to the default
+     * file system's permissions.
+     *
+     * @param fileSystem the file system used to access files that are not internal resources
+     * @param readOnlyResources whether internal resources are exposed through a read-only view of
+     *            the default file system
+     * @throws IllegalArgumentException when the {@code fileSystem} does not use the same
+     *             {@link Path} type or has a different {@link #getSeparator() separator} or
+     *             {@link #getPathSeparator() path separator} as the {@link #newDefaultFileSystem()
+     *             default file system}.
+     * @see Engine#copyResources(Path, String...)
+     * @since 25.1
+     */
+    static FileSystem allowInternalResourceAccess(FileSystem fileSystem, boolean readOnlyResources) {
+        return IOHelper.ImplHolder.IMPL.allowInternalResourceAccess(fileSystem, readOnlyResources);
     }
 
     /**
