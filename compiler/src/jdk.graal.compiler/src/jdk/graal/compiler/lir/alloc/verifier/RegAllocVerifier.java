@@ -30,8 +30,6 @@ import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.alloc.verifier.exceptions.RAVException;
 import jdk.graal.compiler.lir.alloc.verifier.exceptions.RAVFailedVerificationException;
-import jdk.graal.compiler.lir.dfa.UniqueWorkList;
-
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -96,7 +94,7 @@ public class RegAllocVerifier {
      * </p>
      */
     public void computeEntryStates() {
-        var worklist = new UniqueWorkList(lir.getBlocks().length);
+        var worklist = new PriorityWorkList(lir.getBlocks().length);
 
         var startBlock = this.lir.getControlFlowGraph().getStartBlock();
         var startBlockState = createNewBlockState(startBlock);
@@ -136,7 +134,6 @@ public class RegAllocVerifier {
                  * Remove block from the worklist to delay processing this can reduce the number of
                  * times that merge block is processed due to changes.
                  */
-                worklist.remove(succ);
                 worklist.add(succ);
             }
         }
