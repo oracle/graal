@@ -1496,11 +1496,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
                     final int target = exceptionHandlerTarget(handlerOffset);
                     if (catchType == ExceptionHandlerType.LEGACY_DELEGATE) {
-                        // Legacy try tables are serialized inner-to-outer, so delegate continues by
-                        // scanning the remaining handlers with the delegated lookup offset. No
-                        // earlier entry can become visible again, because delegation only moves the
-                        // search to an enclosing try.
-                        handlerLookupOffset = target;
+                        // Legacy delegate targets a continuation in the exception table, not a
+                        // bytecode offset. This skips intervening handlers that are not visible
+                        // from the delegated label, even if they protect the same bytecode range.
+                        exceptionTableOffset = target;
                         continue;
                     }
 

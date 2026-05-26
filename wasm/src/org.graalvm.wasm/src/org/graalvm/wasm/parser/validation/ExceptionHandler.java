@@ -65,7 +65,7 @@ public final class ExceptionHandler implements BytecodeFixup {
     private final int type;
     /** Tag index expected by typed catches, or {@code -1} when no tag match is required. */
     private final int tag;
-    /** Transfer destination bytecode offset, or exception-table continuation offset. */
+    /** Encoded handler target. Its meaning depends on the handler kind. */
     private int target = -1;
 
     public ExceptionHandler(int type, int tag) {
@@ -92,10 +92,17 @@ public final class ExceptionHandler implements BytecodeFixup {
         return tag;
     }
 
+    /**
+     * Returns the encoded handler target. For catch handlers, this is a bytecode transfer target.
+     * For legacy delegate handlers, this is an exception-table search continuation.
+     */
     public int target() {
         return target;
     }
 
+    /**
+     * Patches the encoded handler target.
+     */
     @Override
     public void patch(int targetOffset) {
         this.target = targetOffset;

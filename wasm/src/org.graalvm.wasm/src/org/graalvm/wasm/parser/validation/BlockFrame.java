@@ -81,6 +81,11 @@ class BlockFrame extends ControlFrame {
 
     @Override
     void exit(ParserState state, RuntimeBytecodeGen bytecode) {
+        exitBlock(bytecode);
+        registerDelegateContinuationFixups(state, -1);
+    }
+
+    protected void exitBlock(RuntimeBytecodeGen bytecode) {
         if (labelFixups.isEmpty()) {
             return;
         }

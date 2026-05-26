@@ -52,8 +52,6 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 public final class LegacyTryFrame extends ControlFrame {
     /** Fixups that transfer normal control to the legacy try label. */
     private final ArrayList<BytecodeFixup> branchLabelFixups;
-    /** Fixups that resume exception lookup at the legacy try label. */
-    private final ArrayList<BytecodeFixup> delegateLabelFixups;
     /** Exception handlers guarding the protected region of the legacy try. */
     private final ArrayList<ExceptionHandler> protectedRegionHandlers;
     /** Parent frame used to reset local-initialized status. */
@@ -68,7 +66,6 @@ public final class LegacyTryFrame extends ControlFrame {
     LegacyTryFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame, int protectedRegionStart) {
         super(paramTypes, resultTypes, parentFrame.getSymbolTable(), initialStackSize, (BitSet) parentFrame.initializedLocals.clone(), parentFrame.legacyCatchDepth());
         this.branchLabelFixups = new ArrayList<>();
-        this.delegateLabelFixups = new ArrayList<>();
         this.protectedRegionHandlers = new ArrayList<>();
         this.parentFrame = parentFrame;
         this.protectedRegionStart = protectedRegionStart;
@@ -106,22 +103,16 @@ public final class LegacyTryFrame extends ControlFrame {
 
         final ExceptionTable table = createExceptionTable();
         if (table != null) {
-            state.registerExceptionTable(table);
+            final int tableIndex = state.registerExceptionTable(table);
+            registerDelegateContinuationFixups(state, tableIndex);
+        } else {
+            registerDelegateContinuationFixups(state, -1);
         }
     }
 
     @Override
     void addLabelFixup(BytecodeFixup fixup) {
         branchLabelFixups.add(fixup);
-    }
-
-    @Override
-    void addDelegateFixup(BytecodeFixup fixup) {
-        if (protectedRegionEnd == -1) {
-            delegateLabelFixups.add(fixup);
-        } else {
-            fixup.patch(delegateContinuationOffset());
-        }
     }
 
     void exitProtectedRegion(ParserState state, RuntimeBytecodeGen bytecode, boolean hasMoreClauses) {
@@ -131,19 +122,6 @@ public final class LegacyTryFrame extends ControlFrame {
             addLabelFixup(state.createBranchFixup(RuntimeBytecodeGen.BranchOp.BR));
         }
         protectedRegionEnd = bytecode.location();
-        for (BytecodeFixup labelFixup : delegateLabelFixups) {
-            labelFixup.patch(delegateContinuationOffset());
-        }
-    }
-
-    private int delegateContinuationOffset() {
-        /*
-         * Runtime exception-table lookup uses [from, to) ranges and normal throws use the throwing
-         * instruction's start offset. Legacy delegate, however, targets the selected label after a
-         * protected region. Use an offset inside that target region so lookup resumes at the
-         * enclosing try without reintroducing a separate exception-offset field.
-         */
-        return protectedRegionEnd > protectedRegionStart ? protectedRegionEnd - 1 : protectedRegionEnd;
     }
 
     void enterCatchClause(ParserState state, RuntimeBytecodeGen bytecode, int opcode, int tag, int[] paramTypes) {
