@@ -101,6 +101,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmRuntimeException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import org.graalvm.wasm.parser.validation.ExceptionHandler;
 import org.graalvm.wasm.struct.WasmStruct;
 import org.graalvm.wasm.struct.WasmStructAccess;
 import org.graalvm.wasm.types.DefinedType;
@@ -143,11 +144,6 @@ import java.io.Serial;
 public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNode {
 
     private static final int REPORT_LOOP_STRIDE = 1 << 8;
-    private static final int EXCEPTION_HANDLER_TO_OFFSET = 4;
-    private static final int EXCEPTION_HANDLER_TYPE_OFFSET = 8;
-    private static final int EXCEPTION_HANDLER_TAG_OFFSET = 9;
-    private static final int EXCEPTION_HANDLER_TARGET_OFFSET = 13;
-    private static final int EXCEPTION_HANDLER_SIZE = 17;
 
     static {
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
@@ -1469,7 +1465,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                  */
                 while (true) {
                     final int handlerOffset = exceptionTableOffset;
-                    final int from = rawPeekI32(bytecode, exceptionTableOffset);
+                    final int from = rawPeekI32(bytecode, handlerOffset + ExceptionHandler.FROM_OFFSET);
                     if (from == -1) {
                         // we reached the end of the table
                         break;
@@ -7989,19 +7985,19 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     private int exceptionHandlerTo(int handlerOffset) {
-        return rawPeekI32(bytecode, handlerOffset + EXCEPTION_HANDLER_TO_OFFSET);
+        return rawPeekI32(bytecode, handlerOffset + ExceptionHandler.TO_OFFSET);
     }
 
     private int exceptionHandlerType(int handlerOffset) {
-        return rawPeekU8(bytecode, handlerOffset + EXCEPTION_HANDLER_TYPE_OFFSET);
+        return rawPeekU8(bytecode, handlerOffset + ExceptionHandler.TYPE_OFFSET);
     }
 
     private int exceptionHandlerTagIndex(int handlerOffset) {
-        return rawPeekI32(bytecode, handlerOffset + EXCEPTION_HANDLER_TAG_OFFSET);
+        return rawPeekI32(bytecode, handlerOffset + ExceptionHandler.TAG_OFFSET);
     }
 
     private int exceptionHandlerTarget(int handlerOffset) {
-        return rawPeekI32(bytecode, handlerOffset + EXCEPTION_HANDLER_TARGET_OFFSET);
+        return rawPeekI32(bytecode, handlerOffset + ExceptionHandler.TARGET_OFFSET);
     }
 
     private static boolean isLegacyCatchType(int catchType) {
@@ -8033,7 +8029,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     private static int nextExceptionHandlerOffset(int handlerOffset) {
-        return handlerOffset + EXCEPTION_HANDLER_SIZE;
+        return handlerOffset + ExceptionHandler.SIZE;
     }
 
     /**

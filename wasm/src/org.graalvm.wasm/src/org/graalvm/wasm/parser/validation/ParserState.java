@@ -475,7 +475,7 @@ public class ParserState {
         for (int i = 0; i < exceptionTables.size(); i++) {
             final ExceptionTable table = exceptionTables.get(i);
             tableOffsets[i] = tableOffset;
-            tableOffset += table.handlerCount() * ExceptionTable.ENTRY_SIZE;
+            tableOffset += table.handlerCount() * ExceptionHandler.SIZE;
         }
         final int tableEndOffset = tableOffset;
         for (int i = 0; i < exceptionTableContinuationFixups.size(); i++) {
