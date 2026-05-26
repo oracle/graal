@@ -578,7 +578,12 @@ public class FrameInfoEncoder {
 
         if (needLocalValues) {
             frameInfo.deoptMethodOffset = method.getImageCodeDeoptOffset();
-            if (frameInfo.deoptMethodOffset != 0 && customization.storeDeoptTargetMethod()) {
+            if (customization.storeDeoptTargetMethod() && (frameInfo.deoptMethodOffset != 0 || method.getInterpreterMethod() != null)) {
+                /*
+                 * Runtime-compiled methods that resume in the interpreter do not have an AOT deopt
+                 * target, but stack walking still needs the method object for Ristretto source
+                 * reconstruction.
+                 */
                 frameInfo.deoptMethod = method;
                 encoders.objectConstants.addObject(constantAccess.forObject(method, false));
             }

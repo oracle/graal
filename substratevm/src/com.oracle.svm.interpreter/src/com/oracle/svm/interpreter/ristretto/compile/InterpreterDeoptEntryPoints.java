@@ -35,6 +35,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.InterpreterFrame;
 import com.oracle.svm.interpreter.InterpreterFrameUtil;
@@ -68,6 +69,7 @@ import jdk.vm.ci.meta.JavaKind;
  * {@link RistrettoDeoptimizedInterpreterFrame} stays strongly reachable through the Java argument
  * passed down the stub and entry-method call chain.
  */
+@InternalVMMethod
 public class InterpreterDeoptEntryPoints {
 
     @Fold

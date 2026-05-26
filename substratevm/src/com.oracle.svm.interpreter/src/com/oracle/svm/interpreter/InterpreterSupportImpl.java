@@ -25,7 +25,7 @@
 
 package com.oracle.svm.interpreter;
 
-import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_NATIVE;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -229,29 +229,35 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInterpreterRoot(FrameInfoQueryResult frameInfo) {
         return isInterpreterBytecodeRoot(frameInfo) || isInterpreterIntrinsicRoot(frameInfo);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isInterpreterBytecodeRoot(FrameInfoQueryResult frameInfo) {
-        return Interpreter.Root.class.equals(frameInfo.getSourceClass());
+        return Interpreter.Root.class == frameInfo.getSourceClass();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isInterpreterIntrinsicRoot(FrameInfoQueryResult frameInfo) {
-        return Interpreter.IntrinsicRoot.class.equals(frameInfo.getSourceClass());
+        return Interpreter.IntrinsicRoot.class == frameInfo.getSourceClass();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int readInt(Pointer addr, SignedWord offset) {
         return addr.readInt(offset);
     }
 
     @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static <T> T readObject(Pointer addr, SignedWord offset, boolean compressed) {
         Word p = ((Word) addr).add(offset);
         Object obj = ReferenceAccess.singleton().readObjectAt(p, compressed);
         return (T) obj;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private InterpreterResolvedJavaMethod readInterpretedMethod(FrameInfoQueryResult frameInfo, Pointer sp) {
         FrameInfoQueryResult.ValueInfo[] valueInfos = frameInfo.getValueInfos();
         if (interpretedMethodSlot >= valueInfos.length) {
@@ -261,6 +267,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private InterpreterResolvedJavaMethod readIntrinsicMethod(FrameInfoQueryResult frameInfo, Pointer sp) {
         FrameInfoQueryResult.ValueInfo[] valueInfos = frameInfo.getValueInfos();
         if (intrinsicMethodSlot >= valueInfos.length) {
@@ -270,6 +277,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int readBCISlot(FrameInfoQueryResult frameInfo, Pointer sp, int slot) {
         FrameInfoQueryResult.ValueInfo[] valueInfos = frameInfo.getValueInfos();
         if (slot >= valueInfos.length) {
@@ -297,6 +305,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
      * instead of reporting {@link BytecodeFrame#UNKNOWN_BCI}. If neither slot is available, keep
      * the source location unknown rather than inventing a synthetic {@code 0} BCI.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private int readBCI(FrameInfoQueryResult frameInfo, Pointer sp) {
         int bci = readBCISlot(frameInfo, sp, bciSlot);
         if (bci != BytecodeFrame.UNKNOWN_BCI) {
@@ -313,6 +322,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         return readBCISlot(frameInfo, sp, startBCISlot);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private InterpreterFrame readInterpreterFrame(FrameInfoQueryResult frameInfo, Pointer sp) {
         FrameInfoQueryResult.ValueInfo[] valueInfos = frameInfo.getValueInfos();
         if (interpretedFrameSlot >= valueInfos.length) {
@@ -322,9 +332,10 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private InterpreterFrame readIntrinsicFrame(FrameInfoQueryResult frameInfo, Pointer sp) {
         FrameInfoQueryResult.ValueInfo[] valueInfos = frameInfo.getValueInfos();
-        if (interpretedFrameSlot >= valueInfos.length) {
+        if (intrinsicFrameSlot >= valueInfos.length) {
             return null;
         }
         FrameInfoQueryResult.ValueInfo valueInfo = valueInfos[intrinsicFrameSlot];
@@ -337,49 +348,89 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             InterpreterResolvedJavaMethod interpretedMethod = readInterpretedMethod(frameInfo, sp);
             int bci = readBCI(frameInfo, sp);
             InterpreterFrame interpreterFrame = readInterpreterFrame(frameInfo, sp);
-            if (interpretedMethod == null || interpreterFrame == null || bci == BytecodeFrame.UNKNOWN_BCI) {
-                StringBuilder sb = new StringBuilder("Failed to retrieve interpreter frame data (");
-                if (interpretedMethod == null) {
-                    sb.append("no method;");
-                }
-                if (interpreterFrame == null) {
-                    sb.append("no frame;");
-                }
-                if (bci == BytecodeFrame.UNKNOWN_BCI) {
-                    sb.append("no bci;");
-                }
-                sb.append(") at ").append(frameInfo.getSourceReference());
-                VMError.shouldNotReachHere(sb.toString());
-            }
-            Class<?> interpretedClass = interpretedMethod.getDeclaringClass().getJavaClass();
-            String sourceMethodName = interpretedMethod.getName();
-            LineNumberTable lineNumberTable = interpretedMethod.getLineNumberTable();
-
-            int sourceLineNumber = -1; // unknown
-            if (lineNumberTable != null && bci >= 0) {
-                sourceLineNumber = lineNumberTable.getLineNumber(bci);
-            }
-            return new InterpreterFrameSourceInfo(interpretedClass, sourceMethodName, sourceLineNumber, bci, interpretedMethod, interpreterFrame);
+            return createInterpretedMethodFrameInfo(frameInfo, interpretedMethod, bci, interpreterFrame);
         }
         if (isInterpreterIntrinsicRoot(frameInfo)) {
             InterpreterResolvedJavaMethod intrinsicMethod = readIntrinsicMethod(frameInfo, sp);
             InterpreterFrame interpreterFrame = readIntrinsicFrame(frameInfo, sp);
-            if (intrinsicMethod == null || interpreterFrame == null) {
-                StringBuilder sb = new StringBuilder("Failed to retrieve interpreter intrinsic frame data (");
-                if (intrinsicMethod == null) {
-                    sb.append("no intrinsic method;");
-                }
-                if (interpreterFrame == null) {
-                    sb.append("no frame;");
-                }
-                sb.append(") at ").append(frameInfo.getSourceReference());
-                VMError.shouldNotReachHere(sb.toString());
-            }
-            Class<?> intrinsicClass = intrinsicMethod.getDeclaringClass().getJavaClass();
-            String sourceMethodName = intrinsicMethod.getName();
-            return new InterpreterFrameSourceInfo(intrinsicClass, sourceMethodName, LINENUMBER_NATIVE, -1, intrinsicMethod, interpreterFrame);
+            return createIntrinsicMethodFrameInfo(frameInfo, intrinsicMethod, interpreterFrame);
         }
         throw VMError.shouldNotReachHereAtRuntime();
+    }
+
+    @Override
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
+    public void captureInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, Pointer sp, InterpretedFrameData data) {
+        data.clear();
+        if (isInterpreterBytecodeRoot(frameInfo)) {
+            data.setInterpreted(frameInfo, readInterpretedMethod(frameInfo, sp), readBCI(frameInfo, sp), readInterpreterFrame(frameInfo, sp));
+            return;
+        }
+        if (isInterpreterIntrinsicRoot(frameInfo)) {
+            data.setIntrinsic(frameInfo, readIntrinsicMethod(frameInfo, sp), readIntrinsicFrame(frameInfo, sp));
+            return;
+        }
+        throw VMError.shouldNotReachHereAtRuntime();
+    }
+
+    @Override
+    public FrameSourceInfo getInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpretedFrameData data) {
+        VMError.guarantee(data.isFor(frameInfo), "Captured interpreter frame data does not belong to this frame");
+        if (data.isIntrinsic()) {
+            return createIntrinsicMethodFrameInfo(frameInfo, (InterpreterResolvedJavaMethod) data.getInterpretedMethod(), (InterpreterFrame) data.getInterpreterFrame());
+        }
+        return createInterpretedMethodFrameInfo(frameInfo, (InterpreterResolvedJavaMethod) data.getInterpretedMethod(), data.getBCI(), (InterpreterFrame) data.getInterpreterFrame());
+    }
+
+    private static FrameSourceInfo createInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpreterResolvedJavaMethod interpretedMethod, int bci, InterpreterFrame interpreterFrame) {
+        if (interpretedMethod == null || interpreterFrame == null || bci == BytecodeFrame.UNKNOWN_BCI) {
+            StringBuilder sb = new StringBuilder("Failed to retrieve interpreter frame data (");
+            if (interpretedMethod == null) {
+                sb.append("no method;");
+            }
+            if (interpreterFrame == null) {
+                sb.append("no frame;");
+            }
+            if (bci == BytecodeFrame.UNKNOWN_BCI) {
+                sb.append("no bci;");
+            }
+            sb.append(") at ").append(frameInfo.getSourceReference());
+            VMError.shouldNotReachHere(sb.toString());
+        }
+        InterpreterFrameSourceInfo stackTraceCallerInfo = interpreterFrame.getStackTraceCallerInfo();
+        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod.getDeclaringClass().getJavaClass(), interpretedMethod, bci, interpreterFrame, stackTraceCallerInfo);
+    }
+
+    private static FrameSourceInfo createIntrinsicMethodFrameInfo(FrameInfoQueryResult frameInfo, InterpreterResolvedJavaMethod intrinsicMethod, InterpreterFrame interpreterFrame) {
+        if (intrinsicMethod == null || interpreterFrame == null) {
+            StringBuilder sb = new StringBuilder("Failed to retrieve interpreter intrinsic frame data (");
+            if (intrinsicMethod == null) {
+                sb.append("no intrinsic method;");
+            }
+            if (interpreterFrame == null) {
+                sb.append("no frame;");
+            }
+            sb.append(") at ").append(frameInfo.getSourceReference());
+            VMError.shouldNotReachHere(sb.toString());
+        }
+        return InterpreterFrameSourceInfo.forNativeMethod(intrinsicMethod.getDeclaringClass().getJavaClass(), intrinsicMethod, interpreterFrame);
+    }
+
+    @Override
+    public FrameSourceInfo getSyntheticMethodFrameInfo(FrameInfoQueryResult frameInfo) {
+        if (frameInfo.getSourceClass() != null) {
+            return null;
+        }
+        if (!(frameInfo.getDeoptMethod() instanceof RistrettoMethod rMethod)) {
+            return null;
+        }
+
+        /*
+         * This happens for runtime-compiled Ristretto frames whose encoded frame metadata preserves
+         * the method object but does not carry the normal source-class/source-method fields.
+         */
+        InterpreterResolvedJavaMethod interpretedMethod = rMethod.getInterpreterMethod();
+        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod.getDeclaringClass().getJavaClass(), interpretedMethod, frameInfo.getBci());
     }
 
     @Override

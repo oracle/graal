@@ -46,6 +46,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.interpreter.CallSiteLink;
@@ -233,9 +234,16 @@ public class RistrettoDeoptimizationSupport {
         return rCode;
     }
 
+    /**
+     * Rebuilds the interpreter frame chain for one deoptimized compiled frame and patches the
+     * resulting deoptimized frame so later stack walking and execution resume see the rebuilt
+     * interpreter-frame chain.
+     */
     private static DeoptimizedFrame buildInterpreterFrame(FrameInfoQueryResult virtualFrameInfo, CodeInfoQueryResult physicalFrame, Infopoint compilerInfoPoint, RistrettoInstalledCode rCode,
                     Deoptimizer deoptimizer, CodePointer pc, boolean pin) {
+        // Remaining compiled-frame metadata being converted into interpreter frames.
         FrameInfoQueryResult compiledFrame = virtualFrameInfo;
+        // Most recently rebuilt interpreter frame; becomes the caller of the next frame created.
         RistrettoVirtualInterpreterFrame frameBefore = null;
 
         BytecodePosition associatedCompiledCodePosition = compilerInfoPoint.debugInfo.getBytecodePosition();
@@ -253,7 +261,8 @@ public class RistrettoDeoptimizationSupport {
                 logger().string("[buf/deopt] create interp frame for method=").string(interpreterMethod.toString()).newline();
             }
             InterpreterFrame interpreterFrame = createInterpreterFrameFromCompiledFrame(interpreterMethod, compiledFrame, deoptimizer);
-            frameBefore = createVirtualInterpreterFrame(compiledFrame, interpreterMethod, interpreterFrame, frameBefore);
+            RistrettoVirtualInterpreterFrame currentFrame = createVirtualInterpreterFrame(compiledFrame, interpreterMethod, interpreterFrame, frameBefore);
+            frameBefore = currentFrame;
 
             // iterate inlining (caller) chain in deoptimized physical frame and associated compiler
             // infopoint
@@ -266,6 +275,7 @@ public class RistrettoDeoptimizationSupport {
         long frameSize = physicalFrame.getTotalFrameSize();
         InterpreterResolvedJavaMethod bottomMethod = frameBefore.getMethod();
         JavaKind bottomReturnKind = bottomMethod.getSignature().getReturnKind();
+        installStackTraceCallerInfo(frameBefore);
         RistrettoDeoptimizedInterpreterFrame deoptimizedInterpreterFrame = new RistrettoDeoptimizedInterpreterFrame(frameSize, frameBefore, rCode, pc, pin);
 
         deoptimizedInterpreterFrame.setInterpreterEntry(getInterpreterEntry(bottomReturnKind));
@@ -292,6 +302,35 @@ public class RistrettoDeoptimizationSupport {
             calleeFrame.setCaller(currentFrame);
         }
         return currentFrame;
+    }
+
+    /**
+     * Copies the reconstructed Java source-level caller chain onto each rebuilt interpreter frame in one pass
+     * from the outermost caller back to the live top frame. For a compiled stack like
+     * {@code compiled:a -> b -> c(deopt)}, only {@code c} resumes execution directly, but stack
+     * walking still needs the Java source-level view {@code c -> b -> a}. Each frame therefore stores the
+     * already-built caller suffix that should appear after it:
+     *
+     * <pre>
+     * topFrame = c
+     * topFrame.syntheticCallerChain = [b, a]
+     * b.syntheticCallerChain = [a]
+     * a.syntheticCallerChain = []
+     * </pre>
+     */
+    private static void installStackTraceCallerInfo(RistrettoVirtualInterpreterFrame bottomFrame) {
+        InterpreterFrameSourceInfo callerInfo = null;
+        for (RistrettoVirtualInterpreterFrame current = bottomFrame; current != null; current = current.getCallee()) {
+            current.getFrame().setStackTraceCallerInfo(callerInfo);
+            callerInfo = createStackTraceCallerInfo(current, callerInfo);
+        }
+    }
+
+    static InterpreterFrameSourceInfo createStackTraceCallerInfo(RistrettoVirtualInterpreterFrame current, InterpreterFrameSourceInfo callerInfo) {
+        InterpreterResolvedJavaMethod interpretedMethod = current.getMethod();
+        int bci = current.getCurrentBci();
+        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod.getDeclaringClass().getJavaClass(), interpretedMethod, bci, current.getFrame(),
+                        callerInfo);
     }
 
     private static boolean verifyInfopointAndStackWalk(FrameInfoQueryResult virtualFrameInfo, BytecodePosition byteCodeStack, Infopoint infopoint) {
@@ -395,9 +434,10 @@ public class RistrettoDeoptimizationSupport {
     private static int computeDeoptTargetBci(InterpreterResolvedJavaMethod interpreterMethod, FrameInfoQueryResult compiledFrame) {
         int currentBci = compiledFrame.getBci();
         /*
-         * AfterPop frames describe the bytecode state after an invoke has already consumed its
-         * arguments. Re-entering at the same BCI would execute the invoke again against an
-         * already-popped operand stack, so we resume at the bytecode after the call instead.
+         * BeforePop and Rethrow frames resume at the exact deopt BCI. AfterPop frames describe an
+         * invoke whose arguments were already consumed, so re-entering at the same BCI would execute
+         * the invoke again against an already-popped operand stack. Resume those frames at the
+         * bytecode after the call instead.
          */
         return switch (compiledFrame.getStackState()) {
             case BeforePop, Rethrow -> currentBci;

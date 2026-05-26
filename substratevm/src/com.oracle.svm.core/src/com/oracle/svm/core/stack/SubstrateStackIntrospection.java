@@ -33,7 +33,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.deopt.VirtualFrame;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
@@ -118,7 +118,7 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
             virtualFrame = deoptimizedFrame.getTopFrame();
         } else {
             info = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
-            if (info == null || info.getFrameInfo() == null) {
+            if (info.getFrameInfo() == null) {
                 /*
                  * We do not have detailed information about this physical frame. It does not
                  * contain Java frames that we care about, so we can move on to the caller.

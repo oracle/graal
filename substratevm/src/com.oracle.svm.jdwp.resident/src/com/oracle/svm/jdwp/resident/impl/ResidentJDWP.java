@@ -1208,7 +1208,7 @@ public final class ResidentJDWP implements JDWP {
             if (method.isStatic() || method.isNative()) {
                 thisObject = null;
             } else {
-                InterpreterFrame interpreterFrame = (InterpreterFrame) interpreterJavaFrameInfo.getInterpreterFrame();
+                InterpreterFrame interpreterFrame = getLiveInterpreterFrame(interpreterJavaFrameInfo);
                 thisObject = InterpreterFrameUtil.getThis(interpreterFrame);
             }
         } else {
@@ -1629,7 +1629,7 @@ public final class ResidentJDWP implements JDWP {
                 throw JDWPException.raise(ErrorCode.INVALID_TAG);
             }
         }
-        InterpreterFrame interpreterFrame = (InterpreterFrame) interpreterJavaFrameInfo.getInterpreterFrame();
+        InterpreterFrame interpreterFrame = getLiveInterpreterFrame(interpreterJavaFrameInfo);
         switch (tag) {
             case TagConstants.BYTE -> {
                 int value = InterpreterFrameUtil.getLocalInt(interpreterFrame, slot);
@@ -1756,10 +1756,8 @@ public final class ResidentJDWP implements JDWP {
 
         if (field.isWordStorage()) {
             switch (SubstrateTarget.getWordKind()) {
-                case Int ->
-                    InterpreterToVM.setFieldWord(Word.signed(reader.readInt()), receiver, field);
-                case Long ->
-                    InterpreterToVM.setFieldWord(Word.signed(reader.readLong()), receiver, field);
+                case Int -> InterpreterToVM.setFieldWord(Word.signed(reader.readInt()), receiver, field);
+                case Long -> InterpreterToVM.setFieldWord(Word.signed(reader.readLong()), receiver, field);
                 default -> throw VMError.shouldNotReachHere("Unexpected word kind " + SubstrateTarget.getWordKind());
             }
             return;
@@ -1849,7 +1847,7 @@ public final class ResidentJDWP implements JDWP {
                 throw JDWPException.raise(ErrorCode.INVALID_TAG);
             }
         }
-        InterpreterFrame interpreterFrame = (InterpreterFrame) interpreterJavaFrameInfo.getInterpreterFrame();
+        InterpreterFrame interpreterFrame = getLiveInterpreterFrame(interpreterJavaFrameInfo);
         // @formatter:off
         switch (tag) {
             case TagConstants.BYTE    -> InterpreterFrameUtil.setLocalInt(interpreterFrame, slot, (byte) reader.readByte());
@@ -1864,6 +1862,18 @@ public final class ResidentJDWP implements JDWP {
             default -> InterpreterFrameUtil.setLocalObject(interpreterFrame, slot, readReferenceOrNull(reader));
         }
         // @formatter:on
+    }
+
+    private static InterpreterFrame getLiveInterpreterFrame(InterpreterFrameSourceInfo interpreterJavaFrameInfo) {
+        Object interpreterFrame = interpreterJavaFrameInfo.getInterpreterFrame();
+        if (interpreterFrame == null) {
+            /*
+             * Source-only Ristretto frames keep debugger-visible method and line information but do
+             * not describe a live interpreter frame whose locals can be read or written.
+             */
+            throw JDWPException.raise(ErrorCode.NOT_IMPLEMENTED);
+        }
+        return (InterpreterFrame) interpreterFrame;
     }
 
     private static Object[] readArguments(Packet.Reader reader) {
@@ -1958,8 +1968,7 @@ public final class ResidentJDWP implements JDWP {
                 writer.writeByte(TagConstants.VOID);
                 // write nothing
             }
-            default ->
-                throw VMError.shouldNotReachHere("unexpected kind " + valueKind);
+            default -> throw VMError.shouldNotReachHere("unexpected kind " + valueKind);
         }
     }
 

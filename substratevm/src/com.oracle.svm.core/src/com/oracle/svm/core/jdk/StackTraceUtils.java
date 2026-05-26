@@ -48,8 +48,8 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -303,7 +303,7 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
         if (!StackTraceUtils.shouldShowFrame(frameSourceInfo)) {
             /* Always ignore the frame. It is an internal frame of the VM. */
             return true;
@@ -336,7 +336,7 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
         assert depth >= 0;
 
         if (ignoreFirst) {
@@ -382,7 +382,7 @@ class GetClassContextVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
         if (skip > 0) {
             skip--;
         } else if (StackTraceUtils.shouldShowFrame(frameSourceInfo, true, false, false)) {
@@ -399,7 +399,7 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
         if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true, true, false)) {
             // Skip internal frames.
             return true;
@@ -434,7 +434,7 @@ class StackAccessControlContextVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
         if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true, false, false)) {
             return true;
         }
