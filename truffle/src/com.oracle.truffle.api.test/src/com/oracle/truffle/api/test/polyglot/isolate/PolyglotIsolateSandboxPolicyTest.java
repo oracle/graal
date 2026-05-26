@@ -283,7 +283,7 @@ public class PolyglotIsolateSandboxPolicyTest {
      */
     private static boolean isInterpreterCallStackHeadRoomSupported() {
         Runtime.Version jdkVersion = Runtime.version();
-        return (TruffleTestAssumptions.isIsolateEncapsulation() || (TruffleOptions.AOT && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime))) && jdkVersion.feature() >= 23;
+        return TruffleTestAssumptions.isIsolateEncapsulation() || ((TruffleOptions.AOT && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) && jdkVersion.feature() >= 23);
     }
 
     @Test
