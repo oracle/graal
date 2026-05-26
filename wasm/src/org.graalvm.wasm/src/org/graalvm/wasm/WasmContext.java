@@ -47,6 +47,7 @@ import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.vector.Vector128Ops;
 
 public final class WasmContext {
     private final Env env;
@@ -55,6 +56,7 @@ public final class WasmContext {
     private final WasmStore contextStore;
     private final FdManager fdManager;
     private final MemoryContext memoryContext;
+    private boolean missingVectorApiWarningEmitted;
 
     /**
      * Optional grow callback to notify the embedder.
@@ -109,6 +111,19 @@ public final class WasmContext {
 
     public WasmContextOptions getContextOptions() {
         return this.contextOptions;
+    }
+
+    public void warnAboutMissingVectorApi() {
+        if (!missingVectorApiWarningEmitted) {
+            synchronized (this) {
+                if (!missingVectorApiWarningEmitted) {
+                    env.getLogger(Vector128Ops.class).warning(
+                                    "WebAssembly SIMD code is using the fallback vector implementation because the JDK Vector API is not available. For better performance on the JVM, " +
+                                                    "run with --add-modules=jdk.incubator.vector. When building a native image, also pass -H:+UnlockExperimentalVMOptions and -H:+VectorAPISupport.");
+                    missingVectorApiWarningEmitted = true;
+                }
+            }
+        }
     }
 
     private static final ContextReference<WasmContext> REFERENCE = ContextReference.create(WasmLanguage.class);

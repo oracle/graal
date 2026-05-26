@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,11 @@ package org.graalvm.wasm.test;
 import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -64,6 +67,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.NativeWasmMemory;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import org.graalvm.wasm.vector.Vector128Ops;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -71,6 +75,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.TruffleLanguage;
 
 public class WasmPolyglotTestSuite {
+
     @Test
     public void testEmpty() throws IOException {
         try (Context context = Context.newBuilder().build()) {
@@ -91,6 +96,35 @@ public class WasmPolyglotTestSuite {
             Value result = mainFunction.execute();
             Assert.assertEquals("Should be equal: ", 42, result.asInt());
         }
+    }
+
+    @Test
+    public void warnOnceWhenSimdUsesFallbackVectorImplementation() throws IOException, InterruptedException {
+        if (!Vector128Ops.usesFallbackImplementation()) {
+            return;
+        }
+        byte[] binaryWithSimdInstruction = compileWat("simd", """
+                        (module
+                          (func (result v128)
+                            (v128.const i32x4 0 0 0 0)))
+                        """);
+        ByteArrayOutputStream log = new ByteArrayOutputStream();
+        OutputStream logHandler = log;
+        try (Context context = Context.newBuilder(WasmLanguage.ID).logHandler(logHandler).build()) {
+            context.parse(Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithSimdInstruction), "simd-1").build());
+            context.parse(Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithSimdInstruction), "simd-2").build());
+        }
+        try (Context context = Context.newBuilder(WasmLanguage.ID).logHandler(logHandler).build()) {
+            context.parse(Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithSimdInstruction), "simd-3").build());
+        }
+        String logText = log.toString(StandardCharsets.UTF_8);
+        String missingVectorApiWarning = "WebAssembly SIMD code is using the fallback vector implementation";
+        Assert.assertTrue(logText, logText.contains(missingVectorApiWarning));
+        Assert.assertTrue(logText, logText.contains("--add-modules=jdk.incubator.vector"));
+        Assert.assertTrue(logText, logText.contains("-H:+VectorAPISupport"));
+        Assert.assertTrue(logText, logText.contains("-H:+UnlockExperimentalVMOptions"));
+        // Warning is emitted once per context
+        Assert.assertEquals(logText, 2, countOccurrences(logText, missingVectorApiWarning));
     }
 
     @Test
@@ -121,6 +155,16 @@ public class WasmPolyglotTestSuite {
         Assert.assertTrue("Memory should have been freed.", WasmMemoryLibrary.getUncached().freed(memory));
         // Cannot access memory after free.
         Assert.assertThrows(WasmException.class, () -> WasmMemoryLibrary.getUncached().load_i32(memory, null, 0));
+    }
+
+    private static int countOccurrences(String text, String pattern) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(pattern, index)) != -1) {
+            count++;
+            index += pattern.length();
+        }
+        return count;
     }
 
     @Test
