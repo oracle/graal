@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,27 +24,34 @@
  */
 package com.oracle.svm.core.jni.headers;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
-
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.OS;
-import com.oracle.svm.core.c.ProjectHeaderFile;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-public class JNIHeaderDirectives implements CContext.Directives {
+/**
+ * Describes the legacy JDK 1.1 initialization arguments that HotSpot still accepts for
+ * {@code JNI_GetDefaultJavaVMInitArgs}.
+ */
+@CContext(JNIHeaderDirectives.class)
+@CStruct(value = "JDK1_1InitArgs")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+22/src/hotspot/share/include/jvm.h#L1141-L1169")
+public interface JNIJavaVMInitArgsJDK1_1 extends PointerBase {
+    /** Gets the JNI version field. */
+    @CField("version")
+    int getVersion();
 
-    private final Path jdkIncludeDir = Paths.get(System.getProperty("java.home")).resolve("include");
+    /** Sets the JNI version field to {@code version}. */
+    @CField("version")
+    void setVersion(int version);
 
-    @Override
-    public List<String> getHeaderFiles() {
-        return Arrays.asList("\"" + jdkIncludeDir.resolve("jni.h") + "\"", ProjectHeaderFile.resolve("com.oracle.svm.native.libchelper", "include/svm_jvm.h"));
-    }
+    /** Gets the Java stack size reported to the launcher. */
+    @CField("javaStackSize")
+    int getJavaStackSize();
 
-    @Override
-    public List<String> getOptions() {
-        return Arrays.asList("-I" + jdkIncludeDir, "-I" + jdkIncludeDir.resolve(OS.getCurrent() == OS.WINDOWS ? "win32" : OS.getCurrent().asPackageName()));
-    }
+    /** Sets the Java stack size reported to the launcher to {@code stackSize}. */
+    @CField("javaStackSize")
+    void setJavaStackSize(int stackSize);
 }

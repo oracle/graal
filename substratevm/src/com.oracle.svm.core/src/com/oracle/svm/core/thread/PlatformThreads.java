@@ -97,6 +97,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -288,16 +289,6 @@ public abstract class PlatformThreads {
         return getIsolateThreadUnsafe(t);
     }
 
-    @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
-    static void afterThreadExit(IsolateThread thread) {
-        VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
-
-        Thread javaThread = currentThread.get(thread);
-        if (javaThread != null) {
-            ThreadListenerSupport.get().afterThreadExit(thread, javaThread);
-        }
-    }
-
     /**
      * Joins all non-daemon threads. If the current thread is itself a non-daemon thread, it does
      * not attempt to join itself.
@@ -323,32 +314,97 @@ public abstract class PlatformThreads {
     }
 
     /**
-     * Returns the stack size requested for this thread; otherwise, if there are no expectations,
-     * then returns 0.
+     * Returns the stack size requested for {@code thread}, or the VM default for isolate-started
+     * threads when no explicit size was requested.
      */
     public static long getRequestedStackSize(Thread thread) {
+        return getRequestedStackSize(thread, VMThreads.wasStartedByCurrentIsolate(CurrentIsolate.getCurrentThread()));
+    }
+
+    /**
+     * Returns the stack size requested for {@code thread}.
+     *
+     * @param isolateStartedThread true if {@code thread} is (or will be) started by the isolate, false
+     *        if it's an existing native thread that attached to the isolate and already has an OS stack
+     * @return 0 if no size was explicitly requested
+     */
+    public static long getRequestedStackSize(Thread thread, boolean isolateStartedThread) {
         /* Return a stack size based on parameters and command line flags. */
         long stackSize;
         Target_java_lang_Thread tjlt = toTarget(thread);
         long threadSpecificStackSize = tjlt.holder.stackSize;
         if (threadSpecificStackSize > 0) {
-            /* If the user set a thread stack size at thread creation, then use that. */
-            stackSize = threadSpecificStackSize;
-        } else {
-            /* If the user set a thread stack size on the command line, then use that. */
-            stackSize = SubstrateOptions.StackSize.getValue();
+            long requestedStackSize = addStackOverflowGuardZones(threadSpecificStackSize);
+            /*
+             * The per-thread stack size is only a suggestion. Isolate-started threads need enough
+             * stack for VM-managed entry, stack overflow guards, and ordinary Java execution.
+             */
+            if (isolateStartedThread) {
+                long defaultStackSize = getDefaultStackSize();
+                if (defaultStackSize > requestedStackSize) {
+                    return defaultStackSize;
+                }
+            }
+            return requestedStackSize;
+        }
+        /* If the user set a thread stack size on the command line, then use that. */
+        stackSize = SubstrateOptions.StackSize.getValue();
+        if (stackSize != 0) {
+            return addStackOverflowGuardZones(stackSize);
+        }
+        /*
+         * Externally attached threads, including launcher and JNI main threads, already have an
+         * OS-provided stack. Only apply the VM default to isolate-started threads.
+         */
+        if (isolateStartedThread) {
+            long defaultStackSize = getDefaultStackSize();
+            if (defaultStackSize != 0) {
+                return addStackOverflowGuardZones(defaultStackSize);
+            }
         }
 
-        if (stackSize != 0) {
-            /*
-             * Add the yellow+red zone size: This area of the stack is not accessible to the user's
-             * Java code, so it would be surprising if we gave the user less stack space to use than
-             * explicitly requested. In particular, a size less than the yellow+red size would lead
-             * to an immediate StackOverflowError.
-             */
-            stackSize += StackOverflowCheck.singleton().yellowAndRedZoneSize();
+        return 0;
+    }
+
+    /**
+     * Adds stack overflow guard zones to {@code stackSize}.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long addStackOverflowGuardZones(long stackSize) {
+        /*
+         * Add the yellow+red zone size: This area of the stack is not accessible to the user's
+         * Java code, so explicit stack sizes continue to describe usable Java stack space.
+         */
+        return stackSize + StackOverflowCheck.singleton().yellowAndRedZoneSize();
+    }
+
+    /**
+     * Default stack size used when neither the {@link Thread} nor {@link SubstrateOptions} set a
+     * specific value.
+     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/bsd_aarch64/globals_bsd_aarch64.hpp#L34")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/bsd_x86/globals_bsd_x86.hpp#L34")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/linux_aarch64/globals_linux_aarch64.hpp#L39")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/linux_x86/globals_linux_x86.hpp#L33")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/windows_x86/globals_windows_x86.hpp#L35")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getDefaultStackSize() {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class)) {
+            return 2048L * 1024L;
         }
-        return stackSize;
+        if (Platform.includedIn(Platform.MACOS_AMD64.class)) {
+            return 1024L * 1024L;
+        }
+        if (Platform.includedIn(Platform.LINUX_AARCH64.class)) {
+            return 2040L * 1024L;
+        }
+        if (Platform.includedIn(Platform.LINUX_AMD64.class)) {
+            return 1024L * 1024L;
+        }
+        if (Platform.includedIn(Platform.WINDOWS_AMD64.class)) {
+            return 0L;
+        }
+        return 0L;
     }
 
     /**
@@ -423,13 +479,20 @@ public abstract class PlatformThreads {
 
     @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
     private static void assignCurrent0(Thread thread) {
+        assignCurrent0(thread, true);
+    }
+
+    @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
+    private static void assignCurrent0(Thread thread, boolean notifyThreadStart) {
         VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
         JavaThreads.currentVThreadId.set(JavaThreads.getThreadId(thread));
         currentThread.set(thread);
 
         assert toTarget(thread).isolateThread.isNull();
         toTarget(thread).isolateThread = CurrentIsolate.getCurrentThread();
-        ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
+        if (notifyThreadStart) {
+            ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
+        }
     }
 
     /**
@@ -452,6 +515,44 @@ public abstract class PlatformThreads {
          * Note that we can't call ThreadListenerSupport.beforeThreadRun() because the isolate is
          * not fully initialized yet. This is done later on, during isolate initialization.
          */
+    }
+
+    /**
+     * Releases the preallocated main {@link Thread} from the launcher thread without detaching the
+     * launcher thread from the isolate.
+     */
+    @Uninterruptible(reason = "Transfers the main Thread object from the launcher thread to the runner thread.", calleeMustBe = false)
+    public void releaseMainThreadFromCurrent() {
+        VMError.guarantee(currentThread.get() == mainThread, "current thread is not the main Java thread");
+
+        /*
+         * The launcher thread keeps running native code, but Java thread-local listener state must
+         * be cleared before the main Thread object is moved to the runner thread. This is not a
+         * Java Thread lifecycle end, so thread-start/thread-exit listeners remain balanced around
+         * the main Thread object itself.
+         */
+        ThreadListenerSupport.get().afterThreadRun();
+
+        toTarget(mainThread).isolateThread = Word.nullPointer();
+        JavaThreads.currentVThreadId.set(0L);
+        currentThread.set(null);
+    }
+
+    /**
+     * Assigns the preallocated main {@link Thread} to the current attached isolate thread.
+     */
+    @Uninterruptible(reason = "The main Thread object is assigned before running application code.", calleeMustBe = false)
+    public void assignMainThreadToCurrent() {
+        assignCurrent0(mainThread, false);
+        ThreadListenerSupport.get().beforeThreadRun();
+    }
+
+    /**
+     * Returns the stack size for the launcher-created runner that will execute application main.
+     */
+    @Uninterruptible(reason = "Computes the stack size before the main Thread object is transferred to the runner thread.", calleeMustBe = false)
+    public long getMainThreadRunnerStackSize() {
+        return getRequestedStackSize(mainThread, true);
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the ThreadsLock with exclusive write access.")
@@ -481,10 +582,13 @@ public abstract class PlatformThreads {
 
     @SuppressWarnings("unused")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, int stackSize) {
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize) {
         throw unmanagedThreadUnsupported();
     }
 
+    /**
+     * Joins a launcher-created unmanaged thread after the caller has left Java thread state.
+     */
     @SuppressWarnings("unused")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {

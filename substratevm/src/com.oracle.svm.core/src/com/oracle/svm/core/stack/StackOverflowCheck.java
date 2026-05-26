@@ -154,6 +154,7 @@ public interface StackOverflowCheck {
     /**
      * Returns the combined size of the yellow and red zone.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     int yellowAndRedZoneSize();
 
     /** @see #setState */

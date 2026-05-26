@@ -42,8 +42,6 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
-import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
@@ -62,6 +60,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -359,6 +359,10 @@ public abstract class VMThreads {
     /**
      * Detaches the current thread from the isolate and frees the {@link IsolateThread} data
      * structure.
+     * <p>
+     * Once this method returns, the current operating-system thread is no longer attached to the
+     * isolate: the thread-local isolate-thread cache is clear, the current VM thread register is
+     * null, and only code that does not require an isolate thread may execute.
      */
     @Uninterruptible(reason = "IsolateThread will be freed.")
     public void detachCurrentThread() {
@@ -470,14 +474,23 @@ public abstract class VMThreads {
         ThreadsLock.broadcastChange();
     }
 
+    /**
+     * Marks the current Java {@link Thread} as exited and notifies thread-exit listeners while the
+     * current {@link IsolateThread} is still valid.
+     * <p>
+     * This method completes the Java-level thread lifecycle only. Callers remain responsible for
+     * detaching the {@link IsolateThread} from the isolate and freeing its native data structure
+     * after this method returns.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false)
     public void threadExit() {
         Thread javaThread = PlatformThreads.currentThread.get();
         if (javaThread != null) {
             PlatformThreads.exit(javaThread);
+            /* Only uninterruptible code may be executed from now on. */
+            IsolateThread thread = CurrentIsolate.getCurrentThread();
+            ThreadListenerSupport.get().afterThreadExit(thread, javaThread);
         }
-        /* Only uninterruptible code may be executed from now on. */
-        PlatformThreads.afterThreadExit(CurrentIsolate.getCurrentThread());
     }
 
     /**
