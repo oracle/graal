@@ -1811,6 +1811,29 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     /**
+     * VEX-encoded instructions with operand order RM where the M operand must be memory.
+     */
+    public static class VexMemoryOp extends VexOp {
+        // @formatter:off
+        public static final VexMemoryOp EVBROADCASTF64X2 = new VexMemoryOp("EVBROADCASTF64X2", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F38, VEXPrefixConfig.W1, 0x1A, VEXOpAssertion.AVX512DQ_VL_256_512, EVEXTuple.T2_64BIT, VEXPrefixConfig.W1, true);
+        // @formatter:on
+
+        protected VexMemoryOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex, boolean isEvex) {
+            super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex, isEvex);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src) {
+            emit(asm, size, dst, src, Register.None, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, Register mask, int z, int b) {
+            emitVexOrEvex(asm, dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, z, b);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, src, 0, getDisp8Scale(isEvex, size));
+        }
+    }
+
+    /**
      * VEX-encoded instructions with an operand order of RM.
      */
     public static class VexRMOp extends VexRROp {
@@ -5089,6 +5112,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         AMD64RMOp.ADCX.emit(this, OperandSize.QWORD, dst, src);
     }
 
+    public final void addb(Register dst, int imm8) {
+        AMD64BinaryArithmetic.ADD.byteImmOp.emit(this, OperandSize.BYTE, dst, imm8);
+    }
+
     public final void addl(AMD64Address dst, int imm32) {
         AMD64BinaryArithmetic.ADD.getMIOpcode(OperandSize.DWORD, isByte(imm32)).emit(this, OperandSize.DWORD, dst, imm32);
     }
@@ -5223,6 +5250,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
     public final void cmpb(Register dst, Register src) {
         AMD64BinaryArithmetic.CMP.byteRmOp.emit(this, OperandSize.BYTE, dst, src);
+    }
+
+    public final void cmpb(Register dst, int imm) {
+        AMD64BinaryArithmetic.CMP.byteImmOp.emit(this, OperandSize.BYTE, dst, imm);
     }
 
     public final void cmpb(AMD64Address dst, int imm) {
@@ -6524,6 +6555,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     public final void vpshufb(Register dst, Register src1, Register src2, AVXSize size) {
+        VexRVMOp.VPSHUFB.emit(this, size, dst, src1, src2);
+    }
+
+    public final void vpshufb(Register dst, Register src1, AMD64Address src2, AVXSize size) {
         VexRVMOp.VPSHUFB.emit(this, size, dst, src1, src2);
     }
 

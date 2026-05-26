@@ -65,6 +65,7 @@ import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
+import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
@@ -200,7 +201,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testGaloisCounterModeCrypt() throws Exception {
-        Assume.assumeTrue("GaloisCounterMode not supported", runtime().getVMConfig().galoisCounterModeCrypt != 0L);
+        Assume.assumeTrue("GaloisCounterMode not supported", GaloisCounterModeAESNode.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.GaloisCounterMode", "implGCMCrypt0", "AES", 128, "AES/GCM/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.GaloisCounterMode", "implGCMCrypt0", "AES", 128, "AES/GCM/PKCS5Padding");
         testEncryptDecrypt("com.sun.crypto.provider.GaloisCounterMode", "implGCMCrypt0", "DESede", 168, "DESede/GCM/NoPadding");

@@ -54,6 +54,7 @@ import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
+import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.IndexOfZeroNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
@@ -94,6 +95,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
                 CRC32UpdateBytesNode.class,
                 ElectronicCodeBookAESNode.class,
                 EncodeArrayNode.class,
+                GaloisCounterModeAESNode.class,
                 GHASHProcessBlocksNode.class,
                 IndexOfZeroNode.class,
                 MD5Node.class,

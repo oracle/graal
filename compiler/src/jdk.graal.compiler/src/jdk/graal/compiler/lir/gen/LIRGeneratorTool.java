@@ -640,6 +640,12 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
+    default Variable emitGaloisCounterModeAESCrypt(EnumSet<?> runtimeCheckedCPUFeatures, Value inAddr, Value len, Value ctAddr, Value outAddr, Value kAddr, Value stateAddr, Value subkeyHtblAddr,
+                    Value counterAddr) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitCBCAESEncrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }

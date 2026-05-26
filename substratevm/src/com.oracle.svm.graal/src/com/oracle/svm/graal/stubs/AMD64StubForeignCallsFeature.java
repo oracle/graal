@@ -69,6 +69,7 @@ import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
+import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.IndexOfZeroForeignCalls;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
@@ -114,6 +115,7 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(CounterModeAESNode.STUB, CounterModeAESNode.minFeaturesAMD64(), CounterModeAESNode.minFeaturesAMD64()),
                         new StubDescriptor(CipherBlockChainingAESNode.STUBS, CipherBlockChainingAESNode.minFeaturesAMD64(), CipherBlockChainingAESNode.minFeaturesAMD64()),
                         new StubDescriptor(ElectronicCodeBookAESNode.STUBS, ElectronicCodeBookAESNode.minFeaturesAMD64(), ElectronicCodeBookAESNode.minFeaturesAMD64()),
+                        new StubDescriptor(GaloisCounterModeAESNode.STUB, GaloisCounterModeAESNode.minFeaturesAMD64(), GaloisCounterModeAESNode.maxFeaturesAMD64()),
                         new StubDescriptor(GHASHProcessBlocksNode.STUB, GHASHProcessBlocksNode.minFeaturesAMD64(), GHASH_CPU_FEATURES_AMD64),
                         // GR-76192: match the SVM plugin predicate and generated stub feature set.
                         new StubDescriptor(Poly1305ProcessBlocksNode.STUB, Poly1305ProcessBlocksNode.maxFeaturesAMD64(), Poly1305ProcessBlocksNode.maxFeaturesAMD64()),
