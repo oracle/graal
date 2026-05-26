@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm.lowering;
 
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -35,6 +36,7 @@ import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.phases.common.AddressLoweringByNodePhase;
 
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -78,7 +80,24 @@ public class LLVMAddressLowering extends AddressLoweringByNodePhase.AddressLower
         @Override
         public void generate(NodeLIRBuilderTool generator) {
             LIRGeneratorTool gen = generator.getLIRGeneratorTool();
-            generator.setResult(this, new LLVMAddressValue(gen.getLIRKind(stamp(NodeView.DEFAULT)), generator.operand(base), generator.operand(index)));
+
+            Value baseValue = base == null ? Value.ILLEGAL : generator.operand(base);
+            Value indexValue = index == null ? Value.ILLEGAL : generator.operand(index);
+
+            AllocatableValue baseReference = derivedBaseFromValue(baseValue);
+            AllocatableValue indexReference = index == null ? null : derivedBaseFromValue(indexValue);
+
+            LIRKind kind = LIRKind.combineDerived(gen.getLIRKind(stamp(NodeView.DEFAULT)), baseReference, indexReference);
+            generator.setResult(this, new LLVMAddressValue(kind, baseValue, indexValue));
+        }
+
+        private static AllocatableValue derivedBaseFromValue(Value value) {
+            if (value instanceof AllocatableValue allocatable) {
+                return LIRKind.derivedBaseFromValue(allocatable);
+            } else if (LIRKind.isValue(value)) {
+                return null;
+            }
+            return Value.ILLEGAL;
         }
     }
 

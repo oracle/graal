@@ -38,8 +38,6 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMRelocationIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
-import com.oracle.svm.shared.util.VMError;
-
 import jdk.graal.compiler.core.common.NumUtil;
 
 public class LLVMStackMapInfo {
@@ -257,33 +255,47 @@ public class LLVMStackMapInfo {
     }
 
     void forEachStatepointOffset(long patchpointID, int instructionOffset, StatepointOffsetCallback callback) {
-        Location[] locations = patchpointsByID.get(patchpointID).stream().filter(r -> r.instructionOffset == instructionOffset)
-                        .findFirst().orElseThrow(VMError::shouldNotReachHereAtRuntime).locations;
-        assert locations.length >= STATEPOINT_HEADER_LOCATION_COUNT;
+        Set<Record> records = patchpointsByID.get(patchpointID);
+        if (records == null) {
+            throw shouldNotReachHere("Missing LLVM statepoint stack map record: patchpointID=%s, instructionOffset=%s", patchpointID, instructionOffset);
+        }
+        Location[] locations = records.stream().filter(r -> r.instructionOffset == instructionOffset)
+                        .findFirst().orElseThrow(() -> shouldNotReachHere("Missing LLVM statepoint stack map record: patchpointID=%s, instructionOffset=%s", patchpointID,
+                                        instructionOffset)).locations;
+        guaranteeValidStatepoint(locations.length >= STATEPOINT_HEADER_LOCATION_COUNT, patchpointID, instructionOffset,
+                        "expected at least %s header locations, found %s", STATEPOINT_HEADER_LOCATION_COUNT, locations.length);
 
         Location deoptCountLocation = locations[STATEPOINT_DEOPT_COUNT_LOCATION_INDEX];
-        assert deoptCountLocation.type == Location.Type.Constant;
+        guaranteeValidStatepoint(deoptCountLocation.type == Location.Type.Constant, patchpointID, instructionOffset,
+                        "expected deopt count location to be a constant, found %s", formatLocation(deoptCountLocation));
         int deoptCount = deoptCountLocation.offset;
-        assert STATEPOINT_HEADER_LOCATION_COUNT + deoptCount <= locations.length;
+        guaranteeValidStatepoint(deoptCount >= 0, patchpointID, instructionOffset, "negative deopt count %s", deoptCount);
+        guaranteeValidStatepoint(STATEPOINT_HEADER_LOCATION_COUNT + deoptCount <= locations.length, patchpointID, instructionOffset,
+                        "deopt count %s exceeds location count %s", deoptCount, locations.length);
 
         EconomicSet<Integer> compressedOffsets = EconomicSet.create();
         for (int i = STATEPOINT_HEADER_LOCATION_COUNT; i < STATEPOINT_HEADER_LOCATION_COUNT + deoptCount; ++i) {
             Location loc = locations[i];
-            assert loc.type == Location.Type.Indirect; // spilled values
+            guaranteeValidStatepoint(loc.type == Location.Type.Indirect, patchpointID, instructionOffset,
+                            "expected compressed addrspace(2) location at index %s to be indirect, found %s", i, formatLocation(loc));
             int[] offsets = getStackOffsets(patchpointID, loc);
-            assert offsets.length == 1;
+            guaranteeValidStatepoint(offsets.length == 1, patchpointID, instructionOffset,
+                            "expected compressed addrspace(2) location at index %s to map to one stack slot, found %s slots in %s", i, offsets.length, formatLocation(loc));
             compressedOffsets.add(offsets[0]);
         }
 
         EconomicSet<Integer> seenOffsets = EconomicSet.create();
         EconomicSet<Integer> seenBases = EconomicSet.create();
+        guaranteeValidStatepoint((locations.length - STATEPOINT_HEADER_LOCATION_COUNT - deoptCount) % 2 == 0, patchpointID, instructionOffset,
+                        "expected base/reference locations to be paired, found %s locations after the header and compressed addrspace(2) section",
+                        locations.length - STATEPOINT_HEADER_LOCATION_COUNT - deoptCount);
         for (int i = STATEPOINT_HEADER_LOCATION_COUNT + deoptCount; i < locations.length; i += 2) {
-            assert i + 1 < locations.length;
             Location base = locations[i];
             Location ref = locations[i + 1];
 
             if (base.type == Location.Type.Constant || ref.type == Location.Type.Constant) {
-                assert base.type == ref.type && base.offset == ref.offset;
+                guaranteeValidStatepoint(base.type == ref.type && base.offset == ref.offset, patchpointID, instructionOffset,
+                                "constant base/reference pair mismatch at indexes %s/%s: base=%s, ref=%s", i, i + 1, formatLocation(base), formatLocation(ref));
                 if (base.offset != 0) {
                     /*
                      * We are seeing a hard-coded pointer. This will most probably cause a segfault
@@ -296,29 +308,58 @@ public class LLVMStackMapInfo {
                 continue;
             }
 
-            assert base.type == Location.Type.Indirect; // spilled values
+            guaranteeValidStatepoint(base.type == Location.Type.Indirect, patchpointID, instructionOffset,
+                            "expected base location at index %s to be indirect, found %s", i, formatLocation(base));
             int[] baseOffsets = getStackOffsets(patchpointID, base);
 
-            assert ref.type == Location.Type.Indirect; // spilled values
+            guaranteeValidStatepoint(ref.type == Location.Type.Indirect, patchpointID, instructionOffset,
+                            "expected reference location at index %s to be indirect, found %s", i + 1, formatLocation(ref));
             int[] derivedOffsets = getStackOffsets(patchpointID, ref);
 
-            assert baseOffsets.length == derivedOffsets.length;
+            guaranteeValidStatepoint(baseOffsets.length == derivedOffsets.length, patchpointID, instructionOffset,
+                            "base/reference stack slot count mismatch at indexes %s/%s: baseSlots=%s, referenceSlots=%s", i, i + 1, baseOffsets.length, derivedOffsets.length);
 
             for (int j = 0; j < baseOffsets.length; ++j) {
                 int baseOffset = baseOffsets[j];
                 int derivedOffset = derivedOffsets[j];
 
                 seenBases.add(baseOffset);
-                /* Derived pointers have their base already registered on the stackmap */
+                /*
+                 * Derived pointers have their base already registered on the stackmap. Match the
+                 * 23.1 backend behavior and keep the first location reported for a stack slot.
+                 */
                 if (!seenOffsets.contains(derivedOffset)) {
                     seenOffsets.add(derivedOffset);
-                    assert compressedOffsets.contains(derivedOffset) == compressedOffsets.contains(baseOffset);
+                    guaranteeValidStatepoint(compressedOffsets.contains(derivedOffset) == compressedOffsets.contains(baseOffset), patchpointID, instructionOffset,
+                                    "compressed addrspace(2) base/reference mismatch: baseOffset=%s, derivedOffset=%s, compressedOffsets=%s",
+                                    baseOffset, derivedOffset, formatOffsets(compressedOffsets));
                     callback.accept(derivedOffset, baseOffset, compressedOffsets.contains(derivedOffset));
                 }
             }
         }
 
-        assert seenOffsets.containsAll(seenBases);
+        guaranteeValidStatepoint(seenOffsets.containsAll(seenBases), patchpointID, instructionOffset,
+                        "not all base offsets are also reported as references: seenBases=%s, seenOffsets=%s", formatOffsets(seenBases), formatOffsets(seenOffsets));
+    }
+
+    private static void guaranteeValidStatepoint(boolean condition, long patchpointID, int instructionOffset, String message, Object... args) {
+        if (!condition) {
+            throw shouldNotReachHere("Invalid LLVM statepoint stack map entry: patchpointID=" + patchpointID + ", instructionOffset=" + instructionOffset + ": " + String.format(message, args));
+        }
+    }
+
+    private static String formatLocation(Location location) {
+        return "Location[type=" + location.type + ", size=" + location.size + ", regNum=" + location.regNum + ", offset=" + location.offset + "]";
+    }
+
+    private static String formatOffsets(EconomicSet<Integer> offsets) {
+        StringBuilder result = new StringBuilder("[");
+        String separator = "";
+        for (int offset : offsets) {
+            result.append(separator).append(offset);
+            separator = ", ";
+        }
+        return result.append(']').toString();
     }
 
     private int[] getStackOffsets(long patchpointID, Location location) {

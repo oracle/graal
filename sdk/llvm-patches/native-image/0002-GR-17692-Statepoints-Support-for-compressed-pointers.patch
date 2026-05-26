@@ -1,0 +1,241 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Loic Ottet <loic.ottet@oracle.com>
+Date: Mon, 23 Sep 2019 16:55:33 +0200
+Subject: [PATCH] [GR-17692] [Statepoints] Support for compressed pointers in
+ the statepoint emission pass
+
+---
+ llvm/include/llvm/IR/IRBuilder.h              |  19 +++++
+ llvm/lib/IR/BuiltinGCs.cpp                    |  27 +++++++
+ llvm/lib/IR/IRBuilder.cpp                     |  22 ++++++
+ .../Scalar/RewriteStatepointsForGC.cpp        |  77 ++++++++++++++++++--
+ 4 files changed, 137 insertions(+), 8 deletions(-)
+
+diff --git a/llvm/include/llvm/IR/IRBuilder.h b/llvm/include/llvm/IR/IRBuilder.h
+--- a/llvm/include/llvm/IR/IRBuilder.h
++++ b/llvm/include/llvm/IR/IRBuilder.h
+@@ -907,6 +907,16 @@ public:
+                                    ArrayRef<Value *> GCArgs,
+                                    const Twine &Name = "");
+
++  /// Create a call to the experimental.gc.statepoint intrinsic to
++  /// start a new statepoint sequence.
++  CallInst *CreateGCStatepointCall(uint64_t ID, uint32_t NumPatchBytes,
++                                   FunctionCallee ActualCallee, uint32_t Flags,
++                                   ArrayRef<Value *> CallArgs,
++                                   std::optional<ArrayRef<Use>> TransitionArgs,
++                                   std::optional<ArrayRef<Value *>> DeoptArgs,
++                                   ArrayRef<Value *> GCArgs,
++                                   const Twine &Name = "");
++
+   /// Conveninence function for the common case when CallArgs are filled
+   /// in using ArrayRef(CS.arg_begin(), CS.arg_end()); Use needs to be
+   /// .get()'ed to get the Value pointer.
+@@ -936,6 +946,15 @@ public:
+       ArrayRef<Value *> InvokeArgs, std::optional<ArrayRef<Use>> TransitionArgs,
+       std::optional<ArrayRef<Use>> DeoptArgs, ArrayRef<Value *> GCArgs,
+       const Twine &Name = "");
++
++  /// Create an invoke to the experimental.gc.statepoint intrinsic to
++  /// start a new statepoint sequence.
++  InvokeInst *CreateGCStatepointInvoke(
++      uint64_t ID, uint32_t NumPatchBytes, FunctionCallee ActualInvokee,
++      BasicBlock *NormalDest, BasicBlock *UnwindDest, uint32_t Flags,
++      ArrayRef<Value *> InvokeArgs, std::optional<ArrayRef<Use>> TransitionArgs,
++      std::optional<ArrayRef<Value *>> DeoptArgs, ArrayRef<Value *> GCArgs,
++      const Twine &Name = "");
+
+   // Convenience function for the common case when CallArgs are filled in using
+   // ArrayRef(CS.arg_begin(), CS.arg_end()); Use needs to be .get()'ed to
+diff --git a/llvm/lib/IR/BuiltinGCs.cpp b/llvm/lib/IR/BuiltinGCs.cpp
+--- a/llvm/lib/IR/BuiltinGCs.cpp
++++ b/llvm/lib/IR/BuiltinGCs.cpp
+@@ -84,6 +84,32 @@ public:
+   }
+ };
+
++/// A GC strategy for the LLVM backend of the Graal compiler. The strategy
++/// is similar to the statepoint-example GC, but adds support for a second
++/// type of pointer in addrspace(2). Live pointers in this address space
++/// are inserted as deopt parameters as well as GC parameters in the
++/// statepoint intrinsic. As a consequence, this GC doesn't support regular
++/// deopt parameters.
++class CompressedPointerGC : public GCStrategy {
++public:
++  CompressedPointerGC() {
++    UseStatepoints = true;
++    UseRS4GC = true;
++    // These options are all gc.root specific, we specify them so that the
++    // gc.root lowering code doesn't run.
++    NeededSafePoints = false;
++    UsesMetadata = false;
++  }
++
++  std::optional<bool> isGCManagedPointer(const Type *Ty) const override {
++    // Method is only valid on pointer typed values.
++    const PointerType *PT = cast<PointerType>(Ty);
++    // addrspace(1) represents absolute tracked pointers, and addrspace(2)
++    // represents heap base-relative pointers.
++    return (1 == PT->getAddressSpace() || 2 == PT->getAddressSpace());
++  }
++};
++
+ /// A GCStrategy for the CoreCLR Runtime. The strategy is similar to
+ /// Statepoint-example GC, but differs from it in certain aspects, such as:
+ /// 1) Base-pointers need not be explicitly tracked and reported for
+@@ -126,6 +152,7 @@ static GCRegistry::Add<ShadowStackGC>
+     C("shadow-stack", "Very portable GC for uncooperative code generators");
+ static GCRegistry::Add<StatepointGC> D("statepoint-example",
+                                        "an example strategy for statepoint");
++static GCRegistry::Add<CompressedPointerGC> F("compressed-pointer", "GC supporting compressed pointers");
+ static GCRegistry::Add<CoreCLRGC> E("coreclr", "CoreCLR-compatible GC");
+
+ // Provide hook to ensure the containing library is fully loaded.
+diff --git a/llvm/lib/IR/IRBuilder.cpp b/llvm/lib/IR/IRBuilder.cpp
+--- a/llvm/lib/IR/IRBuilder.cpp
++++ b/llvm/lib/IR/IRBuilder.cpp
+@@ -778,6 +778,17 @@ CallInst *IRBuilderBase::CreateGCStatepointCall(
+       DeoptArgs, GCArgs, Name);
+ }
+
++CallInst *IRBuilderBase::CreateGCStatepointCall(
++    uint64_t ID, uint32_t NumPatchBytes, FunctionCallee ActualCallee,
++    uint32_t Flags, ArrayRef<Value *> CallArgs,
++    std::optional<ArrayRef<Use>> TransitionArgs,
++    std::optional<ArrayRef<Value *>> DeoptArgs, ArrayRef<Value *> GCArgs,
++    const Twine &Name) {
++  return CreateGCStatepointCallCommon<Value *, Use, Value *, Value *>(
++      this, ID, NumPatchBytes, ActualCallee, Flags, CallArgs, TransitionArgs,
++      DeoptArgs, GCArgs, Name);
++}
++
+ CallInst *IRBuilderBase::CreateGCStatepointCall(
+     uint64_t ID, uint32_t NumPatchBytes, FunctionCallee ActualCallee,
+     ArrayRef<Use> CallArgs, std::optional<ArrayRef<Value *>> DeoptArgs,
+@@ -835,6 +846,17 @@ InvokeInst *IRBuilderBase::CreateGCStatepointInvoke(
+       InvokeArgs, TransitionArgs, DeoptArgs, GCArgs, Name);
+ }
+
++InvokeInst *IRBuilderBase::CreateGCStatepointInvoke(
++    uint64_t ID, uint32_t NumPatchBytes, FunctionCallee ActualInvokee,
++    BasicBlock *NormalDest, BasicBlock *UnwindDest, uint32_t Flags,
++    ArrayRef<Value *> InvokeArgs, std::optional<ArrayRef<Use>> TransitionArgs,
++    std::optional<ArrayRef<Value *>> DeoptArgs, ArrayRef<Value *> GCArgs,
++    const Twine &Name) {
++  return CreateGCStatepointInvokeCommon<Value *, Use, Value *, Value *>(
++      this, ID, NumPatchBytes, ActualInvokee, NormalDest, UnwindDest, Flags,
++      InvokeArgs, TransitionArgs, DeoptArgs, GCArgs, Name);
++}
++
+ InvokeInst *IRBuilderBase::CreateGCStatepointInvoke(
+     uint64_t ID, uint32_t NumPatchBytes, FunctionCallee ActualInvokee,
+     BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Use> InvokeArgs,
+diff --git a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp b/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
+--- a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
++++ b/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
+@@ -1644,6 +1644,28 @@ static StringRef getDeoptLowering(CallBase *Call) {
+   return "live-through";
+ }
+
++static bool supportsCompressedPointers(Function &F) {
++  return F.hasGC() && F.getGC() == "compressed-pointer";
++}
++
++static bool supportsCompressedPointers(CallBase *Call) {
++  return supportsCompressedPointers(*Call->getFunction());
++}
++
++static void getCompressedGCArgs(SmallVectorImpl<Value *> &CompressedArgs,
++                                ArrayRef<Value *> GCArgs) {
++  for (Value *LiveVal : GCArgs) {
++    Type *Ty = LiveVal->getType();
++    if (auto *PT = dyn_cast<PointerType>(Ty)) {
++      if (PT->getAddressSpace() == 2)
++        CompressedArgs.push_back(LiveVal);
++    } else if (auto *VT = dyn_cast<VectorType>(Ty)) {
++      if (VT->getScalarType()->getPointerAddressSpace() == 2)
++        CompressedArgs.push_back(LiveVal);
++    }
++  }
++}
++
+ static void
+ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
+                            const SmallVectorImpl<Value *> &BasePtrs,
+@@ -1828,9 +1850,23 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
+   // Create the statepoint given all the arguments
+   GCStatepointInst *Token = nullptr;
+   if (auto *CI = dyn_cast<CallInst>(Call)) {
+-    CallInst *SPCall = Builder.CreateGCStatepointCall(
+-        StatepointID, NumPatchBytes, CallTarget, Flags, CallArgs,
+-        TransitionArgs, DeoptArgs, GCLive, "safepoint_token");
++    CallInst *SPCall;
++    if (supportsCompressedPointers(Call)) {
++      assert((!DeoptArgs || DeoptArgs->empty()) &&
++             "Deopt args are not supported when using compressed pointers");
++      SmallVector<Value *, 8> CompressedArgsVector;
++      getCompressedGCArgs(CompressedArgsVector, GCLive);
++      std::optional<ArrayRef<Value *>> CompressedArgs =
++          ArrayRef<Value *>(CompressedArgsVector);
++
++      SPCall = Builder.CreateGCStatepointCall(
++          StatepointID, NumPatchBytes, CallTarget, Flags, CallArgs,
++          TransitionArgs, CompressedArgs, GCLive, "safepoint_token");
++    } else {
++      SPCall = Builder.CreateGCStatepointCall(
++          StatepointID, NumPatchBytes, CallTarget, Flags, CallArgs,
++          TransitionArgs, DeoptArgs, GCLive, "safepoint_token");
++    }
+
+     SPCall->setTailCallKind(CI->getTailCallKind());
+     SPCall->setCallingConv(CI->getCallingConv());
+@@ -1859,10 +1895,25 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
+     // Insert the new invoke into the old block.  We'll remove the old one in a
+     // moment at which point this will become the new terminator for the
+     // original block.
+-    InvokeInst *SPInvoke = Builder.CreateGCStatepointInvoke(
+-        StatepointID, NumPatchBytes, CallTarget, II->getNormalDest(),
+-        II->getUnwindDest(), Flags, CallArgs, TransitionArgs, DeoptArgs,
+-        GCLive, "statepoint_token");
++    InvokeInst *SPInvoke;
++    if (supportsCompressedPointers(Call)) {
++      assert((!DeoptArgs || DeoptArgs->empty()) &&
++             "Deopt args are not supported when using compressed pointers");
++      SmallVector<Value *, 8> CompressedArgsVector;
++      getCompressedGCArgs(CompressedArgsVector, GCLive);
++      std::optional<ArrayRef<Value *>> CompressedArgs =
++          ArrayRef<Value *>(CompressedArgsVector);
++
++      SPInvoke = Builder.CreateGCStatepointInvoke(
++          StatepointID, NumPatchBytes, CallTarget, II->getNormalDest(),
++          II->getUnwindDest(), Flags, CallArgs, TransitionArgs, CompressedArgs,
++          GCLive, "statepoint_token");
++    } else {
++      SPInvoke = Builder.CreateGCStatepointInvoke(
++          StatepointID, NumPatchBytes, CallTarget, II->getNormalDest(),
++          II->getUnwindDest(), Flags, CallArgs, TransitionArgs, DeoptArgs,
++          GCLive, "statepoint_token");
++    }
+
+     SPInvoke->setCallingConv(II->getCallingConv());
+
+@@ -2686,8 +2737,18 @@ static bool insertParsePoints(Function &F, DominatorTree &DT,
+   // Insert a dummy call with all of the deopt operands we'll need for the
+   // actual safepoint insertion as arguments.  This ensures reference operands
+   // in the deopt argument list are considered live through the safepoint (and
+-  // thus makes sure they get relocated.)
++  // thus makes sure they get relocated.) When using compressed pointers,
++  // addrspace(2) values are later encoded in the deopt argument section of the
++  // statepoint so the Native Image stack-map parser can distinguish them from
++  // uncompressed references. Those deopt entries are derived from the GC live
++  // set rather than from frontend deopt operands, so no holder is needed here.
+   for (CallBase *Call : ToUpdate) {
++    if (supportsCompressedPointers(F)) {
++      assert(GetDeoptBundleOperands(Call).empty() &&
++             "Deopt args are not supported when using compressed pointers");
++      continue;
++    }
++
+     SmallVector<Value *, 64> DeoptValues;
+
+     for (Value *Arg : GetDeoptBundleOperands(Call)) {
