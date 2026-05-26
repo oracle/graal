@@ -31,12 +31,11 @@ import com.oracle.svm.core.nodes.SafepointCheckNode;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.aarch64.AArch64BlockEndOp;
+import jdk.graal.compiler.lir.aarch64.AArch64ControlFlow;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
 
@@ -47,7 +46,6 @@ import jdk.vm.ci.code.Register;
 public final class AArch64SafepointCheckBranchOp extends AArch64BlockEndOp implements StandardOp.BranchOp {
     public static final LIRInstructionClass<AArch64SafepointCheckBranchOp> TYPE = LIRInstructionClass.create(AArch64SafepointCheckBranchOp.class);
 
-    private static final int COUNTER_SIZE = 32;
     private static final int CBZ_IMMEDIATE_BITS = 21;
 
     private final LabelRef trueDestination;
@@ -65,7 +63,7 @@ public final class AArch64SafepointCheckBranchOp extends AArch64BlockEndOp imple
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
             Register counter = scratchRegister.getRegister();
-            masm.ldr(COUNTER_SIZE, counter, AArch64SafepointCheckOp.counterAddress());
+            masm.ldr(AArch64SafepointCheckOp.COUNTER_SIZE, counter, AArch64SafepointCheckOp.counterAddress());
             if (crb.isSuccessorEdge(trueDestination)) {
                 emitBranch(crb, masm, counter, falseDestination, true);
             } else if (crb.isSuccessorEdge(falseDestination)) {
@@ -81,28 +79,8 @@ public final class AArch64SafepointCheckBranchOp extends AArch64BlockEndOp imple
     }
 
     private void emitBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register counter, LabelRef target, boolean negate) {
-        Consumer<Label> cbzBranch = l -> masm.cbz(COUNTER_SIZE, counter, l);
-        Consumer<Label> cbnzBranch = l -> masm.cbnz(COUNTER_SIZE, counter, l);
-        emitBranchOrFarBranch(crb, masm, this, target.label(), negate ? cbnzBranch : cbzBranch, negate ? cbzBranch : cbnzBranch);
-    }
-
-    private static void emitBranchOrFarBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LIRInstruction instr, Label target, Consumer<Label> originalBranch,
-                    Consumer<Label> negatedBranch) {
-        boolean isFarBranch;
-        if (target.isBound()) {
-            isFarBranch = !NumUtil.isSignedNbit(CBZ_IMMEDIATE_BITS, masm.getPCRelativeOffset(target));
-        } else {
-            int maxLIRDistance = (1 << (CBZ_IMMEDIATE_BITS - 4));
-            isFarBranch = !crb.labelWithinLIRRange(instr, target, maxLIRDistance);
-        }
-
-        if (!isFarBranch) {
-            originalBranch.accept(target);
-        } else {
-            Label skipJump = new Label();
-            negatedBranch.accept(skipJump);
-            masm.jmp(target);
-            masm.bind(skipJump);
-        }
+        Consumer<Label> cbzBranch = l -> masm.cbz(AArch64SafepointCheckOp.COUNTER_SIZE, counter, l);
+        Consumer<Label> cbnzBranch = l -> masm.cbnz(AArch64SafepointCheckOp.COUNTER_SIZE, counter, l);
+        AArch64ControlFlow.emitBranchOrFarBranch(crb, masm, this, CBZ_IMMEDIATE_BITS, target.label(), negate ? cbnzBranch : cbzBranch, negate ? cbzBranch : cbnzBranch);
     }
 }

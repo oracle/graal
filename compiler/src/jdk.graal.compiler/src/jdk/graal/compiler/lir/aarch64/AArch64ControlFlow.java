@@ -160,7 +160,7 @@ public class AArch64ControlFlow {
     /**
      * Emits either a branch or far branch based on the anticipated branch distance.
      */
-    private static void emitBranchOrFarBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LIRInstruction instr, int immSize, Label target, Consumer<Label> originalBranch,
+    public static void emitBranchOrFarBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LIRInstruction instr, int immSize, Label target, Consumer<Label> originalBranch,
                     Consumer<Label> negatedBranch) {
 
         /* First determine whether a farBranch is necessary. */

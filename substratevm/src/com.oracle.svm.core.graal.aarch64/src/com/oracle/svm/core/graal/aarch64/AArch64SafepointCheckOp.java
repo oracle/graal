@@ -46,31 +46,31 @@ import jdk.vm.ci.code.Register;
 public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
 
     public static final LIRInstructionClass<AArch64SafepointCheckOp> TYPE = LIRInstructionClass.create(AArch64SafepointCheckOp.class);
+    static final int COUNTER_SIZE = 32;
 
     public AArch64SafepointCheckOp() {
         super(TYPE);
     }
 
     static AArch64Address counterAddress() {
-        return AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED,
+        return AArch64Address.createImmediateAddress(COUNTER_SIZE, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED,
                         ReservedRegisters.singleton().getThreadRegister(),
                         SafepointCheckCounter.getThreadLocalOffset());
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        int safepointSize = 32; // safepoint is an integer
         AArch64Address safepointAddress = counterAddress();
         try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
             Register scratch = scratchRegister.getRegister();
-            masm.ldr(safepointSize, scratch, safepointAddress);
+            masm.ldr(COUNTER_SIZE, scratch, safepointAddress);
             if (RecurringCallbackSupport.isEnabled()) {
                 /* Before subtraction, the counter is compared against 1. */
-                masm.subs(safepointSize, scratch, scratch, 1);
-                masm.str(safepointSize, scratch, safepointAddress);
+                masm.subs(COUNTER_SIZE, scratch, scratch, 1);
+                masm.str(COUNTER_SIZE, scratch, safepointAddress);
             } else {
                 /* Counter is compared against 0. */
-                masm.compare(safepointSize, scratch, 0);
+                masm.compare(COUNTER_SIZE, scratch, 0);
             }
         }
     }

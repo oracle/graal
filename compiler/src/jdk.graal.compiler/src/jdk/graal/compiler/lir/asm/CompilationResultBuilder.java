@@ -181,20 +181,6 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
                     CompilationResult compilationResult,
                     Register uncompressedNullRegister,
                     List<LIRInstructionVerifier> lirInstructionVerifiers,
-                    LIR lir) {
-        this(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister, lirInstructionVerifiers, lir, false);
-    }
-
-    public CompilationResultBuilder(CoreProviders providers,
-                    FrameMap frameMap,
-                    Assembler<?> asm,
-                    DataBuilder dataBuilder,
-                    FrameContext frameContext,
-                    OptionValues options,
-                    DebugContext debug,
-                    CompilationResult compilationResult,
-                    Register uncompressedNullRegister,
-                    List<LIRInstructionVerifier> lirInstructionVerifiers,
                     LIR lir,
                     boolean delayPostCallNops) {
         super(providers);

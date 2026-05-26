@@ -131,7 +131,8 @@ public interface CompilationResultBuilderFactory {
                             compilationResult,
                             uncompressedNullRegister,
                             lirInstructionVerifiers,
-                            lir);
+                            lir,
+                            false);
         }
     };
 }
