@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -209,19 +209,40 @@ final class HostObject implements TruffleObject {
                         @Cached("receiver.isStaticClass()") boolean cachedStatic,
                         @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
                         @Cached("name") String cachedName,
-                        @Cached("doUncached(receiver, name)") boolean cachedReadable) {
-            assert cachedReadable == doUncached(receiver, name);
+                        @Cached("hasHostMember(receiver, name)") boolean cachedReadable) {
+            assert cachedReadable == hasHostMember(receiver, name);
             return cachedReadable;
         }
 
         @Specialization(replaces = "doCached")
-        static boolean doUncached(HostObject receiver, String name) {
+        static boolean doUncached(HostObject receiver, String name,
+                        @Bind Node node,
+                        @Shared @Cached LookupThisFieldNode lookupThisField,
+                        @Shared @Cached ReadFieldNode readField,
+                        @Shared @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            if (hasHostMember(receiver, name)) {
+                return true;
+            }
             if (receiver.isNull()) {
                 return false;
             }
-            return HostInteropReflect.isReadable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass(), receiver.isClass());
+            HostFieldDesc thisField = lookupThisField.execute(node, receiver, receiver.getLookupClass());
+            if (thisField != null) {
+                Object delegate = readField.execute(node, thisField, receiver);
+                return interop.isMemberReadable(delegate, name);
+            }
+            return false;
         }
 
+        static boolean hasHostMember(HostObject receiver, String name) {
+            if (receiver.isNull()) {
+                return false;
+            }
+            if (HostInteropReflect.isReadable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass(), receiver.isClass())) {
+                return true;
+            }
+            return HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && !receiver.isStaticClass() && !receiver.isClass() && HostAdapterFactory.isAdapterInstance(receiver.obj);
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -278,6 +299,8 @@ final class HostObject implements TruffleObject {
                     @Shared @Cached LookupMethodNode lookupMethod,
                     // force sharing to avoid mixing shared and exclusive caches
                     @Shared @Cached LookupInnerClassNode lookupInnerClass,
+                    @Shared @Cached LookupThisFieldNode lookupThisField,
+                    @Shared @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Shared @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownIdentifierException {
         if (isNull()) {
             error.enter(node);
@@ -307,6 +330,14 @@ final class HostObject implements TruffleObject {
             return HostObject.forStaticClass(asClass(), context);
         } else if (HostInteropReflect.ADAPTER_SUPER_MEMBER.equals(name) && HostAdapterFactory.isAdapterInstance(this.obj)) {
             return HostAdapterFactory.getSuperAdapter(this);
+        } else {
+            HostFieldDesc thisField = lookupThisField.execute(node, this, lookupClass);
+            if (thisField != null) {
+                Object delegate = readField.execute(node, thisField, this);
+                if (interop.isMemberReadable(delegate, name)) {
+                    return interop.readMember(delegate, name);
+                }
+            }
         }
         error.enter(node);
         throw UnknownIdentifierException.create(name);
@@ -320,19 +351,40 @@ final class HostObject implements TruffleObject {
                         @Cached("receiver.isStaticClass()") boolean cachedStatic,
                         @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
                         @Cached("name") String cachedName,
-                        @Cached("doUncached(receiver, name)") boolean cachedModifiable) {
-            assert cachedModifiable == doUncached(receiver, name);
+                        @Cached("doHostModifiable(receiver, name)") boolean cachedModifiable) {
+            assert cachedModifiable == doHostModifiable(receiver, name);
             return cachedModifiable;
         }
 
         @Specialization(replaces = "doCached")
-        static boolean doUncached(HostObject receiver, String name) {
+        static boolean doUncached(HostObject receiver, String name,
+                        @Bind Node node,
+                        @Shared @Cached LookupThisFieldNode lookupThisField,
+                        @Shared @Cached ReadFieldNode readField,
+                        @Shared @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            if (doHostModifiable(receiver, name)) {
+                return true;
+            }
+            if (receiver.isNull()) {
+                return false;
+            }
+            if (IsMemberReadable.hasHostMember(receiver, name)) {
+                return false;
+            }
+            HostFieldDesc thisField = lookupThisField.execute(node, receiver, receiver.getLookupClass());
+            if (thisField != null) {
+                Object delegate = readField.execute(node, thisField, receiver);
+                return interop.isMemberModifiable(delegate, name);
+            }
+            return false;
+        }
+
+        static boolean doHostModifiable(HostObject receiver, String name) {
             if (receiver.isNull()) {
                 return false;
             }
             return HostInteropReflect.isModifiable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
         }
-
     }
 
     @ExportMessage
@@ -357,9 +409,23 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
-    boolean isMemberInsertable(String member) {
+    boolean isMemberInsertable(String member,
+                    @Bind Node node,
+                    @Shared @Cached LookupThisFieldNode lookupThisField,
+                    @Shared @Cached ReadFieldNode readField,
+                    @Shared @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        if (isNull()) {
+            return false;
+        }
+        if (IsMemberReadable.hasHostMember(this, member)) {
+            return false;
+        }
+        HostFieldDesc thisField = lookupThisField.execute(node, this, getLookupClass());
+        if (thisField != null) {
+            Object delegate = readField.execute(node, thisField, this);
+            return interop.isMemberInsertable(delegate, member);
+        }
         return false;
     }
 
@@ -367,25 +433,83 @@ final class HostObject implements TruffleObject {
     void writeMember(String member, Object value,
                     @Bind Node node,
                     @Shared @Cached LookupFieldNode lookupField,
+                    @Shared @Cached LookupThisFieldNode lookupThisField,
+                    @Shared @Cached ReadFieldNode readField,
                     @Shared @Cached WriteFieldNode writeField,
+                    @Shared @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Shared @Cached InlinedBranchProfile error)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         if (isNull()) {
             error.enter(node);
             throw UnsupportedMessageException.create();
         }
-        HostFieldDesc f = lookupField.execute(node, this, getLookupClass(), member, isStaticClass());
-        if (f == null) {
+        Class<?> lookupClass = getLookupClass();
+        boolean isStatic = isStaticClass();
+        HostFieldDesc f = lookupField.execute(node, this, lookupClass, member, isStatic);
+        if (f != null) {
+            try {
+                writeField.execute(node, f, this, value);
+                return;
+            } catch (ClassCastException | NullPointerException e) {
+                // conversion failed by ToJavaNode
+                error.enter(node);
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+            }
+        }
+        HostFieldDesc thisField = lookupThisField.execute(node, this, lookupClass);
+        if (thisField != null && !IsMemberReadable.hasHostMember(this, member)) {
+            Object delegate = readField.execute(node, thisField, this);
+            interop.writeMember(delegate, member, value);
+            return;
+        }
+        error.enter(node);
+        throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    boolean isMemberRemovable(String member,
+                    @Bind Node node,
+                    @Shared @Cached LookupThisFieldNode lookupThisField,
+                    @Shared @Cached ReadFieldNode readField,
+                    @Shared @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        if (isNull()) {
+            return false;
+        }
+        if (IsMemberReadable.hasHostMember(this, member)) {
+            return false;
+        }
+        HostFieldDesc thisField = lookupThisField.execute(node, this, getLookupClass());
+        if (thisField != null) {
+            Object delegate = readField.execute(node, thisField, this);
+            return interop.isMemberRemovable(delegate, member);
+        }
+        return false;
+    }
+
+    @ExportMessage
+    void removeMember(String member,
+                    @Bind Node node,
+                    @Shared @Cached LookupThisFieldNode lookupThisField,
+                    @Shared @Cached ReadFieldNode readField,
+                    @Shared @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Shared @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnknownIdentifierException {
+        if (isNull()) {
+            error.enter(node);
+            throw UnsupportedMessageException.create();
+        }
+        Class<?> lookupClass = getLookupClass();
+        HostFieldDesc thisField = lookupThisField.execute(node, this, lookupClass);
+        if (thisField != null) {
+            if (!IsMemberReadable.hasHostMember(this, member)) {
+                Object delegate = readField.execute(node, thisField, this);
+                interop.removeMember(delegate, member);
+                return;
+            }
             error.enter(node);
             throw UnknownIdentifierException.create(member);
         }
-        try {
-            writeField.execute(node, f, this, value);
-        } catch (ClassCastException | NullPointerException e) {
-            // conversion failed by ToJavaNode
-            error.enter(node);
-            throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
-        }
+        error.enter(node);
+        throw UnsupportedMessageException.create();
     }
 
     @TruffleBoundary
@@ -3680,6 +3804,46 @@ final class HostObject implements TruffleObject {
         @TruffleBoundary
         HostFieldDesc doUncached(HostObject receiver, Class<?> clazz, String name, boolean onlyStatic) {
             return HostInteropReflect.findField(receiver.context, clazz, name, onlyStatic);
+        }
+    }
+
+    @GenerateUncached
+    @GenerateInline
+    @GenerateCached(false)
+    abstract static class LookupThisFieldNode extends Node {
+        static final int LIMIT = 3;
+
+        LookupThisFieldNode() {
+        }
+
+        public abstract HostFieldDesc execute(Node node, HostObject receiver, Class<?> clazz);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"receiver.isStaticClass() == cachedStatic", "receiver.isClass() == cachedClass", "clazz == cachedClazz"}, limit = "LIMIT")
+        HostFieldDesc doCached(HostObject receiver, Class<?> clazz,
+                        @Cached("receiver.isStaticClass()") boolean cachedStatic,
+                        @Cached("receiver.isClass()") boolean cachedClass,
+                        @Cached("clazz") Class<?> cachedClazz,
+                        @Cached("doUncached(receiver, clazz)") HostFieldDesc cachedField) {
+            assert cachedField == doUncached(receiver, clazz);
+            return cachedField;
+        }
+
+        @Specialization(replaces = "doCached")
+        @TruffleBoundary
+        HostFieldDesc doUncached(HostObject receiver, Class<?> clazz) {
+            return lookupThisField(receiver, clazz);
+        }
+
+        @TruffleBoundary
+        static HostFieldDesc lookupThisField(HostObject receiver, Class<?> clazz) {
+            if (receiver.isNull() || receiver.isClass() || receiver.isStaticClass()) {
+                return null;
+            }
+            if (!HostAdapterFactory.isAdapterInstance(receiver.obj)) {
+                return null;
+            }
+            return HostClassDesc.forClass(receiver.context, clazz).lookupField(HostInteropReflect.ADAPTER_DELEGATE_MEMBER, false);
         }
     }
 

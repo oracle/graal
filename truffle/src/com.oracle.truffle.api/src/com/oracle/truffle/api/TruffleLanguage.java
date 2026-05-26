@@ -3555,6 +3555,10 @@ public abstract class TruffleLanguage<C> {
          * object. Can be used to call super methods from guest method overrides.
          * <li>{@code this}: returns the original guest object.
          * </ul>
+         * Direct member operations on an adapter instance for members not provided by the generated
+         * host class are delegated to the original guest object. Java host fields and methods, and
+         * the special {@code super} and {@code this} members, take precedence over same-named guest
+         * object members.
          * <p>
          * Example:<br>
          *
