@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,10 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import jdk.graal.compiler.debug.DebugContext;
 
 public class PosixPerfSubstrateDebugInfoWriter implements SubstrateDebugInfoWriter {
+    @Override
+    public boolean isEnabled() {
+        return JitdumpProvider.canWriteRecords();
+    }
 
     /**
      * Add a debug info record and a code load record to a jitdump file. Returns a

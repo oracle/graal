@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,6 +138,15 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     @Override
+    public String getSymbolName(SharedMethod method) {
+        String name = compilation == null ? null : compilation.getName();
+        if (name == null || name.isEmpty()) {
+            name = method.format("%H.%n(%p)");
+        }
+        return name;
+    }
+
+    @Override
     public String cachePath() {
         return Options.getRuntimeSourceDestDir().toString();
     }
@@ -157,6 +166,11 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
     protected Stream<SharedType> typeInfo() {
         // create type infos on demand for compilation
         return Stream.empty();
+    }
+
+    @Override
+    protected LoaderEntry lookupLoaderEntry(SharedType type) {
+        return NULL_LOADER_ENTRY;
     }
 
     /**

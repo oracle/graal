@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,9 @@
 
 package com.oracle.svm.core.posix.debug.jitdump;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -49,7 +52,7 @@ import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.svm.core.OS;
-import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
 import com.oracle.svm.core.debug.SubstrateDebugInfoProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -63,6 +66,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
@@ -70,9 +74,24 @@ import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 
 public class JitdumpProvider {
     public static class Options {
+        @Option(help = "Enable writing jitdump metadata for run-time compilations. " +
+                        "Requires jitdump support to be built into the image with '-H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump'.")//
+        public static final RuntimeOptionKey<Boolean> RuntimeJitdump = new RuntimeOptionKey<>(true, Options::validateRuntimeJitdump, Immutable,
+                        RelevantForCompilationIsolates);
+
         @Option(help = "Directory where jitdump related files will be placed for perf. Defaults to './jitdump'.")//
-        public static final RuntimeOptionKey<String> RuntimeJitdumpDir = new RuntimeOptionKey<>("jitdump", Options::validateRuntimeJitdumpDir,
-                        RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates);
+        public static final RuntimeOptionKey<String> RuntimeJitdumpDir = new RuntimeOptionKey<>("jitdump", Options::validateRuntimeJitdumpDir, Immutable,
+                        RelevantForCompilationIsolates);
+
+        private static void validateRuntimeJitdump(RuntimeOptionKey<Boolean> optionKey) {
+            if (optionKey.hasBeenSet() && optionKey.getValue() && !OS.LINUX.isCurrent()) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux.");
+            }
+            if (optionKey.hasBeenSet() && optionKey.getValue() && !SubstrateDebugInfoInstaller.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoInstaller.DEBUG_INFO_JITDUMP_NAME)) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(),
+                                "The option requires jitdump support to be built into the image ('-H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump').");
+            }
+        }
 
         private static void validateRuntimeJitdumpDir(RuntimeOptionKey<String> optionKey) {
             if (optionKey.hasBeenSet() && !OS.LINUX.isCurrent()) {
@@ -114,6 +133,10 @@ public class JitdumpProvider {
         return RawFileOperationSupport.nativeByteOrder();
     }
 
+    public static boolean canWriteRecords() {
+        return Options.RuntimeJitdump.getValue() && getFileSupport().isValid(fdPointer.get().read());
+    }
+
     /**
      * The file name of a jitdump file is defined as {@literal jit-<pid>.dump}. The file will be
      * placed in the directory as specified by {@link Options#RuntimeJitdumpDir}.
@@ -141,7 +164,7 @@ public class JitdumpProvider {
      */
     public static RuntimeSupport.Hook startupHook() {
         return isFirstIsolate -> {
-            if (!isFirstIsolate) {
+            if (!isFirstIsolate || !Options.RuntimeJitdump.getValue()) {
                 return;
             }
 
@@ -299,6 +322,10 @@ public class JitdumpProvider {
      * @param compiledMethodEntry the {@code CompiledMethodEntry} of the run-time compiled method
      */
     public static void writeRecords(SubstrateDebugInfoProvider debugInfoProvider, CompiledMethodEntry compiledMethodEntry) {
+        if (!canWriteRecords()) {
+            return;
+        }
+
         MethodEntry methodEntry = compiledMethodEntry.primary().getMethodEntry();
 
         /* Calculate the total size for the record headers and ByteBuffer. */
