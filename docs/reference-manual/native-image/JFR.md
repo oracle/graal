@@ -133,6 +133,15 @@ JFR can be controlled using the Java Diagnostic Command utility (`jcmd`).
 To enable this functionality, `jcmd` support must be configured at build time.
 The following JFR commands are available with `jcmd`: `JFR.start`, `JFR.stop`, `JFR.check`, and `JFR.dump`.
 
+### Emergency Dumps
+
+JFR emergency dumping attempts to persist JFR data to a snapshot (.jfr) file in the event of unexpected VM shutdown.
+In Native Image, an emergency dump will be attempted upon `OutOfMemoryError` if `-XX:+ReportFatalErrorOnOutOfMemoryError` is specified at runtime.
+This means that a JFR emergency dump will only be attempted if the user does not intend to catch the `OutOfMemoryError` and instead requests that the VM fail fatally.
+JFR emergency dumping is not yet supported on Windows. 
+The dump will be made to the current working directory unless `dumppath=<path>` is specified using `-XX:FlightRecorderOptions`.
+The file name will be of the pattern: `svm_oom_pid_<PID>.jfr`.
+
 ### Built-In Events
 
 Many of the VM-level built-in events are available in Native Image.
