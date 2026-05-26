@@ -90,38 +90,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     # $.sulong + sc.post_merge + $.common() + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk-latest-windows-amd64", timelimit: "45:00" },
   ],
 
-  standalone_builds::
-    sc.mapPrototypePlatformName(
-    [
-        $.sulong + $.common(standalone=true) + sc.gateTags("standalone") {
-          job:: "test-ce-standalones-jvm",
-          extra_mx_args+:: ["--env", "ce-llvm-standalones", "--use-llvm-standalone=jvm"],
-        },
-        $.sulong + $.common(standalone=true) + sc.gateTags("standalone") {
-          job:: "test-ce-standalones-native",
-          extra_mx_args+:: ["--env", "ce-llvm-standalones", "--use-llvm-standalone=native"],
-        },
-    ],
-    [
-      [sc.linux_amd64,    [sc.labsjdkLatest]],
-      # GR-50165, GR-73510
-      # [sc.windows_amd64 + { capabilities+: ["windows_server_2016"] },  [sc.labsjdkLatest]],
-      [sc.linux_aarch64,  [sc.labsjdkLatest]],
-      [sc.darwin_aarch64, [sc.labsjdkLatest]],
-    ],
-    [
-      tier2 + { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-linux-amd64",    timelimit: "1:00:00" },
-      # GR-50165, GR-73510
-      # sc.daily + { name: "daily-sulong-test-ce-standalones-jvm-jdk-latest-windows-amd64",  timelimit: "1:00:00" }
-      tier3 + { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-linux-aarch64",  timelimit: "1:00:00" },
-      tier3 + { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-darwin-aarch64", timelimit: "1:00:00" },
-      tier2 + { name: "gate-sulong-test-ce-standalones-native-jdk-latest-linux-amd64",    timelimit: "1:30:00" },
-      # GR-50165, GR-73510
-      # sc.daily + { name: "daily-sulong-test-ce-standalones-native-jdk-latest-windows-amd64",  timelimit: "1:00:00" }
-      tier3 + { name: "gate-sulong-test-ce-standalones-native-jdk-latest-linux-aarch64",  timelimit: "1:00:00" },
-      tier3 + { name: "gate-sulong-test-ce-standalones-native-jdk-latest-darwin-aarch64", timelimit: "1:00:00" },
-    ]),
-
   coverage_builds::
     sc.mapPrototypePlatformName([sc.weekly + $.sulong + sc.coverage($.regular_builds)],
     [
@@ -137,7 +105,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
       { name: "weekly-sulong-coverage-jdk21-darwin-aarch64", timelimit: "1:00:00" },
     ]),
 
-  local _builds = [ sc.defBuild(b) for b in self.regular_builds + self.standalone_builds + self.coverage_builds ],
+  local _builds = [ sc.defBuild(b) for b in self.regular_builds + self.coverage_builds ],
 
   builds: utils.add_defined_in(_builds, std.thisFile),
 }
