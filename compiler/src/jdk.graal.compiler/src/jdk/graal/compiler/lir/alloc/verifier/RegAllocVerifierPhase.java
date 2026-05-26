@@ -89,10 +89,17 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
         public static final OptionKey<Boolean> RAVFailOnFirst = new OptionKey<>(true);
 
         /**
-         * Check for {@link RegisterAllocationPhase#getNeverSpillConstants() neverSpillConstant} setting
+         * Check for {@link RegisterAllocationPhase#getNeverSpillConstants() neverSpillConstant} setting.
          */
         @Option(help = "Verify neverSpillConstants is respected", type = OptionType.Debug)
         public static final OptionKey<Boolean> CheckNeverSpillConstants = new OptionKey<>(false);
+
+        /**
+         * Verify that {@link StandardOp.LoadConstantOp#canRematerializeToStack()} is being respected
+         * by the register allocator.
+         */
+        @Option(help = "Check the location of constant materialization", type = OptionType.Debug)
+        public static final OptionKey<Boolean> CheckConstRematLocation = new OptionKey<>(true);
         // @formatter:on
     }
 

@@ -237,7 +237,10 @@ public class BlockVerifierState {
 
             if (orig.isConstant()) {
                 var constant = orig.asConstant();
-                checkMaterializationLocation(constant, valAllocState);
+
+                if (RegAllocVerifierPhase.Options.CheckConstRematLocation.getValue(options)) {
+                    checkMaterializationLocation(constant, valAllocState);
+                }
             }
 
             return;
