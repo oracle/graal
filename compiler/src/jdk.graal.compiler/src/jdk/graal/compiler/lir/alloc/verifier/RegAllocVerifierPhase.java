@@ -315,6 +315,21 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                             op.bcFrames.add(new RAVInstruction.StateValuePair(values, kinds));
                             frame = frame.caller();
                         }
+
+                        if (!state.hasDebugInfo()) {
+                            /*
+                             * Debug info has to be initialized to get access to virtual objects.
+                             */
+                            state.initDebugInfo();
+                        }
+
+                        var virtObj = state.debugInfo().getVirtualObjectMapping();
+                        if (virtObj != null) {
+                            for (var obj : virtObj) {
+                                var values = obj.getValues().clone();
+                                op.virtualObj.add(new RAVInstruction.StateValuePair(values, obj.getSlotKinds()));
+                            }
+                        }
                     }
                 });
 
@@ -551,6 +566,14 @@ public class RegAllocVerifierPhase extends RegisterAllocationPhase {
                             opRAVInstr.bcFrames.get(i).setCurr(frame.values);
                             frame = frame.caller();
                             i++;
+                        }
+
+                        var virtObj = state.debugInfo().getVirtualObjectMapping();
+                        if (virtObj != null) {
+                            for (int j = 0; j < virtObj.length; j++) {
+                                var obj = virtObj[j];
+                                opRAVInstr.virtualObj.get(j).setCurr(obj.getValues());
+                            }
                         }
                     }
                 });

@@ -50,6 +50,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
+import java.util.ArrayList;
+
 /**
  * Verification state a block is in, holds a mapping between locations and their allocation states,
  * which can be unknown, value (with symbol content) or conflicted; multiple values conflict with
@@ -312,7 +314,8 @@ public class BlockVerifierState {
             checkOperandFlags(op.alive, op);
             checkOperandFlags(op.temp, op);
 
-            checkBytecodeFrames(op);
+            checkStateValues(op.bcFrames, op);
+            checkStateValues(op.virtualObj, op);
 
             if (op.references != null) {
                 checkReferences(op);
@@ -386,20 +389,20 @@ public class BlockVerifierState {
      * @param op Operation holding said frames
      * @throws RAVException when a violation occurs
      */
-    public void checkBytecodeFrames(RAVInstruction.Op op) {
-        for (var frame : op.bcFrames) {
-            for (int i = 0; i < frame.kinds.length; i++) {
-                var origJV = frame.orig[i];
+    public void checkStateValues(ArrayList<RAVInstruction.StateValuePair> pairs, RAVInstruction.Op op) {
+        for (var pair : pairs) {
+            for (int i = 0; i < pair.kinds.length; i++) {
+                var origJV = pair.orig[i];
                 if (!(origJV instanceof AllocatableValue orig) || Value.ILLEGAL.equals(orig)) {
                     continue;
                 }
 
-                var currJV = frame.curr[i];
+                var currJV = pair.curr[i];
                 if (!(currJV instanceof AllocatableValue curr) || Value.ILLEGAL.equals(curr)) {
                     continue;
                 }
 
-                var kind = frame.kinds[i];
+                var kind = pair.kinds[i];
                 if (JavaKind.Long.equals(kind)) {
                     /*
                      * Skipping long(s) because it can be a numeric value or a derived reference /
@@ -411,20 +414,18 @@ public class BlockVerifierState {
                 var origLIRKind = orig.getValueKind(LIRKind.class);
                 var currLIRKind = curr.getValueKind(LIRKind.class);
                 if (kind.isObject()) {
-                    if (!origLIRKind.isValue() && !currLIRKind.isValue()) {
-                        continue;
+                    if (origLIRKind.getPlatformKind().getVectorLength() == 1 && (origLIRKind.isValue() || currLIRKind.isValue())) {
+                        throw new JavaKindReferenceMismatchException(orig, curr, kind, op, block);
                     }
-
-                    throw new JavaKindReferenceMismatchException(orig, curr, kind, op, block);
                 } else {
-                    if (origLIRKind.isValue() && currLIRKind.isValue()) {
+                    if (!origLIRKind.isValue() || !currLIRKind.isValue()) {
                         // Either not a reference or a derived one - which might not be marked as
                         // Object
-                        continue;
+                        throw new JavaKindReferenceMismatchException(orig, curr, kind, op, block);
                     }
-
-                    throw new JavaKindReferenceMismatchException(orig, curr, kind, op, block);
                 }
+
+                checkOperand(RAValue.create(orig), RAValue.create(curr), op);
             }
         }
     }

@@ -251,6 +251,7 @@ public class RAVInstruction {
          * Bytecode frame information for this instruction.
          */
         public ArrayList<StateValuePair> bcFrames;
+        public ArrayList<StateValuePair> virtualObj;
 
         /**
          * List of GC roots, calculated using LocationMarker class, other references in state maps
@@ -303,6 +304,7 @@ public class RAVInstruction {
             this.stateValues = new ValueArrayPair(countValuesProc.getCount());
 
             this.bcFrames = new ArrayList<>();
+            this.virtualObj = new ArrayList<>();
         }
 
         public boolean hasMissingDefinitions() {
