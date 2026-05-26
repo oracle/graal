@@ -219,7 +219,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, int stackSize) {
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize) {
         pthread_attr_t attributes = StackValue.get(pthread_attr_t.class);
         int status = Pthread.pthread_attr_init_no_transition(attributes);
         if (status != 0) {

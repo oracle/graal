@@ -253,6 +253,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int yellowAndRedZoneSize() {
         return Options.StackYellowZoneSize.getValue() + Options.StackRedZoneSize.getValue();
     }

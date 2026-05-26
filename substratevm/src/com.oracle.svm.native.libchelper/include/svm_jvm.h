@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jni.headers;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
+#ifndef SVM_JVM_H
+#define SVM_JVM_H
 
-import org.graalvm.nativeimage.c.CContext;
+#include <jni.h>
+#include <stdarg.h>
+#include <stdio.h>
 
-import com.oracle.svm.core.OS;
-import com.oracle.svm.core.c.ProjectHeaderFile;
+/*
+ * Mirrors the legacy HotSpot JDK1_1InitArgs layout from jvm.h. The public JDK
+ * headers no longer define this structure, but the java launcher still passes
+ * it to JNI_GetDefaultJavaVMInitArgs to query the default Java stack size.
+ */
+typedef struct JDK1_1InitArgs {
+    jint version;
 
-public class JNIHeaderDirectives implements CContext.Directives {
+    char **properties;
+    jint checkSource;
+    jint nativeStackSize;
+    jint javaStackSize;
+    jint minHeapSize;
+    jint maxHeapSize;
+    jint verifyMode;
+    char *classpath;
 
-    private final Path jdkIncludeDir = Paths.get(System.getProperty("java.home")).resolve("include");
+    jint (JNICALL *vfprintf)(FILE *fp, const char *format, va_list args);
+    void (JNICALL *exit)(jint code);
+    void (JNICALL *abort)(void);
 
-    @Override
-    public List<String> getHeaderFiles() {
-        return Arrays.asList("\"" + jdkIncludeDir.resolve("jni.h") + "\"", ProjectHeaderFile.resolve("com.oracle.svm.native.libchelper", "include/svm_jvm.h"));
-    }
+    jint enableClassGC;
+    jint enableVerboseGC;
+    jint disableAsyncGC;
+    jint verbose;
+    jboolean debugging;
+    jint debugPort;
+} JDK1_1InitArgs;
 
-    @Override
-    public List<String> getOptions() {
-        return Arrays.asList("-I" + jdkIncludeDir, "-I" + jdkIncludeDir.resolve(OS.getCurrent() == OS.WINDOWS ? "win32" : OS.getCurrent().asPackageName()));
-    }
-}
+#endif

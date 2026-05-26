@@ -278,10 +278,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     /**
-     * After parsing the isolate arguments in
-     * {@link IsolateArgumentParser#parse(CEntryPointCreateIsolateParameters, IsolateArguments)} the
+     * After parsing the isolate arguments in {@link IsolateArgumentParser#parse} the
      * {@code providedParameters} should no longer be used. Instead {@link IsolateArguments}
      * contains the correct values.
+     * <p>
+     * This method is called via the {@code runtimeCall} in {@link #createIsolateSnippet}.
      */
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)

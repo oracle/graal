@@ -52,7 +52,6 @@ public class TestStackTraceEvent extends JfrRecordingTest {
 
     private static final JfrSeenMethod junitTest = new JfrSeenMethod("test", "()V", 1);
     private static final JfrSeenMethod svmJunitMain = new JfrSeenMethod("main", "([Ljava/lang/String;)V", 9);
-    private static final JfrSeenMethod javaMainRun = new JfrSeenMethod("doRun", "(ILorg/graalvm/nativeimage/c/type/CCharPointerPointer;)I", 10);
 
     @Test
     public void test() throws Throwable {
@@ -102,7 +101,10 @@ public class TestStackTraceEvent extends JfrRecordingTest {
         }
 
         Assert.assertTrue(seenMethod.contains(junitTest));
-        Assert.assertTrue(seenMethod.contains(javaMainRun));
+        /*
+         * JavaMainWrapper helper frames may be inlined differently across libc and static-image
+         * configurations. The native JUnit main frame is the stable lower frame for this test.
+         */
         Assert.assertTrue(seenMethod.contains(svmJunitMain));
     }
 
