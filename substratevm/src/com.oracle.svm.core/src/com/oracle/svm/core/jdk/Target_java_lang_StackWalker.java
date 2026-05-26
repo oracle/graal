@@ -105,7 +105,7 @@ final class Target_java_lang_StackWalker {
     @NeverInline("Starting a stack walk in the caller frame")
     private void forEach(Consumer<? super StackFrame> action) {
         boolean showHiddenFrames = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
-        boolean showReflectFrames = options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
+        boolean showReflectFrames = showHiddenFrames || options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
 
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), new JavaStackFrameVisitor() {
             @Override
@@ -192,7 +192,7 @@ final class Target_java_lang_StackWalker {
             checkState();
 
             boolean showHiddenFrames = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
-            boolean showReflectFrames = options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
+            boolean showReflectFrames = showHiddenFrames || options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
 
             FrameSourceInfo vFrame = null;
             while (true) {
@@ -221,9 +221,10 @@ final class Target_java_lang_StackWalker {
         /**
          * Translates a VM-level frame to source-level frames and remembers any remaining translated
          * caller frames in {@link #sourceLevelVFrame}. The {@code deoptimizedFrame} flag identifies
-         * virtual frames from a {@link DeoptimizedFrame}; those frames do not have their own physical
-         * stack pointer, so implementations must avoid using the current physical frame SP for them.
-         * Regular VM-level frames pass {@code false} and may use their current physical frame SP.
+         * virtual frames from a {@link DeoptimizedFrame}; those frames do not have their own
+         * physical stack pointer, so implementations must avoid using the current physical frame SP
+         * for them. Regular VM-level frames pass {@code false} and may use their current physical
+         * frame SP.
          */
         private FrameSourceInfo translateToSourceLevelVFrames(FrameInfoQueryResult vFrame, boolean deoptimizedFrame) {
             if (InterpreterSupport.isEnabled()) {
@@ -481,9 +482,9 @@ final class Target_java_lang_StackWalker {
             assert InterpreterSupport.isEnabled();
 
             /*
-             * A deoptimized virtual frame does not have its own physical stack pointer. The
-             * current physical frame SP belongs to the deopt stub frame, so pass the null sentinel
-             * and fail loudly if source-frame translation tries to use it.
+             * A deoptimized virtual frame does not have its own physical stack pointer. The current
+             * physical frame SP belongs to the deopt stub frame, so pass the null sentinel and fail
+             * loudly if source-frame translation tries to use it.
              */
             Pointer sp = deoptimizedFrame ? Word.nullPointer() : getCurrentFrame().getSP();
             return JavaStackFrameVisitor.getSourceLevelVFrames(vFrame, sp, null);
