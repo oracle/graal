@@ -37,8 +37,8 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.truffle.nfi.NativeAPI.TruffleContextHandle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.word.impl.Word;

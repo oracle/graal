@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.threadlocal;
+package com.oracle.svm.guest.staging.core.threadlocal;
 
 import java.util.function.IntSupplier;
 
@@ -66,8 +66,7 @@ import org.graalvm.word.WordBase;
  * implementation specific and transparent for users of it. However, the access is fast and never
  * requires object allocation.
  * <p>
- * See also {@link VMThreadLocalInfo} for additional information about how a {@link FastThreadLocal}
- * is handled during build time.
+ * VMThreadLocalInfo stores additional build-time metadata for these values in the core module.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class FastThreadLocalFactory {

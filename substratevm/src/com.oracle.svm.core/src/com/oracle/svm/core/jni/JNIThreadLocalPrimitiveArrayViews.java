@@ -28,8 +28,8 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.jni.headers.JNIMode;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 
 /**
  * Manages per-thread lists of referenced arrays for safe direct memory access from native code.

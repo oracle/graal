@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.thread;
 
-import com.oracle.svm.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 
 /** Marker interface for nodes that access a {@link FastThreadLocal}. */
 public interface VMThreadLocalAccess {

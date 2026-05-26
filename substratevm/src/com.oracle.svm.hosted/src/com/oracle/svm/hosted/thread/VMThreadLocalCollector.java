@@ -36,7 +36,7 @@ import java.util.function.Function;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.shared.option.HostedOptionKey;
-import com.oracle.svm.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;

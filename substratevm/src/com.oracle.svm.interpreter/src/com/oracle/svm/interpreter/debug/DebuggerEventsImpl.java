@@ -27,9 +27,9 @@ package com.oracle.svm.interpreter.debug;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.interpreter.DebuggerSupport;
 import com.oracle.svm.interpreter.InterpreterDirectives;
 import com.oracle.svm.interpreter.InterpreterUtil;
