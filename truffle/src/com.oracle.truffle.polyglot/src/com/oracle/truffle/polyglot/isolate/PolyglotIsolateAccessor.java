@@ -58,6 +58,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -112,6 +113,14 @@ final class PolyglotIsolateAccessor extends Accessor {
                 return false;
             }
             return PolyglotIsolateHostSupport.hasIsolateLibraryForLanguages(languageIds);
+        }
+
+        @Override
+        public Collection<Set<String>> getAvailableIsolatedLanguages() {
+            if (!isIsolateSupported()) {
+                return Set.of();
+            }
+            return PolyglotIsolateHostSupport.getAvailableIsolatedLanguages();
         }
 
         @Override

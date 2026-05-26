@@ -1598,6 +1598,8 @@ public abstract class Accessor {
 
         public abstract boolean hasIsolateLibraryForLanguages(Set<String> languageIds);
 
+        public abstract Collection<Set<String>> getAvailableIsolatedLanguages();
+
         public abstract Engine buildIsolatedEngine(AbstractPolyglotImpl polyglot, Engine localEngine, String[] isolateLanguages, String[] permittedLanguages, SandboxPolicy sandboxPolicy,
                         OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                         boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, boolean registerInActiveEngines, boolean externalProcess, long stackHeadRoom,

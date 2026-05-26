@@ -651,21 +651,26 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 reason = "Unknown cause.";
             }
             String warning;
+            boolean hasExplicitPermittedLanguages = permittedLanguages.length > 0;
+            boolean hasAvailableIsolateLibrary = hasExplicitPermittedLanguages ? EngineAccessor.ISOLATE.hasIsolateLibraryForLanguages(new HashSet<>(Arrays.asList(permittedLanguages)))
+                            : !EngineAccessor.ISOLATE.getAvailableIsolatedLanguages().isEmpty();
             /*
              * Suggest polyglot isolates only when the fallback runtime was not explicitly selected
-             * by an embedder, TruffleAttach initialized successfully, and isolate libraries are
-             * available for all permitted languages.
+             * by an embedder, TruffleAttach initialized successfully, and an isolate library is
+             * available. If no permitted languages were specified, remind the embedder that isolate
+             * execution must select languages explicitly.
              */
             if (!runtime.isExplicitlyRequested() &&
                             JDKSupport.getInitializationErrorMessage() == null &&
-                            EngineAccessor.ISOLATE.hasIsolateLibraryForLanguages(new HashSet<>(Arrays.asList(permittedLanguages)))) {
+                            hasAvailableIsolateLibrary) {
                 warning = String.format(
                                 "The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.\n" +
                                                 "Execution without runtime compilation will negatively impact the guest application performance.\n" +
                                                 "The following cause was found: %s\n" +
                                                 "To enable the optimizing runtime, use one of the following options:\n" +
                                                 "- Run on a Java runtime that supports GraalVM runtime optimization. See https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support for compatibility details.\n" +
-                                                "- Run the guest language in a polyglot isolate by configuring the context builder with `spawnIsolate(!Engine.supportsCompilation())`. " +
+                                                "- Run the guest language in a polyglot isolate by creating the context or engine with explicit permitted languages and enabling isolate execution, " +
+                                                "for example `Context.newBuilder(\"js\").spawnIsolate(!Engine.supportsCompilation()).build()`. " +
                                                 "See https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates for instructions.\n" +
                                                 "To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.",
                                 reason);

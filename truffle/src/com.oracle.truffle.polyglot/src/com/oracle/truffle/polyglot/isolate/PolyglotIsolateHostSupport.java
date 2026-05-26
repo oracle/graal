@@ -75,6 +75,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -101,6 +102,10 @@ final class PolyglotIsolateHostSupport {
             }
         }
         return false;
+    }
+
+    static Collection<Set<String>> getAvailableIsolatedLanguages() {
+        return resolveAvailablePolyglotIsolates(HomeFinder.getInstance()).stream().map(PolyglotIsolateResource::includedLanguages).toList();
     }
 
     static Engine buildIsolatedEngine(AbstractPolyglotImpl polyglot, Engine localEngine, String[] isolateLanguages, String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out,
