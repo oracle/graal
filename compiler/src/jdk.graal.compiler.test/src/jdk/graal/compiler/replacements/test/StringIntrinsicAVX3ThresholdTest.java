@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,16 +52,21 @@ public class StringIntrinsicAVX3ThresholdTest extends SubprocessTest {
          */
     }
 
-    public void testWithAVX3Threshold(Class<? extends GraalCompilerTest> testClass) {
+    public void testWithAVX3Threshold(Class<? extends GraalCompilerTest> testClass, String... extraVmArgs) {
         Runnable nopRunnable = () -> {
             /*
              * The runnable is only relevant when running a test in the same class as the parent
              * process.
              */
         };
+        String[] vmArgs = new String[3 + extraVmArgs.length];
+        vmArgs[0] = "-XX:UseAVX=3";
+        vmArgs[1] = "-XX:+UnlockDiagnosticVMOptions";
+        vmArgs[2] = "-XX:AVX3Threshold=0";
+        System.arraycopy(extraVmArgs, 0, vmArgs, 3, extraVmArgs.length);
         SubprocessUtil.Subprocess subprocess = null;
         try {
-            subprocess = launchSubprocess(testClass, ALL_TESTS, nopRunnable, "-XX:UseAVX=3", "-XX:+UnlockDiagnosticVMOptions", "-XX:AVX3Threshold=0");
+            subprocess = launchSubprocess(testClass, ALL_TESTS, nopRunnable, vmArgs);
         } catch (IOException | InterruptedException e) {
             Assert.fail("subprocess exception: " + e);
         }
@@ -74,8 +79,18 @@ public class StringIntrinsicAVX3ThresholdTest extends SubprocessTest {
     }
 
     @Test
+    public void compressInflateMaxVectorSize16() {
+        testWithAVX3Threshold(StringCompressInflateTest.class, "-XX:MaxVectorSize=16");
+    }
+
+    @Test
     public void compareTo1() {
         testWithAVX3Threshold(StringCompareToTest.class);
+    }
+
+    @Test
+    public void compareTo1MaxVectorSize16() {
+        testWithAVX3Threshold(StringCompareToTest.class, "-XX:MaxVectorSize=16");
     }
 
     @Test
@@ -86,5 +101,10 @@ public class StringIntrinsicAVX3ThresholdTest extends SubprocessTest {
     @Test
     public void countPositives() {
         testWithAVX3Threshold(CountPositivesTest.class);
+    }
+
+    @Test
+    public void countPositivesMaxVectorSize16() {
+        testWithAVX3Threshold(CountPositivesTest.class, "-XX:MaxVectorSize=16");
     }
 }
