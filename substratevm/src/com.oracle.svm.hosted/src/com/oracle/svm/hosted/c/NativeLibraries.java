@@ -505,20 +505,6 @@ public final class NativeLibraries {
         return staticLibs;
     }
 
-    public Collection<Path> getStaticJniLibrariesAndDependencies() {
-        Map<Path, Path> allStaticLibs = getAllStaticLibs();
-        List<Path> staticLibs = new ArrayList<>();
-
-        for (String staticLibraryName : jniStaticLibrariesAndDependencies) {
-            Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
-            if (libraryPath == null) {
-                continue;
-            }
-            staticLibs.add(libraryPath);
-        }
-        return staticLibs;
-    }
-
     private static Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {
         return allStaticLibs.get(Paths.get(getStaticLibraryName(staticLibraryName)));
     }

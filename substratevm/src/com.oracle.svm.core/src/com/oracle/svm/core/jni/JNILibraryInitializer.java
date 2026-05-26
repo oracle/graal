@@ -56,7 +56,7 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
 
     private final EconomicMap<String, CGlobalData<PointerBase>> onLoadCGlobalDataMap = ImageHeapMap.create(Equivalence.IDENTITY, "onLoadCGlobalDataMap");
 
-    private static String getOnLoadName(String libName, boolean isBuiltIn) {
+    public static String getOnLoadName(String libName, boolean isBuiltIn) {
         String name = "JNI_OnLoad";
         if (isBuiltIn) {
             return name + "_" + libName;

@@ -3040,10 +3040,18 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
             if not line or line.isspace():
                 return
             tokens = line.split()
-            if len(tokens) < 6 or tokens[1] not in ('g', 'w') or tokens[2] != 'F' or tokens[3] == '*UND*':
-                mx.logvv('Skipping line: ' + line.rstrip())
-                return
-            symbol = tokens[-1]
+            if mx.is_windows():
+                if '|' not in line or 'External' not in tokens or 'UNDEF' in tokens:
+                    mx.logvv('Skipping line: ' + line.rstrip())
+                    return
+                symbol = line.split('|', 1)[1].strip().split()[0]
+            else:
+                if len(tokens) < 2 or tokens[-2] not in ('T', 'W'):
+                    mx.logvv('Skipping line: ' + line.rstrip())
+                    return
+                symbol = tokens[-1]
+                if mx.is_darwin() and symbol.startswith('_'):
+                    symbol = symbol[1:]
             if any(symbol.startswith(prefix) for prefix in self.symbol_prefixes):
                 mx.logv('Pick static library symbol: ' + symbol)
                 symbols.add(symbol)
@@ -3060,14 +3068,16 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
                 seen_gnu_property_type_5_warnings = True
 
         mx.logv('Collect static library symbols from: ' + static_lib)
-        mx.run(['objdump', '--wide', '--syms', static_lib], out=collect_symbol, err=suppress_gnu_property_type_5_warnings)
+        if mx.is_windows():
+            mx.run(['dumpbin', '/SYMBOLS', static_lib], out=collect_symbol)
+        else:
+            mx.run(['nm', '-g', static_lib], out=collect_symbol, err=suppress_gnu_property_type_5_warnings)
         return symbols
 
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     register_project(SubstrateCompilerFlagsBuilder())
-    if mx.is_linux():
-        register_project(StaticLibrarySymbolsBuilder())
+    register_project(StaticLibrarySymbolsBuilder())
 
     base_jdk_home = mx_sdk_vm.base_jdk().home
     lib_static = join(base_jdk_home, 'lib', 'static')
@@ -3075,8 +3085,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         layout = {
             './': ['file:' + lib_static],
         }
-        if mx.is_linux():
-            layout['./'].append('dependency:svm-static-library-symbols/*')
+        layout['./'].append('dependency:svm-static-library-symbols/*')
     else:
         lib_prefix = mx.add_lib_prefix('')
         lib_suffix = mx.add_static_lib_suffix('')
