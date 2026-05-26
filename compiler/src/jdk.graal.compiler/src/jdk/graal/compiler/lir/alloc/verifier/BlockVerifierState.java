@@ -334,7 +334,7 @@ public class BlockVerifierState {
             var state = values.get(reference);
             if (state.isConflicted()) {
                 var confState = (ConflictedAllocationState) state;
-                for (var valAllocState : confState.getConflictedStates()) {
+                for (var valAllocState : confState.getImmediateConflictedStates()) {
                     if (valAllocState.isUndefinedFromBlock()) {
                         continue; // Undefined in branch
                     }

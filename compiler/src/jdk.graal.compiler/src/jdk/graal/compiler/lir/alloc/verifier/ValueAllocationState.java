@@ -144,9 +144,8 @@ public final class ValueAllocationState extends AllocationState {
             return new ConflictedAllocationState(createUndefined(otherBlock), this);
         }
 
-        if (other.isConflicted()) {
-            var oldConfState = (ConflictedAllocationState) other;
-            var newConfState = new ConflictedAllocationState(oldConfState.conflictedStates);
+        if (other instanceof ConflictedAllocationState otherConflictedState) {
+            var newConfState = new ConflictedAllocationState(otherConflictedState);
             newConfState.addConflictedValue(this);
             return newConfState;
         }

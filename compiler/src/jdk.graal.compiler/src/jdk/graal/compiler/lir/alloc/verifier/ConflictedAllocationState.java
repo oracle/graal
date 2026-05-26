@@ -26,7 +26,10 @@ package jdk.graal.compiler.lir.alloc.verifier;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.util.EconomicHashSet;
+import org.graalvm.collections.Equivalence;
 
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Set;
 
 /**
@@ -35,10 +38,12 @@ import java.util.Set;
  * {@link ValueAllocationState instance}.
  */
 public final class ConflictedAllocationState extends AllocationState {
-    protected final Set<ValueAllocationState> conflictedStates;
+    private final Set<ConflictedAllocationState> parents;
+    private final Set<ValueAllocationState> conflictedStates;
 
     public ConflictedAllocationState() {
         this.conflictedStates = new EconomicHashSet<>();
+        this.parents = new EconomicHashSet<>(Equivalence.IDENTITY);
     }
 
     @SuppressWarnings("this-escape")
@@ -48,20 +53,21 @@ public final class ConflictedAllocationState extends AllocationState {
         addConflictedValue(state2);
     }
 
-    protected ConflictedAllocationState(Set<ValueAllocationState> conflictedStates) {
-        this.conflictedStates = new EconomicHashSet<>(conflictedStates);
+    protected ConflictedAllocationState(ConflictedAllocationState other) {
+        this.conflictedStates = new EconomicHashSet<>();
+        this.parents = new EconomicHashSet<>(other.parents);
     }
 
-    public void addConflictedValue(ValueAllocationState state) {
-        if (hasConflictedValue(state)) {
+    protected void addConflictedValue(ValueAllocationState state) {
+        if (this.conflictedStates.contains(state)) {
             return;
         }
 
         this.conflictedStates.add(state);
     }
 
-    public boolean hasConflictedValue(ValueAllocationState valueAllocationState) {
-        return this.conflictedStates.contains(valueAllocationState);
+    public Set<ValueAllocationState> getImmediateConflictedStates() {
+        return conflictedStates;
     }
 
     /**
@@ -70,7 +76,23 @@ public final class ConflictedAllocationState extends AllocationState {
      * @return Set of {@link ValueAllocationState} instances
      */
     public Set<ValueAllocationState> getConflictedStates() {
-        return this.conflictedStates;
+        Set<ValueAllocationState> allConflictedStates = new EconomicHashSet<>();
+        // Cyclical dependencies between conflicts can occur
+        Set<ConflictedAllocationState> visited = new EconomicHashSet<>(Equivalence.IDENTITY);
+        Queue<ConflictedAllocationState> queue = new LinkedList<>();
+
+        queue.add(this);
+        while (!queue.isEmpty()) {
+            ConflictedAllocationState state = queue.poll();
+            if (visited.contains(state)) {
+                continue;
+            }
+            visited.add(state);
+            queue.addAll(state.parents);
+            allConflictedStates.addAll(state.conflictedStates);
+        }
+
+        return allConflictedStates;
     }
 
     @Override
@@ -90,9 +112,7 @@ public final class ConflictedAllocationState extends AllocationState {
         if (other instanceof ValueAllocationState valueState) {
             this.addConflictedValue(valueState);
         } else if (other instanceof ConflictedAllocationState conflictedState) {
-            for (var otherConfState : conflictedState.getConflictedStates()) {
-                this.addConflictedValue(otherConfState);
-            }
+            this.parents.add(conflictedState);
         } else if (other instanceof UnknownAllocationState) {
             /*
              * Unknown state creates an Illegal ValueAllocationState inside it, because the unknown
@@ -110,7 +130,7 @@ public final class ConflictedAllocationState extends AllocationState {
 
     @Override
     public AllocationState clone() {
-        return new ConflictedAllocationState(this.conflictedStates);
+        return new ConflictedAllocationState(this);
     }
 
     /**

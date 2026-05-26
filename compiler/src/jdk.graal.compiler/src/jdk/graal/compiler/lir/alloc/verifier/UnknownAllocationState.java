@@ -54,7 +54,7 @@ public final class UnknownAllocationState extends AllocationState {
         }
 
         if (other instanceof ConflictedAllocationState conflictedState) {
-            var newConfState = new ConflictedAllocationState(conflictedState.conflictedStates);
+            var newConfState = new ConflictedAllocationState(conflictedState);
             newConfState.addConflictedValue(ValueAllocationState.createUndefined(block));
             return newConfState;
         }
