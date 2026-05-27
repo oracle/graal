@@ -85,7 +85,7 @@ public class LLVMObjectFile extends ObjectFile {
 
     private final List<LLVMDataSectionPart> dataSectionParts = new ArrayList<>();
 
-    public static Map<String, String> sectionToFirstSymbol = new HashMap<>();
+    static final Map<String, String> sectionToFirstSymbol = new HashMap<>();
 
     public LLVMObjectFile(int pageSize, Path tempDir, BigBang bb) {
         super(pageSize);
@@ -200,6 +200,8 @@ public class LLVMObjectFile extends ObjectFile {
     }
 
     private void initializeAllSectionParts(List<ObjectFile.Element> sortedObjectFileElements) {
+        sectionToFirstSymbol.clear();
+        dataSectionParts.clear();
         int id = 0;
 
         for (Element e : sortedObjectFileElements) {
@@ -235,16 +237,29 @@ public class LLVMObjectFile extends ObjectFile {
 
                     for (int i = 0; i < valueArray.length; i += (batchSize / Long.BYTES)) {
                         LLVMValueRef[] batchContent = Arrays.copyOfRange(valueArray, i, Math.min(valueArray.length, i + (batchSize / Long.BYTES)));
-                        int finalI = i;
+                        int batchOffset = i * Long.BYTES;
+                        long batchEnd = Math.min(content.length, batchOffset + batchSize);
+                        boolean isLastBatch = batchEnd == content.length;
                         List<Integer> batchRelocOffsets = section.getRelocations().keySet().stream()
-                                        .filter(relocOffset -> relocOffset >= finalI * Long.BYTES && relocOffset < finalI * Long.BYTES + batchSize)
+                                        .filter(relocOffset -> relocOffset >= batchOffset && relocOffset < batchEnd)
                                         .collect(Collectors.toList());
-                        LLVMDataSectionPart sectionPart = new LLVMDataSectionPart(id, i * Long.BYTES, getPageSize(), e, batchContent, batchRelocOffsets, i == 0 ? symbols : null);
+                        List<LLVMSymtab.Entry> batchSymbols = symbols == null ? null
+                                        : symbols.stream()
+                                                        .filter(symbol -> symbol.getDefinedOffset() >= batchOffset &&
+                                                                        (symbol.getDefinedOffset() < batchEnd || (isLastBatch && symbol.getDefinedOffset() == batchEnd)))
+                                                        .collect(Collectors.toList());
+                        LLVMDataSectionPart sectionPart = new LLVMDataSectionPart(id, batchOffset, getPageSize(), e, batchContent,
+                                        batchRelocOffsets, batchSymbols);
+                        sectionPart.declareBaseSymbol();
                         dataSectionParts.add(sectionPart);
                         id++;
                     }
                 }
             }
+        }
+
+        for (LLVMDataSectionPart sectionPart : dataSectionParts) {
+            sectionPart.computeBitcode();
         }
     }
 

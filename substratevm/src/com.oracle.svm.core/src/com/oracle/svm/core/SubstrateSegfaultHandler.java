@@ -206,11 +206,6 @@ public abstract class SubstrateSegfaultHandler {
             return error == CEntryPointErrors.NO_ERROR;
         }
 
-        /* The LLVM backend doesn't support the register-based approach. */
-        if (SubstrateOptions.useLLVMBackend()) {
-            return false;
-        }
-
         /* Try to determine the isolate via the thread register. */
         if (tryEnterIsolateViaThreadRegister(context)) {
             return true;

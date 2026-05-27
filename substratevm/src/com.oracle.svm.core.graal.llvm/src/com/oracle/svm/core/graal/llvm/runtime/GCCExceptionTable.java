@@ -26,95 +26,79 @@ package com.oracle.svm.core.graal.llvm.runtime;
 
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
-import java.util.Arrays;
-
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.shared.Uninterruptible;
 
 class GCCExceptionTable {
 
-    enum Encoding {
-        ULEB128((byte) 0x1),
-        UDATA2((byte) 0x2),
-        UDATA4((byte) 0x3),
-        UDATA8((byte) 0x4),
-        SLEB128((byte) 0x9),
-        SDATA2((byte) 0xA),
-        SDATA4((byte) 0xB),
-        SDATA8((byte) 0xC);
+    static final long NO_HANDLER = 0;
 
-        byte encoding;
-        static Encoding[] lookupTable = new Encoding[16];
+    private static final int ULEB128 = 0x1;
+    private static final int UDATA4 = 0x3;
 
-        static {
-            Arrays.stream(values()).forEach(value -> lookupTable[value.encoding] = value);
-        }
-
-        Encoding(byte encoding) {
-            this.encoding = encoding;
-        }
-
-        static Encoding parse(int encodingEncoding) {
-            if (encodingEncoding < 0 || encodingEncoding >= lookupTable.length) {
-                return null;
-            }
-            return lookupTable[encodingEncoding];
-        }
-    }
-
-    static Long getHandlerOffset(Pointer buffer, long pcOffset) {
-        Log log = Log.noopLog();
+    @Uninterruptible(reason = "Called from the LLVM personality function while unwinding exceptions.")
+    static long getHandlerInfo(Pointer buffer, long pcOffset) {
 
         CIntPointer offset = UnsafeStackValue.get(Integer.BYTES);
         offset.write(0);
 
-        int header = Byte.toUnsignedInt(buffer.readByte(offset.read()));
+        int header = buffer.readByte(offset.read()) & 0xff;
         offset.write(offset.read() + Byte.BYTES);
-        log.string("header: ").hex(header).newline();
         assert header == 255;
 
-        int typeEncodingEncoding = Byte.toUnsignedInt(buffer.readByte(offset.read()));
+        buffer.readByte(offset.read());
         offset.write(offset.read() + Byte.BYTES);
-        log.string("typeEncodingEncoding: ").hex(typeEncodingEncoding).newline();
 
         long typeBaseOffset = getULSB(buffer, offset);
         long typeEnd = typeBaseOffset + offset.read();
-        log.string("typeBaseOffset: ").unsigned(typeBaseOffset).string(", typeEnd: ").unsigned(typeEnd).newline();
+        assert typeEnd >= typeBaseOffset;
 
-        int siteEncodingEncoding = Byte.toUnsignedInt(buffer.readByte(offset.read()));
+        int siteEncodingEncoding = buffer.readByte(offset.read()) & 0xff;
         offset.write(offset.read() + Byte.BYTES);
-        log.string("siteEncodingEncoding: ").hex(siteEncodingEncoding).newline();
-        Encoding siteEncoding = Encoding.parse(siteEncodingEncoding);
 
         long siteTableLength = getULSB(buffer, offset);
-        log.string("siteTableLength: ").signed(siteTableLength).newline();
 
         long siteTableEnd = offset.read() + siteTableLength;
-        log.string("siteTableEnd: ").signed(siteTableEnd).newline();
         while (offset.read() < siteTableEnd) {
 
-            long startOffset = get(buffer, siteEncoding, offset);
-            long size = get(buffer, siteEncoding, offset);
-            long handlerOffset = get(buffer, siteEncoding, offset);
-            log.string("start: ").unsigned(startOffset).string(", size: ").unsigned(size).string(", handlerOffset: ").unsigned(handlerOffset).newline();
+            long startOffset = get(buffer, siteEncodingEncoding, offset);
+            long size = get(buffer, siteEncodingEncoding, offset);
+            long handlerOffset = get(buffer, siteEncodingEncoding, offset);
 
-            if (startOffset <= pcOffset && startOffset + size >= pcOffset) {
-                return handlerOffset;
+            long action = getULSB(buffer, offset);
+
+            if (startOffset <= pcOffset && pcOffset < startOffset + size) {
+                if (handlerOffset == 0) {
+                    return NO_HANDLER;
+                }
+                return encodeHandlerInfo(handlerOffset, action);
             }
-            int action = Byte.toUnsignedInt(buffer.readByte(offset.read()));
-            offset.write(offset.read() + Byte.BYTES);
-            log.string("action: ").unsigned(action).newline();
-            assert action == 0 || action == 1;
 
             assert offset.read() <= siteTableEnd;
         }
 
-        return null;
+        return NO_HANDLER;
     }
 
+    @Uninterruptible(reason = "Called from the LLVM personality function while unwinding exceptions.")
+    static long getHandlerOffset(long handlerInfo) {
+        return handlerInfo >>> 1;
+    }
+
+    @Uninterruptible(reason = "Called from the LLVM personality function while unwinding exceptions.")
+    static boolean isCleanup(long handlerInfo) {
+        return (handlerInfo & 1) == 0;
+    }
+
+    @Uninterruptible(reason = "Called from the LLVM personality function while unwinding exceptions.")
+    private static long encodeHandlerInfo(long handlerOffset, long action) {
+        return (handlerOffset << 1) | (action != 0 ? 1 : 0);
+    }
+
+    @Uninterruptible(reason = "Called from the LLVM personality function while unwinding exceptions.")
     private static long getULSB(Pointer buffer, CIntPointer offset) {
         int read;
         long result = 0;
@@ -129,7 +113,8 @@ class GCCExceptionTable {
         return result;
     }
 
-    private static long get(Pointer buffer, Encoding encoding, CIntPointer offset) {
+    @Uninterruptible(reason = "Called from the LLVM personality function while unwinding exceptions.")
+    private static long get(Pointer buffer, int encoding, CIntPointer offset) {
         switch (encoding) {
             case ULEB128:
                 return getULSB(buffer, offset);

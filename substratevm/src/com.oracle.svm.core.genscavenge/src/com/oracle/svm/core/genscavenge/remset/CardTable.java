@@ -278,5 +278,14 @@ final class CardTable {
             Pointer referencedObject = ReferenceAccess.singleton().readObjectAsUntrackedPointer(reference, compressed);
             success &= verifyReference(parentObject, cardTableStart, objectsStart, reference, referencedObject, precise);
         }
+
+        @Override
+        public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, boolean compressed, Object holderObject) {
+            /*
+             * The default visitDerivedReferenceBase verifies the base object reference through
+             * visitObjectReferences. The derived slot is an interior address, not an additional
+             * object reference that needs card-table verification.
+             */
+        }
     }
 }

@@ -116,10 +116,12 @@ public class HeapBreakdownProvider {
         ObjectLayout objectLayout = ImageSingletons.lookup(ObjectLayout.class);
 
         Map<HostedClass, HeapBreakdownEntry> classToDataMap = new HashMap<>();
+        HostedType byteArrayType = metaAccess.lookupJavaType(byte[].class);
+        Map<byte[], ObjectInfo> currentLayerByteArrays = new IdentityHashMap<>();
+        Set<ObjectInfo> usedByteArrays = Collections.newSetFromMap(new IdentityHashMap<>());
 
         long totalObjectSize = 0;
-        long stringByteArrayTotalSize = 0;
-        int stringByteArrayTotalCount = 0;
+        List<byte[]> stringByteArrays = new ArrayList<>();
         Set<byte[]> seenStringByteArrays = Collections.newSetFromMap(new IdentityHashMap<>());
         final boolean reportStringBytesConstant = reportStringBytes;
         for (ObjectInfo o : access.getImage().getHeap().getObjects()) {
@@ -131,19 +133,23 @@ public class HeapBreakdownProvider {
             HeapBreakdownEntry heapBreakdownEntry = classToDataMap.computeIfAbsent(o.getClazz(), HeapBreakdownEntry::of);
             heapBreakdownEntry.add(objectSize);
             heapBreakdownEntry.addPartition(o.getPartition(), allImageHeapPartitions);
+            if (o.getClazz().equals(byteArrayType)) {
+                Object object = o.getObject();
+                if (object instanceof byte[] bytes) {
+                    currentLayerByteArrays.put(bytes, o);
+                }
+            }
             if (reportStringBytesConstant && o.getObject() instanceof String string) {
                 byte[] bytes = getInternalByteArray(string);
                 /* Ensure every byte[] is counted only once. */
                 if (seenStringByteArrays.add(bytes)) {
-                    stringByteArrayTotalSize += objectLayout.getArraySize(JavaKind.Byte, bytes.length, true);
-                    stringByteArrayTotalCount++;
+                    stringByteArrays.add(bytes);
                 }
             }
         }
         seenStringByteArrays.clear();
 
         /* Prepare to break down byte[] data in more detail. */
-        HostedType byteArrayType = metaAccess.lookupJavaType(byte[].class);
         HeapBreakdownEntry byteArrayEntry = classToDataMap.remove(byteArrayType);
         assert byteArrayEntry != null : "Unable to find heap breakdown data for byte[] type";
 
@@ -162,8 +168,9 @@ public class HeapBreakdownProvider {
         }
 
         /* Extract byte[] for Strings. */
-        if (stringByteArrayTotalSize > 0) {
-            addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX + "string data"), stringByteArrayTotalSize, stringByteArrayTotalCount);
+        ByteArrayUsage stringByteArrayUsage = consumeByteArrays(currentLayerByteArrays, usedByteArrays, stringByteArrays);
+        if (stringByteArrayUsage.byteSize > 0) {
+            addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX + "string data"), stringByteArrayUsage);
         }
         /* Extract byte[] for code info. */
         List<Integer> codeInfoByteArrayLengths = CodeInfoTable.getCurrentLayerImageCodeCache().getTotalByteArrayLengths();
@@ -177,23 +184,25 @@ public class HeapBreakdownProvider {
         }
         ProgressReporter reporter = ProgressReporter.singleton();
         long resourcesByteArraySize = 0;
+        List<byte[]> resourceByteArrays = new ArrayList<>();
         /*
          * GR-57350: The first part of this condition can be removed once resources are adapted for
          * Layered Images.
          */
         if (!ImageLayerBuildingSupport.buildingExtensionLayer() && resourcesAreReachable) {
             /* Extract byte[] for resources. */
-            int resourcesByteArrayCount = 0;
             for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.currentLayer().resources().getValues()) {
                 if (resourceList.getValueUnconditionally().hasData()) {
                     for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
-                        resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
-                        resourcesByteArrayCount++;
+                        long resourceByteArraySize = objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
+                        resourcesByteArraySize += resourceByteArraySize;
+                        resourceByteArrays.add(resource);
                     }
                 }
             }
-            if (resourcesByteArraySize > 0) {
-                addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteArraySize, resourcesByteArrayCount);
+            ByteArrayUsage resourceByteArrayUsage = consumeByteArrays(currentLayerByteArrays, usedByteArrays, resourceByteArrays);
+            if (resourceByteArrayUsage.byteSize > 0) {
+                addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourceByteArrayUsage);
             }
         }
         reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
@@ -205,18 +214,40 @@ public class HeapBreakdownProvider {
         }
         /* Add remaining byte[]. */
         assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
-        addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "general heap data", "#glossary-general-heap-data"), byteArrayEntry.byteSize, byteArrayEntry.count);
+        addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "general heap data", "#glossary-general-heap-data"), new ByteArrayUsage(byteArrayEntry.byteSize,
+                        byteArrayEntry.count));
         assert byteArrayEntry.byteSize == 0 && byteArrayEntry.count == 0;
         setBreakdownEntries(entries);
     }
 
+    private static ByteArrayUsage consumeByteArrays(Map<byte[], ObjectInfo> currentLayerByteArrays, Set<ObjectInfo> usedByteArrays, List<byte[]> byteArrays) {
+        long byteSize = 0;
+        int count = 0;
+        for (byte[] array : byteArrays) {
+            ObjectInfo objectInfo = currentLayerByteArrays.get(array);
+            if (objectInfo != null && usedByteArrays.add(objectInfo)) {
+                byteSize += objectInfo.getSize();
+                count++;
+            }
+        }
+        return new ByteArrayUsage(byteSize, count);
+    }
+
     private static void addEntry(List<HeapBreakdownEntry> entries, HeapBreakdownEntry byteArrayEntry, HeapBreakdownEntry newData, long byteSize, int count) {
-        newData.add(byteSize, count);
+        addEntry(entries, byteArrayEntry, newData, new ByteArrayUsage(byteSize, count));
+    }
+
+    private static void addEntry(List<HeapBreakdownEntry> entries, HeapBreakdownEntry byteArrayEntry, HeapBreakdownEntry newData, ByteArrayUsage usage) {
+        assert usage.byteSize >= 0 && usage.count >= 0;
+        newData.add(usage.byteSize, usage.count);
         // Assign byte[] entry's partitions to the new more specific byte[] entry.
         newData.copyPartitions(byteArrayEntry);
         entries.add(newData);
-        byteArrayEntry.remove(byteSize, count);
+        byteArrayEntry.remove(usage.byteSize, usage.count);
         assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
+    }
+
+    private record ByteArrayUsage(long byteSize, int count) {
     }
 
     private static byte[] getInternalByteArray(String string) {

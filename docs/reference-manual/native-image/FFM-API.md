@@ -13,6 +13,7 @@ It was finalized in JDK 22 with [JEP 454](https://openjdk.org/jeps/454){:target=
 This page gives an overview of the FFM API support in Native Image.
 
 Support for the Foreign Function and Memory API in Native Image is enabled by default starting with GraalVM 25. It can be disabled (for example, to reduce binary size) using the `-H:-ForeignAPISupport` option, along with `-H:+UnlockExperimentalVMOptions`.
+The LLVM backend does not support the FFM API; when `--tool:llvm-backend` is used, FFM API support is disabled.
 Modules that are permitted to perform _restricted_ native operations (including creating handles for calls to or from native code) must be specified using the `--enable-native-access=` option.
 
 ## Foreign Memory

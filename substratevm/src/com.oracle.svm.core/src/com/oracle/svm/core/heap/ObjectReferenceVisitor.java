@@ -24,11 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
-import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 /**
@@ -55,17 +52,29 @@ public interface ObjectReferenceVisitor {
     void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count);
 
     /**
+     * Visits the base reference for one or more derived references. This method is called once
+     * before the corresponding {@link #visitDerivedReference} calls for the same base reference.
+     */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
+    default void visitDerivedReferenceBase(Pointer baseObjRef, boolean compressed, int referenceSize, Object holderObject) {
+        visitObjectReferences(baseObjRef, compressed, referenceSize, holderObject, 1);
+    }
+
+    /**
      * Visits a derived reference. Derived references can only be on the stack or in a
      * {@link StoredContinuation}.
      *
      * @param baseObjRef Address where the base reference is stored.
      * @param derivedObjRef Address where the derived reference is stored.
+     * @param compressed true if the references are regular Java references (like an instance
+     *            field), false if they are absolute word-sized pointers (like an uncompressed
+     *            pointer on the stack).
      * @param holderObject The object containing the reference, or {@code null} if the reference is
      *            not part of a Java object (e.g., the reference is on the stack or in a data
      *            structure that is located in native memory).
      */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    default void visitDerivedReference(@SuppressWarnings("unused") Pointer baseObjRef, @SuppressWarnings("unused") Pointer derivedObjRef, @SuppressWarnings("unused") Object holderObject) {
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
+    default void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, boolean compressed, Object holderObject) {
         throw VMError.shouldNotReachHere("Derived references are not supported by this visitor.");
     }
 }

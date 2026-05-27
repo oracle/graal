@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.llvm.LLVMGenerator;
 import com.oracle.svm.core.graal.llvm.LLVMNativeImageCodeCache.StackMapDumper;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -169,7 +171,8 @@ public class LLVMObjectFileReader {
 
         long startPatchpointID = compilation.getInfopoints().stream().filter(ip -> ip.reason == InfopointReason.METHOD_START).findFirst()
                         .orElseThrow(() -> new GraalError("No method start infopoint: " + methodSymbolName)).pcOffset;
-        int totalFrameSize = NumUtil.safeToInt(info.getFunctionStackSize(startPatchpointID) + LLVMTargetSpecific.get().getCallFrameSeparation());
+        long frameSize = info.getFunctionStackSize(startPatchpointID) + LLVMTargetSpecific.get().getCallFrameSeparation();
+        int totalFrameSize = NumUtil.safeToInt(frameSize == 0 ? SubstrateTarget.singleton().stackAlignment : frameSize);
         compilation.setTotalFrameSize(totalFrameSize);
         stackMapDumper.startDumpingFunction(methodSymbolName, id, totalFrameSize);
 
@@ -177,11 +180,15 @@ public class LLVMObjectFileReader {
         for (Infopoint infopoint : compilation.getInfopoints()) {
             if (infopoint instanceof Call) {
                 Call call = (Call) infopoint;
+                Integer referenceMapSourcePatchpointId = LLVMGenerator.getJavaFrameAnchorReferenceMapSource(compilation, call.pcOffset);
 
                 /* Optimizations might have duplicated some calls. */
                 for (int actualPcOffset : info.getPatchpointOffsets(call.pcOffset)) {
+                    int referenceMapPatchpointId = referenceMapSourcePatchpointId == null ? call.pcOffset : referenceMapSourcePatchpointId;
+                    /* JavaFrameAnchor IP stackmaps reuse the following Java call's statepoint map. */
+                    int referenceMapPcOffset = referenceMapSourcePatchpointId == null ? actualPcOffset : getReferenceMapPcOffset(info, referenceMapPatchpointId, actualPcOffset);
                     SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
-                    info.forEachStatepointOffset(call.pcOffset, actualPcOffset, referenceMap::markReferenceAtOffset);
+                    info.forEachStatepointOffset(referenceMapPatchpointId, referenceMapPcOffset, referenceMap::markReferenceAtOffset);
                     stackMapDumper.dumpCallSite(call, actualPcOffset, referenceMap);
                     newInfopoints.add(new Call(call.target, actualPcOffset, call.size, call.direct, copyWithReferenceMap(call.debugInfo, referenceMap)));
                 }
@@ -191,6 +198,24 @@ public class LLVMObjectFileReader {
 
         compilation.clearInfopoints();
         newInfopoints.forEach(compilation::addInfopoint);
+    }
+
+    private static int getReferenceMapPcOffset(LLVMStackMapInfo info, int referenceMapPatchpointId, int anchorPcOffset) {
+        int[] referenceMapPcOffsets = info.getPatchpointOffsets(referenceMapPatchpointId);
+        if (referenceMapPcOffsets.length == 0) {
+            throw new GraalError("Missing LLVM statepoint stack map record for JavaFrameAnchor reference map source: patchpointID=%s, anchorOffset=%s", referenceMapPatchpointId, anchorPcOffset);
+        }
+        Arrays.sort(referenceMapPcOffsets);
+        for (int referenceMapPcOffset : referenceMapPcOffsets) {
+            if (referenceMapPcOffset > anchorPcOffset) {
+                return referenceMapPcOffset;
+            }
+        }
+        if (referenceMapPcOffsets.length == 1) {
+            return referenceMapPcOffsets[0];
+        }
+        throw new GraalError("Could not match JavaFrameAnchor stack map to reference map source: patchpointID=%s, anchorOffset=%s, sourceOffsets=%s",
+                        referenceMapPatchpointId, anchorPcOffset, Arrays.toString(referenceMapPcOffsets));
     }
 
     private static DebugInfo copyWithReferenceMap(DebugInfo debugInfo, ReferenceMap referenceMap) {
@@ -213,7 +238,8 @@ public class LLVMObjectFileReader {
         private LLVMTextSectionInfo(LLVMSectionInfo<Long, SymbolOffset> sectionInfo) {
             this.codeSize = sectionInfo.sectionInfo;
             for (SymbolOffset symbolOffset : sectionInfo.symbolInfo) {
-                if (LLVMTargetSpecific.get().isSymbolValid(symbolOffset.symbol)) {
+                int offset = symbolOffset.offset;
+                if (offset >= 0 && offset < codeSize && LLVMTargetSpecific.get().isSymbolValid(symbolOffset.symbol)) {
                     offsetToSymbol.put(symbolOffset.offset, symbolOffset.symbol);
                     symbolToOffset.put(symbolOffset.symbol, symbolOffset.offset);
                 }

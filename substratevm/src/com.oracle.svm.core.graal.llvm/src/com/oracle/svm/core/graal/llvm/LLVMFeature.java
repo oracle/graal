@@ -69,12 +69,18 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ModuleSupport;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /*
  * This feature enables the LLVM backend of Native Image. It does so by registering the backend,
@@ -100,6 +106,8 @@ public class LLVMFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        LLVMVersionChecker.checkLLVMVersion();
+
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, LLVMGraphBuilderPlugins.class);
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, SubstrateLLVMLoweringProvider.class);
 
@@ -107,7 +115,7 @@ public class LLVMFeature implements InternalFeature {
 
         ImageSingletons.add(SubstrateBackendFactory.class, new LLVMSubstrateBackendFactory());
 
-        ImageSingletons.add(SubstrateLoweringProviderFactory.class, SubstrateLLVMLoweringProvider::new);
+        ImageSingletons.add(SubstrateLoweringProviderFactory.class, new LLVMSubstrateLoweringProviderFactory());
 
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new LLVMCodeCacheFactory());
 
@@ -121,7 +129,7 @@ public class LLVMFeature implements InternalFeature {
 
         ImageSingletons.add(TargetGraphBuilderPlugins.class, new LLVMGraphBuilderPlugins());
 
-        ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new SubstrateSuitesCreatorProvider());
+        ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new LLVMSubstrateSuitesCreatorProvider());
     }
 
     @Override
@@ -137,18 +145,9 @@ public class LLVMFeature implements InternalFeature {
     }
 
     static class LLVMVersionChecker {
-        private static final int MIN_LLVM_VERSION = 8;
-        private static final int MIN_LLVM_OPTIMIZATIONS_VERSION = 9;
-        private static final int llvmVersion = getLLVMVersion();
+        private static final int MIN_LLVM_VERSION = 20;
 
-        static boolean useExplicitSelects() {
-            if (!Platform.includedIn(Platform.AMD64.class)) {
-                return false;
-            }
-            return llvmVersion < MIN_LLVM_OPTIMIZATIONS_VERSION;
-        }
-
-        private static int getLLVMVersion() {
+        static void checkLLVMVersion() {
             String versionString;
             try {
                 versionString = LLVMToolchain.runLLVMCommand("llvm-config", null, "--version");
@@ -161,11 +160,7 @@ public class LLVMFeature implements InternalFeature {
 
             if (version < MIN_LLVM_VERSION) {
                 throw UserError.abort("Unsupported LLVM version: %d. Supported versions are LLVM %d and above", version, MIN_LLVM_VERSION);
-            } else if (LLVMOptions.BitcodeOptimizations.getValue() && version < MIN_LLVM_OPTIMIZATIONS_VERSION) {
-                throw UserError.abort("Unsupported LLVM version to enable bitcode optimizations: %d. Supported versions are LLVM %d.0.0 and above", version, MIN_LLVM_OPTIMIZATIONS_VERSION);
             }
-
-            return version;
         }
     }
 
@@ -175,6 +170,19 @@ public class LLVMFeature implements InternalFeature {
         public SubstrateBackend newBackend(Providers newProviders) {
             return new SubstrateLLVMBackend(newProviders);
         }
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    private static final class LLVMSubstrateLoweringProviderFactory implements SubstrateLoweringProviderFactory {
+        @Override
+        public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                        MetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
+            return new SubstrateLLVMLoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
+        }
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    private static final class LLVMSubstrateSuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     }
 
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)

@@ -73,6 +73,16 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         }
     }
 
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void visitDerivedReference(Pointer baseObjRef, Pointer derivedObjRef, boolean compressed, Object holderObject) {
+        /*
+         * The default visitDerivedReferenceBase processes the base object reference through
+         * visitObjectReferences. The derived slot is an interior address and must not be checked as
+         * a separate object start.
+         */
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isReachable(Pointer ptrToObj) {
         assert ptrToObj.isNonNull();

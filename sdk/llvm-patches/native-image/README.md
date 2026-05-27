@@ -9,3 +9,4 @@ or in preparation for such review:
 | Patch | Ticket(s) |
 |:------|:----------|
 | [AArch64] Introduce option to force placement of the frame record on top of the stack frame | [D150938](https://reviews.llvm.org/D150938) |
+| [Statepoints] Support for compressed pointers in the statepoint emission pass | [D150936](https://reviews.llvm.org/D150936) |

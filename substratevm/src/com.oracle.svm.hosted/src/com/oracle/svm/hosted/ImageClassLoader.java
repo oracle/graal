@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
@@ -68,7 +69,6 @@ import jdk.vm.ci.meta.annotation.Annotated;
  * ensure the latter are _only_ managed by {@link GuestTypes}.
  */
 public final class ImageClassLoader {
-
     /**
      * The types, methods and fields available in the guest context.
      */
@@ -481,6 +481,15 @@ public final class ImageClassLoader {
         GuestAccess guestAccess = GuestAccess.get();
         ResolvedJavaModule m0 = guestAccess.getModule(guestAccess.lookupType(ImageSingletons.lookup(VMFeature.class).getClass()));
         ResolvedJavaModule m1 = guestAccess.getModule(guestAccess.lookupType(SVMHost.class));
-        coreModules = m0.equals(m1) ? Set.of(m0) : Set.of(m0, m1);
+        Set<ResolvedJavaModule> modules = new LinkedHashSet<>();
+        modules.add(m0);
+        modules.add(m1);
+        if (SubstrateOptions.useLLVMBackend()) {
+            String llvmBackendModule = "org.graalvm.nativeimage.llvm";
+            modules.add(guestAccess.bootModuleLayer().findModule(llvmBackendModule)
+                            .orElseThrow(() -> UserError.abort("The LLVM backend module '%s' is not available. Use --tool:llvm-backend or select a different compiler backend.",
+                                            llvmBackendModule)));
+        }
+        coreModules = Collections.unmodifiableSet(modules);
     }
 }
