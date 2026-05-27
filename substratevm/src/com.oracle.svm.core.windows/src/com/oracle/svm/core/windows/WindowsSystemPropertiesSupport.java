@@ -195,9 +195,8 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         /*
          * HotSpot sets sun.boot.library.path to <java.home>\bin on Windows. For shared-library
          * images, the loaded image can live outside the JDK, so prefer java.home if it was
-         * explicitly initialized. Otherwise derive the JDK home from the launcher. Standalone
-         * native images outside a JDK layout do not have a HotSpot boot library directory, so leave
-         * the property unset in that case.
+         * explicitly initialized. Otherwise derive the JDK home from the launcher and fall back to
+         * the launcher directory only when no enclosing JDK home is found.
          */
         String executableDirectory = executableDirectory();
         VMError.guarantee(executableDirectory != null, "Could not determine value of sun.boot.library.path");
@@ -208,7 +207,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         if (javaHome != null) {
             return childPath(javaHome, "bin");
         }
-        return null;
+        return executableDirectory;
     }
 
     @Override
