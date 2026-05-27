@@ -32,9 +32,9 @@ import com.oracle.svm.core.heap.DynamicHeapSizeManager;
 /**
  * This class provides the implementation of a dynamic collection policy that calls into an instance
  * of {@link DynamicHeapSizeManager} if it exists, otherwise the implementation is equivalent to
- * {@link AdaptiveCollectionPolicy2}.
+ * {@link AdaptiveCollectionPolicy}.
  */
-class DynamicCollectionPolicy extends AdaptiveCollectionPolicy2 {
+class DynamicCollectionPolicy extends AdaptiveCollectionPolicy {
     @Override
     public String getName() {
         return "dynamic";
