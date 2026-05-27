@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -325,31 +325,36 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             this.timeCompilationStarted = System.nanoTime();
         }
 
-        int finish() {
-            return (int) (System.nanoTime() - timeCompilationStarted) / 1_000_000;
+        long finish() {
+            return System.nanoTime() - timeCompilationStarted;
         }
     }
 
     private static final class Statistics implements Runnable {
+        private static final long NANOS_PER_MILLI = 1_000_000L;
 
         private long compiledMethods;
         private long bailouts;
         private long compiledCodeSize;
         private long totalTime;
-        private int peakTime;
+        private long totalTimeNanosRemainder;
+        private long peakTime;
         final AtomicLong invalidations = new AtomicLong();
 
         Statistics() {
         }
 
-        synchronized void finishCompilation(int time, boolean bailout, int codeSize) {
+        synchronized void finishCompilation(long timeNanos, boolean bailout, int codeSize) {
             compiledMethods++;
             if (bailout) {
                 bailouts++;
             }
             compiledCodeSize += codeSize;
-            totalTime += time;
-            peakTime = Math.max(peakTime, time);
+            totalTime += timeNanos / NANOS_PER_MILLI;
+            totalTimeNanosRemainder += timeNanos % NANOS_PER_MILLI;
+            totalTime += totalTimeNanosRemainder / NANOS_PER_MILLI;
+            totalTimeNanosRemainder %= NANOS_PER_MILLI;
+            peakTime = Math.max(peakTime, timeNanos / NANOS_PER_MILLI);
         }
 
         @Override
