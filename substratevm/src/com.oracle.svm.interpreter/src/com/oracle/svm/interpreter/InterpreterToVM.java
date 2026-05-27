@@ -271,10 +271,12 @@ public final class InterpreterToVM {
     @SuppressFBWarnings(value = "IMSE_DONT_CATCH_IMSE", justification = "Intentional.")
     public static void monitorExit(InterpreterFrame frame, Object obj) throws SemanticJavaException {
         assert obj != null;
+        if (!frame.removeLock(obj)) {
+            // SVM enforces structured locking for interpreted monitor bytecodes.
+            throw SemanticJavaException.raise(new IllegalMonitorStateException());
+        }
         try {
             MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
-            // GR-55049: Ensure that SVM doesn't allow non-structured locking.
-            frame.removeLock(obj);
         } catch (IllegalMonitorStateException e) {
             // GR-55050: Hide intermediate frames on exception.
             throw SemanticJavaException.raise(e);

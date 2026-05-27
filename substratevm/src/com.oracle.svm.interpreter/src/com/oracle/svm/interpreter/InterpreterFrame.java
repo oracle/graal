@@ -30,7 +30,6 @@ import java.util.Arrays;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.shared.util.VMError;
 
 /// Stores JVM locals and operand stack slots for one interpreted frame.
 ///
@@ -174,21 +173,23 @@ public final class InterpreterFrame {
         }
     }
 
-    void removeLock(Object ref) {
+    /// Removes one frame-local monitor acquisition for `ref`, if this frame recorded one.
+    boolean removeLock(Object ref) {
         assert ref != null;
         if (lockCount > 0 && locks[lockCount - 1] == ref) {
             // Fast path, balanced locks.
             locks[--lockCount] = null;
+            return true;
         } else {
             lockCount = -1;
             // Unbalanced locks, linear scan.
             for (int i = 0; i < locks.length; ++i) {
                 if (locks[i] == ref) {
                     locks[i] = null;
-                    return;
+                    return true;
                 }
             }
-            throw VMError.shouldNotReachHere("lock not found in interpreter frame");
+            return false;
         }
     }
 
