@@ -42,7 +42,7 @@ import jdk.graal.compiler.word.Word;
  * less concern about defending against that. It's also expected that 16G is a reasonable limit for
  * a libgraal JIT compilation.
  */
-final class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy2 {
+class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
 
     public static final class Options {
         @Option(help = "Ratio of used bytes to total allocated bytes for eden space. Setting it to a smaller value " +
@@ -118,15 +118,18 @@ final class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy2 {
     @Override
     public void onCollectionEnd(boolean completeCollection, GCCause cause) {
         super.onCollectionEnd(completeCollection, cause);
-        // Note: this might adjust eden size after a full collection when the base policy does not.
-        maybeAdjustEdenSize(completeCollection, cause);
         sizeBefore = Word.zero();
         lastGCCause = cause;
     }
 
+    @Override
+    protected boolean shouldUpdateStats(GCCause cause) {
+        return cause == GCCause.HintedGC || super.shouldUpdateStats(cause);
+    }
+
     /**
-     * Potentially adjust the size of the eden space, overriding decisions of the base policy.
-     *
+     * The adjusting logic are as follows:
+     * 
      * 1. if we hit hinted GC twice in a row, there is no allocation failure in between. If the eden
      * space is previously expanded, we will aggressively shrink the eden space to half, such that
      * the memory footprint will be lower in subsequent execution.
@@ -135,7 +138,8 @@ final class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy2 {
      * continuously high memory consumption (e.g, a huge libgraal compilation). In such case, we
      * will double the eden space to avoid frequent GCs.
      */
-    private void maybeAdjustEdenSize(boolean completeCollection, GCCause cause) {
+    @Override
+    protected void computeEdenSpaceSize(boolean completeCollection, GCCause cause) {
         if (cause == GCCause.HintedGC) {
             if (completeCollection && lastGCCause == GCCause.HintedGC) {
                 UnsignedWord curEden = sizes.getEdenSize();
@@ -148,16 +152,13 @@ final class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy2 {
             UnsignedWord sizeAfter = GCImpl.getChunkBytes();
             if (sizeBefore.notEqual(0) && sizeBefore.belowThan(sizeAfter.multiply(2))) {
                 UnsignedWord curEden = sizes.getEdenSize();
-                UnsignedWord newEden = UnsignedUtils.min(computeCurrentEdenLimit(), alignUp(curEden.multiply(2)));
+                UnsignedWord newEden = UnsignedUtils.min(computeEdenLimit(), alignUp(curEden.multiply(2)));
                 if (curEden.belowThan(newEden)) {
                     sizes.setEdenSize(newEden);
                 }
+            } else {
+                super.computeEdenSpaceSize(completeCollection, cause);
             }
         }
-    }
-
-    /** The maximum size of eden given the current size of the survivor spaces. */
-    private UnsignedWord computeCurrentEdenLimit() {
-        return alignDown(sizes.getMaxYoungSize().subtract(sizes.getSurvivorSize().multiply(2)));
     }
 }
