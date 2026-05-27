@@ -154,9 +154,9 @@ final class JDKSupport {
             try {
                 System.load(attachLibPath);
             } catch (UnsatisfiedLinkError failedToLoad) {
-                String errorMessage = String.format("Unable to load the TruffleAttach library %s. A common reason is that truffle-api is loaded by multiple class loaders. " +
-                                "The optimizing Truffle runtime can be loaded only once per JVM. Use a common shared class loader for Truffle related JARs, " +
-                                "for example by moving truffle-api and its dependencies to the system class loader (classpath/module-path).",
+                String errorMessage = String.format("The Truffle attach library could not be loaded: %s. " +
+                                "This commonly happens when Truffle JARs are loaded by multiple class loaders. " +
+                                "Load polyglot languages and its dependencies from a common parent class loader, such as the application class path or module path.",
                                 attachLibPath);
                 performTruffleAttachLoadFailureAction(errorMessage, failedToLoad);
                 return Pair.create(null, errorMessage);

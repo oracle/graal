@@ -1275,9 +1275,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         if (EngineAccessor.ISOLATE.hasIsolateLibraryForLanguages(Set.of(id))) {
             throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available in this engine. A polyglot isolate for '%s' is available, " +
                             "but languages provided as polyglot isolates are selected only when the engine or context is created with explicit permitted languages. " +
-                            "To use it, create the context or engine with '%s' as a permitted language and enable isolate execution, for example Context.newBuilder(\"%s\").spawnIsolate(true).build(). " +
-                            "If you intended to run '%s' without a polyglot isolate, add the regular language dependency org.graalvm.polyglot:%s. Available languages are: %s.",
-                            id, id, id, id, id, id, allLanguages));
+                            "To use it, create the context or engine with '%s' as a permitted language, for example Context.newBuilder(\"%s\") or Contex.create(\"%s\").",
+                            id, id, id, id, id));
         } else {
             throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available. %s%sAvailable languages are: %s.", id, didYouMean, internalLanguageHint,
                             allLanguages));

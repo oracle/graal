@@ -69,6 +69,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
@@ -663,17 +665,19 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (!runtime.isExplicitlyRequested() &&
                             JDKSupport.getInitializationErrorMessage() == null &&
                             hasAvailableIsolateLibrary) {
+                Stream<String> stream = hasExplicitPermittedLanguages ? Arrays.stream(permittedLanguages)
+                                : EngineAccessor.ISOLATE.getAvailableIsolatedLanguages().iterator().next().stream();
+                String permittedLanguagesParameters = stream.map((id) -> '"' + id + '"').collect(Collectors.joining(", "));
                 warning = String.format(
                                 "The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.\n" +
                                                 "Execution without runtime compilation will negatively impact the guest application performance.\n" +
                                                 "The following cause was found: %s\n" +
                                                 "To enable the optimizing runtime, use one of the following options:\n" +
                                                 "- Run on a Java runtime that supports GraalVM runtime optimization. See https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support for compatibility details.\n" +
-                                                "- Run the guest language in a polyglot isolate by creating the context or engine with explicit permitted languages and enabling isolate execution, " +
-                                                "for example `Context.newBuilder(\"js\").spawnIsolate(!Engine.supportsCompilation()).build()`. " +
-                                                "See https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates for instructions.\n" +
+                                                "- Enable polyglot isolate execution for explicitly selected languages, for example Context.newBuilder(%s).spawnIsolate(!Engine.supportsCompilation()).build(). " +
+                                                "See https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates for instructions." +
                                                 "To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.",
-                                reason);
+                                reason, permittedLanguagesParameters);
             } else {
                 warning = String.format("""
                                 The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.

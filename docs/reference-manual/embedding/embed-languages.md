@@ -406,15 +406,12 @@ Polyglot Truffle runtimes can be used on several host virtual machines with vary
 Runtime optimization of guest application code is crucial for the efficient execution of embedded guest applications.
 Runtime optimization support depends on both the Java runtime and the Polyglot version. This table summarizes how to get the optimizing runtime and when the fallback runtime is used:
 
-| Polyglot Version | Java Runtime / JDK Version | Optimizing Runtime | Fallback Runtime |
-|------------------|----------------------------|--------------------|------------------|
-| 25.1 | Oracle GraalVM for JDK 25 | Supported with additional compiler optimizations. No extra configuration is required. | Supported |
-| 25.1 | GraalVM Community Edition for JDK 25 | Supported. No extra configuration is required. | Supported |
-| 25.1 | Oracle JDK or OpenJDK for JDK 25 | Not supported directly. Use a GraalVM JDK, or use a [polyglot isolate](#polyglot-isolates). | Supported |
-| 25.1 | JDK 21 | [Polyglot isolate](#polyglot-isolates) only. | Supported |
-| 25.0 LTS and earlier | Oracle JDK on a supported JDK version | Supported with `-XX:+EnableJVMCI`. | Supported |
-| 25.0 LTS and earlier | OpenJDK on a supported JDK version | Supported with `-XX:+EnableJVMCI` and the Graal compiler on `--upgrade-module-path`. | Supported |
-| Any | JDK without JVMCI capability | Not supported directly. Use the fallback runtime, or use a [polyglot isolate](#polyglot-isolates) if available. | Supported |
+| Java Runtime / JDK Version | Optimizing Runtime | Fallback Runtime |
+|----------------------------|--------------------|------------------|
+| Oracle GraalVM for JDK 25 | Supported with additional compiler optimizations. No extra configuration is required. | Supported |
+| GraalVM Community Edition for JDK 25 | Supported. No extra configuration is required. | Supported |
+| Oracle JDK or OpenJDK for JDK 25 | [Polyglot isolate](#polyglot-isolates) only. | Supported |
+| JDK 21 | [Polyglot isolate](#polyglot-isolates) only. | Supported |
 
 ### Explanations
 
@@ -424,28 +421,47 @@ Runtime optimization support depends on both the Java runtime and the Polyglot v
 * **Fallback runtime:** The guest application code is executed in interpreter-only mode, without runtime compilation to machine code.
 * **JVMCI:** Refers to the [Java-Level JVM Compiler Interface](https://openjdk.org/jeps/243) supported by most Java runtimes.
 
-### Legacy Optimization Setup on OpenJDK and Oracle JDK
+### Runtime Optimization Warning
 
-The `-XX:+EnableJVMCI` and `--upgrade-module-path` configurations are supported only up to Polyglot 25.0 LTS. Starting with Polyglot 25.1, plain OpenJDK and Oracle JDK no longer support the optimizing Truffle runtime and use the fallback runtime instead. If you need the optimizing runtime on these JDKs without using polyglot isolates, continue using Polyglot 25.0 LTS.
-
-When running on OpenJDK or Oracle JDK with Polyglot 25.1 or later, you might see a warning like this:
+When the fallback runtime is used, you might see a warning like this:
 
 ```
-[engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to machine code.
+[engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
 Execution without runtime compilation will negatively impact the guest application performance.
 ```
 
-This indicates that the guest application is executed with no runtime optimizations enabled.
-The warning can be suppressed using either the `--engine.WarnInterpreterOnly=false` option or the `-Dpolyglot.engine.WarnInterpreterOnly=false` system property.
-If you are using Polyglot 25.0 LTS or earlier on OpenJDK, the `compiler.jar` file and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and provided to the `java` launcher with `--upgrade-module-path`.
-Note that `compiler.jar` must *not* be put on the module or class path.
-Refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) for an example configuration using Maven or Gradle.
+If you see this warning, runtime optimization is disabled: guest application code is executed in interpreter-only mode and is not compiled to machine code at run time.
+Use an optimizing configuration listed in the table above, or use [polyglot isolates](#polyglot-isolates) where required, to enable runtime optimization.
+If interpreter-only execution is intentional, the warning can be suppressed using either the `--engine.WarnInterpreterOnly=false` option or the `-Dpolyglot.engine.WarnInterpreterOnly=false` system property.
 
 ### Switching to the Fallback Engine
 
 If the need arises, for example, when running only trivial scripts or on resource-constrained systems, you may want to switch to the fallback engine without runtime optimizations.
-Since Polyglot version 23.1, the fallback engine can be activated by removing the `truffle-runtime` and `truffle-enterprise` modules from the class or module path.
+To force the fallback runtime, set the `truffle.UseFallbackRuntime` system property:
 
+```bash
+java -Dtruffle.UseFallbackRuntime=true ...
+```
+
+For Native Image builds, pass the same property to `native-image` at image build time:
+
+```bash
+native-image -Dtruffle.UseFallbackRuntime=true ...
+```
+
+This explicitly selects the fallback runtime without changing your application dependencies.
+Unless disabled, the engine prints the following runtime optimization warning:
+
+```
+[engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
+Execution without runtime compilation will negatively impact the guest application performance.
+The following cause was found: The fallback runtime was explicitly selected using the -Dtruffle.UseFallbackRuntime option.
+For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support.
+To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
+```
+
+Since Polyglot version 23.1, the fallback engine can also be activated by removing the `truffle-runtime` modules from the class or module path.
+This can be useful if you want your dependency graph to exclude the optimizing runtime entirely.
 This can be achieved with Maven like this:
 
 ```xml
@@ -459,25 +475,19 @@ This can be achieved with Maven like this:
         <groupId>org.graalvm.truffle</groupId>
         <artifactId>truffle-runtime</artifactId>
       </exclusion>
-      <exclusion>
-        <groupId>org.graalvm.truffle</groupId>
-        <artifactId>truffle-enterprise</artifactId>
-      </exclusion>
     </exclusions>
   </dependency>
 </dependencies>
 ```
 
-The exclusion rule for `truffle-enterprise` is unnecessary if you only use `-community` dependencies.
-Since `truffle-enterprise` is excluded, the fallback engine does not support advanced extensions such as sandbox limits or polyglot isolates.
-It may be useful to double-check with `mvn dependency:tree` that the two dependencies are not included elsewhere.
+It may be useful to double-check with `mvn dependency:tree` that the `truffle-runtime` dependency is not included elsewhere.
 
 If the runtime was excluded successfully, you should see the following log message:
 
 ```
 [engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
 Execution without runtime compilation will negatively impact the guest application performance.
-The following cause was found: No optimizing Truffle runtime found on the module or class path.
+The following cause was found: No optimizing Truffle runtime found on the module or class-path.
 For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/.
 To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
 ```
@@ -739,8 +749,6 @@ Supported platform classifiers are:
 For a complete Maven POM file that adds the polyglot isolate Native Image dependency for the current platform, refer to the [Polyglot Embedding Demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub.
 
 To enable isolate usage with the Polyglot API, create an `Engine` or `Context` builder with an explicit permitted languages list and call `spawnIsolate(true)`.
-The equivalent `engine.SpawnIsolate` option can also be set directly, for example with `Builder.option("engine.SpawnIsolate", "true")` or `--engine.SpawnIsolate=true`.
-The `spawnIsolate(true)` builder method is available on Oracle GraalVM and on GraalVM Community Edition starting with version 25.1.
 
 ```java
 import org.graalvm.polyglot.*;
