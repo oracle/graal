@@ -2186,6 +2186,7 @@ suite = {
     "SULONG_JVM_STANDALONE_RELEASE_ARCHIVE": {
         "class": "DeliverableStandaloneArchive",
         "platformDependent": True,
+        "deploy": False,
         "standalone_dist": "SULONG_JVM_STANDALONE",
         "language_id": "llvm",
         "community_archive_name": "llvm-community-jvm",
