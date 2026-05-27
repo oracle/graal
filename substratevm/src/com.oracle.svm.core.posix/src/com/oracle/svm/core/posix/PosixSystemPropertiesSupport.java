@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
@@ -46,39 +45,6 @@ public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSuppo
     }
 
     protected abstract String jvmLibSuffix();
-
-    @Override
-    protected String sunBootLibraryPathValue() {
-        String executableDirectory = executableDirectory();
-        if (executableDirectory == null) {
-            return "";
-        }
-        /*
-         * HotSpot uses the VM library directory for shared libraries and the executable directory
-         * for statically linked launchers. In libjvmci-style shared-library images, the loaded
-         * image can live outside the JDK, so derive the JDK library directory from the launcher and
-         * fall back to the launcher directory only when no enclosing JDK home is found.
-         */
-        String javaHome = findEnclosingJavaHome(executableDirectory, "lib", "libjava" + jvmLibSuffix());
-        if (javaHome != null) {
-            return childPath(javaHome, "lib");
-        }
-        if (SubstrateOptions.SharedLibrary.getValue() && pathEndsWithName(executableDirectory, "bin")) {
-            String fallbackJavaHome = parentPath(executableDirectory);
-            if (fallbackJavaHome != null) {
-                return childPath(fallbackJavaHome, "lib");
-            }
-        }
-        return executableDirectory;
-    }
-
-    @Override
-    protected boolean pathExists(String path) {
-        try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(path)) {
-            PosixStat.stat stat = UnsafeStackValue.get(PosixStat.stat.class);
-            return PosixStat.restartableLstat(pathHolder.get(), stat) == 0;
-        }
-    }
 
     /*
      * Initialization code is adapted from the JDK native code that initializes the system

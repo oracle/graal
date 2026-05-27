@@ -190,35 +190,6 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         return libraryPath.toString();
     }
 
-    @Override
-    protected String sunBootLibraryPathValue() {
-        /*
-         * HotSpot sets sun.boot.library.path to <java.home>\bin on Windows. For shared-library
-         * images, the loaded image can live outside the JDK, so derive the JDK home from the
-         * launcher and fall back to the launcher directory only when no enclosing JDK home is found.
-         */
-        String executableDirectory = executableDirectory();
-        VMError.guarantee(executableDirectory != null, "Could not determine value of sun.boot.library.path");
-        String javaHome = findEnclosingJavaHome(executableDirectory, "bin", "java.dll");
-        if (javaHome != null) {
-            return childPath(javaHome, "bin");
-        }
-        return executableDirectory;
-    }
-
-    @Override
-    protected boolean pathExists(String path) {
-        try (WindowsUtils.WCharPointerHolder wide = WindowsUtils.toWideCString(path)) {
-            WinBase.HANDLE handle = FileAPI.CreateFileW(wide.get(), FileAPI.GENERIC_READ(), FileAPI.FILE_SHARE_READ() | FileAPI.FILE_SHARE_WRITE() | FileAPI.FILE_SHARE_DELETE(),
-                            Word.nullPointer(), FileAPI.OPEN_EXISTING(), FileAPI.FILE_ATTRIBUTE_NORMAL(), Word.nullPointer());
-            if (handle.equal(WinBase.INVALID_HANDLE_VALUE())) {
-                return false;
-            }
-            WinBase.CloseHandle(handle);
-            return true;
-        }
-    }
-
     static String toJavaString(WCharPointer wcString, int length) {
         return asCharBuffer(wcString, length).toString();
     }
