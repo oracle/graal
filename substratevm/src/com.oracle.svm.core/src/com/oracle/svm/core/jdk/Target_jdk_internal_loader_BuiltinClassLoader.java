@@ -147,17 +147,30 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L483-L492")
     private URL findResourceOnClassPath(String name) {
-        URL url = ResourcesHelper.findEmbeddedResourceEntry(name) ? ResourcesHelper.nameToResourceURL(name) : null;
-        return url != null ? url : hasClassPath() ? ucp.findResource(name) : null;
+        ClassLoader loader = SubstrateUtil.cast(this, ClassLoader.class);
+        URL url = ResourcesHelper.findEmbeddedResourceEntry(loader, name) ? ResourcesHelper.nameToResourceURL(loader, name) : null;
+        if (url != null) {
+            return url;
+        }
+        if (hasClassPath()) {
+            return ucp.findResource(name);
+        }
+        ResourcesHelper.reportMissingEmbeddedResourceMetadata(loader, name);
+        return null;
     }
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java#L497-L504")
     private Enumeration<URL> findResourcesOnClassPath(String name) throws IOException {
-        List<URL> embeddedResources = ResourcesHelper.findEmbeddedResourceEntry(name) ? ResourcesHelper.nameToResourceListURLs(name) : List.of();
+        ClassLoader loader = SubstrateUtil.cast(this, ClassLoader.class);
+        List<URL> embeddedResources = ResourcesHelper.findEmbeddedResourceEntry(loader, name) ? ResourcesHelper.nameToResourceListURLs(loader, name) : List.of();
         if (embeddedResources.isEmpty()) {
-            return hasClassPath() ? ucp.findResources(name) : Collections.emptyEnumeration();
+            if (hasClassPath()) {
+                return ucp.findResources(name);
+            }
+            ResourcesHelper.reportMissingEmbeddedResourceMetadata(loader, name);
+            return Collections.emptyEnumeration();
         }
         List<URL> resources = new ArrayList<>(embeddedResources);
         Enumeration<URL> classPathResources = hasClassPath() ? ucp.findResources(name) : Collections.emptyEnumeration();

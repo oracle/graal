@@ -1,0 +1,1 @@
+Build-time registered misc resource in module moduletests.hello.app

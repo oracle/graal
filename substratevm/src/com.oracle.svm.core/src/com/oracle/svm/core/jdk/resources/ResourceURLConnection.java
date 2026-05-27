@@ -53,9 +53,15 @@ public final class ResourceURLConnection extends URLConnection {
     private byte[] data;
     private boolean isDirectory = false;
     private boolean initializedHeaders = false;
+    private final String loaderKey;
 
     public ResourceURLConnection(URL url) {
+        this(url, null);
+    }
+
+    public ResourceURLConnection(URL url, String loaderKey) {
         super(url);
+        this.loaderKey = loaderKey;
     }
 
     @Override
@@ -74,7 +80,7 @@ public final class ResourceURLConnection extends URLConnection {
         String resourceName = urlPath.substring(1);
 
         Module module = hostNameOrNull != null ? ModuleLayer.boot().findModule(hostNameOrNull).orElse(null) : null;
-        Object entry = Resources.getAtRuntime(module, resourceName, false);
+        Object entry = loaderKey != null ? Resources.getAtRuntime(loaderKey, module, resourceName, false) : Resources.getAtRuntime(module, resourceName, false);
         if (entry != null) {
             ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
             byte[][] bytes = resourceStorageEntry.getData();

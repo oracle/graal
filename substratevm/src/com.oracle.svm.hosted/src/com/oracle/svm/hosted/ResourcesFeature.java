@@ -25,12 +25,13 @@
 package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
-import static com.oracle.svm.core.jdk.Resources.createStorageKey;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.module.ResolvedModule;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -42,8 +43,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +55,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
@@ -58,6 +63,7 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
@@ -76,6 +82,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.ResourceLoaderKeys;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
@@ -154,6 +161,11 @@ public class ResourcesFeature implements InternalFeature {
 
     static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
 
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(ClassLoaderFeature.class);
+    }
+
     public static class Options {
         @OptionMigrationMessage("Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.")//
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
@@ -181,8 +193,28 @@ public class ResourcesFeature implements InternalFeature {
     private final Set<ConditionalPattern> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private ImageClassLoader imageClassLoader;
+    private ModuleLocationIndex classpathModuleLocationIndex;
 
     private DynamicAccessInferenceLog inferenceLog;
+
+    /**
+     * Captures the hosted owner information recovered for a collected classpath resource.
+     */
+    private record ClasspathResourceResolution(ClassLoader owner, Module module) {
+    }
+
+    /**
+     * Associates an exploded module root with the corresponding hosted module.
+     */
+    private record ExplodedModuleLocation(Path root, Module module) {
+    }
+
+    /**
+     * Memoized view of hosted module locations used to recover ownership for classpath resource
+     * URLs.
+     */
+    private record ModuleLocationIndex(Map<URI, Module> exactLocations, List<ExplodedModuleLocation> explodedLocations) {
+    }
 
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry<AccessCondition> {
@@ -211,11 +243,15 @@ public class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addCondition(AccessCondition condition, Module module, String resourcePath) {
-            var conditionalResource = Resources.currentLayer().resources().get(createStorageKey(module, resourcePath));
-            if (conditionalResource != null) {
-                VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
-                classInitializationSupport.addForTypeReachedTracking(((TypeReachabilityCondition) condition).getType());
-                conditionalResource.getDynamicAccessMetadata().addCondition(condition);
+            VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
+            classInitializationSupport.addForTypeReachedTracking(((TypeReachabilityCondition) condition).getType());
+
+            var cursor = Resources.currentLayer().resources().getEntries();
+            while (cursor.advance()) {
+                Resources.ModuleResourceKey key = cursor.getKey();
+                if (resourcePath.equals(key.resource()) && Objects.equals(Resources.moduleName(module), key.getModuleName())) {
+                    cursor.getValue().getDynamicAccessMetadata().addCondition(condition);
+                }
             }
         }
 
@@ -250,8 +286,9 @@ public class ResourcesFeature implements InternalFeature {
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
             abortIfSealed();
-            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, "INJECTED", origin);
-            Resources.currentLayer().registerResource(module, resourcePath, resourceContent);
+            ClassLoader owner = resolveInjectedResourceOwner(module);
+            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(owner, module, resourcePath, "INJECTED", origin);
+            Resources.currentLayer().registerResource(owner, module, resourcePath, resourceContent);
         }
 
         @Override
@@ -317,35 +354,40 @@ public class ResourcesFeature implements InternalFeature {
                 }
 
                 boolean isDirectory = Files.isDirectory(Path.of(resourcePath));
+                ClassLoader owner = resolveModuleResourceOwner(module);
                 if (isDirectory) {
                     String content = ResourcesUtils.getDirectoryContent(resourcePath, false);
-                    Resources.currentLayer().registerDirectoryResource(module, resourcePath, content, false);
+                    Resources.currentLayer().registerDirectoryResource(owner, module, resourcePath, content, false);
                 } else {
                     InputStream is = module.getResourceAsStream(resourcePath);
-                    registerResource(module, resourcePath, false, is);
+                    registerResource(owner, module, resourcePath, false, is);
                 }
 
                 var resolvedModule = module.getLayer().configuration().findModule(module.getName());
                 if (resolvedModule.isPresent()) {
                     Optional<URI> location = resolvedModule.get().reference().location();
-                    location.ifPresent(uri -> EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, uri.toString(), origin));
+                    location.ifPresent(uri -> EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(owner, module, resourcePath, uri.toString(), origin));
                 }
             } catch (IOException e) {
-                Resources.currentLayer().registerIOException(module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
+                Resources.currentLayer().registerIOException(resolveModuleResourceOwner(module), module, resourcePath, e,
+                                LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
             }
         }
 
+        /**
+         * Collects classpath resources while preserving distinct ownership for resources that can
+         * be proven to come from modules. The image loader's own resources are processed first via
+         * {@link NativeImageClassLoader#findResources(String)} before the flattened
+         * parent-inclusive view from {@link NativeImageClassLoader#getResources(String)} is
+         * consulted.
+         */
         private void processResourceFromClasspath(String resourcePath, Object origin) {
+            NativeImageClassLoader nativeImageClassLoader = (NativeImageClassLoader) imageClassLoader.getClassLoader();
             Enumeration<URL> urls;
             try {
-                /*
-                 * There is an edge case where same resource name can be present in multiple jars
-                 * (different resources), so we are collecting all resources with given name in all
-                 * jars on classpath
-                 */
-                urls = imageClassLoader.getClassLoader().getResources(resourcePath);
+                urls = nativeImageClassLoader.findResources(resourcePath);
             } catch (IOException e) {
-                throw VMError.shouldNotReachHere("getResources for resourcePath " + resourcePath + " failed", e);
+                throw VMError.shouldNotReachHere("findResources for resourcePath " + resourcePath + " failed", e);
             }
 
             /*
@@ -353,41 +395,73 @@ public class ResourcesFeature implements InternalFeature {
              */
             EconomicSet<String> alreadyProcessedResources = EconomicSet.create();
             while (urls.hasMoreElements()) {
-                URL url = urls.nextElement();
-                if (alreadyProcessedResources.contains(url.toString())) {
-                    continue;
-                }
-
-                alreadyProcessedResources.add(url.toString());
-                try {
-                    boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
-                    boolean isDirectory = ResourcesUtils.resourceIsDirectory(url, fromJar);
-                    if (isDirectory) {
-                        String content = ResourcesUtils.getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
-                        Resources.currentLayer().registerDirectoryResource(null, resourcePath, content, fromJar);
-                    } else {
-                        InputStream is = url.openStream();
-                        registerResource(null, resourcePath, fromJar, is);
-                    }
-
-                    String source = ResourcesUtils.getResourceSource(url, resourcePath, fromJar);
-                    EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(null, resourcePath, source, origin);
-                } catch (IOException e) {
-                    Resources.currentLayer().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
+                if (!processClasspathResource(resourcePath, origin, urls.nextElement(), alreadyProcessedResources)) {
                     return;
-                } catch (URISyntaxException e) {
-                    throw VMError.shouldNotReachHere("resourceIsDirectory for resourcePath " + resourcePath + " failed", e);
+                }
+            }
+
+            try {
+                /*
+                 * There is an edge case where same resource name can be present in multiple jars
+                 * (different resources), so we are collecting all resources with given name in all
+                 * jars on classpath.
+                 */
+                urls = nativeImageClassLoader.getResources(resourcePath);
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere("getResources for resourcePath " + resourcePath + " failed", e);
+            }
+
+            while (urls.hasMoreElements()) {
+                if (!processClasspathResource(resourcePath, origin, urls.nextElement(), alreadyProcessedResources)) {
+                    return;
                 }
             }
         }
 
-        private void registerResource(Module module, String resourcePath, boolean fromJar, InputStream is) {
+        /**
+         * Registers one classpath resource URL after resolving the most precise owner information
+         * available for that URL.
+         *
+         * @return {@code true} to continue processing additional URLs, {@code false} if processing
+         *         should stop because an I/O exception was registered for this resource name
+         */
+        private boolean processClasspathResource(String resourcePath, Object origin, URL url, EconomicSet<String> alreadyProcessedResources) {
+            if (!alreadyProcessedResources.add(url.toString())) {
+                return true;
+            }
+
+            ClasspathResourceResolution resolution = resolveClasspathResourceOwner(url);
+            ClassLoader owner = resolution.owner();
+            Module module = resolution.module();
+            try {
+                boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
+                boolean isDirectory = ResourcesUtils.resourceIsDirectory(url, fromJar);
+                if (isDirectory) {
+                    String content = ResourcesUtils.getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
+                    Resources.currentLayer().registerDirectoryResource(owner, module, resourcePath, content, fromJar);
+                } else {
+                    InputStream is = url.openStream();
+                    registerResource(owner, module, resourcePath, fromJar, is);
+                }
+
+                String source = ResourcesUtils.getResourceSource(url, resourcePath, fromJar);
+                EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(owner, module, resourcePath, source, origin);
+                return true;
+            } catch (IOException e) {
+                Resources.currentLayer().registerIOException(owner, module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
+                return false;
+            } catch (URISyntaxException e) {
+                throw VMError.shouldNotReachHere("resourceIsDirectory for resourcePath " + resourcePath + " failed", e);
+            }
+        }
+
+        private void registerResource(ClassLoader owner, Module module, String resourcePath, boolean fromJar, InputStream is) {
             if (is == null) {
-                Resources.currentLayer().registerNegativeQuery(module, resourcePath);
+                Resources.currentLayer().registerNegativeQuery(owner, module, resourcePath);
                 return;
             }
 
-            Resources.currentLayer().registerResource(module, resourcePath, is, fromJar);
+            Resources.currentLayer().registerResource(owner, module, resourcePath, is, fromJar);
 
             try {
                 is.close();
@@ -401,6 +475,8 @@ public class ResourcesFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         imageClassLoader = access.getImageClassLoader();
+        classpathModuleLocationIndex = createClasspathModuleLocationIndex();
+        Resources.currentLayer().setHostedToRuntimeLoaderKeyMapper(ResourceLoaderKeys.hosted()::getResourceLoaderKey);
         resourcesRegistry = new ResourcesRegistryImpl();
         ImageSingletons.add(ResourcesRegistry.class, resourcesRegistry);
         ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
@@ -414,6 +490,188 @@ public class ResourcesFeature implements InternalFeature {
 
     protected boolean collectEmbeddedResourcesInfo() {
         return Options.GenerateEmbeddedResourcesFile.getValue();
+    }
+
+    /**
+     * Module resources are owned by the module's defining loader. Module-less resources fall back
+     * to the application loader.
+     */
+    private ClassLoader resolveCollectedResourceOwner(Module module) {
+        if (module != null) {
+            ClassLoader loader = module.getClassLoader();
+            if (loader != null || module.isNamed()) {
+                return loader;
+            }
+        }
+        return imageClassLoader.getClassLoader();
+    }
+
+    /**
+     * Injected resources that target a named module inherit that module's loader ownership.
+     * Module-less injected resources are currently attached to the application loader.
+     */
+    private ClassLoader resolveInjectedResourceOwner(Module module) {
+        return resolveCollectedResourceOwner(module);
+    }
+
+    /**
+     * Module resource ownership follows the module definition loader.
+     */
+    private static ClassLoader resolveModuleResourceOwner(Module module) {
+        return module.getClassLoader();
+    }
+
+    /**
+     * Classpath collection prefers module-backed ownership when the resolved URL proves the owning
+     * module. Only unresolved non-module resources fall back to the application loader.
+     */
+    private ClasspathResourceResolution resolveClasspathResourceOwner(URL url) {
+        Optional<Module> module = resolveClasspathResourceModule(url);
+        if (module.isPresent()) {
+            Module resolvedModule = module.get();
+            return new ClasspathResourceResolution(resolveModuleResourceOwner(resolvedModule), resolvedModule);
+        }
+        ClassLoader owner = imageClassLoader.getClassLoader();
+        return new ClasspathResourceResolution(owner, null);
+    }
+
+    /**
+     * Attempts to recover the defining hosted module for a collected classpath resource URL.
+     */
+    private Optional<Module> resolveClasspathResourceModule(URL url) {
+        Optional<Module> jrtModule = resolveJrtResourceModule(url);
+        if (jrtModule.isPresent()) {
+            return jrtModule;
+        }
+        return resolveIndexedClasspathResourceModule(url);
+    }
+
+    /**
+     * Resolves {@code jrt:} resource URLs to their boot-layer module.
+     */
+    private static Optional<Module> resolveJrtResourceModule(URL url) {
+        if (!url.getProtocol().equalsIgnoreCase("jrt")) {
+            return Optional.empty();
+        }
+
+        try {
+            String path = url.toURI().getPath();
+            if (path == null || path.isEmpty()) {
+                return Optional.empty();
+            }
+            String[] segments = Arrays.stream(path.split("/"))
+                            .filter(Predicate.not(String::isEmpty))
+                            .toArray(String[]::new);
+            if (segments.length == 0) {
+                return Optional.empty();
+            }
+            String moduleName = segments[0].equals("modules") && segments.length > 1 ? segments[1] : segments[0];
+            return ModuleLayer.boot().findModule(moduleName);
+        } catch (URISyntaxException e) {
+            throw VMError.shouldNotReachHere("Cannot resolve module from resource URL " + url, e);
+        }
+    }
+
+    /**
+     * Resolves non-{@code jrt:} resource URLs by comparing them against cached hosted module
+     * locations.
+     */
+    private Optional<Module> resolveIndexedClasspathResourceModule(URL url) {
+        try {
+            URI resourceLocation = getResourceLocation(url);
+            ModuleLocationIndex locationIndex = getClasspathModuleLocationIndex();
+            Module module = locationIndex.exactLocations().get(resourceLocation);
+            if (module != null) {
+                return Optional.of(module);
+            }
+            if (!resourceLocation.getScheme().equalsIgnoreCase("file")) {
+                return Optional.empty();
+            }
+
+            Path resourcePath = Path.of(resourceLocation).normalize();
+            for (ExplodedModuleLocation moduleLocation : locationIndex.explodedLocations()) {
+                if (resourcePath.startsWith(moduleLocation.root())) {
+                    return Optional.of(moduleLocation.module());
+                }
+            }
+            return Optional.empty();
+        } catch (IOException | URISyntaxException e) {
+            throw VMError.shouldNotReachHere("Cannot resolve module from resource URL " + url, e);
+        }
+    }
+
+    /**
+     * Returns the hosted module-location index used by
+     * {@link #resolveIndexedClasspathResourceModule(URL)}.
+     */
+    private ModuleLocationIndex getClasspathModuleLocationIndex() {
+        VMError.guarantee(classpathModuleLocationIndex != null, "Classpath module-location index must be initialized during afterRegistration.");
+        return classpathModuleLocationIndex;
+    }
+
+    /**
+     * Builds the hosted module-location index used by
+     * {@link #resolveIndexedClasspathResourceModule(URL)}.
+     */
+    private ModuleLocationIndex createClasspathModuleLocationIndex() {
+        Map<URI, Module> exactLocations = new HashMap<>();
+        List<ExplodedModuleLocation> explodedLocations = new ArrayList<>();
+        for (Module module : ModuleLayer.boot().modules()) {
+            indexModuleLocation(module, exactLocations, explodedLocations);
+        }
+        for (var moduleReference : imageClassLoader.classLoaderSupport.getModulePathsFinder().findAll()) {
+            imageClassLoader.findModule(moduleReference.descriptor().name()).ifPresent(module -> indexModuleLocation(module, exactLocations, explodedLocations));
+        }
+        return new ModuleLocationIndex(Map.copyOf(exactLocations), List.copyOf(explodedLocations));
+    }
+
+    /**
+     * Adds one hosted module to the lookup structures used for URL-to-module resolution.
+     */
+    private static void indexModuleLocation(Module module, Map<URI, Module> exactLocations, List<ExplodedModuleLocation> explodedLocations) {
+        if (!module.isNamed()) {
+            return;
+        }
+
+        Optional<ResolvedModule> resolvedModule = module.getLayer().configuration().findModule(module.getName());
+        if (resolvedModule.isEmpty()) {
+            return;
+        }
+
+        Optional<URI> location = resolvedModule.get().reference().location();
+        if (location.isEmpty()) {
+            return;
+        }
+
+        URI moduleLocation = location.get();
+        if (moduleLocation.getScheme().equalsIgnoreCase("jrt")) {
+            return;
+        }
+        if (moduleLocation.getScheme().equalsIgnoreCase("file") && Files.isDirectory(Path.of(moduleLocation))) {
+            explodedLocations.add(new ExplodedModuleLocation(Path.of(moduleLocation).normalize(), module));
+        } else {
+            exactLocations.putIfAbsent(normalizeLocation(moduleLocation), module);
+        }
+    }
+
+    /**
+     * Extracts the container location to compare against indexed hosted module locations.
+     */
+    private static URI getResourceLocation(URL url) throws IOException, URISyntaxException {
+        if (url.getProtocol().equalsIgnoreCase("jar")) {
+            return normalizeLocation(((JarURLConnection) url.openConnection()).getJarFileURL().toURI());
+        }
+        return normalizeLocation(url.toURI());
+    }
+
+    /**
+     * Canonicalizes resource container locations so logically identical paths compare equal.
+     */
+    private static URI normalizeLocation(URI location) {
+        if (location.getScheme().equalsIgnoreCase("file")) {
+            return Path.of(location).normalize().toUri();
+        }
+        return location.normalize();
     }
 
     @Override
@@ -496,7 +754,7 @@ public class ResourcesFeature implements InternalFeature {
         inferenceLog = DynamicAccessInferenceLog.singletonOrNull();
     }
 
-    private static final class ResourceCollectorImpl extends ConditionalConfigurationRegistry implements ResourceCollector {
+    private final class ResourceCollectorImpl extends ConditionalConfigurationRegistry implements ResourceCollector {
         private final Set<CompiledConditionalPattern> includePatterns;
         private final Set<CompiledConditionalPattern> excludePatterns;
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
@@ -602,13 +860,14 @@ public class ResourcesFeature implements InternalFeature {
 
         @Override
         public void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime) {
-            Resources.currentLayer().registerIOException(module, resourceName, e, linkAtBuildTime);
+            Resources.currentLayer().registerIOException(resolveCollectedResourceOwner(module), module, resourceName, e, linkAtBuildTime);
         }
 
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
-            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourceName, "", "");
-            Resources.currentLayer().registerNegativeQuery(module, resourceName);
+            ClassLoader owner = resolveCollectedResourceOwner(module);
+            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(owner, module, resourceName, "", "");
+            Resources.currentLayer().registerNegativeQuery(owner, module, resourceName);
         }
 
         public void registerIncludePattern(AccessCondition condition, String module, String pattern) {

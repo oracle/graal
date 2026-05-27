@@ -48,6 +48,10 @@ public class ResourcesHelper {
         return Resources.createURL(module, resourceName);
     }
 
+    public static URL nameToResourceURL(ClassLoader loader, String resourceName) {
+        return Resources.createURL(loader, resourceName);
+    }
+
     public static InputStream nameToResourceInputStream(String mn, String resourceName) throws IOException {
         VMError.guarantee(ImageInfo.inImageRuntimeCode(), "ResourcesHelper code should only be used at runtime");
         Module module = mn == null ? null : ModuleLayer.boot().findModule(mn).orElse(null);
@@ -64,10 +68,30 @@ public class ResourcesHelper {
         return resourceURLs;
     }
 
+    public static List<URL> nameToResourceListURLs(ClassLoader loader, String resourcesName) {
+        Enumeration<URL> urls = Resources.createURLs(loader, resourcesName);
+        List<URL> resourceURLs = new ArrayList<>();
+        while (urls.hasMoreElements()) {
+            resourceURLs.add(urls.nextElement());
+        }
+        return resourceURLs;
+    }
+
     static boolean findEmbeddedResourceEntry(String resourceName) {
         Objects.requireNonNull(resourceName);
-        ResourceStorageEntryBase entry = Resources.getAtRuntime(null, resourceName, true);
+        ResourceStorageEntryBase entry = Resources.getAtRuntime((Module) null, resourceName, true);
         return entry != null && entry != Resources.NEGATIVE_QUERY_MARKER && entry != Resources.MISSING_METADATA_MARKER;
+    }
+
+    static boolean findEmbeddedResourceEntry(ClassLoader loader, String resourceName) {
+        Objects.requireNonNull(resourceName);
+        ResourceStorageEntryBase entry = Resources.getAtRuntime(loader, resourceName, true);
+        return entry != null && entry != Resources.NEGATIVE_QUERY_MARKER && entry != Resources.MISSING_METADATA_MARKER;
+    }
+
+    static void reportMissingEmbeddedResourceMetadata(ClassLoader loader, String resourceName) {
+        Objects.requireNonNull(resourceName);
+        Resources.getAtRuntime(loader, resourceName, false);
     }
 
     public static Enumeration<URL> nameToResourceEnumerationURLs(String resourcesName) {

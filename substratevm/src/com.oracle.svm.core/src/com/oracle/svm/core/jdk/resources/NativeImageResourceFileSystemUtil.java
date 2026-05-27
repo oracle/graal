@@ -25,10 +25,12 @@
 
 package com.oracle.svm.core.jdk.resources;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.shared.util.VMError;
 
 public final class NativeImageResourceFileSystemUtil {
 
@@ -53,6 +55,10 @@ public final class NativeImageResourceFileSystemUtil {
     }
 
     public static byte[] inputStreamToByteArray(InputStream is) {
-        return Resources.inputStreamToByteArray(is);
+        try {
+            return is.readAllBytes();
+        } catch (IOException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 }

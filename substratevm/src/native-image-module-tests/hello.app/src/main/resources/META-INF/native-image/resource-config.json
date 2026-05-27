@@ -13,6 +13,10 @@
           "glob": "resource-file.txt"
       },
       {
+          "module": "moduletests.hello.app",
+          "glob": "META-INF/native-image-module-tests/misc-resource.txt"
+      },
+      {
           "module": "moduletests.hello.lib",
           "glob": "resource-file.txt"
       }

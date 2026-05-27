@@ -36,6 +36,8 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -43,6 +45,10 @@ import java.util.stream.Collectors;
 import jdk.dynalink.StandardOperation;
 
 public class Main {
+    private static final String MISC_MODULE_RESOURCE_NAME = "META-INF/native-image-module-tests/misc-resource.txt";
+    private static final String APP_MISC_MODULE_RESOURCE_CONTENTS = "Build-time registered misc resource in module moduletests.hello.app";
+    private static final String RUNTIME_MISC_MODULE_RESOURCE_CONTENTS = "Runtime module-path misc resource in module moduletests.hello.runtime";
+
     public static void main(String[] args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         failIfAssertionsAreDisabled();
 
@@ -187,7 +193,26 @@ public class Main {
         }
         assertClassResourceURLContents(Greeter.class, "/" + sameResourcePathName, helloLibModuleResourceContents);
 
+        testMiscModuleResources(ClassLoader.getSystemClassLoader(), Set.of(APP_MISC_MODULE_RESOURCE_CONTENTS));
         testRuntimeOnlyModulePathResource(helloLibModule, runtimeModulePathResourcePathName);
+    }
+
+    private static void testMiscModuleResources(ClassLoader loader, Set<String> expectedContents) {
+        System.out.println("Now testing miscellaneous resource access in modules");
+
+        Set<String> actualContents = new HashSet<>();
+        try {
+            Enumeration<URL> resources = loader.getResources(MISC_MODULE_RESOURCE_NAME);
+            while (resources.hasMoreElements()) {
+                URL resource = resources.nextElement();
+                try (Scanner s = new Scanner(resource.openStream())) {
+                    actualContents.add(s.nextLine());
+                }
+            }
+        } catch (IOException e) {
+            throw new AssertionError("Unable to access miscellaneous module resource " + MISC_MODULE_RESOURCE_NAME + " from " + loader, e);
+        }
+        assert expectedContents.equals(actualContents) : "Unexpected contents for " + MISC_MODULE_RESOURCE_NAME + " from " + loader + ": " + actualContents;
     }
 
     private static void testRuntimeOnlyModulePathResource(Module helloLibModule, String resourcePathName) {
@@ -224,6 +249,8 @@ public class Main {
         ClassLoader runtimeModuleLoader = layer.findLoader(moduleName);
         assert module.getClassLoader() == runtimeModuleLoader : module + " not defined to the runtime layer loader";
         assert runtimeModuleLoader.getParent() == ClassLoader.getSystemClassLoader() : module + " loader does not use the system class loader as parent";
+        // This lookup returns a jar: URL for the runtime module-path resource, so the image build needs --enable-url-protocols=jar.
+        testMiscModuleResources(runtimeModuleLoader, Set.of(APP_MISC_MODULE_RESOURCE_CONTENTS, RUNTIME_MISC_MODULE_RESOURCE_CONTENTS));
 
         try {
             Class<?> runtimeGreeter = Class.forName("hello.runtime.RuntimeGreeter", true, runtimeModuleLoader);
