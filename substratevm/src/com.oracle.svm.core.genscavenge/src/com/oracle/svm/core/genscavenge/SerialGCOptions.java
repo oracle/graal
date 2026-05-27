@@ -127,7 +127,7 @@ public final class SerialGCOptions {
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
         @Option(help = "Collect old generation by compacting in-place instead of copying. Serial GC only.", type = OptionType.Expert) //
-        public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(true, SerialGCOptions::validateCompactingOldGen);
+        public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(false, SerialGCOptions::validateCompactingOldGen);
 
         @Option(help = "Determines if a remembered set is used, which is necessary for collecting the young and old generation independently. Serial GC only.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
@@ -175,10 +175,10 @@ public final class SerialGCOptions {
     }
 
     private static void validateCompactingOldGen(HostedOptionKey<Boolean> compactingOldGen) {
-        validateSerialHostedOption(compactingOldGen);
-        if (!SubstrateOptions.useSerialGC() || !compactingOldGen.getValue()) {
+        if (!compactingOldGen.getValue()) {
             return;
         }
+        validateSerialHostedOption(compactingOldGen);
         if (!useRememberedSet()) {
             throw UserError.abort("%s requires %s.", SubstrateOptionsParser.commandArgument(ConcealedOptions.CompactingOldGen, "+"),
                             SubstrateOptionsParser.commandArgument(ConcealedOptions.UseRememberedSet, "+"));
