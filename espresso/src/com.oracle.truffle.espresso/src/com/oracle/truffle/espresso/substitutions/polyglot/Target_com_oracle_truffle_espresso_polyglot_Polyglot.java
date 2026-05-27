@@ -204,7 +204,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 } else {
                     // we know it's not instance of the target type, so throw CCE
                     errorProfile.enter(node);
-                    throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, targetType);
+                    throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, cachedTargetType);
                 }
             } catch (UnsupportedTypeException e) {
                 if (value.isForeignObject() && cachedTargetType.getRawType().isAbstract() && !cachedTargetType.getRawType().isArray()) {
@@ -215,7 +215,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                     }
                 }
                 errorProfile.enter(node);
-                throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, targetType);
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "%s cannot be cast to %s", value, cachedTargetType);
             }
         }
 
