@@ -2,7 +2,7 @@ source ENV.fetch("RUBYGEMS_MIRROR", "https://rubygems.org")
 
 gem "jekyll"
 
-gem "graal-languages-jekyll-theme", git: "https://github.com/graalvm/graal-languages-jekyll-theme.git", branch: "main"
+gem "graal-languages-jekyll-theme"
 
 group :jekyll_plugins do
   gem "jekyll-relative-links"
