@@ -404,7 +404,8 @@ _native_unittest_features = '--features=' + ','.join(('com.oracle.svm.test.Image
                                                       'com.oracle.svm.test.services.ServiceLoaderTest$TestFeature',
                                                       'com.oracle.svm.test.services.SecurityServiceTest$TestFeature',
                                                       'com.oracle.svm.test.ReflectionRegistrationTest$TestFeature',
-                                                      'com.oracle.svm.test.foreign.ForeignTests$TestFeature'))
+                                                      'com.oracle.svm.test.foreign.ForeignTests$TestFeature',
+                                                      'com.oracle.svm.test.BootstrapMethodTest$TestFeature'))
 
 IMAGE_ASSERTION_FLAGS = svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'])
 RUNTIME_CLASSLOADERS_INIT_ARG = '--initialize-at-run-time=jdk.internal.loader.ClassLoaders'
