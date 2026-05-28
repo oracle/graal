@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.foreign;
 
+import static com.oracle.svm.core.invoke.MethodHandleUtils.JLI_PACKAGE;
 import static java.lang.invoke.MethodHandles.exactInvoker;
 import static java.lang.invoke.MethodHandles.insertArguments;
 
@@ -287,8 +288,8 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
                 /*
                  * Downcall stub invokers exist per MethodType and may be used to invoke several
                  * downcall stubs. Ensure the invoker independently from the downcall stub
-                 * registration above: the downcall stub may already exist even though the compatible
-                 * invoker has not been created yet.
+                 * registration above: the downcall stub may already exist even though the
+                 * compatible invoker has not been created yet.
                  */
                 ensureDowncallStubInvokerRegistered(resolve.methodType());
             }
@@ -812,8 +813,6 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
     }
 
     private static final Linker LINKER = Linker.nativeLinker();
-
-    private static final String JLI_PACKAGE = "java.lang.invoke";
 
     /**
      * List of (generated) classes that provide accessor methods for memory segments. Those methods

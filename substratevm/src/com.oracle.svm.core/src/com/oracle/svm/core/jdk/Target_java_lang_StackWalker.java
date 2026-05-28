@@ -25,6 +25,7 @@
 
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.invoke.MethodHandleUtils.JLI_PACKAGE;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.StackWalker.Option;
@@ -624,7 +625,7 @@ final class StackWalkerUtil {
     }
 
     private static boolean isMethodHandleFrame(Class<?> c) {
-        return c.getPackageName().equals("java.lang.invoke");
+        return c.getPackageName().equals(JLI_PACKAGE);
     }
 
     private static boolean isReflectionFrame(Class<?> c) {
