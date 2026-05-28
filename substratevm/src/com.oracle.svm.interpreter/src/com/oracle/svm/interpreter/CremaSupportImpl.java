@@ -49,6 +49,8 @@ import static com.oracle.svm.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 import static com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic.InvokeGeneric;
 import static com.oracle.svm.interpreter.Interpreter.unbasic;
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.ITBL_SELECTION_FAILURE;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED;
 
 import java.io.Serializable;
 import java.lang.invoke.MethodType;
@@ -61,6 +63,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -122,14 +125,16 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.constraints.LoadingConstraintViolationException;
+import com.oracle.svm.espresso.shared.meta.ErrorType;
 import com.oracle.svm.espresso.shared.meta.MethodHandleIntrinsics;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.espresso.shared.resolver.CallSiteType;
 import com.oracle.svm.espresso.shared.resolver.ResolvedCall;
 import com.oracle.svm.espresso.shared.vtable.MethodTableException;
-import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.espresso.shared.vtable.PartialType;
+import com.oracle.svm.espresso.shared.vtable.TableEntry;
+import com.oracle.svm.espresso.shared.vtable.TableEntryRef;
 import com.oracle.svm.espresso.shared.vtable.Tables;
 import com.oracle.svm.espresso.shared.vtable.VTable;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
@@ -233,6 +238,8 @@ public class CremaSupportImpl implements CremaSupport {
         InterpreterResolvedJavaMethod method = btiUniverse.getOrCreateMethod(analysisMethod, shouldRetainMethodCode(analysisMethod));
         if (!method.isAbstract()) {
             method.setNativeEntryPoint(InterpreterResolvedJavaMethod.createMethodRef(analysisMethod));
+        } else {
+            method.setNativeEntryPoint(InterpreterKnownCompiledEntryPoints.getThrowAbstractMethodErrorStub());
         }
         methods.add(method);
     }
@@ -380,7 +387,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         /* Allocate DynamicHub. */
-        int hubNumVTableEntries = dispatchTable.cremaVTableLength(dispatchTransitiveSuperInterfaces);
+        int hubNumVTableEntries = dispatchTable.svmVTableLength(dispatchTransitiveSuperInterfaces);
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
                         sourceFile, modifiers, hubFlags, classLoader, simpleBinaryName, module, UNINITIALIZED_DECLARING_CLASS_SENTINEL, classSignature,
                         typeID, interfaceID,
@@ -405,16 +412,18 @@ public class CremaSupportImpl implements CremaSupport {
 
         thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parsed));
 
-        dispatchTable.registerClass(thisType);
+        dispatchTable.registerClass(thisType, dispatchTransitiveSuperInterfaces);
 
         /*
          * Set vtable and methods. Compute the vtable first, because it will assign vtable indices
          * to methods.
          */
-        InterpreterResolvedJavaMethod[] completeVTable = dispatchTable.cremaVTable(dispatchTransitiveSuperInterfaces).toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
-        assert completeVTable.length == hubNumVTableEntries;
-        thisType.setVtable(completeVTable, dispatchTable.vtableLength());
-        fillVTable(hub, completeVTable);
+        InterpreterResolvedJavaMethod[] completeVTable = dispatchTable.cremaVTable().toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
+        assert completeVTable.length == hubNumVTableEntries || (thisType.isInterface() && hubNumVTableEntries == 0);
+        thisType.setVtable(completeVTable, dispatchTable.vtableLength(), dispatchTable.mirandaMethodsStart());
+        if (!thisType.isInterface()) {
+            fillVTable(hub, completeVTable);
+        }
 
         thisType.setDeclaredMethods(dispatchTable.declaredMethods());
 
@@ -584,14 +593,10 @@ public class CremaSupportImpl implements CremaSupport {
         CremaPartialType partialType = new CremaPartialType(parsed, loader, superClass, transitiveSuperInterfaces);
         try {
             if (Modifier.isInterface(parsed.getFlags())) {
-                return new CremaInterfaceDispatchTable(partialType);
+                var tables = VTable.create(partialType, false, false, true, false);
+                return new CremaInterfaceDispatchTable(tables, partialType);
             } else {
-                /*
-                 * GR-70607: once we handle vtable indicies better in crema we should enable
-                 * mirandas.
-                 */
-                boolean addMirandas = false;
-                var tables = VTable.create(partialType, false, false, addMirandas, false);
+                var tables = VTable.create(partialType, false, false, true, false);
                 return new CremaInstanceDispatchTable(tables, partialType);
             }
         } catch (MethodTableException e) {
@@ -693,7 +698,9 @@ public class CremaSupportImpl implements CremaSupport {
                         componentType, superType, interfaces, null,
                         DynamicHub.toClass(arrayHub), false);
 
-        thisType.setVtable(cremaVTable, objectArrayType.getClassVtableLength());
+        thisType.setVtable(cremaVTable, objectArrayType.getClassVtableLength(),
+                        // Cloneable and Serializable do not declare any method, the miranda list is thus empty.
+                        objectArrayType.getClassVtableLength());
         thisType.setDeclaredMethods(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
         thisType.setDeclaredFields(InterpreterResolvedJavaField.EMPTY_ARRAY);
         fillVTable(arrayHub, cremaVTable);
@@ -946,6 +953,7 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     static final class CremaPartialType implements PartialType<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
+
         private final ParserKlass parserKlass;
         private final ClassLoader loader;
         private final Symbol<Name> symbolicRuntimePackage;
@@ -953,6 +961,7 @@ public class CremaSupportImpl implements CremaSupport {
         private final InterpreterResolvedObjectType superType;
         private final List<InterpreterResolvedJavaMethod> parentTable;
         private final EconomicMap<InterpreterResolvedJavaType, List<InterpreterResolvedJavaMethod>> interfacesData = EconomicMap.create(Equivalence.IDENTITY);
+
         private InterpreterResolvedObjectType thisJavaType;
 
         @SuppressWarnings("this-escape")
@@ -1008,17 +1017,22 @@ public class CremaSupportImpl implements CremaSupport {
             return parserKlass.getName();
         }
 
-        InterpreterResolvedObjectType getThisJavaType() {
-            return thisJavaType;
-        }
-
         @Override
         public String toString() {
             return "CremaPartialType<" + getSymbolicName() + ">";
         }
 
         @Override
-        public PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> fallbackLookup(Symbol<Name> name, Symbol<Signature> signature,
+        public int getModifiers() {
+            return parserKlass.getFlags() & Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
+        }
+
+        InterpreterResolvedObjectType getThisJavaType() {
+            return thisJavaType;
+        }
+
+        @Override
+        public TableEntry<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> fallbackLookup(Symbol<Name> name, Symbol<Signature> signature,
                         boolean includePrivate) {
             for (CremaPartialMethod m : declared) {
                 if ((!m.isPrivate() || includePrivate) && !m.isStatic() && m.getSymbolicName() == name && m.getSymbolicSignature() == signature) {
@@ -1037,7 +1051,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
     }
 
-    static final class CremaPartialMethod implements PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
+    static final class CremaPartialMethod implements TableEntry<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
         private final CremaPartialType partialType;
         private final ParserMethod m;
         private int vtableIndex = -1;
@@ -1050,27 +1064,10 @@ public class CremaSupportImpl implements CremaSupport {
             this.m = m;
         }
 
-        @Override
-        public CremaPartialMethod withVTableIndex(int index) {
-            assert vtableIndex == -1;
-            this.vtableIndex = index;
-            return this;
-        }
-
         public CremaPartialMethod withITableIndex(int index) {
             assert itableIndex == -1;
             this.itableIndex = index;
             return this;
-        }
-
-        @Override
-        public boolean isConstructor() {
-            return m.getName() == ParserSymbols.ParserNames._init_;
-        }
-
-        @Override
-        public boolean isClassInitializer() {
-            return m.isClassInitializer();
         }
 
         @Override
@@ -1088,25 +1085,38 @@ public class CremaSupportImpl implements CremaSupport {
             return m.getSignature();
         }
 
-        @Override
-        public InterpreterResolvedJavaMethod asMethodAccess() {
+        int getDispatchIndex() {
+            if (vtableIndex != VTBL_UNINITIALIZED) {
+                assert itableIndex == VTBL_UNINITIALIZED;
+                return vtableIndex;
+            } else if (itableIndex != VTBL_UNINITIALIZED) {
+                return itableIndex;
+            }
+            return VTBL_UNINITIALIZED;
+        }
+
+        void setVTableSlotIndex(int index) {
+            assert vtableIndex == VTBL_UNINITIALIZED || vtableIndex == index;
+            this.vtableIndex = index;
+        }
+
+        private InterpreterResolvedJavaMethod toMethodAccess() {
             if (resolved != null) {
                 return resolved;
             }
-            int dispatchIndex = InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED;
-            if (vtableIndex != -1) {
-                assert itableIndex == -1;
-                dispatchIndex = vtableIndex;
-            } else if (itableIndex != -1) {
-                dispatchIndex = itableIndex;
+            resolved = CremaResolvedJavaMethodImpl.create(partialType.getThisJavaType(), m, getDispatchIndex());
+            if (resolved.isAbstract()) {
+                resolved.setNativeEntryPoint(InterpreterKnownCompiledEntryPoints.getThrowAbstractMethodErrorStub());
             }
-            resolved = CremaResolvedJavaMethodImpl.create(partialType.getThisJavaType(), m, dispatchIndex);
             return resolved;
         }
     }
 
     private abstract static class AbstractCremaDispatchTable {
         protected final CremaPartialType partialType;
+        private final HashMap<FailingMethodKey, InterpreterResolvedJavaMethod> failingMethods = new HashMap<>();
+        private InterpreterResolvedJavaMethod[] declaredMethods;
+        private List<InterpreterResolvedJavaMethod> cremaVTable;
 
         AbstractCremaDispatchTable(CremaPartialType partialType) {
             this.partialType = partialType;
@@ -1116,59 +1126,172 @@ public class CremaSupportImpl implements CremaSupport {
 
         public abstract int itableLength(Class<?> iface);
 
-        public final void registerClass(InterpreterResolvedObjectType thisType) {
+        protected final boolean isTypeInitialized() {
+            return partialType.getThisJavaType() != null;
+        }
+
+        public final void registerClass(InterpreterResolvedObjectType thisType, Class<?>[] interfaces) {
+            assert !isTypeInitialized();
             partialType.thisJavaType = thisType;
+            assert isTypeInitialized();
+            /*
+             * Compute the dispatch table before materializing declared methods so resolved methods
+             * observe their final vtable/itable indices.
+             */
+            cremaVTable = createInterpreterVTable(interfaces);
+            declaredMethods = createDeclaredMethods();
         }
 
         public final InterpreterResolvedJavaMethod[] declaredMethods() {
-            InterpreterResolvedJavaMethod[] result = new CremaResolvedJavaMethodImpl[partialType.getDeclaredMethodsList().size()];
-            int i = 0;
-            for (var m : partialType.getDeclaredMethodsList()) {
-                result[i] = m.asMethodAccess();
-                i++;
-            }
-            return result;
+            assert isTypeInitialized();
+            return declaredMethods;
         }
 
-        protected static List<InterpreterResolvedJavaMethod> toSimpleTable(List<PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> table) {
+        public final List<InterpreterResolvedJavaMethod> cremaVTable() {
+            assert isTypeInitialized();
+            return cremaVTable;
+        }
+
+        protected final List<InterpreterResolvedJavaMethod> toVTable(List<TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> table) {
+            assert isTypeInitialized();
+            /*
+             * First pass over the vtable: Assign vtable indexes to our partial methods
+             */
+            for (int index = 0; index < table.size(); index++) {
+                TableEntry<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> entry = table.get(index).getEntry();
+                if (table.get(index).canUseVTableSlotIndex()) {
+                    assert entry instanceof CremaPartialMethod;
+                    ((CremaPartialMethod) entry).setVTableSlotIndex(index);
+                }
+            }
+            /*
+             * Second pass: create methods as necessary and construct the interpreter vtable.
+             */
             List<InterpreterResolvedJavaMethod> result = new ArrayList<>();
-            for (var pm : table) {
-                result.add(pm.asMethodAccess());
+            for (int i = 0; i < table.size(); i++) {
+                TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> entry = table.get(i);
+                result.add(toMethod(entry, i));
             }
             return result;
         }
 
-        public abstract int cremaVTableLength(Class<?>[] interfaces);
+        protected final List<InterpreterResolvedJavaMethod> toITable(List<TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> table) {
+            assert isTypeInitialized();
+            List<InterpreterResolvedJavaMethod> result = new ArrayList<>();
+            for (var entry : table) {
+                assert !entry.canUseVTableSlotIndex();
+                result.add(toMethod(entry, ITBL_SELECTION_FAILURE));
+            }
+            return result;
+        }
 
-        public abstract List<InterpreterResolvedJavaMethod> cremaVTable(Class<?>[] interfaces);
+        private InterpreterResolvedJavaMethod failingMethod(InterpreterResolvedJavaMethod resolved, ErrorType errorType, int vtablePosForFailure) {
+            FailingMethodKey key = new FailingMethodKey(resolved.getSymbolicName(), resolved.getSymbolicSignature(), errorType);
+            return failingMethods.computeIfAbsent(key,
+                            _ -> resolved.forFailing(partialType.getThisJavaType(), InterpreterKnownCompiledEntryPoints.forErrorType(errorType), vtablePosForFailure));
+        }
+
+        protected abstract InterpreterResolvedJavaMethod[] createDeclaredMethods();
+
+        /**
+         * The size of the actual svm VTable that will be put in the {@link DynamicHub}.
+         * <p>
+         * Said size include the regular VTable (ie: the table used for virtual dispatch), and the
+         * size of all the ITables (ie: the tables used for interface dispatch).
+         */
+        public abstract int svmVTableLength(Class<?>[] interfaces);
+
+        /**
+         * Creates the SVM VTable associated with {@link #partialType}. This table will ultimately
+         * correspond 1-to-1 to the vtable put in the {@link DynamicHub}.
+         * <p>
+         * The correspondence works as follows:
+         * <ul>
+         * <li>If at index {@code i} in the hub vtable is a {@link CFunctionPointer}, then</li>
+         * <li>The entry at index {@code i} in this constructed table contains the
+         * {@link InterpreterResolvedJavaMethod} corresponding to that function pointer.</li>
+         * </ul>
+         * <p>
+         * In particular, the returned table must be formed by the regular VTable, to which are
+         * concatenated all the ITables (Sorted by their {@code interfaceId}).
+         */
+        protected abstract List<InterpreterResolvedJavaMethod> createInterpreterVTable(Class<?>[] interfaces);
+
+        public abstract int mirandaMethodsStart();
+
+        private record FailingMethodKey(Symbol<Name> name, Symbol<Signature> signature, ErrorType errorType) {
+        }
+
+        protected final InterpreterResolvedJavaMethod toMethod(TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> ref, int vtablePos) {
+            assert isTypeInitialized();
+            InterpreterResolvedJavaMethod resolved;
+            TableEntry<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> entry = ref.getEntry();
+            if (entry instanceof CremaPartialMethod partialMethod) {
+                assert partialMethod.getDispatchIndex() != VTBL_UNINITIALIZED;
+                resolved = partialMethod.toMethodAccess();
+            } else {
+                resolved = (InterpreterResolvedJavaMethod) entry;
+            }
+            if (ref.isSelectionFailure()) {
+                resolved = failingMethod(resolved, ErrorType.IncompatibleClassChangeError, vtablePos);
+            } else if (ref.isNonPublicInterfaceSelection()) {
+                resolved = failingMethod(resolved, ErrorType.IllegalAccessError, vtablePos);
+            }
+            return resolved;
+        }
     }
 
     private static final class CremaInterfaceDispatchTable extends AbstractCremaDispatchTable {
-        CremaInterfaceDispatchTable(CremaPartialType partialType) {
+        private final Tables<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> table;
+        private final List<InterpreterResolvedJavaMethod> additionalDeclaredMethods = new ArrayList<>();
+
+        CremaInterfaceDispatchTable(Tables<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> table, CremaPartialType partialType) {
             super(partialType);
+            this.table = table;
         }
 
         @Override
-        public int cremaVTableLength(Class<?>[] interfaces) {
-            int result = 0;
-            for (CremaPartialMethod method : partialType.getDeclaredMethodsList()) {
-                if (VTable.isVirtualEntry(method)) {
-                    result++;
-                }
-            }
-            return result;
+        public int svmVTableLength(Class<?>[] interfaces) {
+            // No need to create a svm vtable in the dynamic hub of interfaces.
+            return 0;
         }
 
         @Override
-        public List<InterpreterResolvedJavaMethod> cremaVTable(Class<?>[] interfaces) {
+        protected List<InterpreterResolvedJavaMethod> createInterpreterVTable(Class<?>[] interfaces) {
             List<InterpreterResolvedJavaMethod> itable = new ArrayList<>();
             for (CremaPartialMethod method : partialType.getDeclaredMethodsList()) {
                 if (VTable.isVirtualEntry(method)) {
-                    itable.add(method.withITableIndex(itable.size()).asMethodAccess());
+                    itable.add(method.withITableIndex(itable.size()).toMethodAccess());
                 }
             }
-            assert itable.size() == cremaVTableLength(interfaces);
+            for (TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> entry : table.getImplicitInterfaceMethods()) {
+                if (entry.isSelectionFailure()) {
+                    InterpreterResolvedJavaMethod failing = toMethod(entry, itable.size());
+                    itable.add(failing);
+                    additionalDeclaredMethods.add(failing);
+                }
+            }
             return itable;
+        }
+
+        @Override
+        protected InterpreterResolvedJavaMethod[] createDeclaredMethods() {
+            assert isTypeInitialized();
+            List<InterpreterResolvedJavaMethod> result = new ArrayList<>();
+            for (CremaPartialMethod m : partialType.getDeclaredMethodsList()) {
+                assert (!VTable.isVirtualEntry(m) || m.itableIndex != VTBL_UNINITIALIZED);
+                result.add(m.toMethodAccess());
+            }
+            for (InterpreterResolvedJavaMethod method : additionalDeclaredMethods) {
+                assert method.isInternal();
+                result.add(method);
+            }
+            return result.toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
+        }
+
+        @Override
+        public int mirandaMethodsStart() {
+            return InterpreterResolvedObjectType.VTableHolder.UNKNOWN;
         }
 
         @Override
@@ -1191,7 +1314,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         @Override
-        public int cremaVTableLength(Class<?>[] interfaces) {
+        public int svmVTableLength(Class<?>[] interfaces) {
             int result = table.getVtable().size();
             for (Class<?> intf : interfaces) {
                 result += getItableFor(intf).size();
@@ -1200,14 +1323,27 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         @Override
-        public List<InterpreterResolvedJavaMethod> cremaVTable(Class<?>[] interfaces) {
-            List<InterpreterResolvedJavaMethod> vtable = toSimpleTable(table.getVtable());
+        protected List<InterpreterResolvedJavaMethod> createInterpreterVTable(Class<?>[] interfaces) {
+            List<InterpreterResolvedJavaMethod> vtable = toVTable(table.getVtable());
             List<InterpreterResolvedJavaMethod> result = new ArrayList<>(vtable);
             for (Class<?> intf : interfaces) {
-                List<InterpreterResolvedJavaMethod> itable = toSimpleTable(getItableFor(intf));
+                List<InterpreterResolvedJavaMethod> itable = toITable(getItableFor(intf));
                 result.addAll(itable);
             }
-            assert cremaVTableLength(interfaces) == result.size();
+            assert svmVTableLength(interfaces) == result.size();
+            return result;
+        }
+
+        @Override
+        protected InterpreterResolvedJavaMethod[] createDeclaredMethods() {
+            assert isTypeInitialized();
+            InterpreterResolvedJavaMethod[] result = new CremaResolvedJavaMethodImpl[partialType.getDeclaredMethodsList().size()];
+            int i = 0;
+            for (CremaPartialMethod m : partialType.getDeclaredMethodsList()) {
+                assert (!VTable.isVirtualEntry(m) || m.vtableIndex != VTBL_UNINITIALIZED);
+                result[i] = m.toMethodAccess();
+                i++;
+            }
             return result;
         }
 
@@ -1217,15 +1353,21 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         @Override
+        public int mirandaMethodsStart() {
+            return table.getImplicitInterfaceMethodsStart();
+        }
+
+        @Override
         public int itableLength(Class<?> iface) {
             var itable = getItableFor(iface);
             assert itable != null : "Missing itable for " + iface;
             return itable.size();
         }
 
-        private List<PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> getItableFor(Class<?> iface) {
+        private List<TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> getItableFor(Class<?> iface) {
             return table.getItables().get((InterpreterResolvedJavaType) DynamicHub.fromClass(iface).getInterpreterType());
         }
+
     }
 
     @Override

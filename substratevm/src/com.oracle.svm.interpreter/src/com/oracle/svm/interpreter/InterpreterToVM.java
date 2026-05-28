@@ -775,7 +775,7 @@ public final class InterpreterToVM {
         return (CFunctionPointer) codePointer;
     }
 
-    private static InterpreterResolvedJavaMethod peekAtInterpreterVTable(InterpreterResolvedObjectType seedType, Class<?> thisClass, int vTableIndex) {
+    private static InterpreterResolvedJavaMethod peekAtInterpreterVTable(InterpreterResolvedObjectType seedType, Class<?> thisClass, int vTableIndex, boolean interfaceDispatch) {
         ResolvedJavaType thisType;
         if (RuntimeClassLoading.isSupported()) {
             thisType = DynamicHub.fromClass(thisClass).getInterpreterType();
@@ -792,12 +792,12 @@ public final class InterpreterToVM {
         VMError.guarantee(vTable != null);
 
         int idx;
-        if (SubstrateOptions.useClosedTypeWorldHubLayout() || !seedType.isInterface()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout() || !interfaceDispatch) {
             idx = vTableIndex;
         } else {
             idx = vTableIndex + objectType.determineITableStartingIndex(seedType);
         }
-        VMError.guarantee(idx >= 0 && idx < vTable.length);
+        VMError.guarantee(idx >= 0 && idx < vTable.length, MetadataUtil.fmt("Invalid vtable index: %s, for vtable length: %s, and receiver type: %s", idx, vTable.length, objectType));
         return vTable[idx];
     }
 
@@ -812,11 +812,6 @@ public final class InterpreterToVM {
         // First, find the target method.
         InterpreterResolvedJavaMethod target = resolveCallSiteTarget(seedMethod, calleeArgs, callKind, quiet);
         boolean callRuntimeLoadedJNI = target.isNative() && target instanceof CremaResolvedJavaMethodImpl;
-
-        // GR-74743: Should be an entry in the ITable throwing IllegalAccessError.
-        if (callKind == CallKind.ITABLE_LOOKUP && !target.isPublic() && !target.isPrivate()) {
-            throw SemanticJavaException.raise(new IllegalAccessError(MetadataUtil.fmt("invokeinterface selected method must be public or private: %s", target)));
-        }
 
         // Next, determine whether the call should stay in interpreter or call the compiled target.
         boolean callAOTEntryPoint = !callRuntimeLoadedJNI && shouldCallAOTEntryPoint(forceStayInInterpreter, preferStayInInterpreter, target, quiet);
@@ -861,16 +856,17 @@ public final class InterpreterToVM {
             ensureClassInitialized(seedMethod.getDeclaringClass());
             return seedMethod;
         } else if (isVirtual && seedMethod.hasDispatchIndex()) {
+
             InterpreterUtil.guarantee(
                             // Ensure itable lookup happens only for interface method seeds.
-                            seedMethod.getDeclaringClass().isInterface() == (callKind == CallKind.ITABLE_LOOKUP),
+                            callKind == CallKind.ITABLE_LOOKUP ? seedMethod.getDeclaringClass().isInterface() : true,
                             "Wrong call kind (%s) for the given method: %s", callKind.toString(), seedMethod);
             Class<?> receiverClass = calleeArgs[0].getClass();
             if (receiverClass.isArray()) {
                 // Arrays do not have a vtable
                 return seedMethod;
             } else {
-                return peekAtInterpreterVTable(seedMethod.getDeclaringClass(), receiverClass, seedMethod.getVTableIndex());
+                return peekAtInterpreterVTable(seedMethod.getDeclaringClass(), receiverClass, seedMethod.getVTableIndex(), callKind == CallKind.ITABLE_LOOKUP);
             }
         } else if (isVirtual && seedMethod.isDevirtualized()) {
             InterpreterResolvedJavaMethod target = seedMethod.devirtualizationTarget();
@@ -889,7 +885,7 @@ public final class InterpreterToVM {
                         (RuntimeClassLoading.isSupported() && target.isSignaturePolymorphicIntrinsic());
         boolean canBeAOTCalled = target.hasNativeEntryPoint() &&
                         target.getNativeEntryPoint().isNonNull() &&
-                        !target.getNativeEntryPoint().equal(InterpreterNotCompiledMethodPointerHolder.getMethodNotCompiledHandler());
+                        !target.getNativeEntryPoint().equal(InterpreterKnownCompiledEntryPoints.getMethodNotCompiledHandler());
 
         if (!canBeInterpreterInvoked && !canBeAOTCalled) {
             String source;
@@ -904,7 +900,7 @@ public final class InterpreterToVM {
                 if (!target.getDeclaringClass().getHub().isPreserved()) {
                     reason = MetadataUtil.fmt("Class %s was not preserved during image build.%nConsider using '-H:Preserve=package=%s'.", target.getDeclaringClass().toClassName(), dotPkg);
                 }
-                if (target.getNativeEntryPoint().equal(InterpreterNotCompiledMethodPointerHolder.getMethodNotCompiledHandler())) {
+                if (target.getNativeEntryPoint().equal(InterpreterKnownCompiledEntryPoints.getMethodNotCompiledHandler())) {
                     reason = MetadataUtil.fmt(
                                     "Trying to dispatch to compiled code for AOT method %s but it was not compiled because it was not seen as reachable by analysis.%nConsider using '-H:Preserve=package=%s'",
                                     target, dotPkg);

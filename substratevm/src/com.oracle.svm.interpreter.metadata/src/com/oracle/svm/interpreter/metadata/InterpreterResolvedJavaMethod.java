@@ -26,7 +26,9 @@ package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_FINAL;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SIGNATURE_POLYMORPHIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SYNTHETIC;
@@ -78,7 +80,6 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
-import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -101,7 +102,7 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  * also abstract methods for vtable calls.
  */
 public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implements ResolvedJavaMethod, CremaMethodAccess, CremaResolvedMember, ResolvedMember, SubstrateMetadata {
-    @Platforms(Platform.HOSTED_ONLY.class)//
+    @Platforms(Platform.HOSTED_ONLY.class) //
     @SuppressWarnings("unchecked") //
     private static final Class<? extends Annotation> CALLER_SENSITIVE_CLASS = (Class<? extends Annotation>) ReflectionUtil.lookupClass("jdk.internal.reflect.CallerSensitive");
     /**
@@ -109,6 +110,11 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      * method.
      */
     private static final int ACC_SUBSTITUTED_NATIVE = 0x80000000;
+    /**
+     * This flag denotes a method that is created by the VM. This method should never be seen
+     * by reflection or by stack walking.
+     */
+    private static final int ACC_INTERNAL = 0x40000000;
 
     public static final InterpreterResolvedJavaMethod[] EMPTY_ARRAY = new InterpreterResolvedJavaMethod[0];
     public static final LocalVariableTable EMPTY_LOCAL_VARIABLE_TABLE = new LocalVariableTable(new Local[0]);
@@ -130,6 +136,11 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      */
     public static final int VTBL_ALWAYS_INLINED = -3;
     /**
+     * This is a synthetic method representing a selection failures in an ITable. These are never the result of
+     * method resolution (only of method selection).
+     */
+    public static final int ITBL_SELECTION_FAILURE = -4;
+    /**
      * The VTable index is unavailable.
      */
     public static final int VTBL_INVALID = -99;
@@ -146,7 +157,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      * Contains standard modifiers in the low 16 bits, and non-standard flags in the upper 16 bits.
      *
      * @see #ACC_SUBSTITUTED_NATIVE
-     * @see com.oracle.svm.espresso.classfile.Constants
+     * @see Constants
      */
     private final int flags;
 
@@ -240,8 +251,8 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         this.originalMethod = originalMethod;
     }
 
-    // Used at run-time for deserialization
-    private InterpreterResolvedJavaMethod(Symbol<Name> name, int maxLocals, int maxStackSize, int flags,
+    // Used at run-time for deserialization and virtual proxifying
+    protected InterpreterResolvedJavaMethod(Symbol<Name> name, int maxLocals, int maxStackSize, int flags,
                     InterpreterResolvedObjectType declaringClass, InterpreterUnresolvedSignature signature, PreparedSignature preparedSignature, Symbol<Signature> signatureSymbol,
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
                     ReferenceConstant<MethodRefHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId) {
@@ -315,7 +326,6 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         this.signature = CremaMethodAccess.toJVMCI(m.getSignature(), SymbolsSupport.getTypes());
 
         this.vtableIndex = vtableIndex;
-        this.nativeEntryPoint = null;
 
         this.gotOffset = -2 /* -GOT_NO_ENTRY */;
         this.enterStubOffset = EST_NO_ENTRY;
@@ -342,6 +352,21 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         }
         return new InterpreterResolvedJavaMethod(nameSymbol, maxLocals, maxStackSize, flags, declaringClass, signature, preparedSignature, signatureSymbol, code,
                         exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
+    }
+
+    public InterpreterResolvedJavaMethod forFailing(InterpreterResolvedObjectType targetDeclaringClass, MethodRefHolder failingNativeEntryPoint, int vtablePos) {
+        assert RuntimeClassLoading.isSupported();
+        return new InterpreterResolvedJavaMethod(name, 0, 0,
+                        ACC_PUBLIC | ACC_NATIVE | ACC_SYNTHETIC | ACC_HIDDEN | ACC_INTERNAL,
+                        targetDeclaringClass,
+                        signature, preparedSignature, signatureSymbol,
+                        /*- code */ null,
+                        /*- exceptionHandlers */ null,
+                        /*- LineNumberTable */ null,
+                        /*- localVariableTable */ null,
+                        /*- nativeEntryPoint */ ReferenceConstant.createFromNonNullReference(failingNativeEntryPoint),
+                        vtablePos,
+                        -2 /*- GOT_NO_ENTRY */, EST_NO_ENTRY, UNKNOWN_METHOD_ID);
     }
 
     // Only called during universe building
@@ -475,6 +500,10 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         return getSignaturePolymorphicIntrinsic() != null;
     }
 
+    public final boolean isInternal() {
+        return (flags & ACC_INTERNAL) != 0;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public final boolean needsMethodBody() {
         return needMethodBody;
@@ -599,7 +628,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     private static void verifySanitizedCode(byte[] code) {
         for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
             int currentBC = BytecodeStream.currentBC(code, bci);
-            VMError.guarantee(Bytecodes.BREAKPOINT != currentBC);
+            VMError.guarantee(BREAKPOINT != currentBC);
             VMError.guarantee(!Bytecodes.isQuickenedFieldAccess(currentBC));
         }
     }
@@ -691,7 +720,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         return flags & JVM_RECOGNIZED_METHOD_MODIFIERS;
     }
 
-    public int getFlags() {
+    public final int getFlags() {
         return flags;
     }
 
@@ -809,6 +838,11 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         }
     }
 
+    public final void setNativeEntryPoint(MethodRefHolder nativeEntryPoint) {
+        VMError.guarantee(this.nativeEntryPoint == null);
+        this.nativeEntryPoint = ReferenceConstant.createFromNonNullReference(nativeEntryPoint);
+    }
+
     public final int getVTableIndex() {
         return vtableIndex;
     }
@@ -824,7 +858,8 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public final boolean requiresInterfaceDispatch(InterpreterResolvedJavaType holder) {
-        return hasDispatchIndex() && getDeclaringClass().isInterface();
+        assert getDeclaringClass().isInterface();
+        return hasDispatchIndex() && (holder == getDeclaringClass() || holder.lookupVTableEntry(getVTableIndex()) != this);
     }
 
     public final boolean isDevirtualized() {
@@ -899,18 +934,6 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         this.interpreterExecToken = interpreterExecToken;
     }
 
-    @Override
-    public final InterpreterResolvedJavaMethod asMethodAccess() {
-        return this;
-    }
-
-    @Override
-    public final PartialMethod<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> withVTableIndex(int index) {
-        assert vtableIndex == VTBL_UNINITIALIZED;
-        vtableIndex = index;
-        return this;
-    }
-
     /**
      * Installs the precomputed ABI-ready signature used by interpreter entry stubs and runtime-made
      * method metadata that cannot rely on hosted initialization.
@@ -942,7 +965,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Override
     public CodeAttribute getCodeAttribute() {
-        throw VMError.unimplemented("code attribute unavailable for AOT methods.");
+        throw VMError.shouldNotReachHere("code attribute unavailable for AOT methods.");
     }
 
     @Override
@@ -1083,7 +1106,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         return invoker;
     }
 
-    public CallKind getCallKind() {
+    public final CallKind getCallKind() {
         return CallKind.getCallKind(this);
     }
 }
