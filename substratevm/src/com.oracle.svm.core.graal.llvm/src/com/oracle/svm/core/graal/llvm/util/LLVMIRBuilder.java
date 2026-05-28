@@ -817,6 +817,10 @@ public class LLVMIRBuilder implements AutoCloseable {
             public static Location namedRegister(String register) {
                 return new Location("{" + register + "}");
             }
+
+            public static Location memory() {
+                return new Location("{memory}");
+            }
         }
     }
 

@@ -803,7 +803,10 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public void visitFullInfopointNode(FullInfopointNode i) {
-        throw unimplemented("the LLVM backend doesn't support debug info generation"); // ExcludeFromJacocoGeneratedReport
+        /*
+         * FullInfopointNodes only record source-level debug infopoints. The LLVM backend does not
+         * emit this debug information, so there is no runtime code to lower here.
+         */
     }
 
     @Override
@@ -860,7 +863,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             if (LIRValueUtil.isVariable(wrappedBase) && LIRValueUtil.asVariable(wrappedBase) instanceof LLVMPendingSpecialRegisterRead pendingRead) {
                 if (index != null && !index.equals(Value.ILLEGAL)) {
-                    pendingRead = new LLVMPendingSpecialRegisterRead(pendingRead, LLVMUtils.getVal(addressValue.getIndex()));
+                    pendingRead = new LLVMPendingSpecialRegisterRead(pendingRead, addressValue.getIndex());
                 }
                 typeOverride = true;
                 llvmOperand = pendingRead;
