@@ -58,6 +58,28 @@ import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 
+/**
+ * Builds LLVM bitcode for the SubstrateVM LLVM backend and centralizes the backend-specific
+ * conventions used when calling the LLVM C API.
+ * <p>
+ * The most important invariant for GC support is the pointer address-space scheme. Native pointers
+ * and temporary raw addresses are emitted in {@code addrspace(0)} and are ignored by LLVM's
+ * statepoint rewriting. Java object references are emitted as tracked pointers: uncompressed
+ * references use {@code addrspace(1)}, and compressed references use {@code addrspace(2)}. The
+ * address space is therefore part of the reference's meaning, not just an LLVM type-system detail:
+ * it tells the statepoint pass which values must appear in stack maps and lets the object-file
+ * reader later recover whether a stack slot stores a compressed or uncompressed reference.
+ * <p>
+ * The {@code addrspace(2)} convention requires the Native Image LLVM patch in
+ * {@code sdk/llvm-patches/native-image/0002-GR-17692-Statepoints-Support-for-compressed-pointers.patch}.
+ * That patch adds the {@code compressed-pointer} GC strategy and records compressed tracked
+ * pointers in a form that {@link LLVMStackMapInfo} can decode from LLVM statepoint stack maps.
+ * <p>
+ * The Graal calling convention used for Java-to-Java calls is another backend convention that must
+ * be understood by LLVM. It keeps Native Image's reserved registers, such as the isolate thread and
+ * heap base registers, in fixed machine registers across calls. The GraalVM LLVM toolchain already
+ * contains the required LLVM-side support for this calling convention.
+ */
 public class LLVMIRBuilder implements AutoCloseable {
     private static final String DEFAULT_INSTR_NAME = "";
     private static final LLVMTypeRef[] EMPTY_TYPES = new LLVMTypeRef[0];

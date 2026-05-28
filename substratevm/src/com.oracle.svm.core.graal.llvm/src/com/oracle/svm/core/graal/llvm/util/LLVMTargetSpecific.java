@@ -443,7 +443,7 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
 
         @Override
         public String getJavaFrameAnchorIPInlineAssembly() {
-            return "auipc $0, 0";
+            return "auipc $0, 0\naddi $0, $0, 8";
         }
 
         @Override

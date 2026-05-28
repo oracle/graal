@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.Attribute;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.LinkageType;
@@ -57,10 +60,10 @@ class LLVMHelperFunctions {
     private LLVMValueRef[] compressedObjectsValueCmpxchgFunction = new LLVMValueRef[MemoryOrderMode.values().length];
     private LLVMValueRef[] compressedObjectsLogicCmpxchgFunction = new LLVMValueRef[MemoryOrderMode.values().length];
 
-    private LLVMValueRef[] compressFunctions = new LLVMValueRef[MAX_COMPRESS_SHIFT];
-    private LLVMValueRef[] nonNullCompressFunctions = new LLVMValueRef[MAX_COMPRESS_SHIFT];
-    private LLVMValueRef[] uncompressFunctions = new LLVMValueRef[MAX_COMPRESS_SHIFT];
-    private LLVMValueRef[] nonNullUncompressFunctions = new LLVMValueRef[MAX_COMPRESS_SHIFT];
+    private Map<Integer, LLVMValueRef> compressFunctions = new HashMap<>();
+    private Map<Integer, LLVMValueRef> nonNullCompressFunctions = new HashMap<>();
+    private Map<Integer, LLVMValueRef> uncompressFunctions = new HashMap<>();
+    private Map<Integer, LLVMValueRef> nonNullUncompressFunctions = new HashMap<>();
 
     LLVMHelperFunctions(LLVMIRBuilder primary) {
         this.builder = new LLVMIRBuilder(primary);
@@ -108,32 +111,20 @@ class LLVMHelperFunctions {
                         : returnsValue ? objectsValueCmpxchgFunction[memoryOrderIndex] : objectsLogicCmpxchgFunction[memoryOrderIndex];
     }
 
-    private static final int MAX_COMPRESS_SHIFT = 3;
-
     LLVMValueRef getCompressFunction(boolean nonNull, int shift) {
         if (nonNull) {
-            if (nonNullCompressFunctions[shift] == null) {
-                nonNullCompressFunctions[shift] = buildCompressFunction(true, shift);
-            }
+            return nonNullCompressFunctions.computeIfAbsent(shift, s -> buildCompressFunction(true, s));
         } else {
-            if (compressFunctions[shift] == null) {
-                compressFunctions[shift] = buildCompressFunction(false, shift);
-            }
+            return compressFunctions.computeIfAbsent(shift, s -> buildCompressFunction(false, s));
         }
-        return nonNull ? nonNullCompressFunctions[shift] : compressFunctions[shift];
     }
 
     LLVMValueRef getUncompressFunction(boolean nonNull, int shift) {
         if (nonNull) {
-            if (nonNullUncompressFunctions[shift] == null) {
-                nonNullUncompressFunctions[shift] = buildUncompressFunction(true, shift);
-            }
+            return nonNullUncompressFunctions.computeIfAbsent(shift, s -> buildUncompressFunction(true, s));
         } else {
-            if (uncompressFunctions[shift] == null) {
-                uncompressFunctions[shift] = buildUncompressFunction(false, shift);
-            }
+            return uncompressFunctions.computeIfAbsent(shift, s -> buildUncompressFunction(false, s));
         }
-        return nonNull ? nonNullUncompressFunctions[shift] : uncompressFunctions[shift];
     }
 
     private static final String INT_TO_OBJECT_FUNCTION_NAME = "__llvm_int_to_object";
@@ -265,7 +256,8 @@ class LLVMHelperFunctions {
         builder.positionAtEnd(block);
         LLVMValueRef uncompressed = builder.buildPtrToInt(LLVMIRBuilder.getParam(func, 0));
         LLVMValueRef heapBase = LLVMIRBuilder.getParam(func, 1);
-        LLVMValueRef compressed = builder.buildSub(uncompressed, heapBase);
+        LLVMValueRef uncompressedOffset = builder.buildSub(uncompressed, heapBase);
+        LLVMValueRef compressed = uncompressedOffset;
 
         if (!nonNull) {
             LLVMValueRef isNull = builder.buildIsNull(uncompressed);
@@ -273,7 +265,7 @@ class LLVMHelperFunctions {
         }
 
         if (shift != 0) {
-            compressed = builder.buildShr(compressed, builder.constantInt(shift));
+            compressed = builder.buildShr(compressed, builder.constantLong(shift));
         }
 
         compressed = builder.buildLLVMIntToPtr(compressed, builder.objectType(true));
@@ -297,7 +289,7 @@ class LLVMHelperFunctions {
         LLVMValueRef heapBase = LLVMIRBuilder.getParam(func, 1);
 
         if (shift != 0) {
-            compressed = builder.buildShl(compressed, builder.constantInt(shift));
+            compressed = builder.buildShl(compressed, builder.constantLong(shift));
         }
 
         LLVMValueRef uncompressed = builder.buildAdd(compressed, heapBase);

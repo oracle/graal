@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -257,17 +258,18 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                             if (requiresPredecessorMaterialization(operand)) {
                                 /*
                                  * The pending value may need to perform instructions, so put them
-                                 * at the end of the predecessor block instead of before the phi.
+                                 * at the end of the predecessor's successor-specific block instead
+                                 * of before the phi.
                                  */
                                 HIRBlock currentBlock = (HIRBlock) gen.getCurrentBlock();
-                                gen.editBlock(predecessor);
+                                gen.editBlock(predecessor, begin);
                                 value = buildValue(llvmOperand(phiValue), phiType);
                                 gen.resumeBlock(currentBlock);
                             } else {
                                 value = llvmOperand(phiValue);
                                 if (needsBuildValue(value, phiType)) {
                                     HIRBlock currentBlock = (HIRBlock) gen.getCurrentBlock();
-                                    gen.editBlock(predecessor);
+                                    gen.editBlock(predecessor, begin);
                                     value = buildValue(value, phiType);
                                     gen.resumeBlock(currentBlock);
                                 }
@@ -535,38 +537,24 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         } else if (callTarget instanceof ComputedIndirectCallTargetNode) {
             ComputedIndirectCallTargetNode computedIndirectCallTargetNode = (ComputedIndirectCallTargetNode) callTarget;
             LLVMValueRef computedAddress = llvmOperand(computedIndirectCallTargetNode.getAddressBase());
-            int compressionShift = ReferenceAccess.singleton().getCompressionShift();
-            boolean nextMemoryAccessNeedsDecompress = false;
 
             for (var computation : computedIndirectCallTargetNode.getAddressComputation()) {
                 SharedField field;
                 if (computation instanceof ComputedIndirectCallTargetNode.FieldLoad) {
                     field = (SharedField) ((ComputedIndirectCallTargetNode.FieldLoad) computation).getField();
-
-                    if (nextMemoryAccessNeedsDecompress) {
-                        computedAddress = builder.buildAddrSpaceCast(computedAddress, builder.objectType(true));
-                        LLVMValueRef heapBase = ((LLVMVariable) LIRValueUtil.asVariable(gen.emitReadRegister(ReservedRegisters.singleton().getHeapBaseRegister(), null))).get();
-                        computedAddress = builder.buildUncompress(computedAddress, heapBase, true, compressionShift);
-                    }
-
-                    computedAddress = builder.buildGEP(computedAddress, builder.constantInt(field.getOffset()));
-                    computedAddress = builder.buildLoad(computedAddress, builder.objectType(false));
+                    computedAddress = loadComputedIndirectField(computedAddress, field);
                 } else if (computation instanceof ComputedIndirectCallTargetNode.FieldLoadIfZero) {
                     JavaConstant object = ((ComputedIndirectCallTargetNode.FieldLoadIfZero) computation).getObject();
                     field = (SharedField) ((ComputedIndirectCallTargetNode.FieldLoadIfZero) computation).getField();
 
-                    LLVMValueRef heapBase = ((LLVMVariable) gen.emitReadRegister(ReservedRegisters.singleton().getHeapBaseRegister(), null)).get();
-                    heapBase = builder.buildIntToPtr(heapBase, builder.objectType(false));
-                    LLVMValueRef objectAddress = builder.buildPtrToInt(gen.emitLLVMConstant(builder.objectType(false), object));
-                    LLVMValueRef computedAddressIfNull = builder.buildGEP(heapBase, builder.buildAdd(builder.constantLong(field.getOffset()), objectAddress));
-                    computedAddressIfNull = builder.buildLoad(computedAddressIfNull, builder.objectType(false));
+                    LLVMValueRef objectAddress = gen.emitLLVMConstant(builder.objectType(false), object);
+                    LLVMValueRef computedAddressIfNull = loadComputedIndirectField(objectAddress, field);
 
                     LLVMValueRef cond = builder.buildCompare(Condition.NE, builder.constantLong(0), builder.buildPtrToInt(computedAddress), true);
                     computedAddress = builder.buildSelect(cond, computedAddress, computedAddressIfNull);
                 } else {
                     throw VMError.shouldNotReachHere("Computation is not supported yet: " + computation.getClass().getTypeName());
                 }
-                nextMemoryAccessNeedsDecompress = field.getStorageKind() == JavaKind.Object;
             }
 
             computedAddress = convertMethodOffsetToPointer(callTarget, targetMethod, null, computedAddress);
@@ -583,6 +571,27 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         if (!isVoid) {
             setResult(i.asNode(), call);
         }
+    }
+
+    private LLVMValueRef loadComputedIndirectField(LLVMValueRef base, SharedField field) {
+        LLVMValueRef address = builder.buildGEP(base, builder.constantInt(field.getOffset()));
+        if (field.getStorageKind() == JavaKind.Object) {
+            int referenceSize = ObjectLayout.singleton().getReferenceSize();
+            LLVMTypeRef referenceMemoryType = getReferenceMemoryType(referenceSize);
+            LLVMValueRef loadedBits = builder.buildAlignedLoad(address, referenceMemoryType, referenceSize);
+            LLVMValueRef loadedReference = builder.buildIntToPtr(gen.buildIntegerResize(loadedBits, LLVMIRBuilder.integerTypeWidth(builder.wordType())),
+                            builder.objectType(ReferenceAccess.singleton().haveCompressedReferences()));
+            return gen.buildReferenceValue(loadedReference, builder.objectType(false), false);
+        }
+        return builder.buildLoad(address, builder.objectType(false));
+    }
+
+    private LLVMTypeRef getReferenceMemoryType(int referenceSize) {
+        return switch (referenceSize) {
+            case Integer.BYTES -> builder.intType();
+            case Long.BYTES -> builder.longType();
+            default -> throw shouldNotReachHere("Unsupported reference size: " + referenceSize); // ExcludeFromJacocoGeneratedReport
+        };
     }
 
     private LLVMValueRef convertMethodOffsetToPointer(LoweredCallTargetNode callTarget, ResolvedJavaMethod targetMethod, ValueNode addressNode, LLVMValueRef address) {
@@ -896,8 +905,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
         LLVMTypeRef nodeType = getLLVMType(node);
         LLVMTypeRef operandType = llvmOperand.getType();
-        if (!typeOverride && LLVMIRBuilder.isWordType(nodeType) && LLVMIRBuilder.isPointerType(operandType)) {
-            llvmOperand = new LLVMVariable(builder.buildPtrToInt(llvmOperand.get()));
+        if (!typeOverride && LLVMIRBuilder.isIntegerType(nodeType) && LLVMIRBuilder.isPointerType(operandType)) {
+            llvmOperand = new LLVMVariable(buildIntegerResize(builder.buildPtrToInt(llvmOperand.get()), LLVMIRBuilder.integerTypeWidth(nodeType)));
         } else if (!typeOverride && LLVMIRBuilder.isObjectType(nodeType) && LLVMIRBuilder.isObjectType(operandType) && LLVMIRBuilder.isCompressedPointerType(nodeType) != LLVMIRBuilder
                         .isCompressedPointerType(operandType)) {
             llvmOperand = new LLVMVariable(buildValue(llvmOperand.get(), nodeType));
@@ -909,6 +918,17 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         gen.getDebugInfoPrinter().setValueName(llvmOperand, node);
         valueMap.put(node, llvmOperand);
         return operand;
+    }
+
+    private LLVMValueRef buildIntegerResize(LLVMValueRef value, int toBits) {
+        int fromBits = LLVMIRBuilder.integerTypeWidth(LLVMIRBuilder.typeOf(value));
+        if (fromBits == toBits) {
+            return value;
+        } else if (fromBits < toBits) {
+            return builder.buildZExt(value, toBits);
+        } else {
+            return builder.buildTrunc(value, toBits);
+        }
     }
 
     @Override

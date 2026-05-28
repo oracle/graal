@@ -72,7 +72,13 @@ public final class DerivedReferenceSupport {
 
         UnsignedWord rawReference = Word.zero();
         if (value.isNonNull()) {
-            rawReference = value.subtract(KnownIntrinsics.heapBase()).unsignedShiftRight(ReferenceAccess.singleton().getCompressionShift());
+            int compressionShift = ReferenceAccess.singleton().getCompressionShift();
+            UnsignedWord uncompressedOffset = value.subtract(KnownIntrinsics.heapBase());
+            if (compressionShift != 0) {
+                UnsignedWord alignmentMask = Word.unsigned((1L << compressionShift) - 1);
+                assert uncompressedOffset.and(alignmentMask).equal(0) : "Cannot encode an unaligned derived reference as a compressed reference.";
+            }
+            rawReference = uncompressedOffset.unsignedShiftRight(compressionShift);
         }
 
         if (ObjectLayout.singleton().getReferenceSize() == Integer.BYTES) {
