@@ -34,23 +34,27 @@ import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
- * Contains the result of method table creation from {@link VTable#create(PartialType)}.
+ * Contains the result of table creation from {@link VTable#create(PartialType)}.
  *
  * @param <C> The class providing access to the VM-side java {@link java.lang.Class}.
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
 public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
-    private final List<PartialMethod<C, M, F>> vtable;
-    private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables;
-    private final List<PartialMethod<C, M, F>> mirandas;
+    private final List<TableEntryRef<C, M, F>> vtable;
+    private final EconomicMap<C, List<TableEntryRef<C, M, F>>> itables;
+    private final List<TableEntryRef<C, M, F>> mirandas;
+    private final int implicitInterfaceMethodsStart;
+    private final int implicitInterfaceMethodsEnd;
 
-    Tables(List<PartialMethod<C, M, F>> vtable,
-                    EconomicMap<C, List<PartialMethod<C, M, F>>> itables,
-                    List<PartialMethod<C, M, F>> mirandas) {
+    Tables(List<TableEntryRef<C, M, F>> vtable,
+                    EconomicMap<C, List<TableEntryRef<C, M, F>>> itables,
+                    List<TableEntryRef<C, M, F>> mirandas) {
         this.vtable = vtable;
         this.itables = itables;
         this.mirandas = mirandas;
+        this.implicitInterfaceMethodsStart = vtable.size() - mirandas.size();
+        this.implicitInterfaceMethodsEnd = vtable.size();
     }
 
     /**
@@ -62,7 +66,7 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * {@code type}, and any method appearing in slot {@code i} of all the vtables of the
      * superclasses of {@code type}.
      * <p>
-     * It may happen that {@link PartialMethod#isSelectionFailure() m.isSelectionFailure()} returns
+     * It may happen that {@link TableEntryRef#isSelectionFailure() m.isSelectionFailure()} returns
      * {@code true} if the runtime adds the implicit interface methods to the vtable:
      * <p>
      * <ul>
@@ -72,7 +76,7 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * but this type adds a new interface that makes it fail.</li>
      * </ul>
      */
-    public List<PartialMethod<C, M, F>> getVtable() {
+    public List<TableEntryRef<C, M, F>> getVtable() {
         return vtable;
     }
 
@@ -83,9 +87,9 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * For a given type {@code type}, A method {@code m} appearing at index {@code i} in the table
      * corresponding to interface {@code interface} means that {@code m} is the result of method
      * selection (according to JVMS-5.4.6) with respect to {@code type} and the method that appears
-     * at index {@code i} in the method table of {@code interface}.
+     * at index {@code i} in the table of {@code interface}.
      * <p>
-     * If {@code m} returns {@code true} for {@link PartialMethod#isSelectionFailure()}, this means
+     * If {@code m} returns {@code true} for {@link TableEntryRef#isSelectionFailure()}, this means
      * that more than one maximally-specific non-abstract methods existed for the resolution of that
      * table slot. The runtime must make sure to handle that case accordingly (likely by throwing
      * {@link IncompatibleClassChangeError} at the call-site, according to
@@ -95,7 +99,7 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * slot, an arbitrary maximally-specific abstract method is used to populate the slot. This is
      * consistent with the requirement to throw {@link AbstractMethodError} in that case.
      */
-    public EconomicMap<C, List<PartialMethod<C, M, F>>> getItables() {
+    public EconomicMap<C, List<TableEntryRef<C, M, F>>> getItables() {
         return itables;
     }
 
@@ -115,7 +119,7 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * non-{@link ModifiersProvider#isAbstract() abstract}).</li>
      * <li>An {@link ModifiersProvider#isAbstract() abstract} method, in which case the runtime
      * should throw {@link AbstractMethodError}.</li>
-     * <li>A {@link PartialMethod method} for which {@link PartialMethod#isSelectionFailure()}
+     * <li>A {@link TableEntryRef table entry} for which {@link TableEntryRef#isSelectionFailure()}
      * returns true, in which case the runtime should throw
      * {@link IncompatibleClassChangeError}.</li>
      * </ul>
@@ -123,7 +127,15 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * Note that none of the methods in this list are either {@link ModifiersProvider#isPrivate()
      * private} or {@link ModifiersProvider#isStatic() static}.
      */
-    public List<PartialMethod<C, M, F>> getImplicitInterfaceMethods() {
+    public List<TableEntryRef<C, M, F>> getImplicitInterfaceMethods() {
         return mirandas;
+    }
+
+    public int getImplicitInterfaceMethodsStart() {
+        return implicitInterfaceMethodsStart;
+    }
+
+    public int getImplicitInterfaceMethodsEnd() {
+        return implicitInterfaceMethodsEnd;
     }
 }
