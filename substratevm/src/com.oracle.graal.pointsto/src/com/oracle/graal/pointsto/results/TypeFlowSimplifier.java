@@ -319,17 +319,7 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         NodeInputList<ValueNode> arguments = callTarget.arguments();
         for (int i = 0; i < arguments.size(); i++) {
             ValueNode argument = arguments.get(i);
-            boolean openWorldReceiverWithSaturatedInput = openWorldReceiverWithSaturatedInput(invoke, i, argument);
             Object newStampOrConstant = strengthenStampFromTypeFlow(argument, invokeFlow.getActualParameters()[i], beforeInvoke, tool);
-            if (openWorldReceiverWithSaturatedInput) {
-                /*
-                 * The actual-parameter flow is context-sensitive and can be narrower than the
-                 * receiver value's own flow. If the receiver input is saturated in the open type
-                 * world, that narrower type state must not become an exact graph stamp, but nullness
-                 * facts are still safe.
-                 */
-                newStampOrConstant = keepOnlyNullness(newStampOrConstant);
-            }
             if (node.isDeleted()) {
                 /* Parameter stamp was empty, so invoke is unreachable. */
                 return;
@@ -455,41 +445,6 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         }
         Object newStampOrConstant = strengthenStampFromTypeFlow(node, nodeFlow, anchorPointAfterInvoke, tool);
         updateStampUsingPiNode(node, newStampOrConstant, anchorPointAfterInvoke, tool);
-    }
-
-    private boolean openWorldReceiverWithSaturatedInput(Invoke invoke, int argumentIndex, ValueNode argument) {
-        if (strengthenGraphs.isClosedTypeWorld || argumentIndex != 0 || invoke.getInvokeKind() == CallTargetNode.InvokeKind.Static) {
-            return false;
-        }
-
-        TypeFlow<?> argumentFlow = getOriginalInputFlow(argument);
-        if (argumentFlow == null || !methodFlow.isSaturated(analysis, argumentFlow)) {
-            return false;
-        }
-
-        Stamp stamp = argument.stamp(NodeView.DEFAULT);
-        if (stamp instanceof ObjectStamp objectStamp) {
-            AnalysisType stampType = (AnalysisType) objectStamp.type();
-            return stampType == null || !analysis.isClosed(stampType);
-        }
-        return false;
-    }
-
-    private static Object keepOnlyNullness(Object newStampOrConstant) {
-        if (newStampOrConstant instanceof ObjectStamp stamp && !stamp.alwaysNull()) {
-            return stamp.nonNull() ? StampFactory.objectNonNull() : null;
-        } else if (newStampOrConstant instanceof JavaConstant constant && !constant.isDefaultForKind()) {
-            return StampFactory.objectNonNull();
-        }
-        return newStampOrConstant;
-    }
-
-    private TypeFlow<?> getOriginalInputFlow(ValueNode node) {
-        ValueNode current = node;
-        while (current instanceof PiNode pi) {
-            current = pi.getOriginalNode();
-        }
-        return getNodeFlow(current);
     }
 
     /**
@@ -659,6 +614,13 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         }
         TypeState nodeTypeState = methodFlow.foldTypeFlow(analysis, nodeFlow);
 
+        if (openWorldOpenAllInstantiated(nodeFlow)) {
+            if (!nodeTypeState.canBeNull() && hasUsages) {
+                return StampFactory.objectNonNull();
+            }
+            return null;
+        }
+
         if (hasUsages && allowConstantFolding && !nodeTypeState.canBeNull()) {
             JavaConstant constantValue = nodeTypeState.asConstant();
             if (constantValue != null) {
@@ -757,6 +719,11 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         }
         /* Nothing to strengthen. */
         return null;
+    }
+
+    private boolean openWorldOpenAllInstantiated(TypeFlow<?> nodeFlow) {
+        AnalysisType declaredType = nodeFlow.getDeclaredType();
+        return !strengthenGraphs.isClosedTypeWorld && nodeFlow.isAllInstantiated() && declaredType != null && !analysis.isClosed(declaredType);
     }
 
     private IntegerStamp getIntegerStamp(ValueNode node, IntegerStamp originalStamp, FixedWithNextNode anchorPoint, TypeState nodeTypeState, SimplifierTool tool) {
