@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -113,6 +113,7 @@ public class BackgroundCompileQueue {
 
             // NOTE: the value from the first Engine compiling wins for now
             int threads = callTarget.getOptionValue(OptimizedRuntimeOptions.CompilerThreads);
+            long compilerThreadStackSize = callTarget.getOptionValue(OptimizedRuntimeOptions.CompilerThreadStackSize);
             if (threads == 0) {
                 // Old behavior, use either 1 or 2 compiler threads.
                 int availableProcessors = Runtime.getRuntime().availableProcessors();
@@ -145,7 +146,7 @@ public class BackgroundCompileQueue {
             }
             threads = Math.max(1, threads);
 
-            ThreadFactory factory = newThreadFactory("TruffleCompilerThread", callTarget);
+            ThreadFactory factory = newThreadFactory("TruffleCompilerThread", callTarget, compilerThreadStackSize);
 
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
@@ -182,8 +183,8 @@ public class BackgroundCompileQueue {
     }
 
     @SuppressWarnings("unused")
-    protected ThreadFactory newThreadFactory(String threadNamePrefix, OptimizedCallTarget callTarget) {
-        return new TruffleCompilerThreadFactory(threadNamePrefix, runtime);
+    protected ThreadFactory newThreadFactory(String threadNamePrefix, OptimizedCallTarget callTarget, long compilerThreadStackSize) {
+        return new TruffleCompilerThreadFactory(threadNamePrefix, runtime, compilerThreadStackSize);
     }
 
     private CompilationTask submitTask(CompilationTask compilationTask, OptimizedCallTarget target) {
@@ -420,17 +421,19 @@ public class BackgroundCompileQueue {
     private final class TruffleCompilerThreadFactory implements JoinableThreadFactory {
         private final String namePrefix;
         private final OptimizedTruffleRuntime runtime;
+        private final long compilerThreadStackSize;
         private final Set<Thread> threads = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
-        TruffleCompilerThreadFactory(final String namePrefix, OptimizedTruffleRuntime runtime) {
+        TruffleCompilerThreadFactory(final String namePrefix, OptimizedTruffleRuntime runtime, long compilerThreadStackSize) {
             this.namePrefix = namePrefix;
             this.runtime = runtime;
+            this.compilerThreadStackSize = compilerThreadStackSize;
         }
 
         @SuppressWarnings("deprecation")
         @Override
         public Thread newThread(Runnable r) {
-            final Thread t = new Thread(r) {
+            final Thread t = new Thread(null, r, namePrefix, compilerThreadStackSize) {
                 @SuppressWarnings("try")
                 @Override
                 public void run() {

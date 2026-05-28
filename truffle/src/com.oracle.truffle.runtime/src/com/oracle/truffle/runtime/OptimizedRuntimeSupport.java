@@ -352,6 +352,11 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
+    public void onEnginePatchSuccess(Object runtimeData) {
+        ((EngineData) runtimeData).onEnginePatchSuccess();
+    }
+
+    @Override
     public boolean onEngineClosing(Object runtimeData) {
         return ((EngineData) runtimeData).onEngineClosing();
     }
@@ -419,13 +424,6 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     @Override
     public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
         return OptimizedTruffleRuntime.createTerminatingThreadLocal(initialValue, onThreadTermination);
-    }
-
-    @Override
-    public void setInitializedTimestamp(CallTarget target, long timestamp) {
-        if (target instanceof OptimizedCallTarget optimizedCallTarget) {
-            optimizedCallTarget.setInitializedTimestamp(timestamp);
-        }
     }
 
     @Override

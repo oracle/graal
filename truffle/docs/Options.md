@@ -78,6 +78,7 @@ The accepted values are:
   Diagnose - Retry compilation with extra diagnostics enabled.
     ExitVM - Exit the VM process.
 - `--engine.CompilerIdleDelay=<ms>` : Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. New compiler threads will be started once new compilation tasks are submitted. Select '0' to never terminate the Truffle compiler thread. The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no effect. default: 10000
+- `--engine.CompilerThreadStackSize=[0, inf)B|KB|MB|GB` : Set the requested stack size of Truffle compiler threads. By default compiler threads use 640KB stack space. The requested size is rounded up to implementation-specific minima and page sizes as needed.
 - `--engine.CompilerThreads=[1, inf)` : Manually set the number of compiler threads. By default, the number of compiler threads is scaled with the number of available cores on the CPU.
 - `--engine.EncodedGraphCachePurgeDelay=<ms>` : Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).
 - `--engine.FirstTierBackedgeCounts=true|false` : Whether to emit look-back-edge counters in the first-tier compilations. (default: true)
