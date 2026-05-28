@@ -27,6 +27,7 @@ package jdk.graal.compiler.truffle.test;
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.createNodes;
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.parseNode;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -1821,10 +1822,8 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
         assertEquals(42L, callerTarget.call(true));
 
-        assertTrue("Expected transferToInterpreter transition for inlined runtime-compiled method", hasTransitionLog(transitionLogs, "transferToInterpreter"));
-        // The deopt floats to the top of continueAt. The wasCompiled check re-enters before
-        // executing the first instruction.
-        assertTrue("Expected transition to reference the load.argument operation", hasTransitionDetail(transitionLogs, "load.argument"));
+        assertFalse("Expected no transferToInterpreter transition for an inlined Bytecode DSL root",
+                        hasTransitionLog(transitionLogs, "transferToInterpreter"));
         assertNotCompiled(calleeTarget);
     }
 
@@ -1896,7 +1895,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         assertEquals(42L, callerTarget.call(true));
 
         assertTrue("Expected transferToInterpreter transition for inlined runtime-compiled method", hasTransitionLog(transitionLogs, "transferToInterpreter"));
-        assertTrue("Expected transition to be attributed to the callee root", hasTransitionDetail(transitionLogs, "root=callee"));
+        assertTrue("Expected transition to be attributed to the caller root", hasTransitionDetail(transitionLogs, "root=caller"));
         assertNotCompiled(calleeTarget);
     }
 

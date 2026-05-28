@@ -51,6 +51,11 @@ import com.oracle.truffle.api.frame.Frame;
  * <p>
  * Transition kinds are not mutually exclusive; for example, a single transition can simultaneously
  * report {@link #isBytecodeUpdate()} and {@link #isTransferToInterpreter()}.
+ * <p>
+ * Deoptimization transitions report precise bytecode locations for compilation roots and
+ * continuation resumes. If a Bytecode DSL root is inlined into another compiled root, a
+ * deoptimization in that inlined root may be reported at the enclosing compilation root instead of
+ * the inlined root.
  *
  * @since 25.1
  */
@@ -75,6 +80,10 @@ public abstract class BytecodeTransition {
 
     /**
      * Returns {@code true} if this transition was triggered by a deoptimization from compiled code.
+     * <p>
+     * A deoptimization in an inlined Bytecode DSL root may not create a separate transition for that
+     * inlined root. In such cases, the transition may instead be reported for the enclosing
+     * compilation root.
      *
      * @since 25.1
      */
