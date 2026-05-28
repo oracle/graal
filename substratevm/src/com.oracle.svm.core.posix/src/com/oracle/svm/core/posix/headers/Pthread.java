@@ -38,7 +38,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.posix.headers.Time.timespec;
-import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 
 // Checkstyle: stop
 
