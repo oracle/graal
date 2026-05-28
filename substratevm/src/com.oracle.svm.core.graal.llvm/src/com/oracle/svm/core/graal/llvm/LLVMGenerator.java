@@ -380,6 +380,11 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         builder.positionBeforeTerminator(getBlockEnd(block));
     }
 
+    void editBlock(HIRBlock block, AbstractBeginNode successor) {
+        currentBlock = block;
+        builder.positionBeforeTerminator(getBlockEnd(block, successor));
+    }
+
     @Override
     public BasicBlock<?> getCurrentBlock() {
         return currentBlock;
@@ -597,7 +602,8 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
                 if (constant.isNull()) {
                     return builder.constantNull(builder.objectType(LLVMIRBuilder.isCompressedPointerType(type)));
                 } else {
-                    return builder.buildLoad(getLLVMPlaceholderForConstant(constant), builder.objectType(LLVMIRBuilder.isCompressedPointerType(type)));
+                    LLVMValueRef compressedReference = emitCompressedObjectConstant(constant);
+                    return LLVMIRBuilder.isCompressedPointerType(type) ? compressedReference : buildReferenceValue(compressedReference, type, false);
                 }
             default:
                 throw shouldNotReachHere(dumpTypes("unsupported constant type", type)); // ExcludeFromJacocoGeneratedReport
@@ -606,12 +612,21 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
 
     @Override
     public AllocatableValue emitLoadConstant(ValueKind<?> kind, Constant constant) {
-        LLVMValueRef value = builder.buildLoad(getLLVMPlaceholderForConstant(constant), ((LLVMKind) kind.getPlatformKind()).get());
+        LLVMValueRef value = isReferenceKind(kind)
+                        ? emitLLVMConstant(builder.objectType(true), (JavaConstant) constant)
+                        : builder.buildLoad(getLLVMPlaceholderForConstant(constant), ((LLVMKind) kind.getPlatformKind()).get());
         AllocatableValue rawConstant = new LLVMVariable(value);
         if (((LIRKind) kind).isReference(0) && !((LIRKind) kind).isCompressedReference(0)) {
             return (AllocatableValue) emitUncompress(rawConstant, ReferenceAccess.singleton().getCompressEncoding(), false);
         }
         return rawConstant;
+    }
+
+    private LLVMValueRef emitCompressedObjectConstant(JavaConstant constant) {
+        LLVMTypeRef referenceMemoryType = getIntegerType(ObjectLayout.singleton().getReferenceSize());
+        LLVMValueRef compressedBits = builder.buildAlignedLoad(getLLVMPlaceholderForConstant(constant), referenceMemoryType, ObjectLayout.singleton().getReferenceSize());
+        LLVMValueRef wordBits = buildIntegerResize(compressedBits, LLVMIRBuilder.integerTypeWidth(builder.wordType()));
+        return builder.buildIntToPtr(wordBits, builder.objectType(true));
     }
 
     private long nextConstantId = 0L;
@@ -722,12 +737,12 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         LLVMTypeRef destType = ((LLVMKind) dst.getPlatformKind()).get();
 
         /* Floating word cast */
-        if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isWordType(sourceType)) {
-            source = buildWordToObject(source, destType);
+        if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isIntegerType(sourceType)) {
+            source = buildIntegerToObject(source, destType);
         } else if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
             source = buildReferenceValue(source, destType, false);
-        } else if (((LIRKind) dst).isValue() && LLVMIRBuilder.isWordType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
-            source = builder.buildPtrToInt(source);
+        } else if (((LIRKind) dst).isValue() && LLVMIRBuilder.isIntegerType(destType) && LLVMIRBuilder.isPointerType(sourceType)) {
+            source = buildIntegerResize(builder.buildPtrToInt(source), LLVMIRBuilder.integerTypeWidth(destType));
         } else if (!((LIRKind) dst).isValue() && LLVMIRBuilder.isWordType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
             return new LLVMPendingPtrToInt(this, source);
         }
@@ -741,14 +756,22 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         LLVMTypeRef destType = ((LLVMKind) dst.getPlatformKind()).get();
 
         /* Floating word cast */
-        if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isWordType(sourceType)) {
-            source = buildWordToObject(source, destType);
+        if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isIntegerType(sourceType)) {
+            source = buildIntegerToObject(source, destType);
         } else if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
             source = buildReferenceValue(source, destType, false);
-        } else if (LLVMIRBuilder.isWordType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
-            source = builder.buildPtrToInt(source);
+        } else if (LLVMIRBuilder.isIntegerType(destType) && LLVMIRBuilder.isPointerType(sourceType)) {
+            source = buildIntegerResize(builder.buildPtrToInt(source), LLVMIRBuilder.integerTypeWidth(destType));
         }
         ((LLVMVariable) LIRValueUtil.asVariable(dst)).set(source);
+    }
+
+    private LLVMValueRef buildIntegerToObject(LLVMValueRef source, LLVMTypeRef objectType) {
+        LLVMValueRef word = buildIntegerResize(source, LLVMIRBuilder.integerTypeWidth(builder.wordType()));
+        if (LLVMIRBuilder.isCompressedPointerType(objectType)) {
+            return builder.buildIntToPtr(word, objectType);
+        }
+        return buildWordToObject(word, objectType);
     }
 
     private LLVMValueRef buildWordToObject(LLVMValueRef source, LLVMTypeRef objectType) {
@@ -849,7 +872,14 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         LLVMValueRef and = builder.buildAnd(getVal(left), getVal(right));
         LLVMValueRef isNull = builder.buildIsNull(and);
-        LLVMValueRef select = builder.buildSelect(isNull, getVal(trueValue), getVal(falseValue));
+        LLVMValueRef trueVal = getVal(trueValue);
+        LLVMValueRef falseVal = getVal(falseValue);
+        if (LLVMIRBuilder.isObjectType(typeOf(trueVal)) && LLVMIRBuilder.isObjectType(typeOf(falseVal)) && LLVMIRBuilder.isCompressedPointerType(typeOf(trueVal)) != LLVMIRBuilder
+                        .isCompressedPointerType(typeOf(falseVal))) {
+            trueVal = buildReferenceValue(trueVal, builder.objectType(false), false);
+            falseVal = buildReferenceValue(falseVal, builder.objectType(false), false);
+        }
+        LLVMValueRef select = builder.buildSelect(isNull, trueVal, falseVal);
         return new LLVMVariable(select);
     }
 
@@ -1138,7 +1168,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         return buildIntegerResize(valueBits, LLVMIRBuilder.integerTypeWidth(referenceMemoryType));
     }
 
-    private LLVMValueRef buildIntegerResize(LLVMValueRef value, int toBits) {
+    LLVMValueRef buildIntegerResize(LLVMValueRef value, int toBits) {
         int fromBits = LLVMIRBuilder.integerTypeWidth(typeOf(value));
         if (fromBits == toBits) {
             return value;
