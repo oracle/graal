@@ -414,6 +414,7 @@ public class CodeInfoEncoder {
             if (debugInfo != null) {
                 final int offset = getEntryOffset(infopoint);
                 if (offset >= 0) {
+                    VMError.guarantee(offset < compilationSize, "Code info entry offset is outside the method code range");
                     boolean added = infopointOffsets.add(offset);
                     if (!added) {
                         throw VMError.shouldNotReachHere("Encoding two infopoints at same offset. Conflicting infopoint: " + infopoint);
@@ -442,6 +443,7 @@ public class CodeInfoEncoder {
 
         /* Make entries for all exception handlers. */
         for (ExceptionHandler handler : compilation.getExceptionHandlers()) {
+            VMError.guarantee(handler.handlerPos != handler.pcOffset, "Exception handler must have a unique PC");
             final IPData entry = makeEntry(handler.pcOffset + compilationOffset);
             assert entry.exceptionOffset == 0 : entry;
             entry.exceptionOffset = handler.handlerPos - handler.pcOffset;

@@ -37,6 +37,7 @@ import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.DiagnosticLIRGeneratorTool;
 import jdk.vm.ci.amd64.AMD64;
@@ -52,7 +53,7 @@ import jdk.vm.ci.meta.Value;
 
 public class AMD64Call {
 
-    public abstract static class CallOp extends AMD64LIRInstruction {
+    public abstract static class CallOp extends AMD64LIRInstruction implements StandardOp.CallOp {
         public static final LIRInstructionClass<CallOp> TYPE = LIRInstructionClass.create(CallOp.class);
 
         @Def({OperandFlag.REG, OperandFlag.ILLEGAL}) protected Value result;
@@ -209,7 +210,7 @@ public class AMD64Call {
             }
             crb.recordExceptionHandlers(after, info);
             if (masm.position() == after) {
-                masm.postCallNop(call);
+                crb.postCallNop(call, info);
             }
         };
         if (scratch != null) {
@@ -252,7 +253,7 @@ public class AMD64Call {
             checkCallDisplacementAlignment(crb, before, call);
             crb.recordExceptionHandlers(after, info);
             if (masm.position() == after) {
-                masm.postCallNop(call);
+                crb.postCallNop(call, info);
             }
         }, callTarget);
     }
@@ -301,7 +302,7 @@ public class AMD64Call {
             Call call = crb.recordIndirectCall(before, after, callTarget, info);
             crb.recordExceptionHandlers(after, info);
             if (masm.position() == after) {
-                masm.postCallNop(call);
+                crb.postCallNop(call, info);
             }
         };
         return masm.indirectCall(postCallAction, dst, mitigateDecodingAsDirectCall, callTarget, callingConventionType);

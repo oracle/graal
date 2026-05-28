@@ -165,6 +165,10 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
     /** PCOffset passed within last call to {@link #recordImplicitException(int, LIRFrameState)}. */
     private int lastImplicitExceptionOffset = Integer.MIN_VALUE;
 
+    private final boolean delayPostCallNops;
+    private int pendingPostCallNopPc = Integer.MIN_VALUE;
+    private Label pendingPostCallExceptionHandlerLabel;
+
     private final List<LIRInstructionVerifier> lirInstructionVerifiers;
 
     public CompilationResultBuilder(CoreProviders providers,
@@ -177,7 +181,8 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
                     CompilationResult compilationResult,
                     Register uncompressedNullRegister,
                     List<LIRInstructionVerifier> lirInstructionVerifiers,
-                    LIR lir) {
+                    LIR lir,
+                    boolean delayPostCallNops) {
         super(providers);
         this.target = providers.getCodeCache().getTarget();
         this.frameMap = frameMap;
@@ -189,6 +194,7 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
         this.frameContext = frameContext;
         this.options = options;
         this.debug = debug;
+        this.delayPostCallNops = delayPostCallNops;
         assert frameContext != null;
         this.dataCache = EconomicMap.create(Equivalence.DEFAULT);
         this.lirInstructionVerifiers = Objects.requireNonNull(lirInstructionVerifiers);
@@ -241,6 +247,13 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
      * the compilation result and then {@linkplain #closeCompilationResult() closes} it.
      */
     public void finish() {
+        /*
+         * If the last emitted instruction was a call with debug info and we did not need the NOP
+         * for a following debug site, keep the call return PC inside this method. Otherwise the
+         * return PC is exactly at the method end and can become indistinguishable from the next
+         * method's start after image code layout.
+         */
+        maybeEmitDelayedPostCallNop(asm.position());
         byte[] data = asm.close(false);
         compilationResult.setTargetCode(data, asm.finalCodeSize());
 
@@ -285,7 +298,17 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
     }
 
     public void recordImplicitException(int pcOffset, int dispatchOffset, LIRFrameState info) {
-        compilationResult.recordImplicitException(pcOffset, dispatchOffset, info.debugInfo());
+        DebugInfo debugInfo = info.debugInfo();
+        int recordedPcOffset = pcOffset;
+        int recordedDispatchOffset = dispatchOffset;
+        if (debugInfo != null) {
+            int adjustedPcOffset = maybeEmitDelayedPostCallNop(pcOffset);
+            if (adjustedPcOffset != pcOffset) {
+                recordedDispatchOffset = dispatchOffset == pcOffset ? adjustedPcOffset : dispatchOffset;
+                recordedPcOffset = adjustedPcOffset;
+            }
+        }
+        compilationResult.recordImplicitException(recordedPcOffset, recordedDispatchOffset, debugInfo);
         assert info.exceptionEdge == null;
     }
 
@@ -320,6 +343,28 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
         return infopoint;
     }
 
+    public void postCallNop(Call call) {
+        postCallNop(call, (Label) null);
+    }
+
+    public void postCallNop(Call call, LIRFrameState info) {
+        postCallNop(call, info != null && info.exceptionEdge != null ? info.exceptionEdge.label() : null);
+    }
+
+    private void postCallNop(Call call, Label exceptionHandlerLabel) {
+        if (!delayPostCallNops) {
+            asm.postCallNop(call);
+        } else if (call.debugInfo != null) {
+            /*
+             * Defer the NOP until we see another debug site or adjacent exception handler at the
+             * call return PC. Consecutive calls do not collide: call metadata is encoded at each
+             * call's return PC.
+             */
+            pendingPostCallNopPc = call.pcOffset + call.size;
+            pendingPostCallExceptionHandlerLabel = exceptionHandlerLabel;
+        }
+    }
+
     public void recordInfopoint(int pos, LIRFrameState info, InfopointReason reason) {
         // infopoints always need debug info
         DebugInfo debugInfo = info.debugInfo();
@@ -327,7 +372,30 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
     }
 
     public void recordInfopoint(int pos, DebugInfo debugInfo, InfopointReason reason) {
-        compilationResult.recordInfopoint(pos, debugInfo, reason);
+        int recordedPos = pos;
+        if (debugInfo != null) {
+            recordedPos = maybeEmitDelayedPostCallNop(pos);
+        }
+        compilationResult.recordInfopoint(recordedPos, debugInfo, reason);
+    }
+
+    private int maybeEmitDelayedPostCallNop(int pos) {
+        if (delayPostCallNops && pos == pendingPostCallNopPc) {
+            GraalError.guarantee(pos == asm.position(), "Cannot insert delayed post-call NOP at already emitted position %d", pos);
+            asm.ensureUniquePC();
+            pendingPostCallNopPc = Integer.MIN_VALUE;
+            pendingPostCallExceptionHandlerLabel = null;
+            return asm.position();
+        }
+        return pos;
+    }
+
+    public void maybeEmitDelayedPostCallNopBeforeLabel(Label label) {
+        if (delayPostCallNops && label == pendingPostCallExceptionHandlerLabel) {
+            maybeEmitDelayedPostCallNop(asm.position());
+            pendingPostCallNopPc = Integer.MIN_VALUE;
+            pendingPostCallExceptionHandlerLabel = null;
+        }
     }
 
     public void recordSourceMapping(int pcOffset, int endPcOffset, NodeSourcePosition sourcePosition) {
@@ -601,6 +669,9 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
     private void emitOp(LIRInstruction op) {
         try {
             int start = asm.position();
+            if (delayPostCallNops && op.hasState() && !(op instanceof StandardOp.CallOp)) {
+                start = maybeEmitDelayedPostCallNop(start);
+            }
             op.emitCode(this);
             if (op.getPosition() != null) {
                 recordSourceMapping(start, asm.position(), op.getPosition());
@@ -643,6 +714,8 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
         }
         currentBlockIndex = 0;
         lastImplicitExceptionOffset = Integer.MIN_VALUE;
+        pendingPostCallNopPc = Integer.MIN_VALUE;
+        pendingPostCallExceptionHandlerLabel = null;
         lir.resetLabels();
         needsMHDeoptHandler = false;
         conservativeLabelOffsets = false;

@@ -65,6 +65,13 @@ public class StandardOp {
         boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit);
     }
 
+    /**
+     * LIR operation that can record call debug information at its return PC. Such operations must not
+     * force a pending delayed post-call NOP before the call is emitted.
+     */
+    public interface CallOp {
+    }
+
     public interface LabelHoldingOp {
         Label getLabel();
     }
@@ -158,6 +165,7 @@ public class StandardOp {
             if (alignment != 0) {
                 crb.asm.align(alignment);
             }
+            crb.maybeEmitDelayedPostCallNopBeforeLabel(label);
             crb.asm.bind(label);
             crb.asm.maybeEmitIndirectTargetMarker(crb, label);
         }

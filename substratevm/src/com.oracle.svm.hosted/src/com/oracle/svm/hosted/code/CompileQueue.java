@@ -1341,7 +1341,8 @@ public class CompileQueue {
                             compilationResult,
                             uncompressedNullRegister,
                             CompilationResultBuilder.NO_VERIFIERS,
-                            lir);
+                            lir,
+                            true);
         }
     }
 
