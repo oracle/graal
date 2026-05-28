@@ -40,8 +40,9 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.shared.vtable.MethodTableException;
-import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
 import com.oracle.truffle.espresso.shared.vtable.PartialType;
+import com.oracle.truffle.espresso.shared.vtable.TableEntry;
+import com.oracle.truffle.espresso.shared.vtable.TableEntryRef;
 import com.oracle.truffle.espresso.shared.vtable.Tables;
 import com.oracle.truffle.espresso.shared.vtable.VTable;
 
@@ -57,7 +58,7 @@ public final class EspressoMethodTableBuilder {
             if (thisKlass.isInterface()) {
                 return new EspressoTables(
                                 assignITableIndexes(thisKlass,
-                                                toEspressoVTable(filterInterfaceMethods(declaredMethods))),
+                                                filterInterfaceMethods(declaredMethods)),
                                 null,
                                 null);
             }
@@ -152,14 +153,14 @@ public final class EspressoMethodTableBuilder {
         }
     }
 
-    private static List<PartialMethod<Klass, Method, Field>> filterInterfaceMethods(Method.MethodVersion[] declaredMethods) {
-        List<PartialMethod<Klass, Method, Field>> table = new ArrayList<>(declaredMethods.length);
+    private static Method.MethodVersion[] filterInterfaceMethods(Method.MethodVersion[] declaredMethods) {
+        List<Method.MethodVersion> table = new ArrayList<>(declaredMethods.length);
         for (Method.MethodVersion m : declaredMethods) {
             if (VTable.isVirtualEntry(m.getMethod())) {
-                table.add(m.getMethod());
+                table.add(m);
             }
         }
-        return table;
+        return table.toArray(Method.EMPTY_VERSION_ARRAY);
     }
 
     private static Method.MethodVersion[] assignITableIndexes(ObjectKlass.KlassVersion thisKlass, Method.MethodVersion[] table) {
@@ -174,23 +175,24 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static Method.MethodVersion[] vtable(Tables<Klass, Method, Field> tables) {
-        List<PartialMethod<Klass, Method, Field>> table = tables.getVtable();
+        List<TableEntryRef<Klass, Method, Field>> table = tables.getVtable();
         assert table != null;
         return toEspressoVTable(table);
     }
 
-    private static Method.MethodVersion[] toEspressoVTable(List<? extends PartialMethod<Klass, Method, Field>> table) {
+    private static Method.MethodVersion[] toEspressoVTable(List<TableEntryRef<Klass, Method, Field>> table) {
         int size = table.size();
         if (size == 0) {
             return Method.EMPTY_VERSION_ARRAY;
         }
         Method.MethodVersion[] vtable = new Method.MethodVersion[size];
         int vtableIndex = 0;
-        for (PartialMethod<Klass, Method, Field> m : table) {
-            Method entry = m.asMethodAccess();
-            // Poison pill handling is done in Miranda translation.
+        for (TableEntryRef<Klass, Method, Field> m : table) {
+            Method entry = (Method) m.getEntry();
+            if (m.canUseVTableSlotIndex()) {
+                entry = entry.withVTableSlotIndex(vtableIndex);
+            }
             if (m.isSelectionFailure()) {
-                assert entry.isProxy();
                 entry = entry.forFailing();
             }
             vtable[vtableIndex] = entry.getMethodVersion();
@@ -200,7 +202,7 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static Method.MethodVersion[][] itable(Tables<Klass, Method, Field> tables, ObjectKlass.KlassVersion[] transitiveInterfaces) {
-        EconomicMap<Klass, List<PartialMethod<Klass, Method, Field>>> table = tables.getItables();
+        EconomicMap<Klass, List<TableEntryRef<Klass, Method, Field>>> table = tables.getItables();
         assert table != null && transitiveInterfaces != null;
         if (table.isEmpty()) {
             return EMPTY_ITABLE;
@@ -213,14 +215,15 @@ public final class EspressoMethodTableBuilder {
         return itable;
     }
 
-    private static Method.MethodVersion[] toEspressoITable(List<? extends PartialMethod<Klass, Method, Field>> table) {
+    private static Method.MethodVersion[] toEspressoITable(List<TableEntryRef<Klass, Method, Field>> table) {
         if (table.isEmpty()) {
             return Method.EMPTY_VERSION_ARRAY;
         }
         Method.MethodVersion[] itable = new Method.MethodVersion[table.size()];
         int itableIndex = 0;
-        for (PartialMethod<Klass, Method, Field> m : table) {
-            Method entry = m.asMethodAccess();
+        for (TableEntryRef<Klass, Method, Field> m : table) {
+            Method entry = (Method) m.getEntry();
+            assert !m.canUseVTableSlotIndex();
             if (m.isSelectionFailure()) {
                 entry = entry.forFailing();
             }
@@ -231,22 +234,26 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static Method.MethodVersion[] mirandas(Tables<Klass, Method, Field> tables) {
-        List<PartialMethod<Klass, Method, Field>> mirandas = tables.getImplicitInterfaceMethods();
+        List<TableEntryRef<Klass, Method, Field>> mirandas = tables.getImplicitInterfaceMethods();
         assert mirandas != null;
-        return toEspressoMirandas(mirandas);
+        return toEspressoMirandas(mirandas, tables.getImplicitInterfaceMethodsStart());
     }
 
-    private static Method.MethodVersion[] toEspressoMirandas(List<PartialMethod<Klass, Method, Field>> mirandas) {
+    private static Method.MethodVersion[] toEspressoMirandas(List<TableEntryRef<Klass, Method, Field>> mirandas, int startIndex) {
         if (mirandas.isEmpty()) {
             return Method.EMPTY_VERSION_ARRAY;
         }
         Method.MethodVersion[] table = new Method.MethodVersion[mirandas.size()];
         int idx = 0;
-        for (PartialMethod<Klass, Method, Field> m : mirandas) {
-            Method entry = m.asMethodAccess();
+        for (TableEntryRef<Klass, Method, Field> m : mirandas) {
+            Method entry = (Method) m.getEntry();
+            entry = entry.withVTableSlotIndex(startIndex + idx);
+            if (m.isSelectionFailure()) {
+                entry = entry.forFailing();
+            }
             // We add mirandas to the vtable in builder, they should have a vtable index by now.
             assert entry.isVTableIndexInitialized();
-            // Creating a proxy is handled in Method.withVTableIndex().
+            // Creating a proxy is handled above.
             assert entry.isProxy();
             // Ensure that the pass over vtable has already set poison pills.
             assert !m.isSelectionFailure() || entry.hasPoisonPill();
@@ -261,7 +268,7 @@ public final class EspressoMethodTableBuilder {
         private final ObjectKlass thisKlass;
         private final ObjectKlass superKlass;
         private final List<Method> parentTable;
-        private final List<? extends PartialMethod<Klass, Method, Field>> declaredMethods;
+        private final List<? extends TableEntry<Klass, Method, Field>> declaredMethods;
         private final EconomicMap<Klass, List<Method>> interfacesData;
 
         PartialKlass(ObjectKlass.KlassVersion thisKlass, ObjectKlass superKlass, ObjectKlass.KlassVersion[] transitiveInterfaces, Method.MethodVersion[] declaredMethods) {
@@ -282,6 +289,11 @@ public final class EspressoMethodTableBuilder {
         }
 
         @Override
+        public int getModifiers() {
+            return thisKlass.getModifiers();
+        }
+
+        @Override
         public List<Method> getParentTable() {
             return parentTable;
         }
@@ -292,7 +304,7 @@ public final class EspressoMethodTableBuilder {
         }
 
         @Override
-        public List<? extends PartialMethod<Klass, Method, Field>> getDeclaredMethodsList() {
+        public List<? extends TableEntry<Klass, Method, Field>> getDeclaredMethodsList() {
             return declaredMethods;
         }
 
@@ -302,8 +314,8 @@ public final class EspressoMethodTableBuilder {
         }
 
         @Override
-        public PartialMethod<Klass, Method, Field> fallbackLookup(Symbol<Name> name, Symbol<Signature> signature, boolean includePrivate) {
-            for (PartialMethod<Klass, Method, Field> m : declaredMethods) {
+        public TableEntry<Klass, Method, Field> fallbackLookup(Symbol<Name> name, Symbol<Signature> signature, boolean includePrivate) {
+            for (TableEntry<Klass, Method, Field> m : declaredMethods) {
                 if ((!m.isPrivate() || includePrivate) && !m.isStatic() && m.getSymbolicName() == name && m.getSymbolicSignature() == signature) {
                     return m;
                 }

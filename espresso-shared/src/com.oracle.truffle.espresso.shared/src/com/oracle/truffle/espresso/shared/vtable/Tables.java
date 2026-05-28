@@ -95,7 +95,7 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * {@link IncompatibleClassChangeError} at the call-site, according to
      * JVMS-6.5.invokeinterface).
      * <p>
-     * Node: When there are zero maximally-specific non-abstract methods for the resolution of that
+     * Note: When there are zero maximally-specific non-abstract methods for the resolution of that
      * slot, an arbitrary maximally-specific abstract method is used to populate the slot. This is
      * consistent with the requirement to throw {@link AbstractMethodError} in that case.
      */
@@ -110,8 +110,8 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * <p>
      * Such methods are also sometimes referred to as {@code miranda methods}.
      * <p>
-     * These are not eagerly added to the {@link #getVtable() vtable}, such that the runtime can
-     * decide to add them or not.
+     * Depending on the flags passed to {@link VTable#create(PartialType, boolean, boolean, boolean,
+     * boolean)}, these methods may also be appended to the {@link #getVtable() vtable}.
      * <p>
      * Each entry in this list is either:
      * <ul>

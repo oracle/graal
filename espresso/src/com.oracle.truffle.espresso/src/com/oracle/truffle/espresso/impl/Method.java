@@ -168,7 +168,6 @@ import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
-import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -1315,8 +1314,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
      * <p>
      * It follows that any method may not have both their itable and vtable index initialized.
      */
-    @Override
-    public PartialMethod<Klass, Method, Field> withVTableIndex(int index) {
+    Method withVTableSlotIndex(int index) {
         assert !isVTableIndexInitialized();
         if (getMethodVersion().isInterfaceMethod()) {
             assert isITableIndexInitialized();
@@ -1327,11 +1325,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             getMethodVersion().setVTableIndex(index);
             return this;
         }
-    }
-
-    @Override
-    public Method asMethodAccess() {
-        return this;
     }
 
     public boolean isProxy() {
