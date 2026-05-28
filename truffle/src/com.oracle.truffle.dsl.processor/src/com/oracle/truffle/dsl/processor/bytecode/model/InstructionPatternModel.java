@@ -48,6 +48,9 @@ import java.util.stream.Stream;
  */
 public record InstructionPatternModel(InstructionModel instruction, String[] immediates) {
     public InstructionPatternModel {
+        if (instruction.isInstrumentation()) {
+            throw new IllegalArgumentException("Instruction %s is an instrumentation instruction. Instrumentation instructions cannot be used in rewrite rules.".formatted(instruction.getName()));
+        }
         if (immediates.length != instruction.immediates.size()) {
             throw new IllegalArgumentException(
                             "Instruction %s declares %d immediate(s) but %d immediate(s) specified in pattern: %s".formatted(instruction.getName(), instruction.immediates.size(), immediates.length,

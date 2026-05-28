@@ -106,6 +106,15 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             this.branchBackwardReturnException = null;
         }
 
+        if (parent.model.enableInstructionRewriting) {
+            CodeVariableElement rewrittenBciDeltas = new CodeVariableElement(Set.of(FINAL), type(int[].class), "rewrittenBciDeltas");
+            BytecodeRootNodeElement.addJavadoc(rewrittenBciDeltas, List.of(
+                            "Sparse mapping from rewritten BCI space to stable BCI space.",
+                            "The table contains {@code (rewrittenBci, delta)} pairs sorted by BCI.",
+                            "During translation, each pair with {@code rewrittenBci <= searchBci} adds {@code delta} to the cumulative stable-BCI offset.",
+                            "A {@code null} table means the bytecode stream is already in stable BCI space."));
+            add(parent.compFinal(1, rewrittenBciDeltas));
+        }
         if (parent.model.enableTagInstrumentation) {
             parent.child(add(new CodeVariableElement(Set.of(), parent.tagRootNode.asType(), "tagRoot")));
         }
@@ -1191,6 +1200,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
             b.startDeclaration(parent.getBytecodeIndexType(), "newBci");
             b.startCall("computeNewBci").string("bytecodeIndex").string("oldBc").string("newBc");
+            if (parent.model.enableInstructionRewriting) {
+                b.string("this.rewrittenBciDeltas");
+            }
             if (parent.model.enableTagInstrumentation) {
                 b.string("this.getTagNodes()");
                 b.string("newBytecode.getTagNodes()");
@@ -1287,6 +1299,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.end();
             b.declaration(parent.getBytecodeIndexType(), "oldBci", BytecodeRootNodeElement.decodeBci("state"));
             b.startAssign("newBci").startCall("computeNewBci").string("oldBci").string("oldBc").string("newBc");
+            if (parent.model.enableInstructionRewriting) {
+                b.string("this.rewrittenBciDeltas");
+            }
             if (parent.model.enableTagInstrumentation) {
                 b.string("this.getTagNodes()");
                 b.string("bc.getTagNodes()");
@@ -1565,19 +1580,32 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         ex.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "oldBci"));
         ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "oldBc"));
         ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "newBc"));
+        if (parent.model.enableInstructionRewriting) {
+            ex.addParameter(new CodeVariableElement(type(int[].class), "oldRewrittenBciDeltas"));
+        }
         if (parent.model.enableTagInstrumentation) {
             ex.addParameter(new CodeVariableElement(arrayOf(parent.tagNode.asType()), "oldTagNodes"));
             ex.addParameter(new CodeVariableElement(arrayOf(parent.tagNode.asType()), "newTagNodes"));
         }
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(parent.getBytecodeIndexType(), "stableBci", "toStableBytecodeIndex(oldBc, oldBci)");
+        b.startDeclaration(parent.getBytecodeIndexType(), "stableBci").startCall("toStableBytecodeIndex");
+        b.string("oldBc").string("oldBci");
+        if (parent.model.enableInstructionRewriting) {
+            b.string("oldRewrittenBciDeltas");
+        }
+        b.end(2);
         b.declaration(parent.getBytecodeIndexType(), "newBci", "fromStableBytecodeIndex(newBc, stableBci)");
+        if (parent.model.enableInstructionRewriting) {
+            b.startIf().string("oldRewrittenBciDeltas != null").end().startBlock();
+            b.lineComment("Rewritten bytecodes do not contain instrumentation instructions, so no fix-up is required.");
+            b.startReturn().string("newBci").end();
+            b.end();
+        }
         b.declaration(parent.getBytecodeIndexType(), "oldBciBase", "fromStableBytecodeIndex(oldBc, stableBci)");
-
         b.startIf().string("oldBci != oldBciBase").end().startBlock();
-        b.lineComment("Transition within an in instrumentation bytecode.");
-        b.lineComment("Needs to compute exact location where to continue.");
+        b.lineComment("When oldBc has instrumentations, multiple instructions can map to the same stableBci.");
+        b.lineComment("We need to adjust newBci to the exact location in newBc.");
         b.startAssign("newBci");
         b.startCall("transitionInstrumentationIndex").string("oldBc").string("oldBciBase").string("oldBci").string("newBc").string("newBci");
         if (parent.model.enableTagInstrumentation) {
@@ -1684,7 +1712,24 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), parent.getBytecodeIndexType(), "toStableBytecodeIndex");
         translate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "bc"));
         translate.addParameter(new CodeVariableElement(parent.getBytecodeIndexType(), "searchBci"));
-        emitStableBytecodeSearch(translate.createBuilder(), "searchBci", "stableBci", true);
+        CodeTreeBuilder b = translate.createBuilder();
+        if (parent.model.enableInstructionRewriting) {
+            translate.addParameter(new CodeVariableElement(type(int[].class), "rewrittenBciDeltas"));
+            b.startIf().string("rewrittenBciDeltas != null").end().startBlock();
+            b.lineComment("Rewritten bytecodes do not contain instrumentation instructions, so stable BCI is");
+            b.lineComment("the rewritten BCI plus all deltas recorded at or before that BCI.");
+            b.declaration(parent.getBytecodeIndexType(), "stableBci", "searchBci");
+            b.startFor().string("int i = 0; i < rewrittenBciDeltas.length; i += 2").end().startBlock();
+            b.declaration(type(int.class), "rewrittenBci", "rewrittenBciDeltas[i]");
+            b.startIf().string("searchBci < rewrittenBci").end().startBlock();
+            b.statement("break");
+            b.end();
+            b.statement("stableBci += rewrittenBciDeltas[i + 1]");
+            b.end();
+            b.startReturn().string("stableBci").end();
+            b.end();
+        }
+        emitStableBytecodeSearch(b, "searchBci", "stableBci", true);
         return translate;
     }
 
