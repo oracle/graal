@@ -3365,7 +3365,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     weakCache.setWeakReference(true);
                     weakCache.setNeverDefault(true);
 
-                    caches.add(0, weakCache);
+                    caches.add(caches.size() - 1, weakCache);
 
                     DSLExpressionResolver weakResolver = resolver.copy(Arrays.asList());
                     weakResolver.addVariable(weakName, weakVariable);
