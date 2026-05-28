@@ -51,6 +51,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.PreparedSignature;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
 import com.oracle.svm.core.graal.meta.InterpreterExecutionOffsets;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
@@ -402,8 +403,7 @@ public class AMD64InterpreterStubs {
             }
 
             /* Call into target method */
-            masm.call(callTarget);
-            masm.maybeEmitIndirectTargetMarker();
+            masm.indirectCall(AMD64MacroAssembler.PostCallAction.NONE, callTarget, false, null, SubstrateCallingConventionKind.Java.toType(true));
 
             /* Obtain stack size from deopt slot */
             masm.movq(AMD64.r12, new AMD64Address(rsp, 0));
@@ -510,7 +510,7 @@ public class AMD64InterpreterStubs {
             }
 
             /* Call into target method */
-            masm.call(callTarget);
+            masm.indirectCall(AMD64MacroAssembler.PostCallAction.NONE, callTarget, false, null, SubstrateCallingConventionKind.Native.toType(true));
 
             Register resultCopy = AMD64.r10;
             masm.movq(resultCopy, rax);
