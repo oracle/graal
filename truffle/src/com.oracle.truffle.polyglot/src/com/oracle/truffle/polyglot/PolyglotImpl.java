@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -70,7 +71,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
@@ -654,8 +654,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
             String warning;
             boolean hasExplicitPermittedLanguages = permittedLanguages.length > 0;
-            boolean hasAvailableIsolateLibrary = hasExplicitPermittedLanguages ? EngineAccessor.ISOLATE.hasIsolateLibraryForLanguages(new HashSet<>(Arrays.asList(permittedLanguages)))
-                            : !EngineAccessor.ISOLATE.getAvailableIsolatedLanguages().isEmpty();
+            Collection<Set<String>> availableIsolatedLanguages;
+            boolean hasAvailableIsolateLibrary;
+            if (hasExplicitPermittedLanguages) {
+                hasAvailableIsolateLibrary = EngineAccessor.ISOLATE.hasIsolateLibraryForLanguages(new HashSet<>(Arrays.asList(permittedLanguages)));
+                availableIsolatedLanguages = hasAvailableIsolateLibrary ? List.of(new HashSet<>(Arrays.asList(permittedLanguages))) : List.of();
+            } else {
+                availableIsolatedLanguages = EngineAccessor.ISOLATE.getAvailableIsolatedLanguages();
+                hasAvailableIsolateLibrary = !availableIsolatedLanguages.isEmpty();
+            }
             /*
              * Suggest polyglot isolates only when the fallback runtime was not explicitly selected
              * by an embedder, TruffleAttach initialized successfully, and an isolate library is
@@ -665,19 +672,35 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (!runtime.isExplicitlyRequested() &&
                             JDKSupport.getInitializationErrorMessage() == null &&
                             hasAvailableIsolateLibrary) {
-                Stream<String> stream = hasExplicitPermittedLanguages ? Arrays.stream(permittedLanguages)
-                                : EngineAccessor.ISOLATE.getAvailableIsolatedLanguages().iterator().next().stream();
-                String permittedLanguagesParameters = stream.map((id) -> '"' + id + '"').collect(Collectors.joining(", "));
-                warning = String.format(
-                                "The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.\n" +
-                                                "Execution without runtime compilation will negatively impact the guest application performance.\n" +
-                                                "The following cause was found: %s\n" +
-                                                "To enable the optimizing runtime, use one of the following options:\n" +
-                                                "- Run on a Java runtime that supports GraalVM runtime optimization. See https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support for compatibility details.\n" +
-                                                "- Enable polyglot isolate execution for explicitly selected languages, for example Context.newBuilder(%s).spawnIsolate(!Engine.supportsCompilation()).build(). " +
-                                                "See https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates for instructions." +
-                                                "To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.",
-                                reason, permittedLanguagesParameters);
+                if (availableIsolatedLanguages.size() == 1) {
+                    String permittedLanguagesParameters = formatLanguageParameters(availableIsolatedLanguages.iterator().next());
+                    warning = String.format(
+                                    "The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.%n" +
+                                                    "Execution without runtime compilation will negatively impact the guest application performance.%n" +
+                                                    "The following cause was found: %s%n" +
+                                                    "To enable the optimizing runtime, use one of the following options:%n" +
+                                                    "- Run on a Java runtime that supports GraalVM runtime optimization. See https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support for compatibility details.%n" +
+                                                    "- Enable polyglot isolate execution for explicitly selected languages, for example Context.newBuilder(%s).spawnIsolate(!Engine.supportsCompilation()).build().%n" +
+                                                    "See https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates for instructions.%n" +
+                                                    "To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.",
+                                    reason, permittedLanguagesParameters);
+                } else {
+                    String isolateLanguageExamples = availableIsolatedLanguages.stream().//
+                                    map(PolyglotImpl::formatLanguageParameters).//
+                                    sorted().//
+                                    map((languageParameters) -> "  Context.newBuilder(" + languageParameters + ").spawnIsolate(!Engine.supportsCompilation()).build()").//
+                                    collect(Collectors.joining(System.lineSeparator()));
+                    warning = String.format(
+                                    "The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.%n" +
+                                                    "Execution without runtime compilation will negatively impact the guest application performance.%n" +
+                                                    "The following cause was found: %s%n" +
+                                                    "To enable the optimizing runtime, use one of the following options:%n" +
+                                                    "- Run on a Java runtime that supports GraalVM runtime optimization. See https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support for compatibility details.%n" +
+                                                    "- Enable polyglot isolate execution for explicitly selected languages, for example:%n%s%n" +
+                                                    "See https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates for instructions.%n" +
+                                                    "To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.",
+                                    reason, isolateLanguageExamples);
+                }
             } else {
                 warning = String.format("""
                                 The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
@@ -688,6 +711,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
             loggerProvider.apply("engine").log(Level.WARNING, warning);
         }
+    }
+
+    private static String formatLanguageParameters(Set<String> languages) {
+        return languages.stream().sorted().map((id) -> '"' + id + '"').collect(Collectors.joining(", "));
     }
 
     @Override

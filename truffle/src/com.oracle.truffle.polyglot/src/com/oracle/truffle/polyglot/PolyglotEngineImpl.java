@@ -1272,11 +1272,25 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             // no access to internal, but internal language available
             internalLanguageHint = "A language with this id is installed, but only available internally. ";
         }
-        if (EngineAccessor.ISOLATE.hasIsolateLibraryForLanguages(Set.of(id))) {
-            throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available in this engine. A polyglot isolate for '%s' is available, " +
-                            "but languages provided as polyglot isolates are selected only when the engine or context is created with explicit permitted languages. " +
-                            "To use it, create the context or engine with '%s' as a permitted language, for example Context.newBuilder(\"%s\") or Contex.create(\"%s\").",
-                            id, id, id, id, id));
+        Set<String> requiredLanguages = new HashSet<>(Arrays.asList(permittedLanguages));
+        requiredLanguages.add(id);
+        if (!usesPolyglotIsolate && EngineAccessor.ISOLATE.hasIsolateLibraryForLanguages(requiredLanguages)) {
+            if (permittedLanguages.length == 0) {
+                throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available in this engine. Only a polyglot isolate artifact for '%s' is available, " +
+                                "but languages provided as polyglot isolates are selected only when the engine or context is created with explicit permitted languages. " +
+                                "To use it, create the context or engine with '%s' as a permitted language, for example Context.newBuilder(\"%s\") or Context.create(\"%s\").",
+                                id, id, id, id, id));
+            } else if (Arrays.asList(permittedLanguages).contains(id)) {
+                throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available in this engine. Only a polyglot isolate artifact for '%s' is available, " +
+                                "the isolate would have been selected automatically, but isolate execution is disabled for this engine. To resolve this, remove the option disabling " +
+                                "polyglot isolate execution, or add the regular language dependency to the class path or module path.",
+                                id, id));
+            } else {
+                throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available in this engine. A polyglot isolate for '%s' is available, " +
+                                "but this engine was created with explicit permitted languages that do not include '%s'. To use it, add '%s' to the permitted languages and enable polyglot isolate execution, " +
+                                "or add the regular language dependency to the class path or module path.",
+                                id, id, id, id));
+            }
         } else {
             throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available. %s%sAvailable languages are: %s.", id, didYouMean, internalLanguageHint,
                             allLanguages));

@@ -49,14 +49,18 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.impl.PolyglotIsolateLanguages;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -80,6 +84,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     public static final String DEPENDENT = "ContextPolyglotAccessTestDependentLanguage";
     public static final String INTERNAL = "ContextPolyglotAccessTestInternalLanguage";
     public static final String LANGUAGE3 = "ContextPolyglotAccessTestLanguage3";
+    public static final String POLYGLOT_ISOLATE_LANGUAGE = "ContextPolyglotAccessIsolateLanguage";
 
     public static final String NOT_EXISTING_LANGUAGE = "$$$LanguageThatDoesNotExist$$$";
 
@@ -189,6 +194,52 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         }
 
         evalTestLanguage(context, NotExistingEmbedderTestLanguage.class, "");
+    }
+
+    @Test
+    public void testNoAutoIsolateMissingPermittedLanguages() {
+        // MockPolyglotIsolateResource is supported only on Linux AMD64.
+        Assume.assumeTrue(isLinuxAMD64());
+        TruffleTestAssumptions.assumeNoIsolateEncapsulation();
+        setupEnv(Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build());
+        try {
+            context.initialize(POLYGLOT_ISOLATE_LANGUAGE);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("create the context or engine with '" + POLYGLOT_ISOLATE_LANGUAGE + "' as a permitted language"));
+        }
+    }
+
+    private static boolean isLinuxAMD64() {
+        return InternalResource.OS.getCurrent() == InternalResource.OS.LINUX && InternalResource.CPUArchitecture.getCurrent() == InternalResource.CPUArchitecture.AMD64;
+    }
+
+    @Test
+    public void testNoAutoIsolateIsolateDisabled() {
+        // MockPolyglotIsolateResource is supported only on Linux AMD64.
+        Assume.assumeTrue(isLinuxAMD64());
+        TruffleTestAssumptions.assumeNoIsolateEncapsulation();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, POLYGLOT_ISOLATE_LANGUAGE).spawnIsolate(false).allowPolyglotAccess(PolyglotAccess.ALL).build());
+        try {
+            context.initialize(POLYGLOT_ISOLATE_LANGUAGE);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("remove the option disabling polyglot isolate execution"));
+        }
+    }
+
+    @Test
+    public void testNoAutoIsolateLanguageNotInPermittedLanguages() {
+        // MockPolyglotIsolateResource is supported only on Linux AMD64.
+        Assume.assumeTrue(isLinuxAMD64());
+        TruffleTestAssumptions.assumeNoIsolateEncapsulation();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build());
+        try {
+            context.initialize(POLYGLOT_ISOLATE_LANGUAGE);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("add '" + POLYGLOT_ISOLATE_LANGUAGE + "' to the permitted languages"));
+        }
     }
 
     @Registration
@@ -1262,5 +1313,18 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     public static class Language3 extends Language1 {
         static final ContextReference<Env> REFERENCE = ContextReference.create(Language3.class);
     }
+}
 
+@InternalResource.Id(value = "ContextPolyglotAccessIsolateLanguage-isolate-darwin-aarch64", componentId = "engine", optional = true)
+@PolyglotIsolateLanguages(value = {ContextPolyglotAccessTest.POLYGLOT_ISOLATE_LANGUAGE, ProxyLanguage.ID}, os = InternalResource.OS.LINUX, cpuArchitecture = InternalResource.CPUArchitecture.AMD64)
+final class MockPolyglotIsolateResource implements InternalResource {
+
+    @Override
+    public void unpackFiles(Env env, Path targetDirectory) {
+    }
+
+    @Override
+    public String versionHash(Env env) {
+        return "42";
+    }
 }

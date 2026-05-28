@@ -1355,6 +1355,12 @@ def _collect_distributions_by_service(required_services, entries_collector):
 
 class _TCKUnittestConfig(mx_unittest.MxUnittestConfig):
     lookupTCKProviders = False
+    # Include NativeBridge when the TCK runs with engine.SpawnIsolate=true.
+    # This dependency is normally supplied by the standard <language>-isolate JAR.
+    # However, TCK tests use a custom library that bundles the tested language and
+    # SimpleLanguage instead of the standard language library, and provide it via
+    # the engine.IsolateLibrary option.
+    includeNativeBridge = False
 
     def __init__(self):
         super().__init__(name="truffle-tck")
@@ -1369,6 +1375,10 @@ class _TCKUnittestConfig(mx_unittest.MxUnittestConfig):
             mx.logv(f'Truffle runtime used by the TCK {",".join([d.name for d in truffle_runtime])}')
             deps.update(tck_providers)
             deps.update(truffle_runtime)
+            if _TCKUnittestConfig.includeNativeBridge:
+                native_bridge = mx.distribution("sdk:NATIVEBRIDGE")
+                mx.logv(f'NativeBridge distribution to add for polyglot isolate TCK {native_bridge.name}')
+                deps.add(native_bridge)
             mx.logv(f'Merged unittest distributions {",".join([d.name for d in deps])}')
         else:
             mx.logv("Truffle TCK unnittest config is ignored because _shouldRunTCKUnittestConfig is False.")
@@ -1387,6 +1397,8 @@ class _TCKUnittestConfig(mx_unittest.MxUnittestConfig):
         if not _TCKUnittestConfig._has_disable_assertions_option(vmArgs):
             # Assert for enter/return parity of ProbeNode
             vmArgs = [*vmArgs, "-Dpolyglot.engine.AssertProbes=true", "-Dpolyglot.engine.AllowExperimentalOptions=true"]
+        if _TCKUnittestConfig.includeNativeBridge:
+            vmArgs = [*vmArgs, "--add-modules=org.graalvm.nativebridge"]
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -1536,27 +1548,33 @@ def tck(args):
     unitTestOptions = args_no_tests[0 : max(index - (1 if has_separator_arg else 0), 0)]
     unitTestOptions.append("--lookup-truffle-tck-providers")
     jvmOptions = args_no_tests[index : len(args_no_tests)]
-    if tckConfiguration == "default":
-        unittest([*unitTestOptions, "--", *jvmOptions, *tests])
-    elif tckConfiguration == "debugger":
-        with mx_util.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
-            _execute_debugger_test(tests, sfc.tmpPath, False, unitTestOptions, jvmOptions)
-    elif tckConfiguration == "compile":
-        if not mx_sdk.GraalVMJDKConfig.is_graalvm(mx.get_jdk().home):
-            mx.abort(
-                "The 'compile' TCK configuration requires graalvm execution, "
-                "run with --java-home=<path_to_graalvm> or run with --use-graalvm."
-            )
-        compileOptions = [
-            "-Dpolyglot.engine.AllowExperimentalOptions=true",
-            "-Dpolyglot.engine.Mode=latency",
-            # "-Dpolyglot.engine.CompilationFailureAction=Throw", GR-49399
-            "-Djdk.graal.CompilationFailureAction=ExitVM",
-            "-Dpolyglot.engine.CompileImmediately=true",
-            "-Dpolyglot.engine.BackgroundCompilation=false",
-            "-Dtck.inlineVerifierInstrument=false",
-        ]
-        unittest([*unitTestOptions, "--", *jvmOptions, *compileOptions, *tests])
+    spawn_isolate = any(arg.startswith("-Dpolyglot.engine.SpawnIsolate=") and not arg.endswith("=false") for arg in jvmOptions)
+    previous_include_native_bridge = _TCKUnittestConfig.includeNativeBridge
+    try:
+        _TCKUnittestConfig.includeNativeBridge = spawn_isolate
+        if tckConfiguration == "default":
+            unittest([*unitTestOptions, "--", *jvmOptions, *tests])
+        elif tckConfiguration == "debugger":
+            with mx_util.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
+                _execute_debugger_test(tests, sfc.tmpPath, False, unitTestOptions, jvmOptions)
+        elif tckConfiguration == "compile":
+            if not mx_sdk.GraalVMJDKConfig.is_graalvm(mx.get_jdk().home):
+                mx.abort(
+                    "The 'compile' TCK configuration requires graalvm execution, "
+                    "run with --java-home=<path_to_graalvm> or run with --use-graalvm."
+                )
+            compileOptions = [
+                "-Dpolyglot.engine.AllowExperimentalOptions=true",
+                "-Dpolyglot.engine.Mode=latency",
+                # "-Dpolyglot.engine.CompilationFailureAction=Throw", GR-49399
+                "-Djdk.graal.CompilationFailureAction=ExitVM",
+                "-Dpolyglot.engine.CompileImmediately=true",
+                "-Dpolyglot.engine.BackgroundCompilation=false",
+                "-Dtck.inlineVerifierInstrument=false",
+            ]
+            unittest([*unitTestOptions, "--", *jvmOptions, *compileOptions, *tests])
+    finally:
+        _TCKUnittestConfig.includeNativeBridge = previous_include_native_bridge
 
 
 mx.update_commands(

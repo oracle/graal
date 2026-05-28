@@ -2096,6 +2096,8 @@ public final class Context implements AutoCloseable {
          * @param value {@code true} to spawn a polyglot isolate
          * @see Engine.Builder#spawnIsolate(boolean)
          * @see Engine#supportsCompilation()
+         * @see <a href="https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates">
+         *      Polyglot Isolates documentation</a>
          * @since 25.1
          */
         public Builder spawnIsolate(boolean value) {

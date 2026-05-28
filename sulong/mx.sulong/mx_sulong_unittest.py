@@ -145,6 +145,8 @@ class SulongUnittestConfig(SulongUnittestConfigBase):
         if mx.get_opts().use_llvm_standalone is None:
             # add back the embedders API if we're not testing a standalone
             newVmArgs.append("--add-modules=org.graalvm.polyglot")
+            if "sdk:NATIVEBRIDGE" in SulongUnittestConfigBase.sulongConfig.runtimeDeps:
+                newVmArgs.append("--add-modules=org.graalvm.nativebridge")
 
         return (newVmArgs, mainClass, mainClassArgs)
 
