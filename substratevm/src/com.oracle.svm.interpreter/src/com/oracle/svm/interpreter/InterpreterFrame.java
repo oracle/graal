@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import java.util.Arrays;
 
+import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.monitor.MonitorSupport;
 
@@ -50,6 +51,7 @@ public final class InterpreterFrame {
     private final Object[] arguments;
     private Object[] locks;
     private int lockCount;
+    private InterpreterFrameSourceInfo syntheticStackTraceCallerInfo;
 
     private static final Object[] EMPTY = new Object[0];
 
@@ -195,5 +197,22 @@ public final class InterpreterFrame {
 
     Object[] getLocks() {
         return locks;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    InterpreterFrameSourceInfo getStackTraceCallerInfo() {
+        return syntheticStackTraceCallerInfo;
+    }
+
+    /**
+     * Sets the synthetic outer caller chain used when stack walking a deopt-resumed interpreter
+     * frame.
+     *
+     * @param callerInfo virtual caller frames peeled out of the compiled inlining stack, or
+     *            {@code null} to clear the synthetic caller chain
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void setStackTraceCallerInfo(InterpreterFrameSourceInfo callerInfo) {
+        this.syntheticStackTraceCallerInfo = callerInfo;
     }
 }

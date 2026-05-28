@@ -27,12 +27,18 @@ package com.oracle.svm.core.stack;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.shared.Uninterruptible;
 
-/** Given access to a thread stack frame, perform some computation on it. */
+/**
+ * Used to visit regular physical stack frames and deoptimized stack frames. A physical frame can
+ * represent several Java source-level frames when methods are inlined. When code is interpreted,
+ * this class sees the stack frames of the interpreter implementation. Native frames are skipped.
+ *
+ * Use {@link JavaStackFrameVisitor} instead to visit source-level Java frames.
+ */
 public abstract class StackFrameVisitor extends ParameterizedStackFrameVisitor {
 
     /**

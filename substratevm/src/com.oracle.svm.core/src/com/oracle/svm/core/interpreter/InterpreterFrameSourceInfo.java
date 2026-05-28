@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,23 +24,62 @@
  */
 package com.oracle.svm.core.interpreter;
 
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.code.FrameSourceInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.Objects;
+
+import com.oracle.svm.core.code.FrameSourceInfo;
+import com.oracle.svm.shared.Uninterruptible;
+
+import jdk.vm.ci.meta.LineNumberTable;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class InterpreterFrameSourceInfo extends FrameSourceInfo {
     private final ResolvedJavaMethod interpretedMethod;
     private final Object interpreterFrame;
+    /*
+     * Ristretto deoptimization uses this synthetic caller chain to report the Java source-level
+     * callers that were inlined into the runtime-compiled frame.
+     */
+    private final InterpreterFrameSourceInfo callerInfo;
 
     public InterpreterFrameSourceInfo(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int bci, ResolvedJavaMethod interpretedMethod, Object interpreterFrame) {
+        this(sourceClass, sourceMethodName, sourceLineNumber, bci, interpretedMethod, interpreterFrame, null);
+    }
+
+    public InterpreterFrameSourceInfo(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber, int bci, ResolvedJavaMethod interpretedMethod, Object interpreterFrame,
+                    InterpreterFrameSourceInfo callerInfo) {
         super(sourceClass, sourceMethodName, sourceLineNumber, bci);
         this.interpretedMethod = interpretedMethod;
         this.interpreterFrame = interpreterFrame;
+        this.callerInfo = callerInfo;
 
         Objects.requireNonNull(sourceClass);
         Objects.requireNonNull(sourceMethodName);
+    }
+
+    public static InterpreterFrameSourceInfo forInterpretedMethod(Class<?> sourceClass, ResolvedJavaMethod interpretedMethod, int bci, Object interpreterFrame,
+                    InterpreterFrameSourceInfo callerInfo) {
+        String sourceMethodName = interpretedMethod.getName();
+        return new InterpreterFrameSourceInfo(sourceClass, sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, interpretedMethod, interpreterFrame, callerInfo);
+    }
+
+    public static InterpreterFrameSourceInfo forInterpretedMethod(Class<?> sourceClass, ResolvedJavaMethod interpretedMethod, int bci) {
+        String sourceMethodName = interpretedMethod.getName();
+        return new InterpreterFrameSourceInfo(sourceClass, sourceMethodName, sourceLineNumber(interpretedMethod, bci), bci, interpretedMethod, null);
+    }
+
+    public static InterpreterFrameSourceInfo forNativeMethod(Class<?> sourceClass, ResolvedJavaMethod interpretedMethod, Object interpreterFrame) {
+        String sourceMethodName = interpretedMethod.getName();
+        return new InterpreterFrameSourceInfo(sourceClass, sourceMethodName, LINENUMBER_NATIVE, -1, interpretedMethod, interpreterFrame);
+    }
+
+    private static int sourceLineNumber(ResolvedJavaMethod interpretedMethod, int bci) {
+        LineNumberTable lineNumberTable = interpretedMethod.getLineNumberTable();
+        if (lineNumberTable == null || bci < 0) {
+            return -1;
+        }
+        return lineNumberTable.getLineNumber(bci);
     }
 
     public Object getInterpreterFrame() {
@@ -51,8 +90,19 @@ public final class InterpreterFrameSourceInfo extends FrameSourceInfo {
         return interpretedMethod;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean hasDeoptimizationCallerInfo() {
+        return callerInfo != null;
+    }
+
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public InterpreterFrameSourceInfo getCaller() {
+        return callerInfo;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected void fillSourceFieldsIfMissing() {
         /* nothing to do */
     }

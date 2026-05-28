@@ -32,6 +32,8 @@ import static com.oracle.svm.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
+import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_NATIVE;
+import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_UNKNOWN;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.BREAKPOINT;
 import static com.oracle.svm.interpreter.metadata.CremaMethodAccess.toJVMCI;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
@@ -1032,8 +1034,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     public final StackTraceElement asStackTraceElement(int bci) {
         int lineNumber;
         if (Modifier.isNative(getModifiers())) {
-            // StackTraceElement uses -2 to mark native methods distinctly from "line unknown".
-            lineNumber = -2;
+            lineNumber = LINENUMBER_NATIVE;
         } else {
             LineNumberTable methodLineNumberTable = getLineNumberTable();
             if (methodLineNumberTable == null || bci < 0) {
@@ -1041,7 +1042,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
                  * Missing line-table metadata or an unknown BCI means the source line is
                  * unavailable, not that the method metadata is corrupt.
                  */
-                lineNumber = -1;
+                lineNumber = LINENUMBER_UNKNOWN;
             } else {
                 lineNumber = methodLineNumberTable.getLineNumber(bci);
             }

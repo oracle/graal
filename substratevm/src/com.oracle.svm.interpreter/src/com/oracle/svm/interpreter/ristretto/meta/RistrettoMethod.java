@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.interpreter.ristretto.meta;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
@@ -44,6 +46,7 @@ import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoDiagnostics;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfilingInfo;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -133,6 +136,12 @@ public final class RistrettoMethod extends SubstrateMethod {
     @Override
     public InterpreterResolvedJavaMethod getInterpreterMethod() {
         return interpreterMethod;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean hasInterpreterMethod() {
+        return true;
     }
 
     private static final Function<InterpreterResolvedJavaMethod, ResolvedJavaMethod> RISTRETTO_METHOD_FUNCTION = RistrettoMethod::new;

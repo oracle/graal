@@ -44,6 +44,7 @@ import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.VirtualFrame;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
@@ -149,38 +150,43 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
 
     @Override
     public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
-        if (!InterpreterSupport.isEnabled() && CodeInfoTable.isInAOTImageCode(ip)) {
-            visitAOTFrame(ip);
-        } else {
+        if (InterpreterSupport.isEnabled() || RuntimeCompilation.isEnabled() && !CodeInfoTable.isInAOTImageCode(ip)) {
             /*
              * GR-46090: better detection of interpreter frames needed. Right now this forces
              * exception handling to always go through the "encoded Java source reference" case as
              * soon the interpreter is enabled.
              */
             CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
-            assert queryResult != null;
-
             for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
-                if (!dispatchPossiblyInterpretedFrame(frameInfo, sp)) {
+                if (!dispatch(frameInfo, sp)) {
                     return false;
                 }
             }
+        } else {
+            assert CodeInfoTable.isInAOTImageCode(ip);
+            visitAOTFrame(ip);
         }
         return numFrames != limit;
     }
 
     @Override
     protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+        /*
+         * Deoptimization copies the source-frame values into the DeoptimizedFrame and makes
+         * the original frame content invalid. Pass null so source-frame translation cannot
+         * read stack slots through the original SP.
+         */
+        Pointer deoptimizedSP = Word.nullPointer();
         for (VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
             FrameInfoQueryResult frameInfo = frame.getFrameInfo();
-            if (!dispatchPossiblyInterpretedFrame(frameInfo, originalSP)) {
+            if (!dispatch(frameInfo, deoptimizedSP)) {
                 return false;
             }
         }
         return numFrames != limit;
     }
 
-    protected void visitAOTFrame(CodePointer ip) {
+    private void visitAOTFrame(CodePointer ip) {
         VMError.guarantee(ip.isNonNull(), "Unexpected code pointer: 0");
         ensureRawCapacity(BacktraceHolder.slotsPerCodePointer());
 
@@ -190,12 +196,11 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
             throw VMError.shouldNotReachHere("Not a code pointer: 0x" + Long.toHexString(rawValue));
         }
         rawIndex++;
-
         numFrames++;
     }
 
     @Override
-    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
         if (!StackTraceUtils.shouldShowFrame(frameSourceInfo)) {
             /* Always ignore the frame. It is an internal frame of the VM. */
             return true;

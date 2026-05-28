@@ -444,7 +444,7 @@ public final class JavaStackWalker {
         IsolateThread thread = CurrentIsolate.getCurrentThread();
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         initWalk(walk, thread, startSP, endSP, startIP, JavaFrameAnchors.getFrameAnchor());
-        return doWalk(walk, thread, visitor, data);
+        return doWalkThread(walk, thread, visitor, data);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
@@ -461,18 +461,18 @@ public final class JavaStackWalker {
     public static boolean walkThread(IsolateThread thread, Pointer endSP, ParameterizedStackFrameVisitor visitor, Object data) {
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         initializeFromFrameAnchor(walk, thread, endSP);
-        return doWalk(walk, thread, visitor, data);
+        return doWalkThread(walk, thread, visitor, data);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static void walkThread(IsolateThread thread, Pointer startSP, Pointer endSP, CodePointer startIP, StackFrameVisitor visitor) {
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         initWalk(walk, thread, startSP, endSP, startIP, JavaFrameAnchors.getFrameAnchor(thread));
-        doWalk(walk, thread, visitor, null);
+        doWalkThread(walk, thread, visitor, null);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    static boolean doWalk(JavaStackWalk walk, IsolateThread thread, ParameterizedStackFrameVisitor visitor, Object data) {
+    static boolean doWalkThread(JavaStackWalk walk, IsolateThread thread, ParameterizedStackFrameVisitor visitor, Object data) {
         while (advance(walk, thread)) {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             Pointer sp = frame.getSP();

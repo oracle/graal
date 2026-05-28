@@ -27,8 +27,8 @@ package com.oracle.svm.core.code;
 import java.lang.module.ModuleDescriptor;
 import java.util.Optional;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.internal.loader.BuiltinClassLoader;
@@ -61,6 +61,8 @@ public abstract class FrameSourceInfo {
         sourceLineNumber = LINENUMBER_UNKNOWN;
         encodedBci = -1;
     }
+
+    public abstract FrameSourceInfo getCaller();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Class<?> getSourceClass() {

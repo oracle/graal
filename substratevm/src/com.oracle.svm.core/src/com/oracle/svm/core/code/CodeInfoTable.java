@@ -125,10 +125,9 @@ public class CodeInfoTable {
     }
 
     public static CodeInfoQueryResult lookupCodeInfoQueryResult(CodeInfo info, CodePointer absoluteIP) {
+        assert info.isNonNull();
+
         counters().lookupCodeInfoCount.inc();
-        if (info.isNull()) {
-            return null;
-        }
         CodeInfoQueryResult result = new CodeInfoQueryResult();
         result.ip = absoluteIP;
         CodeInfoAccess.lookupCodeInfo(info, absoluteIP, result);

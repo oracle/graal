@@ -27,16 +27,15 @@ package com.oracle.svm.core.stack;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
- * Given access to a thread stack frame, perform some computation on it. This is a more generic
- * version of {@link StackFrameVisitor} that allows an arbitrary object to be passed through. We
- * explicitly don't use Java generics because those may introduce bridge methods, which can cause
- * issues for uninterruptible code.
+ * This is a more generic version of {@link StackFrameVisitor} that allows an arbitrary object to be
+ * passed through. We explicitly don't use Java generics because those may introduce bridge methods,
+ * which can cause issues for uninterruptible code.
  */
 public abstract class ParameterizedStackFrameVisitor {
 

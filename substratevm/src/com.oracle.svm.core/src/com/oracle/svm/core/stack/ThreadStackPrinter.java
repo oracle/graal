@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoDecoder;
@@ -46,6 +45,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.shared.Uninterruptible;
 
 public class ThreadStackPrinter {
     /**
@@ -83,7 +83,7 @@ public class ThreadStackPrinter {
 
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         JavaStackWalker.initialize(walk, thread, sp, ip);
-        return JavaStackWalker.doWalk(walk, thread, printVisitor, log);
+        return JavaStackWalker.doWalkThread(walk, thread, printVisitor, log);
     }
 
     @Uninterruptible(reason = "IP is not within Java code, so there is no risk that it gets invalidated.", calleeMustBe = false)
