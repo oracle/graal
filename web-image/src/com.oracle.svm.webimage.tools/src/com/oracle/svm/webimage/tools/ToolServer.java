@@ -29,6 +29,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -45,7 +46,7 @@ public class ToolServer {
     public static void main(String[] args) throws Exception {
         try {
             int port = args.length > 0 ? Integer.parseInt(args[0]) : 8000;
-            HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+            HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
             server.createContext("/", new DefaultHandler());
             server.setExecutor(null);
             System.out.println("Starting Web Image tool server at http://localhost:" + port);
@@ -99,18 +100,34 @@ public class ToolServer {
         }
     }
 
+    private static void sendNotFound(HttpExchange http) throws IOException {
+        try {
+            String message = "Not found";
+            http.sendResponseHeaders(404, message.length());
+            OutputStream os = http.getResponseBody();
+            os.write(message.getBytes());
+        } finally {
+            http.close();
+        }
+    }
+
     private static final class DefaultHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange http) throws IOException {
             switch (http.getRequestURI().getPath()) {
                 case "/":
+                case "/index.html":
                     new PageHandler("/index.html").handle(http);
                     break;
                 case "/debug/offheap":
+                case "/debug/offheap.html":
                     new PageHandler("/debug/offheap.html").handle(http);
                     break;
+                case "/debug/offheap.js":
+                    new PageHandler("/debug/offheap.js").handle(http);
+                    break;
                 default:
-                    new PageHandler(http.getRequestURI().getPath()).handle(http);
+                    sendNotFound(http);
                     break;
             }
         }
