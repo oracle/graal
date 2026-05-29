@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -605,7 +605,8 @@ public interface FileSystem {
      *             {@link #getPathSeparator() path separator} as the {@link #newDefaultFileSystem()
      *             default file system}.
      * @since 22.2
-     * @deprecated Use {@link #allowInternalResourceAccess(FileSystem)}.
+     * @deprecated Use {@link #allowInternalResources(FileSystem)} instead to expose language homes
+     *             and other internal resources through a read-only view.
      */
     @Deprecated
     static FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
@@ -621,20 +622,27 @@ public interface FileSystem {
      * {@link Path} type, {@link #getSeparator() separator} and {@link #getPathSeparator() path
      * separator} as the {@link #newDefaultFileSystem() default file system}.
      * <p>
-     * This method is equivalent to {@link #allowInternalResourceAccess(FileSystem, boolean)
-     * allowInternalResourceAccess(fileSystem, false)}. It does not make the forwarded internal
-     * resources read-only; write operations are forwarded to the default file system and are subject
-     * to its permissions.
+     * This method preserves the historical behavior and does not make internal resources read-only:
+     * write operations for internal resource paths are forwarded to the default file system and are
+     * subject to its permissions.
      *
+     * @param fileSystem the file system used to access files that are not internal resources
      * @throws IllegalArgumentException when the {@code fileSystem} does not use the same
      *             {@link Path} type or has a different {@link #getSeparator() separator} or
      *             {@link #getPathSeparator() path separator} as the {@link #newDefaultFileSystem()
      *             default file system}.
      * @see Engine#copyResources(Path, String...)
      * @since 24.0
+     * @deprecated Use {@link #allowInternalResources(FileSystem)} instead when migrating code that
+     *             only reads internal resources. The replacement exposes internal resources and
+     *             language homes through a read-only view. Code that needs mutable files based on
+     *             internal resources should copy the resources to an application-controlled location,
+     *             for example with {@link Engine#copyResources(Path, String...)}, and expose that
+     *             location through its configured {@code fileSystem}.
      */
+    @Deprecated(since = "25.1")
     static FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
-        return allowInternalResourceAccess(fileSystem, false);
+        return IOHelper.ImplHolder.IMPL.allowInternalResourceAccess(fileSystem, false);
     }
 
     /**
@@ -646,20 +654,12 @@ public interface FileSystem {
      * {@link Path} type, {@link #getSeparator() separator} and {@link #getPathSeparator() path
      * separator} as the {@link #newDefaultFileSystem() default file system}.
      * <p>
-     * If {@code readOnlyResources} is {@code true}, the forwarded internal resources are exposed
-     * through a read-only view of the default file system. Write operations, such as creating,
-     * deleting or modifying files and directories are rejected for internal resources. Paths
-     * that are not internal resources continue to be handled by {@code fileSystem} and retain
-     * its access permissions.
-     * <p>
-     * If {@code readOnlyResources} is {@code false}, access to internal resources preserves the
-     * behavior of {@link #allowInternalResourceAccess(FileSystem)}: operations are forwarded to the
-     * default file system without an additional read-only restriction and are subject to the default
-     * file system's permissions.
+     * Internal resources and language homes are exposed through a read-only view of the default file
+     * system. Write operations, such as creating, deleting, or modifying files or directories, are
+     * rejected for internal resource paths. Paths that are not internal resources continue to be
+     * handled by {@code fileSystem} and retain its access permissions.
      *
      * @param fileSystem the file system used to access files that are not internal resources
-     * @param readOnlyResources whether internal resources are exposed through a read-only view of
-     *            the default file system
      * @throws IllegalArgumentException when the {@code fileSystem} does not use the same
      *             {@link Path} type or has a different {@link #getSeparator() separator} or
      *             {@link #getPathSeparator() path separator} as the {@link #newDefaultFileSystem()
@@ -667,8 +667,8 @@ public interface FileSystem {
      * @see Engine#copyResources(Path, String...)
      * @since 25.1
      */
-    static FileSystem allowInternalResourceAccess(FileSystem fileSystem, boolean readOnlyResources) {
-        return IOHelper.ImplHolder.IMPL.allowInternalResourceAccess(fileSystem, readOnlyResources);
+    static FileSystem allowInternalResources(FileSystem fileSystem) {
+        return IOHelper.ImplHolder.IMPL.allowInternalResourceAccess(fileSystem, true);
     }
 
     /**
