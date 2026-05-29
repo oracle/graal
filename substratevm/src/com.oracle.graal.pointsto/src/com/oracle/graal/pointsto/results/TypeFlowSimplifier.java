@@ -614,6 +614,13 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         }
         TypeState nodeTypeState = methodFlow.foldTypeFlow(analysis, nodeFlow);
 
+        if (openWorldOpenAllInstantiated(nodeFlow)) {
+            if (!nodeTypeState.canBeNull() && hasUsages) {
+                return StampFactory.objectNonNull();
+            }
+            return null;
+        }
+
         if (hasUsages && allowConstantFolding && !nodeTypeState.canBeNull()) {
             JavaConstant constantValue = nodeTypeState.asConstant();
             if (constantValue != null) {
@@ -712,6 +719,11 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         }
         /* Nothing to strengthen. */
         return null;
+    }
+
+    private boolean openWorldOpenAllInstantiated(TypeFlow<?> nodeFlow) {
+        AnalysisType declaredType = nodeFlow.getDeclaredType();
+        return !strengthenGraphs.isClosedTypeWorld && nodeFlow.isAllInstantiated() && declaredType != null && !analysis.isClosed(declaredType);
     }
 
     private IntegerStamp getIntegerStamp(ValueNode node, IntegerStamp originalStamp, FixedWithNextNode anchorPoint, TypeState nodeTypeState, SimplifierTool tool) {
