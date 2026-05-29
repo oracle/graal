@@ -66,10 +66,10 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
 
     public static final LIRInstructionClass<AMD64BigIntegerMultiplyToLenOp> TYPE = LIRInstructionClass.create(AMD64BigIntegerMultiplyToLenOp.class);
 
-    @Alive({OperandFlag.REG}) private Value xValue;
+    @UseKill({OperandFlag.REG}) private Value xValue;
     @UseKill({OperandFlag.REG}) private Value xlenValue;
     @Alive({OperandFlag.REG}) private Value yValue;
-    @Alive({OperandFlag.REG}) private Value ylenValue;
+    @UseKill({OperandFlag.REG}) private Value ylenValue;
     @UseKill({OperandFlag.REG}) private Value zValue;
     @UseKill({OperandFlag.REG}) private Value zlenValue;
 

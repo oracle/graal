@@ -98,6 +98,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64MD5Op;
 import jdk.graal.compiler.lir.aarch64.AArch64Move;
 import jdk.graal.compiler.lir.aarch64.AArch64Move.MembarOp;
 import jdk.graal.compiler.lir.aarch64.AArch64PauseOp;
+import jdk.graal.compiler.lir.aarch64.AArch64Poly1305ProcessBlocksOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ReadTimestampCounter;
 import jdk.graal.compiler.lir.aarch64.AArch64SHA1Op;
 import jdk.graal.compiler.lir.aarch64.AArch64SHA256Op;
@@ -824,6 +825,19 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitGHASHProcessBlocks(EnumSet<?> runtimeCheckedCPUFeatures, Value state, Value hashSubkey, Value data, Value blocks) {
         append(new AArch64GHASHProcessBlocksOp(this, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data), asAllocatable(blocks)));
+    }
+
+    @Override
+    public void emitPoly1305ProcessBlocks(EnumSet<?> runtimeCheckedCPUFeatures, Value input, Value length, Value accumulator, Value r) {
+        RegisterValue rInput = AArch64.r0.asValue(input.getValueKind());
+        RegisterValue rLength = AArch64.r1.asValue(length.getValueKind());
+        RegisterValue rAccumulator = AArch64.r2.asValue(accumulator.getValueKind());
+        RegisterValue rR = AArch64.r3.asValue(r.getValueKind());
+        emitMove(rInput, input);
+        emitMove(rLength, length);
+        emitMove(rAccumulator, accumulator);
+        emitMove(rR, r);
+        append(new AArch64Poly1305ProcessBlocksOp(rInput, rLength, rAccumulator, rR));
     }
 
     @Override

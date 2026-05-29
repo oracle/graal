@@ -66,9 +66,9 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64BigIntegerSquareToLenOp> TYPE = LIRInstructionClass.create(AMD64BigIntegerSquareToLenOp.class);
 
     @Alive({OperandFlag.REG}) private Value xValue;
-    @Alive({OperandFlag.REG}) private Value lenValue;
+    @UseKill({OperandFlag.REG}) private Value lenValue;
     @Alive({OperandFlag.REG}) private Value zValue;
-    @Alive({OperandFlag.REG}) private Value zlenValue;
+    @UseKill({OperandFlag.REG}) private Value zlenValue;
 
     @Temp({OperandFlag.REG}) private Value tmp1Value;
     @Temp({OperandFlag.REG}) private Value[] tmpValues;
