@@ -90,6 +90,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64CountPositivesOp;
 import jdk.graal.compiler.lir.aarch64.AArch64CRC32CUpdateBytesOp;
 import jdk.graal.compiler.lir.aarch64.AArch64CRC32UpdateBytesOp;
 import jdk.graal.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
+import jdk.graal.compiler.lir.aarch64.AArch64ChaCha20BlockOp;
 import jdk.graal.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import jdk.graal.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
 import jdk.graal.compiler.lir.aarch64.AArch64HaltOp;
@@ -838,6 +839,17 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         emitMove(rAccumulator, accumulator);
         emitMove(rR, r);
         append(new AArch64Poly1305ProcessBlocksOp(rInput, rLength, rAccumulator, rR));
+    }
+
+    @Override
+    public Variable emitChaCha20Block(Value state, Value result) {
+        RegisterValue stateReg = AArch64.r0.asValue(state.getValueKind());
+        RegisterValue resultReg = AArch64.r1.asValue(result.getValueKind());
+        emitMove(stateReg, state);
+        emitMove(resultReg, result);
+        Variable outputLength = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ChaCha20BlockOp(stateReg, resultReg, outputLength));
+        return outputLength;
     }
 
     @Override

@@ -26,7 +26,6 @@ package jdk.graal.compiler.hotspot.meta;
 
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.CHACHA20Block;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_INVERSE_NTT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_NTT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_DECOMPOSE_POLY;
@@ -290,7 +289,6 @@ public class HotSpotGraphBuilderPlugins {
                 registerReferencePlugins(invocationPlugins);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config);
-                registerChaCha20Plugins(invocationPlugins, config);
                 registerP256Plugins(invocationPlugins, config);
                 registerDualPivotQuicksortPlugins(invocationPlugins, config, target.arch);
 
@@ -1455,31 +1453,6 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean isApplicable(Architecture arch) {
                 return config.stubKyberBarrettReduce != 0L;
-            }
-        });
-    }
-
-    private static void registerChaCha20Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
-        Registration r = new Registration(plugins, "com.sun.crypto.provider.ChaCha20Cipher");
-        r.register(new ConditionalInvocationPlugin("implChaCha20Block", int[].class, byte[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode initState, ValueNode result) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode stateNotNull = b.nullCheckedValue(initState);
-                    ValueNode resultNotNull = b.nullCheckedValue(result);
-
-                    ValueNode stateStart = helper.arrayStart(stateNotNull, JavaKind.Int);
-                    ValueNode resultStart = helper.arrayStart(resultNotNull, JavaKind.Byte);
-
-                    ForeignCallNode call = new ForeignCallNode(CHACHA20Block, stateStart, resultStart);
-                    b.addPush(JavaKind.Int, call);
-                }
-                return true;
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.chacha20Block != 0L;
             }
         });
     }

@@ -56,6 +56,7 @@ import jdk.graal.compiler.replacements.nodes.BigIntegerMontgomerySquareNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerRightShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
+import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
@@ -102,6 +103,9 @@ public final class Stubs {
             }
             if (ElectronicCodeBookAESNode.class.equals(klass)) {
                 return ElectronicCodeBookAESNode.minFeaturesAMD64();
+            }
+            if (ChaCha20Node.class.equals(klass)) {
+                return ChaCha20Node.minFeaturesAMD64();
             }
             if (GHASHProcessBlocksNode.class.equals(klass)) {
                 return GHASH_CPU_FEATURES_AMD64;

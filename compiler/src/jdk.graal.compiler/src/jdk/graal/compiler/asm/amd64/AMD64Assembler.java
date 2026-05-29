@@ -42,8 +42,8 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512BW;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512CD;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512_IFMA;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512_IFMA;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 
 import java.util.ArrayList;
@@ -6711,6 +6711,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     // AVX512 instructions
+
+    public final void evbroadcasti32x4(Register dst, AMD64Address src) {
+        VexRMOp.EVBROADCASTI32X4.emit(this, AVXSize.ZMM, dst, src);
+    }
 
     // Insn: VMOVDQU16 zmm1 {k1}{z}, zmm2/m512
     // -----
