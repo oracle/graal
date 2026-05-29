@@ -31,9 +31,9 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.threadlocal.FastThreadLocal;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 
 /**

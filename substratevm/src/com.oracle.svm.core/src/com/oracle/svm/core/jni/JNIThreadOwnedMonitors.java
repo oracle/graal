@@ -27,8 +27,8 @@ package com.oracle.svm.core.jni;
 import java.util.IdentityHashMap;
 import java.util.function.BiConsumer;
 
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 
 /**
  * Keeps track of the object monitors of each thread that are acquired via JNI.

@@ -26,6 +26,7 @@ package com.oracle.svm.core.threadlocal;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

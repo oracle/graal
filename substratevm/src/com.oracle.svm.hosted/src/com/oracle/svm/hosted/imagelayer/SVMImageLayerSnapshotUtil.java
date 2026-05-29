@@ -63,7 +63,7 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
 import com.oracle.svm.hosted.ForeignHostedSupport;

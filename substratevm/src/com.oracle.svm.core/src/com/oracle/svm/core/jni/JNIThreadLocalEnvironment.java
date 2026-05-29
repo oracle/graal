@@ -28,8 +28,8 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
-import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 
 /**
  * Handles accesses to each thread's JNI environment.

@@ -36,9 +36,9 @@ import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
 
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.util.VMError;

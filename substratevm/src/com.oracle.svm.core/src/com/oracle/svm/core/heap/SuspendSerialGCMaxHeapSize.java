@@ -27,8 +27,8 @@ package com.oracle.svm.core.heap;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 
 /**
  * Allows the max heap size restriction to be temporarily suspended, in order to avoid running out
