@@ -84,6 +84,7 @@ Otherwise, this option expects a comma-separated list of tag combinations, each 
 This section outlines the JFR features that are available in Native Image.
 
 On Windows, Native Image supports local JFR recordings written to `.jfr` files. Remote JMX access to `FlightRecorderMXBean` and JFR control through `jcmd` are not currently available on Windows.
+The signal-handler-based execution sampler (`-H:+SignalHandlerBasedExecutionSampler`) uses POSIX `SIGPROF` support and is therefore not available on Windows; Windows uses the default recurring-callback sampler for JFR method profiling.
 
 ### Method Profiling and Stack Traces
 

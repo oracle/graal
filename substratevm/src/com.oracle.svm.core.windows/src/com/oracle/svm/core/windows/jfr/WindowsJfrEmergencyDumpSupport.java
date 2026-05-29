@@ -104,27 +104,27 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
     }
 
     @Override
-    protected void setPid(String pid) {
+    protected void savePidText(String pid) {
         pidChars = pid.toCharArray();
     }
 
     @Override
-    protected void setSavedCwdText(String cwd) {
+    protected void saveCwdText(String cwd) {
         cwdChars = cwd.toCharArray();
     }
 
     @Override
-    protected void setDumpPathText(String dumpPath) {
+    protected void saveDumpPathText(String dumpPath) {
         dumpPathChars = dumpPath == null ? null : dumpPath.toCharArray();
     }
 
     @Override
-    protected void setDumpPathToSavedCwd() {
+    protected void useSavedCwdAsDumpPath() {
         dumpPathChars = cwdChars;
     }
 
     @Override
-    protected void setRepositoryLocationText(String repositoryLocation) {
+    protected void saveRepositoryLocationText(String repositoryLocation) {
         repositoryLocationChars = repositoryLocation.toCharArray();
     }
 
@@ -365,7 +365,7 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
     }
 
     @Override
-    protected int appendPidToPathBuffer(int idx) {
+    protected int appendPidTextToPathBuffer(int idx) {
         return appendCharsToPathBuffer(pidChars, idx);
     }
 

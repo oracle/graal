@@ -96,27 +96,27 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
     }
 
     @Override
-    protected void setPid(String pid) {
+    protected void savePidText(String pid) {
         pidBytes = pid.getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
-    protected void setSavedCwdText(String cwd) {
+    protected void saveCwdText(String cwd) {
         cwdBytes = cwd.getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
-    protected void setDumpPathText(String dumpPath) {
+    protected void saveDumpPathText(String dumpPath) {
         dumpPathBytes = dumpPath == null ? null : dumpPath.getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
-    protected void setDumpPathToSavedCwd() {
+    protected void useSavedCwdAsDumpPath() {
         dumpPathBytes = cwdBytes;
     }
 
     @Override
-    protected void setRepositoryLocationText(String repositoryLocation) {
+    protected void saveRepositoryLocationText(String repositoryLocation) {
         repositoryLocationBytes = repositoryLocation.getBytes(StandardCharsets.UTF_8);
     }
 
@@ -256,7 +256,7 @@ public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSuppor
     }
 
     @Override
-    protected int appendPidToPathBuffer(int idx) {
+    protected int appendPidTextToPathBuffer(int idx) {
         return writeToPathBuffer(pidBytes, idx);
     }
 

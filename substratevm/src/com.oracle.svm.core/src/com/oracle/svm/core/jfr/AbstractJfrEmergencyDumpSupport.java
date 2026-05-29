@@ -80,7 +80,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
     protected final void savePid() {
         if (pidText == null) {
             pidText = Long.toString(ProcessHandle.current().pid());
-            setPid(pidText);
+            savePidText(pidText);
         }
     }
 
@@ -89,7 +89,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
             String cwd = System.getProperty("user.dir");
             if (cwd != null) {
                 cwdText = cwd;
-                setSavedCwdText(cwdText);
+                saveCwdText(cwdText);
             }
         }
     }
@@ -97,7 +97,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
     @Override
     public final void setRepositoryLocation(String dirText) {
         repositoryLocationSet = true;
-        setRepositoryLocationText(dirText);
+        saveRepositoryLocationText(dirText);
         if (isRepositoryLocationTooLong()) {
             openDirectoryWarning = "Unable to open repository " + dirText + ". Repository path is too long.";
         } else {
@@ -110,10 +110,10 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         if (dumpPath == null || dumpPath.isEmpty()) {
             saveCwd();
             dumpPathText = cwdText;
-            setDumpPathToSavedCwd();
+            useSavedCwdAsDumpPath();
         } else {
             dumpPathText = dumpPath;
-            setDumpPathText(dumpPathText);
+            saveDumpPathText(dumpPathText);
         }
 
         if (dumpPathText != null) {
@@ -149,7 +149,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         return createEmergencyChunkPath();
     }
 
-    protected final RawFileDescriptor createEmergencyChunkPath() {
+    private RawFileDescriptor createEmergencyChunkPath() {
         if (isRepositoryLocationTooLong()) {
             return Word.nullPointer();
         }
@@ -161,21 +161,19 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         if (idx < 0) {
             return Word.nullPointer();
         }
-        return createEmergencyChunkPath(pathBuffer(), idx);
-    }
 
-    protected final RawFileDescriptor createEmergencyChunkPath(RawFilePath path, int baseNameEndIndex) {
         emergencyChunkPathCallCount++;
+        RawFilePath path = pathBuffer();
         if (path.isNull()) {
             return Word.nullPointer();
         }
         for (int attempt = 0; attempt < EMERGENCY_CHUNK_CREATE_ATTEMPTS; attempt++) {
-            int idx = appendEmergencyChunkSuffix(baseNameEndIndex, attempt);
-            if (idx < 0) {
+            int endIdx = appendEmergencyChunkSuffix(idx, attempt);
+            if (endIdx < 0) {
                 return Word.nullPointer();
             }
-            idx = writeChunkFileExtension(idx);
-            writePathBufferChar(idx, 0);
+            endIdx = appendChunkFileExtensionToPathBuffer(endIdx);
+            writePathBufferChar(endIdx, 0);
 
             RawFileDescriptor fd = getFileSupport().create(path, FileCreationMode.CREATE, FileAccessMode.READ_WRITE);
             if (getFileSupport().isValid(fd)) {
@@ -268,9 +266,9 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
             idx = appendPathSeparatorToPathBuffer(idx);
         }
 
-        idx = writeDumpFilePrefix(idx);
-        idx = appendPidToPathBuffer(idx);
-        idx = writeChunkFileExtension(idx);
+        idx = appendDumpFilePrefixToPathBuffer(idx);
+        idx = appendPidTextToPathBuffer(idx);
+        idx = appendChunkFileExtensionToPathBuffer(idx);
         writePathBufferChar(idx, 0);
         return pathBuffer();
     }
@@ -341,7 +339,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         return pos + CHUNKFILE_EXTENSION_LEN + 1 >= JVM_MAXPATHLEN ? -1 : pos;
     }
 
-    private int writeChunkFileExtension(int idx) {
+    private int appendChunkFileExtensionToPathBuffer(int idx) {
         int pos = idx;
         for (int i = 0; i < CHUNKFILE_EXTENSION_LEN; i++) {
             writePathBufferChar(pos++, chunkFileExtensionCharAt(i));
@@ -367,7 +365,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         };
     }
 
-    private int writeDumpFilePrefix(int idx) {
+    private int appendDumpFilePrefixToPathBuffer(int idx) {
         int pos = idx;
         for (int i = 0; i < DUMP_FILE_PREFIX_LEN; i++) {
             writePathBufferChar(pos++, dumpFilePrefixCharAt(i));
@@ -477,7 +475,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
 
     private void useCurrentDirectoryDumpPath() {
         dumpPathText = cwdText;
-        setDumpPathToSavedCwd();
+        useSavedCwdAsDumpPath();
     }
 
     protected final String getOpenDirectoryWarning() {
@@ -571,15 +569,15 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         }
     }
 
-    protected abstract void setPid(String pid);
+    protected abstract void savePidText(String pid);
 
-    protected abstract void setSavedCwdText(String cwd);
+    protected abstract void saveCwdText(String cwd);
 
-    protected abstract void setDumpPathText(String dumpPath);
+    protected abstract void saveDumpPathText(String dumpPath);
 
-    protected abstract void setDumpPathToSavedCwd();
+    protected abstract void useSavedCwdAsDumpPath();
 
-    protected abstract void setRepositoryLocationText(String repositoryLocation);
+    protected abstract void saveRepositoryLocationText(String repositoryLocation);
 
     protected abstract void allocatePathBufferIfNeeded();
 
@@ -603,7 +601,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
 
     protected abstract int appendRepositoryLocationToPathBuffer(int idx);
 
-    protected abstract int appendPidToPathBuffer(int idx);
+    protected abstract int appendPidTextToPathBuffer(int idx);
 
     protected abstract int appendPathSeparatorToPathBuffer(int idx);
 
