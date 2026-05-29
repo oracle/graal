@@ -33,6 +33,7 @@ import java.util.BitSet;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
@@ -86,6 +87,14 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     public BytecodeSensitiveAnalysisPolicy(OptionValues options) {
         super(options);
+        if (!limitObjectArrayLength) {
+            AnalysisError.guarantee(!PointstoOptions.MaxObjectSetSize.hasBeenSet(options),
+                            "Invalid points-to analysis configuration: option '%s' can only be set when option '%s' is enabled.",
+                            PointstoOptions.MaxObjectSetSize.getName(), PointstoOptions.LimitObjectArrayLength.getName());
+            AnalysisError.guarantee(!PointstoOptions.MaxTypeStateObjects.hasBeenSet(options),
+                            "Invalid points-to analysis configuration: option '%s' can only be set when option '%s' is enabled.",
+                            PointstoOptions.MaxTypeStateObjects.getName(), PointstoOptions.LimitObjectArrayLength.getName());
+        }
         this.contextPolicy = new BytecodeAnalysisContextPolicy();
     }
 
@@ -436,12 +445,95 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type, AnalysisObject... objects) {
-        return PointsToStats.registerTypeState(bb, new ContextSensitiveSingleTypeState(canBeNull, type, objects));
+        return PointsToStats.registerTypeState(bb, new ContextSensitiveSingleTypeState(canBeNull, type, maybeLimitSingleTypeStateObjects(bb, type, objects)));
     }
 
     @Override
     public MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount, AnalysisObject... objects) {
-        return PointsToStats.registerTypeState(bb, new ContextSensitiveMultiTypeState(canBeNull, typesBitSet, typesCount, objects));
+        return PointsToStats.registerTypeState(bb, new ContextSensitiveMultiTypeState(canBeNull, typesBitSet, typesCount, maybeLimitMultiTypeStateObjects(bb, objects)));
+    }
+
+    /**
+     * Limits a single-type state by replacing all concrete objects with the type's context
+     * insensitive summary object. For a single type, the per-type limit and the total-state limit
+     * are equivalent, so the effective threshold is the smaller of the relevant limits.
+     */
+    private AnalysisObject[] maybeLimitSingleTypeStateObjects(PointsToAnalysis bb, AnalysisType type, AnalysisObject[] objects) {
+        int totalLimit = Math.min(maxObjectSetSize, maxTypeStateObjects);
+        if (!limitObjectArrayLength || objects.length <= totalLimit) {
+            return objects;
+        }
+        AnalysisObject summaryObject = type.getContextInsensitiveAnalysisObject();
+        noteMerge(bb, objects);
+        noteMerge(bb, summaryObject);
+        return new AnalysisObject[]{summaryObject};
+    }
+
+    /**
+     * Limits a multi-type state by summarizing whole type runs. The object array is sorted by type
+     * id, so the method processes one type run at a time.
+     *
+     * The limits are intentionally conservative:
+     *
+     * 1. Any concrete type run larger than {@link #maxObjectSetSize} is summarized.
+     * 2. If the whole type state is larger than {@link #maxTypeStateObjects}, all concrete type
+     * runs are summarized.
+     *
+     * A type state that already consists only of context-insensitive summary objects is left
+     * unchanged. Summary-only type runs can legitimately exceed the total-state limit when they
+     * represent many distinct types.
+     */
+    private AnalysisObject[] maybeLimitMultiTypeStateObjects(PointsToAnalysis bb, AnalysisObject[] objects) {
+        int lowestLimit = Math.min(maxObjectSetSize, maxTypeStateObjects);
+        if (!limitObjectArrayLength || objects.length <= lowestLimit) {
+            return objects;
+        }
+
+        boolean limitAllTypes = objects.length > maxTypeStateObjects;
+        AnalysisObject[] resultObjects = null;
+        int idx = 0;
+        int resultIdx = 0;
+        while (idx < objects.length) {
+            AnalysisObject object = objects[idx];
+            int typeId = object.getTypeId();
+            int startIdx = idx;
+            boolean hasConcreteObject = false;
+            do {
+                hasConcreteObject |= !isSummaryObject(objects[idx]);
+                idx++;
+            } while (idx < objects.length && objects[idx].getTypeId() == typeId);
+
+            /*
+             * Summary-only type runs are already as imprecise as this limiting can make them, so
+             * leave them unchanged even when the total-state limit applies.
+             */
+            boolean limitType = hasConcreteObject && (limitAllTypes || idx - startIdx > maxObjectSetSize);
+            if (limitType) {
+                if (resultObjects == null) {
+                    /*
+                     * Allocate the result lazily. If no run needs limiting, the original objects
+                     * array can be reused without copying.
+                     */
+                    resultObjects = new AnalysisObject[objects.length];
+                    System.arraycopy(objects, 0, resultObjects, 0, startIdx);
+                    resultIdx = startIdx;
+                }
+                AnalysisObject summaryObject = object.type().getContextInsensitiveAnalysisObject();
+                for (int i = startIdx; i < idx; i++) {
+                    noteMerge(bb, objects[i]);
+                }
+                noteMerge(bb, summaryObject);
+                resultObjects[resultIdx++] = summaryObject;
+            } else if (resultObjects != null) {
+                System.arraycopy(objects, startIdx, resultObjects, resultIdx, idx - startIdx);
+                resultIdx += idx - startIdx;
+            }
+        }
+        if (resultObjects == null) {
+            return objects;
+        }
+        assert resultIdx <= resultObjects.length : resultIdx + " > " + resultObjects.length;
+        return resultIdx == resultObjects.length ? resultObjects : Arrays.copyOf(resultObjects, resultIdx);
     }
 
     @Override
@@ -771,45 +863,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                     }
                 }
 
-                /*
-                 * Check if the union of objects of a type in the overlapping section reached the
-                 * limit. The limit, bb.options().maxObjectSetSize(), has a minimum value of 1.
-                 */
-                if (limitObjectArrayLength && unionObjects.size() > maxObjectSetSize) {
-                    int idxStart = 0;
-                    int idxEnd = 0;
-                    while (idxEnd < unionObjects.size()) {
-                        AnalysisObject oStart = unionObjects.get(idxStart);
-
-                        /* While types are equal and the end is not reached, advance idxEnd. */
-                        while (idxEnd < unionObjects.size() && oStart.equals(unionObjects.get(idxEnd))) {
-                            idxEnd = idxEnd + 1;
-                        }
-                        /*
-                         * Process the type change or, if idxEnd reached the end, process the last
-                         * stride
-                         */
-                        int size = idxEnd - idxStart;
-                        if (size > maxObjectSetSize) {
-                            /*
-                             * Object count exceeds the limit. Mark the objects in the stride as
-                             * merged.
-                             */
-                            for (int i = idxStart; i < idxEnd; i += 1) {
-                                bb.analysisPolicy().noteMerge(bb, unionObjects.get(i));
-                            }
-                            /* Add the context insensitive object in the result list. */
-                            resultObjects.add(oStart.type().getContextInsensitiveAnalysisObject());
-                        } else {
-                            /* Object count is within the limit, add them to the result. */
-                            resultObjects.addAll(unionObjects.elementData(), idxStart, idxEnd);
-                        }
-                        idxStart = idxEnd;
-                    }
-
-                } else {
-                    resultObjects.addAll(unionObjects.elementData(), 0, unionObjects.size());
-                }
+                resultObjects.addAll(unionObjects.elementData(), 0, unionObjects.size());
             }
 
             /*
@@ -827,16 +881,21 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             }
 
             assert resultObjects.size() > 1 : "The result state of a (Multi U Multi) operation must have at least 2 objects";
+            AnalysisObject[] resultArray = resultObjects.copyToArray(new AnalysisObject[resultObjects.size()]);
 
-            /* Logical OR the type bit sets. */
-            BitSet resultTypesBitSet = TypeStateUtils.or(s1.bitSet(), s2.bitSet());
-            MultiTypeState result = multiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality(),
-                            resultObjects.copyToArray(new AnalysisObject[resultObjects.size()]));
-            assert !result.equals(s1) : "speculation code should prevent this case";
+            TypeState result;
+            if (TypeStateUtils.holdsSingleTypeState(resultArray, resultArray.length)) {
+                result = singleTypeState(bb, resultCanBeNull, resultArray[0].type(), resultArray);
+            } else {
+                /* Logical OR the type bit sets. */
+                BitSet resultTypesBitSet = TypeStateUtils.or(s1.bitSet(), s2.bitSet());
+                result = multiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality(), resultArray);
+                assert !result.equals(s1) : "speculation code should prevent this case";
 
-            /* The result can be equal to s2 only if s1 and s2 have the same number of types. */
-            if (s1.typesCount() == s2.typesCount() && result.equals(s2)) {
-                return s2.forCanBeNull(bb, resultCanBeNull);
+                /* The result can be equal to s2 only if s1 and s2 have the same number of types. */
+                if (s1.typesCount() == s2.typesCount() && result.equals(s2)) {
+                    return s2.forCanBeNull(bb, resultCanBeNull);
+                }
             }
 
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
