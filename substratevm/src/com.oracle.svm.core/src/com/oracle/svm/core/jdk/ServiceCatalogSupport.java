@@ -74,13 +74,14 @@ public class ServiceCatalogSupport {
             ConcurrentHashMap<String, List<ServicesCatalog.ServiceProvider>> map = (ConcurrentHashMap<String, List<ServicesCatalog.ServiceProvider>>) original;
             final ConcurrentHashMap<String, List<ServicesCatalog.ServiceProvider>> res = new ConcurrentHashMap<>();
             map.forEach((key, value) -> {
+                List<ServicesCatalog.ServiceProvider> providers;
                 if (omittedServiceProviders.containsKey(key)) {
                     var omittedServices = omittedServiceProviders.get(key);
-                    List<ServicesCatalog.ServiceProvider> filtered = value.stream().filter(v -> !omittedServices.contains(v.providerName())).collect(Collectors.toList());
-                    res.put(key, filtered);
+                    providers = value.stream().filter(v -> !omittedServices.contains(v.providerName())).collect(Collectors.toList());
                 } else {
-                    res.put(key, value);
+                    providers = value;
                 }
+                res.put(key, providers);
             });
             return res;
         });
@@ -94,6 +95,27 @@ public class ServiceCatalogSupport {
             }
             SymbolEncoder encoder = SymbolEncoder.singleton();
             return providers.stream().map(encoder::encodeClass).toList();
+        });
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "requires");
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "exports");
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "opens");
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "provides");
+        /*
+         * Do not compact ModuleDescriptor.packages: JCK checks the concrete class used by the JDK
+         * implementation. Also do not compact ModuleDescriptor.uses or Exports/Opens.targets.
+         * Those string-valued descriptor sets can contain type or module names that other features
+         * encode via field value transformers, and only one transformer can be registered per
+         * field.
+         */
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void registerModuleDescriptorSetTransformer(Feature.BeforeAnalysisAccess access, Class<?> clazz, String fieldName) {
+        access.registerAsInHeap(Set.of().getClass());
+        access.registerAsInHeap(Set.of("", "x").getClass());
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(clazz, fieldName), (_, original) -> {
+            Set<Object> set = (Set<Object>) original;
+            return Set.copyOf(set);
         });
     }
 }

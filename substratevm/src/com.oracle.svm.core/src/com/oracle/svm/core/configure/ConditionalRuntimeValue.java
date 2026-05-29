@@ -26,6 +26,7 @@ package com.oracle.svm.core.configure;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 /**
  * A image-heap stored {@link ConditionalRuntimeValue#value} that is guarded by run-time computed
@@ -39,6 +40,59 @@ import org.graalvm.nativeimage.Platforms;
 public final class ConditionalRuntimeValue<T> {
     final RuntimeDynamicAccessMetadata dynamicAccessMetadata;
     volatile T value;
+
+    private static final Object NULL_VALUE = new Object();
+
+    public static <T> Object create(RuntimeDynamicAccessMetadata dynamicAccessMetadata, T value) {
+        Object storedValue = value == null ? NULL_VALUE : value;
+        if (dynamicAccessMetadata == null || dynamicAccessMetadata.isAlwaysAvailable() && !dynamicAccessMetadata.isPreserved()) {
+            return storedValue;
+        }
+        return new ConditionalRuntimeValue<>(dynamicAccessMetadata, value);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T getValue(Object valueOrConditional) {
+        if (valueOrConditional instanceof ConditionalRuntimeValue<?> conditional) {
+            return ((ConditionalRuntimeValue<T>) conditional).getValue();
+        }
+        return valueOrConditional == NULL_VALUE ? null : (T) valueOrConditional;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T getValueUnconditionally(Object valueOrConditional) {
+        if (valueOrConditional instanceof ConditionalRuntimeValue<?> conditional) {
+            return ((ConditionalRuntimeValue<T>) conditional).getValueUnconditionally();
+        }
+        return valueOrConditional == NULL_VALUE ? null : (T) valueOrConditional;
+    }
+
+    public static RuntimeDynamicAccessMetadata getDynamicAccessMetadata(Object valueOrConditional) {
+        return valueOrConditional instanceof ConditionalRuntimeValue<?> conditional ? conditional.getDynamicAccessMetadata() : RuntimeDynamicAccessMetadata.alwaysAvailable(false);
+    }
+
+    public static boolean isSatisfied(Object valueOrConditional) {
+        return !(valueOrConditional instanceof ConditionalRuntimeValue<?> conditional) || conditional.getDynamicAccessMetadata().satisfied();
+    }
+
+    public static boolean isPreserved(Object valueOrConditional) {
+        return valueOrConditional instanceof ConditionalRuntimeValue<?> conditional && conditional.getDynamicAccessMetadata().isPreserved();
+    }
+
+    public static Object withCondition(Object valueOrConditional, AccessCondition condition, boolean preserved) {
+        if (!(valueOrConditional instanceof ConditionalRuntimeValue<?>)) {
+            /* A direct value is already unconditionally available and not preserved. */
+            return valueOrConditional;
+        }
+        Object value = getValueUnconditionally(valueOrConditional);
+        RuntimeDynamicAccessMetadata currentMetadata = getDynamicAccessMetadata(valueOrConditional);
+        RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.addCondition(currentMetadata, condition, preserved);
+        return create(newMetadata, value);
+    }
+
+    public static Object withValue(Object valueOrConditional, Object newValue) {
+        return create(getDynamicAccessMetadata(valueOrConditional), newValue);
+    }
 
     public ConditionalRuntimeValue(RuntimeDynamicAccessMetadata dynamicAccessMetadata, T value) {
         this.dynamicAccessMetadata = dynamicAccessMetadata;

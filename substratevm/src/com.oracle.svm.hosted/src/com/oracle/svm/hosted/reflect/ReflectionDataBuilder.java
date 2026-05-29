@@ -1485,10 +1485,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         private LinkageError classLookupLinkageError = null;
 
         void updateUnsafeAllocatedDynamicAccessMetadata(AccessCondition condition, boolean preserved) {
-            if (unsafeAllocatedDynamicAccess == null) {
-                unsafeAllocatedDynamicAccess = RuntimeDynamicAccessMetadata.emptySet(preserved);
-            }
-            updateDynamicAccessMetadata(unsafeAllocatedDynamicAccess, condition, preserved);
+            unsafeAllocatedDynamicAccess = RuntimeDynamicAccessMetadata.addCondition(unsafeAllocatedDynamicAccess, condition, preserved);
         }
     }
 
@@ -1511,22 +1508,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         void updateDynamicAccessMetadata(AccessCondition condition, boolean preserved) {
-            if (dynamicAccess == null) {
-                dynamicAccess = RuntimeDynamicAccessMetadata.emptySet(preserved);
-            }
-            updateDynamicAccessMetadata(dynamicAccess, condition, preserved);
-        }
-
-        static void updateDynamicAccessMetadata(RuntimeDynamicAccessMetadata metadata, AccessCondition condition, boolean preserved) {
-            metadata.addCondition(condition);
-            if (!preserved) {
-                metadata.setNotPreserved();
-            }
+            dynamicAccess = RuntimeDynamicAccessMetadata.addCondition(dynamicAccess, condition, preserved);
         }
 
         RuntimeDynamicAccessMetadata getDynamicAccessMetadata() {
             VMError.guarantee((dynamicAccess != null) == (accessibility == ACCESSED), "Dynamic access metadata should only be present on accessed elements");
-            return dynamicAccess != null ? dynamicAccess : RuntimeDynamicAccessMetadata.emptySet(false);
+            return dynamicAccess != null ? dynamicAccess : RuntimeDynamicAccessMetadata.alwaysAvailable(false);
         }
     }
 

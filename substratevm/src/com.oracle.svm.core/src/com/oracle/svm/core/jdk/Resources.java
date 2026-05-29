@@ -428,12 +428,11 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void addEntry(String loaderKey, Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
+    private void addEntry(String loaderKey, Module module, String resourceName, RuntimeDynamicAccessMetadata dynamicAccessMetadata, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
         synchronized (resources) {
             ModuleResourceKey key = isNegativeQuery ? createLoaderIndependentNegativeQueryKey(m, resourceName) : createStorageKeyImpl(loaderKey, m, resourceName);
-            RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.emptySet(false);
             if (isNegativeQuery) {
                 ConditionalRuntimeValue<ResourceStorageEntryBase> entry = resources.get(key);
                 if (entry == null) {
@@ -478,7 +477,7 @@ public final class Resources {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(Module module, String resourceName, byte[] resourceContent) {
-        addEntry(injectedResourceLoaderKey(), module, resourceName, false, resourceContent, true, false);
+        addEntry(injectedResourceLoaderKey(), module, resourceName, RuntimeDynamicAccessMetadata.emptySet(false), false, resourceContent, true, false);
     }
 
     /**
@@ -486,7 +485,12 @@ public final class Resources {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(Module module, String resourceName, InputStream is, boolean fromJar) {
-        addEntry(injectedResourceLoaderKey(), module, resourceName, false, inputStreamToByteArray(is), fromJar, false);
+        registerResource(RuntimeDynamicAccessMetadata.emptySet(false), module, resourceName, is, fromJar);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerResource(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Module module, String resourceName, InputStream is, boolean fromJar) {
+        addEntry(injectedResourceLoaderKey(), module, resourceName, dynamicAccessMetadata, false, inputStreamToByteArray(is), fromJar, false);
     }
 
     /**
@@ -500,7 +504,7 @@ public final class Resources {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(ClassLoader owner, Module module, String resourceName, byte[] resourceContent) {
-        addEntry(createStorageKey(owner, module, resourceName).loaderKey(), module, resourceName, false, resourceContent, true, false);
+        addEntry(createStorageKey(owner, module, resourceName).loaderKey(), module, resourceName, RuntimeDynamicAccessMetadata.emptySet(false), false, resourceContent, true, false);
     }
 
     /**
@@ -515,7 +519,12 @@ public final class Resources {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(ClassLoader owner, Module module, String resourceName, InputStream is, boolean fromJar) {
-        addEntry(createStorageKey(owner, module, resourceName).loaderKey(), module, resourceName, false, inputStreamToByteArray(is), fromJar, false);
+        addEntry(createStorageKey(owner, module, resourceName).loaderKey(), module, resourceName, RuntimeDynamicAccessMetadata.emptySet(false), false, inputStreamToByteArray(is), fromJar, false);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerResource(RuntimeDynamicAccessMetadata dynamicAccessMetadata, ClassLoader owner, Module module, String resourceName, InputStream is, boolean fromJar) {
+        addEntry(createStorageKey(owner, module, resourceName).loaderKey(), module, resourceName, dynamicAccessMetadata, false, inputStreamToByteArray(is), fromJar, false);
     }
 
     /**
@@ -528,7 +537,17 @@ public final class Resources {
          * specified directory, separated with new line delimiter and joined into one string which
          * is later converted into a byte array and placed into the resources map.
          */
-        addEntry(injectedResourceLoaderKey(), module, resourceDirName, true, content.getBytes(), fromJar, false);
+        registerDirectoryResource(RuntimeDynamicAccessMetadata.emptySet(false), module, resourceDirName, content, fromJar);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerDirectoryResource(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Module module, String resourceDirName, String content, boolean fromJar) {
+        /*
+         * A directory content represents the names of all files and subdirectories located in the
+         * specified directory, separated with new line delimiter and joined into one string which
+         * is later converted into a byte array and placed into the resources map.
+         */
+        addEntry(injectedResourceLoaderKey(), module, resourceDirName, dynamicAccessMetadata, true, content.getBytes(), fromJar, false);
     }
 
     /**
@@ -544,7 +563,12 @@ public final class Resources {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerDirectoryResource(ClassLoader owner, Module module, String resourceDirName, String content, boolean fromJar) {
-        addEntry(createStorageKey(owner, module, resourceDirName).loaderKey(), module, resourceDirName, true, content.getBytes(), fromJar, false);
+        addEntry(createStorageKey(owner, module, resourceDirName).loaderKey(), module, resourceDirName, RuntimeDynamicAccessMetadata.emptySet(false), true, content.getBytes(), fromJar, false);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerDirectoryResource(RuntimeDynamicAccessMetadata dynamicAccessMetadata, ClassLoader owner, Module module, String resourceDirName, String content, boolean fromJar) {
+        addEntry(createStorageKey(owner, module, resourceDirName).loaderKey(), module, resourceDirName, dynamicAccessMetadata, true, content.getBytes(), fromJar, false);
     }
 
     /**
@@ -604,7 +628,7 @@ public final class Resources {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerNegativeQuery(Module module, String resourceName) {
-        addEntry(null, module, resourceName, false, null, false, true);
+        addEntry(null, module, resourceName, RuntimeDynamicAccessMetadata.emptySet(false), false, null, false, true);
     }
 
     /**
@@ -618,7 +642,7 @@ public final class Resources {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerNegativeQuery(ClassLoader owner, Module module, String resourceName) {
-        addEntry(createStorageKey(owner, module, resourceName).loaderKey(), module, resourceName, false, null, false, true);
+        addEntry(createStorageKey(owner, module, resourceName).loaderKey(), module, resourceName, RuntimeDynamicAccessMetadata.emptySet(false), false, null, false, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
