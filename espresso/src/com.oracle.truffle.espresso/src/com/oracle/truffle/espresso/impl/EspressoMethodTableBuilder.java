@@ -265,14 +265,14 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static class PartialKlass implements PartialType<Klass, Method, Field> {
-        private final ObjectKlass thisKlass;
+        private final ObjectKlass.KlassVersion thisKlass;
         private final ObjectKlass superKlass;
         private final List<Method> parentTable;
         private final List<? extends TableEntry<Klass, Method, Field>> declaredMethods;
         private final EconomicMap<Klass, List<Method>> interfacesData;
 
         PartialKlass(ObjectKlass.KlassVersion thisKlass, ObjectKlass superKlass, ObjectKlass.KlassVersion[] transitiveInterfaces, Method.MethodVersion[] declaredMethods) {
-            this.thisKlass = thisKlass.getKlass();
+            this.thisKlass = thisKlass;
             this.superKlass = superKlass;
             this.parentTable = superKlass == null ? Collections.emptyList() : new VersionToMethodList(superKlass.getVTable());
             this.declaredMethods = new VersionToMethodList(declaredMethods);
@@ -285,7 +285,7 @@ public final class EspressoMethodTableBuilder {
 
         @Override
         public Symbol<Name> getSymbolicName() {
-            return thisKlass.getSymbolicName();
+            return thisKlass.getKlass().getSymbolicName();
         }
 
         @Override
@@ -310,7 +310,7 @@ public final class EspressoMethodTableBuilder {
 
         @Override
         public boolean sameRuntimePackage(Klass otherType) {
-            return thisKlass.sameRuntimePackage(otherType);
+            return thisKlass.getKlass().sameRuntimePackage(otherType);
         }
 
         @Override
