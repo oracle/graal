@@ -137,7 +137,22 @@ public class FileAPI {
     public static native int FindClose(HANDLE hFindFile);
 
     @CConstant
+    public static native int FILE_NAME_NORMALIZED();
+
+    @CFunction(transition = NO_TRANSITION)
+    public static native int GetFinalPathNameByHandleW(HANDLE hFile, WCharPointer lpszFilePath, int cchFilePath, int dwFlags);
+
+    @CFunction(transition = NO_TRANSITION)
+    public static native int GetFileInformationByHandle(HANDLE hFile, BY_HANDLE_FILE_INFORMATION lpFileInformation);
+
+    @CConstant
     public static native int INVALID_FILE_ATTRIBUTES();
+
+    @CStruct("BY_HANDLE_FILE_INFORMATION")
+    public interface BY_HANDLE_FILE_INFORMATION extends PointerBase {
+        @CField("dwFileAttributes")
+        int getFileAttributes();
+    }
 
     @CStruct("WIN32_FIND_DATAW")
     public interface WIN32_FIND_DATAW extends PointerBase {

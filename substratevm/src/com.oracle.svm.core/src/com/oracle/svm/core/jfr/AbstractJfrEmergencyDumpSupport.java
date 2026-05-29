@@ -40,17 +40,23 @@ import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
+/**
+ * Shared support for writing JFR emergency dump files when a Native Image process terminates
+ * after an out-of-memory error. The platform subclasses provide path encoding, directory
+ * iteration, and file reopening primitives; this class contains the platform-independent
+ * chunk-name filtering, ordering, fallback dump-file creation, and chunk-copying logic.
+ */
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L43-L445")
 public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDumpSupport {
-    protected static final int CHUNK_FILE_HEADER_SIZE = 68;
-    protected static final int JVM_MAXPATHLEN = 4096;
-    protected static final int ISO_8601_LEN = 19;
-    protected static final int DOT = '.';
-    protected static final int CHUNKFILE_EXTENSION_LEN = 4;
-    protected static final int DUMP_FILE_PREFIX_LEN = 12;
-    protected static final int EMERGENCY_CHUNK_CREATE_ATTEMPTS = 100;
-    protected static final String DUMP_FILE_PREFIX = "svm_oom_pid_";
-    protected static final String CHUNKFILE_EXTENSION = ".jfr";
+    private static final int CHUNK_FILE_HEADER_SIZE = 68;
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/os/posix/include/jvm_md.h#L57") protected static final int JVM_MAXPATHLEN = 4096;
+    private static final int ISO_8601_LEN = 19;
+    private static final int DOT = '.';
+    private static final int CHUNKFILE_EXTENSION_LEN = 4;
+    private static final int DUMP_FILE_PREFIX_LEN = 12;
+    private static final int EMERGENCY_CHUNK_CREATE_ATTEMPTS = 100;
 
     private final GrowableWordArrayAccess.Comparator chunkFilenameComparator = new ChunkFilenameComparator();
 
@@ -330,9 +336,9 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         int pos = idx;
         if (attempt != 0) {
             writePathBufferChar(pos++, '_');
-            pos = writeDecimal(pos, attempt);
+            pos = writeTwoDigits(pos, attempt);
         }
-        return pos + CHUNKFILE_EXTENSION_LEN >= JVM_MAXPATHLEN ? -1 : pos;
+        return pos + CHUNKFILE_EXTENSION_LEN + 1 >= JVM_MAXPATHLEN ? -1 : pos;
     }
 
     private int writeChunkFileExtension(int idx) {
@@ -419,19 +425,6 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         int pos = idx;
         writePathBufferChar(pos++, '0' + ((value / 10) % 10));
         writePathBufferChar(pos++, '0' + (value % 10));
-        return pos;
-    }
-
-    private int writeDecimal(int idx, int value) {
-        int pos = idx;
-        int divisor = 1;
-        while (value / divisor >= 10) {
-            divisor *= 10;
-        }
-        while (divisor > 0) {
-            writePathBufferChar(pos++, '0' + ((value / divisor) % 10));
-            divisor /= 10;
-        }
         return pos;
     }
 
@@ -546,14 +539,6 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         }
     }
 
-    protected final int getEmergencyChunkPathCallCount() {
-        return emergencyChunkPathCallCount;
-    }
-
-    protected final void resetEmergencyChunkPathCallCount() {
-        emergencyChunkPathCallCount = 0;
-    }
-
     @Override
     public final void teardown() {
         closeEmergencyDumpFile();
@@ -567,15 +552,15 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         }
 
         public static int getEmergencyChunkPathCallCount(AbstractJfrEmergencyDumpSupport support) {
-            return support.getEmergencyChunkPathCallCount();
+            return support.emergencyChunkPathCallCount;
         }
 
         public static void resetEmergencyChunkPathCallCount(AbstractJfrEmergencyDumpSupport support) {
-            support.resetEmergencyChunkPathCallCount();
+            support.emergencyChunkPathCallCount = 0;
         }
     }
 
-    protected static RawFileOperationSupport getFileSupport() {
+    private static RawFileOperationSupport getFileSupport() {
         return RawFileOperationSupport.bigEndian();
     }
 

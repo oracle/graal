@@ -63,10 +63,8 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L43-L445")
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class PosixJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupport {
     private static final byte FILE_SEPARATOR = '/';

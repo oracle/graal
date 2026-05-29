@@ -38,6 +38,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.collections.GrowableWordArray;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -47,6 +48,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.windows.headers.FileAPI;
+import com.oracle.svm.core.windows.headers.FileAPI.BY_HANDLE_FILE_INFORMATION;
 import com.oracle.svm.core.windows.headers.FileAPI.WIN32_FIND_DATAW;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;
 import com.oracle.svm.core.windows.headers.SysinfoAPI.SYSTEMTIME;
@@ -61,14 +63,18 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L43-L445")
+/**
+ * Windows implementation of JFR emergency dump support. Directory scanning and chunk reopening use
+ * Win32 path APIs, so opened handles are revalidated to reject reparse points and to ensure chunk
+ * files are still resolved under the validated repository directory.
+ */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupport {
     private static final char FILE_SEPARATOR = '\\';
     private static final char ALT_FILE_SEPARATOR = '/';
     private static final char WILDCARD = '*';
+    private static final int NT_PATH_PREFIX_LENGTH = 4;
 
     private char[] pidChars;
     private char[] cwdChars;
@@ -201,7 +207,11 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
         }
         HANDLE h = FileAPI.CreateFileW(path, FileAPI.GENERIC_READ(), FileAPI.FILE_SHARE_READ() | FileAPI.FILE_SHARE_WRITE() | FileAPI.FILE_SHARE_DELETE(), Word.nullPointer(),
                         FileAPI.OPEN_EXISTING(), FileAPI.FILE_ATTRIBUTE_NORMAL() | FileAPI.FILE_FLAG_OPEN_REPARSE_POINT(), Word.nullPointer());
-        if (h.equal(INVALID_HANDLE_VALUE())) {
+        if (!isValidHandle(h)) {
+            return Word.nullPointer();
+        }
+        if (!isValidatedRegularFileHandle(h) || !isUnderValidatedRepository(h)) {
+            WinBase.CloseHandle(h);
             return Word.nullPointer();
         }
         return (RawFileDescriptor) Word.pointer(h.rawValue());
@@ -235,11 +245,68 @@ public class WindowsJfrEmergencyDumpSupport extends AbstractJfrEmergencyDumpSupp
 
         repositoryDirectoryGuardHandle = FileAPI.CreateFileW(repositoryLocation, FileAPI.GENERIC_READ(), FileAPI.FILE_SHARE_READ() | FileAPI.FILE_SHARE_WRITE(), Word.nullPointer(),
                         FileAPI.OPEN_EXISTING(), FileAPI.FILE_FLAG_BACKUP_SEMANTICS() | FileAPI.FILE_FLAG_OPEN_REPARSE_POINT(), Word.nullPointer());
-        if (!isValidHandle(repositoryDirectoryGuardHandle)) {
+        if (!isValidHandle(repositoryDirectoryGuardHandle) || !isValidatedDirectoryHandle(repositoryDirectoryGuardHandle)) {
+            closeRepository();
             SubstrateJVM.getLogging().logJfrSystemError(getOpenDirectoryWarning());
             return false;
         }
         return true;
+    }
+
+    private boolean isUnderValidatedRepository(HANDLE fileHandle) {
+        return writeFinalPathName(repositoryDirectoryGuardHandle, pathBuffer, JVM_MAXPATHLEN + 1) && hasTrailingFileSeparator(pathBuffer) && finalPathStartsWith(fileHandle, pathBuffer);
+    }
+
+    private static boolean writeFinalPathName(HANDLE handle, WCharPointer buffer, int bufferLength) {
+        int length = FileAPI.GetFinalPathNameByHandleW(handle, buffer, bufferLength, FileAPI.FILE_NAME_NORMALIZED());
+        return length > 0 && length < bufferLength;
+    }
+
+    private static boolean finalPathStartsWith(HANDLE handle, WCharPointer directoryPrefix) {
+        int directoryPrefixLength = stringLength(directoryPrefix);
+        if (directoryPrefixLength <= NT_PATH_PREFIX_LENGTH) {
+            return false;
+        }
+        WCharPointer filePath = UnsafeStackValue.get(JVM_MAXPATHLEN + 1, WCharPointer.class);
+        if (!writeFinalPathName(handle, filePath, JVM_MAXPATHLEN + 1)) {
+            return false;
+        }
+        for (int i = 0; i < directoryPrefixLength; i++) {
+            if (normalizePathChar(charAt(filePath, i)) != normalizePathChar(charAt(directoryPrefix, i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static char normalizePathChar(char ch) {
+        return isFileSeparator(ch) ? FILE_SEPARATOR : ch;
+    }
+
+    private static boolean hasTrailingFileSeparator(WCharPointer path) {
+        int length = stringLength(path);
+        if (length <= NT_PATH_PREFIX_LENGTH) {
+            return false;
+        }
+        if (!isFileSeparator(charAt(path, length - 1))) {
+            if (length + 1 >= JVM_MAXPATHLEN + 1) {
+                return false;
+            }
+            ((Pointer) path).writeChar(length * Character.BYTES, FILE_SEPARATOR);
+            length++;
+            ((Pointer) path).writeChar(length * Character.BYTES, (char) 0);
+        }
+        return true;
+    }
+
+    private static boolean isValidatedRegularFileHandle(HANDLE handle) {
+        BY_HANDLE_FILE_INFORMATION info = StackValue.get(BY_HANDLE_FILE_INFORMATION.class);
+        return FileAPI.GetFileInformationByHandle(handle, info) != 0 && isRegularFileAttributes(info.getFileAttributes());
+    }
+
+    private static boolean isValidatedDirectoryHandle(HANDLE handle) {
+        BY_HANDLE_FILE_INFORMATION info = StackValue.get(BY_HANDLE_FILE_INFORMATION.class);
+        return FileAPI.GetFileInformationByHandle(handle, info) != 0 && isDirectoryAttributes(info.getFileAttributes());
     }
 
     private WCharPointer getRepositoryLocation() {
