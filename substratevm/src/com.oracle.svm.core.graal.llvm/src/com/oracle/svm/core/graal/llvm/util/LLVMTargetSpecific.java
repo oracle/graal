@@ -50,9 +50,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-/**
- * LLVM target-specific inline assembly snippets and information.
- */
+/** LLVM target-specific inline assembly snippets and information. */
 public interface LLVMTargetSpecific {
     static LLVMTargetSpecific get() {
         return ImageSingletons.lookup(LLVMTargetSpecific.class);
@@ -77,6 +75,28 @@ public interface LLVMTargetSpecific {
      * Snippet that loads a value in a register.
      */
     String getLoadInlineAsm(String inputRegister, int offset);
+
+    /**
+     * Snippet that loads a value from an address based on a reserved register into an output
+     * register.
+     */
+    String getLoadInlineAsm(String inputRegister, int offset, int sizeInBytes);
+
+    /**
+     * Snippet that stores an input register value to an address based on a reserved register.
+     */
+    String getStoreInlineAsm(String outputRegister, int offset, int sizeInBytes);
+
+    /**
+     * Scratch register clobbered by fixed-register load/store snippets, or {@code null} if the
+     * snippet only uses its explicit operands. Targets can use this when a memory operand cannot
+     * encode the requested offset directly. The effective address must still be synthesized inside
+     * the inline assembly, so LLVM never sees an ordinary pointer derived from the reserved register.
+     */
+    default String getFixedRegisterMemoryAccessScratchRegister(@SuppressWarnings("unused") String baseRegister, @SuppressWarnings("unused") int offset,
+                    @SuppressWarnings("unused") int sizeInBytes) {
+        return null;
+    }
 
     /**
      * Snippet that adds two registers and save the result in one of them.
@@ -214,6 +234,28 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
         }
 
         @Override
+        public String getLoadInlineAsm(String inputRegister, int offset, int sizeInBytes) {
+            return switch (sizeInBytes) {
+                case Byte.BYTES -> "movb " + offset + "(%" + inputRegister + "), $0";
+                case Short.BYTES -> "movw " + offset + "(%" + inputRegister + "), $0";
+                case Integer.BYTES -> "movl " + offset + "(%" + inputRegister + "), $0";
+                case Long.BYTES -> "movq " + offset + "(%" + inputRegister + "), $0";
+                default -> throw shouldNotReachHere("Unsupported load size: " + sizeInBytes); // ExcludeFromJacocoGeneratedReport
+            };
+        }
+
+        @Override
+        public String getStoreInlineAsm(String outputRegister, int offset, int sizeInBytes) {
+            return switch (sizeInBytes) {
+                case Byte.BYTES -> "movb $0, " + offset + "(%" + outputRegister + ")";
+                case Short.BYTES -> "movw $0, " + offset + "(%" + outputRegister + ")";
+                case Integer.BYTES -> "movl $0, " + offset + "(%" + outputRegister + ")";
+                case Long.BYTES -> "movq $0, " + offset + "(%" + outputRegister + ")";
+                default -> throw shouldNotReachHere("Unsupported store size: " + sizeInBytes); // ExcludeFromJacocoGeneratedReport
+            };
+        }
+
+        @Override
         public String getAddInlineAssembly(String outputRegister, String inputRegister) {
             return "addq %" + inputRegister + ", %" + outputRegister;
         }
@@ -317,6 +359,57 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
         @Override
         public String getLoadInlineAsm(String inputRegister, int offset) {
             return "LDR $0, [" + getLLVMRegisterName(inputRegister) + ", #" + offset + "]";
+        }
+
+        @Override
+        public String getLoadInlineAsm(String inputRegister, int offset, int sizeInBytes) {
+            return switch (sizeInBytes) {
+                case Byte.BYTES -> getLoadStoreInlineAsm("LDRB", "${0:w}", inputRegister, offset, sizeInBytes);
+                case Short.BYTES -> getLoadStoreInlineAsm("LDRH", "${0:w}", inputRegister, offset, sizeInBytes);
+                case Integer.BYTES -> getLoadStoreInlineAsm("LDR", "${0:w}", inputRegister, offset, sizeInBytes);
+                case Long.BYTES -> getLoadStoreInlineAsm("LDR", "$0", inputRegister, offset, sizeInBytes);
+                default -> throw shouldNotReachHere("Unsupported load size: " + sizeInBytes); // ExcludeFromJacocoGeneratedReport
+            };
+        }
+
+        @Override
+        public String getStoreInlineAsm(String outputRegister, int offset, int sizeInBytes) {
+            return switch (sizeInBytes) {
+                case Byte.BYTES -> getLoadStoreInlineAsm("STRB", "${0:w}", outputRegister, offset, sizeInBytes);
+                case Short.BYTES -> getLoadStoreInlineAsm("STRH", "${0:w}", outputRegister, offset, sizeInBytes);
+                case Integer.BYTES -> getLoadStoreInlineAsm("STR", "${0:w}", outputRegister, offset, sizeInBytes);
+                case Long.BYTES -> getLoadStoreInlineAsm("STR", "$0", outputRegister, offset, sizeInBytes);
+                default -> throw shouldNotReachHere("Unsupported store size: " + sizeInBytes); // ExcludeFromJacocoGeneratedReport
+            };
+        }
+
+        @Override
+        public String getFixedRegisterMemoryAccessScratchRegister(String baseRegister, int offset, int sizeInBytes) {
+            return isLoadStoreImmediate(offset, sizeInBytes) ? null : getScratchRegister();
+        }
+
+        private String getLoadStoreInlineAsm(String instruction, String value, String baseRegister, int offset, int sizeInBytes) {
+            String base = getLLVMRegisterName(baseRegister);
+            if (isLoadStoreImmediate(offset, sizeInBytes)) {
+                return instruction + " " + value + ", [" + base + ", #" + offset + "]";
+            }
+            String scratch = getLLVMRegisterName(getScratchRegister());
+            String addSub = offset < 0 ? "SUB" : "ADD";
+            return loadOffsetMagnitudeInlineAsm(scratch, offset) + "; " + addSub + " " + scratch + ", " + base + ", " + scratch + "; " +
+                            instruction + " " + value + ", [" + scratch + "]";
+        }
+
+        private static boolean isLoadStoreImmediate(int offset, int sizeInBytes) {
+            return offset >= 0 && offset % sizeInBytes == 0 && offset / sizeInBytes <= 4095;
+        }
+
+        private static String loadOffsetMagnitudeInlineAsm(String register, int offset) {
+            long magnitude = offset < 0 ? -(long) offset : offset;
+            StringBuilder asm = new StringBuilder("MOVZ ").append(register).append(", #").append(magnitude & 0xffff);
+            for (int shift = Short.SIZE; (magnitude >>> shift) != 0; shift += Short.SIZE) {
+                asm.append("; MOVK ").append(register).append(", #").append((magnitude >>> shift) & 0xffff).append(", LSL #").append(shift);
+            }
+            return asm.toString();
         }
 
         @Override
@@ -429,6 +522,47 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
         @Override
         public String getLoadInlineAsm(String inputRegister, int offset) {
             return "ld $0, " + offset + "(" + getLLVMRegisterName(inputRegister) + ")";
+        }
+
+        @Override
+        public String getLoadInlineAsm(String inputRegister, int offset, int sizeInBytes) {
+            return switch (sizeInBytes) {
+                case Byte.BYTES -> getLoadStoreInlineAsm("lb", "$0", inputRegister, offset);
+                case Short.BYTES -> getLoadStoreInlineAsm("lh", "$0", inputRegister, offset);
+                case Integer.BYTES -> getLoadStoreInlineAsm("lw", "$0", inputRegister, offset);
+                case Long.BYTES -> getLoadStoreInlineAsm("ld", "$0", inputRegister, offset);
+                default -> throw shouldNotReachHere("Unsupported load size: " + sizeInBytes); // ExcludeFromJacocoGeneratedReport
+            };
+        }
+
+        @Override
+        public String getStoreInlineAsm(String outputRegister, int offset, int sizeInBytes) {
+            return switch (sizeInBytes) {
+                case Byte.BYTES -> getLoadStoreInlineAsm("sb", "$0", outputRegister, offset);
+                case Short.BYTES -> getLoadStoreInlineAsm("sh", "$0", outputRegister, offset);
+                case Integer.BYTES -> getLoadStoreInlineAsm("sw", "$0", outputRegister, offset);
+                case Long.BYTES -> getLoadStoreInlineAsm("sd", "$0", outputRegister, offset);
+                default -> throw shouldNotReachHere("Unsupported store size: " + sizeInBytes); // ExcludeFromJacocoGeneratedReport
+            };
+        }
+
+        @Override
+        public String getFixedRegisterMemoryAccessScratchRegister(String baseRegister, int offset, int sizeInBytes) {
+            return isLoadStoreImmediate(offset) ? null : getScratchRegister();
+        }
+
+        private String getLoadStoreInlineAsm(String instruction, String value, String baseRegister, int offset) {
+            String base = getLLVMRegisterName(baseRegister);
+            if (isLoadStoreImmediate(offset)) {
+                return instruction + " " + value + ", " + offset + "(" + base + ")";
+            }
+            String scratch = getLLVMRegisterName(getScratchRegister());
+            return "li " + scratch + ", " + offset + "; add " + scratch + ", " + base + ", " + scratch + "; " +
+                            instruction + " " + value + ", 0(" + scratch + ")";
+        }
+
+        private static boolean isLoadStoreImmediate(int offset) {
+            return offset >= -2048 && offset <= 2047;
         }
 
         @Override

@@ -43,6 +43,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
@@ -147,41 +148,100 @@ public class LLVMUtils {
         }
     }
 
-    /*
-     * A ReadRegisterFloatingNode may get hoisted above a write to the same reserved register in
-     * methods that modify reserved registers. Wrapping this read prevents that by delaying reading
-     * the value of the reserved register until when it is actually needed.
+    /**
+     * Delays reading a reserved register until the value is used.
+     * <p>
+     * A {@code ReadRegisterFloatingNode} may get hoisted above a write to the same reserved
+     * register in methods that modify reserved registers. Delaying the read keeps the generated LLVM
+     * IR in the original order.
+     * <p>
+     * A different mode is used for ordinary carrier thread register reads around virtual-thread
+     * yields: a continuation may resume on a different carrier thread, so LLVM must not keep a value
+     * derived from the old carrier's reserved register live across the yielding call. For
+     * constant-offset memory accesses, the backend can emit a side-effecting fixed-register
+     * load/store at the use site instead of materializing an ordinary pointer value that LLVM could
+     * spill or reuse after resume. This fixed-register mode is deliberately not used for entry-point
+     * prologues or methods that modify reserved registers, because those paths need LLVM to see the
+     * ordering between {@code llvm.write_register} and {@code llvm.read_register}. For example, a
+     * C entry-point prologue first writes the incoming {@code IsolateThread} to the reserved thread
+     * register and then initializes the heap-base register from a thread-local load. If that load is
+     * emitted as fixed-register inline assembly, LLVM cannot see that it depends on the preceding
+     * thread-register write, and the heap-base register can be initialized from the wrong thread
+     * value or left uninitialized.
      */
     public static class LLVMPendingSpecialRegisterRead extends LLVMVariable implements LLVMValueWrapper {
         private final LLVMGenerator gen;
         private final LLVMValueRef register;
-        private final LLVMValueRef offset;
+        private final String registerName;
+        private final LLVMValueRef offsetValue;
+        private final Integer constantOffset;
+        private final boolean useFixedRegisterAccess;
 
-        public LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef register) {
-            this(gen, register, null);
+        public LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef register, String registerName, boolean useFixedRegisterAccess) {
+            this(gen, register, registerName, null, null, useFixedRegisterAccess);
         }
 
-        public LLVMPendingSpecialRegisterRead(LLVMPendingSpecialRegisterRead pendingRead, LLVMValueRef offset) {
-            this(pendingRead.gen, pendingRead.register, offset);
+        public LLVMPendingSpecialRegisterRead(LLVMPendingSpecialRegisterRead pendingRead, Value offset) {
+            this(pendingRead.gen, pendingRead.register, pendingRead.registerName, getVal(offset), asIntOffset(offset), pendingRead.useFixedRegisterAccess);
         }
 
-        private LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef register, LLVMValueRef offset) {
+        private LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef register, String registerName, LLVMValueRef offsetValue, Integer constantOffset, boolean useFixedRegisterAccess) {
             super(LLVMKind.toLIRKind(gen.getBuilder().wordType()));
             this.gen = gen;
             this.register = register;
-            this.offset = offset;
+            this.registerName = registerName;
+            this.offsetValue = offsetValue;
+            this.constantOffset = constantOffset;
+            this.useFixedRegisterAccess = useFixedRegisterAccess;
+        }
+
+        private static Integer asIntOffset(Value offset) {
+            if (offset instanceof ConstantValue constantValue && constantValue.isJavaConstant()) {
+                JavaConstant constant = constantValue.getJavaConstant();
+                long value = constant.asLong();
+                if (NumUtil.isInt(value)) {
+                    return (int) value;
+                }
+            }
+            return null;
+        }
+
+        public String getRegisterName() {
+            return registerName;
+        }
+
+        public boolean hasConstantOffset() {
+            return constantOffset != null;
+        }
+
+        public int getConstantOffset() {
+            assert hasConstantOffset();
+            return constantOffset;
+        }
+
+        public boolean useFixedRegisterAccess() {
+            return useFixedRegisterAccess;
         }
 
         @Override
         public LLVMValueRef get() {
             LLVMIRBuilder builder = gen.getBuilder();
-            LLVMValueRef value = builder.buildReadRegister(register);
-            return offset == null ? value : builder.buildGEP(builder.buildIntToPtr(value, builder.rawPointerType()), offset);
+            LLVMValueRef value;
+            if (useFixedRegisterAccess) {
+                /*
+                 * Keep the read side-effecting. LLVM may otherwise common a plain llvm.read_register
+                 * value and keep a derived thread-local address live across a continuation yield.
+                 */
+                value = gen.buildInlineGetRegister(registerName);
+            } else {
+                value = builder.buildReadRegister(register);
+            }
+            return offsetValue == null ? value : builder.buildGEP(builder.buildIntToPtr(value, builder.rawPointerType()), offsetValue);
         }
 
         @Override
         public LLVMTypeRef getType() {
-            return offset == null ? gen.getBuilder().wordType() : gen.getBuilder().rawPointerType();
+            return offsetValue == null ? gen.getBuilder().wordType() : gen.getBuilder().rawPointerType();
         }
     }
 

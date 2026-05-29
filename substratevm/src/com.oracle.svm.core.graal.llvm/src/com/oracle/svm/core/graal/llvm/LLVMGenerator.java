@@ -730,6 +730,16 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         throw shouldNotReachHere("Unknown move input"); // ExcludeFromJacocoGeneratedReport
     }
 
+    private static LLVMPendingSpecialRegisterRead asPendingSpecialRegisterRead(Value value) {
+        if (LIRValueUtil.isVariable(value)) {
+            Variable variable = LIRValueUtil.asVariable(value);
+            if (variable instanceof LLVMPendingSpecialRegisterRead pendingRead) {
+                return pendingRead;
+            }
+        }
+        return null;
+    }
+
     @Override
     public Variable emitMove(ValueKind<?> dst, Value src) {
         LLVMValueRef source = getVal(src);
@@ -979,8 +989,8 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         LLVMValueRef value;
         if (isSpecialRegister(register)) {
             LLVMValueRef specialRegister = builder.register(LLVMTargetSpecific.get().getLLVMRegisterName(register.name));
-            if (isEntryPoint || modifiesSpecialRegisters) {
-                return new LLVMPendingSpecialRegisterRead(this, specialRegister);
+            if (needsLazySpecialRegisterRead(register)) {
+                return new LLVMPendingSpecialRegisterRead(this, specialRegister, register.name, useFixedRegisterAccess(register));
             }
             value = builder.buildReadRegister(specialRegister);
         } else if (register.equals(ReservedRegisters.singleton().getFrameRegister())) {
@@ -989,6 +999,26 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
             throw VMError.shouldNotReachHereUnexpectedInput(register); // ExcludeFromJacocoGeneratedReport
         }
         return new LLVMVariable(value);
+    }
+
+    private boolean needsLazySpecialRegisterRead(Register register) {
+        /*
+         * A continuation may resume on a different carrier thread than the one that yielded. Values
+         * read from the thread register before the yielding call therefore cannot be kept live
+         * across that call. Emit the actual read at each use site so post-yield code reads the
+         * current carrier's register value.
+         */
+        return isEntryPoint || modifiesSpecialRegisters || register.equals(ReservedRegisters.singleton().getThreadRegister());
+    }
+
+    private boolean useFixedRegisterAccess(Register register) {
+        /*
+         * Entry-point prologues and methods that modify reserved registers need LLVM to see the
+         * dependency between llvm.write_register and llvm.read_register. Fixed-register inline
+         * assembly hides that dependency, which can break prologue code that initializes the heap
+         * base from a thread-local load after writing the thread register.
+         */
+        return register.equals(ReservedRegisters.singleton().getThreadRegister()) && !isEntryPoint && !modifiesSpecialRegisters;
     }
 
     @Override
@@ -1501,6 +1531,45 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         return call;
     }
 
+    private LLVMValueRef buildInlineLoad(String inputRegisterName, int offset, LLVMTypeRef resultType, int sizeInBytes) {
+        LLVMTypeRef inlineAsmType = builder.functionType(resultType);
+        LLVMTargetSpecific target = LLVMTargetSpecific.get();
+        String asmSnippet = target.getLoadInlineAsm(inputRegisterName, offset, sizeInBytes);
+        InlineAssemblyConstraint outputConstraint = new InlineAssemblyConstraint(Type.Output, Location.register());
+        InlineAssemblyConstraint memoryClobber = new InlineAssemblyConstraint(Type.Clobber, Location.memory());
+        String scratchRegister = target.getFixedRegisterMemoryAccessScratchRegister(inputRegisterName, offset, sizeInBytes);
+
+        LLVMValueRef load;
+        if (scratchRegister == null) {
+            load = builder.buildInlineAsm(inlineAsmType, asmSnippet, true, false, outputConstraint, memoryClobber);
+        } else {
+            InlineAssemblyConstraint scratchClobber = new InlineAssemblyConstraint(Type.Clobber, Location.namedRegister(scratchRegister));
+            load = builder.buildInlineAsm(inlineAsmType, asmSnippet, true, false, outputConstraint, memoryClobber, scratchClobber);
+        }
+        LLVMValueRef call = builder.buildCall(load);
+        builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
+        return call;
+    }
+
+    private void buildInlineStore(String outputRegisterName, int offset, LLVMValueRef value, int sizeInBytes) {
+        LLVMTypeRef inlineAsmType = builder.functionType(builder.voidType(), typeOf(value));
+        LLVMTargetSpecific target = LLVMTargetSpecific.get();
+        String asmSnippet = target.getStoreInlineAsm(outputRegisterName, offset, sizeInBytes);
+        InlineAssemblyConstraint inputConstraint = new InlineAssemblyConstraint(Type.Input, Location.register());
+        InlineAssemblyConstraint memoryClobber = new InlineAssemblyConstraint(Type.Clobber, Location.memory());
+        String scratchRegister = target.getFixedRegisterMemoryAccessScratchRegister(outputRegisterName, offset, sizeInBytes);
+
+        LLVMValueRef store;
+        if (scratchRegister == null) {
+            store = builder.buildInlineAsm(inlineAsmType, asmSnippet, true, false, inputConstraint, memoryClobber);
+        } else {
+            InlineAssemblyConstraint scratchClobber = new InlineAssemblyConstraint(Type.Clobber, Location.namedRegister(scratchRegister));
+            store = builder.buildInlineAsm(inlineAsmType, asmSnippet, true, false, inputConstraint, memoryClobber, scratchClobber);
+        }
+        LLVMValueRef call = builder.buildCall(store, value);
+        builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
+    }
+
     public LLVMValueRef buildInlineGetRegister(String registerName) {
         return buildInlineGetRegister(builder, registerName);
     }
@@ -1586,7 +1655,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
 
     @Override
     public void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters) {
-        throw unimplemented("the LLVM backend delegates exception handling to libunwind"); // ExcludeFromJacocoGeneratedReport
+        throw unimplemented("the LLVM backend does not support far returns"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -2185,12 +2254,12 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
             assert memoryOrder != MemoryOrderMode.RELEASE && memoryOrder != MemoryOrderMode.RELEASE_ACQUIRE;
             LLVMValueRef load;
             if (isReferenceKind(kind)) {
-                LLVMValueRef loadedBits = builder.buildAlignedLoad(getVal(address), getMemoryAccessType(kind), getMemoryAccessSize(kind));
+                LLVMValueRef loadedBits = buildLoad(address, getMemoryAccessType(kind), getMemoryAccessSize(kind));
                 LLVMValueRef loadedReference = builder.buildIntToPtr(buildIntegerResize(loadedBits, LLVMIRBuilder.integerTypeWidth(builder.wordType())), builder.objectType(isCompressedReferenceMemory(
                                 kind)));
                 load = buildReferenceValue(loadedReference, getType(kind), false);
             } else {
-                load = builder.buildAlignedLoad(getVal(address), getType(kind), getMemoryAccessSize(kind));
+                load = buildLoad(address, getType(kind), getMemoryAccessSize(kind));
             }
             if (memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE) {
                 /*
@@ -2202,6 +2271,14 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
             return new LLVMVariable(load);
         }
 
+        private LLVMValueRef buildLoad(Value address, LLVMTypeRef type, int sizeInBytes) {
+            LLVMPendingSpecialRegisterRead pendingRead = asPendingSpecialRegisterRead(address);
+            if (pendingRead != null && pendingRead.useFixedRegisterAccess() && pendingRead.hasConstantOffset()) {
+                return buildInlineLoad(pendingRead.getRegisterName(), pendingRead.getConstantOffset(), type, sizeInBytes);
+            }
+            return builder.buildAlignedLoad(getVal(address), type, sizeInBytes);
+        }
+
         @Override
         public void emitStore(ValueKind<?> kind, Value addr, Value input, LIRFrameState state, MemoryOrderMode memoryOrder) {
             assert memoryOrder != MemoryOrderMode.ACQUIRE && memoryOrder != MemoryOrderMode.RELEASE_ACQUIRE;
@@ -2209,9 +2286,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
                 emitMembar(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
             }
 
-            LLVMValueRef address = getVal(addr);
             LLVMValueRef value = getVal(input);
-            LLVMTypeRef addressType = LLVMIRBuilder.typeOf(address);
             LLVMTypeRef storeType = getMemoryAccessType(kind);
             LLVMValueRef castedValue;
             if (isReferenceKind(kind)) {
@@ -2219,14 +2294,24 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
             } else {
                 LLVMTypeRef valueType = LLVMIRBuilder.typeOf(value);
                 castedValue = value;
+                LLVMPendingSpecialRegisterRead pendingRead = asPendingSpecialRegisterRead(addr);
+                LLVMTypeRef addressType = pendingRead != null ? builder.rawPointerType() : LLVMIRBuilder.typeOf(getVal(addr));
                 if (LLVMIRBuilder.isObjectType(valueType) && !LLVMIRBuilder.isObjectType(addressType)) {
                     valueType = builder.rawPointerType();
                     castedValue = builder.buildAddrSpaceCast(value, builder.rawPointerType());
                 }
                 storeType = valueType;
             }
-            LLVMValueRef castedAddress = builder.buildBitcast(address, builder.pointerType(storeType, LLVMIRBuilder.isObjectType(addressType), false));
-            builder.buildAlignedStore(castedValue, castedAddress, getMemoryAccessSize(kind));
+            int accessSize = getMemoryAccessSize(kind);
+            LLVMPendingSpecialRegisterRead pendingRead = asPendingSpecialRegisterRead(addr);
+            if (pendingRead != null && pendingRead.useFixedRegisterAccess() && pendingRead.hasConstantOffset()) {
+                buildInlineStore(pendingRead.getRegisterName(), pendingRead.getConstantOffset(), castedValue, accessSize);
+            } else {
+                LLVMValueRef address = getVal(addr);
+                LLVMTypeRef addressType = LLVMIRBuilder.typeOf(address);
+                LLVMValueRef castedAddress = builder.buildBitcast(address, builder.pointerType(storeType, LLVMIRBuilder.isObjectType(addressType), false));
+                builder.buildAlignedStore(castedValue, castedAddress, accessSize);
+            }
 
             if (memoryOrder == MemoryOrderMode.VOLATILE) {
                 // Guarantee subsequent volatile loads cannot be executed before this
