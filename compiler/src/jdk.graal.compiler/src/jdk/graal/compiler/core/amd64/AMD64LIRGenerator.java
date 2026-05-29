@@ -94,6 +94,7 @@ import jdk.graal.compiler.lir.amd64.AMD64ArrayIndexOfOp;
 import jdk.graal.compiler.lir.amd64.AMD64ArrayRegionCompareToOp;
 import jdk.graal.compiler.lir.amd64.AMD64Base64DecodeOp;
 import jdk.graal.compiler.lir.amd64.AMD64Base64EncodeOp;
+import jdk.graal.compiler.lir.amd64.AMD64ChaCha20BlockOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerMulAddOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerLeftShiftOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerMontgomeryMultiplyOp;
@@ -1107,6 +1108,19 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(len.getValueKind());
         emitMove(result, rResult);
         return result;
+    }
+
+    @Override
+    public Variable emitChaCha20Block(Value state, Value result) {
+        RegisterValue stateReg = AMD64.rdi.asValue(state.getValueKind());
+        RegisterValue resultReg = AMD64.rsi.asValue(result.getValueKind());
+        RegisterValue outputLengthReg = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(stateReg, state);
+        emitMove(resultReg, result);
+        append(new AMD64ChaCha20BlockOp(stateReg, resultReg, outputLengthReg));
+        Variable outputLength = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        emitMove(outputLength, outputLengthReg);
+        return outputLength;
     }
 
     @SuppressWarnings("unchecked")

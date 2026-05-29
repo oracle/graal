@@ -62,6 +62,7 @@ import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.replacements.SnippetSubstitutionNode;
 import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
@@ -221,11 +222,50 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testChaCha20() throws Exception {
-        Assume.assumeTrue("ChaCha20 not support", runtime().getVMConfig().chacha20Block != 0L);
+        Assume.assumeTrue("ChaCha20 not support", ChaCha20Node.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/None/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/ECB/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/None/PKCS5Padding");
         testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/ECB/PKCS5Padding");
+    }
+
+    @Test
+    public void testChaCha20OwnershipAndDirectImplBlock() throws Exception {
+        Assume.assumeTrue("ChaCha20 not support", ChaCha20Node.isSupported(getArchitecture()));
+
+        ResolvedJavaMethod intrinsicMethod = getResolvedJavaMethod("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", int[].class, byte[].class);
+
+        InstalledCode intrinsic = compileAndInstallSubstitution(intrinsicMethod);
+        Assert.assertTrue("missing intrinsic", intrinsic != null);
+        try {
+            int[] state = initialChaCha20State();
+            byte[] actualKeystream = new byte[1024];
+            int actualLength = (int) executeVarargsSafe(intrinsic, state, actualKeystream);
+
+            Assert.assertTrue("unexpected ChaCha20 output length", actualLength == 128 || actualLength == 256 || actualLength == 1024);
+            Assert.assertFalse("keystream should not be all zero", isAllZero(actualKeystream, actualLength));
+            Assert.assertArrayEquals("intrinsic must not mutate initState", initialChaCha20State(), state);
+        } finally {
+            intrinsic.invalidate();
+        }
+    }
+
+    private static int[] initialChaCha20State() {
+        return new int[]{
+                        0x61707865, 0x3320646e, 0x79622d32, 0x6b206574,
+                        0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c,
+                        0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c,
+                        1, 0x09000000, 0x4a000000, 0,
+        };
+    }
+
+    private static boolean isAllZero(byte[] data, int length) {
+        for (int i = 0; i < length; i++) {
+            if (data[i] != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     AlgorithmParameters algorithmParameters;

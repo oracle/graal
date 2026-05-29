@@ -61,6 +61,7 @@ import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
+import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
@@ -115,6 +116,7 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(ElectronicCodeBookAESNode.STUBS, ElectronicCodeBookAESNode.minFeaturesAMD64(), ElectronicCodeBookAESNode.minFeaturesAMD64()),
                         new StubDescriptor(GHASHProcessBlocksNode.STUB, GHASHProcessBlocksNode.minFeaturesAMD64(), GHASH_CPU_FEATURES_AMD64),
                         new StubDescriptor(Poly1305ProcessBlocksNode.STUB, Poly1305ProcessBlocksNode.minFeaturesAMD64(), Poly1305ProcessBlocksNode.maxFeaturesAMD64()),
+                        new StubDescriptor(ChaCha20Node.STUB, ChaCha20Node.minFeaturesAMD64(), ChaCha20Node.minFeaturesAMD64()),
                         new StubDescriptor(CRC32UpdateBytesNode.STUB, CRC32UpdateBytesNode.minFeaturesAMD64(), CRC32UpdateBytesNode.maxFeaturesAMD64()),
                         new StubDescriptor(CRC32CUpdateBytesNode.STUB, CRC32CUpdateBytesNode.minFeaturesAMD64(), CRC32CUpdateBytesNode.maxFeaturesAMD64()),
                         new StubDescriptor(BigIntegerLeftShiftWorkerNode.STUB, BigIntegerLeftShiftWorkerNode.minFeaturesAMD64(), BigIntegerLeftShiftWorkerNode.minFeaturesAMD64()),

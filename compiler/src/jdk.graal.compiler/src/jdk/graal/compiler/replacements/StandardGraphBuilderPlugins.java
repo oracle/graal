@@ -209,6 +209,7 @@ import jdk.graal.compiler.replacements.nodes.BigIntegerRightShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import jdk.graal.compiler.replacements.nodes.BitCountNode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
@@ -307,6 +308,7 @@ public class StandardGraphBuilderPlugins {
             registerCRCPlugins(plugins);
             registerGHASHPlugin(plugins);
             registerPoly1305Plugin(plugins);
+            registerChaCha20Plugin(plugins);
             registerBigIntegerPlugins(plugins);
             registerBase64Plugins(plugins);
             registerMessageDigestPlugins(plugins);
@@ -2632,6 +2634,26 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean isApplicable(Architecture arch) {
                 return Poly1305ProcessBlocksNode.isSupported(arch);
+            }
+        });
+    }
+
+    public static void registerChaCha20Plugin(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.ChaCha20Cipher");
+        r.register(new ConditionalInvocationPlugin("implChaCha20Block", int[].class, byte[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode initState, ValueNode result) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode stateAddress = helper.arrayStart(b.nullCheckedValue(initState), JavaKind.Int);
+                    ValueNode resultAddress = helper.arrayStart(b.nullCheckedValue(result), JavaKind.Byte);
+                    b.addPush(JavaKind.Int, new ChaCha20Node(stateAddress, resultAddress));
+                    return true;
+                }
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return ChaCha20Node.isSupported(arch);
             }
         });
     }

@@ -31,7 +31,6 @@ import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_FREM;
 import static jdk.graal.compiler.hotspot.EncodedSnippets.isAfterSnippetEncoding;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.CHACHA20Block;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_INVERSE_NTT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_NTT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_DECOMPOSE_POLY;
@@ -161,6 +160,7 @@ import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerRightShiftWorkerNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
+import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
@@ -631,9 +631,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.galoisCounterModeCrypt != 0L) {
             registerForeignCall(GALOIS_COUNTER_MODE_CRYPT, c.galoisCounterModeCrypt, NativeCall);
         }
-        if (c.chacha20Block != 0L) {
-            registerForeignCall(CHACHA20Block, c.chacha20Block, NativeCall);
-        }
         if (c.intpolyMontgomeryMultP256 != 0L) {
             registerForeignCall(INTPOLY_MONTGOMERYMULT_P256, c.intpolyMontgomeryMultP256, NativeCall);
         }
@@ -733,8 +730,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMontgomeryMultiplyNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMontgomerySquareNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, AESNode.STUBS);
-        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CounterModeAESNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ChaCha20Node.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CipherBlockChainingAESNode.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CounterModeAESNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ElectronicCodeBookAESNode.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, GHASHProcessBlocksNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, Poly1305ProcessBlocksNode.STUB);

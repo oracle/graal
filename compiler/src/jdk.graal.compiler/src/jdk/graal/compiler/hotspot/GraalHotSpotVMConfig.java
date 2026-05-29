@@ -484,8 +484,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final long galoisCounterModeCrypt = getFieldValue("StubRoutines::_galoisCounterMode_AESCrypt", Long.class, "address");
 
-    public final long chacha20Block = getFieldValue("StubRoutines::_chacha20Block", Long.class, "address");
-
     public final long intpolyMontgomeryMultP256 = getFieldValue("StubRoutines::_intpoly_montgomeryMult_P256", Long.class, "address");
     public final long intpolyAssign = getFieldValue("StubRoutines::_intpoly_assign", Long.class, "address");
 
