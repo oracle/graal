@@ -47,6 +47,7 @@ import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -380,20 +381,20 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
             assert indexClears.length <= 1;
             assert lastGroupUpdates.length <= 1;
             if (indexUpdates.length > 0) {
-                writeDirect(d.results, 0, indexUpdates[0].indices, currentIndex);
+                writeDirect(d.results, 0, d.currentResult.length, indexUpdates[0].indices, currentIndex);
             }
             if (indexClears.length > 0) {
-                writeDirect(d.results, 0, indexClears[0].indices, -1);
+                writeDirect(d.results, 0, d.currentResult.length, indexClears[0].indices, -1);
             }
             if (lastGroupUpdates.length > 0 && executor.tracksLastGroup()) {
                 assert lastGroupUpdates[0].getTargetArray() == 0;
-                d.results[d.results.length - 1] = lastGroupUpdates[0].getLastGroup();
+                DFACaptureGroupTrackingData.writeRowElement(d.results, 0, d.currentResult.length, d.currentResult.length - 1, lastGroupUpdates[0].getLastGroup());
             }
         } else {
             applyReorder(d.currentResultOrder);
-            applyArrayCopy(d.results, d.currentResultOrder, d.currentResult.length);
-            applyIndexOps(indexUpdates, d.results, d.currentResultOrder, currentIndex);
-            applyIndexOps(indexClears, d.results, d.currentResultOrder, -1);
+            applyArrayCopy(d);
+            applyIndexOps(indexUpdates, d.results, d.currentResultOrder, d.currentResult.length, currentIndex);
+            applyIndexOps(indexClears, d.results, d.currentResultOrder, d.currentResult.length, -1);
             if (executor.tracksLastGroup()) {
                 applyLastGroupUpdate(d.results, d.currentResultOrder, d.currentResult.length);
             }
@@ -432,16 +433,16 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         assert lastGroupUpdates.length <= 1;
         if (indexUpdates.length == 1) {
             assert indexUpdates[0].targetArray == 0;
-            writeDirect(d.currentResult, 0, indexUpdates[0].indices, currentIndex);
+            writeDirect(d.currentResult, 0, d.currentResult.length, indexUpdates[0].indices, currentIndex);
         }
         if (indexClears.length == 1) {
             assert indexClears[0].targetArray == 0;
-            writeDirect(d.currentResult, 0, indexClears[0].indices, -1);
+            writeDirect(d.currentResult, 0, d.currentResult.length, indexClears[0].indices, -1);
         }
         if (executor.tracksLastGroup()) {
             if (lastGroupUpdates.length == 1) {
                 assert lastGroupUpdates[0].targetArray == 0;
-                d.currentResult[d.currentResult.length - 1] = lastGroupUpdates[0].getLastGroup();
+                DFACaptureGroupTrackingData.writeRowElement(d.currentResult, 0, d.currentResult.length, d.currentResult.length - 1, lastGroupUpdates[0].getLastGroup());
             }
         }
     }
@@ -458,25 +459,30 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
     }
 
     @ExplodeLoop
-    private void applyArrayCopy(int[] results, int[] currentResultOrder, int length) {
+    private void applyArrayCopy(DFACaptureGroupTrackingData d) {
+        int length = d.currentResult.length;
         for (int i = 0; i < arrayCopies.length; i += 2) {
             final int source = Byte.toUnsignedInt(arrayCopies[i]);
             final int target = Byte.toUnsignedInt(arrayCopies[i + 1]);
-            System.arraycopy(results, currentResultOrder[source], results, currentResultOrder[target], length);
+            ArrayUtils.arraycopy(d.results, DFACaptureGroupTrackingData.maskRowStart(d.results, d.currentResultOrder[source], length), d.results,
+                            DFACaptureGroupTrackingData.maskRowStart(d.results, d.currentResultOrder[target], length), length);
         }
     }
 
     @ExplodeLoop
-    private static void applyIndexOps(IndexOperation[] indexOps, int[] results, int[] currentResultOrder, int currentIndex) {
+    private static void applyIndexOps(IndexOperation[] indexOps, int[] results, int[] currentResultOrder, int rowLength, int currentIndex) {
         for (IndexOperation op : indexOps) {
-            writeDirect(results, currentResultOrder[op.getTargetArray()], op.indices, currentIndex);
+            writeDirect(results, currentResultOrder[op.getTargetArray()], rowLength, op.indices, currentIndex);
         }
     }
 
     @ExplodeLoop
-    private static void writeDirect(int[] array, int offset, byte[] indices, int value) {
+    private static void writeDirect(int[] array, int offset, int rowLength, byte[] indices, int value) {
+        int maskedOffset = DFACaptureGroupTrackingData.maskRowStart(array, offset, rowLength);
         for (int i = 0; i < indices.length; i++) {
-            array[offset + Byte.toUnsignedInt(indices[i])] = value;
+            int index = Byte.toUnsignedInt(indices[i]);
+            assert index < rowLength;
+            array[maskedOffset + index] = value;
         }
     }
 
@@ -484,7 +490,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
     private void applyLastGroupUpdate(int[] results, int[] currentResultOrder, int length) {
         for (LastGroupUpdate lastGroupUpdate : lastGroupUpdates) {
             final int targetArray = lastGroupUpdate.getTargetArray();
-            results[currentResultOrder[targetArray] + length - 1] = lastGroupUpdate.getLastGroup();
+            DFACaptureGroupTrackingData.writeRowElement(results, currentResultOrder[targetArray], length, length - 1, lastGroupUpdate.getLastGroup());
         }
     }
 

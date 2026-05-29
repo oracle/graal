@@ -66,6 +66,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.UTF16Or32Seq
 import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.UTF16RawSequentialMatchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.UTF8SequentialMatchers;
 import com.oracle.truffle.regex.tregex.nodes.input.InputOps;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
@@ -295,10 +296,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                             createResultsArray(resultLength()),
                             isSimpleCGMustCopy() ? new int[resultLength()] : null);
         } else if (isGenericCG()) {
+            int resultLength = resultLength();
             return new DFACaptureGroupTrackingData(
                             maxNumberOfNFAStates == 1 ? null : Arrays.copyOf(cgResultOrder, cgResultOrder.length),
-                            createResultsArray(maxNumberOfNFAStates * resultLength()),
-                            new int[resultLength()]);
+                            createResultsArray(paddedResultsLength(maxNumberOfNFAStates, resultLength)),
+                            new int[resultLength]);
         } else {
             return null;
         }
@@ -306,6 +308,21 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     private int resultLength() {
         return getNumberOfCaptureGroups() * 2 + (tracksLastGroup() ? 1 : 0);
+    }
+
+    private static int paddedResultsLength(int maxNumberOfNFAStates, int resultLength) {
+        /*
+         * Pad so that results.length - resultLength is an all-ones mask. This lets row
+         * starts be masked before fixed-length row copies and row-local writes while preserving
+         * all valid row offsets: array.length - resultLength + 1 is the power-of-two exclusive
+         * upper bound.
+         */
+        assert maxNumberOfNFAStates >= 1;
+        assert resultLength >= 0;
+        int maxStartIndex = (maxNumberOfNFAStates - 1) * resultLength;
+        int exclusiveUpperBound = 1 << MathUtil.log2ceil(maxStartIndex + 1);
+        assert Integer.bitCount(exclusiveUpperBound) == 1;
+        return exclusiveUpperBound + resultLength - 1;
     }
 
     private static int[] createResultsArray(int length) {
@@ -766,7 +783,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                         injectBranchProbability(CONTINUE_PROBABILITY, prefixMatcherMatches(frame, innerLiteralPrefixMatcher, locals, codeRange, canFindStart()))) {
                             if (innerLiteralPrefixMatcher == null) {
                                 if (isSimpleCG()) {
-                                    locals.getCGData().results[0] = locals.getIndex();
+                                    DFACaptureGroupTrackingData cgData = locals.getCGData();
+                                    DFACaptureGroupTrackingData.writeRowElement(cgData.results, 0, cgData.results.length, 0, locals.getIndex());
                                 } else if (canFindStart()) {
                                     locals.setMatchStart(locals.getIndex());
                                 }

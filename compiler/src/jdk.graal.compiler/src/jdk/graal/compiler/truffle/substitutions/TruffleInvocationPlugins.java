@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,6 +67,7 @@ import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.replacements.InvocationPluginHelper;
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
+import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsSingleKillNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfMacroNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
@@ -310,6 +311,16 @@ public class TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext graph, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length) {
                 return arrayUtilsRegionEquals(graph, arrayA, offsetA, arrayB, offsetB, length, JavaKind.Char, Stride.S2, Stride.S2);
+            }
+        });
+        r.register(new OptionalInlineOnlyInvocationPlugin("stubArraycopyS4", int[].class, long.class, int[].class, long.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext graph, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length) {
+                ValueNode byteOffsetA = toByteOffset(graph, JavaKind.Int, Stride.S4, offsetA);
+                ValueNode byteOffsetB = toByteOffset(graph, JavaKind.Int, Stride.S4, offsetB);
+                graph.add(new ArrayCopyWithConversionsSingleKillNode(arrayA, byteOffsetA, arrayB, byteOffsetB, length, Stride.S4, Stride.S4, NamedLocationIdentity.getArrayLocation(JavaKind.Int)));
+                return true;
             }
         });
     }

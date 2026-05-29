@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -934,7 +934,8 @@ public class GraphUtil {
             if (i == 0) {
                 assert singleLength == null;
                 singleLength = length;
-            } else if (singleLength == length) {
+            } else if (singleLength == length ||
+                            (singleLength.isJavaConstant() && length.isJavaConstant() && singleLength.asJavaConstant().equals(length.asJavaConstant()))) {
                 /* Nothing to do, still having a single length. */
             } else {
                 return null;

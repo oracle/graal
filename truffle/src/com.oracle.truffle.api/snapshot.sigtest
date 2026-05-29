@@ -11,6 +11,7 @@ meth public static boolean regionEqualsWithOrMask(java.lang.String,int,java.lang
 meth public static int indexOfWithOrMask(byte[],int,int,byte[],byte[])
 meth public static int indexOfWithOrMask(char[],int,int,char[],char[])
 meth public static int indexOfWithOrMask(java.lang.String,int,int,java.lang.String,java.lang.String)
+meth public static void arraycopy(int[],int,int[],int,int)
 supr java.lang.Object
 hfds UNSAFE,javaStringCoderFieldOffset,javaStringValueFieldOffset
 
