@@ -107,6 +107,7 @@ import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
@@ -1031,6 +1032,13 @@ public class SVMHost extends HostVM {
          * FastThreadLocalBytes.getSizeSupplier
          */
         closedFields.add(lookupOriginalDeclaredField(VMThreadLocalInfo.class, "sizeSupplier"));
+        /*
+         * These fields need to fold to constants when compiling the base layer. Including them as
+         * shared-layer root fields would mark them as accessed, which prevents constant folding.
+         */
+        closedFields.add(lookupOriginalDeclaredField(VMThreadLocalSupport.class, "vmThreadSize"));
+        closedFields.add(lookupOriginalDeclaredField(VMThreadLocalSupport.class, "vmThreadReferenceMapEncoding"));
+        closedFields.add(lookupOriginalDeclaredField(VMThreadLocalSupport.class, "vmThreadReferenceMapIndex"));
         /* This field cannot be written to (see documentation) */
         closedFields.add(lookupOriginalDeclaredField(Counter.Group.class, "enabled"));
         /* This field can contain a reference to a Thread, which is not allowed in the heap */

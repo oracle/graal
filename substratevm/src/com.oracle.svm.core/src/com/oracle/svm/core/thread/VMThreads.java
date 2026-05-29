@@ -724,7 +724,7 @@ public abstract class VMThreads {
                 return true;
             }
 
-            int sizeOfThreadLocals = ImageSingletons.lookup(VMThreadLocalSupport.class).vmThreadSize;
+            int sizeOfThreadLocals = VMThreadLocalSupport.singleton().sizeOfThreadLocals();
             UnsignedWord endOfThreadLocals = ((UnsignedWord) thread).add(sizeOfThreadLocals);
             if (value.aboveOrEqual((UnsignedWord) thread) && value.belowThan(endOfThreadLocals)) {
                 log.string("points into the thread locals for thread ").zhex(thread);
