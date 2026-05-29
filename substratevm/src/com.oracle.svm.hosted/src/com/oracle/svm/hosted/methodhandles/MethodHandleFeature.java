@@ -119,7 +119,8 @@ public class MethodHandleFeature implements InternalFeature {
     private Object runtimeMethodTypeInternTable;
     private Method referencedKeySetAdd;
 
-    private EconomicSet<Object> heapSpeciesData = EconomicSet.create(); // concurrent access
+    private final Object heapSpeciesDataLock = new Object();
+    private EconomicSet<Object> heapSpeciesData = EconomicSet.create();
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -192,14 +193,13 @@ public class MethodHandleFeature implements InternalFeature {
                             @SuppressWarnings("unchecked")
                             public Object transform(Object receiver, Object originalValue) {
                                 ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
+                                EconomicSet<Object> reachableSpeciesData = takeReachableSpeciesData();
                                 ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
                                 originalMap.forEach((key, speciesData) -> {
-                                    if (heapSpeciesData.contains(speciesData)) {
+                                    if (reachableSpeciesData.contains(speciesData)) {
                                         filteredMap.put(key, speciesData);
                                     }
                                 });
-                                /* No uses of heapSpeciesData should be needed after this point. */
-                                heapSpeciesData = null;
                                 return filteredMap;
                             }
                         });
@@ -465,9 +465,23 @@ public class MethodHandleFeature implements InternalFeature {
     }
 
     public void registerHeapSpeciesData(Object speciesData) {
-        VMError.guarantee(heapSpeciesData != null, "The collected SpeciesData objects have already been processed.");
-        synchronized (heapSpeciesData) {
+        synchronized (heapSpeciesDataLock) {
+            VMError.guarantee(heapSpeciesData != null, "The collected SpeciesData objects have already been processed.");
             heapSpeciesData.add(speciesData);
+        }
+    }
+
+    private EconomicSet<Object> takeReachableSpeciesData() {
+        synchronized (heapSpeciesDataLock) {
+            VMError.guarantee(heapSpeciesData != null, "The collected SpeciesData objects have already been processed.");
+            EconomicSet<Object> result = heapSpeciesData;
+            /*
+             * No uses of heapSpeciesData should be needed after this point. Setting it to null while
+             * holding the lock prevents concurrent object-reachable callbacks from silently adding
+             * SpeciesData objects after filtering has started.
+             */
+            heapSpeciesData = null;
+            return result;
         }
     }
 
