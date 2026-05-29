@@ -27,8 +27,11 @@ package jdk.graal.compiler.core.test;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.SignedRemNode;
+import jdk.graal.compiler.nodes.calc.UnsignedDivNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRemNode;
 import jdk.graal.compiler.options.OptionValues;
 import org.junit.Test;
 
@@ -47,6 +50,112 @@ public class IntegerDivRemCanonicalizationTest extends GraalCompilerTest {
         createCanonicalizerPhase().apply(graph, getProviders());
         // We expect the remainder to be canonicalized away.
         assertTrue(graph.getNodes().filter(SignedRemNode.class).count() == 0);
+    }
+
+    public static int unusedUnsignedDivNonZero(int a, int b) {
+        int divisor = (b & 1023) + 1;
+        @SuppressWarnings("unused")
+        int unused = Integer.divideUnsigned(a, divisor);
+        GraalDirectives.sideEffect();
+        return a;
+    }
+
+    @Test
+    public void testUnusedUnsignedDivNonZero() {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("unusedUnsignedDivNonZero"));
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(UnsignedDivNode.class).count() == 0);
+    }
+
+    public static int unusedUnsignedDivNonZeroMaybeMinusOne(int a, int b) {
+        int divisor = b | 1;
+        @SuppressWarnings("unused")
+        int unused = Integer.divideUnsigned(a, divisor);
+        GraalDirectives.sideEffect();
+        return a;
+    }
+
+    @Test
+    public void testUnusedUnsignedDivNonZeroMaybeMinusOne() {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("unusedUnsignedDivNonZeroMaybeMinusOne"));
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(UnsignedDivNode.class).count() == 0);
+    }
+
+    public static int unusedUnsignedDivMaybeZero(int a, int b) {
+        @SuppressWarnings("unused")
+        int unused = Integer.divideUnsigned(a, b);
+        GraalDirectives.sideEffect();
+        return a;
+    }
+
+    @Test
+    public void testUnusedUnsignedDivMaybeZero() {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("unusedUnsignedDivMaybeZero"));
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(UnsignedDivNode.class).count() == 1);
+    }
+
+    @Test
+    public void testUnusedUnsignedDivMaybeZeroNonDeoptimizing() {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("unusedUnsignedDivMaybeZero"));
+        UnsignedDivNode div = graph.getNodes().filter(UnsignedDivNode.class).first();
+        div.setCanDeopt(false);
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(UnsignedDivNode.class).count() == 0);
+    }
+
+    public static int unusedUnsignedRemNonZero(int a, int b) {
+        int divisor = (b & 1023) + 1;
+        @SuppressWarnings("unused")
+        int unused = Integer.remainderUnsigned(a, divisor);
+        GraalDirectives.sideEffect();
+        return a;
+    }
+
+    @Test
+    public void testUnusedUnsignedRemNonZero() {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("unusedUnsignedRemNonZero"));
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(UnsignedRemNode.class).count() == 0);
+    }
+
+    public static int unusedUnsignedRemNonZeroMaybeMinusOne(int a, int b) {
+        int divisor = b | 1;
+        @SuppressWarnings("unused")
+        int unused = Integer.remainderUnsigned(a, divisor);
+        GraalDirectives.sideEffect();
+        return a;
+    }
+
+    @Test
+    public void testUnusedUnsignedRemNonZeroMaybeMinusOne() {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("unusedUnsignedRemNonZeroMaybeMinusOne"));
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(UnsignedRemNode.class).count() == 0);
+    }
+
+    public static int unusedUnsignedRemMaybeZero(int a, int b) {
+        @SuppressWarnings("unused")
+        int unused = Integer.remainderUnsigned(a, b);
+        GraalDirectives.sideEffect();
+        return a;
+    }
+
+    @Test
+    public void testUnusedUnsignedRemMaybeZero() {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("unusedUnsignedRemMaybeZero"));
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(UnsignedRemNode.class).count() == 1);
+    }
+
+    @Test
+    public void testUnusedUnsignedRemMaybeZeroNonDeoptimizing() {
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod("unusedUnsignedRemMaybeZero"));
+        UnsignedRemNode rem = graph.getNodes().filter(UnsignedRemNode.class).first();
+        rem.setCanDeopt(false);
+        createCanonicalizerPhase().apply(graph, getProviders());
+        assertTrue(graph.getNodes().filter(UnsignedRemNode.class).count() == 0);
     }
 
     static Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
