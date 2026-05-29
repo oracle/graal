@@ -264,8 +264,6 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
         this.log2length = (byte) ((requestedLength == 8) ? 3 : (requestedLength == 4) ? 2 : (requestedLength == 2) ? 1 : 0);
         this.kind = kind;
         SymbolTable symtab = relocatedSection.getOwner().getSymbolTable();
-        // FIXME: also allow section numbers here, for non-extern symbols
-        // FIXME: encode R_ABS symbol number
         this.sym = symtab.getSymbol(symbolName);
         if (this.sym == null) {
             throw new IllegalArgumentException("Could not find symbol " + symbolName);
@@ -341,8 +339,6 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
 
     @Override
     public Symbol getReferencedSymbol() {
-        // assert extern;
-        // FIXME: what about the !extern case?
         return sym;
     }
 

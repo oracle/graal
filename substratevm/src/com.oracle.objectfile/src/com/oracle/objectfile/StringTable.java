@@ -61,7 +61,10 @@ public class StringTable {
 
     public void read(ByteBuffer buffer) {
         try {
-            // FIXME: this is wrong if suffix encoding is used (?)
+            /*
+             * This records only explicit string start offsets. Suffix-encoded or shared-suffix
+             * string tables may require richer offset lookup support if they become relevant.
+             */
             while (buffer.position() < buffer.limit()) {
                 final int index = buffer.position();
                 String s = Utf8.utf8ToString(true, buffer);

@@ -46,8 +46,7 @@ import java.util.Deque;
  * 255, or (byte) -1? The latter is more consistent with the writing behavior, but also more
  * confusing when considered in isolation. So far, this distinction has only been important when
  * reading bytes, and we provide explicit readUbyte() and readByte() methods to cater to each
- * requirement separately. FIXME: this should probably be expanded to cover the full range of
- * integer data types (except long, which we're stuck with).
+ * requirement separately.
  */
 public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
 

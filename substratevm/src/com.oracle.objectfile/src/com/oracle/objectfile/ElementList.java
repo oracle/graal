@@ -67,11 +67,10 @@ public class ElementList implements List<Element> {
      * We keep our elements in a list, so each element has its own index. We also keep a list of
      * only sections, and make it reasonably quick to get a section index. NOTE that the section
      * numbering needs to be adjusted by 1 to work as ELF SHT indices, since the latter start at 1.
-     *
-     * FIXME: this can probably be done in a much simpler way.
      */
     private NavigableSet<Integer> nonSectionElementIndices = new TreeSet<>();
-    private NavigableSet<Integer> sectionElementIndices = new TreeSet<>();
+    private List<Integer> sectionElementIndices = new ArrayList<>();
+    private List<Section> sections = new ArrayList<>();
 
     public int elementIndexToSectionIndex(int i) {
         // it's the element index, less the count of elements at lower element indices
@@ -80,112 +79,22 @@ public class ElementList implements List<Element> {
     }
 
     public int sectionIndexToElementIndex(int sectionIndex) {
-        /*
-         * Something of a HACK: we bisect the NavigableSet until we find the nth in order. This
-         * should be an O(log(n)) operation for a set of size n.
-         */
-        int pivot = (sectionElementIndices.first() + sectionElementIndices.last()) / 2;
-        int leftOffset = 0;
-        SortedSet<Integer> leftSet = sectionElementIndices.headSet(pivot);
-        SortedSet<Integer> rightSet = sectionElementIndices.tailSet(pivot);
-        // what is the section index of the first element in rightSet?
-        int rightHeadIndex = leftOffset + leftSet.size();
-        while (leftSet.size() + rightSet.size() > 1) {
-            if (rightHeadIndex > sectionIndex) {
-                // recurse left; if our left is empty, we fail
-                if (leftSet.size() == 0) {
-                    throw new IndexOutOfBoundsException();
-                }
-                pivot = (int) Math.floor((leftSet.first() + leftSet.last()) / 2.0);
-                SortedSet<Integer> newLeftSet = leftSet.headSet(pivot);
-                SortedSet<Integer> newRightSet = leftSet.tailSet(pivot);
-                // assert progress
-                assert !leftSet.equals(newLeftSet) || !rightSet.equals(newRightSet);
-                leftSet = newLeftSet;
-                rightSet = newRightSet;
-            } else {
-                // recurse right; if our right set is empty, we fail
-                if (rightSet.size() == 0) {
-                    throw new IndexOutOfBoundsException();
-                }
-                pivot = (int) Math.ceil((rightSet.first() + rightSet.last()) / 2.0);
-                leftOffset += leftSet.size();
-                SortedSet<Integer> newLeftSet = rightSet.headSet(pivot);
-                SortedSet<Integer> newRightSet = rightSet.tailSet(pivot);
-                // assert progress
-                assert !leftSet.equals(newLeftSet) || !rightSet.equals(newRightSet);
-                leftSet = newLeftSet;
-                rightSet = newRightSet;
-            }
-            rightHeadIndex = leftOffset + leftSet.size();
+        if (sectionIndex == sections.size()) {
+            return size();
         }
-        if ((rightHeadIndex > sectionIndex && leftSet.size() == 0) || !(rightHeadIndex > sectionIndex) && rightSet.size() == 0) {
-            throw new IndexOutOfBoundsException();
-        }
-        int toReturn = (rightHeadIndex > sectionIndex) ? leftSet.last() : rightSet.first();
-        assert toReturn == sectionIndexToElementIndexNaive(sectionIndex);
-        return toReturn;
+        return sectionElementIndices.get(sectionIndex);
     }
 
     Section getSection(int sectionIndex) {
-        int elementIndex = sectionIndexToElementIndex(sectionIndex);
-        if (elementIndex == -1) {
-            return null;
-        }
-        Element found = get(elementIndex);
-        assert found instanceof Section;
-        return (Section) found;
-    }
-
-    public int sectionIndexToElementIndexNaive(int i) {
-        // There are two apparent possible implementations.
-        // 1. Get the ith element and search forwards
-        // 2. Increment the section index once for every preceding non-section element
-        // BUT actually we can't do 2, because how do we tell whether an element is
-        // preceding a given section, if we don't know the section's element number?
-
-        // the naive way to implement this function:
-        // get element i
-        // get the element i in the sections list
-        // work forward in the elements list until we find it
-        // PROBLEM 1: "get element i" may not be O(1) (but is for an ArrayList)
-        // PROBLEM 2: can't get an iterator at this element! need to linear-search from start!
-        // FIXME: get rid of this linear search
-        Section s = null;
-        int si = -1;
-        Iterator<Section> iter = sectionsIterator();
-        while (iter.hasNext()) {
-            // we want the ith section
-            Section cur = iter.next();
-            ++si;
-            if (i == si) {
-                s = cur;
-                break;
-            }
-        }
-        if (s == null) {
-            // there is no such section. that might be okay -- we're
-            // looking for a position to insert at. In general, if we
-            // have n sections, then the element index corresponding to
-            // section position n (i.e. one after the last one)
-            // is one after the element count
-            assert i == sectionsCount();
-            return size();
-        }
-        assert s != null;
-        int ei = si;
-        while (get(ei) != s) {
-            ++ei;
-        }
-        return ei;
+        return sections.get(sectionIndex);
     }
 
     public Iterator<Section> sectionsIterator() {
-        return entries.stream().filter(element -> element instanceof Section).map(element -> (Section) element).iterator();
+        return sections.iterator();
     }
 
     public int sectionsCount() {
-        return sectionElementIndices.size();
+        return sections.size();
     }
 
     public int nonSectionsCount() {
@@ -194,7 +103,9 @@ public class ElementList implements List<Element> {
 
     private void decrementSectionCounters(Element removed, int pos) {
         if (removed instanceof Section) {
-            sectionElementIndices.remove(pos);
+            int sectionIndex = elementIndexToSectionIndex(pos);
+            sectionElementIndices.remove(sectionIndex);
+            sections.remove(sectionIndex);
         } else {
             nonSectionElementIndices.remove(pos);
         }
@@ -202,7 +113,9 @@ public class ElementList implements List<Element> {
 
     private void incrementSectionCounters(Element added, int pos) {
         if (added instanceof Section) {
-            sectionElementIndices.add(pos);
+            int sectionIndex = elementIndexToSectionIndex(pos);
+            sectionElementIndices.add(sectionIndex, pos);
+            sections.add(sectionIndex, (Section) added);
         } else {
             nonSectionElementIndices.add(pos);
         }
@@ -234,6 +147,7 @@ public class ElementList implements List<Element> {
         elementForName.clear();
         sectionElementIndices.clear();
         nonSectionElementIndices.clear();
+        sections.clear();
     }
 
     @Override
@@ -258,8 +172,8 @@ public class ElementList implements List<Element> {
 
     @Override
     public boolean remove(Object arg) {
-        boolean ret = entries.remove(arg);
         int pos = entries.indexOf(arg);
+        boolean ret = entries.remove(arg);
         if (ret) {
             // remove its index from the appropriate set
             decrementSectionCounters((Element) arg, pos);
@@ -318,6 +232,15 @@ public class ElementList implements List<Element> {
         t.addAll(tmp);
     }
 
+    private static void adjustAllGE(List<Integer> indices, int pos, int diff) {
+        for (ListIterator<Integer> iterator = indices.listIterator(); iterator.hasNext();) {
+            Integer index = iterator.next();
+            if (index >= pos) {
+                iterator.set(index + diff);
+            }
+        }
+    }
+
     @Override
     public void add(int pos, Element arg1) {
         // all numbers >= pos in the two sets must be incremented by one
@@ -325,7 +248,7 @@ public class ElementList implements List<Element> {
         adjustAllGE(nonSectionElementIndices, pos, 1);
         // now we can do the addition
         entries.add(pos, arg1);
-        ((arg1 instanceof Section) ? sectionElementIndices : nonSectionElementIndices).add(pos);
+        incrementSectionCounters(arg1, pos);
         elementForName.put(arg1.getName(), arg1);
     }
 
@@ -377,9 +300,10 @@ public class ElementList implements List<Element> {
 
     @Override
     public Element remove(int arg0) {
+        Element e = entries.remove(arg0);
+        decrementSectionCounters(e, arg0);
         adjustAllGE(sectionElementIndices, arg0, -1);
         adjustAllGE(nonSectionElementIndices, arg0, -1);
-        Element e = entries.remove(arg0);
         elementForName.remove(e.getName());
         return e;
     }
@@ -389,20 +313,8 @@ public class ElementList implements List<Element> {
         Element replaced = entries.set(arg0, arg1);
         elementForName.remove(replaced.getName());
         elementForName.put(arg1.getName(), arg1);
-        if (replaced instanceof Section) {
-            // we lost a section
-            sectionElementIndices.remove(arg0);
-        } else {
-            // we lost a non-section
-            nonSectionElementIndices.remove(arg0);
-        }
-        if (arg1 instanceof Section) {
-            // we gained a section
-            sectionElementIndices.add(arg0);
-        } else {
-            // we gained a non-section
-            nonSectionElementIndices.add(arg0);
-        }
+        decrementSectionCounters(replaced, arg0);
+        incrementSectionCounters(arg1, arg0);
 
         return replaced;
     }

@@ -33,7 +33,6 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.StringSectionImpl;
-import com.oracle.objectfile.macho.MachOObjectFile.LinkEditSegment64Command;
 import com.oracle.objectfile.macho.MachOObjectFile.Segment64Command;
 
 public class MachOStrtab extends MachOObjectFile.LinkEditElement {
@@ -97,8 +96,7 @@ public class MachOStrtab extends MachOObjectFile.LinkEditElement {
 
     @Override
     public boolean isLoadable() {
-        // FIXME: nicer way of testing
-        return segment instanceof LinkEditSegment64Command;
+        return segment.isLinkEditSegment();
     }
 
 }

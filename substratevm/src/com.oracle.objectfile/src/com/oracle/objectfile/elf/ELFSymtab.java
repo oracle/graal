@@ -294,16 +294,12 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         flags.add(ELFSectionFlag.ALLOC);
         flags.addAll(extraFlags);
         // NOTE: our SHT info and link entries are handled by overrides below.
-        // NOTE: we create a default strtab for ourselves, but the user can replace it
-        // FIXME: hmm, this is unclean, because in the case where the user replaces it,
-        // a reference to this unwanted section might get into some other sections... maybe?
+        // NOTE: we create a default strtab for ourselves.
 
         if (!dynamic) {
             strtab = new DefaultStrtabImpl(owner, ".strtab");
         } else {
             strtab = new DefaultStrtabImpl(owner, ".dynstr");
-            flags.add(ELFSectionFlag.ALLOC);
-            strtab.flags.add(ELFSectionFlag.ALLOC);
             // the ELFDynamicSection will call setDynamic() when it's constructed
         }
     }
@@ -311,7 +307,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
     class DefaultStrtabImpl extends ELFStrtab {
 
         DefaultStrtabImpl(ELFObjectFile owner, String name) {
-            super(owner, name);
+            super(owner, name, ELFObjectFile.SectionType.STRTAB, ELFSymtab.this.isDynamic());
             assert owner == getOwner();
             addContentProvider(entriesByName.keySet());
         }

@@ -126,7 +126,6 @@ public class BasicProgbitsSectionImpl extends BasicElementImpl implements Progbi
 
     @Override
     public Element getOrCreateRelocationElement(long addend) {
-        // FIXME: This looks suspicious: turning an Element back into an Impl?
         return ((RelocatableSectionImpl) getElement()).getOrCreateRelocationElement(addend);
     }
 
