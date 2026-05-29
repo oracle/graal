@@ -156,6 +156,7 @@ innr public abstract interface static !annotation BytecodeInterpreterHandler
 innr public abstract interface static !annotation BytecodeInterpreterHandlerConfig
 innr public abstract interface static !annotation BytecodeInterpreterSwitch
 innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
+innr public abstract interface static !annotation BytecodeInterpreterThreadingExit
 innr public abstract interface static !annotation InliningCutoff
 innr public abstract interface static !annotation InliningRoot
 meth public static boolean inInterpreterFastPath()
@@ -185,6 +186,7 @@ innr public abstract interface static !annotation Argument
 intf java.lang.annotation.Annotation
 meth public abstract com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument[] arguments()
 meth public abstract int maximumOperationCode()
+meth public abstract !hasdefault int[] templateCompatibleOpcodes()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument
  outer com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig
@@ -214,6 +216,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean nonNull()
 meth public abstract java.lang.String name()
+meth public abstract !hasdefault int templateVariable()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
  outer com.oracle.truffle.api.HostCompilerDirectives
@@ -226,6 +229,12 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterThreadingExit
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$InliningCutoff
@@ -1890,4 +1899,3 @@ meth public !varargs static org.graalvm.options.OptionDescriptors createUnion(or
 meth public abstract java.util.Iterator<org.graalvm.options.OptionDescriptor> iterator()
 meth public abstract org.graalvm.options.OptionDescriptor get(java.lang.String)
 meth public static org.graalvm.options.OptionDescriptors create(java.util.List<org.graalvm.options.OptionDescriptor>)
-

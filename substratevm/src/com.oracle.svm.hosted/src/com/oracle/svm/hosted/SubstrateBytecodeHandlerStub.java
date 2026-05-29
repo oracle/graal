@@ -95,6 +95,8 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
     /** True for the default fallback stub that returns to the interpreter dispatch loop. */
     private final boolean isDefault;
     private final ResolvedJavaMethod nextOpcodeMethod;
+    private final ResolvedJavaMethod threadingExitMethod;
+    private final int templateIndex;
     /** Declaring type that owns the interpreter. */
     private final ResolvedJavaType interpreterHolder;
     /** Handler configuration that defines the argument expansion. */
@@ -103,14 +105,16 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
     private final ResolvedJavaMethod targetMethod;
 
     public SubstrateBytecodeHandlerStub(SubstrateBytecodeHandlerStubHelper stubHolder, ResolvedJavaType declaringClass, String stubName,
-                    ResolvedJavaType interpreterHolder, BytecodeHandlerConfig config, boolean threading, ResolvedJavaMethod nextOpcodeMethod, boolean needSafepoint, boolean isDefault,
-                    ResolvedJavaMethod targetMethod) {
-        super(stubName, true, declaringClass, ResolvedSignature.fromList(config.getArgumentTypes(),
+                    ResolvedJavaType interpreterHolder, BytecodeHandlerConfig config, boolean threading, ResolvedJavaMethod nextOpcodeMethod, ResolvedJavaMethod threadingExitMethod,
+                    boolean needSafepoint, boolean isDefault, ResolvedJavaMethod targetMethod, int templateIndex) {
+        super(stubName, true, declaringClass, ResolvedSignature.fromList(config.getStubAbiArgumentTypes(),
                         config.getReturnType()), declaringClass.getDeclaredConstructors(false)[0].getConstantPool());
         this.stubHolder = stubHolder;
         this.threading = threading;
         this.isDefault = isDefault;
         this.nextOpcodeMethod = nextOpcodeMethod;
+        this.threadingExitMethod = threadingExitMethod;
+        this.templateIndex = templateIndex;
         this.needSafepoint = needSafepoint;
         this.interpreterHolder = interpreterHolder;
         this.config = config;
@@ -123,10 +127,10 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         if (isDefault) {
             Register fallbackReturnRegister = config.hasCopyFromReturnArgument() ? null : getReturnRegister(getRegisterConfig());
-            return BytecodeHandlerStubHelper.createEmptyStub(kit, config, fallbackReturnRegister);
+            return BytecodeHandlerStubHelper.createEmptyStub(kit, method, 0, config, fallbackReturnRegister, threadingExitMethod, templateIndex);
         }
-        return BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod, () -> stubHolder.getBytecodeHandlers(interpreterHolder, config), config, targetMethod,
-                        SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
+        return BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod, threadingExitMethod,
+                        index -> stubHolder.getBytecodeHandlers(interpreterHolder, config, index), config, targetMethod, templateIndex, SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
     }
 
     /**
@@ -264,20 +268,20 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
     }
 
     private AssignedLocation[] allocateArgumentLocations(RegisterConfig registerConfig, Register reservedReturnRegister) {
-        List<ArgumentInfo> argumentInfos = config.getArgumentInfos();
-        AssignedLocation[] argumentLocations = new AssignedLocation[argumentInfos.size()];
+        List<ArgumentInfo> stubAbiArgumentInfos = config.getStubAbiArgumentInfos();
+        AssignedLocation[] argumentLocations = new AssignedLocation[stubAbiArgumentInfos.size()];
         AllocatableRegisters allocatableRegisters = AllocatableRegisters.create(registerConfig, config.hasPendingExceptionState(), reservedReturnRegister);
 
         /*
          * Values published as pending exception state must remain available at the throwing call.
          * Allocate them first so they receive the target architecture's preferred locations.
          */
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : stubAbiArgumentInfos) {
             if (argumentInfo.needsPendingExceptionState()) {
                 argumentLocations[argumentInfo.index()] = allocatableRegisters.allocate(argumentInfo.type().getJavaKind());
             }
         }
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : stubAbiArgumentInfos) {
             if (!argumentInfo.needsPendingExceptionState()) {
                 argumentLocations[argumentInfo.index()] = allocatableRegisters.allocate(argumentInfo.type().getJavaKind());
             }
@@ -301,7 +305,7 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
         for (int i = 0; i < parameters.length; i++) {
             // BytecodeHandlerCallSite either preserves the value or returns the updated
             // value in the same argument location
-            parameterKinds[i] = config.isArgumentImmutable(i) ? IMMUTABLE : VALUE_REFERENCE;
+            parameterKinds[i] = config.isStubAbiArgumentImmutable(i) ? IMMUTABLE : VALUE_REFERENCE;
         }
 
         AssignedLocation[] returnLocations = AssignedLocation.EMPTY_ARRAY;

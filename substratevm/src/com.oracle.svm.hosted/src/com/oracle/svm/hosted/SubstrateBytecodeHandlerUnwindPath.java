@@ -162,7 +162,7 @@ final class SubstrateBytecodeHandlerUnwindPath {
         ValueNode objectSlots = null;
         ValueNode primitiveSlots = null;
         /* Publish only slots that caller-side exception dispatch may observe after an unwind. */
-        for (ArgumentInfo argumentInfo : handlerConfig.getArgumentInfos()) {
+        for (ArgumentInfo argumentInfo : handlerConfig.getStubAbiArgumentInfos()) {
             if (!argumentInfo.needsPendingExceptionState()) {
                 continue;
             }
@@ -224,7 +224,7 @@ final class SubstrateBytecodeHandlerUnwindPath {
         ValueNode objectSlots = null;
         ValueNode primitiveSlots = null;
         /* Recover published values and write mutable expanded fields back on the exception edge. */
-        for (ArgumentInfo argumentInfo : handlerConfig.getArgumentInfos()) {
+        for (ArgumentInfo argumentInfo : handlerConfig.getStubAbiArgumentInfos()) {
             if (!argumentInfo.needsPendingExceptionState()) {
                 continue;
             }
