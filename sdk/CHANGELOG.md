@@ -25,6 +25,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-73872: Added support for native-image preset options. Polyglot options provided during native-image build are captured and validated as preset defaults, then applied at runtime (including default engine creation) with normal builder-option precedence.
 * GR-70924: Polyglot isolate hosts now use the fallback Truffle runtime by default, enabling isolate hosting to work on JDKs that do not support the optimized Truffle runtime.
 * GR-52759: Added `AbstractLanguageLauncher#decodeArgument(byte[])`, allowing language launchers to customize decoding of native launcher command-line arguments.
+* GR-75876: Added `FileSystem#allowInternalResources(FileSystem)`, allowing embedders to expose internal resources and language homes through a read-only view of the default file system when using a custom file system. Deprecated `FileSystem#allowInternalResourceAccess(FileSystem)`.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

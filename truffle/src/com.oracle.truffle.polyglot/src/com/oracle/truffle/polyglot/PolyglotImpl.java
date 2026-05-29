@@ -815,8 +815,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
-        return FileSystems.allowInternalResourceAccess(fileSystem);
+    public FileSystem allowInternalResourceAccess(FileSystem fileSystem, boolean readOnlyResources) {
+        return FileSystems.allowInternalResourceAccess(fileSystem, readOnlyResources);
     }
 
     @Override

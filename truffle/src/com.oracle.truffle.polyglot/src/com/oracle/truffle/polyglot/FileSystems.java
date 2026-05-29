@@ -106,7 +106,7 @@ final class FileSystems {
         return new NIOFileSystem(fileSystem, null, false);
     }
 
-    static FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
+    static FileSystem allowInternalResourceAccess(FileSystem fileSystem, boolean readOnlyResources) {
         Set<Path> languageHomes = new HashSet<>();
         for (LanguageCache cache : LanguageCache.languages().values()) {
             final String languageHome = cache.getLanguageHome();
@@ -114,7 +114,11 @@ final class FileSystems {
                 languageHomes.add(Paths.get(languageHome));
             }
         }
-        FileSystem internalResourcesFileSystem = new ForwardingFileSystem(newDefaultFileSystem(null)) {
+        FileSystem internalResourcesFileSystem = newDefaultFileSystem(null);
+        if (readOnlyResources) {
+            internalResourcesFileSystem = new ReadOnlyFileSystem(internalResourcesFileSystem, false);
+        }
+        internalResourcesFileSystem = new ForwardingFileSystem(internalResourcesFileSystem) {
             @Override
             public boolean isHost() {
                 return false;
