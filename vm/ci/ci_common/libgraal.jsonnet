@@ -102,6 +102,9 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
   local weeklies = {
+    "vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-aarch64": {
+      capabilities+: ["!xgene3"],
+    },
     "vm-libgraal_truffle_coverage*": {}
   },
 
