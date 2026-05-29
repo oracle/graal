@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_NATIVE;
+import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_UNKNOWN;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_HIDDEN;
@@ -34,8 +36,6 @@ import static com.oracle.svm.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
-import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_NATIVE;
-import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_UNKNOWN;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.BREAKPOINT;
 import static com.oracle.svm.interpreter.metadata.CremaMethodAccess.toJVMCI;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
@@ -859,7 +859,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     @Override
     public final boolean requiresInterfaceDispatch(InterpreterResolvedJavaType holder) {
         assert getDeclaringClass().isInterface();
-        return hasDispatchIndex() && (holder == getDeclaringClass() || holder.lookupVTableEntry(getVTableIndex()) != this);
+        return hasDispatchIndex() && (holder == getDeclaringClass() || !(this.equals(holder.lookupVTableEntry(getVTableIndex()))));
     }
 
     public final boolean isDevirtualized() {
