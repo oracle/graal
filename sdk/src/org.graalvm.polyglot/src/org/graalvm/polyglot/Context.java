@@ -1117,6 +1117,7 @@ public final class Context implements AutoCloseable {
         private boolean useSystemExit;
         private SandboxPolicy sandboxPolicy;
         private Consumer<PolyglotException> exceptionHandler;
+        private Boolean spawnIsolate;
 
         Builder(String... permittedLanguages) {
             Objects.requireNonNull(permittedLanguages);
@@ -2077,6 +2078,34 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Specifies whether the implicitly created engine should run guest languages in a polyglot
+         * isolate.
+         * <p>
+         * A polyglot isolate executes guest languages with an isolated heap. This can be useful for
+         * sandboxing and for running guest languages as native images when the current runtime does
+         * not support optimizing guest language execution. If enabled, all languages permitted by
+         * this context are run in the isolate. If {@code value} is {@code true}, this builder must
+         * have been created with an explicit permitted languages list, for example using
+         * {@code Context.newBuilder("js")}.
+         * <p>
+         * This setting is equivalent to setting the {@code engine.SpawnIsolate} engine option to
+         * {@code true} or {@code false}. If both are set to conflicting values, {@link #build()}
+         * fails with {@link IllegalArgumentException}. For contexts that use an explicit engine,
+         * configure isolate spawning on the engine builder rather than on the context builder.
+         *
+         * @param value {@code true} to spawn a polyglot isolate
+         * @see Engine.Builder#spawnIsolate(boolean)
+         * @see Engine#supportsCompilation()
+         * @see <a href="https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates">
+         *      Polyglot Isolates documentation</a>
+         * @since 25.1
+         */
+        public Builder spawnIsolate(boolean value) {
+            spawnIsolate = value;
+            return this;
+        }
+
+        /**
          * Creates a new context instance from the configuration provided in the builder. The same
          * context builder can be used to create multiple context instances.
          *
@@ -2207,10 +2236,17 @@ public final class Context implements AutoCloseable {
                 engineBuilder.exceptionHandler(exceptionHandler);
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
+                if (spawnIsolate != null) {
+                    engineBuilder.spawnIsolate(spawnIsolate);
+                }
                 engine = engineBuilder.build();
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
+                }
+                if (spawnIsolate != null) {
+                    throw new IllegalStateException("Context.Builder.spawnIsolate(" + spawnIsolate + ") cannot be used together with Context.Builder.engine(Engine). " +
+                                    "Configure isolate spawning on the shared engine instead, using Engine.Builder.spawnIsolate(" + spawnIsolate + ") to build the Engine.");
                 }
                 contextOptions = options == null ? Collections.emptyMap() : options;
                 contextOut = out;

@@ -269,6 +269,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     SourceCacheStatisticsListener sourceCacheStatisticsListener; // effectively final
 
+    private boolean usesPolyglotIsolate;    // effectively final after patching
+
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, SandboxPolicy sandboxPolicy, String[] permittedLanguages,
                     DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
@@ -277,7 +279,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
                     MessageTransport messageTransport, LogHandler logHandler,
-                    TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly, AbstractPolyglotHostService polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
+                    TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly, boolean usesPolyglotIsolate,
+                    AbstractPolyglotHostService polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
         this.engineId = ENGINE_COUNTER.incrementAndGet();
         this.apiAccess = impl.getAPIAccess();
         this.sandboxPolicy = sandboxPolicy;
@@ -295,6 +298,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.boundEngine = boundEngine;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
         this.hostLanguageOnly = hostLanguageOnly;
+        this.usesPolyglotIsolate = usesPolyglotIsolate;
 
         this.polyglotHostService = polyglotHostService;
 
@@ -591,6 +595,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.hostLanguageOnly = prototype.hostLanguageOnly;
+        this.usesPolyglotIsolate = prototype.usesPolyglotIsolate;
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
         this.idToInternalLanguageInfo = Collections.unmodifiableMap(languageInfos);
         this.languageCount = idToLanguage.size() + 1 /* +1 for host language */;
@@ -731,6 +736,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     boolean newAllowExperimentalOptions,
                     boolean newBoundEngine, LogHandler newLogHandler,
                     TruffleLanguage<?> newHostLanguage,
+                    boolean newUsesPolyglotIsolate,
                     AbstractPolyglotHostService newPolyglotHostService,
                     Consumer<PolyglotException> localExceptionHandler) {
         CompilerAsserts.neverPartOfCompilation();
@@ -751,6 +757,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             this.languages[HOST_LANGUAGE_INDEX] = this.hostLanguage;
         }
 
+        usesPolyglotIsolate = newUsesPolyglotIsolate;
         polyglotHostService = newPolyglotHostService;
         this.exceptionHandler = localExceptionHandler;
         /*
@@ -1261,7 +1268,29 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             // no access to internal, but internal language available
             internalLanguageHint = "A language with this id is installed, but only available internally. ";
         }
-        throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available. %s%sAvailable languages are: %s.", id, didYouMean, internalLanguageHint, allLanguages));
+        Set<String> requiredLanguages = new HashSet<>(Arrays.asList(permittedLanguages));
+        requiredLanguages.add(id);
+        if (!usesPolyglotIsolate && EngineAccessor.ISOLATE.hasIsolateLibraryForLanguages(requiredLanguages)) {
+            if (permittedLanguages.length == 0) {
+                throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available in this engine. Only a polyglot isolate artifact for '%s' is available, " +
+                                "but languages provided as polyglot isolates are selected only when the engine or context is created with explicit permitted languages. " +
+                                "To use it, create the context or engine with '%s' as a permitted language, for example Context.newBuilder(\"%s\") or Context.create(\"%s\").",
+                                id, id, id, id, id));
+            } else if (Arrays.asList(permittedLanguages).contains(id)) {
+                throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available in this engine. Only a polyglot isolate artifact for '%s' is available, " +
+                                "the isolate would have been selected automatically, but isolate execution is disabled for this engine. To resolve this, remove the option disabling " +
+                                "polyglot isolate execution, or add the regular language dependency to the class path or module path.",
+                                id, id));
+            } else {
+                throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available in this engine. A polyglot isolate for '%s' is available, " +
+                                "but this engine was created with explicit permitted languages that do not include '%s'. To use it, add '%s' to the permitted languages and enable polyglot isolate execution, " +
+                                "or add the regular language dependency to the class path or module path.",
+                                id, id, id, id));
+            }
+        } else {
+            throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not available. %s%sAvailable languages are: %s.", id, didYouMean, internalLanguageHint,
+                            allLanguages));
+        }
     }
 
     private static String matchSpellingError(Set<String> allIds, String enteredId) {
@@ -2656,7 +2685,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
             }
         }
-        if (options.get(PolyglotEngineOptions.SpawnIsolate) != null) {
+        if (usesPolyglotIsolate) {
             throw PolyglotEngineException.illegalState("Using isolated polyglot contexts together with Java virtual threads is currently not supported.");
         }
     }

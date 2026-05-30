@@ -89,6 +89,8 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
      */
     private final String fallbackReason;
 
+    private final boolean explicitlyRequested;
+
     private final TVMCI.Test<Closeable, CallTarget> testTvmci = new TVMCI.Test<>() {
 
         @Override
@@ -108,15 +110,24 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     };
 
     public DefaultTruffleRuntime() {
-        this.fallbackReason = null;
+        this(null, false);
     }
 
     public DefaultTruffleRuntime(String fallbackReason) {
+        this(fallbackReason, false);
+    }
+
+    public DefaultTruffleRuntime(String fallbackReason, boolean explicitlyRequested) {
         this.fallbackReason = fallbackReason;
+        this.explicitlyRequested = explicitlyRequested;
     }
 
     public String getFallbackReason() {
         return fallbackReason;
+    }
+
+    public boolean isExplicitlyRequested() {
+        return explicitlyRequested;
     }
 
     /**

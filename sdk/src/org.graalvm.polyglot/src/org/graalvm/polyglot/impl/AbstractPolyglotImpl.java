@@ -447,7 +447,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
                     Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
-                    boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
+                    boolean allowExperimentalOptions, boolean boundEngine, Boolean useIsolatedEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
                     boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler);
 
     public abstract void preInitializeEngine();
@@ -476,6 +476,8 @@ public abstract class AbstractPolyglotImpl {
     public abstract boolean isHostFileSystem(FileSystem fileSystem);
 
     public abstract boolean copyResources(Path targetFolder, String... components) throws IOException;
+
+    public abstract boolean supportsCompilation();
 
     public String getTruffleVersion() {
         return null;

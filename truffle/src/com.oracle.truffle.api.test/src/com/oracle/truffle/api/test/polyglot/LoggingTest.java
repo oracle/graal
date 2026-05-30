@@ -1374,37 +1374,6 @@ public class LoggingTest {
     }
 
     @Test
-    @SuppressWarnings({"unused", "try"})
-    public void testInterpreterOnlyWarning() {
-        String warnInterpreterOnlyValue = System.getProperty("polyglot.engine.WarnInterpreterOnly");
-        if (warnInterpreterOnlyValue != null) {
-            System.getProperties().remove("polyglot.engine.WarnInterpreterOnly");
-        }
-        try {
-            TestHandler handler = new TestHandler();
-            try (Context ctx = Context.newBuilder().logHandler(handler).build()) {
-                boolean hasMessage = hasInterpreterOnlyWarning(handler.getLog());
-                boolean graalRuntime = AbstractPolyglotTest.isGraalRuntime();
-                Assert.assertTrue(graalRuntime != hasMessage);
-            }
-            handler.clear();
-            try (Context ctx = Context.newBuilder().option("engine.WarnInterpreterOnly", "true").logHandler(handler).build()) {
-                boolean hasMessage = hasInterpreterOnlyWarning(handler.getLog());
-                boolean graalRuntime = AbstractPolyglotTest.isGraalRuntime();
-                Assert.assertTrue(graalRuntime != hasMessage);
-            }
-            handler.clear();
-            try (Context ctx = Context.newBuilder().option("engine.WarnInterpreterOnly", "false").logHandler(handler).build()) {
-                Assert.assertFalse(hasInterpreterOnlyWarning(handler.getLog()));
-            }
-        } finally {
-            if (warnInterpreterOnlyValue != null) {
-                System.setProperty("polyglot.engine.WarnInterpreterOnly", warnInterpreterOnlyValue);
-            }
-        }
-    }
-
-    @Test
     public void testGR49739() throws IOException, InterruptedException {
         runInSubprocess(() -> {
             Assume.assumeTrue(GCUtils.isSupported());
@@ -1494,16 +1463,6 @@ public class LoggingTest {
         } finally {
             Files.delete(logFile);
         }
-    }
-
-    private static boolean hasInterpreterOnlyWarning(Iterable<Map.Entry<Level, String>> log) {
-        for (Map.Entry<Level, String> record : log) {
-            String message = record.getValue();
-            if (message.startsWith("The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.")) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @SuppressWarnings("all")

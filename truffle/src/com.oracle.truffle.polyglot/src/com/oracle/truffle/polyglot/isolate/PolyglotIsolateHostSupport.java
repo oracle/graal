@@ -75,6 +75,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -90,6 +91,22 @@ final class PolyglotIsolateHostSupport {
 
     private static final Map<Set<String>, LibraryConfig> libraryCache = new ConcurrentHashMap<>();
     private static volatile Lazy lazy;
+
+    static boolean hasIsolateLibraryForLanguages(Set<String> languageIds) {
+        if (languageIds.isEmpty()) {
+            return false;
+        }
+        for (PolyglotIsolateResource resource : computeAvailablePolyglotIsolateResources()) {
+            if (resource.includedLanguages.containsAll(languageIds)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static Collection<Set<String>> getAvailableIsolatedLanguages() {
+        return resolveAvailablePolyglotIsolates(HomeFinder.getInstance()).stream().map(PolyglotIsolateResource::includedLanguages).toList();
+    }
 
     static Engine buildIsolatedEngine(AbstractPolyglotImpl polyglot, Engine localEngine, String[] isolateLanguages, String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out,
                     OutputStream err, InputStream in, Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,

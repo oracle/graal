@@ -58,7 +58,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 final class PolyglotIsolateAccessor extends Accessor {
 
@@ -85,8 +87,13 @@ final class PolyglotIsolateAccessor extends Accessor {
         }
 
         @Override
+        public boolean isSupported() {
+            return ISOLATE_SUPPORTED;
+        }
+
+        @Override
         public boolean isIsolateHost() {
-            if (!isIsolateSupported()) {
+            if (!ISOLATE_SUPPORTED) {
                 return false;
             }
             return !ImageInfo.inImageRuntimeCode() || (ImageSingletons.contains(PolyglotIsolateHostFeatureEnabled.class) && PolyglotIsolateGuestSupport.isHost());
@@ -94,10 +101,26 @@ final class PolyglotIsolateAccessor extends Accessor {
 
         @Override
         public boolean isIsolateGuest() {
-            if (!isIsolateSupported()) {
+            if (!ISOLATE_SUPPORTED) {
                 return false;
             }
             return PolyglotIsolateGuestSupport.isGuest();
+        }
+
+        @Override
+        public boolean hasIsolateLibraryForLanguages(Set<String> languageIds) {
+            if (!ISOLATE_SUPPORTED) {
+                return false;
+            }
+            return PolyglotIsolateHostSupport.hasIsolateLibraryForLanguages(languageIds);
+        }
+
+        @Override
+        public Collection<Set<String>> getAvailableIsolatedLanguages() {
+            if (!ISOLATE_SUPPORTED) {
+                return Set.of();
+            }
+            return PolyglotIsolateHostSupport.getAvailableIsolatedLanguages();
         }
 
         @Override
@@ -233,7 +256,7 @@ final class PolyglotIsolateAccessor extends Accessor {
         }
 
         private static void checkIsolateSupported() {
-            if (!isIsolateSupported()) {
+            if (!ISOLATE_SUPPORTED) {
                 throw new IllegalStateException("Polyglot isolate support is unavailable because org.graalvm.sdk:nativebridge is not in the dependency graph.");
             }
         }

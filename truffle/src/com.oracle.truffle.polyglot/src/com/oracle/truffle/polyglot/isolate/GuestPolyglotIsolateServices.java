@@ -158,7 +158,7 @@ final class GuestPolyglotIsolateServices implements PolyglotIsolateServices {
                     Object hostLanguageServicePeer) {
         GuestHostLanguage hostLanguage = new GuestHostLanguage((Peer) hostLanguageServicePeer);
         Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, systemPropertiesOptions, useSystemProperties, allowExperimentalOptions, boundEngine,
-                        messageInterceptor, logHandler, hostLanguage, false, false, polyglotHostService, null);
+                        true, messageInterceptor, logHandler, hostLanguage, false, false, polyglotHostService, null);
         Object engineReceiver = polyglot.getAPIAccess().getEngineReceiver(engine);
         setVMOptions(sandboxPolicy, engineReceiver);
         GuestEngine guestEngine = new GuestEngine(engine);
