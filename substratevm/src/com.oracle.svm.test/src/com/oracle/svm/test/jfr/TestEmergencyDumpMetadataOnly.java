@@ -36,6 +36,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
@@ -47,7 +48,7 @@ public class TestEmergencyDumpMetadataOnly extends JfrEmergencyDumpTest {
 
     @Test
     public void test() throws Throwable {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             /* Prevent that the code below is reachable on platforms that don't support JFR. */
             return;
         }

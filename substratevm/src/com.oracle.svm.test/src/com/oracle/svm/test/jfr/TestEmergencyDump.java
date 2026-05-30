@@ -28,6 +28,7 @@ package com.oracle.svm.test.jfr;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 import com.oracle.svm.test.jfr.events.StringEvent;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
@@ -55,7 +56,7 @@ public class TestEmergencyDump extends JfrEmergencyDumpTest {
 
     @Test
     public void test() throws Throwable {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             /* Prevent that the code below is reachable on platforms that don't support JFR. */
             return;
         }

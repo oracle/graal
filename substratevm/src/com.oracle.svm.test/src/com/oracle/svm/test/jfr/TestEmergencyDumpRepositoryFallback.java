@@ -55,7 +55,7 @@ public class TestEmergencyDumpRepositoryFallback extends JfrEmergencyDumpTest {
 
     @Test
     public void testRepositoryEmergencyChunkIsMergedIntoEmergencyDump() throws Throwable {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
         JfrEmergencyDumpSupport support = getEmergencyDumpSupport();

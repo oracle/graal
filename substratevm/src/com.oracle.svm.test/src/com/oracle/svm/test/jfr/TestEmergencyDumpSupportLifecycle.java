@@ -36,7 +36,7 @@ import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;
 public class TestEmergencyDumpSupportLifecycle extends JfrEmergencyDumpTest {
     @Test
     public void testRepeatedInitializeReusesPathBuffer() {
-        if (!HasJfrSupport.get()) {
+        if (!HasJfrSupport.get() || !JfrEmergencyDumpSupport.isPresent()) {
             return;
         }
         JfrEmergencyDumpSupport support = getEmergencyDumpSupport();
