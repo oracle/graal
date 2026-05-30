@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.Arrays;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -51,6 +53,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public class RuntimeMetadataEncoding {
     @UnknownObjectField(availability = AfterCompilation.class) private byte[] encoding;
+    @UnknownObjectField(availability = AfterCompilation.class) private byte[] reflectionMetadataEncoding = new byte[0];
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static RuntimeMetadataEncoding currentLayer() {
@@ -61,8 +64,19 @@ public class RuntimeMetadataEncoding {
         return encoding;
     }
 
+    public byte[] getReflectionMetadataEncoding() {
+        return reflectionMetadataEncoding;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setEncoding(byte[] encoding) {
         this.encoding = encoding;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int addReflectionMetadata(int size) {
+        int offset = reflectionMetadataEncoding.length;
+        reflectionMetadataEncoding = Arrays.copyOf(reflectionMetadataEncoding, offset + size);
+        return offset;
     }
 }

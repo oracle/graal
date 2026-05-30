@@ -133,6 +133,9 @@ public final class DynamicHubCompanion {
     @UnknownObjectField(canBeNull = true, types = ImageReflectionMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
     @Stable ReflectionMetadata reflectionMetadata;
 
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
+    @Stable int reflectionMetadataEncodingIndex;
+
     @UnknownObjectField(canBeNull = true, types = ImageDynamicHubMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
     @Stable DynamicHubMetadata hubMetadata;
 
