@@ -74,14 +74,13 @@ public class ServiceCatalogSupport {
             ConcurrentHashMap<String, List<ServicesCatalog.ServiceProvider>> map = (ConcurrentHashMap<String, List<ServicesCatalog.ServiceProvider>>) original;
             final ConcurrentHashMap<String, List<ServicesCatalog.ServiceProvider>> res = new ConcurrentHashMap<>();
             map.forEach((key, value) -> {
-                List<ServicesCatalog.ServiceProvider> providers;
                 if (omittedServiceProviders.containsKey(key)) {
                     var omittedServices = omittedServiceProviders.get(key);
-                    providers = value.stream().filter(v -> !omittedServices.contains(v.providerName())).collect(Collectors.toList());
+                    List<ServicesCatalog.ServiceProvider> filtered = value.stream().filter(v -> !omittedServices.contains(v.providerName())).collect(Collectors.toList());
+                    res.put(key, filtered);
                 } else {
-                    providers = value;
+                    res.put(key, value);
                 }
-                res.put(key, providers);
             });
             return res;
         });
@@ -100,13 +99,7 @@ public class ServiceCatalogSupport {
         registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "exports");
         registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "opens");
         registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "provides");
-        /*
-         * Do not compact ModuleDescriptor.packages: JCK checks the concrete class used by the JDK
-         * implementation. Also do not compact ModuleDescriptor.uses or Exports/Opens.targets.
-         * Those string-valued descriptor sets can contain type or module names that other features
-         * encode via field value transformers, and only one transformer can be registered per
-         * field.
-         */
+        registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "packages");
     }
 
     @SuppressWarnings("unchecked")
