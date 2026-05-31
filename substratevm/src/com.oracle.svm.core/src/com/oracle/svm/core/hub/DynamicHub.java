@@ -2573,6 +2573,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
             return elements.toArray(generator.apply(elements.size()));
         } else {
+            if (isRuntimeLoaded()) {
+                return elementsAccessor.apply(companion.reflectionMetadata, getLayerId());
+            }
             return elementsAccessor.apply(new ImageReflectionMetadataEncoder.ReflectionMetadataView(reflectionMetadataEncodingIndex()), 0);
         }
     }
