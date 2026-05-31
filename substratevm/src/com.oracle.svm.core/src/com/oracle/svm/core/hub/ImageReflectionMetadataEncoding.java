@@ -35,15 +35,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 
-public final class ImageReflectionMetadataEncoder {
+final class ImageReflectionMetadataEncoding {
     private static final int FIELDS = 1;
     private static final int METHODS = 1 << 1;
     private static final int CONSTRUCTORS = 1 << 2;
@@ -60,7 +58,7 @@ public final class ImageReflectionMetadataEncoder {
     private static final int INLINE_METADATA_MASK = 0x7F << INLINE_METADATA_MASK_SHIFT;
     private static final int INLINE_VALUE_MASK = (1 << INLINE_METADATA_MASK_SHIFT) - 1;
 
-    private ImageReflectionMetadataEncoder() {
+    private ImageReflectionMetadataEncoding() {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -198,47 +196,4 @@ public final class ImageReflectionMetadataEncoder {
         throw new IllegalStateException();
     }
 
-    static final class ReflectionMetadataView implements ReflectionMetadata {
-        @UnknownPrimitiveField(availability = BuildPhaseProvider.CompileQueueFinished.class) //
-        private final int reflectionMetadataEncodingIndex;
-
-        ReflectionMetadataView(int reflectionMetadataEncodingIndex) {
-            this.reflectionMetadataEncodingIndex = reflectionMetadataEncodingIndex;
-        }
-
-        @Override
-        public int getClassFlags() {
-            return ImageReflectionMetadataEncoder.getClassFlags(reflectionMetadataEncodingIndex, 0);
-        }
-
-        @Override
-        public Field[] getDeclaredFields(DynamicHub declaringClass, boolean publicOnly, int layerNum) {
-            return ImageReflectionMetadataEncoder.getDeclaredFields(reflectionMetadataEncodingIndex, declaringClass, publicOnly, layerNum);
-        }
-
-        @Override
-        public Method[] getDeclaredMethods(DynamicHub declaringClass, boolean publicOnly, int layerNum) {
-            return ImageReflectionMetadataEncoder.getDeclaredMethods(reflectionMetadataEncodingIndex, declaringClass, publicOnly, layerNum);
-        }
-
-        @Override
-        public Constructor<?>[] getDeclaredConstructors(DynamicHub declaringClass, boolean publicOnly, int layerNum) {
-            return ImageReflectionMetadataEncoder.getDeclaredConstructors(reflectionMetadataEncodingIndex, declaringClass, publicOnly, layerNum);
-        }
-
-        @Override
-        public RecordComponent[] getRecordComponents(DynamicHub dynamicHub, int layerNum) {
-            return ImageReflectionMetadataEncoder.getRecordComponents(reflectionMetadataEncodingIndex, dynamicHub, layerNum);
-        }
-
-        @Override
-        public RuntimeDynamicAccessMetadata getDynamicAccessMetadata(DynamicHub dynamicHub, int layerNum) {
-            return ImageReflectionMetadataEncoder.getDynamicAccessMetadata(reflectionMetadataEncodingIndex, layerNum);
-        }
-
-        @Override
-        public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(DynamicHub dynamicHub, int layerNum) {
-            return ImageReflectionMetadataEncoder.getUnsafeAllocationMetadata(reflectionMetadataEncodingIndex, layerNum);
-        }
-    }
 }
