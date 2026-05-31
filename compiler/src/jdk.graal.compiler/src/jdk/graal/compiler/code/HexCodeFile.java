@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -290,7 +290,7 @@ public class HexCodeFile {
         ps.printf("HexCode %x %s %s%n", startAddress, HexCodeFile.hexCodeString(code), SECTION_DELIM);
 
         for (JumpTable table : jumpTables) {
-            ps.printf("JumpTable %d %d %d %d %s%n", table.position, table.entryFormat, table.low, table.high, SECTION_DELIM);
+            ps.printf("JumpTable %d %s %d %d %s%n", table.position, table.entryFormat, table.low, table.high, SECTION_DELIM);
         }
 
         for (LookupTable table : lookupTables) {
