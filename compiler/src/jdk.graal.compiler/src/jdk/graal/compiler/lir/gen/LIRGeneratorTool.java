@@ -746,7 +746,32 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
+    default Variable emitDilithiumAlmostNtt(Value coeffs, Value zetas) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitCRC32CUpdateBytes(EnumSet<?> runtimeCheckedCPUFeatures, Value crc, Value bufferAddress, Value length) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitDilithiumAlmostInverseNtt(Value coeffs, Value zetas) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitDilithiumNttMult(Value product, Value coeffs1, Value coeffs2) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitDilithiumMontMulByConstant(Value coeffs, Value constant) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitDilithiumDecomposePoly(Value input, Value lowPart, Value highPart, Value twoGamma2, Value multiplier) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

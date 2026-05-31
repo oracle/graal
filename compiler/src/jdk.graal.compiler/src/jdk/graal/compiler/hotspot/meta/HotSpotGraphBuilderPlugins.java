@@ -26,11 +26,6 @@ package jdk.graal.compiler.hotspot.meta;
 
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_PARTITION;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.ARRAY_SORT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_INVERSE_NTT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_ALMOST_NTT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_DECOMPOSE_POLY;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_MONT_MUL_BY_CONSTANT;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.DILITHIUM_NTT_MULT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.DOUBLE_KECCAK;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_ASSIGN;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.INTPOLY_MONTGOMERYMULT_P256;
@@ -1154,117 +1149,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerMLPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
-        Registration r = new Registration(plugins, "sun.security.provider.ML_DSA");
-        r.register(new ConditionalInvocationPlugin("implDilithiumAlmostNtt", int[].class, int[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode coeffs, ValueNode zetas) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode nonNullCoeffs = b.nullCheckedValue(coeffs);
-                    ValueNode nonNullZetas = b.nullCheckedValue(zetas);
-
-                    ValueNode coeffsStart = helper.arrayStart(nonNullCoeffs, JavaKind.Int);
-                    ValueNode zetasStart = helper.arrayStart(nonNullZetas, JavaKind.Int);
-
-                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_ALMOST_NTT, coeffsStart, zetasStart);
-                    b.addPush(JavaKind.Int, call);
-                    return true;
-                }
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.stubDilithiumAlmostNtt != 0L;
-            }
-        });
-        r.register(new ConditionalInvocationPlugin("implDilithiumAlmostInverseNtt", int[].class, int[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode coeffs, ValueNode zetas) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode nonNullCoeffs = b.nullCheckedValue(coeffs);
-                    ValueNode nonNullZetas = b.nullCheckedValue(zetas);
-
-                    ValueNode coeffsStart = helper.arrayStart(nonNullCoeffs, JavaKind.Int);
-                    ValueNode zetasStart = helper.arrayStart(nonNullZetas, JavaKind.Int);
-
-                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_ALMOST_INVERSE_NTT, coeffsStart, zetasStart);
-                    b.addPush(JavaKind.Int, call);
-                    return true;
-                }
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.stubDilithiumAlmostInverseNtt != 0L;
-            }
-        });
-        r.register(new ConditionalInvocationPlugin("implDilithiumNttMult", int[].class, int[].class, int[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode product, ValueNode coeffs1, ValueNode coeffs2) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode nonNullProduct = b.nullCheckedValue(product);
-                    ValueNode nonNullCoeffs1 = b.nullCheckedValue(coeffs1);
-                    ValueNode nonNullCoeffs2 = b.nullCheckedValue(coeffs2);
-
-                    ValueNode productStart = helper.arrayStart(nonNullProduct, JavaKind.Int);
-                    ValueNode coeffs1Start = helper.arrayStart(nonNullCoeffs1, JavaKind.Int);
-                    ValueNode coeffs2Start = helper.arrayStart(nonNullCoeffs2, JavaKind.Int);
-
-                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_NTT_MULT, productStart, coeffs1Start, coeffs2Start);
-                    b.addPush(JavaKind.Int, call);
-                    return true;
-                }
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.stubDilithiumNttMult != 0L;
-            }
-        });
-        r.register(new ConditionalInvocationPlugin("implDilithiumMontMulByConstant", int[].class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode coeffs, ValueNode constant) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode nonNullCoeffs = b.nullCheckedValue(coeffs);
-
-                    ValueNode coeffsStart = helper.arrayStart(nonNullCoeffs, JavaKind.Int);
-
-                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_MONT_MUL_BY_CONSTANT, coeffsStart, constant);
-                    b.addPush(JavaKind.Int, call);
-                    return true;
-                }
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.stubDilithiumMontMulByConstant != 0L;
-            }
-        });
-        r.register(new ConditionalInvocationPlugin("implDilithiumDecomposePoly", int[].class, int[].class, int[].class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input, ValueNode lowPart, ValueNode highPart, ValueNode twoGamma2,
-                            ValueNode multiplier) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode nonNullInput = b.nullCheckedValue(input);
-                    ValueNode nonNullLowPart = b.nullCheckedValue(lowPart);
-                    ValueNode nonNullHighPart = b.nullCheckedValue(highPart);
-
-                    ValueNode inputStart = helper.arrayStart(nonNullInput, JavaKind.Int);
-                    ValueNode lowPartStart = helper.arrayStart(nonNullLowPart, JavaKind.Int);
-                    ValueNode highPartStart = helper.arrayStart(nonNullHighPart, JavaKind.Int);
-
-                    ForeignCallNode call = new ForeignCallNode(DILITHIUM_DECOMPOSE_POLY, inputStart, lowPartStart, highPartStart, twoGamma2, multiplier);
-                    b.addPush(JavaKind.Int, call);
-                    return true;
-                }
-            }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return config.stubDilithiumDecomposePoly != 0L;
-            }
-        });
-
-        r = new Registration(plugins, "com.sun.crypto.provider.ML_KEM");
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.ML_KEM");
         r.register(new ConditionalInvocationPlugin("implKyberNtt", short[].class, short[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode poly, ValueNode zetas) {

@@ -56,6 +56,7 @@ import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
@@ -64,9 +65,15 @@ import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.ChaCha20Node;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostInverseNttNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostNttNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumDecomposePolyNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumMontMulByConstantNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumNttMultNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
@@ -549,11 +556,8 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     @Test
     public void testMLDSASigVer() {
         Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDoubleKeccak != 0L);
-        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumAlmostNtt != 0L);
-        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumAlmostInverseNtt != 0L);
-        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumNttMult != 0L);
-        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumMontMulByConstant != 0L);
-        Assume.assumeTrue("ML_DSA not supported", runtime().getVMConfig().stubDilithiumDecomposePoly != 0L);
+        Assume.assumeTrue("ML_DSA not supported", DilithiumNode.isSupported(getArchitecture()));
+        assertMLDSAGraalNodeInstallations();
         // ML-DSA-44
         testWithInstalledIntrinsic("sun.security.provider.SHA3Parallel", "doubleKeccak", "testSignVer", "ML-DSA-44");
         testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumAlmostNtt", "testSignVer", "ML-DSA-44");
@@ -575,6 +579,40 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumNttMult", "testSignVer", "ML-DSA-87");
         testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumMontMulByConstant", "testSignVer", "ML-DSA-87");
         testWithInstalledIntrinsic("sun.security.provider.ML_DSA", "implDilithiumDecomposePoly", "testSignVer", "ML-DSA-87");
+    }
+
+    private void assertMLDSAGraalNodeInstallations() {
+        try {
+            assertNodeInstalledWithoutForeignCall("implDilithiumAlmostNtt", DilithiumAlmostNttNode.class, int[].class, int[].class);
+            assertNodeInstalledWithoutForeignCall("implDilithiumAlmostInverseNtt", DilithiumAlmostInverseNttNode.class, int[].class, int[].class);
+            assertNodeInstalledWithoutForeignCall("implDilithiumNttMult", DilithiumNttMultNode.class, int[].class, int[].class, int[].class);
+            assertNodeInstalledWithoutForeignCall("implDilithiumMontMulByConstant", DilithiumMontMulByConstantNode.class, int[].class, int.class);
+            assertNodeInstalledWithoutForeignCall("implDilithiumDecomposePoly", DilithiumDecomposePolyNode.class,
+                            int[].class, int[].class, int[].class, int.class, int.class);
+        } catch (ClassNotFoundException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private void assertNodeInstalledWithoutForeignCall(String methodName, Class<? extends Node> expectedNodeClass, Class<?>... parameterTypes) throws ClassNotFoundException {
+        ResolvedJavaMethod method = getResolvedJavaMethod("sun.security.provider.ML_DSA", methodName, parameterTypes);
+        var compilationId = runtime().getHostBackend().getCompilationIdentifier(method);
+        StructuredGraph graph = getIntrinsicGraph(method, compilationId, getDebugContext(getInitialOptions()), StructuredGraph.AllowAssumptions.YES, null);
+        assertTrue("missing intrinsic graph for " + methodName, graph != null);
+        boolean hasExpectedNode = graph.getNodes().filter(expectedNodeClass).isNotEmpty();
+        if (!hasExpectedNode) {
+            StringBuilder nodeKinds = new StringBuilder();
+            for (Node node : graph.getNodes()) {
+                if (!nodeKinds.isEmpty()) {
+                    nodeKinds.append(", ");
+                }
+                nodeKinds.append(node.getClass().getSimpleName());
+            }
+            throw new AssertionError("expected Dilithium node " + expectedNodeClass.getSimpleName() + " for " + methodName + "; nodes=" + nodeKinds);
+        }
+        for (ForeignCallNode node : graph.getNodes().filter(ForeignCallNode.class)) {
+            throw new AssertionError("unexpected ForeignCallNode path for " + methodName + ": " + node.getDescriptor());
+        }
     }
 
     public boolean testMLKEMEncapsulateDecapsulate(String algorithm) throws GeneralSecurityException {

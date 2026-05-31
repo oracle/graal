@@ -684,6 +684,7 @@ public abstract class AArch64ASIMDAssembler {
          * Advanced SIMD three same (C4-366) & Advanced SIMD scalar three same (C4-349).
          */
         /* size xx */
+        SHSUB(0b00100 << 11),
         CMGT(0b00110 << 11),
         CMGE(0b00111 << 11),
         SSHL(0b01000 << 11),
@@ -694,6 +695,7 @@ public abstract class AArch64ASIMDAssembler {
         CMTST(0b10001 << 11),
         MLA(0b10010 << 11),
         MUL(0b10011 << 11),
+        SQDMULH(0b10110 << 11),
         ADDP(0b10111 << 11),
         /* size 0x */
         FMLA(0b11001 << 11),
@@ -3100,6 +3102,27 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.257 Signed Halving Subtract.<br>
+     *
+     * <code>for i in 0..n-1 do dst[i] = (src1[i] - src2[i]) >> 1</code>
+     *
+     * @param size register size.
+     * @param eSize element size. Cannot be DoubleWord.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void shsubVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert eSize != ElementSize.DoubleWord : eSize;
+
+        threeSameEncoding(ASIMDInstruction.SHSUB, size, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
      * C7.2.258 Shift Left and Insert (immediate).<br>
      *
      * This instruction reads each vector element in the source SIMD&FP register, left shifts each
@@ -3258,6 +3281,27 @@ public abstract class AArch64ASIMDAssembler {
         assert src.getRegisterCategory().equals(SIMD) : src;
 
         copyEncoding(ASIMDInstruction.SMOV, dstESize == ElementSize.DoubleWord, srcESize, dst, src, index);
+    }
+
+    /**
+     * C7.2.289 Signed saturating doubling multiply returning high half.<br>
+     *
+     * <code>for i in 0..n-1 do dst[i] = sat_high_half(2 * src1[i] * src2[i])</code>
+     *
+     * @param size register size.
+     * @param eSize element size. Must be HalfWord or Word.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sqdmulhVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert eSize == ElementSize.HalfWord || eSize == ElementSize.Word : eSize;
+
+        threeSameEncoding(ASIMDInstruction.SQDMULH, size, elemSizeXX(eSize), dst, src1, src2);
     }
 
     /**

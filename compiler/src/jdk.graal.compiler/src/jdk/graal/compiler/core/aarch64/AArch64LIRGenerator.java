@@ -91,6 +91,11 @@ import jdk.graal.compiler.lir.aarch64.AArch64CRC32CUpdateBytesOp;
 import jdk.graal.compiler.lir.aarch64.AArch64CRC32UpdateBytesOp;
 import jdk.graal.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ChaCha20BlockOp;
+import jdk.graal.compiler.lir.aarch64.AArch64DilithiumAlmostInverseNttOp;
+import jdk.graal.compiler.lir.aarch64.AArch64DilithiumAlmostNttOp;
+import jdk.graal.compiler.lir.aarch64.AArch64DilithiumDecomposePolyOp;
+import jdk.graal.compiler.lir.aarch64.AArch64DilithiumMontMulByConstantOp;
+import jdk.graal.compiler.lir.aarch64.AArch64DilithiumNttMultOp;
 import jdk.graal.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import jdk.graal.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
 import jdk.graal.compiler.lir.aarch64.AArch64GaloisCounterModeAESCryptOp;
@@ -1026,6 +1031,89 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         emitMove(rLen, length);
         append(new AArch64CRC32CUpdateBytesOp(rResult, rCrc, rBuf, rLen));
         Variable result = newVariable(crc.getValueKind());
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitDilithiumAlmostNtt(Value coeffs, Value zetas) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
+        RegisterValue rCoeffs = AArch64.r0.asValue(coeffs.getValueKind());
+        RegisterValue rZetas = AArch64.r1.asValue(zetas.getValueKind());
+
+        emitMove(rCoeffs, coeffs);
+        emitMove(rZetas, zetas);
+
+        append(new AArch64DilithiumAlmostNttOp(rResult, rCoeffs, rZetas));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitDilithiumAlmostInverseNtt(Value coeffs, Value zetas) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
+        RegisterValue rCoeffs = AArch64.r0.asValue(coeffs.getValueKind());
+        RegisterValue rZetas = AArch64.r1.asValue(zetas.getValueKind());
+
+        emitMove(rCoeffs, coeffs);
+        emitMove(rZetas, zetas);
+
+        append(new AArch64DilithiumAlmostInverseNttOp(rResult, rCoeffs, rZetas));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitDilithiumNttMult(Value product, Value coeffs1, Value coeffs2) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
+        RegisterValue rProduct = AArch64.r0.asValue(product.getValueKind());
+        RegisterValue rCoeffs1 = AArch64.r1.asValue(coeffs1.getValueKind());
+        RegisterValue rCoeffs2 = AArch64.r2.asValue(coeffs2.getValueKind());
+
+        emitMove(rProduct, product);
+        emitMove(rCoeffs1, coeffs1);
+        emitMove(rCoeffs2, coeffs2);
+
+        append(new AArch64DilithiumNttMultOp(rResult, rProduct, rCoeffs1, rCoeffs2));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitDilithiumMontMulByConstant(Value coeffs, Value constant) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
+        RegisterValue rCoeffs = AArch64.r0.asValue(coeffs.getValueKind());
+        RegisterValue rConstant = AArch64.r1.asValue(constant.getValueKind());
+
+        emitMove(rCoeffs, coeffs);
+        emitMove(rConstant, constant);
+
+        append(new AArch64DilithiumMontMulByConstantOp(rResult, rCoeffs, rConstant));
+        emitMove(result, rResult);
+        return result;
+    }
+
+    @Override
+    public Variable emitDilithiumDecomposePoly(Value input, Value lowPart, Value highPart, Value twoGamma2, Value multiplier) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
+        RegisterValue rInput = AArch64.r0.asValue(input.getValueKind());
+        RegisterValue rLowPart = AArch64.r1.asValue(lowPart.getValueKind());
+        RegisterValue rHighPart = AArch64.r2.asValue(highPart.getValueKind());
+        RegisterValue rTwoGamma2 = AArch64.r3.asValue(twoGamma2.getValueKind());
+        RegisterValue rMultiplier = AArch64.r4.asValue(multiplier.getValueKind());
+
+        emitMove(rInput, input);
+        emitMove(rLowPart, lowPart);
+        emitMove(rHighPart, highPart);
+        emitMove(rTwoGamma2, twoGamma2);
+        emitMove(rMultiplier, multiplier);
+
+        append(new AArch64DilithiumDecomposePolyOp(rResult, rInput, rLowPart, rHighPart, rTwoGamma2, rMultiplier));
         emitMove(result, rResult);
         return result;
     }

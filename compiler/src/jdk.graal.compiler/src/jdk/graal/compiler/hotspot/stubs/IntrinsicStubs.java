@@ -52,6 +52,11 @@ import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32CUpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CRC32UpdateBytesNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostInverseNttNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumAlmostNttNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumDecomposePolyNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumMontMulByConstantNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode.DilithiumNttMultNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
@@ -93,6 +98,11 @@ import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
                 CountPositivesNode.class,
                 CRC32CUpdateBytesNode.class,
                 CRC32UpdateBytesNode.class,
+                DilithiumAlmostInverseNttNode.class,
+                DilithiumAlmostNttNode.class,
+                DilithiumDecomposePolyNode.class,
+                DilithiumMontMulByConstantNode.class,
+                DilithiumNttMultNode.class,
                 ElectronicCodeBookAESNode.class,
                 EncodeArrayNode.class,
                 GaloisCounterModeAESNode.class,
