@@ -428,6 +428,11 @@ public class CremaSupportImpl implements CremaSupport {
         thisType.setAfterFieldsOffset(fieldLayout.afterInstanceFieldsOffset());
         thisType.setDeclaredFields(declaredFields);
 
+        Class<?> dynamicNestHost = CremaResolvedObjectType.dynamicNestHost(info);
+        if (dynamicNestHost != null) {
+            thisType.setNestHost((InterpreterResolvedObjectType) DynamicHub.fromClass(dynamicNestHost).getInterpreterType());
+        }
+
         // Done
         hub.setInterpreterType(thisType);
 

@@ -29,6 +29,7 @@ import java.util.List;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
@@ -73,7 +74,11 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     private final Object[] referenceStatics;
 
     // GR-70720: Allow AOT types as nest host.
-    private CremaResolvedObjectType host;
+    private InterpreterResolvedObjectType host;
+
+    public static Class<?> dynamicNestHost(ClassDefinitionInfo info) {
+        return info.dynamicNest;
+    }
 
     public CremaResolvedObjectType(ParserKlass parserKlass, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces,
@@ -263,11 +268,16 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    public CremaResolvedObjectType getNestHost() {
+    public InterpreterResolvedObjectType getNestHost() {
         if (host == null) {
             host = resolveHost();
         }
         return host;
+    }
+
+    public void setNestHost(InterpreterResolvedObjectType nestHost) {
+        assert host == null;
+        host = nestHost;
     }
 
     @Override
@@ -276,14 +286,17 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
          * This method is not called for VM operations, only for reflection. No need to cache the
          * result as this is a rare operation.
          */
-        CremaResolvedObjectType nestHost = getNestHost();
+        InterpreterResolvedObjectType nestHost = getNestHost();
         if (this != nestHost) {
-            return resolveNestMembers(nestHost);
+            if (nestHost instanceof CremaResolvedObjectType cremaNestHost) {
+                return resolveNestMembers(cremaNestHost);
+            }
+            return new InterpreterResolvedObjectType[]{nestHost, this};
         }
         return resolveNestMembers(this);
     }
 
-    private CremaResolvedObjectType resolveHost() {
+    private InterpreterResolvedObjectType resolveHost() {
         NestHostAttribute nestHostAttribute = getAttribute(NestHostAttribute.NAME, NestHostAttribute.class);
         if (nestHostAttribute == null) {
             return this;
