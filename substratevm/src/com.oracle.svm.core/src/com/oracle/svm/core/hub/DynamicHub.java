@@ -1254,6 +1254,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 classAccessFlags |= reflectionMetadata != null ? (reflectionMetadata.classFlags & CLASS_ACCESS_FLAGS_MASK) : companion.modifiers;
             }
             return classAccessFlags;
+        } else if (isRuntimeLoaded()) {
+            return getClassAccessFlags(companion.reflectionMetadata);
         } else {
             return getClassAccessFlags(reflectionMetadataEncodingIndex());
         }
