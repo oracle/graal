@@ -73,7 +73,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     private final byte[] primitiveStatics;
     private final Object[] referenceStatics;
 
-    // GR-70720: Allow AOT types as nest host.
+    // The nest host can be either parsed from classfile attributes or supplied dynamically for hidden classes.
     private InterpreterResolvedObjectType host;
 
     public static Class<?> dynamicNestHost(ClassDefinitionInfo info) {
@@ -291,7 +291,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
             if (nestHost instanceof CremaResolvedObjectType cremaNestHost) {
                 return resolveNestMembers(cremaNestHost);
             }
-            return new InterpreterResolvedObjectType[]{nestHost, this};
+            return new InterpreterResolvedObjectType[]{nestHost};
         }
         return resolveNestMembers(this);
     }
