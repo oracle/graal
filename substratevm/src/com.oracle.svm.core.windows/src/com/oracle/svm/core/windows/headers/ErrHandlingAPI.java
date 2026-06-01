@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,9 @@ public class ErrHandlingAPI {
     @CFunction(transition = NO_TRANSITION)
     public static native CFunctionPointer SetUnhandledExceptionFilter(CFunctionPointer handler);
 
+    @CFunction
+    public static native void RaiseException(int dwExceptionCode, int dwExceptionFlags, int nNumberOfArguments, CLongPointer lpArguments);
+
     @CConstant
     public static native int EXCEPTION_CONTINUE_SEARCH();
 
@@ -88,6 +91,9 @@ public class ErrHandlingAPI {
 
     @CConstant
     public static native int EXCEPTION_IN_PAGE_ERROR();
+
+    @CConstant
+    public static native int EXCEPTION_STACK_OVERFLOW();
 
     /** Contains processor-specific register data. */
     @CStruct
