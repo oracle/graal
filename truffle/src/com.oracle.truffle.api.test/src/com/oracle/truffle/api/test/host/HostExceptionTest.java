@@ -682,6 +682,53 @@ public class HostExceptionTest {
         assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
     }
 
+    @Test
+    public void testHostExceptionStackTraceElementWithLineZeroSourceLocation() {
+        @SuppressWarnings("serial")
+        final class LineZeroStackTraceException extends RuntimeException {
+            @Override
+            public StackTraceElement[] getStackTrace() {
+                return new StackTraceElement[]{new StackTraceElement(HostExceptionTest.class.getName(), "lineZeroHostFrame", "HostExceptionTest.java", 0)};
+            }
+        }
+
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        expectedException = LineZeroStackTraceException.class;
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
+        Runnable thrower = () -> {
+            throw new LineZeroStackTraceException();
+        };
+
+        customExceptionVerifier = (hostEx) -> {
+            assertTrue(INTEROP.isException(hostEx));
+            try {
+                Object stackTrace = INTEROP.getExceptionStackTrace(hostEx);
+                long length = INTEROP.getArraySize(stackTrace);
+                boolean foundLineZeroHostFrame = false;
+                for (long i = 0; i < length; i++) {
+                    Object stackTraceElement = INTEROP.readArrayElement(stackTrace, i);
+                    if (!INTEROP.hasDeclaringMetaObject(stackTraceElement) || !INTEROP.hasExecutableName(stackTraceElement)) {
+                        continue;
+                    }
+                    String className = INTEROP.asString(INTEROP.getMetaQualifiedName(INTEROP.getDeclaringMetaObject(stackTraceElement)));
+                    String methodName = INTEROP.asString(INTEROP.getExecutableName(stackTraceElement));
+                    if (!HostExceptionTest.class.getName().equals(className) || !"lineZeroHostFrame".equals(methodName)) {
+                        continue;
+                    }
+                    foundLineZeroHostFrame = true;
+                    assertTrue(INTEROP.hasSourceLocation(stackTraceElement));
+                    assertNotNull(INTEROP.getSourceLocation(stackTraceElement));
+                    break;
+                }
+                assertTrue("Expected a host stack trace element with line number 0", foundLineZeroHostFrame);
+            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw new AssertionError(e);
+            }
+        };
+
+        assertHostException(catcher.execute(thrower), LineZeroStackTraceException.class);
+    }
+
     private static Value hostApply(Value[] args) {
         return args[0].execute((Object[]) Arrays.copyOfRange(args, 1, args.length));
     }
