@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -36,6 +37,7 @@ import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
@@ -43,6 +45,7 @@ import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
@@ -162,6 +165,7 @@ final class WindowsVMMutex extends VMMutex {
 }
 
 final class WindowsVMCondition extends VMCondition {
+    private static final long MAX_FINITE_DWORD = (1L << 32) - 2;
 
     private final CIsolateData<Process.CONDITION_VARIABLE> structPointer;
 
@@ -220,49 +224,65 @@ final class WindowsVMCondition extends VMCondition {
 
     @Override
     public long block(long waitNanos) {
-        assert waitNanos >= 0;
-        long startTimeInNanos = System.nanoTime();
-        long endTimeInNanos = startTimeInNanos + waitNanos;
-        int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
-
-        mutex.clearCurrentThreadOwner();
-        final int timedwaitResult = Process.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
-        mutex.setOwnerToCurrentThread();
-
-        /* If the timed wait timed out, then I am done blocking. */
-        if (timedwaitResult == 0 && WinBase.GetLastError() == WinBase.ERROR_TIMEOUT()) {
+        if (waitNanos <= 0) {
             return 0L;
         }
 
-        /* Check for other errors from the timed wait. */
-        WindowsVMLockSupport.checkResult(timedwaitResult, "SleepConditionVariableCS");
-
-        /* Return the remaining waiting time. */
-        return endTimeInNanos - System.nanoTime();
+        mutex.clearCurrentThreadOwner();
+        try {
+            long startNanos = System.nanoTime();
+            long remainingNanos;
+            while ((remainingNanos = remainingNanos(waitNanos, startNanos)) > 0) {
+                long waitMillis = toConditionTimeoutMillis(TimeUtils.roundUpNanosToMillis(remainingNanos));
+                int timedWaitResult = Process.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), (int) waitMillis);
+                if (timedWaitResult != 0) {
+                    return remainingNanos(waitNanos, startNanos);
+                } else if (WinBase.GetLastError() != WinBase.ERROR_TIMEOUT()) {
+                    WindowsVMLockSupport.fatalError("SleepConditionVariableCS");
+                }
+            }
+            return 0L;
+        } finally {
+            mutex.setOwnerToCurrentThread();
+        }
     }
 
     @Override
     @Uninterruptible(reason = "Should only be called if the thread did an explicit transition to native earlier.", callerMustBe = true)
     public long blockNoTransition(long waitNanos) {
-        assert waitNanos >= 0;
-        long startTimeInNanos = System.nanoTime();
-        long endTimeInNanos = startTimeInNanos + waitNanos;
-        int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
-
-        mutex.clearCurrentThreadOwner();
-        final int timedwaitResult = Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
-        mutex.setOwnerToCurrentThread();
-
-        /* If the timed wait timed out, then I am done blocking. */
-        if (timedwaitResult == 0 && WinBase.GetLastError() == WinBase.ERROR_TIMEOUT()) {
+        if (waitNanos <= 0) {
             return 0L;
         }
 
-        /* Check for other errors from the timed wait. */
-        WindowsVMLockSupport.checkResult(timedwaitResult, "SleepConditionVariableCSNoTrans");
+        mutex.clearCurrentThreadOwner();
+        try {
+            long startNanos = System.nanoTime();
+            long remainingNanos;
+            while ((remainingNanos = remainingNanos(waitNanos, startNanos)) > 0) {
+                long waitMillis = toConditionTimeoutMillis(TimeUtils.roundUpNanosToMillis(remainingNanos));
+                int timedWaitResult = Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), (int) waitMillis);
+                if (timedWaitResult != 0) {
+                    return remainingNanos(waitNanos, startNanos);
+                } else if (WinBase.GetLastError() != WinBase.ERROR_TIMEOUT()) {
+                    WindowsVMLockSupport.fatalError("SleepConditionVariableCSNoTrans");
+                }
+            }
+            return 0L;
+        } finally {
+            mutex.setOwnerToCurrentThread();
+        }
+    }
 
-        /* Return the remaining waiting time. */
-        return endTimeInNanos - System.nanoTime();
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static long toConditionTimeoutMillis(long waitMillis) {
+        assert waitMillis > 0;
+        return UninterruptibleUtils.Math.min(waitMillis, MAX_FINITE_DWORD);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static long remainingNanos(long waitNanos, long startNanos) {
+        long actual = TimeUtils.nanoSecondsSince(startNanos);
+        return UninterruptibleUtils.Math.max(0, waitNanos - actual);
     }
 
     @Override
