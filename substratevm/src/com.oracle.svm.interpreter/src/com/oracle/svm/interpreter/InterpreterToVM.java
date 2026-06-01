@@ -797,7 +797,9 @@ public final class InterpreterToVM {
         } else {
             idx = vTableIndex + objectType.determineITableStartingIndex(seedType);
         }
-        VMError.guarantee(idx >= 0 && idx < vTable.length, MetadataUtil.fmt("Invalid vtable index: %s, for vtable length: %s, and receiver type: %s", idx, vTable.length, objectType));
+        if (idx < 0 || idx >= vTable.length) {
+            throw VMError.shouldNotReachHere(MetadataUtil.fmt("Invalid vtable index: %s, for vtable length: %s, and receiver type: %s", idx, vTable.length, objectType));
+        }
         return vTable[idx];
     }
 
@@ -856,10 +858,9 @@ public final class InterpreterToVM {
             ensureClassInitialized(seedMethod.getDeclaringClass());
             return seedMethod;
         } else if (isVirtual && seedMethod.hasDispatchIndex()) {
-
             InterpreterUtil.guarantee(
                             // Ensure itable lookup happens only for interface method seeds.
-                            callKind == CallKind.ITABLE_LOOKUP ? seedMethod.getDeclaringClass().isInterface() : true,
+                            callKind != CallKind.ITABLE_LOOKUP || seedMethod.getDeclaringClass().isInterface(),
                             "Wrong call kind (%s) for the given method: %s", callKind.toString(), seedMethod);
             Class<?> receiverClass = calleeArgs[0].getClass();
             if (receiverClass.isArray()) {

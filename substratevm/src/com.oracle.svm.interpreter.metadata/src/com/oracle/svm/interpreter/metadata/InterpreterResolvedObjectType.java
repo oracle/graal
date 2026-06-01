@@ -158,6 +158,8 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
      * <p>
      * Unlike for concrete classes, such failing methods do appear in the declared methods of
      * interfaces, such that they can be found and selected for {@code INVOKESPECIAL} call sites.
+     * These entries are however marked as {@link InterpreterResolvedJavaMethod#isInternal()
+     * internal}, such that they cannot be reflected upon.
      */
     public static class VTableHolder extends AbstractList<InterpreterResolvedJavaMethod> {
         public static final int UNKNOWN = -1;
