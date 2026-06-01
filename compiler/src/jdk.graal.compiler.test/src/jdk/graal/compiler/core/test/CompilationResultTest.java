@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -31,6 +32,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.CompilationResult.CodeComment;
 import jdk.graal.compiler.code.CompilationResult.CodeMark;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
+import jdk.graal.compiler.code.HexCodeFile;
 import org.junit.Test;
 
 public class CompilationResultTest {
@@ -59,6 +61,22 @@ public class CompilationResultTest {
         assertFalse(table.equals(tableDifferent));
         assertFalse(table.equals(this));
         assertTrue(table.toString().length() > 0); // test for NPE
+    }
+
+    @Test
+    public void testHexCodeFileJumpTableRoundTrip() {
+        HexCodeFile hcf = new HexCodeFile(new byte[8], 0, "amd64", 64);
+        hcf.jumpTables.add(new HexCodeFile.JumpTable(0, 0, 8, HexCodeFile.JumpTable.EntryFormat.OFFSET));
+        String text = hcf.toString();
+        assertTrue(text.contains("JumpTable 0 OFFSET 0 8"));
+
+        HexCodeFile parsed = HexCodeFile.parse(text, 0, text, "test");
+        assertEquals(1, parsed.jumpTables.size());
+        HexCodeFile.JumpTable table = parsed.jumpTables.get(0);
+        assertEquals(0, table.position);
+        assertEquals(0, table.low);
+        assertEquals(8, table.high);
+        assertEquals(HexCodeFile.JumpTable.EntryFormat.OFFSET, table.entryFormat);
     }
 
     @SuppressWarnings("unlikely-arg-type")
