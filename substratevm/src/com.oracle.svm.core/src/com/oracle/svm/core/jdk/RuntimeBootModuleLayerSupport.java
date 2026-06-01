@@ -30,13 +30,16 @@ import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleDescriptor.Exports;
 import java.lang.module.ModuleDescriptor.Opens;
+import java.lang.module.ModuleDescriptor.Requires;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolutionException;
 import java.lang.module.ResolvedModule;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -46,11 +49,9 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -58,11 +59,12 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
-/// Registers the startup hook that augments the runtime boot layer for `libjvm` launches.
+/// Registers the startup hook that augments the runtime boot layer when standard
+/// runtime Java option parsing can preserve module options.
 ///
 /// This feature is only enabled for the first image build. The actual augmentation work happens
-/// later, in [RuntimeBootModuleLayerSupport#initialize], once the runtime launcher
-/// options are available.
+/// later, in [RuntimeBootModuleLayerSupport#initialize], once the preserved runtime
+/// module options are available.
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 final class RuntimeBootModuleLayerFeature implements InternalFeature {
@@ -73,15 +75,14 @@ final class RuntimeBootModuleLayerFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        // GR-74805 will remove this guard
-        if (ImageSingletons.contains(LibJVMMainMethodWrappers.class)) {
+        if (!SubstrateOptions.LegacyJavaOptionMode.getValue()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new RuntimeBootModuleLayerStartupHook());
         }
     }
 }
 
-/// Startup hook that runs the boot-layer augmentation before user `libjvm` code starts loading
-/// classes from runtime-resolved modules.
+/// Startup hook that runs the boot-layer augmentation before user code starts loading classes
+/// from runtime-resolved modules.
 final class RuntimeBootModuleLayerStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
@@ -89,10 +90,10 @@ final class RuntimeBootModuleLayerStartupHook implements RuntimeSupport.Hook {
     }
 }
 
-/// Augments the existing runtime boot layer in-place with modules provided via `libjvm` launcher
-/// options.
+/// Augments the existing runtime boot layer in-place with modules requested via runtime
+/// module options.
 ///
-/// The key constraint is that [ModuleLayer#boot] must keep returning the original boot-layer
+/// The key constraint is that [ModuleLayer#boot] must keep returning the build-time boot-layer
 /// object. To satisfy that, this support:
 ///
 /// - Resolves runtime module roots against the build-time boot configuration,
@@ -138,7 +139,7 @@ public final class RuntimeBootModuleLayerSupport {
     private RuntimeBootModuleLayerSupport() {
     }
 
-    /// Resolves runtime module launcher options and folds any newly resolved modules into the
+    /// Resolves runtime module options and folds any newly resolved modules into the
     /// existing boot layer.
     ///
     /// The flow is:
@@ -163,25 +164,28 @@ public final class RuntimeBootModuleLayerSupport {
         }
 
         /*
-         * Resolve the runtime launcher options against the existing boot configuration, so we only
+         * Resolve the runtime module options against the existing boot configuration, so we only
          * add modules that were named at runtime and are not already present in the build-time boot
          * layer.
          */
         String upgradeModulePath = System.getProperty(UPGRADE_MODULE_PATH_PROPERTY, "");
         ModuleFinder upgradeModulePathFinder = createModuleFinder(upgradeModulePath);
-        Configuration originalBootConfiguration = bootLayer.configuration();
-        rejectUpgradeModulePathReplacements(originalBootConfiguration, upgradeModulePathFinder);
+        Configuration buildTimeBootConfiguration = bootLayer.configuration();
+        rejectUpgradeModulePathReplacements(buildTimeBootConfiguration, upgradeModulePathFinder);
         ModuleFinder observableSystemModuleFinder = createSystemModuleFinder(ModuleFinder.ofSystem(), upgradeModulePathFinder);
         String modulePath = System.getProperty(MODULE_PATH_PROPERTY, "");
         ModuleFinder modulePathFinder = createModuleFinder(modulePath);
-        rejectModulePathReplacements(originalBootConfiguration, modulePathFinder);
+        validateModulePath(modulePathFinder);
         ModuleFinder observableModuleFinder = createObservableModuleFinder(observableSystemModuleFinder, modulePathFinder);
-        Set<String> roots = getRootModules(originalBootConfiguration, observableSystemModuleFinder, modulePathFinder, observableModuleFinder);
+        boolean hasRuntimeObservablePath = !upgradeModulePath.isEmpty() || !modulePath.isEmpty();
+        RootModules rootModules = getRootModules(buildTimeBootConfiguration, observableSystemModuleFinder, modulePathFinder, observableModuleFinder, hasRuntimeObservablePath);
+        Set<String> roots = rootModules.roots();
         if (!roots.isEmpty()) {
-            Configuration augmentationConfiguration = resolveAugmentationConfiguration(originalBootConfiguration, observableModuleFinder, roots);
-            Set<ResolvedModule> runtimeModules = selectNewRuntimeModules(originalBootConfiguration, augmentationConfiguration, observableModuleFinder, roots);
+            Configuration augmentationConfiguration = resolveAugmentationConfiguration(buildTimeBootConfiguration, observableModuleFinder, roots);
+            Set<ResolvedModule> runtimeModules = selectNewRuntimeModules(buildTimeBootConfiguration, augmentationConfiguration, observableModuleFinder, roots);
+            rejectUnrepresentedExplicitRoots(buildTimeBootConfiguration, rootModules.explicitRoots(), runtimeModules);
             if (!runtimeModules.isEmpty()) {
-                Configuration mergedConfiguration = createAugmentedBootConfiguration(originalBootConfiguration, runtimeModules);
+                Configuration mergedConfiguration = createAugmentedBootConfiguration(buildTimeBootConfiguration, runtimeModules);
                 /*
                  * Let the appropriate built-in loaders learn about the newly resolved module
                  * references, then create the corresponding Module objects directly with the same
@@ -200,65 +204,92 @@ public final class RuntimeBootModuleLayerSupport {
 
         Target_jdk_internal_module_ModuleBootstrap.addExtraReads(bootLayer);
         Target_jdk_internal_module_ModuleBootstrap.addExtraExportsAndOpens(bootLayer);
-        ModuleBootstrapSubstitutionsSupport.mergeRuntimeEnableNativeAccessModules();
-        Target_jdk_internal_module_ModuleBootstrap.addEnableNativeAccess(bootLayer);
+        ModuleBootstrapSubstitutionsSupport.addRuntimeEnableNativeAccessModules(bootLayer);
     }
 
     /// Resolves the runtime root modules against the existing boot configuration.
     ///
     /// The existing boot configuration remains authoritative. Modules already present in
-    /// `originalBootConfiguration` are therefore found via the parent configuration, while `finder`
+    /// `buildTimeBootConfiguration` are therefore found via the parent configuration, while `finder`
     /// only contributes modules that are not already in the boot layer.
-    private static Configuration resolveAugmentationConfiguration(Configuration originalBootConfiguration, ModuleFinder finder, Set<String> roots) {
-        return Configuration.resolve(ModuleFinder.of(), List.of(originalBootConfiguration), finder, roots);
+    private static Configuration resolveAugmentationConfiguration(Configuration buildTimeBootConfiguration, ModuleFinder finder, Set<String> roots) {
+        return Configuration.resolve(ModuleFinder.of(), List.of(buildTimeBootConfiguration), finder, roots);
     }
 
     /// Selects only the modules from the augmentation configuration that are not already present in
     /// the boot configuration, then resolves any additional provider modules induced by service
     /// binding from those runtime-resolved modules.
-    private static Set<ResolvedModule> selectNewRuntimeModules(Configuration originalBootConfiguration, Configuration augmentationConfiguration, ModuleFinder finder, Set<String> roots) {
+    private static Set<ResolvedModule> selectNewRuntimeModules(Configuration buildTimeBootConfiguration, Configuration augmentationConfiguration, ModuleFinder finder, Set<String> roots) {
         LinkedHashMap<String, ResolvedModule> runtimeModules = new LinkedHashMap<>();
-        collectAbsentModules(runtimeModules, originalBootConfiguration, augmentationConfiguration.modules());
+        collectRuntimeModules(runtimeModules, buildTimeBootConfiguration, finder, augmentationConfiguration.modules());
 
         if (!runtimeModules.isEmpty()) {
             Configuration bindingConfiguration = augmentationConfiguration.resolveAndBind(ModuleFinder.of(), finder, roots);
-            collectAbsentModules(runtimeModules, augmentationConfiguration, bindingConfiguration.modules());
+            collectRuntimeModules(runtimeModules, augmentationConfiguration, finder, bindingConfiguration.modules());
         }
 
+        pruneRuntimeModules(buildTimeBootConfiguration, runtimeModules);
         return new LinkedHashSet<>(runtimeModules.values());
     }
 
-    private static void collectAbsentModules(Map<String, ResolvedModule> target, Configuration knownConfiguration, Collection<ResolvedModule> candidates) {
+    /// Collects runtime-resolved modules that are not already known and can be represented by the
+    /// built-in loader module maps.
+    private static void collectRuntimeModules(Map<String, ResolvedModule> target, Configuration knownConfiguration, ModuleFinder observableModuleFinder, Collection<ResolvedModule> candidates) {
         for (ResolvedModule resolvedModule : candidates) {
-            if (knownConfiguration.findModule(resolvedModule.name()).isEmpty()) {
-                target.put(resolvedModule.name(), resolvedModule);
+            String moduleName = resolvedModule.name();
+            if (isRuntimeAugmentationCandidate(knownConfiguration, observableModuleFinder, moduleName)) {
+                target.put(moduleName, resolvedModule);
             }
         }
+    }
+
+    /// Removes runtime modules whose required dependencies were filtered from the augmentation set.
+    private static void pruneRuntimeModules(Configuration buildTimeBootConfiguration, Map<String, ResolvedModule> runtimeModules) {
+        boolean changed;
+        do {
+            changed = false;
+            Iterator<ResolvedModule> iterator = runtimeModules.values().iterator();
+            while (iterator.hasNext()) {
+                ResolvedModule resolvedModule = iterator.next();
+                if (!hasRepresentableDependencies(buildTimeBootConfiguration, runtimeModules, resolvedModule)) {
+                    iterator.remove();
+                    changed = true;
+                }
+            }
+        } while (changed);
+    }
+
+    /// Tests whether every mandatory dependency is present in the build-time boot layer or runtime set.
+    private static boolean hasRepresentableDependencies(Configuration buildTimeBootConfiguration, Map<String, ResolvedModule> runtimeModules, ResolvedModule resolvedModule) {
+        for (Requires dependency : resolvedModule.reference().descriptor().requires()) {
+            if (dependency.modifiers().contains(Requires.Modifier.STATIC)) {
+                continue;
+            }
+            String dependencyName = dependency.name();
+            if (buildTimeBootConfiguration.findModule(dependencyName).isEmpty() && !runtimeModules.containsKey(dependencyName)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /// Rejects only the part of `--upgrade-module-path` that is impossible for SVM to implement:
     /// replacing a module already present in the prebuilt boot layer. Entries for modules not
     /// already in the boot layer remain supported and are resolved before system modules.
-    private static void rejectUpgradeModulePathReplacements(Configuration originalBootConfiguration, ModuleFinder upgradeModulePathFinder) {
-        rejectBootLayerReplacements(originalBootConfiguration, upgradeModulePathFinder, UPGRADE_MODULE_PATH_OPTION, "replace");
+    private static void rejectUpgradeModulePathReplacements(Configuration buildTimeBootConfiguration, ModuleFinder upgradeModulePathFinder) {
+        rejectBootLayerReplacements(buildTimeBootConfiguration, upgradeModulePathFinder, UPGRADE_MODULE_PATH_OPTION, "replace");
     }
 
-    /// Rejects any `--module-path` entry whose name collides with a module already present in the
+    /// Rejects any upgrade path entry that collides by name with a module already present in the
     /// prebuilt boot layer.
-    private static void rejectModulePathReplacements(Configuration originalBootConfiguration, ModuleFinder modulePathFinder) {
-        rejectBootLayerReplacements(originalBootConfiguration, modulePathFinder, MODULE_PATH_OPTION, "contain");
-    }
-
-    /// Rejects any path entry that collides by name with a module already present in the prebuilt
-    /// boot layer.
     ///
     /// Runtime boot-layer augmentation can only add modules that were absent at image build time.
-    /// Reintroducing an already-built boot-layer module from the application module path would
-    /// create an unsupported ambiguity between the preserved boot layer and the runtime path entry.
-    private static void rejectBootLayerReplacements(Configuration originalBootConfiguration, ModuleFinder finder, String optionName, String action) {
+    /// Replacing an already-built boot-layer module from the upgrade module path would create an
+    /// unsupported ambiguity between the preserved boot layer and the runtime path entry.
+    private static void rejectBootLayerReplacements(Configuration buildTimeBootConfiguration, ModuleFinder finder, String optionName, String action) {
         for (ModuleReference moduleReference : finder.findAll()) {
             String moduleName = moduleReference.descriptor().name();
-            if (originalBootConfiguration.findModule(moduleName).isPresent()) {
+            if (buildTimeBootConfiguration.findModule(moduleName).isPresent()) {
                 throw new IllegalArgumentException("The option '" + optionName + "' cannot " + action + " module '" + moduleName + "' because it is already built into the image boot layer");
             }
         }
@@ -371,20 +402,20 @@ public final class RuntimeBootModuleLayerSupport {
     /// Rebuilds a single `Configuration` that describes the augmented boot layer.
     ///
     /// `ModuleLayer` caches and queries rely on one coherent configuration object. After runtime
-    /// augmentation, we therefore synthesize a finder containing both the original boot-layer
+    /// augmentation, we therefore synthesize a finder containing both the build-time boot-layer
     /// modules and the newly resolved runtime modules, and resolve all module names again into one
     /// merged configuration.
-    private static Configuration createAugmentedBootConfiguration(Configuration originalBootConfiguration, Set<ResolvedModule> runtimeModules) {
-        LinkedHashSet<String> roots = originalBootConfiguration.modules().stream().map(ResolvedModule::reference).map(ModuleReference::descriptor).map(ModuleDescriptor::name).collect(
+    private static Configuration createAugmentedBootConfiguration(Configuration buildTimeBootConfiguration, Set<ResolvedModule> runtimeModules) {
+        LinkedHashSet<String> roots = buildTimeBootConfiguration.modules().stream().map(ResolvedModule::reference).map(ModuleReference::descriptor).map(ModuleDescriptor::name).collect(
                         Collectors.toCollection(LinkedHashSet::new));
         runtimeModules.stream().map(ResolvedModule::reference).map(ModuleReference::descriptor).map(ModuleDescriptor::name).forEach(roots::add);
 
         LinkedHashMap<String, ModuleReference> references = new LinkedHashMap<>();
-        addModuleReferences(references, originalBootConfiguration.modules());
+        addModuleReferences(references, buildTimeBootConfiguration.modules());
         addModuleReferences(references, runtimeModules);
         ModuleFinder finder = new MapBackedModuleFinder(references);
         try {
-            List<Configuration> parents = originalBootConfiguration.parents();
+            List<Configuration> parents = buildTimeBootConfiguration.parents();
             return Configuration.resolve(finder, parents, ModuleFinder.of(), roots);
         } catch (FindException | ResolutionException | SecurityException ex) {
             throw VMError.shouldNotReachHere("Failed to rebuild the augmented runtime boot module layer configuration.", ex);
@@ -422,7 +453,7 @@ public final class RuntimeBootModuleLayerSupport {
             Target_jdk_internal_loader_BuiltinClassLoader builtinLoader = SubstrateUtil.cast(classLoader, Target_jdk_internal_loader_BuiltinClassLoader.class);
             ModuleReference mref = builtinLoader.findModule(resolvedModule.name());
             if (mref != null) {
-                if (!mref.equals(resolvedModule.reference())) {
+                if (!isCompatibleModuleReference(mref, resolvedModule.reference())) {
                     throw new IllegalArgumentException("Runtime boot-layer resolved module has conflicting refs '" + resolvedModule.reference() + "' != '" + mref + "'");
                 }
             } else {
@@ -439,6 +470,16 @@ public final class RuntimeBootModuleLayerSupport {
         return ModuleFinder.of(paths);
     }
 
+    /// Forces launcher-compatible validation of every runtime `--module-path` entry.
+    ///
+    /// Calling [ModuleFinder#findAll] eagerly scans the whole module path, parses explicit module
+    /// descriptors or derives automatic-module descriptors, and reports malformed or unreadable
+    /// entries, as well as duplicate module names within one module-path directory, through the JDK
+    /// module finder before root selection can ignore an unused path entry.
+    private static void validateModulePath(ModuleFinder modulePathFinder) {
+        modulePathFinder.findAll();
+    }
+
     /// Computes the runtime root modules requested by launcher options using the supplied boot
     /// configuration plus the observable system and application module finders.
     ///
@@ -446,11 +487,14 @@ public final class RuntimeBootModuleLayerSupport {
     /// adapted to augment an existing boot layer at runtime. Modules already present in the
     /// build-time boot layer are filtered out from the returned roots because runtime augmentation
     /// can only add previously absent modules.
-    private static Set<String> getRootModules(Configuration originalBootConfiguration, ModuleFinder systemModuleFinder, ModuleFinder modulePathFinder, ModuleFinder observableModuleFinder) {
+    private static RootModules getRootModules(Configuration buildTimeBootConfiguration, ModuleFinder systemModuleFinder, ModuleFinder modulePathFinder, ModuleFinder observableModuleFinder,
+                    boolean hasRuntimeObservablePath) {
         LinkedHashSet<String> roots = new LinkedHashSet<>();
+        LinkedHashSet<String> explicitRoots = new LinkedHashSet<>();
         String mainModule = System.getProperty(MAIN_MODULE_PROPERTY);
         if (mainModule != null) {
             roots.add(mainModule);
+            explicitRoots.add(mainModule);
         }
 
         boolean addAllDefaultModules = false;
@@ -472,19 +516,18 @@ public final class RuntimeBootModuleLayerSupport {
                                     .forEach(roots::add);
                     case ALL_DEFAULT -> addAllDefaultModules = true;
                     case ALL_SYSTEM -> addAllSystemModules = true;
-                    default -> roots.add(moduleName);
+                    default -> {
+                        roots.add(moduleName);
+                        explicitRoots.add(moduleName);
+                    }
                 }
             }
         }
 
-        // If there is no initial module specified, then assume that the initial
-        // module is the unnamed module of the application class loader. This
-        // is implemented by resolving all observable modules that export an
-        // API. Modules that have the DO_NOT_RESOLVE_BY_DEFAULT bit set in
-        // their ModuleResolution attribute flags are excluded from the
-        // default set of roots.
-        if (mainModule == null || addAllDefaultModules) {
-            roots.addAll(Target_jdk_internal_module_DefaultRoots.compute(systemModuleFinder, observableModuleFinder));
+        // Runtime path options make an unnamed-module launch observe the HotSpot default roots.
+        // Without those options, the image's existing boot layer remains authoritative.
+        if ((mainModule == null && hasRuntimeObservablePath) || addAllDefaultModules) {
+            addDefaultRootModules(roots, systemModuleFinder, observableModuleFinder);
         }
 
         // If `--add-modules ALL-SYSTEM` is specified, then all observable system
@@ -498,9 +541,99 @@ public final class RuntimeBootModuleLayerSupport {
                             .forEach(roots::add);
         }
 
-        // Filter out modules already present in the build-time boot layer
-        roots.removeIf(moduleName -> originalBootConfiguration.findModule(moduleName).isPresent());
-        return roots;
+        rejectUnrepresentableExplicitRoots(buildTimeBootConfiguration, observableModuleFinder, explicitRoots);
+        // Runtime augmentation can only add modules that are absent and loader-compatible.
+        roots.removeIf(moduleName -> !isRuntimeAugmentationCandidate(buildTimeBootConfiguration, observableModuleFinder, moduleName));
+        return new RootModules(roots, explicitRoots);
+    }
+
+    /// Fails startup when a user-named root resolves to a module that conflicts with a built-in
+    /// loader entry outside the build-time boot configuration.
+    private static void rejectUnrepresentableExplicitRoots(Configuration buildTimeBootConfiguration, ModuleFinder observableModuleFinder, Set<String> explicitRoots) {
+        for (String moduleName : explicitRoots) {
+            /*
+             * A module can be absent from the boot configuration but still have a preserved
+             * BuiltinClassLoader.nameToModule entry. Such a module cannot be re-added from a
+             * different runtime path entry because the loader can only represent one reference for
+             * that name.
+             */
+            if (buildTimeBootConfiguration.findModule(moduleName).isEmpty() && hasIncompatibleBuiltinLoaderModule(moduleName, observableModuleFinder)) {
+                throw new IllegalArgumentException("The explicitly requested module '" + moduleName +
+                                "' cannot be added to the runtime boot layer because a different module reference is already registered in a built-in class loader");
+            }
+        }
+    }
+
+    /// Fails startup when a user-named root was pruned because one of its dependencies was filtered.
+    private static void rejectUnrepresentedExplicitRoots(Configuration buildTimeBootConfiguration, Set<String> explicitRoots, Set<ResolvedModule> runtimeModules) {
+        Set<String> runtimeModuleNames = runtimeModules.stream().map(ResolvedModule::name).collect(Collectors.toSet());
+        for (String moduleName : explicitRoots) {
+            if (buildTimeBootConfiguration.findModule(moduleName).isEmpty() && !runtimeModuleNames.contains(moduleName)) {
+                throw new IllegalArgumentException("The explicitly requested module '" + moduleName +
+                                "' cannot be added to the runtime boot layer because one or more of its mandatory dependencies cannot be represented");
+            }
+        }
+    }
+
+    /// Adds default roots that can be represented by the runtime observable module finder.
+    private static void addDefaultRootModules(Set<String> roots, ModuleFinder systemModuleFinder, ModuleFinder observableModuleFinder) {
+        Target_jdk_internal_module_DefaultRoots.compute(systemModuleFinder, observableModuleFinder) //
+                        .stream() //
+                        .filter(name -> !hasIncompatibleBuiltinLoaderModule(name, observableModuleFinder)) //
+                        .forEach(roots::add);
+    }
+
+    /// Tests whether `moduleName` can be added as a newly resolved runtime boot-layer module.
+    private static boolean isRuntimeAugmentationCandidate(Configuration knownConfiguration, ModuleFinder observableModuleFinder, String moduleName) {
+        if (knownConfiguration.findModule(moduleName).isPresent()) {
+            return false;
+        }
+        return !hasIncompatibleBuiltinLoaderModule(moduleName, observableModuleFinder);
+    }
+
+    /// Tests whether a built-in loader already has an incompatible reference for `moduleName`.
+    private static boolean hasIncompatibleBuiltinLoaderModule(String moduleName, ModuleFinder observableModuleFinder) {
+        Optional<ModuleReference> moduleReference = observableModuleFinder.find(moduleName);
+        if (moduleReference.isEmpty()) {
+            return false;
+        }
+        ModuleReference buildTimeReference = findBuildTimeBuiltinLoaderModule(moduleName);
+        return buildTimeReference != null && !isCompatibleModuleReference(buildTimeReference, moduleReference.get());
+    }
+
+    /// Tests whether two module references describe the same representable module.
+    private static boolean isCompatibleModuleReference(ModuleReference buildTimeReference, ModuleReference runtimeReference) {
+        if (!buildTimeReference.descriptor().equals(runtimeReference.descriptor())) {
+            return false;
+        }
+        Optional<URI> buildTimeLocation = buildTimeReference.location();
+        Optional<URI> runtimeLocation = runtimeReference.location();
+        return buildTimeLocation.equals(runtimeLocation) || isRedactedLocation(buildTimeLocation, buildTimeReference.descriptor().name());
+    }
+
+    /// Tests whether `location` is the image-heap redaction for the module's build-time file path.
+    private static boolean isRedactedLocation(Optional<URI> location, String moduleName) {
+        return location.map(URI::toString).filter(value -> value.equals("file:///REDACTED/" + moduleName)).isPresent();
+    }
+
+    /// Finds a build-time module reference preserved in any built-in loader.
+    private static ModuleReference findBuildTimeBuiltinLoaderModule(String moduleName) {
+        ModuleReference bootModuleReference = Target_jdk_internal_loader_ClassLoaders.bootLoader().findModule(moduleName);
+        if (bootModuleReference != null) {
+            return bootModuleReference;
+        }
+        ModuleReference platformModuleReference = findBuildTimeBuiltinLoaderModule(Target_jdk_internal_loader_ClassLoaders.platformClassLoader(), moduleName);
+        if (platformModuleReference != null) {
+            return platformModuleReference;
+        }
+        return findBuildTimeBuiltinLoaderModule(ClassLoader.getSystemClassLoader(), moduleName);
+    }
+
+    private static ModuleReference findBuildTimeBuiltinLoaderModule(ClassLoader classLoader, String moduleName) {
+        if (classLoader instanceof jdk.internal.loader.BuiltinClassLoader) {
+            return SubstrateUtil.cast(classLoader, Target_jdk_internal_loader_BuiltinClassLoader.class).findModule(moduleName);
+        }
+        return null;
     }
 
     /// Creates the system-module finder used at runtime, with upgrade-path modules searched before
@@ -538,5 +671,9 @@ public final class RuntimeBootModuleLayerSupport {
         public Set<ModuleReference> findAll() {
             return modules;
         }
+    }
+
+    /// Carries all runtime roots plus the subset named directly by the user.
+    private record RootModules(Set<String> roots, Set<String> explicitRoots) {
     }
 }
