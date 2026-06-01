@@ -133,8 +133,9 @@ public final class DynamicHubCompanion {
     @UnknownObjectField(canBeNull = true, types = ImageReflectionMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
     @Stable ReflectionMetadata reflectionMetadata;
 
+    /** Encoded compact image reflection metadata for non-layered image classes. */
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
-    @Stable int reflectionMetadataEncodingIndex;
+    @Stable int encodedReflectionMetadata;
 
     @UnknownObjectField(canBeNull = true, types = ImageDynamicHubMetadata.class, availability = BuildPhaseProvider.AfterCompilation.class) //
     @Stable DynamicHubMetadata hubMetadata;

@@ -30,17 +30,35 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
+import java.nio.ByteOrder;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.VMError;
 
+/**
+ * Compact encoding for non-layered image reflection metadata.
+ * <p>
+ * The value stored in {@link DynamicHubCompanion#encodedReflectionMetadata} is a tagged encoded
+ * reference:
+ * <ul>
+ * <li>{@code 0}: no image reflection metadata is present.</li>
+ * <li>high bit set: one metadata kind is stored inline. Bits 30..24 contain the metadata-kind mask
+ * and bits 23..0 contain the non-negative value.</li>
+ * <li>otherwise: the value is {@code offset + 1} into
+ * {@link RuntimeMetadataEncoding#getReflectionMetadataEncoding()}.</li>
+ * </ul>
+ * A side-table entry starts with a one-byte metadata-kind mask. The values for all set bits then
+ * follow as little-endian signed Java {@code int}s in ascending bit order: fields, methods,
+ * constructors, record components, dynamic access, unsafe allocation, and class flags.
+ */
 final class ImageReflectionMetadataEncoding {
     private static final int FIELDS = 1;
     private static final int METHODS = 1 << 1;
@@ -50,14 +68,18 @@ final class ImageReflectionMetadataEncoding {
     private static final int UNSAFE_ALLOCATED = 1 << 5;
     private static final int CLASS_FLAGS = 1 << 6;
 
-    /** Zero is the default value of {@link DynamicHubCompanion#reflectionMetadataEncodingIndex}. */
+    /** Zero is the default value of {@link DynamicHubCompanion#encodedReflectionMetadata}. */
     private static final int NO_REFLECTION_METADATA = 0;
     private static final int FIRST_REFLECTION_METADATA_INDEX = 1;
     private static final int INLINE_ENCODING = 1 << 31;
     private static final int INLINE_METADATA_MASK_SHIFT = 24;
     private static final int INLINE_METADATA_MASK = 0x7F << INLINE_METADATA_MASK_SHIFT;
     private static final int INLINE_VALUE_MASK = (1 << INLINE_METADATA_MASK_SHIFT) - 1;
+    private static final Field[] EMPTY_FIELDS = new Field[0];
+    private static final Method[] EMPTY_METHODS = new Method[0];
+    private static final Constructor<?>[] EMPTY_CONSTRUCTORS = new Constructor<?>[0];
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private ImageReflectionMetadataEncoding() {
     }
 
@@ -96,14 +118,14 @@ final class ImageReflectionMetadataEncoding {
                 case DYNAMIC_ACCESS -> dynamicAccessIndex;
                 case UNSAFE_ALLOCATED -> unsafeAllocationIndex;
                 case CLASS_FLAGS -> classFlags;
-                default -> throw new IllegalStateException();
+                default -> throw VMError.shouldNotReachHere("Unexpected reflection metadata mask: " + mask);
             };
             if (value >= 0 && value <= INLINE_VALUE_MASK) {
                 return INLINE_ENCODING | (mask << INLINE_METADATA_MASK_SHIFT) | value;
             }
         }
 
-        int index = RuntimeMetadataEncoding.currentLayer().addReflectionMetadata(1 + 4 * Integer.bitCount(mask));
+        int index = RuntimeMetadataEncoding.currentLayer().addReflectionMetadata(1 + Integer.BYTES * Integer.bitCount(mask));
         byte[] data = RuntimeMetadataEncoding.currentLayer().getReflectionMetadataEncoding();
         data[index] = (byte) mask;
         int pos = index + 1;
@@ -117,83 +139,84 @@ final class ImageReflectionMetadataEncoding {
         return index + FIRST_REFLECTION_METADATA_INDEX;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static int putIfSet(byte[] data, int pos, int mask, int bit, int value) {
         if ((mask & bit) != 0) {
+            assert SubstrateTarget.getArchitecture().getByteOrder() == ByteOrder.LITTLE_ENDIAN;
             data[pos] = (byte) value;
             data[pos + 1] = (byte) (value >>> 8);
             data[pos + 2] = (byte) (value >>> 16);
             data[pos + 3] = (byte) (value >>> 24);
-            return pos + 4;
+            return pos + Integer.BYTES;
         }
         return pos;
     }
 
-    public static boolean hasMetadata(int reflectionMetadataEncodingIndex) {
-        return reflectionMetadataEncodingIndex != NO_REFLECTION_METADATA;
+    public static boolean hasMetadata(int encodedReflectionMetadata) {
+        return encodedReflectionMetadata != NO_REFLECTION_METADATA;
     }
 
-    public static int getClassFlags(int reflectionMetadataEncodingIndex, int defaultClassFlags) {
-        return getValue(reflectionMetadataEncodingIndex, CLASS_FLAGS, defaultClassFlags);
+    public static int getClassFlags(int encodedReflectionMetadata, int defaultClassFlags) {
+        return getValue(encodedReflectionMetadata, CLASS_FLAGS, defaultClassFlags);
     }
 
-    public static RuntimeDynamicAccessMetadata getDynamicAccessMetadata(int reflectionMetadataEncodingIndex, int layerNum) {
-        int index = getValue(reflectionMetadataEncodingIndex, DYNAMIC_ACCESS, NO_DATA);
-        return index == NO_DATA ? null : ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseDynamicAccessMetadata(index, layerNum);
+    public static RuntimeDynamicAccessMetadata getDynamicAccessMetadata(int encodedReflectionMetadata, int layerNum) {
+        int index = getValue(encodedReflectionMetadata, DYNAMIC_ACCESS, NO_DATA);
+        return index == NO_DATA ? null : RuntimeMetadataDecoder.singleton().parseDynamicAccessMetadata(index, layerNum);
     }
 
-    public static RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(int reflectionMetadataEncodingIndex, int layerNum) {
-        int index = getValue(reflectionMetadataEncodingIndex, UNSAFE_ALLOCATED, NO_DATA);
-        return index == NO_DATA ? null : ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseDynamicAccessMetadata(index, layerNum);
+    public static RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(int encodedReflectionMetadata, int layerNum) {
+        int index = getValue(encodedReflectionMetadata, UNSAFE_ALLOCATED, NO_DATA);
+        return index == NO_DATA ? null : RuntimeMetadataDecoder.singleton().parseDynamicAccessMetadata(index, layerNum);
     }
 
-    public static Field[] getDeclaredFields(int reflectionMetadataEncodingIndex, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
-        int index = getValue(reflectionMetadataEncodingIndex, FIELDS, NO_DATA);
-        return index == NO_DATA ? new Field[0] : ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseFields(declaringClass, index, publicOnly, layerNum);
+    public static Field[] getDeclaredFields(int encodedReflectionMetadata, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
+        int index = getValue(encodedReflectionMetadata, FIELDS, NO_DATA);
+        return index == NO_DATA ? EMPTY_FIELDS : RuntimeMetadataDecoder.singleton().parseFields(declaringClass, index, publicOnly, layerNum);
     }
 
-    public static Method[] getDeclaredMethods(int reflectionMetadataEncodingIndex, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
-        int index = getValue(reflectionMetadataEncodingIndex, METHODS, NO_DATA);
-        return index == NO_DATA ? new Method[0] : ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseMethods(declaringClass, index, publicOnly, layerNum);
+    public static Method[] getDeclaredMethods(int encodedReflectionMetadata, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
+        int index = getValue(encodedReflectionMetadata, METHODS, NO_DATA);
+        return index == NO_DATA ? EMPTY_METHODS : RuntimeMetadataDecoder.singleton().parseMethods(declaringClass, index, publicOnly, layerNum);
     }
 
-    public static Constructor<?>[] getDeclaredConstructors(int reflectionMetadataEncodingIndex, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
-        int index = getValue(reflectionMetadataEncodingIndex, CONSTRUCTORS, NO_DATA);
-        return index == NO_DATA ? new Constructor<?>[0] : ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseConstructors(declaringClass, index, publicOnly, layerNum);
+    public static Constructor<?>[] getDeclaredConstructors(int encodedReflectionMetadata, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
+        int index = getValue(encodedReflectionMetadata, CONSTRUCTORS, NO_DATA);
+        return index == NO_DATA ? EMPTY_CONSTRUCTORS : RuntimeMetadataDecoder.singleton().parseConstructors(declaringClass, index, publicOnly, layerNum);
     }
 
-    public static RecordComponent[] getRecordComponents(int reflectionMetadataEncodingIndex, DynamicHub declaringClass, int layerNum) {
-        int index = getValue(reflectionMetadataEncodingIndex, RECORD_COMPONENTS, NO_DATA);
+    public static RecordComponent[] getRecordComponents(int encodedReflectionMetadata, DynamicHub declaringClass, int layerNum) {
+        int index = getValue(encodedReflectionMetadata, RECORD_COMPONENTS, NO_DATA);
         if (index == NO_DATA) {
             throw DynamicHub.recordsNotAvailable(declaringClass);
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(declaringClass, index, layerNum);
+        return RuntimeMetadataDecoder.singleton().parseRecordComponents(declaringClass, index, layerNum);
     }
 
-    private static int getValue(int reflectionMetadataEncodingIndex, int bit, int defaultValue) {
-        if (!hasMetadata(reflectionMetadataEncodingIndex)) {
+    private static int getValue(int encodedReflectionMetadata, int bit, int defaultValue) {
+        if (!hasMetadata(encodedReflectionMetadata)) {
             return defaultValue;
         }
-        if ((reflectionMetadataEncodingIndex & INLINE_ENCODING) != 0) {
-            int mask = (reflectionMetadataEncodingIndex & INLINE_METADATA_MASK) >>> INLINE_METADATA_MASK_SHIFT;
-            return mask == bit ? reflectionMetadataEncodingIndex & INLINE_VALUE_MASK : defaultValue;
+        if ((encodedReflectionMetadata & INLINE_ENCODING) != 0) {
+            int mask = (encodedReflectionMetadata & INLINE_METADATA_MASK) >>> INLINE_METADATA_MASK_SHIFT;
+            return mask == bit ? encodedReflectionMetadata & INLINE_VALUE_MASK : defaultValue;
         }
         byte[] data = MultiLayeredImageSingleton.getForLayer(RuntimeMetadataEncoding.class, 0).getReflectionMetadataEncoding();
-        int pos = reflectionMetadataEncodingIndex - FIRST_REFLECTION_METADATA_INDEX;
+        int pos = encodedReflectionMetadata - FIRST_REFLECTION_METADATA_INDEX;
         int mask = ByteArrayReader.getU1(data, pos++);
         if ((mask & bit) == 0) {
             return defaultValue;
         }
-        int[] bits = {FIELDS, METHODS, CONSTRUCTORS, RECORD_COMPONENTS, DYNAMIC_ACCESS, UNSAFE_ALLOCATED, CLASS_FLAGS};
-        for (int currentBit : bits) {
+        for (int currentBit = FIELDS; currentBit <= CLASS_FLAGS; currentBit <<= 1) {
             if ((mask & currentBit) != 0) {
                 int value = ByteArrayReader.getS4(data, pos);
                 if (currentBit == bit) {
                     return value;
                 }
-                pos += 4;
+                pos += Integer.BYTES;
             }
         }
-        throw new IllegalStateException();
+        throw VMError.shouldNotReachHere("Could not find value for reflection metadata bit " + bit + " in mask " + mask);
     }
 
 }
