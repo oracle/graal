@@ -29,7 +29,6 @@ import java.util.List;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
@@ -73,12 +72,8 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     private final byte[] primitiveStatics;
     private final Object[] referenceStatics;
 
-    // The nest host can be either parsed from classfile attributes or supplied dynamically for hidden classes.
+    // GR-70720: The nest host can be either parsed from classfile attributes or supplied dynamically for hidden classes.
     private InterpreterResolvedObjectType host;
-
-    public static Class<?> dynamicNestHost(ClassDefinitionInfo info) {
-        return info.dynamicNest;
-    }
 
     public CremaResolvedObjectType(ParserKlass parserKlass, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces,
@@ -291,6 +286,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
             if (nestHost instanceof CremaResolvedObjectType cremaNestHost) {
                 return resolveNestMembers(cremaNestHost);
             }
+            // GR-70720: For non-Crema hosts, report the host itself; hidden nestmates are not listed as nest members.
             return new InterpreterResolvedObjectType[]{nestHost};
         }
         return resolveNestMembers(this);
