@@ -164,7 +164,7 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
              */
             ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
             classInitializationSupport.withUnsealedConfiguration(() -> {
-                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xml.internal.security/resource/xmlsecurity");
+                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.security/resource/xmlsecurity");
             });
         }
 
