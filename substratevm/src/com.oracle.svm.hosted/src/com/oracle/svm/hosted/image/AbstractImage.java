@@ -57,18 +57,13 @@ public abstract class AbstractImage {
         IMAGE_LAYER(false, true) {
             @Override
             protected String getFilenameSuffix() {
-                return ".so";
+                return getSharedLibraryFilenameSuffix();
             }
         },
         SHARED_LIBRARY(false) {
             @Override
             protected String getFilenameSuffix() {
-                return switch (ObjectFile.getNativeFormat()) {
-                    case ELF -> ".so";
-                    case MACH_O -> ".dylib";
-                    case PECOFF -> ".dll";
-                    default -> throw new AssertionError("Unreachable");
-                };
+                return getSharedLibraryFilenameSuffix();
             }
         },
         EXECUTABLE(true),
@@ -95,6 +90,15 @@ public abstract class AbstractImage {
 
         protected String getFilenameSuffix() {
             return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
+        }
+
+        private static String getSharedLibraryFilenameSuffix() {
+            return switch (ObjectFile.getNativeFormat()) {
+                case ELF -> ".so";
+                case MACH_O -> ".dylib";
+                case PECOFF -> ".dll";
+                default -> throw new AssertionError("Unreachable");
+            };
         }
     }
 

@@ -42,7 +42,10 @@ import java.util.function.Function;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.LINUX_AMD64;
+import org.graalvm.nativeimage.Platform.AARCH64;
+import org.graalvm.nativeimage.Platform.AMD64;
+import org.graalvm.nativeimage.Platform.DARWIN;
+import org.graalvm.nativeimage.Platform.LINUX;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -407,9 +410,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         return false;
     }
 
-    /** Currently layered images are only supported on {@link LINUX_AMD64}. */
+    /**
+     * Currently layered images are only supported on {@link LINUX}, {@link DARWIN}, {@link AMD64}
+     * and {@link AARCH64}.
+     */
     private static boolean supportedPlatform(Platform platform) {
-        return platform instanceof LINUX_AMD64;
+        return (platform instanceof LINUX || platform instanceof DARWIN) && (platform instanceof AMD64 || platform instanceof AARCH64);
     }
 
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {

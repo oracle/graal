@@ -42,7 +42,6 @@ import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -70,7 +69,7 @@ final class Target_java_lang_System_Darwin {
 
 /** Additional static-like fields for {@link Target_java_lang_System_Darwin}. */
 @AutomaticallyRegisteredImageSingleton
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class, other = Disallowed.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 final class DarwinTimeUtil {
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final long INITIALIZED_OFFSET = U.objectFieldOffset(DarwinTimeUtil.class, "initialized");

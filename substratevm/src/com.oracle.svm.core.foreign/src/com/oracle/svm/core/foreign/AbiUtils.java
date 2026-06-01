@@ -923,7 +923,7 @@ class ABIs {
 
     @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.macos.MacOsAArch64Linker.class)
     @BasedOnJDKClass(jdk.internal.foreign.abi.aarch64.macos.MacOsAArch64CallArranger.class)
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
+    @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
     static final class MacOsAArch64 extends ARM64 {
 
         @Override
