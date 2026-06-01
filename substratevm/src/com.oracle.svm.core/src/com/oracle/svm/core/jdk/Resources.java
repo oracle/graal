@@ -338,6 +338,21 @@ public final class Resources {
         return resources;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void addResourceCondition(Module module, String resourceName, AccessCondition condition) {
+        synchronized (resources) {
+            MapCursor<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> cursor = resources.getEntries();
+            while (cursor.advance()) {
+                ModuleResourceKey key = cursor.getKey();
+                if (resourceName.equals(key.resource()) && Objects.equals(moduleName(module), key.getModuleName())) {
+                    ConditionalRuntimeValue<ResourceStorageEntryBase> current = cursor.getValue();
+                    RuntimeDynamicAccessMetadata newMetadata = RuntimeDynamicAccessMetadata.addCondition(current.getDynamicAccessMetadata(), condition, false);
+                    cursor.setValue(new ConditionalRuntimeValue<>(newMetadata, current.getValueUnconditionally()));
+                }
+            }
+        }
+    }
+
     public static long getLastModifiedTime() {
         var singletons = layeredSingletons();
         return singletons[singletons.length - 1].lastModifiedTime;
@@ -428,7 +443,8 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void addEntry(String loaderKey, Module module, String resourceName, RuntimeDynamicAccessMetadata dynamicAccessMetadata, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
+    private void addEntry(String loaderKey, Module module, String resourceName, RuntimeDynamicAccessMetadata dynamicAccessMetadata, boolean isDirectory, byte[] data, boolean fromJar,
+                    boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
         synchronized (resources) {

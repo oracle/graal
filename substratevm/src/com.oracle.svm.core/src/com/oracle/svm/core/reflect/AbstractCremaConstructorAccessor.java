@@ -25,7 +25,6 @@
 package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Modifier;
 
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -40,12 +39,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * construction.
  */
 abstract class AbstractCremaConstructorAccessor extends AbstractCremaAccessor implements ConstructorAccessor {
+    private final boolean instantiationError;
 
     /**
      * Creates a constructor accessor with the reflected signature used for argument validation.
      */
-    protected AbstractCremaConstructorAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes) {
+    protected AbstractCremaConstructorAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes, boolean instantiationError) {
         super(targetMethod, declaringClass, parameterTypes);
+        this.instantiationError = instantiationError;
     }
 
     /**
@@ -69,7 +70,7 @@ abstract class AbstractCremaConstructorAccessor extends AbstractCremaAccessor im
         Object[] args = initialArguments == null ? NO_ARGS : initialArguments;
         verifyArguments(args);
         Class<?> instantiatedClass = getInstantiatedClass();
-        if (instantiatedClass.isInterface() || instantiatedClass.isArray() || instantiatedClass.isPrimitive() || Modifier.isAbstract(instantiatedClass.getModifiers())) {
+        if (instantiationError) {
             throw new InstantiationException(instantiatedClass.getName());
         }
         EnsureClassInitializedNode.ensureClassInitialized(instantiatedClass);

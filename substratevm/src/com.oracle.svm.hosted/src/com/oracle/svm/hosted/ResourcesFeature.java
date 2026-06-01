@@ -47,7 +47,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -249,13 +248,7 @@ public class ResourcesFeature implements InternalFeature {
                 classInitializationSupport.addForTypeReachedTracking(typeReachabilityCondition.getType());
             }
 
-            var cursor = Resources.currentLayer().resources().getEntries();
-            while (cursor.advance()) {
-                Resources.ModuleResourceKey key = cursor.getKey();
-                if (resourcePath.equals(key.resource()) && Objects.equals(Resources.moduleName(module), key.getModuleName())) {
-                    cursor.getValue().getDynamicAccessMetadata().addCondition(condition);
-                }
-            }
+            Resources.currentLayer().addResourceCondition(module, resourcePath, condition);
         }
 
         @Override
