@@ -543,9 +543,9 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      * Builds the compiler-visible bytecode snapshot from the live interpreter bytecodes.
      *
      * <p>
-     * Runtime linking mutates only {@link #interpretedCode}. This snapshot rewrites each runtime
-     * {@code invokedynamic} operand into a stable compiler view so compiler consumers never observe
-     * torn extra-CPI publication or other interpreter-only bytecode rewrites.
+     * Runtime linking mutates only {@link #interpretedCode}. This snapshot rewrites quickened field
+     * opcodes and each runtime {@code invokedynamic} operand into a stable compiler view so compiler
+     * consumers never observe interpreter-only bytecode rewrites or torn extra-CPI publication.
      */
     private byte[] createOriginalCode() {
         byte[] result = getInterpretedCode().clone();
