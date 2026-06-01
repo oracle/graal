@@ -341,6 +341,10 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
                 } else {
 
+                    if (config.BarrierSetAssembler_nmethod_patching_type == config.NMethodPatchingType_conc_data_patch) {
+                        masm.dmb(AArch64Assembler.BarrierKind.LOAD_ANY);
+                    }
+
                     AArch64Address threadDisarmedAddr = masm.makeAddress(32, thread, config.threadDisarmedOffset, scratch2);
                     masm.ldr(32, scratch2, threadDisarmedAddr);
                     masm.cmp(32, scratch1, scratch2);
