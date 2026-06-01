@@ -862,6 +862,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             }
         }
         install(buf);
+        RuntimeMetadataEncoding.currentLayer().trimReflectionMetadataEncoding();
         /* Enable field recomputers in reflection objects to see the computed values */
         ImageSingletons.add(EncodedRuntimeMetadataSupplier.class, encodings);
         clearDataAfterEncoding();

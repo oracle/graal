@@ -76,6 +76,44 @@ public final class ImageReflectionMetadata implements ReflectionMetadata {
         this.classFlags = classFlags;
     }
 
+    static int encode(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int dynamicAccessIndex,
+                    int unsafeAllocationIndex, int classFlags, int defaultClassFlags) {
+        return ImageReflectionMetadataEncoding.encode(fieldsEncodingIndex, methodsEncodingIndex, constructorsEncodingIndex, recordComponentsEncodingIndex, dynamicAccessIndex, unsafeAllocationIndex,
+                        classFlags, defaultClassFlags);
+    }
+
+    static boolean hasMetadata(int encodedReflectionMetadata) {
+        return ImageReflectionMetadataEncoding.hasMetadata(encodedReflectionMetadata);
+    }
+
+    static int getClassFlags(int encodedReflectionMetadata, int defaultClassFlags) {
+        return ImageReflectionMetadataEncoding.getClassFlags(encodedReflectionMetadata, defaultClassFlags);
+    }
+
+    static RuntimeDynamicAccessMetadata getDynamicAccessMetadata(int encodedReflectionMetadata, int layerNum) {
+        return ImageReflectionMetadataEncoding.getDynamicAccessMetadata(encodedReflectionMetadata, layerNum);
+    }
+
+    static RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(int encodedReflectionMetadata, int layerNum) {
+        return ImageReflectionMetadataEncoding.getUnsafeAllocationMetadata(encodedReflectionMetadata, layerNum);
+    }
+
+    static Field[] getDeclaredFields(int encodedReflectionMetadata, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
+        return ImageReflectionMetadataEncoding.getDeclaredFields(encodedReflectionMetadata, declaringClass, publicOnly, layerNum);
+    }
+
+    static Method[] getDeclaredMethods(int encodedReflectionMetadata, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
+        return ImageReflectionMetadataEncoding.getDeclaredMethods(encodedReflectionMetadata, declaringClass, publicOnly, layerNum);
+    }
+
+    static Constructor<?>[] getDeclaredConstructors(int encodedReflectionMetadata, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
+        return ImageReflectionMetadataEncoding.getDeclaredConstructors(encodedReflectionMetadata, declaringClass, publicOnly, layerNum);
+    }
+
+    static RecordComponent[] getRecordComponents(int encodedReflectionMetadata, DynamicHub declaringClass, int layerNum) {
+        return ImageReflectionMetadataEncoding.getRecordComponents(encodedReflectionMetadata, declaringClass, layerNum);
+    }
+
     @Override
     public int getClassFlags() {
         return classFlags;

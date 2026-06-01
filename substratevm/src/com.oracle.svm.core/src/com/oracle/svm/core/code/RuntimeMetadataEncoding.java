@@ -24,13 +24,15 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.Arrays;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.MetadataAccessorImpl;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -38,7 +40,19 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 /**
- * Stores the encoding of all runtime metadata.
+ * Stores the compact encodings of runtime metadata.
+ * <p>
+ * The main {@link #encoding} array contains the generic runtime metadata stream consumed by
+ * {@link RuntimeMetadataDecoderImpl}. In non-layered images, image-time reflection metadata for
+ * {@code DynamicHub}s is stored separately in {@link #reflectionMetadataEncoding}. Each hub stores
+ * an encoded reference into that side table (or an inline value) instead of a per-hub
+ * {@code ImageReflectionMetadata} object.
+ * <p>
+ * Layered images intentionally keep using {@code LayeredReflectionMetadataSingleton} and
+ * {@code ImageReflectionMetadata} objects because metadata can be contributed by multiple layers.
+ * Classes loaded dynamically at image runtime use {@code RuntimeReflectionMetadata} instead because
+ * their metadata is produced from the runtime class definition rather than from this image-time
+ * encoding.
  *
  * GR-52991: Currently we assume that all runtime metadata is in a single byte array, and that it
  * refers only to data in the first image CodeInfo (resolved via {@link MetadataAccessorImpl}). For
@@ -50,7 +64,19 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 @AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public class RuntimeMetadataEncoding {
+    private static final int INITIAL_REFLECTION_METADATA_ENCODING_CAPACITY = 1024;
+
+    /** Generic runtime metadata encoding consumed by {@link RuntimeMetadataDecoderImpl}. */
     @UnknownObjectField(availability = AfterCompilation.class) private byte[] encoding;
+
+    /**
+     * Compact side-table encoding for non-layered image reflection metadata. During image building,
+     * this array may have spare capacity and {@link #reflectionMetadataEncodingSize} tracks the used
+     * prefix. {@link #trimReflectionMetadataEncoding()} shrinks it before installation in the image
+     * heap.
+     */
+    @UnknownObjectField(availability = AfterCompilation.class) private byte[] reflectionMetadataEncoding = new byte[0];
+    private int reflectionMetadataEncodingSize;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static RuntimeMetadataEncoding currentLayer() {
@@ -61,8 +87,31 @@ public class RuntimeMetadataEncoding {
         return encoding;
     }
 
+    public byte[] getReflectionMetadataEncoding() {
+        return reflectionMetadataEncoding;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setEncoding(byte[] encoding) {
         this.encoding = encoding;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int addReflectionMetadata(int size) {
+        int offset = reflectionMetadataEncodingSize;
+        reflectionMetadataEncodingSize += size;
+        if (reflectionMetadataEncodingSize > reflectionMetadataEncoding.length) {
+            int newCapacity = Math.max(INITIAL_REFLECTION_METADATA_ENCODING_CAPACITY, reflectionMetadataEncoding.length);
+            while (newCapacity < reflectionMetadataEncodingSize) {
+                newCapacity *= 2;
+            }
+            reflectionMetadataEncoding = Arrays.copyOf(reflectionMetadataEncoding, newCapacity);
+        }
+        return offset;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void trimReflectionMetadataEncoding() {
+        reflectionMetadataEncoding = Arrays.copyOf(reflectionMetadataEncoding, reflectionMetadataEncodingSize);
     }
 }

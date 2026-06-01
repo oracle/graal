@@ -45,6 +45,10 @@ import jdk.graal.compiler.api.replacements.Fold;
 public interface RuntimeMetadataDecoder {
     int NO_DATA = -1;
 
+    static RuntimeMetadataDecoder singleton() {
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class);
+    }
+
     Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, int layerId);
 
     FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index, int layerId);
