@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayDeque;
@@ -508,13 +507,11 @@ final class ObjectSizeCalculator {
         // Padded fields + header size
         private final long objectSize;
         private final int[] fieldOffsets;
-        private final boolean isReference;
         private final Class<?> clazz;
 
         ObjectClassInfo(Class<?> clazz) {
             this.fieldOffsets = EngineAccessor.RUNTIME.getFieldOffsets(clazz, false, true);
             this.objectSize = EngineAccessor.RUNTIME.getBaseInstanceSize(clazz);
-            this.isReference = Reference.class.isAssignableFrom(clazz);
             this.clazz = clazz;
         }
 
@@ -526,21 +523,6 @@ final class ObjectSizeCalculator {
         @Override
         public ForcedStop visit(CalculationState calculationState, Object obj) {
             assert clazz == obj.getClass();
-            if (isReference) {
-                Object nextObj = null;
-                try {
-                    nextObj = ((Reference<?>) obj).get();
-                } catch (Exception t) {
-                    /*
-                     * The lookup might throw an exception .e.g UnsupportedOperationException for
-                     * phantom references.
-                     */
-                }
-                ForcedStop stop = enqueueOrStop(calculationState, nextObj);
-                if (stop != ForcedStop.NONE) {
-                    return stop;
-                }
-            }
             for (int fieldOffset : fieldOffsets) {
                 Object nextObj = UNSAFE.getObject(obj, fieldOffset);
                 ForcedStop stop = enqueueOrStop(calculationState, nextObj);
