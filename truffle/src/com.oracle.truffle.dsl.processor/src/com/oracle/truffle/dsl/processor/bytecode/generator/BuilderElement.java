@@ -253,7 +253,7 @@ final class BuilderElement extends AbstractElement {
 
         this.add(createFinish());
         this.add(createBeforeEmitBranch());
-        this.add(createBeforeEmitReturn());
+        this.addAll(createBeforeEmitReturn());
         if (model.hasYieldOperation()) {
             if (model.enableTagInstrumentation) {
                 this.add(createDoEmitTagYield(model.tagYieldInstruction));
@@ -1164,7 +1164,14 @@ final class BuilderElement extends AbstractElement {
             b.declaration(type(short.class), "localIndex", "state.allocateBytecodeLocal() /* unique global index */");
             b.declaration(type(short.class), "frameIndex",
                             BytecodeRootNodeElement.safeCastShort("USER_LOCALS_START_INDEX + scope.getFrameOffset() + scope.getNumLocals()") + " /* location in frame */");
-            b.declaration(type(int.class), "tableIndex", "state.doEmitLocal(localIndex, frameIndex, name, info) /* index in global table */");
+            b.startDeclaration(type(int.class), "tableIndex").startCall("state.doEmitLocal");
+            b.string("state.bci");
+            b.string("-1 /* will be patched at end of block */");
+            b.string("localIndex");
+            b.string("frameIndex");
+            b.string("name");
+            b.string("info");
+            b.end().end();
             b.statement("scope.registerLocal(tableIndex)");
         } else {
             b.declaration(type(short.class), "localIndex", "state.allocateBytecodeLocal() /* unique global index */");
@@ -4598,10 +4605,91 @@ final class BuilderElement extends AbstractElement {
      * (like finally handlers). We may also need to close and reopen certain bytecode ranges, like
      * exception handlers, which should not apply to those emitted instructions.
      */
-    private CodeExecutableElement createBeforeEmitReturn() {
+    private List<CodeExecutableElement> createBeforeEmitReturn() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "beforeEmitReturn");
         ex.addParameter(new CodeVariableElement(type(int.class), "parentBci"));
         emitStackWalksBeforeEarlyExit(ex, OperationKind.RETURN, "return", "state.rootOperationSp + 1");
+
+        if (model.epilogReturn != null && model.enableTagInstrumentation && model.enableRootTagging) {
+            return List.of(ex, createDoEmitEpilogReturnTableEntries("state.rootOperationSp + 1"));
+        } else {
+            return List.of(ex);
+        }
+    }
+
+    /**
+     * If {@code beforeEmitReturn} can emit instructions between the return epilog and the return, it may need to
+     * emit special source/local table entries covering only the epilog instruction.
+     */
+    private CodeExecutableElement createDoEmitEpilogReturnTableEntries(String lowestOperationIndex) {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "doEmitEpilogReturnTableEntries");
+        ex.addParameter(new CodeVariableElement(type(int.class), "epilogBci"));
+        CodeTreeBuilder b = ex.createBuilder();
+        int epilogInstructionLength = model.epilogReturn.operation.instruction.getInstructionLength();
+
+        // Walk source sections top-to-bottom (emit more specific sections first).
+        buildOperationStackWalk(b, lowestOperationIndex, () -> {
+            b.startSwitch().string("operation.operation").end().startBlock();
+
+            b.startCase().tree(parent.createOperationConstant(model.sourceSectionPrefixOperation)).end();
+            b.startBlock();
+            b.startStatement().startCall("state.doEmitSourceInfo");
+            b.string(operationStack.read(model.sourceSectionPrefixOperation, "operation", operationFields.sourceIndex));
+            b.string("epilogBci");
+            b.string("epilogBci + " + epilogInstructionLength);
+            b.string(operationStack.read(model.sourceSectionPrefixOperation, "operation", operationFields.sourceSectionTag));
+            for (int i = 0; i < operationFields.sourceSectionPrefixAttrs.length; i++) {
+                b.string(operationStack.read(model.sourceSectionPrefixOperation, "operation", operationFields.sourceSectionPrefixAttrs[i]));
+            }
+            b.end(2);
+            b.statement("break");
+            b.end(); // case source section
+
+            b.startCase().tree(parent.createOperationConstant(model.sourceSectionSuffixOperation)).end();
+            b.startBlock();
+            b.startAssign("int sourceTablePatchIndex").startCall("state.doEmitSourceInfo");
+            b.string(operationStack.read(model.sourceSectionSuffixOperation, "operation", operationFields.sourceIndex));
+            b.string("epilogBci");
+            b.string("epilogBci + " + epilogInstructionLength);
+            b.variable(builderSourceInfoTable.sourceSectionSuffixTag);
+            if (SourceInfoTable.NUM_ATTRIBUTES < 2) {
+                throw new AssertionError();
+            }
+            b.string(operationStack.read(model.sourceSectionSuffixOperation, "operation", operationFields.sourceSectionSuffixNodeId));
+            b.string(operationStack.read(model.sourceSectionSuffixOperation, "operation", operationFields.sourceSectionSuffixPatchIndex));
+            for (int i = 2; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
+                b.variable(builderSourceInfoTable.unpatchedAttribute);
+            }
+            b.end(2);
+
+            b.tree(operationStack.write(model.sourceSectionSuffixOperation, "operation", operationFields.sourceSectionSuffixNodeId, UNINIT));
+            b.tree(operationStack.write(model.sourceSectionSuffixOperation, "operation", operationFields.sourceSectionSuffixPatchIndex, "sourceTablePatchIndex"));
+            b.statement("break");
+            b.end();
+
+            b.end(); // switch
+
+        });
+
+        if (model.enableBlockScoping) {
+            // Walk blocks from bottom-to-top (emit locals entries in declaration order).
+            buildOperationStackWalkFromBottom(b, lowestOperationIndex, () -> {
+                b.startIf().string("operation.operation == ").tree(parent.createOperationConstant(model.blockOperation)).end().startBlock();
+                b.startFor().string("int epilogLocalIndex = 0; epilogLocalIndex < ", operationStack.read(model.blockOperation, operationFields.numLocals), "; epilogLocalIndex++").end().startBlock();
+                b.declaration(type(int.class), "prevTableIndex", operationStack.read(model.blockOperation, operationFields.locals) + "[epilogLocalIndex]");
+                b.startStatement().startCall("state.doEmitLocal");
+                b.string("epilogBci");
+                b.string("epilogBci + " + epilogInstructionLength);
+                b.string("state.locals[prevTableIndex + LOCALS_OFFSET_LOCAL_INDEX]");
+                b.string("state.locals[prevTableIndex + LOCALS_OFFSET_FRAME_INDEX]");
+                b.string("state.locals[prevTableIndex + LOCALS_OFFSET_NAME]");
+                b.string("state.locals[prevTableIndex + LOCALS_OFFSET_INFO]");
+                b.end(2);
+                b.end(); // for
+                b.end(); // if block
+            });
+        }
+
         return ex;
     }
 
@@ -4700,6 +4788,9 @@ final class BuilderElement extends AbstractElement {
         if (operationKind == OperationKind.RETURN) {
             // Remember the bytecode index for boxing elimination.
             b.declaration(type(int.class), "childBci", "parentBci");
+            if (model.epilogReturn != null) {
+                b.declaration(type(int.class), "epilogBci", "-1");
+            }
         }
 
         b.declaration(type(boolean.class), "needsRewind", "false");
@@ -4736,8 +4827,9 @@ final class BuilderElement extends AbstractElement {
             if (operationKind == OperationKind.RETURN && model.epilogReturn != null) {
                 b.startCase().tree(parent.createOperationConstant(model.epilogReturn.operation)).end();
                 b.startBlock();
+                b.statement("epilogBci = state.bci");
                 buildEmitOperationInstruction(b, model.epilogReturn.operation, "childBci", null);
-                b.startAssign("childBci").string("state.bci - " + model.epilogReturn.operation.instruction.getInstructionLength()).end();
+                b.statement("childBci = epilogBci");
                 b.statement("break");
                 b.end(); // case epilog
             }
@@ -4857,6 +4949,43 @@ final class BuilderElement extends AbstractElement {
         b.end();
         b.startIf().string("needsRewind").end().startBlock();
 
+        final String sourceAndLocalRangeStartBci;
+        if (operationKind == OperationKind.RETURN && model.epilogReturn != null) {
+            /*
+             * When there is an epilogReturn, the instruction stream will be [..., epilogReturn, return].
+             * To give epilogReturn the same source/local metadata as the return, we reopen the source/local
+             * ranges using epilogBci instead of returnBci.
+             *
+             * Exception: if instructions are emitted between the epilog and the return, we don't want to
+             * associate the metadata to the intervening instructions, so we should directly emit table
+             * entries covering only the epilog, then reopen the source/local ranges using returnBci as usual.
+             * At the moment, this exception only happens with tag.leave[Root].
+             */
+            if (model.enableTagInstrumentation && model.enableRootTagging) {
+                sourceAndLocalRangeStartBci = "sourceAndLocalRangeStartBci";
+                b.declaration(type(int.class), sourceAndLocalRangeStartBci);
+                b.statement("assert epilogBci != -1");
+                b.startIf().string("epilogBci + " + model.epilogReturn.operation.instruction.getInstructionLength(), " == state.bci").end().startBlock();
+                b.lineComment("The last instruction was the epilog.");
+                b.lineComment("Reopen source/local tables with epilogBci so the epilog instruction gets precise source/local metadata.");
+                b.startAssign(sourceAndLocalRangeStartBci).string("epilogBci").end();
+                b.end().startElseBlock();
+                b.lineComment("An instruction was emitted after the epilog, so reopening with epilogBci would associate incorrect metadata with that instruction.");
+                b.lineComment("Instead, emit individual table entries covering the epilog instruction and reopen with state.bci as usual.");
+                b.startStatement().startCall("doEmitEpilogReturnTableEntries").string("epilogBci").end(2);
+                b.startAssign(sourceAndLocalRangeStartBci).string("state.bci").end();
+                b.end();
+            } else {
+                b.lineComment("The last instruction was the epilog.");
+                b.lineComment("Reopen source/local tables with epilogBci so the epilog instruction gets precise source/local metadata.");
+                b.statement("assert epilogBci != -1");
+                sourceAndLocalRangeStartBci = "epilogBci";
+            }
+        } else {
+            // No return epilog. Reopen source/local ranges with the current bci.
+            sourceAndLocalRangeStartBci = "state.bci";
+        }
+
         buildOperationStackWalkFromBottom(b, lowestOperationIndex, () -> {
             b.startSwitch().string("operation.operation").end().startBlock();
 
@@ -4887,13 +5016,13 @@ final class BuilderElement extends AbstractElement {
 
             b.startCase().tree(parent.createOperationConstant(model.sourceSectionPrefixOperation)).end();
             b.startCaseBlock();
-            b.tree(operationStack.write(model.sourceSectionPrefixOperation, operationFields.startBci, "state.bci"));
+            b.tree(operationStack.write(model.sourceSectionPrefixOperation, operationFields.startBci, sourceAndLocalRangeStartBci));
             b.statement("break");
             b.end(); // case source section
 
             b.startCase().tree(parent.createOperationConstant(model.sourceSectionSuffixOperation)).end();
             b.startCaseBlock();
-            b.tree(operationStack.write(model.sourceSectionPrefixOperation, operationFields.startBci, "state.bci"));
+            b.tree(operationStack.write(model.sourceSectionPrefixOperation, operationFields.startBci, sourceAndLocalRangeStartBci));
             b.statement("break");
             b.end(); // case source section
 
@@ -4912,7 +5041,7 @@ final class BuilderElement extends AbstractElement {
                  */
                 if (operationKind != OperationKind.BRANCH) {
                     b.declaration(type(int.class), "endBci", "state.locals[prevTableIndex + LOCALS_OFFSET_END_BCI]");
-                    b.startIf().string("endBci == state.bci").end().startBlock();
+                    b.startIf().string("endBci == ", sourceAndLocalRangeStartBci).end().startBlock();
                     b.lineComment("No need to split. Reuse the existing entry.");
                     b.statement("state.locals[prevTableIndex + LOCALS_OFFSET_END_BCI] = ", UNINIT);
                     if (model.enableInstructionRewriting) {
@@ -4927,7 +5056,14 @@ final class BuilderElement extends AbstractElement {
                 b.declaration(type(int.class), "frameIndex", "state.locals[prevTableIndex + LOCALS_OFFSET_FRAME_INDEX]");
                 b.declaration(type(int.class), "nameIndex", "state.locals[prevTableIndex + LOCALS_OFFSET_NAME]");
                 b.declaration(type(int.class), "infoIndex", "state.locals[prevTableIndex + LOCALS_OFFSET_INFO]");
-                b.statement("blockLocalTableIndices[j] = state.doEmitLocal(localIndex, frameIndex, nameIndex, infoIndex)");
+                b.startAssign("blockLocalTableIndices[j]").startCall("state.doEmitLocal");
+                b.string(sourceAndLocalRangeStartBci);
+                b.string("-1 /* will be patched at end of block */");
+                b.string("localIndex");
+                b.string("frameIndex");
+                b.string("nameIndex");
+                b.string("infoIndex");
+                b.end().end();
                 b.end(); // for
                 b.end(); // case block
             }
@@ -5535,6 +5671,8 @@ final class BuilderElement extends AbstractElement {
         private CodeExecutableElement createDoEmitLocal() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitLocal");
             if (model.enableBlockScoping) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
+                ex.addParameter(new CodeVariableElement(type(int.class), "endBci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             }
@@ -5554,6 +5692,8 @@ final class BuilderElement extends AbstractElement {
 
             b.startReturn().startCall("doEmitLocal");
             if (model.enableBlockScoping) {
+                b.string("startBci");
+                b.string("endBci");
                 b.string("localIndex");
                 b.string("frameIndex");
             }
@@ -5611,6 +5751,8 @@ final class BuilderElement extends AbstractElement {
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitLocal");
             if (model.enableBlockScoping) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
+                ex.addParameter(new CodeVariableElement(type(int.class), "endBci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             }
@@ -5622,12 +5764,11 @@ final class BuilderElement extends AbstractElement {
 
             if (model.enableBlockScoping) {
                 b.statement("assert frameIndex - USER_LOCALS_START_INDEX >= 0");
-                b.statement("this.locals[tableIndex + LOCALS_OFFSET_START_BCI] = this.bci");
                 if (model.enableInstructionRewriting) {
                     b.statement("this.minLocalsTableFixupIndex = Math.min(this.minLocalsTableFixupIndex, tableIndex)");
                 }
-                b.lineComment("will be patched later at the end of the block");
-                b.statement("this.locals[tableIndex + LOCALS_OFFSET_END_BCI] = -1");
+                b.statement("this.locals[tableIndex + LOCALS_OFFSET_START_BCI] = startBci");
+                b.statement("this.locals[tableIndex + LOCALS_OFFSET_END_BCI] = endBci");
                 b.statement("this.locals[tableIndex + LOCALS_OFFSET_LOCAL_INDEX] = localIndex");
                 b.statement("this.locals[tableIndex + LOCALS_OFFSET_FRAME_INDEX] = frameIndex");
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.ToIntFunction;
 
 import org.graalvm.polyglot.Context;
 import org.junit.After;
@@ -148,7 +149,7 @@ public class TagTest extends AbstractInstructionTest {
         context.close();
     }
 
-    enum EventKind {
+    public enum EventKind {
         ENTER,
         RETURN_VALUE,
         UNWIND,
@@ -158,12 +159,12 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @SuppressWarnings("unchecked")
-    record Event(int id, EventKind kind, int startBci, int endBci, Object value, List<Class<?>> tags) {
-        Event(EventKind kind, int startBci, int endBci, Object value, Class<?>... tags) {
+    public record Event(int id, EventKind kind, int startBci, int endBci, Object value, List<Class<?>> tags) {
+        public Event(EventKind kind, int startBci, int endBci, Object value, Class<?>... tags) {
             this(-1, kind, startBci, endBci, value, List.of(tags));
         }
 
-        Event(int id, EventKind kind, int startBci, int endBci, Object value, Class<?>... tags) {
+        public Event(int id, EventKind kind, int startBci, int endBci, Object value, Class<?>... tags) {
             this(id, kind, startBci, endBci, value, List.of(tags));
         }
 
@@ -176,6 +177,14 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     private List<Event> attachEventListener(SourceSectionFilter filter) {
+        return attachEventListener(instrumenter, filter, (node) -> TagTestLanguage.REF.get(node).threadLocal.get().newEvent());
+    }
+
+    public static List<Event> attachEventListener(Instrumenter instrumenter, SourceSectionFilter filter) {
+        return attachEventListener(instrumenter, filter, (node) -> -1);
+    }
+
+    public static List<Event> attachEventListener(Instrumenter instrumenter, SourceSectionFilter filter, ToIntFunction<ExecutionEventNode> eventIdProvider) {
         List<Event> events = new ArrayList<>();
         instrumenter.attachExecutionEventFactory(filter, (e) -> {
             TagTree tree = (TagTree) e.getInstrumentedNode();
@@ -214,7 +223,7 @@ public class TagTest extends AbstractInstructionTest {
 
                 @TruffleBoundary
                 private void emitEvent(EventKind kind, Object arg) {
-                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), kind, tree.getEnterBytecodeIndex(), tree.getReturnBytecodeIndex(), arg,
+                    events.add(new Event(eventIdProvider.applyAsInt(this), kind, tree.getEnterBytecodeIndex(), tree.getReturnBytecodeIndex(), arg,
                                     tree.getTags().toArray(Class[]::new)));
                 }
 
