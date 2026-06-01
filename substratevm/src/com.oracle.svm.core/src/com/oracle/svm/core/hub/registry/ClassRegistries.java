@@ -414,10 +414,11 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     public static Class<?> defineClass(ClassLoader loader, String name, byte[] b, int off, int len, ClassDefinitionInfo info) {
-        // name is a "binary name": `foo.Bar$1`
+        // name can use either dot or slash package separators.
         assert RuntimeClassLoading.isSupported();
-        if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(name)) {
-            MissingReflectionRegistrationUtils.reportClassAccess(name);
+        String reflectionName = toReflectionName(name);
+        if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(reflectionName)) {
+            MissingReflectionRegistrationUtils.reportClassAccess(reflectionName);
             // The defineClass path usually can't throw ClassNotFoundException
             throw sneakyThrow(new ClassNotFoundException(name));
         }
@@ -432,6 +433,10 @@ public final class ClassRegistries implements ParsingContext {
         } else {
             return registry.defineClass(null, b, off, len, info);
         }
+    }
+
+    private static String toReflectionName(String name) {
+        return name == null ? null : ClassNameSupport.jniNameToReflectionName(name);
     }
 
     private static boolean isRegisteredClassName(String name) {
