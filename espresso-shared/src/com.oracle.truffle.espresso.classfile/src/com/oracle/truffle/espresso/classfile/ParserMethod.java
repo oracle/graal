@@ -82,6 +82,10 @@ public final class ParserMethod implements AttributedElement {
         return isClassInitializer(flags, name, signature);
     }
 
+    public static boolean isConstructor(int flags, Symbol<Name> nameSymbol) {
+        return ((flags & ACC_STATIC) == 0) && nameSymbol == ParserSymbols.ParserNames._init_;
+    }
+
     public static boolean isClassInitializer(int flags, Symbol<Name> nameSymbol, Symbol<Signature> signatureSymbol) {
         return ((flags & ACC_STATIC) != 0) && nameSymbol == ParserSymbols.ParserNames._clinit_ && signatureSymbol == ParserSymbols.ParserSignatures._void;
     }

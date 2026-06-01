@@ -34,8 +34,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableMapCursor;
 
+import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.shared.lookup.MethodLookup;
@@ -44,16 +44,34 @@ import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
- * Helper for creating tables.
+ * Creates the virtual and interface dispatch tables for a {@link PartialType}.
+ * <p>
+ * The builder is independent of a particular runtime representation. The caller provides a partial
+ * type model: the superclass vtable, all implemented interface table prototypes, and the methods
+ * declared by the type being created. From that model, this class computes:
+ * <ul>
+ * <li>the {@link Tables#getVtable() vtable}, preserving the superclass slot layout and appending
+ * newly introduced virtual methods,</li>
+ * <li>one {@link Tables#getItables() itable} per implemented interface, resolving each interface
+ * slot against the target type, and</li>
+ * <li>the {@link Tables#getImplicitInterfaceMethods() implicit interface methods} that have no class
+ * implementation and therefore require runtime handling as miranda/default-method entries.</li>
+ * </ul>
+ * <p>
+ * Returned table entries are {@link TableEntryRef references} so the builder can attach slot-local
+ * metadata such as whether a declared method may use its vtable slot index, whether an entry was
+ * appended as an implicit interface method, or whether dispatch must fail because method selection
+ * found multiple maximally-specific non-abstract interface methods.
  */
 public final class VTable {
     /**
-     * Creates tables associated with the given {@link PartialType targetClass}.
+     * Creates tables associated with the given {@link PartialType targetClass} using the default
+     * builder policy.
      * <p>
      * The returned object is a {@link Tables} containing the {@link Tables#getVtable() virtual
      * table} and the {@link Tables#getItables() interface tables}. That object also makes known the
      * {@link Tables#getImplicitInterfaceMethods() implicit interface methods} that do not have a
-     * concrete implementation in the type hierarchy of {@code targetClass}.
+     * concrete implementation in the class hierarchy of {@code targetClass}.
      * <p>
      * All the methods of a {@link Tables} returned by this method are guaranteed to return non-null
      * results, though returned {@link List lists} may be empty if appropriate. All lists in the
@@ -73,7 +91,14 @@ public final class VTable {
     }
 
     /**
-     * Same as {@link #create(PartialType)}, but with additional flags.
+     * Creates tables associated with the given {@link PartialType targetClass} using an explicit
+     * builder policy.
+     * <p>
+     * The returned object has the same non-null guarantees as {@link #create(PartialType)}. If
+     * {@code allowInterfaceResolvingToPrivate} is {@code true} or {@code finalMethodsInSuperTable}
+     * is {@code false}, interface resolution may also use
+     * {@link PartialType#fallbackLookup(Symbol, Symbol, boolean)}; entries returned by fallback
+     * lookup can appear in the result even if they did not appear in one of the input lists.
      *
      * @param targetClass The type for which method tables should be created
      * @param verbose Whether all declared methods should be unconditionally added to the vtable.
@@ -104,15 +129,9 @@ public final class VTable {
      * Returns whether a given method may appear in a vtable.
      */
     public static <C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> boolean isVirtualEntry(TableEntry<C, M, F> m) {
-        return !m.isPrivate() && !m.isStatic() && !isConstructor(m) && !isClassInitializer(m);
-    }
-
-    static <C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> boolean isConstructor(TableEntry<C, M, F> m) {
-        return m.getSymbolicName() == ParserNames._init_;
-    }
-
-    static <C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> boolean isClassInitializer(TableEntry<C, M, F> m) {
-        return m.getSymbolicName() == ParserNames._clinit_ && m.isStatic();
+        return !m.isPrivate() && !m.isStatic() &&
+                        !ParserMethod.isConstructor(m.getModifiers(), m.getSymbolicName()) &&
+                        !ParserMethod.isClassInitializer(m.getModifiers(), m.getSymbolicName(), m.getSymbolicSignature());
     }
 
     private static final class Builder<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {

@@ -30,7 +30,6 @@ import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
@@ -50,7 +49,7 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
      *         {@link #getSymbolicName() name} is {@code "<init>"}), {@code false} otherwise.
      */
     default boolean isConstructor() {
-        return getSymbolicName() == ParserNames._init_;
+        return ParserMethod.isConstructor(getModifiers(), getSymbolicName());
     }
 
     /**
@@ -59,7 +58,7 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
      *         static}), {@code false} otherwise.
      */
     default boolean isClassInitializer() {
-        return getSymbolicName() == ParserNames._clinit_ && isStatic();
+        return ParserMethod.isClassInitializer(getModifiers(), getSymbolicName(), getSymbolicSignature());
     }
 
     /**
