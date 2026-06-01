@@ -45,7 +45,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 public interface RuntimeMetadataDecoder {
     int NO_DATA = -1;
 
-    @Fold
     static RuntimeMetadataDecoder singleton() {
         return ImageSingletons.lookup(RuntimeMetadataDecoder.class);
     }
