@@ -2227,6 +2227,7 @@ lib_jvm_preserved_packages = [
     'java.security.cert',
     'java.security.spec',
     'java.text',
+    'java.text.spi',
     'java.time',
     'java.time.chrono',
     'java.time.format',
@@ -2239,6 +2240,7 @@ lib_jvm_preserved_packages = [
     'java.util.jar',
     'java.util.logging',
     'java.util.regex',
+    'java.util.spi',
     'java.util.stream',
     'java.util.zip',
     'javax.net',
@@ -2249,9 +2251,13 @@ lib_jvm_preserved_packages = [
     'jdk.internal.constant',
     'jdk.internal.logger',
     'jdk.internal.misc',
+    'jdk.internal.util',
     'sun.invoke.util',
     'sun.nio.cs.ext',
     'sun.security.util',
+    'sun.util',
+    'sun.util.locale',
+    'sun.util.locale.provider',
 ]
 
 lib_jvm_preserved_modules = [
