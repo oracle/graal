@@ -154,4 +154,23 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
             return Collections.singletonList("com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl");
         }
     }
+
+    static class XMLCryptoTransformServiceClassesAndResources extends XMLParsersRegistration {
+
+        @Override
+        void registerResources() {
+            /*
+             * To allow register new resource bundle classes during analysis phase
+             */
+            ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            classInitializationSupport.withUnsealedConfiguration(() -> {
+                ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.security/resource/xmlsecurity");
+            });
+        }
+
+        @Override
+        List<String> xmlParserClasses() {
+            return Collections.emptyList();
+        }
+    }
 }
