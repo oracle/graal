@@ -642,16 +642,11 @@ public final class InterpreterToVM {
         Class<?> clazz = klass.getJavaClass();
         validateNewReferenceClass(clazz);
         ensureClassInitialized(clazz);
-        try {
-            /*
-             * The class was checked above, so the intrinsic allocation path can only fail with
-             * allocation-time IllegalArgumentException or MissingReflectionRegistrationError when
-             * unsafe allocation metadata is missing.
-             */
-            return KnownIntrinsics.unvalidatedAllocateInstance(clazz);
-        } catch (IllegalArgumentException | MissingReflectionRegistrationError e) {
-            throw SemanticJavaException.raise(e);
-        }
+        /*
+         * The class and initialization checks above leave only OutOfMemoryError and
+         * StackOverflowError to be reported by the intrinsic allocation path.
+         */
+        return KnownIntrinsics.unvalidatedAllocateInstance(clazz);
     }
 
     private static void validateNewReferenceClass(Class<?> clazz) throws SemanticJavaException {
