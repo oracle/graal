@@ -644,8 +644,9 @@ public final class InterpreterToVM {
         ensureClassInitialized(clazz);
         try {
             /*
-             * The class was checked above, so the intrinsic allocation path can fail only with
-             * allocation errors that the interpreter handles specially.
+             * The class was checked above, so the intrinsic allocation path can only fail with
+             * allocation-time IllegalArgumentException or MissingReflectionRegistrationError when
+             * unsafe allocation metadata is missing.
              */
             return KnownIntrinsics.unvalidatedAllocateInstance(clazz);
         } catch (IllegalArgumentException | MissingReflectionRegistrationError e) {
