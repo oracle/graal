@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
@@ -62,9 +63,14 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     }
 
     /**
-     * Models SafepointState transforms that can be applied to all loops in a graph.
+     * Records the safepoint-state updates selected by this phase before mutating the graph. The
+     * optimizer may inspect and update loop-end, loop-exit, and guest loop-begin safepoint states
+     * in several steps; keeping the updates in a plan avoids transient graph states that would
+     * violate invariants such as enabling guest safepoints both at a {@link LoopBeginNode} and at
+     * its {@link LoopEndNode loop ends}.
      */
     public static class LoopSafepointPlan {
+        /** Planned state updates for every loop begin in the graph, initialized from the graph. */
         private final EconomicMap<LoopBeginNode, SafepointStateEffect> loopStates;
 
         public LoopSafepointPlan(StructuredGraph g) {
@@ -75,13 +81,33 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         }
 
         /**
-         * Apply all safepoint effects on all loops, that is, enable/disable loop safepoint on loop
-         * ends and exits.
+         * Applies all planned safepoint-state updates to their loops. For each loop, this updates
+         * the host loop-end safepoints, the guest loop-begin or loop-end safepoints, and the
+         * loop-exit safepoints.
          */
         public void apply() {
             for (SafepointStateEffect loopPlan : loopStates.getValues()) {
                 loopPlan.apply();
             }
+        }
+
+        /**
+         * If a loop has multiple back-edges that would each receive a guest safepoint, replace them
+         * by a single guest safepoint at the loop begin.
+         */
+        public void switchGuestSafepointsToLoopBeginIfMultipleBackEdges(Loop loop) {
+            loopStates.get(loop.loopBegin()).switchGuestSafepointsToLoopBeginIfMultipleBackEdges();
+        }
+
+        /**
+         * Plans the guest safepoint state for {@code loop}'s {@link LoopBeginNode}. Enabling this
+         * state means guest safepoint insertion emits one safepoint at the loop begin instead of
+         * emitting guest safepoints at the loop's back-edges. The per-loop effect enforces that this
+         * state can only be enabled when all guest loop-end safepoints for the same loop are
+         * disabled.
+         */
+        public void setGuestLoopBeginState(Loop loop, SafepointState state) {
+            loopStates.get(loop.loopBegin()).setGuestLoopBeginState(state);
         }
 
         public void setGuestEndStateAllEnds(Loop loop, SafepointState state) {
@@ -112,7 +138,17 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     }
 
     /**
-     * Models SafepointState transforms that can be {@linkplain #apply applied} to a single loop.
+     * Models safepoint-state transforms that can be {@linkplain #apply applied} to a single loop.
+     *
+     * The planned guest safepoint locations are mutually exclusive:
+     *
+     * <pre>{@code
+     * guestLoopBeginState.canSafepoint() => all guestEndStates cannot safepoint
+     * any guestEndState.canSafepoint()  => guestLoopBeginState cannot safepoint
+     * }</pre>
+     *
+     * This mirrors the invariant enforced by {@link LoopBeginNode} and {@link LoopEndNode} setters,
+     * but catches invalid transitions while the plan is still being built.
      */
     public static class SafepointStateEffect {
         /**
@@ -132,6 +168,13 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
          */
         private final LoopBeginNode loopBegin;
 
+        /**
+         * The guest safepoint state assigned to the loop begin of this loop. New loop begins start
+         * with {@link SafepointState#OPTIMIZER_DISABLED}; the plan is initialized from the current
+         * {@link LoopBeginNode#getGuestLoopBeginSafepointState()} value.
+         */
+        private SafepointState guestLoopBeginState;
+
         public SafepointStateEffect(LoopBeginNode lb) {
             this.loopBegin = lb;
             endStates = EconomicMap.create();
@@ -142,6 +185,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 guestEndStates.put(len, len.getGuestSafepointState());
             }
             exitState = lb.getLoopExitsSafepointState();
+            guestLoopBeginState = lb.getGuestLoopBeginSafepointState();
         }
 
         public SafepointState getExitState() {
@@ -160,6 +204,25 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             return guestEndStates;
         }
 
+        public SafepointState getGuestLoopBeginState() {
+            return guestLoopBeginState;
+        }
+
+        /**
+         * Sets the planned guest safepoint state for the loop begin. A state that can safepoint is
+         * rejected if any planned guest loop-end safepoint for the same loop can also safepoint.
+         */
+        public void setGuestLoopBeginState(SafepointState newState) {
+            if (newState.canSafepoint()) {
+                for (LoopEndNode len : loopBegin.loopEnds()) {
+                    SafepointState guestEndState = guestEndStates.get(len);
+                    GraalError.guarantee(!guestEndState.canSafepoint(),
+                                    "Cannot enable a guest safepoint at the loop begin while a guest safepoint at a loop end is enabled, loopBeginState=%s, loopEndState=%s", newState, guestEndState);
+                }
+            }
+            guestLoopBeginState = newState;
+        }
+
         public void setEndState(LoopEndNode len, SafepointState newState) {
             endStates.put(len, newState);
         }
@@ -171,19 +234,66 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         }
 
         public void setGuestEndStateAllEnds(SafepointState newState) {
+            GraalError.guarantee(!newState.canSafepoint() || !guestLoopBeginState.canSafepoint(),
+                            "Cannot enable guest safepoints at loop ends while a guest safepoint at the loop begin is enabled, loopEndsState=%s, loopBeginState=%s", newState, guestLoopBeginState);
             for (LoopEndNode len : loopBegin.loopEnds()) {
                 guestEndStates.put(len, newState);
             }
         }
 
         public void setGuestEndState(LoopEndNode len, SafepointState newState) {
+            GraalError.guarantee(!newState.canSafepoint() || !guestLoopBeginState.canSafepoint(),
+                            "Cannot enable a guest safepoint at a loop end while a guest safepoint at the loop begin is enabled, loopEndState=%s, loopBeginState=%s", newState, guestLoopBeginState);
             guestEndStates.put(len, newState);
         }
 
+        /**
+         * Replaces duplicated guest safepoints on multiple back-edges by a single guest safepoint at
+         * the loop begin.
+         *
+         * <pre>{@code
+         * if count(loopEnds where guestEndState.canSafepoint()) > 1:
+         *     disable guest safepoints on all loop ends
+         *     enable guest safepoint at loop begin
+         * }</pre>
+         *
+         * Loops with a single back-edge keep the safepoint at the loop end, and loops whose guest
+         * safepoints are permanently disabled keep {@link SafepointState#MUST_NEVER_SAFEPOINT}.
+         */
+        public void switchGuestSafepointsToLoopBeginIfMultipleBackEdges() {
+            if (loopBegin.getLoopEndCount() < 2 || guestLoopBeginState == SafepointState.MUST_NEVER_SAFEPOINT) {
+                return;
+            }
+            int guestSafepointedBackEdges = 0;
+            for (LoopEndNode len : loopBegin.loopEnds()) {
+                if (guestEndStates.get(len).canSafepoint()) {
+                    guestSafepointedBackEdges++;
+                    if (guestSafepointedBackEdges > 1) {
+                        setGuestEndStateAllEnds(SafepointState.OPTIMIZER_DISABLED);
+                        setGuestLoopBeginState(SafepointState.ENABLED);
+                        return;
+                    }
+                }
+            }
+        }
+
+        /**
+         * Applies the planned states to the graph. When enabling a guest safepoint at the loop
+         * begin, guest safepoints on loop ends are disabled first so the graph never temporarily has
+         * guest safepoints enabled at both locations.
+         */
         public void apply() {
             for (LoopEndNode len : loopBegin.loopEnds()) {
                 len.setSafepointState(endStates.get(len));
-                len.setGuestSafepointState(guestEndStates.get(len));
+            }
+            if (guestLoopBeginState.canSafepoint()) {
+                loopBegin.setGuestSafepoint(SafepointState.OPTIMIZER_DISABLED);
+                loopBegin.setGuestLoopBeginSafepoint(guestLoopBeginState);
+            } else {
+                loopBegin.setGuestLoopBeginSafepoint(guestLoopBeginState);
+                for (LoopEndNode len : loopBegin.loopEnds()) {
+                    len.setGuestSafepointState(guestEndStates.get(len));
+                }
             }
             loopBegin.setLoopExitSafepoint(exitState);
         }
@@ -317,6 +427,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             for (Loop loop : loops.loops()) {
                 if (!allowGuestSafepoints()) {
                     graphWidePlan.setGuestEndStateAllEnds(loop, SafepointState.MUST_NEVER_SAFEPOINT);
+                    graphWidePlan.setGuestLoopBeginState(loop, SafepointState.MUST_NEVER_SAFEPOINT);
                 }
                 if (!loop.loopBegin().canEndsSafepoint() && !loop.loopBegin().canEndsGuestSafepoint()) {
                     /*
@@ -337,6 +448,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         loopEndSafepointsDisabled = loop.loopBegin().getLoopEndCount();
                     }
                 }
+                graphWidePlan.switchGuestSafepointsToLoopBeginIfMultipleBackEdges(loop);
                 if (!loop.loopBegin().canExitsSafepoint()) {
                     continue;
                 }
