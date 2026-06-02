@@ -84,7 +84,6 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
@@ -96,6 +95,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
+import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -575,11 +575,6 @@ public abstract class PlatformThreads {
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static RuntimeException unmanagedThreadUnsupported() {
-        throw VMError.shouldNotReachHere("Unmanaged threads are not supported on this platform.");
-    }
-
     @SuppressWarnings("unused")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize) {
@@ -593,6 +588,17 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
         throw unmanagedThreadUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void closeOSThreadHandle(OSThreadHandle threadHandle) {
+        /* On most platforms, OS thread handles don't need to be closed. */
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static RuntimeException unmanagedThreadUnsupported() {
+        throw VMError.shouldNotReachHere("Unmanaged threads are not supported on this platform.");
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -626,12 +632,6 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void setUnmanagedThreadLocalValue(ThreadLocalKey key, WordBase value) {
         throw unmanagedThreadLocalUnsupported();
-    }
-
-    @SuppressWarnings("unused")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void closeOSThreadHandle(OSThreadHandle threadHandle) {
-        /* On most platforms, OS thread handles don't need to be closed. */
     }
 
     static final Method FORK_JOIN_POOL_TRY_TERMINATE_METHOD;

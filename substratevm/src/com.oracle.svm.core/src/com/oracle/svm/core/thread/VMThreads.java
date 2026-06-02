@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
@@ -62,6 +61,8 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
+import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
+import com.oracle.svm.guest.staging.core.thread.OSThreadId;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -1103,12 +1104,6 @@ public abstract class VMThreads {
         static boolean isAarch64() {
             return SubstrateTarget.getArchitecture() instanceof AArch64;
         }
-    }
-
-    public interface OSThreadHandle extends PointerBase {
-    }
-
-    public interface OSThreadId extends PointerBase {
     }
 
     @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
