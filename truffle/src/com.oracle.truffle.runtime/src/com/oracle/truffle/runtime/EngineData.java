@@ -91,12 +91,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.nio.ByteBuffer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -310,6 +312,10 @@ public final class EngineData {
 
     public boolean onStoreCache(Path targetPath, long cancelledWord) {
         return getRuntime().getEngineCacheSupport().onStoreCache(this, targetPath, cancelledWord);
+    }
+
+    public ByteBuffer persistCache(Engine.CancellationCallback callback) {
+        return getRuntime().getEngineCacheSupport().persistCache(this, callback);
     }
 
     private void loadOptions(OptionValues options, SandboxPolicy sandboxPolicy) {

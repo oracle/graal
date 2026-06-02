@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.wrapper;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.Reference;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.Map;
@@ -192,6 +193,11 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
 
     @Override
     public boolean storeCache(Object engineReceiver, Path targetFile, long cancelledWord) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ByteBuffer persistCache(Object engineReceiver, Engine.CancellationCallback callback) {
         throw new UnsupportedOperationException();
     }
 

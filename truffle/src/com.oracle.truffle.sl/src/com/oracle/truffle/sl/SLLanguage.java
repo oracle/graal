@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -252,7 +252,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Option(help = "Prints the AST or bytecode after parsing.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> PrintParsed = new OptionKey<>(false);
 
-    @Option(help = "Forces the bytecode interpreter to only use the CACHED or UNCACHED tier. Useful for testing and reproducing bugs.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
+    @Option(help = "Forces the bytecode interpreter to only use the CACHED or UNCACHED tier. Useful for testing and reproducing bugs.", category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
     public static final OptionKey<BytecodeTier> ForceBytecodeTier = new OptionKey<>(null,
                     new OptionType<>("bytecodeTier", (s) -> {
                         switch (s) {

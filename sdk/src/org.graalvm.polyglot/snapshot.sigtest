@@ -209,6 +209,7 @@ hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOption
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
+innr public abstract interface static CancellationCallback
 intf java.lang.AutoCloseable
 meth public !varargs static boolean copyResources(java.nio.file.Path,java.lang.String[]) throws java.io.IOException
 meth public !varargs static org.graalvm.polyglot.Engine create(java.lang.String[])
@@ -217,6 +218,7 @@ meth public boolean storeCache(java.nio.file.Path)
 meth public boolean storeCache(java.nio.file.Path,org.graalvm.nativeimage.c.type.WordPointer)
 meth public java.lang.String getImplementationName()
 meth public java.lang.String getVersion()
+meth public java.nio.ByteBuffer persistCache(org.graalvm.polyglot.Engine$CancellationCallback)
 meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Instrument> getInstruments()
 meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Language> getLanguages()
 meth public java.util.Set<org.graalvm.polyglot.Source> getCachedSources()
@@ -229,6 +231,11 @@ meth public void close(boolean)
 supr java.lang.Object
 hfds EMPTY,ENGINES,creatorEngine,currentAPI,dispatch,initializationException,receiver,shutdownHookInitialized
 hcls APIAccessImpl,CleanableReference,ContextReference,EngineReference,EngineShutDownHook,ImplHolder,PolyglotInvalid
+
+CLSS public abstract interface static org.graalvm.polyglot.Engine$CancellationCallback
+ outer org.graalvm.polyglot.Engine
+ anno 0 java.lang.FunctionalInterface()
+meth public abstract boolean shouldCancel()
 
 CLSS public final org.graalvm.polyglot.Engine$Builder
  outer org.graalvm.polyglot.Engine
