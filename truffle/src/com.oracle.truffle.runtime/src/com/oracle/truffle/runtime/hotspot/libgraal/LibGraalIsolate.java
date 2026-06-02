@@ -91,14 +91,25 @@ public final class LibGraalIsolate {
      * This is used to obtain objects whose lifetime is bound to the isolate represented by this
      * object.
      */
-    @SuppressWarnings("unchecked")
     public synchronized <T> T getSingleton(Class<T> key, Supplier<T> supplier) {
         // Cannot use HashMap.computeIfAbsent as it will throw a ConcurrentModificationException
         // if supplier recurses here to compute another singleton.
         if (!singletons.containsKey(key)) {
-            singletons.put(key, supplier.get());
+            try {
+                T value = supplier.get();
+                singletons.put(key, value);
+                return value;
+            } catch (Throwable t) {
+                singletons.put(key, new InitializationError(t));
+                throw t;
+            }
         }
-        return (T) singletons.get(key);
+        Object value = singletons.get(key);
+        if (value instanceof InitializationError initializationError) {
+            throw initializationError.rethrow();
+        } else {
+            return key.cast(value);
+        }
     }
 
     private final Map<Class<?>, Object> singletons = new HashMap<>();
@@ -171,5 +182,23 @@ public final class LibGraalIsolate {
 
     public boolean isValid() {
         return !destroyed;
+    }
+
+    /**
+     * Holder for an error that occurred during singleton initialization. This prevents
+     * repeated calls to a supplier that may have already performed side effects.
+     */
+    private record InitializationError(Throwable cause) {
+
+        RuntimeException rethrow() {
+            if (cause instanceof DestroyedIsolateException original) {
+                // Keep DestroyedIsolateException type, isSuppressedCompilationFailure depends on it.
+                DestroyedIsolateException destroyedIsolate = new DestroyedIsolateException(original.getMessage(), original.isVmExit());
+                destroyedIsolate.initCause(original);
+                throw destroyedIsolate;
+            } else {
+                throw new IllegalStateException(cause);
+            }
+        }
     }
 }

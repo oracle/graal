@@ -29,6 +29,7 @@ import java.io.PrintStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -67,11 +68,10 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
 
     private final LibGraalLoader libGraalLoader = (LibGraalLoader) getClass().getClassLoader();
 
-    private static HSTruffleCompilerRuntime truffleRuntime;
+    private static final AtomicReference<HSTruffleCompilerRuntime> truffleRuntime = new AtomicReference<>();
 
     public static void registerTruffleCompilerRuntime(HSTruffleCompilerRuntime runtime) {
-        GraalError.guarantee(truffleRuntime == null, "cannot register more than one Truffle runtime");
-        truffleRuntime = runtime;
+        GraalError.guarantee(truffleRuntime.compareAndSet(null, runtime), "cannot register more than one Truffle runtime");
     }
 
     @Override
@@ -235,9 +235,17 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
                 env.getFunctions().getCallStaticVoidMethodA().call(env, cbClass, cbMethod, StackValue.get(0));
                 JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             }
-            if (truffleRuntime != null) {
+            /*
+             * During global JVMCI shutdown, JVMCIRuntime::shutdown() can invoke this method
+             * without destroying the libgraal JavaVM. A later attach during shutdown may then
+             * reuse the same libgraal isolate after notifyShutdown has unregistered the
+             * HotSpot side LibGraalIsolate. Clear this cached runtime so such reuse does not see a
+             * stale Truffle runtime registration.
+             */
+            HSTruffleCompilerRuntime rt = truffleRuntime.getAndSet(null);
+            if (rt != null) {
                 JNI.JNIEnv env = Word.unsigned(getJNIEnv());
-                truffleRuntime.notifyShutdown(env);
+                rt.notifyShutdown(env);
             }
         }
         VMRuntime.shutdown();
