@@ -855,9 +855,13 @@ public final class Resources {
         ConditionalRuntimeValue<ResourceStorageEntryBase> entry = loaderKey == null ? getEntry(module, canonicalResourceName) : getEntry(loaderKey, module, canonicalResourceName);
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                if (missingResourceMatchesIncludePattern(resourceName, moduleName) || missingResourceMatchesIncludePattern(canonicalResourceName, moduleName)) {
+                boolean resourceNameMatchesIncludePattern = missingResourceMatchesIncludePattern(resourceName, moduleName);
+                boolean canonicalResourceNameMatchesIncludePattern = !resourceNameMatchesIncludePattern &&
+                                missingResourceMatchesIncludePattern(canonicalResourceName, moduleName);
+                if (resourceNameMatchesIncludePattern || canonicalResourceNameMatchesIncludePattern) {
                     // This resource name matches a pattern/glob from the provided metadata, but no
                     // resource with the name actually exists. Do not report missing metadata.
+                    traceResource(resourceNameMatchesIncludePattern ? resourceName : canonicalResourceName, moduleName);
                     return null;
                 }
                 traceResourceMissingMetadata(resourceName, moduleName, probe);
@@ -913,6 +917,13 @@ public final class Resources {
         }
         int loaderId = SubstrateUtil.cast(loader, Target_java_lang_ClassLoader.class).resourceLoaderId;
         return loaderId != 0 ? ResourceLoaderKeys.synthetic(loaderId) : null;
+    }
+
+    @AlwaysInline("tracing should fold away when disabled")
+    private static void traceResource(String resourceName, String moduleName) {
+        if (MetadataTracer.enabled()) {
+            MetadataTracer.singleton().traceResource(resourceName, moduleName);
+        }
     }
 
     @AlwaysInline("tracing should fold away when disabled")

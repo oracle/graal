@@ -402,7 +402,8 @@ public final class JNIReflectionDictionary {
     }
 
     private static void traceMethodAccessIfNeeded(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, JNIAccessibleMethod method, boolean match, boolean traceMissing) {
-        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(traceMissing, match && method != null && method.isPreserved())) {
+        boolean metadataRegisteredForReplay = method != null && (method.isNegative() || (match && method.isPreserved()));
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(traceMissing, metadataRegisteredForReplay)) {
             Class<?> traceClass = method != null && match ? method.getDeclaringClassObject() : classObject;
             MetadataTracer.singleton().traceJNIType(traceClass);
             MetadataTracer.singleton().traceMethodAccess(traceClass, descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(),
@@ -502,7 +503,8 @@ public final class JNIReflectionDictionary {
     }
 
     private static void traceFieldAccessIfNeeded(Class<?> classObject, CharSequence name, JNIAccessibleField field, boolean match, boolean traceMissing) {
-        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(traceMissing, match && field != null && field.isPreserved())) {
+        boolean metadataRegisteredForReplay = field != null && (field.isNegative() || (match && field.isPreserved()));
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(traceMissing, metadataRegisteredForReplay)) {
             Class<?> traceClass = field != null && match ? field.getDeclaringClass().getClassObject() : classObject;
             MetadataTracer.singleton().traceJNIType(traceClass);
             MetadataTracer.singleton().traceFieldAccess(traceClass, name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
