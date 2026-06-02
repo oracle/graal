@@ -46,6 +46,7 @@ import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNINITIALIZED_DECLARING_CLASS_SENTINEL;
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -58,6 +59,7 @@ import java.lang.constant.ConstantDesc;
 import java.lang.invoke.TypeDescriptor;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
+import java.lang.reflect.AccessFlag;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.ClassFileFormatVersion;
@@ -81,6 +83,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.IntFunction;
@@ -1238,6 +1241,30 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     public int getModifiers() {
         return companion.modifiers;
+    }
+
+    /**
+     * Returns the access flags of this class using the same location selection as
+     * {@link Class#accessFlags()}.
+     */
+    @Substitute
+    public Set<AccessFlag> accessFlags() {
+        AccessFlag.Location location = isMemberClass() || isLocalClass() || isAnonymousClass() || hubIsArray()
+                        ? AccessFlag.Location.INNER_CLASS
+                        : AccessFlag.Location.CLASS;
+        int accessFlags;
+        if (location == AccessFlag.Location.CLASS) {
+            accessFlags = getClassAccessFlags();
+            if (isEnum()) {
+                accessFlags |= ACC_ENUM;
+            }
+            if (isAnnotation()) {
+                accessFlags |= ACC_ANNOTATION;
+            }
+        } else {
+            accessFlags = getModifiers();
+        }
+        return AccessFlag.maskToAccessFlags(accessFlags, location);
     }
 
     public int getClassAccessFlags() {
