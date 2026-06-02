@@ -66,8 +66,6 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  * A runtime-loaded, classfile-backed specialization of {@link InterpreterResolvedObjectType}.
  */
 public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType, AttributedElement {
-    private static final int CLASS_ACCESS_FLAGS = Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
-
     // GR-70288: Only keep a subset of the parsed attributes.
     private final Attribute[] attributes;
 
@@ -81,7 +79,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
                     InterpreterResolvedObjectType[] interfaces,
                     InterpreterConstantPool constantPool, Class<?> javaClass, boolean isWordType,
                     int staticReferenceFields, int staticPrimitiveFieldsSize) {
-        super(parserKlass.getType(), parserKlass.getFlags() & CLASS_ACCESS_FLAGS, componentType, superclass, interfaces, constantPool, javaClass, isWordType,
+        super(parserKlass.getType(), parserKlass.getFlags() & Constants.JVM_RECOGNIZED_CLASS_MODIFIERS, componentType, superclass, interfaces, constantPool, javaClass, isWordType,
                         permittedSubclassNames(parserKlass));
         this.primitiveStatics = new byte[staticPrimitiveFieldsSize];
         this.referenceStatics = new Object[staticReferenceFields];
