@@ -78,7 +78,7 @@ public class BuildArtifactsExporter {
                     return absoluteArtifactPath.toString();
                 }
             }).toList();
-            jsonMap.computeIfAbsent(key, _ -> new ArrayList<>()).addAll(value);
+            jsonMap.computeIfAbsent(key, unused -> new ArrayList<>()).addAll(value);
         });
 
         try (JsonWriter writer = new JsonWriter(targetPath)) {
