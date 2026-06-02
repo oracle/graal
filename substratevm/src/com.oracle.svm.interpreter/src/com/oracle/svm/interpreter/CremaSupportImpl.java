@@ -40,8 +40,6 @@ import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHa
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putField;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putStatic;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_ABSTRACT;
-import static com.oracle.svm.espresso.classfile.Constants.ACC_ANNOTATION;
-import static com.oracle.svm.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_PROTECTED;
@@ -942,7 +940,7 @@ public class CremaSupportImpl implements CremaSupport {
                 }
             }
         }
-        return modifiers & ~ACC_SUPER & (JVM_ACC_WRITTEN_FLAGS | ACC_ENUM | ACC_ANNOTATION);
+        return modifiers & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;
     }
 
     static final class CremaPartialType implements PartialType<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {

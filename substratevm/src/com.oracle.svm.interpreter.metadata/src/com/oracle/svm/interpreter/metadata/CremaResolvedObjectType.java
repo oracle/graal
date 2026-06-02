@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  * A runtime-loaded, classfile-backed specialization of {@link InterpreterResolvedObjectType}.
  */
 public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType, AttributedElement {
-    private static final int CLASS_ACCESS_FLAGS = Constants.JVM_RECOGNIZED_CLASS_MODIFIERS | Constants.ACC_ENUM | Constants.ACC_ANNOTATION;
+    private static final int CLASS_ACCESS_FLAGS = Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
 
     // GR-70288: Only keep a subset of the parsed attributes.
     private final Attribute[] attributes;
