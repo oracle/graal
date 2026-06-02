@@ -307,7 +307,6 @@ public class StandardGraphBuilderPlugins {
             }
             registerCRCPlugins(plugins);
             registerGHASHPlugin(plugins);
-            registerPoly1305Plugin(plugins);
             registerChaCha20Plugin(plugins);
             registerBigIntegerPlugins(plugins);
             registerBase64Plugins(plugins);
@@ -2610,32 +2609,34 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerPoly1305Plugin(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, "com.sun.crypto.provider.Poly1305");
-        r.register(new ConditionalInvocationPlugin("processMultipleBlocks", Receiver.class, byte[].class, int.class, int.class, long[].class, long[].class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input, ValueNode offset, ValueNode length, ValueNode aLimbs,
-                            ValueNode rLimbs) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    receiver.get(true);
-                    ValueNode inputNotNull = b.nullCheckedValue(input);
-                    ValueNode aLimbsNotNull = b.nullCheckedValue(aLimbs);
-                    ValueNode rLimbsNotNull = b.nullCheckedValue(rLimbs);
+    public static class Poly1305ProcessBlocksPlugin extends ConditionalInvocationPlugin {
 
-                    ValueNode inputStart = helper.arrayElementPointer(inputNotNull, JavaKind.Byte, offset);
-                    ValueNode aLimbsStart = helper.arrayStart(aLimbsNotNull, JavaKind.Long);
-                    ValueNode rLimbsStart = helper.arrayStart(rLimbsNotNull, JavaKind.Long);
+        public Poly1305ProcessBlocksPlugin() {
+            super("processMultipleBlocks", Receiver.class, byte[].class, int.class, int.class, long[].class, long[].class);
+        }
 
-                    b.add(new Poly1305ProcessBlocksNode(inputStart, length, aLimbsStart, rLimbsStart));
-                    return true;
-                }
+        @Override
+        public boolean isApplicable(Architecture arch) {
+            return Poly1305ProcessBlocksNode.isSupported(arch);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input, ValueNode offset, ValueNode length, ValueNode aLimbs,
+                        ValueNode rLimbs) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                receiver.get(true);
+                ValueNode inputNotNull = b.nullCheckedValue(input);
+                ValueNode aLimbsNotNull = b.nullCheckedValue(aLimbs);
+                ValueNode rLimbsNotNull = b.nullCheckedValue(rLimbs);
+
+                ValueNode inputStart = helper.arrayElementPointer(inputNotNull, JavaKind.Byte, offset);
+                ValueNode aLimbsStart = helper.arrayStart(aLimbsNotNull, JavaKind.Long);
+                ValueNode rLimbsStart = helper.arrayStart(rLimbsNotNull, JavaKind.Long);
+
+                b.add(new Poly1305ProcessBlocksNode(inputStart, length, aLimbsStart, rLimbsStart));
+                return true;
             }
-
-            @Override
-            public boolean isApplicable(Architecture arch) {
-                return Poly1305ProcessBlocksNode.isSupported(arch);
-            }
-        });
+        }
     }
 
     public static void registerChaCha20Plugin(InvocationPlugins plugins) {
