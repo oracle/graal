@@ -2235,6 +2235,7 @@ lib_jvm_preserved_packages = [
     'jdk.internal.logger',
     'jdk.internal.misc',
     'sun.invoke.util',
+    'sun.nio.cs.ext',
     'sun.security.util',
 ]
 
@@ -2243,6 +2244,7 @@ lib_jvm_preserved_modules = [
     'java.prefs',
     'java.xml',
     'java.xml.crypto',
+    'jdk.charsets',
 ]
 
 # Keep libjvm -H:Preserve selectors with the image builder metadata instead of
