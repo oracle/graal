@@ -1651,14 +1651,15 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
              */
             throw new NoSuchFieldException(fieldName);
         } else {
-            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata(field);
-            if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
-                traceFieldLookup(fieldName, field, publicOnly);
-            }
             RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
             int fieldModifiers = RuntimeMetadataDecoderImpl.getRawModifiers(field);
             boolean negative = decoder.isNegative(fieldModifiers);
             boolean hiding = decoder.isHiding(fieldModifiers);
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata(field);
+            boolean metadataRegisteredForReplay = negative || (dynamicAccessMetadata != null && dynamicAccessMetadata.isPreserved());
+            if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata == null, metadataRegisteredForReplay)) {
+                traceFieldLookup(fieldName, field, publicOnly, negative);
+            }
             if (throwMissingErrors && hiding) {
                 MissingReflectionRegistrationUtils.reportFieldQuery(clazz, fieldName);
             }
@@ -1669,8 +1670,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void traceFieldLookup(String fieldName, Field field, boolean publicOnly) {
+        traceFieldLookup(fieldName, field, publicOnly, false);
+    }
+
+    private void traceFieldLookup(String fieldName, Field field, boolean publicOnly, boolean negative) {
         ConfigurationMemberDeclaration declaration = publicOnly ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
-        if (field != null) {
+        if (field != null && !negative) {
             // register declaring type (registers all fields for lookup)
             MetadataTracer.singleton().traceReflectionType(field.getDeclaringClass());
             // register receiver type
@@ -1738,14 +1743,15 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         } else if (SubstrateUtil.cast(method.getDeclaringClass(), DynamicHub.class).isRuntimeLoaded()) {
             return true;
         } else {
-            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata(method);
-            if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
-                traceMethodLookup(methodName, parameterTypes, method, publicOnly);
-            }
             RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
             int methodModifiers = RuntimeMetadataDecoderImpl.getRawModifiers(method);
             boolean negative = decoder.isNegative(methodModifiers);
             boolean hiding = decoder.isHiding(methodModifiers);
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata(method);
+            boolean metadataRegisteredForReplay = negative || (dynamicAccessMetadata != null && dynamicAccessMetadata.isPreserved());
+            if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata == null, metadataRegisteredForReplay)) {
+                traceMethodLookup(methodName, parameterTypes, method, publicOnly, negative);
+            }
             if (throwMissingErrors && hiding) {
                 MissingReflectionRegistrationUtils.reportMethodQuery(clazz, methodName, parameterTypes);
             }
@@ -1754,8 +1760,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void traceMethodLookup(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) {
+        traceMethodLookup(methodName, parameterTypes, method, publicOnly, false);
+    }
+
+    private void traceMethodLookup(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly, boolean negative) {
         ConfigurationMemberDeclaration declaration = publicOnly ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
-        if (method != null) {
+        if (method != null && !negative) {
             // register declaring type (registers all methods for lookup)
             MetadataTracer.singleton().traceReflectionType(method.getDeclaringClass());
             // register receiver type

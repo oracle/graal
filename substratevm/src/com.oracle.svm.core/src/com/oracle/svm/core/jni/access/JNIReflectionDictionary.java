@@ -288,7 +288,8 @@ public final class JNIReflectionDictionary {
     public static JNIAccessibleClass getJniAccessibleClass(CharSequence name) {
         JNIAccessibleClass result = lookupClassByName(name);
         boolean validJNIName = ClassNameSupport.isValidJNIName(name);
-        if (MetadataTracer.enabled() && validJNIName && MetadataTracer.shouldTraceMetadata(result == null, result != null && result.isPreserved())) {
+        boolean metadataRegisteredForReplay = result != null && (result.isNegative() || result.isPreserved());
+        if (MetadataTracer.enabled() && validJNIName && MetadataTracer.shouldTraceMetadata(result == null, metadataRegisteredForReplay)) {
             // trace if class exists (positive query) or name is valid (negative query)
             MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name.toString()));
         }
