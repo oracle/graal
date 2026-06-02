@@ -344,6 +344,7 @@ public class FrameInfoEncoder {
              */
             Integer[] sliceOrder = sliceFrequency.encodeAll(new Integer[sliceFrequency.getLength()]);
             for (Integer sliceIdx : sliceOrder) {
+                recordActivity.run();
                 assert !encodedSliceIndexMap.containsKey(sliceIdx) : sliceIdx;
 
                 List<CompressedFrameData> slice = frameSlices.get(sliceIdx);
@@ -353,10 +354,14 @@ public class FrameInfoEncoder {
                  * state is walkable within the shared frame state, then the slice's initial shared
                  * frame can be directly pointed to.
                  */
-                boolean directlyPointToSharedFrame = slice.stream().allMatch(frame -> {
+                boolean directlyPointToSharedFrame = true;
+                for (CompressedFrameData frame : slice) {
                     EconomicSet<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
-                    return sharedEncodedFrameIndexMap.containsKey(frame) && (frameSuccessors == null || frameSuccessors.size() == 1);
-                });
+                    if (!sharedEncodedFrameIndexMap.containsKey(frame) || (frameSuccessors != null && frameSuccessors.size() != 1)) {
+                        directlyPointToSharedFrame = false;
+                        break;
+                    }
+                }
                 if (directlyPointToSharedFrame) {
                     CompressedFrameData frame = slice.getFirst();
                     assert sharedEncodedFrameIndexMap.containsKey(frame) : frame;
