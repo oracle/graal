@@ -1342,6 +1342,7 @@ suite = {
           "com/ibm/icu/impl/ICUBinary.java" : {
             # we want to make this code unreachable in native image builds
             "addDataFilesFromPath\\(dataPath, icuDataFiles\\);" : "// \\g<0>",
+            "String dataPath = ICUConfig\\.get\\(ICUBinary\\.class\\.getName\\(\\) \\+ \".dataPath\"\\);" : "String dataPath = null;",
           },
           "com/ibm/icu/impl/ICUData.java" : {
             # [GR-47166] we load an absolute path from ICUData.class, to
