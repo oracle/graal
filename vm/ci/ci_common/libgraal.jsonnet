@@ -87,7 +87,6 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     "vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
     "vm-libgraal_compiler-labsjdk-latest-darwin-aarch64": {},
     "vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
-    "vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
   },
   local tier3s = g.as_gates(tier3),
 
@@ -95,6 +94,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   local dailies = {
     "vm-libgraal_truffle_zgc-labsjdk-latest-linux-amd64": {},
     "vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
+    "vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
 
     "vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {} + galahad.exclude,
     "vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:30:00"),
