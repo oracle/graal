@@ -390,10 +390,10 @@ final class Target_java_lang_reflect_Array {
                     throws NegativeArraySizeException {
         if (componentType == null) {
             throw new NullPointerException();
-        } else if (componentType == void.class || (componentType.isArray() && SubstrateUtil.arrayTypeDimension(componentType) >= 255)) {
-            throw new IllegalArgumentException();
         } else if (length < 0) {
             throw new NegativeArraySizeException(String.valueOf(length));
+        } else if (componentType == void.class || (componentType.isArray() && SubstrateUtil.arrayTypeDimension(componentType) >= 255)) {
+            throw new IllegalArgumentException();
         }
         if (MetadataTracer.enabled() && Util_java_lang_reflect_Array.shouldTraceReflectionArrayType(componentType, 1)) {
             MetadataTracer.singleton().traceReflectionArrayType(componentType);

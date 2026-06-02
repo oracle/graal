@@ -56,4 +56,9 @@ public class ArrayMetadataTracingTest {
         Object array = Array.newInstance(ArrayMetadataTracingTarget.class, 1);
         Assert.assertSame(ArrayMetadataTracingTarget[].class, array.getClass());
     }
+
+    @Test
+    public void testNewInstanceNegativeLengthPrecedesInvalidComponentType() {
+        Assert.assertThrows(NegativeArraySizeException.class, () -> Array.newInstance(void.class, -1));
+    }
 }
