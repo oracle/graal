@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/graalvm/graal-languages-jekyll-theme.git
-  revision: 1e8d5b675768ea158684474ef7a32a6ed8ce9baf
+  revision: 6ae97469860513f340ee832c7b84be81c43d52ad
   branch: main
   specs:
     graal-languages-jekyll-theme (0.2.0)
@@ -44,10 +44,10 @@ GEM
       fiber-storage
     fiber-storage (1.0.1)
     forwardable-extended (2.6.0)
-    google-protobuf (4.34.1-arm64-darwin)
+    google-protobuf (4.35.0-arm64-darwin)
       bigdecimal
       rake (~> 13.3)
-    google-protobuf (4.34.1-x86_64-linux-gnu)
+    google-protobuf (4.35.0-x86_64-linux-gnu)
       bigdecimal
       rake (~> 13.3)
     hashery (2.1.2)
@@ -93,11 +93,11 @@ GEM
       jekyll (>= 3.3, < 5.0)
     jekyll-sass-converter (3.1.0)
       sass-embedded (~> 1.75)
-    jekyll-seo-tag (2.8.0)
+    jekyll-seo-tag (2.9.0)
       jekyll (>= 3.8, < 5.0)
     jekyll-watch (2.2.1)
       listen (~> 3.0)
-    json (2.19.3)
+    json (2.19.7)
     kramdown (2.5.2)
       rexml (>= 3.4.4)
     kramdown-parser-gfm (1.1.0)
@@ -134,7 +134,7 @@ GEM
     racc (1.8.1)
     rack (3.2.6)
     rainbow (3.1.1)
-    rake (13.3.1)
+    rake (13.4.2)
     rb-fsevent (0.11.2)
     rb-inotify (0.11.1)
       ffi (~> 1.0)
@@ -144,9 +144,9 @@ GEM
     rouge (4.7.0)
     ruby-rc4 (0.1.5)
     safe_yaml (1.0.5)
-    sass-embedded (1.99.0-arm64-darwin)
+    sass-embedded (1.100.0-arm64-darwin)
       google-protobuf (~> 4.31)
-    sass-embedded (1.99.0-x86_64-linux-gnu)
+    sass-embedded (1.100.0-x86_64-linux-gnu)
       google-protobuf (~> 4.31)
     siteleaf (2.3.0)
       httparty (>= 0.16.0)
