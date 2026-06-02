@@ -797,7 +797,7 @@ public class NativeImageGenerator {
 
             compileQueue.purge();
 
-            int numCompilations = codeCache.getOrderedCompilations().size();
+            int numCompilations = codeCache.getCodeAreaCompilationCount();
             int imageDiskFileSize;
 
             try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.WRITE)) {

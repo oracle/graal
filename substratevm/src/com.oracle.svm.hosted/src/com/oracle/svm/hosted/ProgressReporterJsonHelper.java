@@ -97,7 +97,11 @@ public class ProgressReporterJsonHelper {
     }
 
     public Object getImageDetails(ImageDetailKey key) {
-        return getValue(buildKeys(IMAGE_DETAILS_KEY, key.bucket, key.subBucket, key.jsonKey));
+        return getImageDetails(key.bucket, key.subBucket, key.jsonKey);
+    }
+
+    public Object getImageDetails(String bucket, String subBucket, String key) {
+        return getValue(buildKeys(IMAGE_DETAILS_KEY, bucket, subBucket, key));
     }
 
     public Object getResourceUsage(ResourceUsageKey key) {
@@ -123,7 +127,11 @@ public class ProgressReporterJsonHelper {
     }
 
     public boolean containsImageDetails(ImageDetailKey key) {
-        return containsValue(buildKeys(IMAGE_DETAILS_KEY, key.bucket, key.subBucket, key.jsonKey));
+        return containsImageDetails(key.bucket, key.subBucket, key.jsonKey);
+    }
+
+    public boolean containsImageDetails(String bucket, String subBucket, String key) {
+        return containsValue(buildKeys(IMAGE_DETAILS_KEY, bucket, subBucket, key));
     }
 
     public boolean containsResourceUsage(ResourceUsageKey key) {
@@ -173,7 +181,11 @@ public class ProgressReporterJsonHelper {
     }
 
     private void putImageDetails(ImageDetailKey key, Object value) {
-        putValue(buildKeys(IMAGE_DETAILS_KEY, key.bucket, key.subBucket, key.jsonKey), value);
+        putImageDetails(key.bucket, key.subBucket, key.jsonKey, value);
+    }
+
+    public void putImageDetails(String bucket, String subBucket, String key, Object value) {
+        putValue(buildKeys(IMAGE_DETAILS_KEY, bucket, subBucket, key), value);
     }
 
     private void putResourceUsage(ResourceUsageKey key, Object value) {
