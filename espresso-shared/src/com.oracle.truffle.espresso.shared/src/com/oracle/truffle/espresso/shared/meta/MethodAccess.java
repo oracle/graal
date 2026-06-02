@@ -46,7 +46,8 @@ import com.oracle.truffle.espresso.shared.vtable.TableEntry;
 public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F>, Signed, TableEntry<C, M, F> {
     /**
      * @return {@code true} if this method represents an instance initialization method (its
-     *         {@link #getSymbolicName() name} is {@code "<init>"}), {@code false} otherwise.
+     *         {@link #getSymbolicName() name} is {@code "<init>"}, and it is
+     *         {@link #isStatic()}), {@code false} otherwise.
      */
     default boolean isConstructor() {
         return ParserMethod.isConstructor(getModifiers(), getSymbolicName());
@@ -54,7 +55,8 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
 
     /**
      * @return {@code true} if this method represents a class initialization method (its
-     *         {@link #getSymbolicName() name} is {@code "<clinit>"}, and it is {@link #isStatic()
+     *         {@link #getSymbolicName() name} is {@code "<clinit>"}, its
+     *         {@link #getSymbolicSignature() signature} is {@code ()V}, and it is {@link #isStatic()
      *         static}), {@code false} otherwise.
      */
     default boolean isClassInitializer() {
