@@ -134,7 +134,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(originalField.getName());
         Symbol<Type> typeSymbol = CremaTypeAccess.jvmciNameToType(originalField.getType().getName());
         boolean isStable = AnnotationUtil.isAnnotationPresent(originalField, jdk.internal.vm.annotation.Stable.class);
-        boolean isHidden = AnnotationUtil.isAnnotationPresent(originalField, jdk.internal.vm.annotation.Hidden.class);
+        boolean isHidden = originalField.isInternal();
         int flags = createFlags(originalField.getModifiers(), isStable, isHidden);
         InterpreterResolvedJavaField field = new InterpreterResolvedJavaField(
                         nameSymbol, typeSymbol, flags,
