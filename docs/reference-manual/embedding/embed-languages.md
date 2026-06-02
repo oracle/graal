@@ -611,7 +611,7 @@ Currently, the following languages are available as polyglot isolates:
 
 Support for more languages is planned for future versions.
 
-In the previous example, we enable scoped references using `HostAccess.SCOPED`.
+In the previous example, scoped references were enabled using `HostAccess.SCOPED`.
 This is necessary because the host GC and the guest GC are unaware of one another, so cyclic references between objects cannot be resolved automatically.
 It is strongly recommended to use [scoped parameters for host callbacks](#controlling-host-callback-parameter-scoping) to avoid cyclic references altogether.
 
@@ -664,7 +664,7 @@ public class PolyglotIsolateMaxHeap {
   }
 }
 ```
-Exceeding the maximum heap size automatically closes the context and throws a PolyglotException.
+Exceeding the maximum heap size automatically closes the context and throws a `PolyglotException`.
 
 ### Ensuring Host Callback Stack Headroom
 
@@ -675,7 +675,7 @@ The host callback fails if the available stack size drops below the specified th
 
 In Linux environments that support Memory Protection Keys, use the `--engine.MemoryProtection=true` option to isolate the heaps of polyglot isolates at the hardware level.
 If an engine is created with this option, a dedicated protection key will be allocated for the isolated engine's heap.
-GraalVM only enables access to the engine's heap when executing code of the Polyglot Isolate.
+GraalVM only enables access to the engine's heap when executing code of the polyglot isolate.
 
 ## Build Native Executables from Polyglot Applications
 
