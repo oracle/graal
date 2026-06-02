@@ -132,7 +132,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
 
     @Override
     public int getDeoptimizationCount(DeoptimizationReason reason) {
-        return 0;
+        return methodProfile.getDeoptimizationCount(reason);
     }
 
     @Override

@@ -46,6 +46,7 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -134,6 +135,12 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public void reprofile() {
         // Not used for encoded graph based runtime compilation
+    }
+
+    @Override
+    public void recordDeoptimization(DeoptimizationReason reason) {
+        // Truffle installed code tracks invalidation and profiling through its call target and
+        // speculation log rather than through Substrate ProfilingInfo deoptimization counters.
     }
 
     @Override

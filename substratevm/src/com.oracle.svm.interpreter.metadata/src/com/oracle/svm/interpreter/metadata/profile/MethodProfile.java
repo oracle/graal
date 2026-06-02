@@ -38,6 +38,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -81,6 +82,9 @@ public final class MethodProfile {
     private final ResolvedJavaMethod method;
 
     private boolean isMature;
+
+    /** Counts deoptimizations by reason for runtime-compiled code associated with this method. */
+    private final int[] deoptimizationCounts = new int[DeoptimizationReason.values().length];
 
     public MethodProfile(ResolvedJavaMethod method, Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier) {
         this.method = method;
@@ -171,10 +175,33 @@ public final class MethodProfile {
     }
 
     public synchronized void reprofile() {
+        /*
+         * A reprofile request comes from invalidating an installed compilation and should make the
+         * method entry behave like a fresh profiling epoch again: invocation counters have to mature
+         * naturally before Ristretto queues another compile. It must not mean "forget all bytecode
+         * feedback". The per-BCI branch and receiver-type profiles are the evidence that explains why
+         * the previous speculative compile failed, and they are also the data the next compile needs to
+         * avoid repeating the same too-narrow speculation. HotSpot's method-data/profile storage has
+         * the same broad shape: deoptimization can request more profiling at the method entry without
+         * discarding the existing method-data cells that describe bytecode-level behavior. Ristretto
+         * therefore resets only the synthetic JVMCI method-entry profile here and deliberately keeps
+         * the bytecode-indexed profiles and deoptimization counters durable across reprofiling.
+         */
         for (int i = 0; i < profiles.length; i++) {
-            profiles[i] = profiles[i].reset();
+            if (profiles[i].getBci() == JVMCI_METHOD_ENTRY_BCI) {
+                profiles[i] = profiles[i].reset();
+            }
         }
+        lastIndex = 0;
         isMature = false;
+    }
+
+    public synchronized void recordDeoptimization(DeoptimizationReason reason) {
+        deoptimizationCounts[reason.ordinal()]++;
+    }
+
+    public synchronized int getDeoptimizationCount(DeoptimizationReason reason) {
+        return deoptimizationCounts[reason.ordinal()];
     }
 
     /**

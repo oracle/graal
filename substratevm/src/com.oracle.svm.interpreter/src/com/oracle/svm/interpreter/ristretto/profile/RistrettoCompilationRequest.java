@@ -56,6 +56,10 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
     public InstalledCode call() throws Exception {
         try {
             SubstrateInstalledCodeImpl code = RistrettoUtils.compileAndInstall(rMethod);
+            if (code == null) {
+                rMethod.onCompilationFailure();
+                return null;
+            }
             RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Finished compiling %s%n", rMethod);
 
             /*

@@ -43,6 +43,7 @@ import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -127,6 +128,12 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     @Override
     public void reprofile() {
         // Not used for encoded graph based runtime compilation
+    }
+
+    @Override
+    public void recordDeoptimization(DeoptimizationReason reason) {
+        // Encoded-graph runtime compilation keeps speculation feedback in its speculation log.
+        // It does not expose per-reason deoptimization counters through ProfilingInfo.
     }
 
     /**

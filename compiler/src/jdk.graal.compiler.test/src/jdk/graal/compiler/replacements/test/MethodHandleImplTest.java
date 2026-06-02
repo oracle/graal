@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,20 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.nodes.DeoptimizeNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import jdk.graal.compiler.replacements.nodes.MethodHandleNode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -64,6 +71,15 @@ public class MethodHandleImplTest extends MethodSubstitutionTest {
         }
     }
 
+    public static int invokeLookupAbsExact() {
+        try {
+            MethodHandle methodHandle = MethodHandles.lookup().findStatic(Math.class, "abs", MethodType.methodType(int.class, int.class));
+            return (int) methodHandle.invokeExact(-42);
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
+    }
+
     /**
      * Test {@code MethodHandleImpl.isCompileConstant} by effect: If it is not intrinsified,
      * {@code Invoke#Invokers.maybeCustomize(mh)} will appear in the graph.
@@ -72,6 +88,61 @@ public class MethodHandleImplTest extends MethodSubstitutionTest {
     public void testIsCompileConstant() {
         test("invokeSquare");
         testGraph("invokeSquare");
+    }
+
+    @Test
+    public void testConstantMethodHandleIsResolvedAndFolded() {
+        test("invokeSquare");
+
+        StructuredGraph parsedGraph = parseEager("invokeSquare", AllowAssumptions.YES);
+        Assert.assertEquals("Graal should resolve the constant method-handle call during parsing instead of leaving MethodHandleNode behind", 0,
+                        parsedGraph.getNodes().filter(MethodHandleNode.class).count());
+        Assert.assertEquals("Graal should not leave java.lang.invoke calls in the parsed graph for this constant method handle", 0, countInvokesToPackage(parsedGraph, "java.lang.invoke."));
+        Assert.assertEquals("Graal should fold this constant method-handle call before leaving ordinary invokes in the parsed graph", 0, countInvokes(parsedGraph));
+
+        StructuredGraph finalGraph = getFinalGraph("invokeSquare");
+        new DeadCodeEliminationPhase().apply(finalGraph);
+        Assert.assertEquals("Graal should not retain ordinary invokes for this folded constant method-handle call", 0, countInvokes(finalGraph));
+        Assert.assertEquals("Graal should not retain java.lang.invoke calls after normal front-end optimization", 0, countInvokesToPackage(finalGraph, "java.lang.invoke."));
+    }
+
+    @Test
+    public void testLookupMethodHandleIsResolvedAndFolded() {
+        test("invokeLookupAbsExact");
+
+        StructuredGraph finalGraph = getFinalGraph("invokeLookupAbsExact");
+        new DeadCodeEliminationPhase().apply(finalGraph);
+        Assert.assertEquals("Graal should not retain MethodHandleNode nodes after optimizing the lookup-created method-handle call", 0,
+                        finalGraph.getNodes().filter(MethodHandleNode.class).count());
+        Assert.assertEquals("Graal should not retain ordinary invokes after optimizing the lookup-created method-handle call", 0, countInvokes(finalGraph));
+        Assert.assertEquals("Graal should not retain java.lang.invoke calls after optimizing the lookup-created method-handle call", 0,
+                        countInvokesToPackage(finalGraph, "java.lang.invoke."));
+    }
+
+    private static long countInvokes(StructuredGraph graph) {
+        long count = 0;
+        for (Invoke invoke : graph.getInvokes()) {
+            count++;
+        }
+        return count;
+    }
+
+    private static long countInvokesToPackage(StructuredGraph graph, String packageName) {
+        long count = 0;
+        for (Invoke invoke : graph.getInvokes()) {
+            ResolvedJavaMethod targetMethod = targetMethod(invoke);
+            if (targetMethod != null && targetMethod.getDeclaringClass().toJavaName().startsWith(packageName)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static ResolvedJavaMethod targetMethod(Invoke invoke) {
+        if (invoke.callTarget() instanceof MethodCallTargetNode callTarget) {
+            return callTarget.targetMethod();
+        }
+        return null;
     }
 
     @Override

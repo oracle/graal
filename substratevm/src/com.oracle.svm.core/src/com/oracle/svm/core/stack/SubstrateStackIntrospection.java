@@ -325,7 +325,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
              * a virtual object that was accessed via a local variable before would now have a
              * different value.
              */
-            Deoptimizer.invalidateMethodOfFrame(thread, sp, null, false);
+            Deoptimizer.invalidateMethodOfFrame(thread, sp, null, null, false);
         }
 
         /* We must be deoptimized now. */

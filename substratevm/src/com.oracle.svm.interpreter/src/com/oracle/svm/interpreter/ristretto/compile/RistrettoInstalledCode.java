@@ -34,6 +34,7 @@ import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -43,6 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class RistrettoInstalledCode extends SubstrateInstalledCodeImpl {
     private final RistrettoMethod rMethod;
     private final EconomicMap<Integer, Infopoint> relativeIpToInfopoint;
+    private final RistrettoSpeculationLog speculationLog;
 
     /**
      * Single-bit latch that keeps a reprofiling request attached to this installed-code instance
@@ -60,11 +62,13 @@ public class RistrettoInstalledCode extends SubstrateInstalledCodeImpl {
      */
     private AtomicBoolean reprofileRequested;
 
-    public RistrettoInstalledCode(RistrettoMethod rMethod, EconomicMap<Integer, Infopoint> relativeIpToInfopoint) {
+    public RistrettoInstalledCode(RistrettoMethod rMethod, EconomicMap<Integer, Infopoint> relativeIpToInfopoint, RistrettoSpeculationLog speculationLog) {
         super(rMethod);
         this.rMethod = rMethod;
         VMError.guarantee(relativeIpToInfopoint != null, "relativeIpToInfopoint must be precomputed");
+        VMError.guarantee(speculationLog != null, "speculationLog must be provided");
         this.relativeIpToInfopoint = relativeIpToInfopoint;
+        this.speculationLog = speculationLog;
         this.reprofileRequested = new AtomicBoolean(false);
     }
 
@@ -79,6 +83,11 @@ public class RistrettoInstalledCode extends SubstrateInstalledCodeImpl {
             throw VMError.shouldNotReachHere("Must find infopoint for relativeIp " + relativeIp);
         }
         return infopoint;
+    }
+
+    @Override
+    public RistrettoSpeculationLog getSpeculationLog() {
+        return speculationLog;
     }
 
     @Override
@@ -97,5 +106,10 @@ public class RistrettoInstalledCode extends SubstrateInstalledCodeImpl {
     @Override
     public void reprofile() {
         reprofileRequested.set(true);
+    }
+
+    @Override
+    public void recordDeoptimization(DeoptimizationReason reason) {
+        rMethod.recordDeoptimization(reason);
     }
 }
