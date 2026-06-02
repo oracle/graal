@@ -31,12 +31,10 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.MethodRefHolder;
-import com.oracle.svm.core.graal.code.StubCallingConvention;
-import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.espresso.shared.meta.ErrorType;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -46,18 +44,12 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 
+@InternalVMMethod
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public class InterpreterKnownCompiledEntryPoints {
-    @UnknownObjectField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private final MethodRefHolder methodNotCompiledFtnPtr;
-
-    @UnknownObjectField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private final MethodRefHolder throwIllegalAccessError;
-
-    @UnknownObjectField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private final MethodRefHolder throwIncompatibleClassChangeError;
-
-    @UnknownObjectField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private final MethodRefHolder throwAbstractMethodError;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -109,17 +101,14 @@ public class InterpreterKnownCompiledEntryPoints {
         };
     }
 
-    @StubCallingConvention
     private static void throwIllegalAccessErrorStub() {
         throw new IllegalAccessError();
     }
 
-    @StubCallingConvention
     private static void throwIncompatibleClassChangeErrorStub() {
         throw new IncompatibleClassChangeError();
     }
 
-    @StubCallingConvention
     private static void throwAbstractMethodErrorStub() {
         throw new AbstractMethodError();
     }
