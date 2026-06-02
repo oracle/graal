@@ -132,6 +132,7 @@ public final class GCImpl implements GC {
     private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
     private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
     private final SweepAndPromotePinnedChunkVisitor pinnedChunkPromotionVisitor = new SweepAndPromotePinnedChunkVisitor();
+    private final ClearMetaspaceMarkVisitor clearMetaspaceMarkVisitor = new ClearMetaspaceMarkVisitor();
 
     private final GCAccounting accounting = new GCAccounting();
     private final Timers timers = new Timers();
@@ -595,6 +596,7 @@ public final class GCImpl implements GC {
                 try {
                     Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
                     HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
+                    clearMetaspaceMarks();
                 } finally {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Process Remembered References", startTicks);
                 }
@@ -684,6 +686,12 @@ public final class GCImpl implements GC {
             RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheCleaner);
         } finally {
             cleanRuntimeCodeCacheTimer.stop();
+        }
+    }
+
+    private void clearMetaspaceMarks() {
+        if (Metaspace.isSupported()) {
+            MetaspaceImpl.singleton().walkObjects(clearMetaspaceMarkVisitor);
         }
     }
 
@@ -1323,6 +1331,15 @@ public final class GCImpl implements GC {
 
         @RawField
         void setOutOfMemory(boolean value);
+    }
+
+    private static final class ClearMetaspaceMarkVisitor implements ObjectVisitor {
+        @Override
+        public void visitObject(Object o) {
+            if (ObjectHeaderImpl.isMarked(o)) {
+                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(o);
+            }
+        }
     }
 
     public static class ChunkReleaser {
