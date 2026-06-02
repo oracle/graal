@@ -55,6 +55,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 
 public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
@@ -154,6 +155,15 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
 
     @Override
     public Path getPath(URI uri) {
+        if (ClassRegistries.respectClassLoader()) {
+            String path = uri.getPath();
+            String host = uri.getHost();
+            if (host == null || host.isEmpty() || path == null || path.isEmpty() || path.equals("/")) {
+                throw new IllegalArgumentException("Loader-aware " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URIs require a loader key host and resource path.");
+            }
+            path = "/" + host + path;
+            return getFileSystem(uri).getPath(path);
+        }
         return getFileSystem(uri).getPath(uri.getSchemeSpecificPart());
     }
 

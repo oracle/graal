@@ -410,14 +410,10 @@ public final class JavaNetSubstitutions {
     }
 
     static URLStreamHandler createResourcesURLStreamHandler() {
-        return createResourcesURLStreamHandler(null);
-    }
-
-    static URLStreamHandler createResourcesURLStreamHandler(String loaderKey) {
         return new URLStreamHandler() {
             @Override
             protected URLConnection openConnection(URL url) {
-                return new ResourceURLConnection(url, loaderKey);
+                return new ResourceURLConnection(url);
             }
         };
     }

@@ -62,7 +62,6 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
@@ -850,11 +849,21 @@ public final class Resources {
     private static URL createURL(String loaderKey, Module module, String resourceName, int index) {
         try {
             String refPart = index != 0 ? '#' + Integer.toString(index) : "";
-            String moduleName = moduleName(module);
-            if (loaderKey != null || RuntimeClassLoading.isSupported()) {
-                return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart, JavaNetSubstitutions.createResourcesURLStreamHandler(loaderKey));
+            String host;
+            String userInfo = null;
+            if (ClassRegistries.respectClassLoader()) {
+                if (loaderKey != null) {
+                    host = loaderKey;
+                } else {
+                    VMError.guarantee(module != null, "Loader-aware resource URLs require a concrete module or loader key.");
+                    host = resourceLoaderKey(module.getClassLoader());
+                }
+                userInfo = moduleName(module);
+            } else {
+                host = moduleName(module);
             }
-            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart);
+            String authority = host != null ? "//" + (userInfo != null ? userInfo + '@' : "") + host : "";
+            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL + ':' + authority + '/' + resourceName + refPart);
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);
         }

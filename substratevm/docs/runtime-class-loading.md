@@ -18,6 +18,14 @@ Run-time class loading cannot reload a class that was already partially included
 This will result in errors if run-time-loaded classes try to use such removed methods or static fields.
 A typical way to address this is to use `-H:Preserve=package=...` at build time to ensure all methods and fields of a package are included in the native image.
 
+## Resource URLs
+The internal `resource:` URL format uses mode-dependent location semantics.
+Without class-loader-aware lookup (`-H:-ClassForNameRespectsClassLoader`), the URL host is the module name, matching the legacy resource lookup scheme.
+With class-loader-aware lookup (`-H:+ClassForNameRespectsClassLoader`), the URL host is the resource loader key (`boot`, `platform`, `app`, or `synthetic-N`), because the loader is the discriminator required to preserve Java class-loader resource lookup behavior.
+For named module resources in class-loader-aware mode, the URL user-info stores the module name, for example `resource://java.base@boot/module-info.class`.
+This is needed for module-reader lookups that cross the `ModuleReader.find(String)` interface as a `URI`: the URI string must preserve the module identity because URL stream handler state does not survive a `URL` to `URI` to `URL` round trip.
+When such a URL is converted to a `Path`, the Native Image resource file system exposes the loader key as the top-level path entry, similar to how `jrt:` paths expose the module name as the top-level path entry.
+
 ## Current Limitations
 * Parallel class loading is explicitly disabled and not supported.
 * JNI is not supported (JNI will not find run-time-loaded classes/methods/fields, and native methods in run-time-loaded classes will not link).

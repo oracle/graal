@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.jdk.Resources;
 
@@ -53,15 +54,9 @@ public final class ResourceURLConnection extends URLConnection {
     private byte[] data;
     private boolean isDirectory = false;
     private boolean initializedHeaders = false;
-    private final String loaderKey;
 
     public ResourceURLConnection(URL url) {
-        this(url, null);
-    }
-
-    public ResourceURLConnection(URL url, String loaderKey) {
         super(url);
-        this.loaderKey = loaderKey;
     }
 
     @Override
@@ -72,15 +67,25 @@ public final class ResourceURLConnection extends URLConnection {
         connected = true;
 
         String urlHost = url.getHost();
-        String hostNameOrNull = urlHost != null && !urlHost.isEmpty() ? urlHost : null;
+        String hostName = urlHost != null && !urlHost.isEmpty() ? urlHost : null;
         String urlPath = url.getPath();
         if (urlPath.isEmpty()) {
             throw new IllegalArgumentException("Empty URL path not allowed in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
         }
         String resourceName = urlPath.substring(1);
 
-        Module module = hostNameOrNull != null ? ModuleLayer.boot().findModule(hostNameOrNull).orElse(null) : null;
-        Object entry = loaderKey != null ? Resources.getAtRuntime(loaderKey, module, resourceName, false) : Resources.getAtRuntime(module, resourceName, false);
+        Object entry;
+        if (ClassRegistries.respectClassLoader()) {
+            if (hostName == null) {
+                throw new IllegalArgumentException("Host required in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
+            }
+            String moduleName = url.getUserInfo();
+            Module resourceModule = moduleName != null ? ModuleLayer.boot().findModule(moduleName).orElse(null) : null;
+            entry = Resources.getAtRuntime(hostName, resourceModule, resourceName, false);
+        } else {
+            Module module = hostName != null ? ModuleLayer.boot().findModule(hostName).orElse(null) : null;
+            entry = Resources.getAtRuntime(module, resourceName, false);
+        }
         if (entry != null) {
             ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
             byte[][] bytes = resourceStorageEntry.getData();

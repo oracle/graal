@@ -39,10 +39,10 @@ import com.oracle.svm.shared.util.VMError;
  * image runtime.
  */
 public final class ResourceLoaderKeys {
-    public static final String APP = "ClassLoader#App";
-    public static final String PLATFORM = "ClassLoader#Platform";
-    public static final String BOOT = "ClassLoader#Boot";
-    public static final String SYNTHETIC_PREFIX = "ClassLoader#SyntheticResource#";
+    public static final String APP = "app";
+    public static final String PLATFORM = "platform";
+    public static final String BOOT = "boot";
+    public static final String SYNTHETIC_PREFIX = "synthetic-";
 
     @Platforms(Platform.HOSTED_ONLY.class) private static Hosted hosted;
 

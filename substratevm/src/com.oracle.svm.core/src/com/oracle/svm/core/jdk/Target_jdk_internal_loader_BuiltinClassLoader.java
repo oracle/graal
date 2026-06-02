@@ -155,6 +155,9 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
         if (hasClassPath()) {
             return ucp.findResource(name);
         }
+        if (ResourcesHelper.isBootLoader(loader)) {
+            return null;
+        }
         ResourcesHelper.reportMissingEmbeddedResourceMetadata(loader, name);
         return null;
     }
@@ -168,6 +171,9 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
         if (embeddedResources.isEmpty()) {
             if (hasClassPath()) {
                 return ucp.findResources(name);
+            }
+            if (ResourcesHelper.isBootLoader(loader)) {
+                return Collections.emptyEnumeration();
             }
             ResourcesHelper.reportMissingEmbeddedResourceMetadata(loader, name);
             return Collections.emptyEnumeration();

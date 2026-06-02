@@ -36,6 +36,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 public class ResourcesHelper {
@@ -92,6 +93,10 @@ public class ResourcesHelper {
     static void reportMissingEmbeddedResourceMetadata(ClassLoader loader, String resourceName) {
         Objects.requireNonNull(resourceName);
         Resources.getAtRuntime(loader, resourceName, false);
+    }
+
+    static boolean isBootLoader(ClassLoader loader) {
+        return loader == SubstrateUtil.cast(Target_jdk_internal_loader_ClassLoaders.bootLoader(), ClassLoader.class);
     }
 
     public static Enumeration<URL> nameToResourceEnumerationURLs(String resourcesName) {
