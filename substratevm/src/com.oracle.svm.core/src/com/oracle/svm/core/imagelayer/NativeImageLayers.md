@@ -18,6 +18,7 @@ Moreover, it reduces the time to build an application since shared layers are on
 ### Table of Contents
 
 * [Native Image Layers Architecture](#native-image-layers-architecture)
+* [Supported Platforms](#supported-platforms)
 * [Creating Native Image Layers](#creating-native-image-layers)
 * [Packaging Native Image Layers](#packaging-native-image-layers)
 
@@ -31,30 +32,49 @@ The _initial_ or _base_ layer is a shared layer containing VM internals and core
 It can also contain modules specific to a certain framework that the application may be built upon.
 We refer to any subsequent layer built on top of a shared layer as an _extension layer_.
 
-At run time a shared layer is a shared object file on which other intermediate layers or executable application
-layers can be dependent.
+At run time a shared layer is a platform-native shared library on which other intermediate layers or executable
+application layers can be dependent.
 Thus, the application and its supporting shared layers form a chain:
 
 ```shell
-base-layer.so                    # initial layer (includes VM/JDK code)
-└── mid-layer.so                 # intermediate layer, depends on base-layer.so, adds extra functionality 
-    └── executable-image         # final application executable, depends on mid-layer.so and base-layer.so
+base-layer.<lib>                 # initial layer (includes VM/JDK code)
+└── mid-layer.<lib>              # intermediate layer, depends on base-layer.<lib>, adds extra functionality
+    └── executable-image         # final application executable, depends on mid-layer.<lib> and base-layer.<lib>
 ```
+
+Here and below, `<lib>` stands for the platform-native shared-library format, for example `.so` on Linux,
+`.dylib` on macOS, and `.dll` on Windows.
 
 This architecture enables the sharing of layers between applications when the hierarchy of layers forms a tree structure.
 For example, at run time there could be four applications that share one base layer and two intermediate layers:
 
 ```shell
-base-layer.so                    # initial layer (includes VM/JDK code)
-├── executable-image-0           # final application executable, depends on base-layer.so
-├── mid-layer-0.so               # intermediate layer, depends on base-layer.so, adds extra functionality 
-│   ├── executable-image-00      # final application executable, depends on mid-layer-0.so and base-layer.so
-│   └── executable-image-01      # final application executable, depends on mid-layer-0.so and base-layer.so
-└── mid-layer-1.so               # intermediate layer, depends on base-layer.so, adds extra functionality
-    └── executable-image-10      # final application executable, depends on mid-layer-1.so and base-layer.so
+base-layer.<lib>                 # initial layer (includes VM/JDK code)
+├── executable-image-0           # final application executable, depends on base-layer.<lib>
+├── mid-layer-0.<lib>            # intermediate layer, depends on base-layer.<lib>, adds extra functionality
+│   ├── executable-image-00      # final application executable, depends on mid-layer-0.<lib> and base-layer.<lib>
+│   └── executable-image-01      # final application executable, depends on mid-layer-0.<lib> and base-layer.<lib>
+└── mid-layer-1.<lib>            # intermediate layer, depends on base-layer.<lib>, adds extra functionality
+    └── executable-image-10      # final application executable, depends on mid-layer-1.<lib> and base-layer.<lib>
 ```
 
 > Note: The current implementation is limited to only a base layer and an application layer.
+
+## Supported Platforms
+
+Native Image Layers are currently supported on:
+
+| Operating system | Architectures |
+| --- | --- |
+| Linux | AMD64, AArch64 |
+| macOS/Darwin | AMD64, AArch64 |
+| Windows | AMD64 |
+
+Layer archives are platform-dependent. A layer built for one operating system, architecture, GraalVM version, JDK, and
+native toolchain must only be used with a compatible configuration.
+
+The current implementation supports the base-layer + application-layer topology. Multi shared-layer chains are not
+generally supported yet.
 
 ## Creating Native Image Layers
 
@@ -72,7 +92,7 @@ To create and use layers `native-image` accepts two options: `--layer-create` an
               and have the *.nil extension. Otherwise, the layer-file name is derived from the image name.
               This will generate a Native Image Layer archive file containing metadata required to build
               either another layer or a final application executable that depends on this layer.
-              The archive also contains the shared object file corresponding to this layer. 
+              The archive also contains the platform-native shared library corresponding to this layer.
               If this option is specified with an empty value then it disables any prior layer creation option on the command line.
 ```
 
@@ -237,8 +257,8 @@ These entries should be _excluded_ from subsequent layer builds.
   cannot be loaded by `--layer-use` on a different OS/architecture.
 - Each layer can only depend on a previous layer. We explicitly make it impossible to depend on more than one layer to
   avoid any potential issues that can stem from _multiple inheritance_.
-- A shared layer is using the _.so_ extension to conform with the standard OS loader restrictions. However, it is not a
-  standard shared library file, and it cannot be used with other applications.
+- A shared layer uses the platform-native shared-library format, such as _.so_ on Linux, _.dylib_ on macOS, and _.dll_
+  on Windows. It is not a standard shared library file and cannot be used with other applications.
 
 ### Class Initialization
 
@@ -258,14 +278,14 @@ At build time a shared layer is stored in a layer archive that contains the foll
 [shared-layer.nil]                   # shared layer archive file
   ├── shared-layer.lsb               # snapshot of the shared layer metadata; used by subsequent build processes
   ├── shared-layer.big               # serialized shared layer compiler graphs; used by subsequent build processes
-  ├── shared-layer.so                # shared object of the shared layer; used by subsequent build processes and at run time
+  ├── shared-layer.<lib>             # shared library of the shared layer; used by subsequent build processes and at run time
   └── shared-layer.properties        # contains info about layer input data
 ```
 
 The layer snapshot file will be consumed by subsequent build processes that depend on this layer.
 It contains Native Image metadata, such as the analysis universe and available image singletons.
 Sharing compiler graphs between layers enables cross-layer optimizations such as inlining.
-The shared object file will be used at build time for symbol resolution, and at run time for application execution.
+The shared library file will be used at build time for symbol resolution, and at run time for application execution.
 The layer properties file contains metadata that uniquely identifies this layer: the options used to create the
 layer, all the input files and their checksum.
 Subsequent layer builds use the properties file to validate the layers they depend on: the JAR files that the build

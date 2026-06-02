@@ -54,6 +54,7 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -147,6 +148,10 @@ public final class ImageLayerSectionFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        if (Platform.includedIn(Platform.WINDOWS.class) && ImageLayerBuildingSupport.buildingSharedLayer() && ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            throw UserError.abort("PE/COFF image layers currently support only one shared layer before the final application layer.");
+        }
+
         CGlobalData<Pointer> initialSectionStart = ImageLayerBuildingSupport.buildingInitialLayer() ? CGlobalDataFactory.forSymbol(getLayerName(DynamicImageLayerInfo.getCurrentLayerNumber())) : null;
 
         CGlobalData<WordPointer> cachedImageFDs;
@@ -253,7 +258,13 @@ public final class ImageLayerSectionFeature implements InternalFeature {
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             String nextLayerSymbolName = getLayerName(DynamicImageLayerInfo.singleton().nextLayerNumber);
             if (Platform.includedIn(Platform.WINDOWS.class)) {
-                // PE/COFF needs a link-time definition; runtime patches in the real value.
+                /*
+                 * PE/COFF needs a link-time definition; runtime patches the initial layer section
+                 * with the final application layer section.
+                 *
+                 * GR-58631: Middle shared layers are rejected above. Add per-layer section
+                 * metadata/exporting to patch the full chain.
+                 */
                 objectFile.createDefinedSymbol(nextLayerSymbolName, layeredImageSection, 0, 0, false, false, false);
             } else {
                 // this symbol will be defined in the next layer's layer section
@@ -383,6 +394,11 @@ public final class ImageLayerSectionFeature implements InternalFeature {
         buffer.position(buffer.position() + longsCount * Long.BYTES);
     }
 
+    /**
+     * On PE/COFF, the runtime needs a fixed slot for the forward-symbol fixup table pointer. Keep
+     * the common fixed entries unchanged and place the Windows-only slot at the first otherwise
+     * variably-sized-data word.
+     */
     private static int getVariablySizedDataOffset() {
         return Platform.includedIn(Platform.WINDOWS.class) ? VARIABLY_SIZED_DATA_OFFSET + Long.BYTES : VARIABLY_SIZED_DATA_OFFSET;
     }

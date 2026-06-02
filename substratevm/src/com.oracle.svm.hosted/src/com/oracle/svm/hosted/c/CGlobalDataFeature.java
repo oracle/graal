@@ -440,7 +440,7 @@ public class CGlobalDataFeature implements InternalFeature {
     }
 
     public interface SymbolConsumer {
-        void apply(int offset, String symbolName, boolean isGlobalSymbol);
+        void apply(int offset, String symbolName, boolean isGlobalSymbol, boolean isHiddenSymbol);
     }
 
     public void writeData(RelocatableBuffer buffer, SymbolConsumer createSymbol, SymbolConsumer createSymbolReference) {
@@ -460,10 +460,10 @@ public class CGlobalDataFeature implements InternalFeature {
                 bufferBytes.put(bytes, 0, bytes.length);
             }
             if (data.symbolName != null && !info.isSymbolReference()) {
-                createSymbol.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
+                createSymbol.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol(), info.isHiddenSymbol());
             }
             if (data.nonConstant && data.symbolName != null) {
-                createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
+                createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol(), info.isHiddenSymbol());
             }
         }
         if (initialLayerCGlobalTracking != null) {

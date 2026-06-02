@@ -35,6 +35,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -528,6 +531,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     private static class WindowsCCLinkerInvocation extends CCLinkerInvocation {
+        private static final Pattern UNRESOLVED_EXTERNAL_SYMBOL_PATTERN = Pattern.compile("\\bLNK(?:2001|2019): unresolved external symbol (\\S+)");
 
         private final String imageName;
 
@@ -561,6 +565,32 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         @Override
+        public void verifyLinkerOutput(List<String> lines, Set<String> allowedUnresolvedSymbols) {
+            if (imageKind != AbstractImage.NativeImageKind.IMAGE_LAYER) {
+                return;
+            }
+
+            Set<String> unresolvedSymbols = new TreeSet<>();
+            for (String line : lines) {
+                Matcher matcher = UNRESOLVED_EXTERNAL_SYMBOL_PATTERN.matcher(line);
+                if (matcher.find()) {
+                    unresolvedSymbols.add(matcher.group(1));
+                }
+            }
+
+            if (unresolvedSymbols.isEmpty()) {
+                return;
+            }
+
+            Set<String> unexpectedSymbols = new TreeSet<>(unresolvedSymbols);
+            unexpectedSymbols.removeAll(allowedUnresolvedSymbols);
+            if (!unexpectedSymbols.isEmpty()) {
+                throw UserError.abort("Linking the image layer produced unexpected unresolved PE/COFF symbols: %s. Allowed unresolved symbols are: %s",
+                                unexpectedSymbols, new TreeSet<>(allowedUnresolvedSymbols));
+            }
+        }
+
+        @Override
         public List<String> getCommand() {
             List<String> compilerCmd = getCompilerCommand(additionalPreOptions);
 
@@ -582,16 +612,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                  * layer (e.g. CGlobalData forSymbol references, delayed method symbols). On
                  * ELF/Mach-O, these are undefined symbols resolved by the dynamic linker at load
                  * time. On PE/COFF, we must allow the link to succeed with unresolved externals.
-                 * The application layer exports the required symbols and WindowsImageHeapProvider
+                 * The application layer exports the required symbols and Windows runtime support
                  * patches the recorded forward-reference slots at isolate startup.
                  */
                 cmd.add("/FORCE:UNRESOLVED");
-
-                /*
-                 * Explicitly export the code section start symbol so that the extension layer can
-                 * resolve cross-layer method calls via the import library.
-                 */
-                cmd.add("/EXPORT:" + NativeImage.getTextSectionStartSymbol());
             }
 
             /* Use page size alignment to support memory mapping of the image heap. */

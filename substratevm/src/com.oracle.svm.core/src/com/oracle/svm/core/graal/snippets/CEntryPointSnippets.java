@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -83,6 +82,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerRuntimeSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -91,7 +91,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -317,6 +316,15 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
         }
 
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /*
+             * Prepare early runtime state needed by image layers. Layer-forward CGlobalData must
+             * not be read before this point because the preparation may patch its symbol
+             * references.
+             */
+            ImageLayerRuntimeSupport.singleton().patchForwardSymbolReferences();
+        }
+
         /* Initialize process-wide state such as the locale support. */
         EarlyProcessWideState.initialize();
 
@@ -332,10 +340,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         UnmanagedMemoryUtil.fill((Pointer) arguments, SizeOf.unsigned(IsolateArguments.class), (byte) 0);
         CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getParsedArgsSize());
         arguments.setParsedArgs(parsedArgs);
-
-        if (Platform.includedIn(Platform.WINDOWS.class) && ImageLayerBuildingSupport.buildingImageLayer()) {
-            ImageHeapProvider.get().prepareBeforeParsingIsolateArguments();
-        }
 
         IsolateArgumentParser.singleton().parse(parameters, arguments);
 

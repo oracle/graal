@@ -46,7 +46,7 @@ import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platform.DARWIN;
 import org.graalvm.nativeimage.Platform.LINUX;
-import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.Platform.WINDOWS_AMD64;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -412,11 +412,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     /**
-     * Currently layered images are only supported on {@link LINUX}, {@link DARWIN},
-     * {@link WINDOWS}, {@link AMD64} and {@link AARCH64}.
+     * Currently layered images are supported on Linux AMD64/AArch64, Darwin AMD64/AArch64, and
+     * Windows AMD64.
      */
     private static boolean supportedPlatform(Platform platform) {
-        return (platform instanceof LINUX || platform instanceof DARWIN || platform instanceof WINDOWS) && (platform instanceof AMD64 || platform instanceof AARCH64);
+        return ((platform instanceof LINUX || platform instanceof DARWIN) && (platform instanceof AMD64 || platform instanceof AARCH64)) || platform instanceof WINDOWS_AMD64;
     }
 
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader, Path builderTempDir) {
