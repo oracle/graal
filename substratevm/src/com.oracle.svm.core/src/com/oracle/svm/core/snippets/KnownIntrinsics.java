@@ -122,10 +122,16 @@ public class KnownIntrinsics {
     public static native <T> T castExact(Object object, Class<T> clazz);
 
     /**
-     * Like {@link jdk.internal.misc.Unsafe#allocateInstance} but without the checks that the class
-     * is an instance class, without the checks that the class was registered for unsafe allocation
-     * using the reflection configuration, without checks that the class was seen as instantiated by
-     * the static analysis, and without the check that the class is already initialized.
+     * Allocates an instance like {@link jdk.internal.misc.Unsafe#allocateInstance}, but assumes the
+     * caller already performed the class validation that unsafe allocation normally requires. This
+     * intrinsic does not check that {@code hub} is an instance class, is registered for unsafe
+     * allocation using the reflection configuration, was seen as instantiated by the static
+     * analysis, or is already initialized.
+     * <p>
+     * The intrinsic can throw only the allocation failures listed below.
+     *
+     * @throws OutOfMemoryError if the object allocation cannot reserve enough memory
+     * @throws StackOverflowError if the object allocation exhausts the stack
      */
     public static native Object unvalidatedAllocateInstance(Class<?> hub);
 

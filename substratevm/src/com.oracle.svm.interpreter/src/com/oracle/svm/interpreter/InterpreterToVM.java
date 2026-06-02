@@ -29,8 +29,8 @@ import static com.oracle.svm.interpreter.InterpreterOptions.DebuggerWithInterpre
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
@@ -45,6 +45,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
@@ -639,22 +640,26 @@ public final class InterpreterToVM {
     public static Object createNewReference(InterpreterResolvedJavaType klass) throws SemanticJavaException {
         assert !klass.isPrimitive();
         Class<?> clazz = klass.getJavaClass();
+        validateNewReferenceClass(clazz);
         ensureClassInitialized(clazz);
-        try {
-            // GR-55050: Ensure that the type can be allocated on SVM.
-            // At this point failing allocation should only imply OutOfMemoryError or
-            // StackOverflowError which are handled specially by the interpreter.
-            // GR-55050: Hide/remove the Unsafe#allocateInstance frame e.g. use a
-            // DynamicNewInstanceNode intrinsic.
-            return U.allocateInstance(clazz);
-        } catch (InstantiationException e) {
+        /*
+         * The class and initialization checks above leave only OutOfMemoryError and
+         * StackOverflowError to be reported by the intrinsic allocation path.
+         */
+        return KnownIntrinsics.unvalidatedAllocateInstance(clazz);
+    }
+
+    private static void validateNewReferenceClass(Class<?> clazz) throws SemanticJavaException {
+        DynamicHub hub = DynamicHub.fromClass(clazz);
+        int layoutEncoding = hub.getLayoutEncoding();
+        if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(layoutEncoding) || LayoutEncoding.isHybrid(layoutEncoding) || Modifier.isAbstract(hub.getModifiers())) {
             /*
-             * Bytecode execution reports this case as InstantiationError, so translate the
-             * allocation failure to preserve the interpreter's execution semantics.
+             * Bytecode execution reports invalid NEW targets as InstantiationError instead of the
+             * reflection-specific InstantiationException used by Unsafe.allocateInstance.
              */
             throw SemanticJavaException.raise(new InstantiationError(clazz.getName()));
-        } catch (IllegalArgumentException | MissingReflectionRegistrationError e) {
-            throw SemanticJavaException.raise(e);
+        } else if (!hub.isInstantiated()) {
+            throw VMError.shouldNotReachHere("Cannot allocate type that is not marked as instantiated: " + clazz.getName());
         }
     }
 
@@ -683,13 +688,14 @@ public final class InterpreterToVM {
         if (length < 0) {
             throw SemanticJavaException.raise(new NegativeArraySizeException(String.valueOf(length)));
         }
-        // GR-55050: Ensure that the array type can be allocated on SVM.
-        // At this point failing allocation should only imply OutOfMemoryError or
-        // StackOverflowError which are handled specially by the interpreter.
-        // GR-55050: Hide/remove the Array.newInstance (and other intermediate) frames
-        // e.g. use a DynamicNewArrayInstanceNode intrinsic.
         try (var _ = ClassLoading.allowArbitraryClassLoading(RuntimeClassLoading.isSupported())) {
-            return Array.newInstance(componentType.getJavaClass(), length);
+            /*
+             * The intrinsic performs SVM array-hub validation without introducing reflection helper
+             * frames into user-visible stack traces.
+             */
+            return KnownIntrinsics.unvalidatedNewArray(componentType.getJavaClass(), length);
+        } catch (IllegalArgumentException | MissingReflectionRegistrationError e) {
+            throw SemanticJavaException.raise(e);
         }
     }
 
@@ -705,19 +711,32 @@ public final class InterpreterToVM {
         assert dimensions.length > 0;
         assert getDimensions(multiArrayType) >= dimensions.length;
         assert getDimensions(multiArrayType) <= 255;
-        // GR-55050: Ensure that the array type can be allocated on SVM.
-        InterpreterResolvedJavaType component = multiArrayType;
         for (int d : dimensions) {
             if (d < 0) {
                 throw SemanticJavaException.raise(new NegativeArraySizeException(String.valueOf(d)));
             }
-            component = (InterpreterResolvedJavaType) component.getComponentType();
         }
-        // At this point failing allocation should only imply OutOfMemoryError or
-        // StackOverflowError which are handled specially by the interpreter.
-        // GR-55050: Hide/remove the Array.newInstance (and other intermediate) frames
-        // e.g. use a DynamicNewArrayInstanceNode intrinsic.
-        return Array.newInstance(component.getJavaClass(), dimensions);
+        try (var _ = ClassLoading.allowArbitraryClassLoading(RuntimeClassLoading.isSupported())) {
+            /*
+             * Allocate each dimension through the intrinsic so recursive multi-array creation has
+             * the same frame-hiding behavior as single-dimensional array bytecodes.
+             */
+            return createMultiArrayAtDimension(multiArrayType, dimensions, 0);
+        } catch (IllegalArgumentException | MissingReflectionRegistrationError e) {
+            throw SemanticJavaException.raise(e);
+        }
+    }
+
+    private static Object createMultiArrayAtDimension(InterpreterResolvedJavaType arrayType, int[] dimensions, int dimension) {
+        InterpreterResolvedJavaType componentType = (InterpreterResolvedJavaType) arrayType.getComponentType();
+        Object array = KnownIntrinsics.unvalidatedNewArray(componentType.getJavaClass(), dimensions[dimension]);
+        if (dimension + 1 < dimensions.length) {
+            Object[] objectArray = (Object[]) array;
+            for (int i = 0; i < objectArray.length; i++) {
+                objectArray[i] = createMultiArrayAtDimension(componentType, dimensions, dimension + 1);
+            }
+        }
+        return array;
     }
 
     public static void ensureClassInitialized(InterpreterResolvedObjectType type) {
