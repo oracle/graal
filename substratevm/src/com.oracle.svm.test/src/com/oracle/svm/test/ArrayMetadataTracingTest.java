@@ -44,7 +44,6 @@ public class ArrayMetadataTracingTest {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             RuntimeReflection.register(ArrayMetadataTracingTarget[].class);
-            RuntimeReflection.register(Class[].class);
         }
     }
 
