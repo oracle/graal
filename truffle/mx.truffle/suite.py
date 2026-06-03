@@ -1370,6 +1370,286 @@ suite = {
             # we want to make this code unreachable in native image builds
             "protected static URLHandler getDefault.*" : "\\g<0>\nif (Boolean.TRUE) {\nreturn null;\n}",
           },
+          "com/ibm/icu/impl/SoftCache.java" : {
+            "V value = createInstance\\(key, data\\);" : """\\g<0>
+            if (org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                return value;
+            }""",
+          },
+          "com/ibm/icu/impl/SimpleCache.java" : {
+            """Reference<Map<K, V>> ref = cacheRef;
+        Map<K, V> map = null;""" : """
+        if (org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+            return;
+        }
+        \\g<0>""",
+          },
+          "com/ibm/icu/impl/locale/LocaleObjectCache.java" : {
+            "CacheEntry<K, V> newEntry = new CacheEntry<K, V>\\(key, newVal, _queue\\);" : """
+            if (org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                return newVal;
+            }
+            \\g<0>""",
+          },
+          "com/ibm/icu/util/UResourceBundle.java" : {
+            "ROOT_CACHE\\.put\\(baseName, rootType\\);" : """
+            if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                \\g<0>
+            }""",
+          },
+
+          "com/ibm/icu/impl/coll/CollationRoot.java" : {
+            "private static final CollationTailoring rootSingleton;" : "private static CollationTailoring rootSingleton;",
+            "private static final RuntimeException exception;" : "private static RuntimeException exception;",
+            "(public static final CollationTailoring getRoot\\(\\) \\{)([\\s\\S]*\\})" : """\\g<1>
+        if (!rootLoaded) {
+            loadRoot();
+        }\\g<2>""",
+            """static \\{[^\n]*(\n[\\s\\S]*exception = e2;)\n    \\}""" : """
+    private static volatile boolean rootLoaded;
+    private static synchronized void loadRoot() {
+        if (rootLoaded) {
+            return;
+        }\\g<1>
+        rootLoaded = true;
+    }""",
+          },
+          "com/ibm/icu/impl/Norm2AllModes.java" : {
+            "NFCSingleton\\.INSTANCE" : "NFCSingleton.getInstance()",
+            "NFKCSingleton\\.INSTANCE" : "NFKCSingleton.getInstance()",
+            "NFKC_CFSingleton\\.INSTANCE" : "NFKC_CFSingleton.getInstance()",
+            "NFKC_SCFSingleton\\.INSTANCE" : "NFKC_SCFSingleton.getInstance()",
+            "private static final Norm2AllModesSingleton INSTANCE=new Norm2AllModesSingleton\\(\"nfc\"\\);" : """
+        private static volatile Norm2AllModesSingleton INSTANCE;
+        private static Norm2AllModesSingleton getInstance() {
+            Norm2AllModesSingleton result = INSTANCE;
+            if (result == null) {
+                synchronized (NFCSingleton.class) {
+                    result = INSTANCE;
+                    if (result == null) {
+                        result = new Norm2AllModesSingleton(\"nfc\");
+                        if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                            INSTANCE = result;
+                        }
+                    }
+                }
+            }
+            return result;
+        }""",
+            "private static final Norm2AllModesSingleton INSTANCE=new Norm2AllModesSingleton\\(\"nfkc\"\\);" : """
+        private static volatile Norm2AllModesSingleton INSTANCE;
+        private static Norm2AllModesSingleton getInstance() {
+            Norm2AllModesSingleton result = INSTANCE;
+            if (result == null) {
+                synchronized (NFKCSingleton.class) {
+                    result = INSTANCE;
+                    if (result == null) {
+                        result = new Norm2AllModesSingleton(\"nfkc\");
+                        if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                            INSTANCE = result;
+                        }
+                    }
+                }
+            }
+            return result;
+        }""",
+            "private static final Norm2AllModesSingleton INSTANCE=new Norm2AllModesSingleton\\(\"nfkc_cf\"\\);" : """
+        private static volatile Norm2AllModesSingleton INSTANCE;
+        private static Norm2AllModesSingleton getInstance() {
+            Norm2AllModesSingleton result = INSTANCE;
+            if (result == null) {
+                synchronized (NFKC_CFSingleton.class) {
+                    result = INSTANCE;
+                    if (result == null) {
+                        result = new Norm2AllModesSingleton(\"nfkc_cf\");
+                        if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                            INSTANCE = result;
+                        }
+                    }
+                }
+            }
+            return result;
+        }""",
+            "private static final Norm2AllModesSingleton INSTANCE=new Norm2AllModesSingleton\\(\"nfkc_scf\"\\);" : """
+        private static volatile Norm2AllModesSingleton INSTANCE;
+        private static Norm2AllModesSingleton getInstance() {
+            Norm2AllModesSingleton result = INSTANCE;
+            if (result == null) {
+                synchronized (NFKC_SCFSingleton.class) {
+                    result = INSTANCE;
+                    if (result == null) {
+                        result = new Norm2AllModesSingleton(\"nfkc_scf\");
+                        if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                            INSTANCE = result;
+                        }
+                    }
+                }
+            }
+            return result;
+        }""",
+          },
+          "com/ibm/icu/impl/UCharacterName.java" : {
+            "public static final UCharacterName INSTANCE;" : "private static volatile UCharacterName INSTANCE;",
+            "static \\{([\\s\\S]*?)INSTANCE = new UCharacterName\\(\\);([\\s\\S]*?)\n    }" : """
+    public static UCharacterName getInstance() {
+        UCharacterName result = INSTANCE;
+        if (result == null) {
+            synchronized (UCharacterName.class) {
+                result = INSTANCE;
+                if (result == null) {
+                    \\g<1>result = new UCharacterName();\\g<2>
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        INSTANCE = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+          },
+          "com/ibm/icu/impl/UPropertyAliases.java" : {
+            "public static final UPropertyAliases INSTANCE;" : "private static volatile UPropertyAliases INSTANCE;",
+            "static \\{([\\s\\S]*?)INSTANCE = new UPropertyAliases\\(\\);([\\s\\S]*?)\n    }" : """
+    public static UPropertyAliases getInstance() {
+        UPropertyAliases result = INSTANCE;
+        if (result == null) {
+            synchronized (UPropertyAliases.class) {
+                result = INSTANCE;
+                if (result == null) {
+                    \\g<1>result = new UPropertyAliases();\\g<2>
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        INSTANCE = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+          },
+          "com/ibm/icu/impl/locale/LikelySubtags.java" : {
+            "public static final LikelySubtags INSTANCE = new LikelySubtags\\(Data\\.load\\(\\)\\);" : """
+    private static volatile LikelySubtags INSTANCE;
+    public static LikelySubtags getInstance() {
+        LikelySubtags result = INSTANCE;
+        if (result == null) {
+            synchronized (LikelySubtags.class) {
+                result = INSTANCE;
+                if (result == null) {
+                    result = new LikelySubtags(Data.load());
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        INSTANCE = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+          },
+          "com/ibm/icu/impl/locale/LocaleDistance.java" : {
+            "public static final LocaleDistance INSTANCE = new LocaleDistance\\(Data\\.load\\(\\)\\);" : """
+    private static volatile LocaleDistance INSTANCE;
+    public static LocaleDistance getInstance() {
+        LocaleDistance result = INSTANCE;
+        if (result == null) {
+            synchronized (LocaleDistance.class) {
+                result = INSTANCE;
+                if (result == null) {
+                    result = new LocaleDistance(Data.load());
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        INSTANCE = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+            "LikelySubtags\\.INSTANCE" : "LikelySubtags.getInstance()",
+          },
+          "com/ibm/icu/impl/ZoneMeta.java" : {
+            "private static String\\[] ZONEIDS = null;" : "private static volatile String[] ZONEIDS = null;",
+            """private static synchronized String\\[] getZoneIDs\\(\\) \\{[\\s\\S]*?return ZONEIDS;
+    }""" : """
+    private static String[] getZoneIDs() {
+        String[] result = ZONEIDS;
+        if (result == null) {
+            synchronized (ZoneMeta.class) {
+                result = ZONEIDS;
+                if (result == null) {
+                    try {
+                        UResourceBundle top = UResourceBundle.getBundleInstance(
+                                ICUData.ICU_BASE_NAME, ZONEINFORESNAME, ICUResourceBundle.ICU_DATA_CLASS_LOADER);
+                        result = top.getStringArray(kNAMES);
+                    } catch (MissingResourceException ex) {
+                        // throw away..
+                    }
+                    if (result == null) {
+                        result = new String[0];
+                    }
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        ZONEIDS = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+          },
+          "com/ibm/icu/lang/UCharacter.java" : {
+            "UCharacterName\\.INSTANCE" : "UCharacterName.getInstance()",
+            "UPropertyAliases\\.INSTANCE" : "UPropertyAliases.getInstance()",
+          },
+          "com/ibm/icu/text/DateTimePatternGenerator.java" : {
+            "LOCALE_TO_ALLOWED_HOUR\\.get" : "getLocaleToAllowedHour().get",
+            """static final Map<String, String\\[]> LOCALE_TO_ALLOWED_HOUR;
+    static \\{([\\s\\S]*?)LOCALE_TO_ALLOWED_HOUR = Collections.unmodifiableMap\\(temp\\);
+    }""" : """
+    static volatile Map<String, String[]> LOCALE_TO_ALLOWED_HOUR;
+    private static Map<String, String[]> getLocaleToAllowedHour() {
+        Map<String, String[]> result = LOCALE_TO_ALLOWED_HOUR;
+        if (result == null) {
+            synchronized (DateTimePatternGenerator.class) {
+                result = LOCALE_TO_ALLOWED_HOUR;
+                if (result == null) {
+                    \\g<1>
+                    result = Collections.unmodifiableMap(temp);
+                    if (!org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode()) {
+                        LOCALE_TO_ALLOWED_HOUR = result;
+                    }
+                }
+            }
+        }
+        return result;
+    }""",
+          },
+          "com/ibm/icu/text/NameUnicodeTransliterator.java" : {
+            "UCharacterName\\.INSTANCE" : "UCharacterName.getInstance()",
+          },
+          "com/ibm/icu/text/UnicodeSet.java" : {
+            "UPropertyAliases\\.INSTANCE" : "UPropertyAliases.getInstance()",
+          },
+          "com/ibm/icu/util/LocaleMatcher.java" : {
+            "LikelySubtags\\.INSTANCE" : "LikelySubtags.getInstance()",
+            "LocaleDistance\\.INSTANCE" : "LocaleDistance.getInstance()",
+          },
+          "com/ibm/icu/util/ULocale.java" : {
+            "LikelySubtags\\.INSTANCE" : "LikelySubtags.getInstance()",
+          },
+          "com/ibm/icu/text/Transliterator.java" : {
+            "(RB_RULE_BASED_IDS =\"RuleBasedTransliteratorIDs\";\n\\s*)static" : "\\g<1>private static synchronized void ensureInitialized()",
+            "registry = new TransliteratorRegistry\\(\\);" : "if (registry != null) return;\n        \\g<0>",
+            "String n = displayNameCache\\.get\\(new CaseInsensitiveString\\(ID\\)\\);" : "ensureInitialized();\n        \\g<0>",
+            "Transliterator t = registry\\.get\\(id, s\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(ID, transClass, true\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(ID, factory, true\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(trans\\.getID\\(\\), trans, true\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(trans\\.getID\\(\\), trans, visible\\);" : "ensureInitialized();\n        \\g<0>",
+            "registry\\.put\\(aliasID, realID, true\\);" : "ensureInitialized();\n        \\g<0>",
+            "displayNameCache\\.remove\\(new CaseInsensitiveString\\(ID\\)\\);" : "ensureInitialized();\n        \\g<0>",
+            "return registry\\.getAvailableIDs\\(\\);" : "ensureInitialized();\n        \\g<0>",
+            "return registry\\.getAvailableSources\\(\\);" : "ensureInitialized();\n        \\g<0>",
+            "return registry\\.getAvailableTargets\\(source\\);" : "ensureInitialized();\n        \\g<0>",
+            "return registry\\.getAvailableVariants\\(source, target\\);" : "ensureInitialized();\n        \\g<0>",
+          },
         },
       },
       "description" : "ICU4J shaded library.",

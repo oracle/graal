@@ -119,12 +119,6 @@ public class ICU4JFeature implements Feature {
                                         "org.graalvm.shadowed.com.ibm.icu.impl.UPropertyAliases",
                                         "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/pnames\\.icu$"),
                         new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.EmojiProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/uemoji\\.icu$"),
-                        new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.UBiDiProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/ubidi\\.icu$"),
-                        new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.coll.CollationRoot",
                                         "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/coll/ucadata\\.icu$"),
                         new ResourceEntry(List.of(
