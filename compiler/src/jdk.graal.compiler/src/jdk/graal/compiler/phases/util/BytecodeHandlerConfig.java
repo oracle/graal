@@ -42,14 +42,13 @@ import jdk.vm.ci.meta.Signature;
  * Aggregates metadata derived from a {@code BytecodeInterpreterHandlerConfig} annotation which is
  * resolved against a concrete bytecode handler signature. The resulting model describes the stub
  * ABI: argument expansion, non-null guarantees, {@code returnValue}/copy-from-return slots, mutable
- * expanded fields, and the maximum opcode for which a handler exists.
+ * expanded fields, scratch fields, and the maximum opcode for which a handler exists.
  */
 public final class BytecodeHandlerConfig {
 
     private final int maximumOperationCode;
     private final int templatesLength;
     private final ResolvedJavaType returnType;
-    private final List<Integer> templateCompatibleOpcodes;
     /**
      * Complete handler argument model in Java call-shape order, including template variables.
      */
@@ -71,11 +70,10 @@ public final class BytecodeHandlerConfig {
      */
     private final List<ResolvedJavaType> stubAbiArgumentTypes;
 
-    private BytecodeHandlerConfig(int maximumOperationCode, int templatesLength, ResolvedJavaType returnType, List<Integer> templateCompatibleOpcodes, List<ArgumentInfo> arguments) {
+    private BytecodeHandlerConfig(int maximumOperationCode, int templatesLength, ResolvedJavaType returnType, List<ArgumentInfo> arguments) {
         this.maximumOperationCode = maximumOperationCode;
         this.templatesLength = templatesLength;
         this.returnType = Objects.requireNonNull(returnType, "returnType");
-        this.templateCompatibleOpcodes = Collections.unmodifiableList(new ArrayList<>(templateCompatibleOpcodes));
         this.allArgumentInfos = Collections.unmodifiableList(new ArrayList<>(arguments));
         List<ArgumentInfo> templateVariables = new ArrayList<>();
         List<ArgumentInfo> abiArguments = new ArrayList<>(arguments.size());
@@ -143,9 +141,7 @@ public final class BytecodeHandlerConfig {
 
         int templatesLength = computeTemplatesLength(arguments);
 
-        List<Integer> templateCompatibleOpcodes = handlerConfig.getList("templateCompatibleOpcodes", Integer.class);
-
-        return new BytecodeHandlerConfig(maximumOperationCode, templatesLength, returnType, templateCompatibleOpcodes, arguments);
+        return new BytecodeHandlerConfig(maximumOperationCode, templatesLength, returnType, arguments);
     }
 
     private static int computeTemplatesLength(List<ArgumentInfo> arguments) {
@@ -188,11 +184,11 @@ public final class BytecodeHandlerConfig {
 
         switch (expansionKind) {
             case NONE -> {
-                arguments.add(new ArgumentInfo(declaringClass, nextIndex++, originalIndex, false, false, false, null, null, false, true, nonNull, 0));
+                arguments.add(new ArgumentInfo(declaringClass, nextIndex++, originalIndex, false, false, false, null, null, false, true, nonNull, false, 0));
             }
             case VIRTUAL -> throw GraalError.shouldNotReachHere("Receiver cannot be VIRTUAL");
             case MATERIALIZED -> {
-                arguments.add(new ArgumentInfo(declaringClass, nextIndex++, originalIndex, false, true, false, null, null, false, true, nonNull, 0));
+                arguments.add(new ArgumentInfo(declaringClass, nextIndex++, originalIndex, false, true, false, null, null, false, true, nonNull, false, 0));
                 nextIndex = appendMaterializedFields(arguments, receiverConfig, declaringClass, declaringClass, originalIndex, nextIndex, templateModeEnabled);
             }
             default -> throw GraalError.shouldNotReachHere("Unknown expansion kind " + expansionKind);
@@ -209,7 +205,7 @@ public final class BytecodeHandlerConfig {
 
         switch (expansionKind) {
             case NONE -> {
-                arguments.add(new ArgumentInfo(parameterType, nextIndex++, originalIndex, copyFromReturn, false, false, null, null, false, !copyFromReturn, nonNull, 0));
+                arguments.add(new ArgumentInfo(parameterType, nextIndex++, originalIndex, copyFromReturn, false, false, null, null, false, !copyFromReturn, nonNull, false, 0));
             }
             case VIRTUAL -> {
                 List<AnnotationValue> fields = parameterConfig.getList("fields", AnnotationValue.class);
@@ -217,20 +213,22 @@ public final class BytecodeHandlerConfig {
                     ResolvedJavaType fieldType = javaField.getType().resolve(declaringClass);
                     boolean fieldNonNull = false;
                     AnnotationValue fieldConfig = findFieldConfig(fields, javaField.getName());
+                    boolean scratch = templateModeEnabled && fieldConfig != null && fieldConfig.getBoolean("scratch");
                     int templateVariants = templateModeEnabled ? getTemplateVariants(fieldConfig, javaField) : 0;
+                    GraalError.guarantee(!scratch || templateVariants == 0, "Scratch field %s cannot be a template variable", javaField.format("%H.%n"));
                     if (!fieldType.isPrimitive()) {
-                        fieldNonNull = fieldConfig != null && fieldConfig.getBoolean("nonNull");
+                        fieldNonNull = !scratch && fieldConfig != null && fieldConfig.getBoolean("nonNull");
                         GraalError.guarantee(templateVariants == 0, "Field %s is marked as a template variable", javaField.format("%H.%n"));
                     } else if (templateVariants > 0) {
                         GraalError.guarantee(fieldType.getJavaKind() == JavaKind.Int, "Template variable field %s must be int", javaField.format("%H.%n"));
                     }
                     int abiIndex = templateVariants > 0 ? -1 : nextIndex++;
                     arguments.add(new ArgumentInfo(fieldType, abiIndex, originalIndex, false, false, true, parameterType, javaField, true, javaField.isFinal(),
-                                    fieldNonNull, templateVariants));
+                                    fieldNonNull, scratch, templateVariants));
                 }
             }
             case MATERIALIZED -> {
-                arguments.add(new ArgumentInfo(parameterType, nextIndex++, originalIndex, copyFromReturn, true, false, null, null, false, true, nonNull, 0));
+                arguments.add(new ArgumentInfo(parameterType, nextIndex++, originalIndex, copyFromReturn, true, false, null, null, false, true, nonNull, false, 0));
                 nextIndex = appendMaterializedFields(arguments, parameterConfig, parameterType, declaringClass, originalIndex, nextIndex, templateModeEnabled);
             }
             default -> throw GraalError.shouldNotReachHere("Unknown expansion kind " + expansionKind);
@@ -245,13 +243,16 @@ public final class BytecodeHandlerConfig {
         for (ResolvedJavaField javaField : expandedType.getInstanceFields(true)) {
             AnnotationValue fieldConfig = findFieldConfig(fields, javaField.getName());
             if (fieldConfig != null) {
+                if (templateModeEnabled) {
+                    GraalError.guarantee(!fieldConfig.getBoolean("scratch"), "Scratch field %s must belong to a VIRTUAL argument", javaField.format("%H.%n"));
+                }
                 ResolvedJavaType fieldType = javaField.getType().resolve(declaringClass);
                 boolean fieldNonNull = !fieldType.isPrimitive() && fieldConfig.getBoolean("nonNull");
                 if (templateModeEnabled) {
                     GraalError.guarantee(getTemplateVariants(fieldConfig, javaField) == 0, "Field %s is marked as a template variable", javaField.format("%H.%n"));
                 }
                 arguments.add(new ArgumentInfo(fieldType, nextIndex++, originalIndex, false, false, true, declaringClass, javaField, false, javaField.isFinal(),
-                                fieldNonNull, 0));
+                                fieldNonNull, false, 0));
             }
         }
         return nextIndex;
@@ -299,10 +300,6 @@ public final class BytecodeHandlerConfig {
         return templatesLength;
     }
 
-    public boolean isTemplateCompatibleOpcode(int opcode) {
-        return templateCompatibleOpcodes.isEmpty() || templateCompatibleOpcodes.contains(opcode);
-    }
-
     public ResolvedJavaType getReturnType() {
         return returnType;
     }
@@ -348,12 +345,12 @@ public final class BytecodeHandlerConfig {
             return false;
         }
         return maximumOperationCode == other.maximumOperationCode && templatesLength == other.templatesLength && returnType.equals(other.returnType) &&
-                        templateCompatibleOpcodes.equals(other.templateCompatibleOpcodes) && allArgumentInfos.equals(other.allArgumentInfos);
+                        allArgumentInfos.equals(other.allArgumentInfos);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(maximumOperationCode, templatesLength, returnType, templateCompatibleOpcodes, allArgumentInfos);
+        return Objects.hash(maximumOperationCode, templatesLength, returnType, allArgumentInfos);
     }
 
     public boolean isStubAbiArgumentImmutable(int index) {
@@ -400,6 +397,10 @@ public final class BytecodeHandlerConfig {
      * produce multiple {@link ArgumentInfo}s that share the same {@link #originalIndex()} but map to
      * different stub ABI {@link #index()} values. In template mode, template variables have index
      * {@code -1} and are excluded from the stub ABI.
+     * <p>
+     * When template mode is enabled, scratch fields are still ABI arguments so threaded handlers
+     * can pass them to each other, but they are initialized with default values at the Java caller
+     * boundary and are not written back to the original owner object.
      */
     public record ArgumentInfo(ResolvedJavaType type,
                     int index,
@@ -412,6 +413,7 @@ public final class BytecodeHandlerConfig {
                     boolean isOwnerVirtual,
                     boolean isImmutable,
                     boolean nonNull,
+                    boolean scratch,
                     int templateVariants) {
         public boolean isTemplateVariable() {
             return templateVariants > 0;
@@ -422,7 +424,7 @@ public final class BytecodeHandlerConfig {
          * edge: the {@code copyFromReturn} value and mutable fields of virtual-expanded arguments.
          */
         public boolean needsPendingExceptionState() {
-            return copyFromReturn || (isExpanded && isOwnerVirtual && !isImmutable);
+            return copyFromReturn || (isExpanded && isOwnerVirtual && !isImmutable && !scratch);
         }
     }
 }

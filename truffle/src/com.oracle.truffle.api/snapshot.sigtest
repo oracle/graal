@@ -175,6 +175,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean safepoint()
+meth public abstract !hasdefault boolean templateCompatible()
 meth public abstract !hasdefault boolean threading()
 meth public abstract int[] value()
 
@@ -186,7 +187,6 @@ innr public abstract interface static !annotation Argument
 intf java.lang.annotation.Annotation
 meth public abstract com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument[] arguments()
 meth public abstract int maximumOperationCode()
-meth public abstract !hasdefault int[] templateCompatibleOpcodes()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument
  outer com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig
@@ -215,6 +215,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean nonNull()
+meth public abstract !hasdefault boolean scratch()
 meth public abstract java.lang.String name()
 meth public abstract !hasdefault int templateVariable()
 

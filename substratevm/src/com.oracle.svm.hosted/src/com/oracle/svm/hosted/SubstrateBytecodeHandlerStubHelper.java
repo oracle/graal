@@ -102,8 +102,9 @@ public final class SubstrateBytecodeHandlerStubHelper {
             ResolvedJavaMethod handler = unwrap(key.method());
             AnnotationValue annotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(handler);
             GraalError.guarantee(annotation != null, "missing @BytecodeInterpreterHandler on %s", handler.format("%H.%n(%p)"));
+            boolean templateCompatible = annotation.getBoolean("templateCompatible");
             for (Integer opcode : annotation.getList("value", Integer.class)) {
-                if (key.templateIndex() != 0 && !handlerConfig.isTemplateCompatibleOpcode(opcode)) {
+                if (key.templateIndex() != 0 && !templateCompatible) {
                     continue;
                 }
                 GraalError.guarantee(handlerTable[opcode].getMethod().equals(registeredBytecodeHandlers.get(tableKey)), "Method for opcode %d already set.", opcode);
