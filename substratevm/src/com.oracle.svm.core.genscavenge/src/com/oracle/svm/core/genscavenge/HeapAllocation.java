@@ -80,14 +80,14 @@ public final class HeapAllocation {
     public HeapAllocation() {
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.3+2/src/hotspot/share/gc/g1/g1CollectedHeap.cpp#L384-L396")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3+2/src/hotspot/share/gc/g1/g1CollectedHeap.cpp#L384-L396")
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     public Pointer allocateNewTlab(UnsignedWord minSize, UnsignedWord requestedSize, WordPointer actualSize) {
         assert fitsInAlignedChunk(requestedSize) : "We do not allow TLABs larger than an aligned chunk.";
         return attemptAllocation(minSize, requestedSize, actualSize);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.3+2/src/hotspot/share/gc/g1/g1CollectedHeap.cpp#L398-L407")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3+2/src/hotspot/share/gc/g1/g1CollectedHeap.cpp#L398-L407")
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     public Pointer allocateOutsideTlab(UnsignedWord size) {
         assert fitsInAlignedChunk(size) : "Must not be called for allocation requests that require an unaligned chunk.";
