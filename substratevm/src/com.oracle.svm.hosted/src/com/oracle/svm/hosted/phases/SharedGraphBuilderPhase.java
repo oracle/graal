@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
@@ -50,6 +51,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo.ExceptionWrapper;
@@ -62,6 +64,8 @@ import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldSupport;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.nodes.foreign.ScopedMethodNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -75,7 +79,6 @@ import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
-import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAnnotationAccess;
@@ -216,6 +219,14 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             this.explicitExceptionEdges = explicitExceptionEdges;
             this.linkAtBuildTime = linkAtBuildTime;
             this.bootstrapMethodHandler = new BootstrapMethodHandler();
+        }
+
+        @Override
+        public ValueNode executeFold(ResolvedJavaMethod targetMethod, ValueNode[] arguments, Supplier<JavaConstant> operation) {
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                return LayeredFoldSupport.singleton().resolve(this, targetMethod, arguments, operation);
+            }
+            return ConstantNode.forConstant(operation.get(), getMetaAccess(), getGraph());
         }
 
         /**

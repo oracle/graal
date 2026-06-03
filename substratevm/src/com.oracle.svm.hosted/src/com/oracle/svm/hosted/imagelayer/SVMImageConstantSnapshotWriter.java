@@ -101,7 +101,8 @@ final class SVMImageConstantSnapshotWriter {
     private Map<ImageHeapConstant, ConstantParent> constantsMap;
 
     private record ConstantParent(int constantId, int index) {
-        static ConstantParent NONE = new ConstantParent(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX);
+        static final ConstantParent NONE = new ConstantParent(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX);
+        static final ConstantParent UNMATERIALIZED = new ConstantParent(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX);
     }
 
     SVMImageConstantSnapshotWriter(SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, NativeImageHeap nativeImageHeap, AnalysisUniverse aUniverse,
@@ -112,10 +113,10 @@ final class SVMImageConstantSnapshotWriter {
         this.internedStringsIdentityMap = internedStringsIdentityMap;
     }
 
-    void collectConstants(ImageHeap imageHeap) {
+    void collectConstants(ImageHeap imageHeap, Collection<ImageHeapConstant> constantsToPersist) {
         List<ImageHeapConstant> constantsToScan = new ArrayList<>();
         imageHeap.getReachableObjects().values().forEach(constantsToScan::addAll);
-        constantsMap = HashMap.newHashMap(constantsToScan.size());
+        constantsMap = HashMap.newHashMap(constantsToScan.size() + constantsToPersist.size());
         constantsToScan.forEach(c -> constantsMap.put(c, ConstantParent.NONE));
         /*
          * Some child constants of reachable constants are not reachable because they are only used
@@ -126,6 +127,8 @@ final class SVMImageConstantSnapshotWriter {
             constantsToScan.forEach(con -> scanConstantReferencedObjects(con, discoveredConstants));
             constantsToScan = discoveredConstants;
         }
+        /* Preserve full data for constants already found by the normal scan. */
+        constantsToPersist.forEach(constant -> constantsMap.putIfAbsent(constant, ConstantParent.UNMATERIALIZED));
     }
 
     void writeConstants(SharedLayerSnapshotData.Writer snapshotWriter) {
@@ -161,16 +164,25 @@ final class SVMImageConstantSnapshotWriter {
         ConstantReflectionProvider constantReflection = aUniverse.getBigbang().getConstantReflectionProvider();
         int identityHashCode = constantReflection.identityHashCode(imageHeapConstant);
         builder.setIdentityHashCode(identityHashCode);
+        boolean unmaterialized = parent == ConstantParent.UNMATERIALIZED;
 
         switch (imageHeapConstant) {
             case ImageHeapInstance imageHeapInstance -> {
                 builder.initObject().setInstance();
-                persistConstantObjectData(builder.getObject(), imageHeapInstance::getFieldValue, imageHeapInstance.getFieldValuesSize());
+                if (unmaterialized) {
+                    persistUnmaterializedObjectData(builder.getObject(), imageHeapInstance.getType().getInstanceFields(true).length);
+                } else {
+                    persistConstantObjectData(builder.getObject(), imageHeapInstance::getFieldValue, imageHeapInstance.getFieldValuesSize());
+                }
                 persistConstantRelinkingInfo(builder, imageHeapConstant, constantsToRelink, aUniverse.getBigbang());
             }
             case ImageHeapObjectArray imageHeapObjectArray -> {
                 builder.initObject().setObjectArray();
-                persistConstantObjectData(builder.getObject(), imageHeapObjectArray::getElement, imageHeapObjectArray.getLength());
+                if (unmaterialized) {
+                    persistUnmaterializedObjectData(builder.getObject(), imageHeapObjectArray.getLength());
+                } else {
+                    persistConstantObjectData(builder.getObject(), imageHeapObjectArray::getElement, imageHeapObjectArray.getLength());
+                }
             }
             case ImageHeapPrimitiveArray imageHeapPrimitiveArray ->
                 SnapshotPrimitiveArrays.write(builder.initPrimitiveData(), imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray());
@@ -179,10 +191,17 @@ final class SVMImageConstantSnapshotWriter {
             default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
         }
 
-        if (!constantsToRelink.contains(id) && parent != ConstantParent.NONE) {
+        if (!constantsToRelink.contains(id) && parent != ConstantParent.NONE && parent != ConstantParent.UNMATERIALIZED) {
             builder.setParentConstantId(parent.constantId);
             assert parent.index != UNDEFINED_FIELD_INDEX : "Tried to persist child constant %s from parent constant %d, but got index %d".formatted(imageHeapConstant, parent.constantId, parent.index);
             builder.setParentIndex(parent.index);
+        }
+    }
+
+    private static void persistUnmaterializedObjectData(ObjectValue.Writer builder, int size) {
+        SnapshotStructList.Writer<ConstantReferenceData.Writer> refsBuilder = builder.initData(size);
+        for (int i = 0; i < size; i++) {
+            refsBuilder.get(i).setNotMaterialized();
         }
     }
 

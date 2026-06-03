@@ -168,7 +168,9 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Cross
             FutureConstantCandidateInfo futureConstant = (FutureConstantCandidateInfo) entry.getValue();
             var constant = futureConstant.constant();
             AnalysisType type = constant.getType();
-            tracker.registerFutureTrackingInfo(new FutureTrackingInfo(key, FutureTrackingInfo.State.Type, type.getId(), INVALID));
+            if (tracker.getTrackingInfo(key) == null) {
+                tracker.registerFutureTrackingInfo(new FutureTrackingInfo(key, FutureTrackingInfo.State.Type, type.getId(), INVALID));
+            }
 
         });
     }

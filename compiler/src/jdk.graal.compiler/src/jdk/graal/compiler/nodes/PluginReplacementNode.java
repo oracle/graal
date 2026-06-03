@@ -37,6 +37,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * This node represents a {@link jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin
@@ -57,18 +58,20 @@ public final class PluginReplacementNode extends FixedWithNextNode implements Pl
 
     @Input protected NodeInputList<ValueNode> args;
     private final ReplacementFunction function;
+    private final ResolvedJavaMethod targetMethod;
     private final String pluginName;
 
-    public PluginReplacementNode(Stamp stamp, ValueNode[] args, ReplacementFunction function, String pluginName) {
+    public PluginReplacementNode(Stamp stamp, ValueNode[] args, ReplacementFunction function, ResolvedJavaMethod targetMethod, String pluginName) {
         super(TYPE, stamp);
         this.args = new NodeInputList<>(this, args);
         this.function = function;
+        this.targetMethod = targetMethod;
         this.pluginName = pluginName;
     }
 
     @Override
     public boolean replace(GraphBuilderContext b, Replacements injection) {
-        return function.replace(b, injection, args.toArray(ValueNode.EMPTY_ARRAY));
+        return function.replace(b, targetMethod, injection, args.toArray(ValueNode.EMPTY_ARRAY));
     }
 
     /**
@@ -77,7 +80,7 @@ public final class PluginReplacementNode extends FixedWithNextNode implements Pl
      * plugin.
      */
     public interface ReplacementFunction {
-        boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, ValueNode[] args);
+        boolean replace(GraphBuilderContext b, ResolvedJavaMethod targetMethod, GeneratedPluginInjectionProvider injection, ValueNode[] args);
     }
 
     @Override
