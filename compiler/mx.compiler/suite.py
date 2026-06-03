@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.68.4",
+  "mxversion": "7.83.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
