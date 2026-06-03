@@ -49,8 +49,7 @@ public @interface BasedOnJDKFile {
      * Link to the source path.
      *
      * GitHub links to the <a href="https://github.com/graalvm/labs-openjdk">GraalVM Labs
-     * OpenJDK</a> repository are supported and should be used for new annotations. Legacy links to
-     * <a href="https://github.com/openjdk/jdk">upstream OpenJDK</a> repositories are still supported.
+     * OpenJDK</a> repository are supported.
      * Two formats are supported, file references (<em>blob</em>) and <em>tree</em> references for
      * tracking entire source folders:
      *
