@@ -46,7 +46,6 @@ import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNINITIALIZED_DECLARING_CLASS_SENTINEL;
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
-import static com.oracle.svm.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -1243,28 +1242,29 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.modifiers;
     }
 
-    /**
-     * Returns the access flags of this class using the same location selection as
-     * {@link Class#accessFlags()}.
+    @KeepOriginal
+    public native Set<AccessFlag> accessFlags();
+
+    /*
+     * Mirrors the JDK wrapper around getClassAccessFlagsRaw0(): arrays report access flags from
+     * their element type, while non-arrays use their own hub metadata.
      */
     @Substitute
-    public Set<AccessFlag> accessFlags() {
-        AccessFlag.Location location = isMemberClass() || isLocalClass() || isAnonymousClass() || hubIsArray()
-                        ? AccessFlag.Location.INNER_CLASS
-                        : AccessFlag.Location.CLASS;
-        int accessFlags;
-        if (location == AccessFlag.Location.CLASS) {
-            accessFlags = getClassAccessFlags();
-            if (isEnum()) {
-                accessFlags |= ACC_ENUM;
-            }
-            if (isAnnotation()) {
-                accessFlags |= ACC_ANNOTATION;
-            }
-        } else {
-            accessFlags = getModifiers();
+    private int getClassAccessFlagsRaw() {
+        DynamicHub hub = this;
+        while (hub.hubIsArray()) {
+            hub = hub.getComponentHub();
         }
-        return AccessFlag.maskToAccessFlags(accessFlags, location);
+        return hub.getClassAccessFlagsRaw0();
+    }
+
+    /*
+     * The JDK implementation of Class.accessFlags() calls this native primitive, so only the
+     * primitive is substituted while the Java-level AccessFlag location logic remains in JDK code.
+     */
+    @Substitute
+    private int getClassAccessFlagsRaw0() {
+        return getClassAccessFlags();
     }
 
     public int getClassAccessFlags() {

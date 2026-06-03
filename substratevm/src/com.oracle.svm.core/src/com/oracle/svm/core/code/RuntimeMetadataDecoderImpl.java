@@ -39,12 +39,9 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
@@ -52,12 +49,16 @@ import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Executable;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.espresso.classfile.Constants;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
@@ -103,8 +104,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     public static final int ALL_NEST_MEMBERS_FLAG = 1 << 26;
     public static final int ALL_SIGNERS_FLAG = 1 << 27;
 
-    // Value from Reflection.getClassAccessFlags()
-    public static final int CLASS_ACCESS_FLAGS_MASK = 0x1FFF;
+    public static final int CLASS_ACCESS_FLAGS_MASK = Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
 
     static byte[] getEncoding(int layerId) {
         return MultiLayeredImageSingleton.getForLayer(RuntimeMetadataEncoding.class, layerId).getEncoding();
