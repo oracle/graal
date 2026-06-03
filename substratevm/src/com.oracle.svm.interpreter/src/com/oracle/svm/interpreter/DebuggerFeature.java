@@ -223,6 +223,12 @@ public class DebuggerFeature implements InternalFeature {
         accessImpl.registerAsRoot((AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, aSystem, "arraycopy", Object.class, int.class, Object.class, int.class, int.class),
                         true, "Allow interpreting methods that call System.arraycopy");
 
+        // Class.accessFlags() is kept as JDK code and needs a compiled entry point.
+        AnalysisType aClass = metaAccess.lookupJavaType(Class.class);
+        AnalysisMethod accessFlagsMethod = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, aClass, "accessFlags");
+        accessImpl.registerAsRoot(accessFlagsMethod, true, "Allow interpreting methods that call Class.accessFlags");
+        SubstrateCompilationDirectives.singleton().registerForcedCompilation(accessFlagsMethod);
+
         registerStringConcatenation(accessImpl);
 
         // GR-53734: Known issues around reachability

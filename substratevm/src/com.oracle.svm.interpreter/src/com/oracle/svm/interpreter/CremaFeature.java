@@ -48,7 +48,6 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -113,12 +112,6 @@ public class CremaFeature implements InternalFeature {
             enterDirectInterpreterStub = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, declaringClass,
                             "enterDirectInterpreterStub", InterpreterResolvedJavaMethod.class, Pointer.class);
             accessImpl.registerAsRoot(enterDirectInterpreterStub, true, "stub for interpreter");
-
-            // Class.accessFlags() is kept as JDK code and needs a compiled entry point.
-            AnalysisType aClass = metaAccess.lookupJavaType(Class.class);
-            AnalysisMethod accessFlagsMethod = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, aClass, "accessFlags");
-            accessImpl.registerAsRoot(accessFlagsMethod, true, "Allow interpreting methods that call Class.accessFlags");
-            SubstrateCompilationDirectives.singleton().registerForcedCompilation(accessFlagsMethod);
         } catch (NoSuchMethodError e) {
             throw VMError.shouldNotReachHere(e);
         }
