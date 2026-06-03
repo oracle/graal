@@ -4513,7 +4513,7 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         }
     }
 
-    public final void call(Register src) {
+    protected final void call(Register src) {
         prefix(src);
         emitByte(0xFF);
         emitModRM(2, src);
