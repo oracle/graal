@@ -142,7 +142,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1666-L1673")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1666-L1673")
     public ResolvedJavaMethod getClassInitializer() {
         /*
          * Note: According to JVMS25 2.9.2:

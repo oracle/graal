@@ -44,17 +44,17 @@ import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = Disallowed.class)
 public final class WindowsPlatformTimeUtils extends PlatformTimeUtils {
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1123") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1123") //
     private static final long OFFSET = 116444736000000000L;
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1153-L1155")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1153-L1155")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long offset() {
         return OFFSET;
     }
 
     /* Returns time ticks in (10th of micro seconds) */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1158-L1161")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1158-L1161")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long windowsToTimeTicks(FILETIME wt) {
         long a = Word.unsigned(wt.dwHighDateTime()).shiftLeft(32).or(Word.unsigned(wt.dwLowDateTime())).rawValue();
@@ -62,7 +62,7 @@ public final class WindowsPlatformTimeUtils extends PlatformTimeUtils {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1198-L1205")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1198-L1205")
     @Uninterruptible(reason = "Must not migrate platform threads when executing on a virtual thread.")
     protected void javaTimeSystemUTC0(SecondsNanosBuffer result) {
         FILETIME wt = StackValue.get(FILETIME.class);

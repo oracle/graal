@@ -37,7 +37,7 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 public class JfrDumpDCmd extends AbstractJfrDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L81-L83")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L81-L83")
     public JfrDumpDCmd() {
         super("JFR.dump", "Copies contents of a JFR recording to file. Either the name or the recording id must be specified.", Impact.Medium);
     }

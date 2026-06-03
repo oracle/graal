@@ -158,7 +158,7 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         initDoneTime.allocate(Isolates.getInitDoneTimeMillis());
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/runtimeService.cpp#L68-L77") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/runtimeService.cpp#L68-L77") //
     private static String getJvmCapabilities() {
         /*
          * The capabilities are encoded as a string with 64 characters, where each character

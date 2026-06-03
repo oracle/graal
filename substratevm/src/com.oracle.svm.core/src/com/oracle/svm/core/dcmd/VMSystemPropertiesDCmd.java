@@ -34,7 +34,7 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.internal.vm.VMSupport;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L84-L95")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L84-L95")
 public class VMSystemPropertiesDCmd extends AbstractDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMSystemPropertiesDCmd() {
@@ -42,7 +42,7 @@ public class VMSystemPropertiesDCmd extends AbstractDCmd {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+15/src/hotspot/share/services/attachListener.cpp#L221-L264")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+15/src/hotspot/share/services/attachListener.cpp#L221-L264")
     public String execute(DCmdArguments args) throws Throwable {
         /* serializePropertiesToByteArray() explicitly returns a ISO_8859_1 encoded byte array. */
         byte[] bytes = VMSupport.serializePropertiesToByteArray();

@@ -108,9 +108,9 @@ import jdk.vm.ci.meta.Signature;
  * {@link DowncallStubInvoker}.
  */
 @SuppressWarnings("javadoc")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/prims/nativeEntryPoint.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+17/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+7/src/hotspot/share/prims/nativeEntryPoint.cpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+17/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
 class DowncallStub extends NonBytecodeMethod {
     static ResolvedSignature<ResolvedJavaType> createSignature(MetaAccessProvider metaAccess, MethodType mt) {
         Class<?>[] array = mt.parameterArray();

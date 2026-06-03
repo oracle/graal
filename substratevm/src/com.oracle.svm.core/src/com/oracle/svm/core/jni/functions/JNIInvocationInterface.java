@@ -231,7 +231,7 @@ public final class JNIInvocationInterface {
         @CEntryPoint(name = "JNI_GetDefaultJavaVMInitArgs", include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
         @Uninterruptible(reason = "No Java context")
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+22/src/hotspot/share/prims/jni.cpp#L3506-L3526")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+22/src/hotspot/share/prims/jni.cpp#L3506-L3526")
         static int JNI_GetDefaultJavaVMInitArgs(JNIJavaVMInitArgs vmArgs) {
             int version = vmArgs.getVersion();
             int ret = JNIVersion.isSupported(version, false) && version != JNIVersion.JNI_VERSION_1_1()

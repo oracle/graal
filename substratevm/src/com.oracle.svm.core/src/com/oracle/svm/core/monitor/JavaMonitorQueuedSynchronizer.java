@@ -312,7 +312,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
 
     // see AbstractQueuedLongSynchronizer.acquire(Node, long, false, false, false, 0L)
     @SuppressWarnings("all")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/share/runtime/objectMonitor.cpp#L982-L1017")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/hotspot/share/runtime/objectMonitor.cpp#L982-L1017")
     private int acquire(Node node, long arg) {
         Thread current = Thread.currentThread();
         /* Spinning logic is SVM-specific. */

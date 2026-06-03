@@ -53,7 +53,7 @@ public class JfrAllocationEvents {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/memAllocator.cpp#L209-L220")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/memAllocator.cpp#L209-L220")
     @Uninterruptible(reason = "Emits a JFR event from the uninterruptible allocation slowpath.")
     public static void emit(long startTicks, DynamicHub hub, UnsignedWord allocationSize, UnsignedWord tlabSize, boolean allocatedOutsideTlab) {
         if (HasJfrSupport.get()) {

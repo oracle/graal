@@ -39,8 +39,8 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 @CContext(LocaleDirectives.class)
 @CLibrary(value = "libchelper", requireStatic = true, dependsOn = "java")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+23/src/java.base/unix/native/libjava/locale_str.h")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/java.base/windows/native/libjava/locale_str.h")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+23/src/java.base/unix/native/libjava/locale_str.h")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+13/src/java.base/windows/native/libjava/locale_str.h")
 class LocaleCHelper {
     // Checkstyle: stop
     @CConstant

@@ -61,7 +61,7 @@ import jdk.internal.misc.Unsafe;
  */
 
 @TargetClass(java.nio.charset.CharsetEncoder.class)
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+23/src/java.base/share/classes/java/nio/charset/Charset-X-Coder.java.template")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+23/src/java.base/share/classes/java/nio/charset/Charset-X-Coder.java.template")
 final class Target_java_nio_charset_CharsetEncoder {
     @Alias @RecomputeFieldValue(kind = Reset) //
     private WeakReference<CharsetDecoder> cachedDecoder;

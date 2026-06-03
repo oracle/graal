@@ -36,7 +36,7 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 public class JfrStartDCmd extends AbstractJfrDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L56-L58")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L56-L58")
     public JfrStartDCmd() {
         super("JFR.start", "Starts a new JFR recording.", Impact.Medium);
     }

@@ -235,7 +235,7 @@ class ProviderVerifierJavaHomeAccessors {
  * support.
  */
 @TargetClass(className = "javax.crypto.JceSecurity", onlyWith = SecurityProvidersInitializedAtBuildTime.class)
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+27/src/java.base/share/classes/javax/crypto/JceSecurity.java.template")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
 

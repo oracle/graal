@@ -88,8 +88,8 @@ import jdk.internal.vm.vector.VectorSupport;
  * @noinspection CaughtExceptionImmediatelyRethrown
  */
 @SuppressWarnings("javadoc")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+15/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess-bin.java.template")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess.java.template")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+15/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess-bin.java.template")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess.java.template")
 @TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess", onlyWith = ForeignAPIPredicates.Enabled.class)
 public final class Target_jdk_internal_misc_ScopedMemoryAccess {
 
@@ -97,7 +97,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     static void registerNatives() {
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L50-L77")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L50-L77")
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
@@ -118,7 +118,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L182-L185")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L182-L185")
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
@@ -140,7 +140,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L192-L195")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L192-L195")
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
@@ -163,7 +163,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L197-L200")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L197-L200")
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
@@ -272,7 +272,7 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
      * {@link SyncCloseScopeOperation}) is essentially an empty operation but kills the field
      * location of {@link Target_jdk_internal_foreign_MemorySessionImpl#state}.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/prims/scopedMemoryAccess.cpp#L215-L218")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+20/src/hotspot/share/prims/scopedMemoryAccess.cpp#L215-L218")
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)

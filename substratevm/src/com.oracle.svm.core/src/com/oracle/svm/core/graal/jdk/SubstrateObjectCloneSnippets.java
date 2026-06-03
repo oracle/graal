@@ -92,7 +92,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/hotspot/share/prims/jvm.cpp#L645-L694")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/hotspot/share/prims/jvm.cpp#L645-L694")
     private static Object doClone(Object original) throws CloneNotSupportedException {
         if (original == null) {
             throw new NullPointerException();

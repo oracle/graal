@@ -108,8 +108,8 @@ final class Target_java_io_DefaultFileSystem_RunTime {
  * {@link Target_java_io_DefaultFileSystem_RunTime#getFileSystem()} creates a new instance for every
  * time. In the JDK, this method is called only once.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/java.base/unix/classes/java/io/DefaultFileSystem.java#L39-L41")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/java.base/windows/classes/java/io/DefaultFileSystem.java#L39-L41")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+25/src/java.base/unix/classes/java/io/DefaultFileSystem.java#L39-L41")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+25/src/java.base/windows/classes/java/io/DefaultFileSystem.java#L39-L41")
 class DefaultFileSystemHolder {
     static final Object FS;
     static {

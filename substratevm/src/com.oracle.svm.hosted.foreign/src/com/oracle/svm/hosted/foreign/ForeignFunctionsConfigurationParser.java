@@ -68,7 +68,7 @@ import jdk.graal.compiler.util.json.JsonFormatter;
 import jdk.graal.compiler.util.json.JsonParserException;
 import jdk.internal.foreign.layout.ValueLayouts;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+22/src/java.base/share/classes/jdk/internal/foreign/abi/LinkerOptions.java")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+22/src/java.base/share/classes/jdk/internal/foreign/abi/LinkerOptions.java")
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ForeignConfigurationParser<FunctionDescriptor, Linker.Option[]> {
     private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";

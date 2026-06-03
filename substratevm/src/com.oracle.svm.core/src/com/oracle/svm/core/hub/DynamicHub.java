@@ -653,7 +653,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return finishInitialization(hub, companion);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/Class.java#L3435-L3446")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/Class.java#L3435-L3446")
     private final class EnumConstantsSupplier implements Supplier<Object[]> {
         @Override
         public Object[] get() {
@@ -1983,9 +1983,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     @CallerSensitiveAdapter
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/java.base/share/native/libjava/Class.c#L97-L144")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L803-L821")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3303-L3312")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/Class.c#L97-L144")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L803-L821")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3303-L3312")
     private static Class<?> forName0(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws ClassNotFoundException {
         // this accepts dot-names and arrays types (`[...`), it refuses slash-names
         if (name.contains("/")) {

@@ -43,7 +43,7 @@ public final class SubstrateMappedMemoryUtils {
      * certainly exhaust the inlining budget such that other calls that need to be inlined (for
      * correctness) cannot be inlined.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L50-L77")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/java.base/share/classes/java/nio/MappedMemoryUtils.java#L50-L77")
     @NeverInline("contains JNI call")
     static void load(long address, boolean isSync, long size) {
         // no need to load a sync mapped buffer

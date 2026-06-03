@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L70-L81")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L70-L81")
 public class VMCommandLineDCmd extends AbstractDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMCommandLineDCmd() {

@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L42-L57")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L42-L57")
 public class HelpDCmd extends AbstractDCmd {
     private static final DCmdOption<String> COMMAND_NAME = new DCmdOption<>(String.class, "command name", "The name of the command for which we want help", false, null);
     private static final DCmdOption<Boolean> PRINT_ALL = new DCmdOption<>(Boolean.class, "-all", "Show help for all commands", false, false);
@@ -46,7 +46,7 @@ public class HelpDCmd extends AbstractDCmd {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L188-L232")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L188-L232")
     public String execute(DCmdArguments args) throws Throwable {
         if (args.get(PRINT_ALL)) {
             String lineBreak = System.lineSeparator();

@@ -41,7 +41,7 @@ import com.oracle.svm.core.util.PlatformTimeUtils;
 public final class PosixPlatformTimeUtils extends PlatformTimeUtils {
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/posix/os_posix.cpp#L1409-L1415")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+3/src/hotspot/os/posix/os_posix.cpp#L1409-L1415")
     @Uninterruptible(reason = "Must not migrate platform threads when executing on a virtual thread.")
     protected void javaTimeSystemUTC0(SecondsNanosBuffer result) {
         Time.timespec ts = StackValue.get(Time.timespec.class);

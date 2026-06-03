@@ -288,7 +288,7 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L562-L586")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L562-L586")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord findFirstDirtyCard(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx) {
         assert UnsignedUtils.isAMultiple(endIdx, Word.unsigned(wordSize()));
@@ -320,7 +320,7 @@ final class UnalignedChunkRememberedSet {
         return endIdx;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L588-L612")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L588-L612")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord findFirstCleanCard(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean clean) {
         assert UnsignedUtils.isAMultiple(endIdx, Word.unsigned(wordSize()));

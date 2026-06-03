@@ -52,10 +52,10 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
  * iteration, and file reopening primitives; this class contains the platform-independent
  * chunk-name filtering, ordering, fallback dump-file creation, and chunk-copying logic.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L43-L445")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/share/jfr/recorder/repository/jfrEmergencyDump.cpp#L43-L445")
 public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDumpSupport {
     private static final int CHUNK_FILE_HEADER_SIZE = 68;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25-ga/src/hotspot/os/posix/include/jvm_md.h#L57") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/hotspot/os/posix/include/jvm_md.h#L57") //
     protected static final int JVM_MAXPATHLEN = 4096;
     private static final int ISO_8601_LEN = 19;
     private static final int DOT = '.';

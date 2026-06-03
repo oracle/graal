@@ -33,7 +33,7 @@ import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L219-L233")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L219-L233")
 public class VMUptimeDmd extends AbstractDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMUptimeDmd() {
@@ -41,7 +41,7 @@ public class VMUptimeDmd extends AbstractDCmd {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L393-L400")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L393-L400")
     public String execute(DCmdArguments args) throws Throwable {
         StringBuilderLog log = new StringBuilderLog();
         log.rational(Isolates.getUptimeMillis(), TimeUtils.millisPerSecond, 3).string(" s").newline();

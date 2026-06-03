@@ -382,11 +382,11 @@ public abstract class PlatformThreads {
      * Default stack size used when neither the {@link Thread} nor {@link SubstrateOptions} set a
      * specific value.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/bsd_aarch64/globals_bsd_aarch64.hpp#L34")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/bsd_x86/globals_bsd_x86.hpp#L34")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/linux_aarch64/globals_linux_aarch64.hpp#L39")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/linux_x86/globals_linux_x86.hpp#L33")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+14/src/hotspot/os_cpu/windows_x86/globals_windows_x86.hpp#L35")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/hotspot/os_cpu/bsd_aarch64/globals_bsd_aarch64.hpp#L34")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/hotspot/os_cpu/bsd_x86/globals_bsd_x86.hpp#L34")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/hotspot/os_cpu/linux_aarch64/globals_linux_aarch64.hpp#L39")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/hotspot/os_cpu/linux_x86/globals_linux_x86.hpp#L33")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+14/src/hotspot/os_cpu/windows_x86/globals_windows_x86.hpp#L35")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getDefaultStackSize() {
         if (Platform.includedIn(Platform.MACOS_AARCH64.class)) {

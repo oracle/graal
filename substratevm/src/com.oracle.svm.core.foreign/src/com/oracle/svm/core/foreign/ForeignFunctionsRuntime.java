@@ -521,7 +521,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/lang/foreign/MemorySegment.java#L2708")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/lang/foreign/MemorySegment.java#L2708")
     public void onScopeReachable(Object scopeObj, DisallowedObjectReporter reporter) {
         VMError.guarantee(scopeObj instanceof Scope);
 
@@ -570,7 +570,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
      */
     @Uninterruptible(reason = "Interruptions might change call state.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+22/src/hotspot/share/prims/downcallLinker.cpp")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+22/src/hotspot/share/prims/downcallLinker.cpp")
     public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
         assert statesToCapture != 0;
         assert captureBuffer.isNonNull();

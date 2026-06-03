@@ -175,7 +175,7 @@ public class InlineBeforeAnalysisPolicyUtils {
      * work anymore (since we don't inline MH roots if already in an inlining context; this is the
      * mechanism to avoid partial inlining of method handles).
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+10/src/java.base/share/classes/jdk/internal/foreign/AbstractMemorySegmentImpl.java#L681-L915") //
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+10/src/java.base/share/classes/jdk/internal/foreign/AbstractMemorySegmentImpl.java#L681-L915") //
     private final Set<ResolvedJavaMethod> explicitMethodHandleIntrinisificationRoots = GuestAccess.elements().abstractMemorySegmentGetSetMethods;
 
     public boolean isMethodHandleIntrinsificationRoot(ResolvedJavaMethod method) {

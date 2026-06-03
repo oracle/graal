@@ -42,7 +42,7 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
  * methods being reached.
  */
 @TargetClass(className = "java.lang.invoke.BootstrapMethodInvoker", innerClass = "VM_BSCI", onlyWith = WithRuntimeClassLoading.class)
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/invoke/BootstrapMethodInvoker.java#L113-L126")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/invoke/BootstrapMethodInvoker.java#L113-L126")
 final class Target_java_lang_invoke_BootstrapMethodInvoker_VM_BSCI {
     @Substitute
     @SuppressWarnings("unused")

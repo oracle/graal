@@ -96,8 +96,8 @@ public final class HeapAllocation {
         return result;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+15/src/hotspot/share/gc/g1/g1Allocator.inline.hpp#L52-L62")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1AllocRegion.inline.hpp#L89-L95")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+15/src/hotspot/share/gc/g1/g1Allocator.inline.hpp#L52-L62")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1AllocRegion.inline.hpp#L89-L95")
     @Uninterruptible(reason = "Returns uninitialized memory and acquires a lock without a thread state transition.", callerMustBe = true)
     private Pointer attemptAllocation(UnsignedWord minSize, UnsignedWord requestedSize, WordPointer actualSize) {
         Pointer result = attemptAllocationParallel(retainedChunk, minSize, requestedSize, actualSize);
@@ -127,7 +127,7 @@ public final class HeapAllocation {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+4/src/hotspot/share/gc/g1/g1AllocRegion.inline.hpp#L51-L65")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+4/src/hotspot/share/gc/g1/g1AllocRegion.inline.hpp#L51-L65")
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     private static Pointer attemptAllocationParallel(AlignedHeader chunk, UnsignedWord minSize, UnsignedWord requestedSize, WordPointer actualSize) {
         if (chunk.isNonNull()) {
@@ -136,7 +136,7 @@ public final class HeapAllocation {
         return Word.nullPointer();
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1AllocRegion.inline.hpp#L97-L109")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1AllocRegion.inline.hpp#L97-L109")
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     private Pointer attemptAllocationInNewChunk(UnsignedWord requestedSize, WordPointer actualSize) {
         assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
@@ -149,7 +149,7 @@ public final class HeapAllocation {
         return result;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1AllocRegion.cpp#L289-L311")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1AllocRegion.cpp#L289-L311")
     @Uninterruptible(reason = "Modifies allocation chunks.")
     private void retainAllocChunk() {
         assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
@@ -165,7 +165,7 @@ public final class HeapAllocation {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1AllocRegion.cpp#L275-L287")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1AllocRegion.cpp#L275-L287")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private boolean shouldRetain() {
         assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
@@ -179,7 +179,7 @@ public final class HeapAllocation {
         return retainedChunk.isNull() || freeBytes.aboveOrEqual(HeapChunk.availableObjectMemory(retainedChunk));
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+4/src/hotspot/share/gc/g1/g1AllocRegion.cpp#L130-L154")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+4/src/hotspot/share/gc/g1/g1AllocRegion.cpp#L130-L154")
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     private Pointer newAllocChunkAndAllocate(UnsignedWord requestedSize) {
         assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
@@ -200,7 +200,7 @@ public final class HeapAllocation {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+4/src/hotspot/share/gc/g1/g1HeapRegion.inline.hpp#L186-L208")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+4/src/hotspot/share/gc/g1/g1HeapRegion.inline.hpp#L186-L208")
     @Uninterruptible(reason = "Returns uninitialized memory, modifies alloc chunk.", callerMustBe = true)
     private static Pointer allocateParallel(AlignedHeader chunk, UnsignedWord minSize, UnsignedWord requestedSize, WordPointer actualSize) {
         do {
@@ -250,7 +250,7 @@ public final class HeapAllocation {
      * TLAB logic concurrently, so there is no guarantee that the returned size is really available
      * in the current allocation chunk once a thread requests the new TLAB.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1Allocator.cpp#L184-L203")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1Allocator.cpp#L184-L203")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord availableSizeForNewTlab() {
         UnsignedWord maxTlabSize = AlignedHeapChunk.getUsableSizeForObjects();

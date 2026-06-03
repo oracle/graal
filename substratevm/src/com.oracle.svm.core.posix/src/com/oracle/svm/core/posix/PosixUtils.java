@@ -276,7 +276,7 @@ public class PosixUtils {
         return getUserNameOrDir(uid, false);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L436-L486")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L436-L486")
     private static String getUserNameOrDir(int uid, boolean name) {
         /* Determine max. pwBuf size. */
         long bufSize = Unistd.sysconf(_SC_GETPW_R_SIZE_MAX());

@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L59-L68")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L59-L68")
 public class VMVersionDmd extends AbstractDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMVersionDmd() {
@@ -40,7 +40,7 @@ public class VMVersionDmd extends AbstractDCmd {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L234-L246")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L234-L246")
     public String execute(DCmdArguments args) throws Throwable {
         VM vm = ImageSingletons.lookup(VM.class);
         return vm.formattedVmVersion + System.lineSeparator() + vm.formattedJdkVersion;

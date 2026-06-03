@@ -70,7 +70,7 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 /// - other launcher-only options: `-splash:<imagepath>`, `--disable-@files`
 ///
 /// See GR-75297 for work to implement the currently unimplemented options.
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+24/src/hotspot/share/runtime/arguments.cpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+24/src/hotspot/share/runtime/arguments.cpp")
 public final class JavaVMOptionsParser {
     private static final String PROPERTY_PREFIX = "-D";
     private static final String BOOT_CLASS_PATH_APPEND_PROPERTY = "jdk.boot.class.path.append";

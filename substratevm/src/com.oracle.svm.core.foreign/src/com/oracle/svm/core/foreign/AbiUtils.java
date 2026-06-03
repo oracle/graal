@@ -528,8 +528,8 @@ public abstract class AbiUtils {
      * This method re-implements a part of the logic from the JDK so that we can get the callee-type
      * (i.e. the ABI low-level type) of a function from its descriptor.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L99")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L71-L85")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L99")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L71-L85")
     public final NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
         // From Linker.downcallHandle implemented in AbstractLinker.downcallHandle:
         // From AbstractLinker.downcallHandle0
@@ -550,8 +550,8 @@ public abstract class AbiUtils {
                         linkerOptions.allowsHeapAccess());
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L126")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/AbstractLinker.java#L126")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+18/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L62-L110")
     public final JavaEntryPointInfo makeJavaEntryPoint(FunctionDescriptor desc, LinkerOptions linkerOptions) {
         // Linker.upcallStub implemented in AbstractLinker.upcallStub
         MethodType type = desc.toMethodType();
@@ -592,7 +592,7 @@ public abstract class AbiUtils {
     /**
      * Generate additional argument adaptations which are not done by HotSpot.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/CallingSequenceBuilder.java#L103-L147")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/CallingSequenceBuilder.java#L103-L147")
     @Platforms(Platform.HOSTED_ONLY.class)
     protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
         List<Adapter.Adaptation> adaptations = new ArrayList<>(Collections.nCopies(nep.methodType().parameterCount(), null));
@@ -632,7 +632,7 @@ public abstract class AbiUtils {
         return adaptations;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/x64/sysv/CallArranger.java#L280-L290")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/x64/sysv/CallArranger.java#L280-L290")
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void handleCriticalWithHeapAccess(NativeEntryPointInfo nep, int i, List<Adaptation> adaptations, Adaptation adaptation) {
         VMError.guarantee(nep.allowHeapAccess(), "A storage may only be null when the Linker.Option.critical(true) option is passed.");
@@ -893,7 +893,7 @@ class ABIs {
             template.setTemplate(assembly, posIsolate, posMHArray, posCallTarget);
         }
 
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/aarch64/CallArranger.java#L195")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/aarch64/CallArranger.java#L195")
         @Override
         public boolean dropReturn() {
             return true;
@@ -1101,7 +1101,7 @@ class ABIs {
             return SharedUtils.canonicalLayouts(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT);
         }
 
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/x64/sysv/CallArranger.java#L147")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/x64/sysv/CallArranger.java#L147")
         @Override
         public boolean dropReturn() {
             return true;
@@ -1172,7 +1172,7 @@ class ABIs {
             return SharedUtils.canonicalLayouts(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_CHAR);
         }
 
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/x64/windows/CallArranger.java#L139")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+13/src/java.base/share/classes/jdk/internal/foreign/abi/x64/windows/CallArranger.java#L139")
         @Override
         public boolean dropReturn() {
             return false;
@@ -1184,7 +1184,7 @@ class ABIs {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L122-L140")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/DowncallLinker.java#L122-L140")
     static class Downcalls {
         protected static Stream<Binding.VMStore> argMoveBindingsStream(CallingSequence callingSequence) {
             return callingSequence.argumentBindings()
@@ -1207,7 +1207,7 @@ class ABIs {
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L124-L134")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+11/src/java.base/share/classes/jdk/internal/foreign/abi/UpcallLinker.java#L124-L134")
     static class Upcalls {
         static Binding.VMLoad[] argMoveBindings(CallingSequence callingSequence) {
             return callingSequence.argumentBindings()
