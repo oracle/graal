@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.methodhandles;
 
+import static com.oracle.svm.core.invoke.MethodHandleUtils.JLI_PACKAGE;
+
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -38,8 +40,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -49,23 +51,23 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.graal.compiler.vmaccess.VMAccess;
@@ -418,7 +420,7 @@ public class MethodHandleFeature implements InternalFeature {
     }
 
     private static void registerVarHandleMethodsForReflection(FeatureAccess access, Class<?> subtype) {
-        if (subtype.getPackage().getName().equals("java.lang.invoke") && subtype != VarHandle.class) {
+        if (subtype.getPackage().getName().equals(JLI_PACKAGE) && subtype != VarHandle.class) {
             JVMCIRuntimeReflection.register(((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(subtype).getDeclaredMethods(false));
         }
     }

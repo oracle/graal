@@ -42,6 +42,8 @@ import jdk.vm.ci.meta.JavaKind;
 import sun.invoke.util.Wrapper;
 
 public class MethodHandleUtils {
+    public static final String JLI_PACKAGE = "java.lang.invoke";
+
     public static Object cast(Object obj, Class<?> type) {
         Wrapper destinationWrapper;
         if (type.isPrimitive()) {

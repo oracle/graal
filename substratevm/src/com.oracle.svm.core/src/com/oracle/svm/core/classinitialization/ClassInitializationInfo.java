@@ -25,6 +25,7 @@
 package com.oracle.svm.core.classinitialization;
 
 import static com.oracle.svm.core.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
+import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -44,6 +45,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
@@ -55,7 +57,6 @@ import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
-import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -363,10 +364,13 @@ public final class ClassInitializationInfo {
          * This does not work in general as class loading happens in more places than class
          * initialization, e.g., on class literals. However, this workaround makes most of the cases
          * work until we have a proper implementation of class loading.
+         *
+         * This is only done for "native" platforms because this requires reading the stack pointer
+         * and stack walking.
          */
-        if (!hub.isLoaded()) {
-            Class<?> callerClass = Reflection.getCallerClass();
-            if (DynamicHub.fromClass(callerClass).isLoaded()) {
+        if (Platform.includedIn(NATIVE_ONLY.class) && !hub.isLoaded()) {
+            Class<?> callerClass = getClassInitializationCallerClass();
+            if (callerClass != null && DynamicHub.fromClass(callerClass).isLoaded()) {
                 PredefinedClassesSupport.loadClassIfNotLoaded(callerClass.getClassLoader(), null, DynamicHub.toClass(hub));
             }
         }
@@ -394,6 +398,17 @@ public final class ClassInitializationInfo {
                 StackOverflowCheck.singleton().protectYellowZone();
             }
         }
+    }
+
+    @NeverInline("Starting a stack walk in the caller frame")
+    @Platforms(NATIVE_ONLY.class)
+    private static Class<?> getClassInitializationCallerClass() {
+        /*
+         * We don't use Reflection.getCallerClass() here because we are in a
+         * `@InternalVMMethod`-class so unlike Reflection.getCallerClass, we don't need to ignore
+         * the first frame.
+         */
+        return StackTraceUtils.getCallerClass(readCallerStackPointer(), true, false);
     }
 
     /**

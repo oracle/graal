@@ -30,7 +30,6 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
-import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 import jdk.internal.reflect.ConstructorAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -39,7 +38,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Shared Crema constructor accessor support for ordinary construction and serialization
  * construction.
  */
-@InternalVMMethod
 abstract class AbstractCremaConstructorAccessor extends AbstractCremaAccessor implements ConstructorAccessor {
 
     /**

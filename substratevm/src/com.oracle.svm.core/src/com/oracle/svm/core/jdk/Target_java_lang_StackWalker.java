@@ -25,11 +25,14 @@
 
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.invoke.MethodHandleUtils.JLI_PACKAGE;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Consumer;
@@ -80,7 +83,11 @@ import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_ContinuationScope;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.VMError;
+
+import jdk.internal.reflect.ConstructorAccessor;
+import jdk.internal.reflect.MethodAccessor;
 
 @TargetClass(value = java.lang.StackWalker.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -105,12 +112,12 @@ final class Target_java_lang_StackWalker {
     @NeverInline("Starting a stack walk in the caller frame")
     private void forEach(Consumer<? super StackFrame> action) {
         boolean showHiddenFrames = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
-        boolean showReflectFrames = options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
+        boolean showReflectFrames = showHiddenFrames || options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
 
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), new JavaStackFrameVisitor() {
             @Override
             public boolean visitFrame(FrameSourceInfo frameInfo, Pointer sp) {
-                if (StackTraceUtils.shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
+                if (!StackWalkerUtil.skipFrame(frameInfo, !showHiddenFrames, !showReflectFrames, false)) {
                     action.accept(new StackFrameImpl(frameInfo));
                 }
                 return true;
@@ -139,7 +146,10 @@ final class Target_java_lang_StackWalker {
          * with.
          */
 
-        Class<?> result = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), false);
+        Pointer startSP = KnownIntrinsics.readCallerStackPointer();
+        StackWalkerGetCallerClassVisitor visitor = new StackWalkerGetCallerClassVisitor();
+        JavaStackWalker.walkCurrentThread(startSP, visitor);
+        Class<?> result = visitor.result;
         if (result == null) {
             throw new IllegalCallerException("No calling frame");
         }
@@ -192,7 +202,7 @@ final class Target_java_lang_StackWalker {
             checkState();
 
             boolean showHiddenFrames = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
-            boolean showReflectFrames = options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
+            boolean showReflectFrames = showHiddenFrames || options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
 
             FrameSourceInfo vFrame = null;
             while (true) {
@@ -211,7 +221,7 @@ final class Target_java_lang_StackWalker {
                     return false;
                 }
 
-                if (vFrame != null && shouldShowFrame(vFrame, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
+                if (vFrame != null && !StackWalkerUtil.skipFrame(vFrame, !showHiddenFrames, !showReflectFrames, false)) {
                     action.accept(new StackFrameImpl(vFrame));
                     return true;
                 }
@@ -221,9 +231,10 @@ final class Target_java_lang_StackWalker {
         /**
          * Translates a VM-level frame to source-level frames and remembers any remaining translated
          * caller frames in {@link #sourceLevelVFrame}. The {@code deoptimizedFrame} flag identifies
-         * virtual frames from a {@link DeoptimizedFrame}; those frames do not have their own physical
-         * stack pointer, so implementations must avoid using the current physical frame SP for them.
-         * Regular VM-level frames pass {@code false} and may use their current physical frame SP.
+         * virtual frames from a {@link DeoptimizedFrame}; those frames do not have their own
+         * physical stack pointer, so implementations must avoid using the current physical frame SP
+         * for them. Regular VM-level frames pass {@code false} and may use their current physical
+         * frame SP.
          */
         private FrameSourceInfo translateToSourceLevelVFrames(FrameInfoQueryResult vFrame, boolean deoptimizedFrame) {
             if (InterpreterSupport.isEnabled()) {
@@ -254,10 +265,6 @@ final class Target_java_lang_StackWalker {
         @Uninterruptible(reason = "Wraps the now safe call to query frame information.", calleeMustBe = false)
         protected static CodeInfoQueryResult queryCodeInfoInterruptibly(CodeInfo info, CodePointer ip) {
             return CodeInfoTable.lookupCodeInfoQueryResult(info, ip);
-        }
-
-        private static boolean shouldShowFrame(FrameSourceInfo frameInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
-            return StackTraceUtils.shouldShowFrame(frameInfo, showLambdaFrames, showReflectFrames, showHiddenFrames);
         }
 
         protected abstract void invalidate();
@@ -481,9 +488,9 @@ final class Target_java_lang_StackWalker {
             assert InterpreterSupport.isEnabled();
 
             /*
-             * A deoptimized virtual frame does not have its own physical stack pointer. The
-             * current physical frame SP belongs to the deopt stub frame, so pass the null sentinel
-             * and fail loudly if source-frame translation tries to use it.
+             * A deoptimized virtual frame does not have its own physical stack pointer. The current
+             * physical frame SP belongs to the deopt stub frame, so pass the null sentinel and fail
+             * loudly if source-frame translation tries to use it.
              */
             Pointer sp = deoptimizedFrame ? Word.nullPointer() : getCurrentFrame().getSP();
             return JavaStackFrameVisitor.getSourceLevelVFrames(vFrame, sp, null);
@@ -589,4 +596,93 @@ final class Target_java_lang_StackFrameInfo {
 @TargetClass(className = "java.lang.StackStreamFactory")
 @Delete
 final class Target_java_lang_StackStreamFactory {
+}
+
+final class StackWalkerUtil {
+    /// Implements the frame skipping semantics required for [StackWalker] which are different from
+    /// the ones used in other stack walking mechanisms (e.g., different from
+    /// [jdk.internal.reflect.Reflection#getCallerClass()]).
+    ///
+    /// In particular what is considered a "reflection" frame is different.
+    /// * [StackWalker] considers all methods from [Method], [Constructor], [MethodAccessor] and its
+    /// subclasses, [ConstructorAccessor] and its subclasses;
+    /// * while [jdk.internal.reflect.Reflection#getCallerClass()] only considers
+    /// [Method#invoke(Object, Object...)] and methods from the JDK's internal [MethodAccessor]
+    /// implementations.
+    static boolean skipFrame(FrameSourceInfo frameSourceInfo, boolean skipHiddenFrames, boolean skipReflectFrames, boolean skipMethodHandleFrames) {
+        // The reflection check is done differently here
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, !skipHiddenFrames, true)) {
+            return true;
+        }
+        Class<?> clazz = frameSourceInfo.getSourceClass();
+        if (skipReflectFrames && isReflectionFrame(clazz)) {
+            return true;
+        }
+        if (skipMethodHandleFrames && isMethodHandleFrame(clazz)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isMethodHandleFrame(Class<?> c) {
+        return c.getPackageName().equals(JLI_PACKAGE);
+    }
+
+    private static boolean isReflectionFrame(Class<?> c) {
+        return c == Method.class ||
+                        c == Constructor.class ||
+                        MethodAccessor.class.isAssignableFrom(c) ||
+                        ConstructorAccessor.class.isAssignableFrom(c);
+    }
+}
+
+/// This visitor finds the caller class as required for [StackWalker#getCallerClass()]. Note
+/// that this is different from the semantics of [jdk.internal.reflect.Reflection#getCallerClass()].
+///
+/// The expected frame layout is:
+/// ```
+/// StackWalker::getCallerClass method
+/// 0: caller-sensitive method
+/// 1: caller class
+/// ```
+///
+/// However, during the walk the following frames are ignored:
+/// * [jdk.internal.vm.annotation.Hidden] frames (currently approximated in this implementation)
+/// * Any frame from the `java.lang.invoke` package
+/// * Any frame from the following reflection classes:
+/// * [Method]
+/// * [Constructor]
+/// * [MethodAccessor] or its subtypes
+/// * [ConstructorAccessor] or its subtypes
+///
+/// See `java.lang.StackStreamFactory.CallerClassFinder`.
+@BasedOnJDKClass(className = "java.lang.StackStreamFactory", innerClass = "CallerClassFinder")
+class StackWalkerGetCallerClassVisitor extends JavaStackFrameVisitor {
+    /// This is used to skip the caller-sensitive method
+    private boolean ignoreFirst;
+    Class<?> result;
+
+    StackWalkerGetCallerClassVisitor() {
+        this.ignoreFirst = true;
+    }
+
+    @Override
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo, Pointer sp) {
+        if (skipFrame(frameSourceInfo)) {
+            return true;
+        }
+        if (ignoreFirst) {
+            // this should be the caller-sensitive frame.
+            ignoreFirst = false;
+            return true;
+        } else {
+            // Found the caller frame, remember it and end the stack walk.
+            result = frameSourceInfo.getSourceClass();
+            return false;
+        }
+    }
+
+    private static boolean skipFrame(FrameSourceInfo frameSourceInfo) {
+        return StackWalkerUtil.skipFrame(frameSourceInfo, true, true, true);
+    }
 }

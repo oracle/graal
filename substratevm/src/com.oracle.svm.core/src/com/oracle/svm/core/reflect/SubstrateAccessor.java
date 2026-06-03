@@ -115,7 +115,14 @@ public abstract class SubstrateAccessor {
         return getCodePointer(expandSignature);
     }
 
-    public Object invokeSpecial(Object obj, Object[] args) {
+    /*
+     * This is considered @Hidden by `com.oracle.svm.core.jdk.StackTraceUtils#shouldShowFrame(Class,
+     * String, boolean, boolean)`. This is important as this is called as part of the method handle
+     * implementation where this frame is not expected to appear.
+     *
+     * When @Hidden becomes available per-method (GR-76134) we should use that annotation instead.
+     */
+    public Object methodHandleInvokeSpecial(Object obj, Object[] args) {
         CFunctionPointer target = getDirectTarget();
         if (target.isNull()) {
             throw new IllegalArgumentException("Cannot do invokespecial for an abstract method");
