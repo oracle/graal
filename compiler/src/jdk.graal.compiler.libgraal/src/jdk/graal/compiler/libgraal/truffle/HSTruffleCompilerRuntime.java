@@ -25,9 +25,7 @@
 package jdk.graal.compiler.libgraal.truffle;
 
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPartialEvaluationMethodInfo;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsSuppressedFailure;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.Log;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCodeInstallation;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnIsolateShutdown;
@@ -46,10 +44,7 @@ import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
 
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
@@ -64,8 +59,6 @@ import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -90,19 +83,6 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
         this.classLoaderDelegate = classLoaderDelegate;
         this.javaInstrumentationActive = javaInstrumentationActive;
         this.calls = new TruffleFromLibGraalCalls(env, peer);
-    }
-
-    @TruffleFromLibGraal(GetPartialEvaluationMethodInfo)
-    @Override
-    @SuppressWarnings("deprecation")
-    public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
-        throw new UnsupportedOperationException("Use HotSpotPartialEvaluator#getMethodInfo()");
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        throw new UnsupportedOperationException("Use TruffleHostEnvironment#getHostMethodInfo()");
     }
 
     @Override
@@ -133,19 +113,6 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
         JNIEnv env = env();
         JObject assumptionConsumer = HSTruffleCompilerRuntimeGen.callRegisterOptimizedAssumptionDependency(calls, env, getHandle(), optimizedAssumptionHandle);
         return assumptionConsumer.isNull() ? null : new HSConsumer(scope(), assumptionConsumer, calls);
-    }
-
-    @TruffleFromLibGraal(IsValueType)
-    @Override
-    public boolean isValueType(ResolvedJavaType type) {
-        long typeHandle = HotSpotJVMCIRuntime.runtime().translate(type);
-        return HSTruffleCompilerRuntimeGen.callIsValueType(calls, env(), getHandle(), typeHandle);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        throw new UnsupportedOperationException("Use HotSpotPartialEvaluator#getConstantFieldInfo()");
     }
 
     @Override

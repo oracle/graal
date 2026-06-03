@@ -58,10 +58,7 @@ import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
@@ -81,7 +78,6 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -179,27 +175,6 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
          * installed.
          */
         return null;
-    }
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    @SuppressWarnings("deprecation")
-    public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        throw new UnsupportedOperationException();
     }
 
     private void teardownCompilerIsolate() {

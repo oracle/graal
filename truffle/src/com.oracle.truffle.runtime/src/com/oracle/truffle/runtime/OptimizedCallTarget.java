@@ -411,32 +411,6 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return size > 0 ? size : childrenCount;
     }
 
-    /*
-     * Legacy implementation.
-     */
-    @SuppressWarnings("deprecation")
-    public final void prepareForCompilation() {
-        RootNode root = this.rootNode;
-        if (root == null) {
-            throw CompilerDirectives.shouldNotReachHere("Initialization call targets cannot be compiled.");
-        }
-        /*
-         * Compared to the new prepareForCompilation we do not return for not initialized call
-         * targets. This is on purpose, as the return value of prepareForCompilation has no effect.
-         */
-        OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, true, 2, true);
-        /*
-         * We need to unconditionally initialize the assumptions as the return value is not
-         * interpreted for the legacy implementation.
-         */
-        if (nodeRewritingAssumption == null) {
-            initializeNodeRewritingAssumption();
-        }
-        if (validRootAssumption == null) {
-            initializeValidRootAssumption();
-        }
-    }
-
     @Override
     public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
         RootNode root = this.rootNode;
@@ -463,22 +437,6 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             }
         }
         return result;
-    }
-
-    final Assumption getNodeRewritingAssumption() {
-        Assumption assumption = nodeRewritingAssumption;
-        if (assumption == null) {
-            assumption = initializeNodeRewritingAssumption();
-        }
-        return assumption;
-    }
-
-    final Assumption getValidRootAssumption() {
-        Assumption assumption = validRootAssumption;
-        if (assumption == null) {
-            assumption = initializeValidRootAssumption();
-        }
-        return assumption;
     }
 
     @Override

@@ -74,12 +74,6 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
 
     public static void initializeIsolate(long isolateThreadId) {
         runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
-        try {
-            runtime().registerNativeMethods(TruffleToLibGraalCalls2.class);
-        } catch (UnsatisfiedLinkError e) {
-            // deliberately ignored, the entry points might not be there
-        }
-        TruffleToLibGraalCalls3.initialize();
         TruffleToLibGraalCalls.initializeIsolate(isolateThreadId, LibGraalTruffleCompilationSupport.class);
     }
 
@@ -126,15 +120,7 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
     }
 
     private static boolean registerRuntimeImpl(TruffleCompilerRuntime runtime) {
-        if (TruffleToLibGraalCalls3.REGISTER_RUNTIME_HANDLE != null) {
-            try {
-                return (boolean) TruffleToLibGraalCalls3.REGISTER_RUNTIME_HANDLE.invoke(getIsolateThread(), runtime, JFRListener.nativeState());
-            } catch (Throwable t) {
-                throw sthrow(RuntimeException.class, t);
-            }
-        } else {
-            return TruffleToLibGraalCalls.registerRuntime(getIsolateThread(), runtime);
-        }
+        return TruffleToLibGraalCalls.registerRuntime(getIsolateThread(), runtime, JFRListener.nativeState());
     }
 
     @SuppressWarnings({"unchecked", "unused"})
@@ -215,15 +201,7 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
     }
 
     private static long initializeRuntimeImpl(TruffleCompilerRuntime runtime) {
-        if (TruffleToLibGraalCalls3.INITIALIZE_RUNTIME_HANDLE != null) {
-            try {
-                return (long) TruffleToLibGraalCalls3.INITIALIZE_RUNTIME_HANDLE.invoke(getIsolateThread(), runtime, runtime.getClass(), JFRListener.nativeState());
-            } catch (Throwable t) {
-                throw sthrow(RuntimeException.class, t);
-            }
-        } else {
-            return TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), runtime, runtime.getClass());
-        }
+        return TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), runtime, runtime.getClass(), JFRListener.nativeState());
     }
 
     @SuppressWarnings("try")
