@@ -35,6 +35,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
@@ -99,6 +101,13 @@ final class Target_javax_crypto_JceSecurity {
             return null;
         } else if (o != null) {
             return (Exception) o;
+        }
+        if (RuntimeClassLoading.isSupported() && DynamicHub.fromClass(p.getClass()).isRuntimeLoaded()) {
+            /*
+             * Providers loaded by Crema at run time cannot have a build-time verification result.
+             * Treat them like HotSpot treats providers loaded from the application class path.
+             */
+            return null;
         }
         /*
          * If the verification result is not found in the verificationResults map, HotSpot will
