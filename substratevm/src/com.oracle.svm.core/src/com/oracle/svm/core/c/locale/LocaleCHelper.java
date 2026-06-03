@@ -59,9 +59,9 @@ class LocaleCHelper {
      *         {@link #SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY}.
      */
     @CFunction(value = "svm_initialize_locale", transition = NO_TRANSITION)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+7/src/java.base/unix/native/libjava/java_props_md.c#L71-L359")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+17/src/java.base/unix/native/libjava/java_props_md.c#L436-L460")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.3-ga/src/java.base/windows/native/libjava/java_props_md.c#L263-L721")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-26+7/src/java.base/unix/native/libjava/java_props_md.c#L71-L359")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+17/src/java.base/unix/native/libjava/java_props_md.c#L436-L460")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3-ga/src/java.base/windows/native/libjava/java_props_md.c#L263-L668")
     static native int initializeLocale();
 
     @CFunction(value = "svm_get_locale", transition = NO_TRANSITION)

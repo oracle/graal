@@ -1049,7 +1049,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
      * Invocation plugin to initialize the ValueLayouts' VarHandle cache (which is annotated
      * with @Stable) early. This should enable intrinsification of the VarHandles.
      */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.2+4/src/java.base/share/classes/jdk/internal/foreign/layout/ValueLayouts.java#L69-L70")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.2+4/src/java.base/share/classes/jdk/internal/foreign/layout/ValueLayouts.java#L69-L70")
     private static final class FoldValueLayoutVarHandlePlugin extends RequiredInvocationPlugin {
         private final Class<?> receiverClass;
         private final Function<Object, VarHandle> varHandleInvoker;
