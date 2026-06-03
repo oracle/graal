@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import static com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoState.NO_SUCCESSOR_INDEX_MARKER;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
@@ -248,7 +249,7 @@ public class FrameInfoEncoder {
         final Map<CompressedFrameData, Integer> frameMaxHeight = new HashMap<>();
 
         boolean sealed = false;
-        EconomicMap<Integer, Long> encodedSliceIndexMap = EconomicMap.create(Equivalence.DEFAULT);
+        long[] encodedSliceIndexes;
 
         void addFrameSlice(FrameData data, List<CompressedFrameData> slice) {
             assert !sealed : "already sealed";
@@ -342,9 +343,12 @@ public class FrameInfoEncoder {
              * represented by pointers, while frames unique to this frame slice will be directly
              * encoded here.
              */
+            encodedSliceIndexes = new long[frameSlices.size()];
+            Arrays.fill(encodedSliceIndexes, -1);
             Integer[] sliceOrder = sliceFrequency.encodeAll(new Integer[sliceFrequency.getLength()]);
             for (Integer sliceIdx : sliceOrder) {
-                assert !encodedSliceIndexMap.containsKey(sliceIdx) : sliceIdx;
+                recordActivity.run();
+                assert encodedSliceIndexes[sliceIdx] == -1 : sliceIdx;
 
                 List<CompressedFrameData> slice = frameSlices.get(sliceIdx);
                 assert slice.size() > 0 : sliceIdx;
@@ -353,17 +357,21 @@ public class FrameInfoEncoder {
                  * state is walkable within the shared frame state, then the slice's initial shared
                  * frame can be directly pointed to.
                  */
-                boolean directlyPointToSharedFrame = slice.stream().allMatch(frame -> {
+                boolean directlyPointToSharedFrame = true;
+                for (CompressedFrameData frame : slice) {
                     EconomicSet<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
-                    return sharedEncodedFrameIndexMap.containsKey(frame) && (frameSuccessors == null || frameSuccessors.size() == 1);
-                });
+                    if (!sharedEncodedFrameIndexMap.containsKey(frame) || (frameSuccessors != null && frameSuccessors.size() != 1)) {
+                        directlyPointToSharedFrame = false;
+                        break;
+                    }
+                }
                 if (directlyPointToSharedFrame) {
                     CompressedFrameData frame = slice.getFirst();
                     assert sharedEncodedFrameIndexMap.containsKey(frame) : frame;
-                    encodedSliceIndexMap.put(sliceIdx, sharedEncodedFrameIndexMap.get(frame));
+                    encodedSliceIndexes[sliceIdx] = sharedEncodedFrameIndexMap.get(frame);
                 } else {
                     /* Need to encode unique frames and pointers to shared frames. */
-                    encodedSliceIndexMap.put(sliceIdx, encodingBuffer.getBytesWritten());
+                    encodedSliceIndexes[sliceIdx] = encodingBuffer.getBytesWritten();
                     CompressedFrameData prevFrame = null;
                     boolean prevShared = false;
                     for (CompressedFrameData frame : slice) {
@@ -421,9 +429,8 @@ public class FrameInfoEncoder {
 
         long getEncodingOffset(int sliceIndex) {
             assert sealed : this;
-            Long encodedSliceIndex = encodedSliceIndexMap.get(sliceIndex);
-            assert encodedSliceIndex != null;
-            return encodedSliceIndex;
+            assert encodedSliceIndexes[sliceIndex] != -1 : sliceIndex;
+            return encodedSliceIndexes[sliceIndex];
         }
 
         /** When verifying the frame encoding, the method id must be filled in. */
