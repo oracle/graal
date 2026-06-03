@@ -24,10 +24,14 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.Value;
 
 public final class AArch64LIRHelper {
 
@@ -37,6 +41,10 @@ public final class AArch64LIRHelper {
     protected static void loadExternalAddress(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register dst, ArrayDataPointerConstant ptr) {
         crb.recordDataReferenceInCode(ptr);
         masm.adrpAdd(dst);
+    }
+
+    protected static void guaranteeFixedRegister(Value value, Register expected, String name) {
+        GraalError.guarantee(asRegister(value).equals(expected), "expect %s at %s, but was %s", name, expected, value);
     }
 
     protected static ArrayDataPointerConstant pointerConstant(int alignment, byte[] bytes) {

@@ -27,6 +27,9 @@ package com.oracle.svm.core.cpufeature;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.ADX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512BW;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLMUL;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
@@ -65,6 +68,13 @@ import jdk.graal.compiler.replacements.nodes.DilithiumNode;
 import jdk.graal.compiler.replacements.nodes.ElectronicCodeBookAESNode;
 import jdk.graal.compiler.replacements.nodes.GaloisCounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.Kyber12To16Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly2Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberAddPoly3Node;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberBarrettReduceNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
@@ -92,6 +102,7 @@ public final class Stubs {
         public static final EnumSet<AMD64.CPUFeature> GHASH_CPU_FEATURES_AMD64 = EnumSet.of(AVX, CLMUL);
         public static final EnumSet<AMD64.CPUFeature> BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64 = EnumSet.of(AVX, BMI2, ADX);
         public static final EnumSet<AMD64.CPUFeature> BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64 = EnumSet.of(AVX, BMI2);
+        public static final EnumSet<AMD64.CPUFeature> KYBER_CPU_FEATURES_AMD64 = EnumSet.of(AVX, AVX2, AVX512F, AVX512BW, AVX512VL);
 
         public static EnumSet<AMD64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
             if (AESNode.class.equals(klass)) {
@@ -165,6 +176,15 @@ public final class Stubs {
             }
             if (CRC32CUpdateBytesNode.class.equals(klass)) {
                 return CRC32CUpdateBytesNode.maxFeaturesAMD64();
+            }
+            if (KyberNttNode.class.equals(klass) ||
+                            KyberInverseNttNode.class.equals(klass) ||
+                            KyberNttMultNode.class.equals(klass) ||
+                            KyberAddPoly2Node.class.equals(klass) ||
+                            KyberAddPoly3Node.class.equals(klass) ||
+                            Kyber12To16Node.class.equals(klass) ||
+                            KyberBarrettReduceNode.class.equals(klass)) {
+                return KYBER_CPU_FEATURES_AMD64;
             }
             return RUNTIME_CHECKED_CPU_FEATURES_AMD64;
         }
