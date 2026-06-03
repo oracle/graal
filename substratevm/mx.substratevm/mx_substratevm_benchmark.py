@@ -305,7 +305,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return super().default_stages()
 
     def layers(self, bm_suite_args: List[str]) -> List[Layer]:
-        layered_benchmarks = ["micronaut-pegasus", "micronaut-shopcart"]
+        layered_benchmarks = ["micronaut-hello-world", "micronaut-pegasus", "micronaut-shopcart"]
         if self.benchmarkName() in layered_benchmarks:
             return [Layer(0, True), Layer(1, False)]
         # Support for other benchmarks, or even suites? (GR-64772)
@@ -429,7 +429,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         """Generates the NIB file for the app-layer pair associated with the current benchmark stage."""
         nib_generation_cmd = [str(self.baristaBuilderPath()), app_name]
         if layer_info is not None:
-            assert app_name in ["micronaut-pegasus", "micronaut-shopcart"], f"Cannot generate a layer bundle for '{app_name}' app!"
+            assert app_name in ["micronaut-hello-world", "micronaut-pegasus", "micronaut-shopcart"], f"Cannot generate a layer bundle for '{app_name}' app!"
             assert layer_info.index in [0, 1], f"Cannot generate layer#{layer_info.index} bundle for '{app_name}' app!"
             if layer_info.index == 0:
                 nib_generation_cmd += ["-m=-Pbase-layer"]

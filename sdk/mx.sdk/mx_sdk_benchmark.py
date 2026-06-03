@@ -418,6 +418,8 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['-Ob']
         if vm.graalos or vm.graalhost_graalos:
             base_image_build_args += ['-H:+GraalOS']
+        if vm.layered:
+            base_image_build_args += ['-H:+WarnOnSharedLayerSetRuntimeOptions']
         if vm.use_string_inlining:
             base_image_build_args += ['-H:+UseStringInlining']
         if vm.static:
